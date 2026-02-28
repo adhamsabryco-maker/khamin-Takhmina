@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800;1000&family=Fredoka:wght@400;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Fredoka", "Cairo", system-ui, sans-serif;
+}
+
+/* 
+  CASUAL GAME UI THEME - "JUICY POP"
+  Style: High Contrast, Tactile, Vibrant, Cartoon-like
+*/
+
+body {
+  font-family: "Fredoka", "Cairo", sans-serif;
+  background-color: #FFEB3B; /* Fallback */
+  /* Polka dot pattern */
+  background-image: 
+    radial-gradient(#FFC107 20%, transparent 20%),
+    radial-gradient(#FFC107 20%, transparent 20%);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+  background-attachment: fixed;
+  color: #2D3436;
+  overflow-x: hidden;
+  direction: rtl;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #FF9F43;
+  border-radius: 10px;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+}
+
+/* 
+  GAME COMPONENT CLASSES 
+  These mimic physical, "clickable" objects 
+*/
+
+/* 1. The "Juicy" Button Base */
+.btn-game {
+  @apply relative transition-all active:top-[4px] active:shadow-none font-black tracking-wide flex items-center justify-center cursor-pointer select-none;
+  top: 0;
+}
+
+/* Primary Action (Orange/Red) */
+.btn-primary {
+  @apply bg-[#FF6B6B] text-white rounded-2xl border-b-[6px] border-[#EE5253] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+}
+.btn-primary:hover {
+  @apply bg-[#FF8787] -translate-y-[2px];
+}
+.btn-primary:active {
+  @apply border-b-0 translate-y-[4px];
+}
+
+/* Secondary Action (Blue/Cyan) */
+.btn-secondary {
+  @apply bg-[#48DBFB] text-white rounded-2xl border-b-[6px] border-[#0ABDE3] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+}
+.btn-secondary:hover {
+  @apply bg-[#6CE4FC] -translate-y-[2px];
+}
+.btn-secondary:active {
+  @apply border-b-0 translate-y-[4px];
+}
+
+/* Success Action (Green) */
+.btn-success {
+  @apply bg-[#1DD1A1] text-white rounded-2xl border-b-[6px] border-[#10AC84] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+}
+.btn-success:hover {
+  @apply bg-[#3DE1B1] -translate-y-[2px];
+}
+.btn-success:active {
+  @apply border-b-0 translate-y-[4px];
+}
+
+/* Danger/Warning Action (Yellow/Orange) */
+.btn-danger {
+  @apply bg-[#FF9F43] text-white rounded-2xl border-b-[6px] border-[#EE5A24] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+}
+.btn-danger:hover {
+  @apply bg-[#FFB66D] -translate-y-[2px];
+}
+.btn-danger:active {
+  @apply border-b-0 translate-y-[4px];
+}
+
+/* 2. The "Game Card" Container */
+.card-game {
+  @apply bg-white rounded-[32px] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.05)];
+}
+
+/* 3. The "Chunky" Input */
+.input-game {
+  @apply w-full bg-[#F7F9FC] border-[3px] border-[#E0E6ED] rounded-2xl p-4 text-lg font-bold text-[#2D3436] placeholder-[#B2BEC3] outline-none transition-all;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+}
+.input-game:focus {
+  @apply bg-white border-[#48DBFB] shadow-[0_0_0_4px_rgba(72,219,251,0.2)];
+}
+
+/* Animations */
+@keyframes popIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pop {
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes hintGlow {
+  0% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.4); border-color: #FF9F43; }
+  50% { box-shadow: 0 0 20px 10px rgba(255, 159, 67, 0.2); border-color: #FFB66D; }
+  100% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.4); border-color: #FF9F43; }
+}
+
+.hint-glow {
+  animation: hintGlow 1.5s ease-in-out infinite;
+  border-width: 4px !important;
+  border-style: solid !important;
+}
