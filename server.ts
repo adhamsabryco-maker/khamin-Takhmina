@@ -1407,13 +1407,15 @@ const app = express();
       // Check if this email is the admin email
       const isAdmin = email === "adhamsabry.co@gmail.com";
 
+      const userPayload = JSON.stringify({ email, name, picture, isAdmin });
+
       res.send(`
         <html>
           <body>
             <script>
               window.opener.postMessage({ 
                 type: 'GOOGLE_AUTH_SUCCESS', 
-                user: { email: '${email}', name: '${name}', picture: '${picture}', isAdmin: ${isAdmin} } 
+                user: ${userPayload}
               }, '*');
               window.close();
             </script>
