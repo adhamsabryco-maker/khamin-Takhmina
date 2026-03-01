@@ -86,13 +86,61 @@ const app = express();
     isAdmin?: boolean
   }>();
 
-  const dbPath = process.env.DB_PATH || 'players.db';
+  let dbPath = process.env.DB_PATH || path.join(__dirname, 'players.db');
+  console.log(`[DB] Using database at: ${dbPath}`);
+  console.log(`[DB] Current working directory: ${process.cwd()}`);
+  console.log(`[DB] __dirname: ${__dirname}`);
+  
   const dbDir = path.dirname(dbPath);
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
+  try {
+    if (!fs.existsSync(dbDir)) {
+      console.log(`[DB] Creating database directory: ${dbDir}`);
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+    // Test writability
+    const testFile = path.join(dbDir, '.write-test');
+    fs.writeFileSync(testFile, 'test');
+    fs.unlinkSync(testFile);
+    console.log(`[DB] Directory ${dbDir} is writable.`);
+  } catch (err) {
+    console.error(`[DB] Failed to verify or create database directory ${dbDir}:`, err);
+    // If we can't create the directory or it's not writable, fallback to local directory
+    const fallbackPath = path.join(__dirname, 'players.db');
+    console.log(`[DB] Falling back to local database: ${fallbackPath}`);
+    dbPath = fallbackPath;
   }
-  const db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
+
+  let db: any;
+  try {
+    db = new Database(dbPath, { timeout: 10000 });
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
+    console.log("[DB] Database connected successfully.");
+  } catch (err) {
+    console.error(`[DB] Failed to open database at ${dbPath}:`, err);
+    // Final fallback to a guaranteed writable location
+    try {
+      const finalFallback = path.join(process.cwd(), 'players.db');
+      console.log(`[DB] Final fallback to: ${finalFallback}`);
+      db = new Database(finalFallback);
+      db.pragma('journal_mode = WAL');
+    } catch (finalErr) {
+      console.error("[DB] CRITICAL: All database fallbacks failed.", finalErr);
+      // If we can't even open a local DB, we might have to use in-memory or crash
+      db = new Database(':memory:');
+      console.log("[DB] Using IN-MEMORY database as last resort. DATA WILL NOT PERSIST.");
+    }
+  }
+
+  // Graceful shutdown
+  const shutdown = () => {
+    console.log("[DB] Closing database...");
+    if (db) db.close();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS players (
