@@ -155,7 +155,14 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [topPlayers, setTopPlayers] = useState<any[]>([]);
+  const [topPlayers, setTopPlayers] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('khamin_top_players');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [customAvatar, setCustomAvatar] = useState(() => localStorage.getItem('khamin_custom_avatar') || '');
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
@@ -678,6 +685,7 @@ export default function App() {
 
       newSocket.emit('get_top_players', (players: any[]) => {
         setTopPlayers(players);
+        localStorage.setItem('khamin_top_players', JSON.stringify(players));
       });
     });
 
@@ -717,6 +725,7 @@ export default function App() {
 
     newSocket.on('top_players_update', (players: any[]) => {
       setTopPlayers(players);
+      localStorage.setItem('khamin_top_players', JSON.stringify(players));
     });
 
     newSocket.on('opponent_muted_you', (isMuted: boolean) => {
@@ -1337,8 +1346,14 @@ export default function App() {
                         <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">2</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[1].name}</div>
-                      <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mt-1 mb-1">
-                        Lvl {topPlayers[1].level}
+                      <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
+                        <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          Lvl {topPlayers[1].level}
+                        </div>
+                        <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Trophy className="w-2.5 h-2.5" />
+                          {topPlayers[1].wins || 0} فوز
+                        </div>
                       </div>
                       <div className="w-full bg-gray-200 h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 border-gray-300"></div>
                     </div>
@@ -1356,8 +1371,14 @@ export default function App() {
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-30 animate-bounce">1</div>
                       </div>
                       <div className="text-xs md:text-sm font-black text-[#2D3436] truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{topPlayers[0].name}</div>
-                      <div className="text-[10px] font-bold text-gray-500 bg-yellow-100 px-3 py-1 rounded-full mt-1 mb-1">
-                        Lvl {topPlayers[0].level}
+                      <div className="flex flex-col items-center gap-1 mt-1 mb-1">
+                        <div className="text-[10px] font-bold text-gray-500 bg-yellow-100 px-3 py-1 rounded-full">
+                          Lvl {topPlayers[0].level}
+                        </div>
+                        <div className="text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full flex items-center gap-1">
+                          <Trophy className="w-3 h-3" />
+                          {topPlayers[0].wins || 0} فوز
+                        </div>
                       </div>
                       <div className="w-full bg-gradient-to-b from-yellow-100 to-yellow-50 h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 border-yellow-300"></div>
                     </div>
@@ -1374,8 +1395,14 @@ export default function App() {
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">3</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[2].name}</div>
-                      <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mt-1 mb-1">
-                        Lvl {topPlayers[2].level}
+                      <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
+                        <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          Lvl {topPlayers[2].level}
+                        </div>
+                        <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Trophy className="w-2.5 h-2.5" />
+                          {topPlayers[2].wins || 0} فوز
+                        </div>
                       </div>
                       <div className="w-full bg-gray-200 h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 border-gray-300"></div>
                     </div>
@@ -1704,11 +1731,13 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
+            onClick={() => setShowSettingsModal(false)}
           >
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               className="card-game p-8 w-full max-w-md space-y-6 overflow-y-auto max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center flex-row-reverse">
                 <h2 className="text-2xl font-black text-[#2D3436]">ملف اللاعب</h2>
@@ -3010,12 +3039,14 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[999]"
+            onClick={() => setShowReportModal(false)}
           >
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               className="card-game p-8 w-full max-w-md text-center"
+              onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-3xl font-black text-[#2D3436] mb-8">الإبلاغ عن {opponent.name}</h3>
               <div className="space-y-4 mb-8">
