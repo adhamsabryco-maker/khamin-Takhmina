@@ -86,7 +86,12 @@ const app = express();
     isAdmin?: boolean
   }>();
 
-  const db = new Database('players.db');
+  const dbPath = process.env.DB_PATH || 'players.db';
+  const dbDir = path.dirname(dbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+  const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
 
   db.exec(`
