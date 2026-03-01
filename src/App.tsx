@@ -36,7 +36,9 @@ import {
   UserMinus,
   UserPlus,
   RefreshCw,
-  Smile
+  Smile,
+  LogOut,
+  Download
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import Cropper from 'react-easy-crop';
@@ -114,6 +116,14 @@ const CATEGORIES = [
 ];
 
 const EMOTES = ['😂', '😡', '👍', '👎', '🤔', '🤯', '🎉', '💔'];
+
+const enterFullscreen = () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.log(`Error attempting to enable fullscreen: ${err.message}`);
+    });
+  }
+};
 
 export default function App() {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -335,8 +345,22 @@ export default function App() {
   const [hasResponded, setHasResponded] = useState(false);
   const [error, setError] = useState('');
   const [showLevelInfo, setShowLevelInfo] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
   // Matchmaking timeout and timer
   useEffect(() => {
@@ -844,6 +868,7 @@ export default function App() {
   }, []);
 
   const handleJoin = () => {
+    enterFullscreen();
     if (!playerSerial) {
       setShowWelcomeModal(true);
       return;
@@ -869,6 +894,7 @@ export default function App() {
   };
 
   const handleRandomMatch = () => {
+    enterFullscreen();
     if (!playerSerial) {
       setShowWelcomeModal(true);
       return;
@@ -1287,6 +1313,26 @@ export default function App() {
                 <Users className="w-6 h-6" />
                 بحث عن منافس عشوائي
               </button>
+
+              {deferredPrompt && (
+                <button 
+                  onClick={() => {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult: any) => {
+                      if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                      } else {
+                        console.log('User dismissed the install prompt');
+                      }
+                      setDeferredPrompt(null);
+                    });
+                  }}
+                  className="w-full btn-game py-4 text-xl gap-3 bg-gradient-to-r from-green-400 to-emerald-500 text-white hover:from-green-500 hover:to-emerald-600 shadow-lg shadow-green-200"
+                >
+                  <Download className="w-6 h-6" />
+                  تحميل اللعبة
+                </button>
+              )}
             </div>
           </div>
           </div>
@@ -1978,12 +2024,31 @@ export default function App() {
           )}
         </AnimatePresence>
       </AnimatePresence>
+
+      {/* Floating Controls (Bottom Right) */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[300]">
+        {/* Exit Button - Always shown */}
+        <button 
+          onClick={() => {
+            if (document.fullscreenElement) {
+              document.exitFullscreen().catch(err => console.error(err));
+            } else {
+              window.close();
+            }
+          }}
+          className="w-16 h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
+          title="خروج"
+        >
+          <LogOut className="w-8 h-8" />
+        </button>
+      </div>
       </>
     );
   }
 
   if (isSearching) {
     return (
+      <>
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md card-game p-12 text-center space-y-8 relative overflow-hidden">
           {proposedMatch ? (
@@ -2094,6 +2159,25 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {/* Floating Controls (Bottom Right) */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[300]">
+        {/* Exit Button - Always shown */}
+        <button 
+          onClick={() => {
+            if (document.fullscreenElement) {
+              document.exitFullscreen().catch(err => console.error(err));
+            } else {
+              window.close();
+            }
+          }}
+          className="w-16 h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
+          title="خروج"
+        >
+          <LogOut className="w-8 h-8" />
+        </button>
+      </div>
+      </>
     );
   }
 
@@ -2565,12 +2649,27 @@ export default function App() {
       </main>
 
       {/* Floating Controls (Bottom Right) */}
-      <div className="fixed bottom-6 right-6 flex gap-3 z-[300]">
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[300]">
+        {/* Exit Button - Always shown */}
+        <button 
+          onClick={() => {
+            if (document.fullscreenElement) {
+              document.exitFullscreen().catch(err => console.error(err));
+            } else {
+              window.close();
+            }
+          }}
+          className="w-16 h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
+          title="خروج"
+        >
+          <LogOut className="w-8 h-8" />
+        </button>
+
         {/* Home Button - Shown whenever joined a room */}
-        {room.gameState !== 'finished' && (
+        {room && room.gameState !== 'finished' && (
           <button 
             onClick={handleLeaveGame}
-            className="w-16 h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
+            className="w-16 h-16 rounded-full bg-white text-gray-400 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
             title="الرئيسية"
           >
             <Home className="w-8 h-8" />
@@ -2578,7 +2677,7 @@ export default function App() {
         )}
 
         {/* Mic Button - Only when opponent is present */}
-        {(opponent || room.players.length > 1) && (
+        {(opponent || (room && room.players.length > 1)) && (
           <>
           </>
         )}
