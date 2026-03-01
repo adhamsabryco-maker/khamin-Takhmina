@@ -21,7 +21,7 @@ body {
   background-position: 0 0, 10px 10px;
   background-attachment: fixed;
   color: #2D3436;
-  overflow-x: hidden;
+  overflow: hidden;
   direction: rtl;
 }
 

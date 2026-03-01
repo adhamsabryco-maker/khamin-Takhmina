@@ -150,6 +150,7 @@ export default function App() {
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [topPlayers, setTopPlayers] = useState<any[]>([]);
   const [customAvatar, setCustomAvatar] = useState(() => localStorage.getItem('khamin_custom_avatar') || '');
@@ -716,7 +717,15 @@ export default function App() {
       if (updates && updates[newSocket.id]) {
         const myUpdate = updates[newSocket.id];
         setXp(prev => {
+          const oldLevel = getLevel(prev);
           const newXp = prev + myUpdate.xp;
+          const newLevel = getLevel(newXp);
+          
+          if (newLevel > oldLevel) {
+            setShowLevelUp(newLevel);
+            playSound('win'); // Play win sound again for level up
+          }
+          
           localStorage.setItem('khamin_xp', newXp.toString());
           return newXp;
         });
@@ -1092,7 +1101,7 @@ export default function App() {
     const remainingMinutes = banUntil ? Math.floor(((banUntil - Date.now()) % (1000 * 60 * 60)) / (1000 * 60)) : 0;
     
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-900">
+      <div className="h-[100dvh] w-screen overflow-hidden flex items-center justify-center p-4 bg-gray-900">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -1151,89 +1160,77 @@ export default function App() {
   if (!joined) {
     return (
       <>
-        <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="h-[100dvh] w-screen overflow-hidden flex items-center justify-center p-4">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md"
         >
           {/* Top Header */}
-          <div className="flex justify-between items-start mb-8">
+          <div className="flex justify-between items-start mb-4 md:mb-8">
             {/* Right: Logo & Name */}
-            <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-full shadow-sm border-2 border-white/50">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-lg flex items-center justify-center shadow-md transform rotate-3">
-                <Brain className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-3 py-1.5 md:py-2 rounded-full shadow-sm border-2 border-white/50">
+              <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-lg flex items-center justify-center shadow-md transform rotate-3">
+                <Brain className="w-4 h-4 md:w-5 md:h-5 text-white" />
               </div>
               <div className="text-right">
-                <h1 className="text-lg font-black text-[#FF6B6B] drop-shadow-sm leading-none">خمن تخمينة</h1>
+                <h1 className="text-base md:text-lg font-black text-[#FF6B6B] drop-shadow-sm leading-none">خمن تخمينة</h1>
               </div>
             </div>
 
             {/* Left: RPG Style Avatar & Level Bar */}
-            <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm p-2 pr-4 rounded-full shadow-sm border-2 border-white/50 flex-row-reverse">
+            <div className="flex items-center gap-2 md:gap-3 bg-white/80 backdrop-blur-sm p-1.5 md:p-2 pr-3 md:pr-4 rounded-full shadow-sm border-2 border-white/50 flex-row-reverse">
               <div className="relative shrink-0">
                 {renderStars(getLevel(xp))}
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl border-2 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
+                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-xl md:text-2xl border-2 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
                   {renderAvatarContent(avatar)}
                 </div>
               </div>
-              <div className="flex flex-col justify-center w-28">
-                <div className="text-[10px] font-black text-[#2D3436] mb-0.5 truncate text-right">{playerName || 'لاعب جديد'}</div>
-                <div className="flex justify-between items-center mb-1 flex-row-reverse">
-                  <span className="text-[10px] font-black text-gray-600">Level {getLevel(xp)}</span>
+              <div className="flex flex-col justify-center w-24 md:w-28">
+                <div className="text-[9px] md:text-[10px] font-black text-[#2D3436] mb-0.5 truncate text-right">{playerName || 'لاعب جديد'}</div>
+                <div className="flex justify-between items-center mb-0.5 md:mb-1 flex-row-reverse">
+                  <span className="text-[9px] md:text-[10px] font-black text-gray-600">Level {getLevel(xp)}</span>
                   <div className="flex gap-1">
                     <button 
                       type="button" 
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSettingsModal(true); }} 
-                      className="text-gray-400 hover:text-purple-500 transition-colors relative z-[100] cursor-pointer p-1 -m-1"
+                      className="text-gray-400 hover:text-purple-500 transition-colors relative z-[100] cursor-pointer p-0.5 md:p-1 -m-1"
                     >
-                      <Settings className="w-3.5 h-3.5" />
+                      <Settings className="w-3 md:w-3.5 h-3 md:h-3.5" />
                     </button>
                     <button 
                       type="button" 
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLevelInfo(true); }} 
-                      className="text-gray-400 hover:text-[#FF6B6B] transition-colors relative z-[100] cursor-pointer p-1 -m-1"
+                      className="text-gray-400 hover:text-[#FF6B6B] transition-colors relative z-[100] cursor-pointer p-0.5 md:p-1 -m-1"
                     >
-                      <Info className="w-3.5 h-3.5" />
+                      <Info className="w-3 md:w-3.5 h-3 md:h-3.5" />
                     </button>
                   </div>
                 </div>
                 {/* Level Bar */}
-                <div className="w-full bg-gray-200 rounded-full h-1.5 shadow-inner overflow-hidden mb-1.5" dir="ltr">
+                <div className="w-full bg-gray-200 rounded-full h-1 md:h-1.5 shadow-inner overflow-hidden mb-1 md:mb-1.5" dir="ltr">
                   <div 
-                    className="bg-gradient-to-r from-blue-400 to-blue-600 h-1.5 rounded-full transition-all duration-500" 
+                    className="bg-gradient-to-r from-blue-400 to-blue-600 h-full rounded-full transition-all duration-500" 
                     style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
-                  ></div>
-                </div>
-                
-                <div className="flex justify-between items-center mb-0.5 flex-row-reverse">
-                  <span className="text-[10px] font-black text-gray-600">XP</span>
-                  <span className="text-[9px] font-bold text-gray-500">{xp} / {getXpForNextLevel(getLevel(xp))}</span>
-                </div>
-                {/* XP Bar */}
-                <div className="w-full bg-gray-200 rounded-full h-1.5 shadow-inner overflow-hidden" dir="ltr">
-                  <div 
-                    className="bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] h-1.5 rounded-full transition-all duration-500" 
-                    style={{ width: `${((xp - getXpForCurrentLevel(getLevel(xp))) / (getXpForNextLevel(getLevel(xp)) - getXpForCurrentLevel(getLevel(xp)))) * 100}%` }}
                   ></div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="card-game p-8">
+          <div className="card-game p-4 md:p-8">
 
-          <div className="space-y-8">
+          <div className="space-y-4 md:space-y-8">
             {/* Top Players Section */}
             <div>
-              <div className="flex items-center justify-between mb-8 flex-row-reverse">
-                <h2 className="text-lg font-black text-[#2D3436] flex items-center gap-2">
+              <div className="flex items-center justify-between mb-4 md:mb-8 flex-row-reverse">
+                <h2 className="text-base md:text-lg font-black text-[#2D3436] flex items-center gap-2">
                   أبطال التخمين
                 </h2>
-                <span className="text-xs font-bold text-gray-400">المتصدرون حالياً</span>
+                <span className="text-[10px] md:text-xs font-bold text-gray-400">المتصدرون حالياً</span>
               </div>
 
-              <div className="flex items-end justify-center gap-2 h-48">
+              <div className="flex items-end justify-center gap-1 md:gap-2 h-32 md:h-48">
                 {/* Rank 2 */}
                 {topPlayers[1] && (
                   <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1">
@@ -1288,46 +1285,46 @@ export default function App() {
               </div>
             </div>
 
-            <div className="pt-6 border-t-2 border-gray-100 space-y-4">
+            <div className="pt-4 md:pt-6 border-t-2 border-gray-100 space-y-3 md:space-y-4">
               <div>
                 {error && (
                   <motion.div 
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="bg-red-100 border-2 border-red-200 p-4 mb-4 text-red-600 text-sm font-black rounded-2xl text-center shadow-sm"
+                    className="bg-red-100 border-2 border-red-200 p-2 md:p-4 mb-2 md:mb-4 text-red-600 text-xs md:text-sm font-black rounded-2xl text-center shadow-sm"
                   >
                     {error}
                   </motion.div>
                 )}
-                <label className="block text-lg font-black text-[#2D3436] mb-2 px-1">دخول بكود غرفة</label>
+                <label className="block text-base md:text-lg font-black text-[#2D3436] mb-1 md:mb-2 px-1">دخول بكود غرفة</label>
                 <div className="flex gap-2">
                   <input 
                     type="text" 
                     value={roomId}
                     onChange={(e) => setRoomId(e.target.value)}
                     placeholder="كود الغرفة..."
-                    className="input-game flex-1"
+                    className="input-game flex-1 py-2 md:py-4"
                     maxLength={6}
                   />
                   <button 
                     onClick={handleJoin}
-                    className="btn-game btn-secondary px-6 py-3 text-lg"
+                    className="btn-game btn-secondary px-4 md:px-6 py-2 md:py-3 text-base md:text-lg"
                   >
                     دخول
                   </button>
                 </div>
               </div>
 
-              <div className="relative py-2">
+              <div className="relative py-1 md:py-2">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-gray-200 dashed"></div></div>
-                <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-3 text-gray-400 font-black">أو</span></div>
+                <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-white px-3 text-gray-400 font-black">أو</span></div>
               </div>
 
               <button 
                 onClick={handleRandomMatch}
-                className="w-full btn-game btn-primary py-4 text-xl gap-3"
+                className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3"
               >
-                <Users className="w-6 h-6" />
+                <Users className="w-5 h-5 md:w-6 md:h-6" />
                 بحث عن منافس عشوائي
               </button>
 
@@ -1542,14 +1539,14 @@ export default function App() {
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="card-game p-8 w-full max-w-md space-y-6"
+              className="card-game p-4 md:p-8 w-full max-w-md space-y-4 md:space-y-6"
             >
               <div className="text-center space-y-2">
-                <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Brain className="w-10 h-10 text-orange-500" />
+                <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-2 md:mb-4">
+                  <Brain className="w-8 h-8 md:w-10 md:h-10 text-orange-500" />
                 </div>
-                <h2 className="text-3xl font-black text-[#2D3436]">أهلاً بك في خمن تخمينة!</h2>
-                <p className="text-gray-500 font-bold">يرجى إكمال بياناتك للبدء</p>
+                <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">أهلاً بك في خمن تخمينة!</h2>
+                <p className="text-gray-500 font-bold text-sm md:text-base">يرجى إكمال بياناتك للبدء</p>
               </div>
 
               <div className="space-y-4">
@@ -2043,7 +2040,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Floating Controls (Bottom Right) */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[300]">
+      <div className="fixed bottom-2 right-2 md:bottom-6 md:right-6 flex flex-col gap-2 md:gap-3 z-[300]">
         {/* Exit Button - Always shown */}
         <button 
           onClick={() => {
@@ -2053,10 +2050,10 @@ export default function App() {
               window.close();
             }
           }}
-          className="w-16 h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
+          className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
           title="خروج"
         >
-          <LogOut className="w-8 h-8" />
+          <LogOut className="w-7 h-7 md:w-8 md:h-8" />
         </button>
       </div>
       </>
@@ -2066,52 +2063,52 @@ export default function App() {
   if (isSearching) {
     return (
       <>
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-md card-game p-12 text-center space-y-8 relative overflow-hidden">
+      <div className="h-[100dvh] w-screen overflow-hidden flex items-center justify-center p-4">
+        <div className="w-full max-w-md card-game p-6 md:p-12 text-center space-y-4 md:space-y-8 relative overflow-hidden">
           {proposedMatch ? (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="space-y-6"
+              className="space-y-4 md:space-y-6"
             >
-              <h2 className="text-3xl font-black text-[#2D3436]">تم العثور على منافس!</h2>
-              <div className="flex flex-col items-center p-6 bg-orange-50 rounded-3xl border-4 border-orange-100 relative">
-                <div className="relative mb-4">
+              <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">تم العثور على منافس!</h2>
+              <div className="flex flex-col items-center p-4 md:p-6 bg-orange-50 rounded-3xl border-4 border-orange-100 relative">
+                <div className="relative mb-2 md:mb-4">
                   {proposedMatch.opponent.level && renderStars(proposedMatch.opponent.level)}
-                  <div className={`text-8xl drop-shadow-md animate-bounce w-32 h-32 rounded-full flex items-center justify-center border-4 overflow-hidden ${proposedMatch.opponent.level ? getAvatarStyle(proposedMatch.opponent.level) : 'bg-orange-100 border-orange-300'}`}>
+                  <div className={`text-6xl md:text-8xl drop-shadow-md animate-bounce w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center border-4 overflow-hidden ${proposedMatch.opponent.level ? getAvatarStyle(proposedMatch.opponent.level) : 'bg-orange-100 border-orange-300'}`}>
                     {renderAvatarContent(proposedMatch.opponent.avatar)}
                   </div>
                   {proposedMatch.opponent.level && (
-                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#FF6B6B] text-white text-sm font-black px-3 py-1 rounded-full border-2 border-white shadow-sm whitespace-nowrap">
+                    <div className="absolute -bottom-2 md:-bottom-3 left-1/2 -translate-x-1/2 bg-[#FF6B6B] text-white text-[10px] md:text-sm font-black px-2 md:px-3 py-0.5 md:py-1 rounded-full border-2 border-white shadow-sm whitespace-nowrap">
                       Lvl {proposedMatch.opponent.level}
                     </div>
                   )}
                 </div>
-                <div className="font-black text-3xl text-[#2D3436] mt-2">{proposedMatch.opponent.name}</div>
-                <div className="text-lg font-bold text-gray-500">({proposedMatch.opponent.age} سنة)</div>
+                <div className="font-black text-2xl md:text-3xl text-[#2D3436] mt-1 md:mt-2">{proposedMatch.opponent.name}</div>
+                <div className="text-base md:text-lg font-bold text-gray-500">({proposedMatch.opponent.age} سنة)</div>
               </div>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 md:gap-3">
                 {!hasResponded ? (
                   <>
-                    <div className="text-2xl font-black text-orange-500 mb-4 font-mono">
+                    <div className="text-xl md:text-2xl font-black text-orange-500 mb-2 md:mb-4 font-mono">
                       {matchResponseTimeLeft}s
                     </div>
                     <button 
                       onClick={() => { setHasResponded(true); socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'accept' }); }}
-                      className="w-full btn-game btn-success py-4 text-xl mb-3"
+                      className="w-full btn-game btn-success py-3 md:py-4 text-lg md:text-xl mb-1 md:mb-3"
                     >
                       قبول
                     </button>
-                    <div className="flex gap-3 mb-4">
+                    <div className="flex gap-2 md:gap-3 mb-2 md:mb-4">
                       <button 
                         onClick={() => { setHasResponded(true); socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' }); }}
-                        className="flex-1 btn-game btn-secondary bg-gray-200 border-gray-300 text-gray-600 hover:bg-gray-300 py-3"
+                        className="flex-1 btn-game btn-secondary bg-gray-200 border-gray-300 text-gray-600 hover:bg-gray-300 py-2 md:py-3"
                       >
                         رفض
                       </button>
                       <button 
                         onClick={() => { setHasResponded(true); socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'block' }); }}
-                        className="flex-1 btn-game btn-danger py-3 text-sm flex items-center justify-center gap-1"
+                        className="flex-1 btn-game btn-danger py-2 md:py-3 text-xs md:text-sm flex items-center justify-center gap-1"
                       >
                         <Ban className="w-4 h-4" />
                         حظر
@@ -2155,20 +2152,20 @@ export default function App() {
           ) : (
             <>
               <div className="relative inline-block">
-                <div className="w-32 h-32 bg-orange-100 rounded-full flex items-center justify-center animate-bounce border-4 border-orange-200">
-                  <Users className="w-16 h-16 text-orange-500" />
+                <div className="w-24 h-24 md:w-32 md:h-32 bg-orange-100 rounded-full flex items-center justify-center animate-bounce border-4 border-orange-200">
+                  <Users className="w-12 h-12 md:w-16 md:h-16 text-orange-500" />
                 </div>
-                <div className="absolute top-0 right-0 w-8 h-8 bg-green-400 rounded-full border-4 border-white animate-ping"></div>
+                <div className="absolute top-0 right-0 w-6 h-6 md:w-8 md:h-8 bg-green-400 rounded-full border-4 border-white animate-ping"></div>
               </div>
-              <div className="space-y-2">
-                <h2 className="text-4xl font-black text-[#2D3436]">جاري البحث...</h2>
-                <p className="text-lg font-bold text-gray-500">نبحث لك عن منافس قوي الآن</p>
-                <div className="text-6xl font-black text-orange-500 font-mono tracking-widest drop-shadow-sm">{searchTimeLeft}s</div>
-                <div className="text-sm font-black text-gray-500 mt-4 bg-gray-100 inline-block px-6 py-2 rounded-full border-2 border-gray-200">المتواجدون الآن: {onlineCount}</div>
+              <div className="space-y-1 md:space-y-2">
+                <h2 className="text-2xl md:text-4xl font-black text-[#2D3436]">جاري البحث...</h2>
+                <p className="text-sm md:text-lg font-bold text-gray-500">نبحث لك عن منافس قوي الآن</p>
+                <div className="text-4xl md:text-6xl font-black text-orange-500 font-mono tracking-widest drop-shadow-sm">{searchTimeLeft}s</div>
+                <div className="text-[10px] md:text-sm font-black text-gray-500 mt-2 md:mt-4 bg-gray-100 inline-block px-4 md:px-6 py-1 md:py-2 rounded-full border-2 border-gray-200">المتواجدون الآن: {onlineCount}</div>
               </div>
               <button 
                 onClick={() => { setJoined(false); setIsSearching(false); setProposedMatch(null); setHasResponded(false); socket?.emit('leave_matchmaking'); }}
-                className="text-lg font-black text-gray-400 hover:text-red-500 transition-colors border-b-2 border-transparent hover:border-red-500"
+                className="text-base md:text-lg font-black text-gray-400 hover:text-red-500 transition-colors border-b-2 border-transparent hover:border-red-500"
               >
                 إلغاء البحث
               </button>
@@ -2178,7 +2175,7 @@ export default function App() {
       </div>
 
       {/* Floating Controls (Bottom Right) */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[300]">
+      <div className="fixed bottom-2 right-2 md:bottom-6 md:right-6 flex flex-col gap-2 md:gap-3 z-[300]">
         {/* Exit Button - Always shown */}
         <button 
           onClick={() => {
@@ -2188,20 +2185,20 @@ export default function App() {
               window.close();
             }
           }}
-          className="w-16 h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
+          className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
           title="خروج"
         >
-          <LogOut className="w-8 h-8" />
+          <LogOut className="w-7 h-7 md:w-8 md:h-8" />
         </button>
       </div>
       </>
     );
   }
 
-  if (!room) return <div className="min-h-screen flex items-center justify-center text-[#2D3436] font-black text-2xl animate-pulse">جاري التحميل... 🚀</div>;
+  if (!room) return <div className="h-[100dvh] w-screen overflow-hidden flex items-center justify-center text-[#2D3436] font-black text-2xl animate-pulse">جاري التحميل... 🚀</div>;
 
   return (
-    <div className="min-h-screen font-sans overflow-hidden flex flex-col relative">
+    <div className="h-[100dvh] w-screen font-sans overflow-hidden flex flex-col relative">
       {/* Header */}
       <header className="bg-white/90 backdrop-blur-md p-4 flex justify-between items-center z-50 sticky top-0 shadow-sm border-b-4 border-gray-100">
         <div className="flex items-center gap-2">
@@ -2229,14 +2226,14 @@ export default function App() {
         </div>
       </header>
 
-      <main className="flex-1 relative flex flex-col items-center justify-between py-4 px-2 max-w-md mx-auto w-full">
+      <main className="flex-1 relative flex flex-col items-center justify-between py-2 px-2 max-w-md mx-auto w-full overflow-hidden">
         {/* Opponent (Top) */}
         <div className="relative flex flex-col items-center w-full">
           {opponent && (
             <>
               <div className="relative">
                 {opponent.xp !== undefined && renderStars(getLevel(opponent.xp))}
-                <div className={`relative w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-4xl md:text-5xl border-4 transition-transform ${opponent.xp !== undefined ? getAvatarStyle(getLevel(opponent.xp)) : 'bg-white border-white shadow-[0_4px_0_rgba(0,0,0,0.1)]'} ${funnyFilter === opponent.id ? 'animate-shake' : ''}`}>
+                <div className={`relative w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center text-3xl md:text-5xl border-4 transition-transform ${opponent.xp !== undefined ? getAvatarStyle(getLevel(opponent.xp)) : 'bg-white border-white shadow-[0_4px_0_rgba(0,0,0,0.1)]'} ${funnyFilter === opponent.id ? 'animate-shake' : ''}`}>
                   {renderAvatarContent(opponent.avatar)}
                   {showHammer === opponent.id && (
                     <motion.div 
@@ -2298,9 +2295,9 @@ export default function App() {
         </div>
 
         {/* Center Content: Image or Waiting UI */}
-        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-4">
+        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-2 min-h-0 overflow-hidden">
           {room.gameState === 'waiting' ? (
-            <div className="w-full card-game p-8 text-center space-y-6 relative overflow-hidden">
+            <div className="w-full card-game p-4 md:p-8 text-center space-y-4 md:space-y-6 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gray-100">
                 <div 
                   className="h-full bg-orange-500 transition-all duration-1000" 
@@ -2500,7 +2497,7 @@ export default function App() {
                     exit={{ scale: 0.9, opacity: 0 }}
                     className="relative z-10 flex flex-col items-center w-full"
                   >
-                    <div className="w-64 h-64 md:w-80 md:h-80 bg-white p-3 rounded-[32px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-4 border-white">
+                    <div className="w-full max-w-[14rem] md:max-w-[20rem] aspect-square bg-white p-3 rounded-[32px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-4 border-white">
                       <img 
                         src={opponent?.targetImage?.image} 
                         className={`w-full h-full object-cover rounded-2xl ${funnyFilter === opponent?.id ? 'invert sepia hue-rotate-90 scale-110' : ''}`}
@@ -2521,10 +2518,10 @@ export default function App() {
                   <motion.div 
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="relative z-[150] w-full max-w-md px-4 flex flex-col items-center mt-6"
+                    className="relative z-[150] w-full max-w-md px-2 flex flex-col items-center mt-2"
                   >
-                    <form onSubmit={handleGuess} className="w-full flex flex-col gap-3 card-game p-6 guess-glow border-orange-200">
-                      <div className="text-center font-black text-orange-500 animate-pulse mb-2 text-2xl">
+                    <form onSubmit={handleGuess} className="w-full flex flex-col gap-2 card-game p-3 md:p-4 guess-glow border-orange-200">
+                      <div className="text-center font-black text-orange-500 animate-pulse mb-1 text-xl md:text-2xl">
                         أسرع! خمن الآن ({room.isFrozen ? room.freezeTimer : room.timer}s)
                       </div>
                       <div className="flex gap-2">
@@ -2534,9 +2531,9 @@ export default function App() {
                           value={guess}
                           onChange={(e) => setGuess(e.target.value)}
                           placeholder="ما هي الصورة؟"
-                          className="input-game flex-1"
+                          className="input-game flex-1 py-2"
                         />
-                        <button className="btn-game btn-primary px-8 text-lg">إرسال</button>
+                        <button className="btn-game btn-primary px-6 text-base md:text-lg">إرسال</button>
                       </div>
                     </form>
                   </motion.div>
@@ -2545,7 +2542,7 @@ export default function App() {
 
               {/* Gameplay Chat Box - Moved to Center */}
               {room.gameState !== 'waiting' && room.gameState !== 'finished' && room.gameState !== 'guessing' && (
-                <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-56 mt-6 z-20 relative">
+                <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-40 md:h-48 mt-2 z-20 relative">
                   {isMutedByOpponent && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                       <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -2621,7 +2618,7 @@ export default function App() {
             <>
               <div className="relative">
                 {renderStars(getLevel(xp))}
-                <div className={`relative w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-4xl md:text-5xl border-4 transition-transform ${getAvatarStyle(getLevel(xp))} ${funnyFilter === me.id ? 'animate-shake' : ''}`}>
+                <div className={`relative w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center text-3xl md:text-5xl border-4 transition-transform ${getAvatarStyle(getLevel(xp))} ${funnyFilter === me.id ? 'animate-shake' : ''}`}>
                   {renderAvatarContent(me.avatar)}
                   {showHammer === me.id && (
                     <motion.div 
@@ -2666,7 +2663,7 @@ export default function App() {
       </main>
 
       {/* Floating Controls (Bottom Right) */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[300]">
+      <div className="fixed bottom-2 right-2 md:bottom-6 md:right-6 flex flex-col gap-2 md:gap-3 z-[300]">
         {/* Exit Button - Always shown */}
         <button 
           onClick={() => {
@@ -2676,20 +2673,20 @@ export default function App() {
               window.close();
             }
           }}
-          className="w-16 h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
+          className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
           title="خروج"
         >
-          <LogOut className="w-8 h-8" />
+          <LogOut className="w-7 h-7 md:w-8 md:h-8" />
         </button>
 
         {/* Home Button - Shown whenever joined a room */}
         {room && room.gameState !== 'finished' && (
           <button 
             onClick={handleLeaveGame}
-            className="w-16 h-16 rounded-full bg-white text-gray-400 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
+            className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white text-gray-400 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
             title="الرئيسية"
           >
-            <Home className="w-8 h-8" />
+            <Home className="w-7 h-7 md:w-8 md:h-8" />
           </button>
         )}
 
@@ -2727,7 +2724,7 @@ export default function App() {
 
       {/* Help Cards (Bottom Left) - Vertical Stack */}
       {room.gameState !== 'waiting' && (
-        <div className="fixed bottom-6 left-6 flex flex-col-reverse gap-3 z-[200]">
+        <div className="fixed bottom-2 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
           {[
             { 
               id: 'quick_guess', 
@@ -2860,45 +2857,44 @@ export default function App() {
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="card-game p-8 text-center max-w-md w-full relative overflow-hidden"
+              className="card-game p-4 md:p-8 text-center max-w-md w-full relative overflow-hidden"
             >
               {room.winnerId === me?.id ? (
-                <div className="mb-6 relative z-10">
-                  <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-yellow-200 animate-bounce">
-                    <Trophy className="w-12 h-12 text-yellow-500" />
+                <div className="mb-4 md:mb-6 relative z-10">
+                  <div className="w-16 h-16 md:w-24 md:h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-4 border-4 border-yellow-200 animate-bounce">
+                    <Trophy className="w-8 h-8 md:w-12 md:h-12 text-yellow-500" />
                   </div>
-                  <h2 className="text-4xl font-black text-green-500 mb-2 drop-shadow-sm">مبروك! لقد فزت</h2>
-                  <p className="text-gray-400 font-black text-lg">أداء رائع يا بطل! 🏆</p>
+                  <h2 className="text-2xl md:text-4xl font-black text-green-500 mb-1 md:mb-2 drop-shadow-sm">مبروك! لقد فزت</h2>
+                  <p className="text-gray-400 font-black text-sm md:text-lg">أداء رائع يا بطل! 🏆</p>
                 </div>
               ) : (
-                <div className="mb-6 relative z-10">
-                  <div className="text-6xl mb-4 animate-pulse">😢</div>
-                  <h2 className="text-4xl font-black text-red-500 mb-2 drop-shadow-sm">للأسف! لقد خسرت</h2>
-                  <p className="text-gray-400 font-black text-lg">حظ أوفر في المرة القادمة</p>
+                <div className="mb-4 md:mb-6 relative z-10">
+                  <div className="text-4xl md:text-6xl mb-2 md:mb-4 animate-pulse">😢</div>
+                  <h2 className="text-2xl md:text-4xl font-black text-red-500 mb-1 md:mb-2 drop-shadow-sm">للأسف! لقد خسرت</h2>
+                  <p className="text-gray-400 font-black text-sm md:text-lg">حظ أوفر في المرة القادمة</p>
                 </div>
               )}
               
-              <div className="flex flex-col items-center mb-6 bg-gray-100 p-4 rounded-[24px] border-4 border-gray-200">
-                <div className="text-xs font-black uppercase text-gray-400 mb-3 tracking-wider">الصورة التي كان يجب تخمينها</div>
-                <div className="w-32 h-32 rounded-2xl overflow-hidden bg-white shadow-md mb-3 border-4 border-white">
-                  <div className="relative w-32 h-32 rounded-2xl bg-white shadow-md mb-3 border-4 border-white">
+              <div className="flex flex-col items-center mb-4 md:mb-6 bg-gray-100 p-3 md:p-4 rounded-[24px] border-4 border-gray-200">
+                <div className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-2 md:mb-3 tracking-wider">الصورة التي كان يجب تخمينها</div>
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden bg-white shadow-md mb-2 md:mb-3 border-4 border-white">
+                  <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-white shadow-md mb-2 md:mb-3 border-4 border-white">
                     <img src={me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
-
                   </div>
                 </div>
-                <div className="font-black text-2xl text-[#2D3436]">{me?.targetImage?.name}</div>
+                <div className="font-black text-xl md:text-2xl text-[#2D3436]">{me?.targetImage?.name}</div>
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 md:gap-3">
                 <button 
                   onClick={() => socket?.emit('play_again', { roomId })}
-                  className="w-full btn-game btn-success py-4 text-xl"
+                  className="w-full btn-game btn-success py-3 md:py-4 text-lg md:text-xl"
                 >
                   لعب مرة أخرى مع نفس اللاعب
                 </button>
                 <button 
                   onClick={() => window.location.reload()}
-                  className="w-full btn-game btn-primary py-4 text-xl"
+                  className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl"
                 >
                   الذهاب للصفحة الرئيسية
                 </button>
@@ -2948,6 +2944,50 @@ export default function App() {
                 className="text-lg font-black text-gray-400 hover:text-gray-600 transition-colors"
               >
                 إلغاء
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Level Up Overlay */}
+      <AnimatePresence>
+        {showLevelUp !== null && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+            onClick={() => setShowLevelUp(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.5, rotate: -10 }}
+              animate={{ scale: 1, rotate: 0 }}
+              className="card-game p-6 md:p-10 text-center max-w-sm w-full relative overflow-hidden border-4 border-yellow-400 bg-gradient-to-br from-white to-yellow-50"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute top-0 left-0 w-full h-2 bg-yellow-400"></div>
+              <div className="mb-4 md:mb-6 relative">
+                <div className="w-20 h-20 md:w-24 md:h-24 bg-yellow-400 rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(250,204,21,0.5)] animate-pulse">
+                  <Star className="w-10 h-10 md:w-12 md:h-12 text-white fill-current" />
+                </div>
+                <motion.div 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white px-3 md:px-4 py-0.5 md:py-1 rounded-full border-2 border-yellow-400 font-black text-xs md:text-base text-yellow-600 shadow-sm"
+                >
+                  LEVEL UP!
+                </motion.div>
+              </div>
+              
+              <h2 className="text-3xl md:text-4xl font-black text-[#2D3436] mb-1 md:mb-2">المستوى {showLevelUp}</h2>
+              <p className="text-sm md:text-base text-gray-500 font-bold mb-6 md:mb-8">لقد ارتقيت لمستوى جديد! استمر في الفوز لفتح المزيد من القدرات.</p>
+              
+              <button 
+                onClick={() => setShowLevelUp(null)}
+                className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl shadow-[0_6px_0_#D97706]"
+              >
+                رائع!
               </button>
             </motion.div>
           </motion.div>
