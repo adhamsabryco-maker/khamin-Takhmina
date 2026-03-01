@@ -307,6 +307,7 @@ const app = express();
     try {
       const players = Array.from(allPlayers.values());
       insertMany(players);
+      invalidateTopPlayersCache();
     } catch (err) {
       console.error("Failed to save players data:", err);
     }
@@ -342,17 +343,26 @@ const app = express();
 
   loadPlayersData();
 
+  let cachedTopPlayers: any[] = [];
+  let topPlayersCacheTime = 0;
+
   function getTopPlayers() {
-    return Array.from(allPlayers.values())
-      .sort((a, b) => {
-        // 1. Level (derived from XP)
-        // 2. XP
-        if (b.xp !== a.xp) return b.xp - a.xp;
-        // 3. Wins
-        return (b.wins || 0) - (a.wins || 0);
-      })
-      .slice(0, 3) // Back to top 3 as requested, sorted globally from all registered players
-      .map((p, i) => ({ ...p, rank: i + 1 }));
+    const now = Date.now();
+    if (now - topPlayersCacheTime > 60000) { // Cache for 1 minute
+      cachedTopPlayers = Array.from(allPlayers.values())
+        .sort((a, b) => {
+          if (b.xp !== a.xp) return b.xp - a.xp;
+          return (b.wins || 0) - (a.wins || 0);
+        })
+        .slice(0, 3)
+        .map((p, i) => ({ ...p, rank: i + 1 }));
+      topPlayersCacheTime = now;
+    }
+    return cachedTopPlayers;
+  }
+
+  function invalidateTopPlayersCache() {
+    topPlayersCacheTime = 0;
   }
 
   function broadcastOnlineCount() {
