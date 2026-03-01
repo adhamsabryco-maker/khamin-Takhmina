@@ -253,6 +253,14 @@ export default function App() {
   }, []);
 
   const getLevel = (xp: number) => Math.min(50, Math.floor(Math.sqrt(xp / 50)) + 1);
+  const getXpProgress = (xp: number) => {
+    const level = getLevel(xp);
+    if (level >= 50) return 100;
+    const currentLevelXp = 50 * Math.pow(level - 1, 2);
+    const nextLevelXp = 50 * Math.pow(level, 2);
+    const progress = ((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100;
+    return Math.min(100, Math.max(0, progress));
+  };
   const getXpForNextLevel = (level: number) => Math.pow(level, 2) * 50;
   const getXpForCurrentLevel = (level: number) => Math.pow(level - 1, 2) * 50;
   const getQuickGuessWaitTime = (level: number) => {
@@ -453,7 +461,6 @@ export default function App() {
   // Global Fullscreen trigger on first interaction
   useEffect(() => {
     const handleFirstInteraction = () => {
-      enterFullscreen();
       window.removeEventListener('click', handleFirstInteraction);
       window.removeEventListener('touchstart', handleFirstInteraction);
     };
@@ -868,7 +875,7 @@ export default function App() {
     });
 
     return newSocket;
-  }, [playerSerial]);
+  }, []);
 
   useEffect(() => {
     const newSocket = connectSocket();
@@ -903,7 +910,6 @@ export default function App() {
   }, []);
 
   const handleJoin = () => {
-    enterFullscreen();
     if (!playerSerial) {
       setShowWelcomeModal(true);
       return;
@@ -929,7 +935,6 @@ export default function App() {
   };
 
   const handleRandomMatch = () => {
-    enterFullscreen();
     if (!playerSerial) {
       setShowWelcomeModal(true);
       return;
@@ -1110,7 +1115,7 @@ export default function App() {
     const remainingMinutes = banUntil ? Math.floor(((banUntil - Date.now()) % (1000 * 60 * 60)) / (1000 * 60)) : 0;
     
     return (
-      <div className="h-[100dvh] w-screen overflow-hidden flex items-center justify-center p-4 bg-gray-900">
+      <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gray-900 overflow-y-auto">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -1169,65 +1174,65 @@ export default function App() {
   if (!joined) {
     return (
       <>
-        <div className="h-[100dvh] w-screen overflow-hidden flex items-center justify-center p-4">
+        <div className="min-h-screen w-full flex items-center justify-center p-4">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
+          className="w-full max-w-md py-8"
         >
           {/* Top Header */}
-          <div className="flex justify-between items-start mb-4 md:mb-8">
+          <div className="flex justify-between items-start mb-6 md:mb-10">
             {/* Right: Logo & Name */}
-            <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-3 py-1.5 md:py-2 rounded-full shadow-sm border-2 border-white/50">
-              <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-lg flex items-center justify-center shadow-md transform rotate-3">
-                <Brain className="w-4 h-4 md:w-5 md:h-5 text-white" />
+            <div className="flex items-center gap-3 bg-white/90 backdrop-blur-sm px-4 py-2 md:py-3 rounded-full shadow-md border-2 border-white/50">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
+                <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
               <div className="text-right">
-                <h1 className="text-base md:text-lg font-black text-[#FF6B6B] drop-shadow-sm leading-none">خمن تخمينة</h1>
+                <h1 className="text-lg md:text-xl font-black text-[#FF6B6B] drop-shadow-sm leading-none">خمن تخمينة</h1>
               </div>
             </div>
 
             {/* Left: RPG Style Avatar & Level Bar */}
-            <div className="flex items-center gap-2 md:gap-3 bg-white/80 backdrop-blur-sm p-1.5 md:p-2 pr-3 md:pr-4 rounded-full shadow-sm border-2 border-white/50 flex-row-reverse">
+            <div className="flex items-center gap-3 md:gap-4 bg-white/90 backdrop-blur-sm p-2 md:p-3 pr-4 md:pr-6 rounded-full shadow-md border-2 border-white/50 flex-row-reverse">
               <div className="relative shrink-0">
                 {renderStars(getLevel(xp))}
-                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-xl md:text-2xl border-2 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
+                <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl md:text-3xl border-4 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
                   {renderAvatarContent(avatar)}
                 </div>
               </div>
-              <div className="flex flex-col justify-center w-24 md:w-28">
-                <div className="text-[9px] md:text-[10px] font-black text-[#2D3436] mb-0.5 truncate text-right">{playerName || 'لاعب جديد'}</div>
-                <div className="flex justify-between items-center mb-0.5 md:mb-1 flex-row-reverse">
-                  <span className="text-[9px] md:text-[10px] font-black text-gray-600">Level {getLevel(xp)}</span>
-                  <div className="flex gap-1">
+              <div className="flex flex-col justify-center min-w-[100px] md:min-w-[140px]">
+                <div className="text-xs md:text-sm font-black text-[#2D3436] mb-1 truncate text-right">{playerName || 'لاعب جديد'}</div>
+                <div className="flex justify-between items-center mb-1 md:mb-2 flex-row-reverse">
+                  <span className="text-[10px] md:text-xs font-black text-gray-600">Level {getLevel(xp)}</span>
+                  <div className="flex gap-2">
                     <button 
                       type="button" 
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSettingsModal(true); }} 
-                      className="text-gray-400 hover:text-purple-500 transition-colors relative z-[100] cursor-pointer p-0.5 md:p-1 -m-1"
+                      className="text-gray-400 hover:text-purple-500 transition-colors relative z-[100] cursor-pointer p-1 -m-1"
                     >
-                      <Settings className="w-3 md:w-3.5 h-3 md:h-3.5" />
+                      <Settings className="w-4 md:w-5 h-4 md:h-5" />
                     </button>
                     <button 
                       type="button" 
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLevelInfo(true); }} 
-                      className="text-gray-400 hover:text-[#FF6B6B] transition-colors relative z-[100] cursor-pointer p-0.5 md:p-1 -m-1"
+                      className="text-gray-400 hover:text-[#FF6B6B] transition-colors relative z-[100] cursor-pointer p-1 -m-1"
                     >
-                      <Info className="w-3 md:w-3.5 h-3 md:h-3.5" />
+                      <Info className="w-4 md:w-5 h-4 md:h-5" />
                     </button>
                   </div>
                 </div>
                 {/* Level Bar */}
-                <div className="w-full bg-gray-200 rounded-full h-1 md:h-1.5 shadow-inner overflow-hidden mb-1 md:mb-1.5" dir="ltr">
+                <div className="w-full bg-gray-200 rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-1 md:mb-2" dir="ltr">
                   <div 
                     className="bg-gradient-to-r from-blue-400 to-blue-600 h-full rounded-full transition-all duration-500" 
-                    style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
+                    style={{ width: `${getXpProgress(xp)}%` }}
                   ></div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="card-game p-4 md:p-8">
+          <div className="card-game p-6 md:p-10">
 
           <div className="space-y-4 md:space-y-8">
             {/* Top Players Section */}
@@ -2072,7 +2077,7 @@ export default function App() {
   if (isSearching) {
     return (
       <>
-      <div className="h-[100dvh] w-screen overflow-hidden flex items-center justify-center p-4">
+      <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto">
         <div className="w-full max-w-md card-game p-6 md:p-12 text-center space-y-4 md:space-y-8 relative overflow-hidden">
           {proposedMatch ? (
             <motion.div 
@@ -2204,10 +2209,10 @@ export default function App() {
     );
   }
 
-  if (!room) return <div className="h-[100dvh] w-screen overflow-hidden flex items-center justify-center text-[#2D3436] font-black text-2xl animate-pulse">جاري التحميل... 🚀</div>;
+  if (!room) return <div className="min-h-screen w-full flex items-center justify-center text-[#2D3436] font-black text-2xl animate-pulse">جاري التحميل... 🚀</div>;
 
   return (
-    <div className="h-[100dvh] w-screen font-sans overflow-hidden flex flex-col relative">
+    <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto">
       {/* Header */}
       <header className="bg-white/90 backdrop-blur-md p-4 flex justify-between items-center z-50 sticky top-0 shadow-sm border-b-4 border-gray-100">
         <div className="flex items-center gap-2">
@@ -2235,7 +2240,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="flex-1 relative flex flex-col items-center justify-between py-2 px-2 max-w-md mx-auto w-full overflow-hidden">
+      <main className="flex-1 relative flex flex-col items-center justify-between py-2 px-2 max-w-md mx-auto w-full">
         {/* Opponent (Top) */}
         <div className="relative flex flex-col items-center w-full">
           {opponent && (
