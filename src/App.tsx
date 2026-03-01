@@ -446,6 +446,23 @@ export default function App() {
     }
   }, [isSearching]);
 
+  // Global Fullscreen trigger on first interaction
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      enterFullscreen();
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+    
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('touchstart', handleFirstInteraction);
+    
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+  }, []);
+
   const [guess, setGuess] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [showEmotes, setShowEmotes] = useState(false);
