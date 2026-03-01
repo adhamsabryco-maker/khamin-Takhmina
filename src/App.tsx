@@ -1248,62 +1248,77 @@ export default function App() {
 
           <div className="space-y-4 md:space-y-10">
             {/* Top Players Section */}
-            <div className="flex flex-col">
+            <div className="flex flex-col gap-4">
+              {/* Header Box */}
+              <div className="px-2">
+                <div className="flex items-center justify-between flex-row-reverse">
+                  <h2 className="text-lg md:text-xl font-black text-[#2D3436] flex items-center gap-2">
+                    أبطال التخمين
+                  </h2>
+                  <span className="text-xs md:text-sm font-bold text-orange-500">المتصدرون حالياً</span>
+                </div>
+              </div>
+
+              {/* Separator */}
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-gray-200 dashed"></div></div>
+              </div>
+
               {/* Podium Box */}
-              <div className="bg-gray-50/30 rounded-[40px] border-2 border-gray-100/50 p-4 md:p-6 relative pt-16">
-                <div className="flex items-end justify-center gap-1 md:gap-2 h-40 md:h-56">
+              <div className="bg-gray-50/30 rounded-[40px] border-2 border-gray-100/50 p-4 md:p-6 pt-12 md:pt-16 mt-8 md:mt-12">
+                <div className="flex items-end justify-center gap-2 md:gap-4">
                   {/* Rank 2 */}
                   {topPlayers[1] && (
-                    <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1">
-                      <div className="relative mb-2">
+                    <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1 z-10">
+                      <div className="relative mb-2 flex flex-col items-center">
                         {renderStars(topPlayers[1].level)}
-                        <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl border-4 ${getAvatarStyle(topPlayers[1].level)}`}>
+                        <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl border-4 bg-white ${getAvatarStyle(topPlayers[1].level)}`}>
                           {renderAvatarContent(topPlayers[1].avatar)}
                         </div>
-                        <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm">2</div>
+                        <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">2</div>
                       </div>
-                      <div className="text-[10px] font-black text-[#2D3436] truncate w-full text-center">{topPlayers[1].name}</div>
-                      <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mt-1">
-                        Lvl {topPlayers[1].level} | فوز {topPlayers[1].wins || 0}
+                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[1].name}</div>
+                      <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mt-1 mb-1">
+                        Lvl {topPlayers[1].level}
                       </div>
-                      <div className="w-full bg-gray-200 h-16 rounded-t-xl mt-2 shadow-inner"></div>
+                      <div className="w-full bg-gray-200 h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 border-gray-300"></div>
                     </div>
                   )}
 
                   {/* Rank 1 */}
                   {topPlayers[0] && (
-                    <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1">
-                      <div className="relative mb-2 scale-110">
+                    <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1 z-20 -mt-8 md:-mt-12">
+                      <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
+                        <Crown className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-30" />
                         {renderStars(topPlayers[0].level)}
-                        <div className={`w-18 h-18 rounded-full flex items-center justify-center text-3xl border-4 ${getAvatarStyle(topPlayers[0].level)}`}>
+                        <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl border-4 bg-white ${getAvatarStyle(topPlayers[0].level)}`}>
                           {renderAvatarContent(topPlayers[0].avatar)}
                         </div>
-                        <div className="absolute -top-3 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md animate-bounce">1</div>
-                        <Crown className="absolute -top-8 left-1/2 -translate-x-1/2 w-8 h-8 text-yellow-500 fill-yellow-500 drop-shadow-md" />
+                        <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-30 animate-bounce">1</div>
                       </div>
-                      <div className="text-xs font-black text-[#2D3436] truncate w-full text-center mt-2">{topPlayers[0].name}</div>
-                      <div className="text-[10px] font-bold text-gray-500 bg-yellow-100 px-3 py-1 rounded-full mt-1">
-                        Lvl {topPlayers[0].level} | فوز {topPlayers[0].wins || 0}
+                      <div className="text-xs md:text-sm font-black text-[#2D3436] truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{topPlayers[0].name}</div>
+                      <div className="text-[10px] font-bold text-gray-500 bg-yellow-100 px-3 py-1 rounded-full mt-1 mb-1">
+                        Lvl {topPlayers[0].level}
                       </div>
-                      <div className="w-full bg-gradient-to-b from-yellow-100 to-yellow-50 h-24 rounded-t-xl mt-2 shadow-inner border-t-4 border-yellow-200"></div>
+                      <div className="w-full bg-gradient-to-b from-yellow-100 to-yellow-50 h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 border-yellow-300"></div>
                     </div>
                   )}
 
                   {/* Rank 3 */}
                   {topPlayers[2] && (
-                    <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1">
-                      <div className="relative mb-2">
+                    <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1 z-10">
+                      <div className="relative mb-2 flex flex-col items-center">
                         {renderStars(topPlayers[2].level)}
-                        <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl border-4 ${getAvatarStyle(topPlayers[2].level)}`}>
+                        <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl border-4 bg-white ${getAvatarStyle(topPlayers[2].level)}`}>
                           {renderAvatarContent(topPlayers[2].avatar)}
                         </div>
-                        <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm">3</div>
+                        <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">3</div>
                       </div>
-                      <div className="text-[10px] font-black text-[#2D3436] truncate w-full text-center">{topPlayers[2].name}</div>
-                      <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mt-1">
-                        Lvl {topPlayers[2].level} | فوز {topPlayers[2].wins || 0}
+                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[2].name}</div>
+                      <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mt-1 mb-1">
+                        Lvl {topPlayers[2].level}
                       </div>
-                      <div className="w-full bg-gray-200 h-12 rounded-t-xl mt-2 shadow-inner"></div>
+                      <div className="w-full bg-gray-200 h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 border-gray-300"></div>
                     </div>
                   )}
                 </div>
