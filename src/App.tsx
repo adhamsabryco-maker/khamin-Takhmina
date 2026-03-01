@@ -127,6 +127,9 @@ const enterFullscreen = () => {
 
 export default function App() {
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('khamin_player_name') || '');
   const playerNameRef = useRef(playerName);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
@@ -565,23 +568,27 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    const newSocket = io();
+  const connectSocket = useCallback(() => {
+    console.log('Initializing socket connection to:', window.location.origin);
+    const newSocket = io(window.location.origin, {
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      timeout: 20000
+    });
+    
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
-      if (playerSerial) {
-        newSocket.emit('set_player_serial_for_socket', playerSerial);
-      }
-      newSocket.emit('get_top_players', (players: any[]) => {
-        setTopPlayers(players);
-      });
-
+      console.log('Socket connected successfully! ID:', newSocket.id);
+      setIsConnected(true);
+      setIsConnecting(false);
+      setConnectionError(null);
+      
       const serial = localStorage.getItem('khamin_player_serial');
-      if (!serial) {
-        setShowWelcomeModal(true);
-      } else {
-        // Fetch actual server data to prevent local storage from downgrading XP
+      if (serial) {
+        newSocket.emit('set_player_serial_for_socket', serial);
+        // Fetch actual server data
         newSocket.emit('get_player_data', serial, (data: any) => {
           if (data) {
             setXp(data.xp);
@@ -595,12 +602,29 @@ export default function App() {
             localStorage.setItem('khamin_xp', data.xp.toString());
             localStorage.setItem('khamin_wins', (data.wins || 0).toString());
           } else {
-            // Serial not found on server, reset local data
             clearPlayerData();
             setShowWelcomeModal(true);
           }
         });
+      } else {
+        setShowWelcomeModal(true);
       }
+
+      newSocket.emit('get_top_players', (players: any[]) => {
+        setTopPlayers(players);
+      });
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error('Socket connection error:', err);
+      setIsConnected(false);
+      setIsConnecting(false);
+      setConnectionError('فشل الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت.');
+    });
+
+    newSocket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+      setIsConnected(false);
     });
 
     newSocket.on('online_count', (count) => {
@@ -631,21 +655,13 @@ export default function App() {
 
     newSocket.on('opponent_muted_you', (isMuted: boolean) => {
       setIsMutedByOpponent(isMuted);
-      if (isMuted) {
-        // If mic is on, turn it off? Or just disable the button?
-        // The user said "buttons are locked", so maybe just disable them.
-        // But if mic is on, we should probably turn it off too.
-        // Let's handle mic state in the toggleMic function or effect.
-      }
     });
 
     newSocket.on('room_update', (updatedRoom: Room) => {
-      // Check for game reset (Play Again)
       if (updatedRoom.gameState === 'waiting' && roomRef.current?.gameState === 'finished') {
         setChatHistory([]);
       }
       
-      // Check if a new player joined (was waiting alone, now 2 players)
       if (roomRef.current?.players.length === 1 && updatedRoom.players.length === 2) {
         const newPlayer = updatedRoom.players.find(p => p.id !== newSocket.id);
         if (newPlayer) {
@@ -664,8 +680,6 @@ export default function App() {
 
     newSocket.on('chat_bubble', ({ senderId, text }) => {
       if (senderId !== newSocket.id && isOpponentBlockedRef.current) return;
-      
-      // Find sender info from room state if available
       const sender = roomRef.current?.players.find((p: any) => p.id === senderId);
       const msgId = Math.random().toString(36).substr(2, 9);
       
@@ -680,8 +694,6 @@ export default function App() {
         }];
       });
     });
-
-    
 
     newSocket.on('guess_result', ({ playerId, correct }) => {
       if (!correct) {
@@ -699,9 +711,7 @@ export default function App() {
 
     newSocket.on('game_finished', ({ room, winnerId, updates }) => {
       setRoom(room);
-      
       const isWinner = winnerId === newSocket.id;
-
       if (isWinner) {
         playSound('win');
         confetti({
@@ -713,19 +723,16 @@ export default function App() {
         playSound('lose');
       }
 
-      // Update XP and Streak if available
       if (updates && updates[newSocket.id]) {
         const myUpdate = updates[newSocket.id];
         setXp(prev => {
           const oldLevel = getLevel(prev);
           const newXp = prev + myUpdate.xp;
           const newLevel = getLevel(newXp);
-          
           if (newLevel > oldLevel) {
             setShowLevelUp(newLevel);
-            playSound('win'); // Play win sound again for level up
+            playSound('win');
           }
-          
           localStorage.setItem('khamin_xp', newXp.toString());
           return newXp;
         });
@@ -765,7 +772,6 @@ export default function App() {
     newSocket.on('match_rejected', () => {
       setProposedMatch(null);
       setHasResponded(false);
-      // Still searching...
     });
 
     newSocket.on('random_match_found', ({ roomId }) => {
@@ -777,7 +783,7 @@ export default function App() {
     });
 
     newSocket.on('game_started', () => {
-      setChatHistory([]); // Clear chat on game start
+      setChatHistory([]);
     });
 
     newSocket.on('quick_guess_started', ({ playerId }) => {
@@ -803,7 +809,7 @@ export default function App() {
     });
 
     newSocket.on('freeze_started', ({ playerId }) => {
-      playSound('countdown'); // Or a freeze sound
+      playSound('countdown');
     });
 
     newSocket.on('freeze_timer_update', (timer) => {
@@ -825,22 +831,20 @@ export default function App() {
       setJoined(false);
       setGuess('');
       setHint(null);
-      setChatHistory([]); // Clear chat
+      setChatHistory([]);
       setRoomId(prev => prev.startsWith('random_') ? '' : prev);
       setIsOpponentBlocked(false);
       setTimeout(() => setError(''), 5000);
     });
 
     newSocket.on('opponent_left_lobby', () => {
-      // Silent redirect for lobby leave
       setRoom(null);
       setJoined(false);
       setGuess('');
       setHint(null);
-      setChatHistory([]); // Clear chat
+      setChatHistory([]);
       setRoomId(prev => prev.startsWith('random_') ? '' : prev);
       setIsOpponentBlocked(false);
-      // Optional: Show a small toast instead of full error
       setError('غادر المنافس الغرفة');
       setTimeout(() => setError(''), 3000);
     });
@@ -863,10 +867,15 @@ export default function App() {
       setJoined(false);
     });
 
+    return newSocket;
+  }, [playerSerial]);
+
+  useEffect(() => {
+    const newSocket = connectSocket();
     return () => {
-      newSocket.close();
+      newSocket.disconnect();
     };
-  }, []); // Run only once
+  }, [connectSocket]);
 
   // Separate effect for countdown sound to avoid re-binding socket listeners
   useEffect(() => {
@@ -2990,6 +2999,38 @@ export default function App() {
                 رائع!
               </button>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Connection Status Indicator */}
+      <AnimatePresence>
+        {(!isConnected || isConnecting || connectionError) && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-4 left-4 z-[6000] flex items-center gap-3 bg-white/90 backdrop-blur-md p-3 rounded-2xl border-2 border-orange-100 shadow-xl"
+          >
+            {isConnecting ? (
+              <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+            ) : isConnected ? (
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            ) : (
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+            )}
+            <span className="text-sm font-black text-[#2D3436]">
+              {isConnecting ? 'جاري الاتصال...' : isConnected ? 'متصل' : 'غير متصل'}
+            </span>
+            {!isConnected && !isConnecting && (
+              <button 
+                onClick={() => connectSocket()}
+                className="bg-orange-500 text-white text-xs font-black px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-1"
+              >
+                <RefreshCw className="w-3 h-3" />
+                إعادة المحاولة
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
