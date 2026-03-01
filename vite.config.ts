@@ -12,9 +12,10 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        injectRegister: 'auto',
         manifest: {
-          name: 'لعبة التخمين',
-          short_name: 'لعبة التخمين',
+          name: 'خمن تخمينة',
+          short_name: 'خمن تخمينة',
           description: 'لعبة تخمين كلمات ممتعة',
           theme_color: '#ffffff',
           background_color: '#ffffff',
@@ -22,8 +23,15 @@ export default defineConfig(({mode}) => {
           icons: [
             {
               src: 'icon.svg',
-              sizes: 'any',
-              type: 'image/svg+xml'
+              sizes: '192x192',
+              type: 'image/svg+xml',
+              purpose: 'any maskable'
+            },
+            {
+              src: 'icon.svg',
+              sizes: '512x512',
+              type: 'image/svg+xml',
+              purpose: 'any maskable'
             }
           ]
         }

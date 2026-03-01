@@ -1319,15 +1319,21 @@ const app = express();
   }
 
   // Google OAuth Routes
+  const getRedirectUri = (req: express.Request) => {
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    return `${protocol}://${host}/api/auth/google/callback`;
+  };
+
   app.get("/api/auth/google/url", (req, res) => {
-    const redirectUri = `${APP_URL}/api/auth/google/callback`;
+    const redirectUri = getRedirectUri(req);
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email%20profile`;
     res.json({ url });
   });
 
   app.get("/api/auth/google/callback", async (req, res) => {
     const { code } = req.query;
-    const redirectUri = `${APP_URL}/api/auth/google/callback`;
+    const redirectUri = getRedirectUri(req);
 
     try {
       const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
