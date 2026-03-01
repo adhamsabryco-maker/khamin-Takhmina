@@ -540,23 +540,37 @@ export default function App() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
+        console.log('Google Auth Success Event Received:', event.data);
         const { user } = event.data;
+        
         if (user.isAdmin) {
+          console.log('User is admin, attempting to set status...');
+          if (!socket) {
+            console.error('Socket not connected');
+            setError('خطأ في الاتصال بالخادم. حاول مرة أخرى.');
+            return;
+          }
+          
           setIsAdmin(true);
-          socket?.emit('admin_set_admin_status', { 
+          socket.emit('admin_set_admin_status', { 
             serial: playerSerial, 
             isAdmin: true, 
             email: user.email 
           }, (res: any) => {
+            console.log('Admin status set response:', res);
             if (res.success) {
               setShowAdminDashboard(true);
               setShowSettingsModal(false);
               // Fetch admin data
-              socket?.emit('admin_get_players', (players: any) => setAdminPlayers(players));
-              socket?.emit('admin_get_reports', (reports: any) => setAdminReports(reports));
+              socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+              socket.emit('admin_get_reports', (reports: any) => setAdminReports(reports));
+            } else {
+              console.error('Failed to set admin status:', res.error);
+              setError('فشل في تحديث صلاحيات الإدارة: ' + (res.error || 'خطأ غير معروف'));
             }
           });
         } else {
+          console.log('User is not admin');
           setError('عذراً، هذا الحساب لا يملك صلاحيات الإدارة.');
         }
       }
