@@ -1,4 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="100" fill="#4f46e5"/>
-  <text x="50%" y="50%" font-size="200" font-family="sans-serif" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">؟</text>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 27.6.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 512 512" style="enable-background:new 0 0 512 512;" xml:space="preserve">
+<g>
+	<defs>
+		<path id="SVGID_1_" d="M406,512H106C47.5,512,0,464.5,0,406V106C0,47.5,47.5,0,106,0h300c58.5,0,106,47.5,106,106v300
+			C512,464.5,464.5,512,406,512z"/>
+	</defs>
+	<clipPath id="SVGID_00000098942939995597026600000016347561243784496040_">
+		<use xlink:href="#SVGID_1_"  style="overflow:visible;"/>
+	</clipPath>
+	<g style="clip-path:url(#SVGID_00000098942939995597026600000016347561243784496040_);">
+		
+			<image style="overflow:visible;" width="3342" height="3342" xlink:href="../../../—Pngtree—brain logo vector_5182872.png"  transform="matrix(0.2771 0 0 0.2771 -207 -207)">
+		</image>
+	</g>
+</g>
 </svg>
