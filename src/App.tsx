@@ -1225,8 +1225,20 @@ export default function App() {
                 <div className="w-full bg-gray-200 rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-1 md:mb-2" dir="ltr">
                   <div 
                     className="bg-gradient-to-r from-blue-400 to-blue-600 h-full rounded-full transition-all duration-500" 
-                    style={{ width: `${getXpProgress(xp)}%` }}
+                    style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
                   ></div>
+                </div>
+                {/* XP Bar */}
+                <div className="w-full bg-gray-100 rounded-full h-4 md:h-5 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
+                  <div 
+                    className="bg-gradient-to-r from-orange-400 to-orange-500 h-full transition-all duration-500" 
+                    style={{ width: `${(xp / getXpForNextLevel(getLevel(xp))) * 100}%` }}
+                  ></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[8px] md:text-[10px] font-black text-orange-900 drop-shadow-sm">
+                      {xp} / {getXpForNextLevel(getLevel(xp))} XP
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1234,68 +1246,67 @@ export default function App() {
 
           <div className="card-game p-6 md:p-10">
 
-          <div className="space-y-4 md:space-y-8">
+          <div className="space-y-4 md:space-y-10">
             {/* Top Players Section */}
-            <div>
-              <div className="flex items-center justify-between mb-4 md:mb-8 flex-row-reverse">
-                <h2 className="text-base md:text-lg font-black text-[#2D3436] flex items-center gap-2">
-                  أبطال التخمين
-                </h2>
-                <span className="text-[10px] md:text-xs font-bold text-gray-400">المتصدرون حالياً</span>
-              </div>
-
-              <div className="flex items-end justify-center gap-1 md:gap-2 h-32 md:h-48">
-                {/* Rank 2 */}
-                {topPlayers[1] && (
-                  <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1">
-                    <div className="relative mb-2">
-                      {renderStars(topPlayers[1].level)}
-                      <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl border-4 ${getAvatarStyle(topPlayers[1].level)}`}>
-                        {renderAvatarContent(topPlayers[1].avatar)}
+            <div className="flex flex-col">
+              {/* Podium Box */}
+              <div className="bg-gray-50/30 rounded-[40px] border-2 border-gray-100/50 p-4 md:p-6 relative pt-16">
+                <div className="flex items-end justify-center gap-1 md:gap-2 h-40 md:h-56">
+                  {/* Rank 2 */}
+                  {topPlayers[1] && (
+                    <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1">
+                      <div className="relative mb-2">
+                        {renderStars(topPlayers[1].level)}
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl border-4 ${getAvatarStyle(topPlayers[1].level)}`}>
+                          {renderAvatarContent(topPlayers[1].avatar)}
+                        </div>
+                        <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm">2</div>
                       </div>
-                      <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm">2</div>
-                    </div>
-                    <div className="text-[10px] font-black text-[#2D3436] truncate w-full text-center">{topPlayers[1].name}</div>
-                    <div className="text-[9px] font-bold text-gray-500">Lvl {topPlayers[1].level}</div>
-                    <div className="text-[9px] font-black text-orange-600">{topPlayers[1].wins || 0} فوز</div>
-                    <div className="w-full bg-gray-200 h-16 rounded-t-xl mt-2 shadow-inner"></div>
-                  </div>
-                )}
-
-                {/* Rank 1 */}
-                {topPlayers[0] && (
-                  <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1">
-                    <div className="relative mb-2 scale-110">
-                      {renderStars(topPlayers[0].level)}
-                      <div className={`w-18 h-18 rounded-full flex items-center justify-center text-3xl border-4 ${getAvatarStyle(topPlayers[0].level)}`}>
-                        {renderAvatarContent(topPlayers[0].avatar)}
+                      <div className="text-[10px] font-black text-[#2D3436] truncate w-full text-center">{topPlayers[1].name}</div>
+                      <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mt-1">
+                        Lvl {topPlayers[1].level} | فوز {topPlayers[1].wins || 0}
                       </div>
-                      <div className="absolute -top-3 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md animate-bounce">1</div>
-                      <Crown className="absolute -top-8 left-1/2 -translate-x-1/2 w-8 h-8 text-yellow-500 fill-yellow-500 drop-shadow-md" />
+                      <div className="w-full bg-gray-200 h-16 rounded-t-xl mt-2 shadow-inner"></div>
                     </div>
-                    <div className="text-xs font-black text-[#2D3436] truncate w-full text-center mt-2">{topPlayers[0].name}</div>
-                    <div className="text-[10px] font-bold text-gray-500">Lvl {topPlayers[0].level}</div>
-                    <div className="text-[10px] font-black text-orange-600">{topPlayers[0].wins || 0} فوز</div>
-                    <div className="w-full bg-gradient-to-b from-yellow-100 to-yellow-50 h-24 rounded-t-xl mt-2 shadow-inner border-t-4 border-yellow-200"></div>
-                  </div>
-                )}
+                  )}
 
-                {/* Rank 3 */}
-                {topPlayers[2] && (
-                  <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1">
-                    <div className="relative mb-2">
-                      {renderStars(topPlayers[2].level)}
-                      <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl border-4 ${getAvatarStyle(topPlayers[2].level)}`}>
-                        {renderAvatarContent(topPlayers[2].avatar)}
+                  {/* Rank 1 */}
+                  {topPlayers[0] && (
+                    <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1">
+                      <div className="relative mb-2 scale-110">
+                        {renderStars(topPlayers[0].level)}
+                        <div className={`w-18 h-18 rounded-full flex items-center justify-center text-3xl border-4 ${getAvatarStyle(topPlayers[0].level)}`}>
+                          {renderAvatarContent(topPlayers[0].avatar)}
+                        </div>
+                        <div className="absolute -top-3 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md animate-bounce">1</div>
+                        <Crown className="absolute -top-8 left-1/2 -translate-x-1/2 w-8 h-8 text-yellow-500 fill-yellow-500 drop-shadow-md" />
                       </div>
-                      <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm">3</div>
+                      <div className="text-xs font-black text-[#2D3436] truncate w-full text-center mt-2">{topPlayers[0].name}</div>
+                      <div className="text-[10px] font-bold text-gray-500 bg-yellow-100 px-3 py-1 rounded-full mt-1">
+                        Lvl {topPlayers[0].level} | فوز {topPlayers[0].wins || 0}
+                      </div>
+                      <div className="w-full bg-gradient-to-b from-yellow-100 to-yellow-50 h-24 rounded-t-xl mt-2 shadow-inner border-t-4 border-yellow-200"></div>
                     </div>
-                    <div className="text-[10px] font-black text-[#2D3436] truncate w-full text-center">{topPlayers[2].name}</div>
-                    <div className="text-[9px] font-bold text-gray-500">Lvl {topPlayers[2].level}</div>
-                    <div className="text-[9px] font-black text-orange-600">{topPlayers[2].wins || 0} فوز</div>
-                    <div className="w-full bg-gray-200 h-12 rounded-t-xl mt-2 shadow-inner"></div>
-                  </div>
-                )}
+                  )}
+
+                  {/* Rank 3 */}
+                  {topPlayers[2] && (
+                    <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1">
+                      <div className="relative mb-2">
+                        {renderStars(topPlayers[2].level)}
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl border-4 ${getAvatarStyle(topPlayers[2].level)}`}>
+                          {renderAvatarContent(topPlayers[2].avatar)}
+                        </div>
+                        <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm">3</div>
+                      </div>
+                      <div className="text-[10px] font-black text-[#2D3436] truncate w-full text-center">{topPlayers[2].name}</div>
+                      <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mt-1">
+                        Lvl {topPlayers[2].level} | فوز {topPlayers[2].wins || 0}
+                      </div>
+                      <div className="w-full bg-gray-200 h-12 rounded-t-xl mt-2 shadow-inner"></div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1589,7 +1600,7 @@ export default function App() {
                   <div className="grid grid-cols-4 gap-2">
                     {AVATARS.slice(0, 4).map((av, index) => (
                       <button
-                        key={`${av.emoji}-${index}`}
+                        key={`welcome-avatar-${av.emoji}-${index}`}
                         onClick={() => setAvatar(av.emoji)}
                         className={`w-full aspect-square rounded-xl flex items-center justify-center text-2xl border-2 transition-all ${avatar === av.emoji ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-50 border-gray-200'}`}
                       >
@@ -1690,7 +1701,7 @@ export default function App() {
                         const isLocked = getLevel(xp) < av.level;
                         return (
                           <button
-                            key={`${av.emoji}-${index}`}
+                            key={`settings-avatar-${av.emoji}-${index}`}
                             onClick={() => !isLocked && setAvatar(av.emoji)}
                             disabled={isLocked}
                             className={`relative aspect-square rounded-xl flex items-center justify-center text-2xl border-2 transition-all ${avatar === av.emoji ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-100 border-gray-300 hover:bg-gray-200'} ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
@@ -1885,7 +1896,7 @@ export default function App() {
                         <div className="text-center py-8 text-gray-400 font-bold text-sm">لا توجد بلاغات حالياً</div>
                       ) : (
                         adminReports.map((report, index) => (
-                          <div key={`${report.id}-${index}`} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2">
+                          <div key={`admin-report-${report.id}-${index}`} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2">
                             <div className="flex justify-between items-start">
                               <span className="text-[10px] font-black text-gray-400">{new Date(report.timestamp).toLocaleString('ar-EG')}</span>
                               <div className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-black">بلاغ</div>
@@ -1930,7 +1941,7 @@ export default function App() {
                         {adminPlayers
                           .filter(p => p.name.includes(adminSearchQuery) || p.serial.includes(adminSearchQuery))
                           .map((p, index) => (
-                            <div key={`${p.serial}-${index}`} className="bg-white border-2 border-gray-100 rounded-3xl p-5 hover:border-purple-200 transition-all group">
+                            <div key={`admin-player-${p.serial}-${index}`} className="bg-white border-2 border-gray-100 rounded-3xl p-5 hover:border-purple-200 transition-all group">
                               <div className="flex items-center gap-4 mb-4">
                                 <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-2xl border-2 border-white shadow-sm overflow-hidden">
                                   {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.avatar}
@@ -2268,7 +2279,7 @@ export default function App() {
                 <AnimatePresence>
                   {bubbles.filter(b => b.senderId === opponent.id).map(bubble => (
                     <motion.div
-                      key={bubble.id}
+                      key={`opponent-bubble-${bubble.id}`}
                       initial={{ opacity: 0, scale: 0.5, y: 20 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.5, y: -20 }}
@@ -2375,7 +2386,7 @@ export default function App() {
                       </div>
                     ) : (
                       chatHistory.map((msg, index) => (
-                        <div key={`${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-end' : 'justify-start'}`}>
+                        <div key={`waiting-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                             <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600' : 'text-blue-600'}`}>
                               {msg.playerName}
@@ -2511,15 +2522,15 @@ export default function App() {
                     exit={{ scale: 0.9, opacity: 0 }}
                     className="relative z-10 flex flex-col items-center w-full"
                   >
-                    <div className="w-full max-w-[14rem] md:max-w-[20rem] aspect-square bg-white p-3 rounded-[32px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-4 border-white">
+                    <div className="w-full max-w-[10rem] md:max-w-[14rem] aspect-square bg-white p-2 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-2 border-white flex items-center justify-center">
                       <img 
                         src={opponent?.targetImage?.image} 
-                        className={`w-full h-full object-cover rounded-2xl ${funnyFilter === opponent?.id ? 'invert sepia hue-rotate-90 scale-110' : ''}`}
+                        className={`w-full h-full object-cover rounded-xl ${funnyFilter === opponent?.id ? 'invert sepia hue-rotate-90 scale-110' : ''}`}
                         alt="Target"
                       />
                     </div>
-                    {/* DEBUG: Show target name for testing */}
-                    <div className="mt-6 bg-white px-8 py-3 rounded-full font-black text-lg text-[#2D3436] shadow-[0_4px_0_rgba(0,0,0,0.05)] border-2 border-gray-100">
+                    {/* Target name label */}
+                    <div className="mt-3 bg-white px-4 py-1.5 rounded-full font-black text-sm md:text-base text-[#2D3436] shadow-[0_4px_0_rgba(0,0,0,0.05)] border-2 border-gray-100">
                       {opponent?.targetImage?.name}
                     </div>
                   </motion.div>
@@ -2556,7 +2567,7 @@ export default function App() {
 
               {/* Gameplay Chat Box - Moved to Center */}
               {room.gameState !== 'waiting' && room.gameState !== 'finished' && room.gameState !== 'guessing' && (
-                <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-40 md:h-48 mt-2 z-20 relative">
+                <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-56 md:h-64 mt-2 z-20 relative">
                   {isMutedByOpponent && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                       <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -2570,7 +2581,7 @@ export default function App() {
                       </div>
                     ) : (
                       chatHistory.map((msg, index) => (
-                        <div key={`${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-end' : 'justify-start'}`}>
+                        <div key={`game-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[85%] p-1.5 px-2.5 rounded-xl text-xs font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                             <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600' : 'text-blue-600'}`}>
                               {msg.playerName}
@@ -2651,7 +2662,7 @@ export default function App() {
                 <AnimatePresence>
                   {bubbles.filter(b => b.senderId === me.id).map(bubble => (
                     <motion.div
-                      key={bubble.id}
+                      key={`me-bubble-${bubble.id}`}
                       initial={{ opacity: 0, scale: 0.5, y: 20 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.5, y: -20 }}
