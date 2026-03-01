@@ -538,45 +538,90 @@ export default function App() {
   };
 
   useEffect(() => {
+    const processAuthSuccess = (userData: any) => {
+      console.log('Processing Auth Success:', userData);
+      if (userData.isAdmin) {
+        console.log('User is admin, attempting to set status...');
+        if (!socket) {
+          console.error('Socket not connected');
+          setError('خطأ في الاتصال بالخادم. حاول مرة أخرى.');
+          return;
+        }
+        
+        setIsAdmin(true);
+        socket.emit('admin_set_admin_status', { 
+          serial: playerSerial, 
+          isAdmin: true, 
+          email: userData.email 
+        }, (res: any) => {
+          console.log('Admin status set response:', res);
+          if (res.success) {
+            setShowAdminDashboard(true);
+            setShowSettingsModal(false);
+            // Fetch admin data
+            socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+            socket.emit('admin_get_reports', (reports: any) => setAdminReports(reports));
+          } else {
+            console.error('Failed to set admin status:', res.error);
+            setError('فشل في تحديث صلاحيات الإدارة: ' + (res.error || 'خطأ غير معروف'));
+          }
+        });
+      } else {
+        console.log('User is not admin');
+        setError('عذراً، هذا الحساب لا يملك صلاحيات الإدارة.');
+      }
+    };
+
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
-        console.log('Google Auth Success Event Received:', event.data);
-        const { user } = event.data;
-        
-        if (user.isAdmin) {
-          console.log('User is admin, attempting to set status...');
-          if (!socket) {
-            console.error('Socket not connected');
-            setError('خطأ في الاتصال بالخادم. حاول مرة أخرى.');
-            return;
+        console.log('Google Auth Success Event Received via postMessage:', event.data);
+        processAuthSuccess(event.data.user);
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'google_auth_result' && event.newValue) {
+        try {
+          const data = JSON.parse(event.newValue);
+          if (data.type === 'GOOGLE_AUTH_SUCCESS' && Date.now() - data.timestamp < 60000) { // Check if recent (within 1 min)
+            console.log('Google Auth Success Event Received via localStorage:', data);
+            processAuthSuccess(data.user);
+            localStorage.removeItem('google_auth_result'); // Clear it
           }
-          
-          setIsAdmin(true);
-          socket.emit('admin_set_admin_status', { 
-            serial: playerSerial, 
-            isAdmin: true, 
-            email: user.email 
-          }, (res: any) => {
-            console.log('Admin status set response:', res);
-            if (res.success) {
-              setShowAdminDashboard(true);
-              setShowSettingsModal(false);
-              // Fetch admin data
-              socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
-              socket.emit('admin_get_reports', (reports: any) => setAdminReports(reports));
-            } else {
-              console.error('Failed to set admin status:', res.error);
-              setError('فشل في تحديث صلاحيات الإدارة: ' + (res.error || 'خطأ غير معروف'));
-            }
-          });
-        } else {
-          console.log('User is not admin');
-          setError('عذراً، هذا الحساب لا يملك صلاحيات الإدارة.');
+        } catch (e) {
+          console.error('Error parsing storage event data:', e);
         }
       }
     };
+
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    window.addEventListener('storage', handleStorage);
+    
+    // Check localStorage on mount/focus in case we missed the event
+    const checkStorage = () => {
+      const stored = localStorage.getItem('google_auth_result');
+      if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          if (data.type === 'GOOGLE_AUTH_SUCCESS' && Date.now() - data.timestamp < 60000) {
+            console.log('Google Auth Success found in localStorage on check:', data);
+            processAuthSuccess(data.user);
+            localStorage.removeItem('google_auth_result');
+          }
+        } catch (e) {
+          console.error('Error parsing stored auth data:', e);
+        }
+      }
+    };
+    
+    window.addEventListener('focus', checkStorage);
+    checkStorage(); // Initial check
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', checkStorage);
+    };
   }, [socket, playerSerial]);
 
   const handleAdminLogin = async () => {
