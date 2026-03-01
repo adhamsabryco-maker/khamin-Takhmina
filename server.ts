@@ -63,6 +63,118 @@ const app = express();
 
   const PORT = 3000;
 
+  // DEBUG: Log all requests
+  app.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.url}`);
+    next();
+  });
+
+  // Google OAuth Routes (Moved to top)
+  const getRedirectUri = (req: express.Request) => {
+    const protoHeader = req.headers['x-forwarded-proto'];
+    const hostHeader = req.headers['x-forwarded-host'];
+    
+    const protocol = Array.isArray(protoHeader) ? protoHeader[0] : (protoHeader || req.protocol);
+    const host = Array.isArray(hostHeader) ? hostHeader[0] : (hostHeader || req.get('host'));
+    
+    return `${protocol}://${host}/api/auth/google/callback`;
+  };
+
+  app.get("/api/auth/test", (req, res) => {
+    res.send("Auth Test Route Working");
+  });
+
+  app.get("/api/auth/google/url", (req, res) => {
+    const redirectUri = getRedirectUri(req);
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email%20profile`;
+    res.json({ url });
+  });
+
+  app.get("/api/auth/google/callback", async (req, res) => {
+    console.log('Received callback request:', req.url);
+    const { code } = req.query;
+    const redirectUri = getRedirectUri(req);
+    console.log('Constructed Redirect URI:', redirectUri);
+
+    try {
+      const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      });
+
+      const { access_token } = tokenResponse.data;
+      const userResponse = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+
+      const { email, name, picture } = userResponse.data;
+
+      // Check if this email is the admin email
+      const isAdmin = email === "adhamsabry.co@gmail.com";
+
+      const userPayload = JSON.stringify({ email, name, picture, isAdmin });
+
+      res.send(`
+        <html>
+          <body>
+            <script>
+              const user = ${userPayload};
+              
+              // Method 1: postMessage
+              try {
+                if (window.opener) {
+                  window.opener.postMessage({ 
+                    type: 'GOOGLE_AUTH_SUCCESS', 
+                    user: user
+                  }, '*');
+                }
+              } catch (e) {
+                console.error('postMessage failed', e);
+              }
+
+              // Method 2: localStorage (fallback)
+              try {
+                localStorage.setItem('google_auth_result', JSON.stringify({
+                  type: 'GOOGLE_AUTH_SUCCESS',
+                  user: user,
+                  timestamp: Date.now()
+                }));
+              } catch (e) {
+                console.error('localStorage failed', e);
+              }
+
+              // Close after a short delay to ensure messages are sent
+              setTimeout(() => {
+                window.close();
+              }, 500);
+            </script>
+            <div style="font-family: sans-serif; text-align: center; padding: 20px;">
+              <h2>تم تسجيل الدخول بنجاح</h2>
+              <p>جاري إغلاق النافذة...</p>
+            </div>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      console.error("Google Auth Error:", error.response?.data || error.message);
+      // Display error to user instead of redirecting, for debugging
+      res.status(500).send(`
+        <html>
+          <body style="font-family: sans-serif; padding: 20px; direction: ltr;">
+            <h2 style="color: red;">Authentication Failed</h2>
+            <p>Error details:</p>
+            <pre style="background: #f0f0f0; padding: 10px; border-radius: 5px;">${JSON.stringify(error.response?.data || error.message, null, 2)}</pre>
+            <p>Constructed Redirect URI: <strong>${redirectUri}</strong></p>
+            <p>Please ensure this URI matches exactly what is in Google Cloud Console.</p>
+          </body>
+        </html>
+      `);
+    }
+  });
+
   // Game State
   const rooms = new Map<string, any>();
   const intervals = new Map<string, NodeJS.Timeout>();
@@ -1370,63 +1482,6 @@ const app = express();
       });
     }
   }
-
-  // Google OAuth Routes
-  const getRedirectUri = (req: express.Request) => {
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const host = req.headers['x-forwarded-host'] || req.get('host');
-    return `${protocol}://${host}/api/auth/google/callback`;
-  };
-
-  app.get("/api/auth/google/url", (req, res) => {
-    const redirectUri = getRedirectUri(req);
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email%20profile`;
-    res.json({ url });
-  });
-
-  app.get("/api/auth/google/callback", async (req, res) => {
-    const { code } = req.query;
-    const redirectUri = getRedirectUri(req);
-
-    try {
-      const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
-        code,
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: redirectUri,
-        grant_type: "authorization_code",
-      });
-
-      const { access_token } = tokenResponse.data;
-      const userResponse = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
-
-      const { email, name, picture } = userResponse.data;
-
-      // Check if this email is the admin email
-      const isAdmin = email === "adhamsabry.co@gmail.com";
-
-      const userPayload = JSON.stringify({ email, name, picture, isAdmin });
-
-      res.send(`
-        <html>
-          <body>
-            <script>
-              window.opener.postMessage({ 
-                type: 'GOOGLE_AUTH_SUCCESS', 
-                user: ${userPayload}
-              }, '*');
-              window.close();
-            </script>
-          </body>
-        </html>
-      `);
-    } catch (error) {
-      console.error("Google Auth Error:", error);
-      res.status(500).send("Authentication failed");
-    }
-  });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
