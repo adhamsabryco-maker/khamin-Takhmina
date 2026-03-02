@@ -823,6 +823,8 @@ export default function App() {
     newSocket.on('emote_received', ({ senderId, emote }) => {
       if (senderId !== newSocket.id && isOpponentBlockedRef.current) return;
       const id = Math.random().toString(36).substr(2, 9);
+      
+      // Add to bubbles
       setBubbles(prev => {
         if (prev.some(b => b.id === id)) return prev;
         return [...prev, { id, senderId, text: emote }];
@@ -830,6 +832,16 @@ export default function App() {
       setTimeout(() => {
         setBubbles(prev => prev.filter(b => b.id !== id));
       }, 4000);
+
+      // Add to chat history
+      const sender = roomRef.current?.players.find((p: any) => p.id === senderId);
+      setChatHistory(prev => [...prev, { 
+        id, 
+        senderId, 
+        text: emote, 
+        playerName: sender?.name || (senderId === newSocket.id ? playerNameRef.current : 'منافس'),
+        avatar: sender?.avatar || '👤'
+      }]);
     });
 
     newSocket.on('waiting_for_match', () => {
@@ -2411,7 +2423,7 @@ export default function App() {
                   {topPlayers[0] && (
                     <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1 z-20 -mt-8 md:-mt-12">
                       <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
-                        <Crown className="absolute -top-12 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-30" />
+                        <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-30" />
                         {renderStars(topPlayers[0].level)}
                         <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl border-4 bg-white ${getAvatarStyle(topPlayers[0].level)}`}>
                           {renderAvatarContent(topPlayers[0].avatar)}
@@ -2876,16 +2888,15 @@ export default function App() {
                     exit={{ scale: 0.9, opacity: 0 }}
                     className="relative z-10 flex flex-col items-center w-full"
                   >
-                    <div className="w-full max-w-[10rem] md:max-w-[14rem] aspect-square bg-white p-2 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-2 border-white flex items-center justify-center">
+                    <div className="relative w-full max-w-[10rem] md:max-w-[14rem] aspect-square bg-white p-2 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-2 border-white flex items-center justify-center">
                       <img 
                         src={opponent?.targetImage?.image} 
                         className={`w-full h-full object-cover rounded-xl ${funnyFilter === opponent?.id ? 'invert sepia hue-rotate-90 scale-110' : ''}`}
                         alt="Target"
                       />
-                    </div>
-                    {/* Target name label */}
-                    <div className="mt-3 bg-white px-4 py-1.5 rounded-full font-black text-sm md:text-base text-[#2D3436] shadow-[0_4px_0_rgba(0,0,0,0.05)] border-2 border-gray-100">
-                      {opponent?.targetImage?.name}
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white/90 px-4 py-1 rounded-full font-black text-sm text-[#2D3436] shadow-sm border border-gray-200 backdrop-blur-sm z-10 whitespace-nowrap">
+                        {opponent?.targetImage?.name}
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -2903,16 +2914,16 @@ export default function App() {
                       <div className="text-center font-black text-orange-500 animate-pulse mb-1 text-xl md:text-2xl">
                         أسرع! خمن الآن ({room.isFrozen ? room.freezeTimer : room.timer}s)
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-2">
                         <input 
                           autoFocus
                           type="text" 
                           value={guess}
                           onChange={(e) => setGuess(e.target.value)}
                           placeholder="ما هي الصورة؟"
-                          className="input-game flex-1 py-2"
+                          className="input-game flex-1 py-2 text-center"
                         />
-                        <button className="btn-game btn-primary px-6 text-base md:text-lg">إرسال</button>
+                        <button className="btn-game btn-primary w-full py-3 text-base md:text-lg">إرسال</button>
                       </div>
                     </form>
                   </motion.div>
@@ -2921,7 +2932,7 @@ export default function App() {
 
               {/* Gameplay Chat Box - Moved to Center */}
               {room.gameState !== 'waiting' && room.gameState !== 'finished' && room.gameState !== 'guessing' && (
-                <div className="w-[85%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-56 md:h-64 mt-2 z-20 relative">
+                <div className="w-[80%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-56 md:h-64 mt-2 z-20 relative">
                   {isMutedByOpponent && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                       <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -3132,16 +3143,16 @@ export default function App() {
                 key={card.id}
                 onClick={() => !isLocked && useCard(card.id as any)}
                 disabled={isCardDisabled}
-                className={`relative w-14 h-14 md:w-16 md:h-16 rounded-full ${card.bg} flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-80 disabled:grayscale disabled:cursor-not-allowed group`}
+                className={`relative w-10 h-10 md:w-16 md:h-16 rounded-full ${card.bg} flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-80 disabled:grayscale disabled:cursor-not-allowed group`}
                 title={card.name}
               >
                 {isLocked ? (
                   <div className="flex flex-col items-center justify-center text-gray-400">
-                    <Lock className="w-5 h-5 mb-0.5" />
-                    <span className="text-[9px] font-black">Lvl {card.level}</span>
+                    <Lock className="w-4 h-4 md:w-5 md:h-5 mb-0.5" />
+                    <span className="text-[8px] md:text-[9px] font-black">Lvl {card.level}</span>
                   </div>
                 ) : (
-                  <card.icon className={`w-7 h-7 md:w-8 md:h-8 ${card.color}`} />
+                  <card.icon className={`w-5 h-5 md:w-8 md:h-8 ${card.color}`} />
                 )}
                 
                 {cardCooldown > 0 && !isLocked && (
