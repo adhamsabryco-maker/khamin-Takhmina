@@ -618,6 +618,16 @@ const app = express();
           return;
         }
 
+      // If room exists and is in 'finished' state, delete it to start fresh
+      const existingRoom = rooms.get(roomId);
+      if (existingRoom && existingRoom.gameState === "finished") {
+        if (intervals.has(roomId)) {
+          clearInterval(intervals.get(roomId));
+          intervals.delete(roomId);
+        }
+        rooms.delete(roomId);
+      }
+
       if (!rooms.has(roomId)) {
         rooms.set(roomId, {
           id: roomId,
@@ -1141,31 +1151,18 @@ const app = express();
           room.players = room.players.filter((p: any) => p.id !== socket.id);
           socket.leave(roomId);
 
-          // If game is active OR waiting (lobby), stop the game for everyone
-          if (room.gameState !== "finished") {
-            if (intervals.has(roomId)) {
-              clearInterval(intervals.get(roomId));
-              intervals.delete(roomId);
-            }
-            
-            if (room.gameState === "waiting") {
-              socket.to(roomId).emit("opponent_left_lobby");
-            } else {
-              socket.to(roomId).emit("game_stopped", { reason: `غادر ${player.name} الغرفة` });
-            }
-            rooms.delete(roomId);
-          } else {
-            // If finished, just update the room for the remaining player (they might be looking at results)
-            if (room.players.length === 0) {
-              if (intervals.has(roomId)) {
-                clearInterval(intervals.get(roomId));
-                intervals.delete(roomId);
-              }
-              rooms.delete(roomId);
-            } else {
-              socket.to(roomId).emit("room_update", room);
-            }
+          // Stop the game for everyone and delete room to ensure fresh start
+          if (intervals.has(roomId)) {
+            clearInterval(intervals.get(roomId));
+            intervals.delete(roomId);
           }
+          
+          if (room.gameState === "waiting") {
+            socket.to(roomId).emit("opponent_left_lobby");
+          } else {
+            socket.to(roomId).emit("game_stopped", { reason: `غادر ${player.name} الغرفة` });
+          }
+          rooms.delete(roomId);
         }
       }
     });
@@ -1343,29 +1340,18 @@ const app = express();
           const leavingPlayer = room.players[index];
           room.players.splice(index, 1);
           
-          if (room.gameState !== "finished") {
-            if (intervals.has(roomId)) {
-              clearInterval(intervals.get(roomId));
-              intervals.delete(roomId);
-            }
-            
-            if (room.gameState === "waiting") {
-              socket.to(roomId).emit("opponent_left_lobby");
-            } else {
-              socket.to(roomId).emit("game_stopped", { reason: `انقطع اتصال ${leavingPlayer.name}` });
-            }
-            rooms.delete(roomId);
-          } else {
-            if (room.players.length === 0) {
-              if (intervals.has(roomId)) {
-                clearInterval(intervals.get(roomId));
-                intervals.delete(roomId);
-              }
-              rooms.delete(roomId);
-            } else {
-              socket.to(roomId).emit("room_update", room);
-            }
+          // Stop the game for everyone and delete room to ensure fresh start
+          if (intervals.has(roomId)) {
+            clearInterval(intervals.get(roomId));
+            intervals.delete(roomId);
           }
+          
+          if (room.gameState === "waiting") {
+            socket.to(roomId).emit("opponent_left_lobby");
+          } else {
+            socket.to(roomId).emit("game_stopped", { reason: `انقطع اتصال ${leavingPlayer.name}` });
+          }
+          rooms.delete(roomId);
         }
       });
     });
