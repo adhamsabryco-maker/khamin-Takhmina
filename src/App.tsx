@@ -374,6 +374,7 @@ export default function App() {
   const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, age: number, level?: number } } | null>(null);
   const [hasResponded, setHasResponded] = useState(false);
   const [matchResponseTimeLeft, setMatchResponseTimeLeft] = useState<number | null>(null);
+  const [searchTimeLeft, setSearchTimeLeft] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [showLevelInfo, setShowLevelInfo] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -394,26 +395,21 @@ export default function App() {
 
   // Matchmaking timeout
   useEffect(() => {
-    if (isSearching && !proposedMatch) {
-      searchTimeoutRef.current = setTimeout(() => {
-        setIsSearching(false);
-        setJoined(false);
-        socket?.emit('leave_matchmaking');
-        setError('لم يتم العثور على منافس حالياً. يرجى المحاولة في وقت لاحق.');
-        setTimeout(() => setError(''), 5000);
-      }, 120000);
-    } else {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
+    let interval: NodeJS.Timeout;
+    if (isSearching && !proposedMatch && searchTimeLeft !== null && searchTimeLeft > 0) {
+      interval = setInterval(() => {
+        setSearchTimeLeft(prev => prev !== null ? prev - 1 : null);
+      }, 1000);
+    } else if (isSearching && !proposedMatch && searchTimeLeft === 0) {
+      setIsSearching(false);
+      setJoined(false);
+      socket?.emit('leave_matchmaking');
+      setError('لم يتم العثور على منافس حالياً. يرجى المحاولة في وقت لاحق.');
+      setTimeout(() => setError(''), 5000);
+      setSearchTimeLeft(null);
     }
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [isSearching, proposedMatch, socket]);
+    return () => clearInterval(interval);
+  }, [isSearching, proposedMatch, searchTimeLeft, socket]);
 
   // Match response timer
   useEffect(() => {
@@ -426,8 +422,6 @@ export default function App() {
       setHasResponded(true);
       socket?.emit('respond_to_match', { matchId: proposedMatch?.matchId, response: 'reject' });
       setProposedMatch(null);
-      setJoined(false);
-      setIsSearching(false);
       setMatchResponseTimeLeft(null);
     }
     return () => clearInterval(interval);
@@ -805,6 +799,7 @@ export default function App() {
       setIsSearching(true);
       setJoined(true);
       setProposedMatch(null);
+      setSearchTimeLeft(120);
     });
 
     newSocket.on('match_proposed', (data) => {
@@ -826,6 +821,7 @@ export default function App() {
       setProposedMatch(null);
       setHasResponded(false);
       setMatchResponseTimeLeft(null);
+      setSearchTimeLeft(null);
     });
 
     newSocket.on('game_started', () => {
@@ -1312,8 +1308,6 @@ export default function App() {
                       setHasResponded(true);
                       socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
                       setProposedMatch(null);
-                      setJoined(false);
-                      setIsSearching(false);
                     }}
                     className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
                   >
@@ -1335,7 +1329,13 @@ export default function App() {
               <div className="space-y-2 md:space-y-3 relative z-10">
                 <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">جاري البحث عن منافس...</h2>
                 <p className="text-base md:text-lg text-gray-500 font-bold">يتم البحث عن لاعبين بمستوى قريب منك</p>
-                <div className="flex flex-col items-center gap-2">
+                {searchTimeLeft !== null && (
+                  <div className="flex justify-center items-center gap-2 text-blue-500 font-bold text-lg mt-2">
+                    <Timer className="w-5 h-5" />
+                    <span dir="ltr">{Math.floor(searchTimeLeft / 60)}:{(searchTimeLeft % 60).toString().padStart(2, '0')}</span>
+                  </div>
+                )}
+                <div className="flex flex-col items-center gap-2 mt-2">
                   <div className="text-sm font-black text-blue-500 bg-blue-50 inline-block px-3 py-1 rounded-full">
                     عدد المتصلين: {onlineCount}
                   </div>
