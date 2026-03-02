@@ -863,6 +863,7 @@ export default function App() {
 
     newSocket.on('game_started', () => {
       setChatHistory([]);
+      setCooldowns({});
     });
 
     newSocket.on('quick_guess_started', ({ playerId }) => {
@@ -1194,7 +1195,7 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="card-game p-8 max-w-md w-full relative overflow-hidden text-right"
+              className="card-game p-4 max-w-md w-full relative overflow-hidden text-right"
               onClick={e => e.stopPropagation()}
             >
               <button 
@@ -1204,17 +1205,17 @@ export default function App() {
                 <X className="w-5 h-5" />
               </button>
               
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
                   <Star className="w-6 h-6 text-orange-500 fill-orange-500" />
                 </div>
                 <h2 className="text-2xl font-black text-[#2D3436]">نظام المستويات (Levels)</h2>
               </div>
               
-              <div className="space-y-4 text-gray-600 font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-2 text-gray-600 font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                 <p>كلما فزت في مباريات أكثر، كلما حصلت على XP وارتفع مستواك!</p>
                 
-                <div className="bg-orange-50 p-4 rounded-2xl border-2 border-orange-100">
+                <div className="bg-orange-50 p-3 rounded-2xl border-2 border-orange-100">
                   <h3 className="text-lg font-black text-orange-600 mb-2 flex items-center gap-2">
                     <Zap className="w-5 h-5" />
                     ميزة التخمين السريع
@@ -1239,7 +1240,7 @@ export default function App() {
                   </ul>
                 </div>
 
-                <div className="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100">
+                <div className="bg-blue-50 p-3 rounded-2xl border-2 border-blue-100">
                   <h3 className="text-lg font-black text-blue-600 mb-2 flex items-center gap-2">
                     <Trophy className="w-5 h-5" />
                     جوائز المستويات
@@ -1311,7 +1312,7 @@ export default function App() {
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="card-game p-8 w-full max-w-md space-y-6 overflow-y-auto max-h-[90vh]"
+              className="card-game p-4 w-full max-w-md space-y-4 overflow-y-auto max-h-[90vh]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center flex-row-reverse">
@@ -1319,9 +1320,9 @@ export default function App() {
                 <button onClick={() => setShowSettingsModal(false)} className="text-gray-400 hover:text-red-500"><X className="w-6 h-6" /></button>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {/* Stats Section */}
-                <div className="bg-gray-100 p-4 rounded-2xl border-2 border-gray-200 space-y-4">
+                <div className="bg-gray-100 p-3 rounded-2xl border-2 border-gray-200 space-y-4">
                   <div className="flex items-center gap-4 flex-row-reverse">
                     <div className="relative">
                       {renderStars(getLevel(xp))}
@@ -1407,7 +1408,7 @@ export default function App() {
                   </div>
 
                   {/* Custom Avatar in Settings */}
-                  <div className="pt-4 border-t border-gray-100">
+                  <div className="pt-2 border-t border-gray-100">
                     <div className="flex items-center justify-between mb-2 flex-row-reverse">
                       <span className="text-xs font-black text-gray-500">أفاتار مخصص</span>
                       <div className="flex items-center gap-1 bg-purple-100 text-purple-600 px-3 py-1 rounded-full text-xs font-black">
@@ -1448,7 +1449,7 @@ export default function App() {
                   </div>
 
                   {/* Sound Settings */}
-                  <div className="space-y-2 pt-4 border-t border-gray-100">
+                  <div className="space-y-2 pt-2 border-t border-gray-100">
                     <h3 className="text-sm font-black text-gray-600 text-right mb-2">الصوت</h3>
                     
                     {/* SFX Volume */}
@@ -1530,7 +1531,7 @@ export default function App() {
                     <label className="text-sm font-black text-gray-600">حالة الحساب</label>
                     <span className="text-[10px] font-black text-gray-400">10 إبلاغات = حظر 24 ساعة</span>
                   </div>
-                  <div className="bg-gray-50 rounded-2xl p-4 border-2 border-gray-100">
+                  <div className="bg-gray-50 rounded-2xl p-3 border-2 border-gray-100">
                     <div className="flex items-center justify-between mb-2 flex-row-reverse">
                       <div className="flex items-center gap-2">
                         <Flag className={`w-4 h-4 ${reports > 0 ? 'text-red-500' : 'text-gray-400'}`} fill={reports > 0 ? "currentColor" : "none"} />
@@ -1553,12 +1554,12 @@ export default function App() {
 
               <button 
                 onClick={handleProfileUpdate}
-                className="w-full btn-game btn-primary py-3 text-lg"
+                className="w-full btn-game btn-primary py-2 text-lg"
               >
                 حفظ التعديلات
               </button>
 
-              <div className="pt-4 border-t border-gray-100">
+              <div className="pt-2 border-t border-gray-100">
                 <button 
                   onClick={() => setShowDeleteConfirm(true)}
                   className="w-full text-sm font-black text-red-400 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
@@ -1571,10 +1572,10 @@ export default function App() {
 
 
               {/* Admin Access Button */}
-              <div className="pt-4 border-t border-gray-100">
+              <div className="pt-2 border-t border-gray-100">
                 <button 
                   onClick={isAdmin ? () => { setShowAdminDashboard(true); setShowSettingsModal(false); } : handleAdminLogin}
-                  className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-black transition-all ${isAdmin ? 'bg-purple-100 text-purple-600 border-2 border-purple-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100 hover:bg-gray-100'}`}
+                  className={`w-full py-2 rounded-xl flex items-center justify-center gap-2 text-sm font-black transition-all ${isAdmin ? 'bg-purple-100 text-purple-600 border-2 border-purple-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100 hover:bg-gray-100'}`}
                 >
                   <Shield className="w-4 h-4" />
                   {isAdmin ? 'فتح لوحة الإدارة' : 'دخول الإدارة (للمديرين فقط)'}
@@ -1596,7 +1597,7 @@ export default function App() {
               <motion.div
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
-                className="card-game p-4 md:p-8 w-full max-w-md space-y-4 md:space-y-6"
+                className="card-game p-4 w-full max-w-md space-y-4"
               >
                 <div className="text-center space-y-2">
                   <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-2 md:mb-4">
@@ -1901,26 +1902,26 @@ export default function App() {
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
-                className="card-game p-8 w-full max-w-md text-center"
+                className="card-game p-4 w-full max-w-md text-center"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-3xl font-black text-[#2D3436] mb-8">الإبلاغ عن {opponent.name}</h3>
-                <div className="space-y-4 mb-8">
+                <h3 className="text-3xl font-black text-[#2D3436] mb-4">الإبلاغ عن {opponent.name}</h3>
+                <div className="space-y-4 mb-4">
                   <button 
                     onClick={() => handleReportPlayer('محتوى مسيء في الشات')}
-                    className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-4 text-lg"
+                    className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-2 text-lg"
                   >
                     محتوى مسيء في الشات
                   </button>
                   <button 
                     onClick={() => handleReportPlayer('سلوك غير لائق')}
-                    className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-4 text-lg"
+                    className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-2 text-lg"
                   >
                     سلوك غير لائق
                   </button>
                   <button 
                     onClick={() => handleReportPlayer('استخدام الغش')}
-                    className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-4 text-lg"
+                    className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-2 text-lg"
                   >
                     استخدام الغش
                   </button>
@@ -1949,11 +1950,11 @@ export default function App() {
               <motion.div 
                 initial={{ scale: 0.5, rotate: -10 }}
                 animate={{ scale: 1, rotate: 0 }}
-                className="card-game p-6 md:p-10 text-center max-w-sm w-full relative overflow-hidden border-4 border-yellow-400 bg-gradient-to-br from-white to-yellow-50"
+                className="card-game p-4 text-center max-w-sm w-full relative overflow-hidden border-4 border-yellow-400 bg-gradient-to-br from-white to-yellow-50"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="absolute top-0 left-0 w-full h-2 bg-yellow-400"></div>
-                <div className="mb-4 md:mb-6 relative">
+                <div className="mb-4 relative">
                   <div className="w-20 h-20 md:w-24 md:h-24 bg-yellow-400 rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(250,204,21,0.5)] animate-pulse">
                     <Star className="w-10 h-10 md:w-12 md:h-12 text-white fill-current" />
                   </div>
@@ -1968,11 +1969,11 @@ export default function App() {
                 </div>
                 
                 <h2 className="text-3xl md:text-4xl font-black text-[#2D3436] mb-1 md:mb-2">المستوى {showLevelUp}</h2>
-                <p className="text-sm md:text-base text-gray-500 font-bold mb-6 md:mb-8">لقد ارتقيت لمستوى جديد! استمر في الفوز لفتح المزيد من القدرات.</p>
+                <p className="text-sm md:text-base text-gray-500 font-bold mb-4">لقد ارتقيت لمستوى جديد! استمر في الفوز لفتح المزيد من القدرات.</p>
                 
                 <button 
                   onClick={() => setShowLevelUp(null)}
-                  className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl shadow-[0_6px_0_#D97706]"
+                  className="w-full btn-game btn-primary py-2 text-lg md:text-xl shadow-[0_6px_0_#D97706]"
                 >
                   رائع!
                 </button>
@@ -1991,7 +1992,7 @@ export default function App() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/90 backdrop-blur-md z-[6000] flex flex-col items-center justify-center p-4"
           >
-            <div className="relative w-full max-w-md aspect-square bg-black rounded-3xl overflow-hidden mb-8 shadow-2xl border-4 border-white/20">
+            <div className="relative w-full max-w-md aspect-square bg-black rounded-3xl overflow-hidden mb-4 shadow-2xl border-4 border-white/20">
               <Cropper
                 image={imageSrc}
                 crop={crop}
@@ -2251,7 +2252,7 @@ export default function App() {
                     setJoined(false);
                     socket?.emit('leave_matchmaking');
                   }}
-                  className="text-gray-400 font-bold hover:text-red-500 transition-colors text-sm md:text-base"
+                  className="px-8 py-3 bg-red-500 text-white rounded-full font-bold hover:bg-red-600 transition-all shadow-lg hover:shadow-red-500/30 text-sm md:text-base"
                 >
                   إلغاء البحث
                 </button>
@@ -2518,7 +2519,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-20 md:pt-24">
+    <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-16 md:pt-20">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
         <div className="flex-1 flex items-center gap-2 md:gap-3">
