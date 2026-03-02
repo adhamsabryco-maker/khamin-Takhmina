@@ -377,6 +377,21 @@ export default function App() {
   const [searchTimeLeft, setSearchTimeLeft] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [showLevelInfo, setShowLevelInfo] = useState(false);
+  
+  const toggleSettings = () => {
+    setShowSettingsModal(!showSettingsModal);
+    setShowLevelInfo(false);
+    setShowAdminDashboard(false);
+    setShowReportModal(false);
+  };
+
+  const toggleLevelInfo = () => {
+    setShowLevelInfo(!showLevelInfo);
+    setShowSettingsModal(false);
+    setShowAdminDashboard(false);
+    setShowReportModal(false);
+  };
+
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -1208,15 +1223,15 @@ export default function App() {
       <>
       <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
           {/* Fixed Header */}
-          <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md p-3 md:p-4 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-16 md:h-20">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
-                <Brain className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
+            <div className="flex-1 flex items-center gap-2 md:gap-3">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
+                <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
-              <div className="font-black text-xl md:text-2xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden md:block">خمن تخمينة</div>
+              <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
             </div>
             
-            <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
               {/* Home Button (Cancels Search) */}
               <button 
                 onClick={() => {
@@ -1226,28 +1241,28 @@ export default function App() {
                   setHasResponded(false); 
                   socket?.emit('leave_matchmaking');
                 }}
-                className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
+                className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
                 title="الرئيسية"
               >
-                <Home className="w-5 h-5 md:w-6 md:h-6" />
+                <Home className="w-4 h-4 md:w-5 md:h-5" />
               </button>
 
               {/* Info Button */}
               <button 
-                onClick={() => setShowLevelInfo(true)}
-                className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                onClick={toggleLevelInfo}
+                className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
                 title="معلومات المستوى"
               >
-                <Info className="w-5 h-5 md:w-6 md:h-6" />
+                <Info className="w-4 h-4 md:w-5 md:h-5" />
               </button>
 
               {/* Settings Button */}
               <button 
-                onClick={() => setShowSettingsModal(true)}
-                className="w-10 h-10 md:w-12 md:h-12 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+                onClick={toggleSettings}
+                className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
                 title="الإعدادات"
               >
-                <Settings className="w-5 h-5 md:w-6 md:h-6" />
+                <Settings className="w-4 h-4 md:w-5 md:h-5" />
               </button>
 
               {/* Exit Button */}
@@ -1259,10 +1274,10 @@ export default function App() {
                     window.close();
                   }
                 }}
-                className="w-10 h-10 md:w-12 md:h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
+                className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
                 title="خروج"
               >
-                <LogOut className="w-5 h-5 md:w-6 md:h-6" />
+                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             </div>
           </header>
@@ -1372,31 +1387,31 @@ export default function App() {
           className="w-full max-w-md py-8"
         >
           {/* Fixed Header */}
-          <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md p-3 md:p-4 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-16 md:h-20">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
-                <Brain className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
+            <div className="flex-1 flex items-center gap-2 md:gap-3">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
+                <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
-              <div className="font-black text-xl md:text-2xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden md:block">خمن تخمينة</div>
+              <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
             </div>
             
-            <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
               {/* Info Button */}
               <button 
-                onClick={() => setShowLevelInfo(true)}
-                className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                onClick={toggleLevelInfo}
+                className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
                 title="معلومات المستوى"
               >
-                <Info className="w-5 h-5 md:w-6 md:h-6" />
+                <Info className="w-4 h-4 md:w-5 md:h-5" />
               </button>
 
               {/* Settings Button */}
               <button 
-                onClick={() => setShowSettingsModal(true)}
-                className="w-10 h-10 md:w-12 md:h-12 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+                onClick={toggleSettings}
+                className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
                 title="الإعدادات"
               >
-                <Settings className="w-5 h-5 md:w-6 md:h-6" />
+                <Settings className="w-4 h-4 md:w-5 md:h-5" />
               </button>
 
               {/* Exit Button */}
@@ -1408,10 +1423,10 @@ export default function App() {
                     window.close();
                   }
                 }}
-                className="w-10 h-10 md:w-12 md:h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
+                className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
                 title="خروج"
               >
-                <LogOut className="w-5 h-5 md:w-6 md:h-6" />
+                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             </div>
           </header>
@@ -1606,7 +1621,7 @@ export default function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[5000] flex items-center justify-center p-4"
                 onClick={() => setShowLevelInfo(false)}
               >
                 <motion.div 
@@ -1861,7 +1876,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[5000] flex items-center justify-center p-4"
             onClick={() => setShowSettingsModal(false)}
           >
             <motion.div
@@ -2381,19 +2396,19 @@ export default function App() {
   return (
     <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-20 md:pt-24">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md p-3 md:p-4 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-16 md:h-20">
-        <div className="flex items-center gap-2 md:gap-3">
-          <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
-            <Brain className="w-6 h-6 md:w-7 md:h-7 text-white" />
+      <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
+        <div className="flex-1 flex items-center gap-2 md:gap-3">
+          <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
+            <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
           </div>
-          <div className="font-black text-xl md:text-2xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden md:block">خمن تخمينة</div>
+          <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
         </div>
         
         {/* Game Info (Center) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
+        <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-2 mx-2">
            {room.gameState !== 'waiting' && (
-            <div className={`flex items-center justify-center min-w-[80px] md:min-w-[90px] gap-1 md:gap-2 px-3 md:px-4 py-1 md:py-2 rounded-full text-base md:text-lg font-black transition-colors border-2 ${room.isFrozen ? 'bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse' : room.timer <= 10 && room.gameState === 'guessing' ? 'bg-red-100 text-red-600 border-red-200 animate-pulse' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-              {room.isFrozen ? <Snowflake className="w-4 h-4 md:w-5 md:h-5" /> : <Timer className="w-4 h-4 md:w-5 md:h-5" />}
+            <div className={`flex items-center justify-center min-w-[70px] md:min-w-[80px] gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-full text-sm md:text-base font-black transition-colors border-2 ${room.isFrozen ? 'bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse' : room.timer <= 10 && room.gameState === 'guessing' ? 'bg-red-100 text-red-600 border-red-200 animate-pulse' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+              {room.isFrozen ? <Snowflake className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Timer className="w-3.5 h-3.5 md:w-4 md:h-4" />}
               {room.isFrozen ? (
                 <span>{room.freezeTimer}s</span>
               ) : (
@@ -2401,13 +2416,13 @@ export default function App() {
               )}
             </div>
           )}
-          <div className="flex items-center gap-1 md:gap-2 bg-blue-100 text-blue-600 px-3 md:px-4 py-1 md:py-2 rounded-full text-xs md:text-sm font-black border-2 border-blue-200">
-            <Users className="w-3 h-3 md:w-4 md:h-4" />
+          <div className="flex items-center gap-1 bg-blue-100 text-blue-600 px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-black border-2 border-blue-200">
+            <Users className="w-3 h-3 md:w-3.5 md:h-3.5" />
             <span>{room.players.length}/2</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
           {/* Home Button (Leave Game) */}
           <button 
             onClick={() => {
@@ -2416,31 +2431,31 @@ export default function App() {
                      handleLeaveGame();
                    }
                 } else {
-                  handleLeaveGame();
+                   handleLeaveGame();
                 }
             }}
-            className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
+            className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
             title="الرئيسية"
           >
-            <Home className="w-5 h-5 md:w-6 md:h-6" />
+            <Home className="w-4 h-4 md:w-5 md:h-5" />
           </button>
 
           {/* Info Button */}
           <button 
-            onClick={() => setShowLevelInfo(true)}
-            className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+            onClick={toggleLevelInfo}
+            className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
             title="معلومات المستوى"
           >
-            <Info className="w-5 h-5 md:w-6 md:h-6" />
+            <Info className="w-4 h-4 md:w-5 md:h-5" />
           </button>
 
           {/* Settings Button */}
           <button 
-            onClick={() => setShowSettingsModal(true)}
-            className="w-10 h-10 md:w-12 md:h-12 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+            onClick={toggleSettings}
+            className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
             title="الإعدادات"
           >
-            <Settings className="w-5 h-5 md:w-6 md:h-6" />
+            <Settings className="w-4 h-4 md:w-5 md:h-5" />
           </button>
 
           {/* Exit Button */}
@@ -2452,10 +2467,10 @@ export default function App() {
                 window.close();
               }
             }}
-            className="w-10 h-10 md:w-12 md:h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
+            className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
             title="خروج"
           >
-            <LogOut className="w-5 h-5 md:w-6 md:h-6" />
+            <LogOut className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
       </header>
