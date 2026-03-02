@@ -2411,7 +2411,7 @@ export default function App() {
                   {topPlayers[0] && (
                     <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1 z-20 -mt-8 md:-mt-12">
                       <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
-                        <Crown className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-30" />
+                        <Crown className="absolute -top-12 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-30" />
                         {renderStars(topPlayers[0].level)}
                         <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl border-4 bg-white ${getAvatarStyle(topPlayers[0].level)}`}>
                           {renderAvatarContent(topPlayers[0].avatar)}
@@ -2475,7 +2475,11 @@ export default function App() {
                   <input 
                     type="text" 
                     value={roomId}
-                    onChange={(e) => setRoomId(e.target.value)}
+                    onChange={(e) => {
+                      // Normalize Arabic numbers to English
+                      const val = e.target.value.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
+                      setRoomId(val);
+                    }}
                     placeholder="كود الغرفة..."
                     className="input-game flex-1 py-2 md:py-4"
                     maxLength={6}
@@ -2917,7 +2921,7 @@ export default function App() {
 
               {/* Gameplay Chat Box - Moved to Center */}
               {room.gameState !== 'waiting' && room.gameState !== 'finished' && room.gameState !== 'guessing' && (
-                <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-56 md:h-64 mt-2 z-20 relative">
+                <div className="w-[85%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-56 md:h-64 mt-2 z-20 relative">
                   {isMutedByOpponent && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                       <Lock className="w-12 h-12 mb-2 text-red-400" />
