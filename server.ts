@@ -416,12 +416,45 @@ const app = express();
         matchmakingQueue.splice(i, 1);
         
         const matchId = `match_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const timeoutId = setTimeout(() => {
+          const match = pendingMatches.get(matchId);
+          if (match) {
+            pendingMatches.delete(matchId);
+            
+            if (match.p1Response !== 'accept') {
+               match.p1.socket.emit("match_rejected");
+               // Add to skipped list
+               if (!match.p1.skipped) match.p1.skipped = new Map();
+               match.p1.skipped.set(match.p2.playerId, Date.now());
+               matchmakingQueue.push(match.p1);
+            } else {
+               match.p1.socket.emit("match_rejected");
+               matchmakingQueue.unshift(match.p1);
+            }
+            
+            if (match.p2Response !== 'accept') {
+               match.p2.socket.emit("match_rejected");
+               // Add to skipped list
+               if (!match.p2.skipped) match.p2.skipped = new Map();
+               match.p2.skipped.set(match.p1.playerId, Date.now());
+               matchmakingQueue.push(match.p2);
+            } else {
+               match.p2.socket.emit("match_rejected");
+               matchmakingQueue.unshift(match.p2);
+            }
+            
+            processQueue();
+          }
+        }, 10000);
+
         pendingMatches.set(matchId, {
           id: matchId,
           p1,
           p2,
           p1Response: null,
-          p2Response: null
+          p2Response: null,
+          timeoutId
         });
 
         p1.socket.emit("match_proposed", {
@@ -724,6 +757,7 @@ const app = express();
       }
 
       if (response === 'reject' || response === 'block') {
+        clearTimeout(match.timeoutId);
         pendingMatches.delete(matchId);
         
         // Add to skipped list so they don't match again immediately (10s cooldown)
@@ -749,6 +783,7 @@ const app = express();
       }
 
       if (match.p1Response === 'accept' && match.p2Response === 'accept') {
+        clearTimeout(match.timeoutId);
         pendingMatches.delete(matchId);
         
         const roomId = `random_${Math.random().toString(36).substr(2, 9)}`;
@@ -1293,6 +1328,7 @@ const app = express();
       for (const [matchId, match] of pendingMatches.entries()) {
         if (match.p1.socket.id === socket.id || match.p2.socket.id === socket.id) {
           const oppData = match.p1.socket.id === socket.id ? match.p2 : match.p1;
+          clearTimeout(match.timeoutId);
           pendingMatches.delete(matchId);
           oppData.socket.emit("match_rejected");
           matchmakingQueue.unshift(oppData);
