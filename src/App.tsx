@@ -2642,21 +2642,8 @@ export default function App() {
                     Lvl {getLevel(opponent.xp)}
                   </div>
                 )}
-                <AnimatePresence>
-                  {bubbles.filter(b => b.senderId === opponent.id).map(bubble => (
-                    <motion.div
-                      key={`opponent-bubble-${bubble.id}`}
-                      initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.5, y: -20 }}
-                      className="absolute -right-12 -top-4 bg-white px-3 py-2 rounded-2xl rounded-bl-none shadow-lg border-2 border-gray-100 text-2xl z-50 pointer-events-none"
-                    >
-                      {bubble.text}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
               </div>
-              <div className="mt-3 font-black text-base flex items-center gap-2 text-[#2D3436] bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm">
+              <div className="mt-1 font-black text-base flex items-center gap-2 text-[#2D3436] bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm">
                 {opponent.name}
                 <button 
                   onClick={() => setShowReportModal(true)}
@@ -2686,7 +2673,7 @@ export default function App() {
         </div>
 
         {/* Center Content: Image or Waiting UI */}
-        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-2 min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0 overflow-hidden">
           {room.gameState === 'waiting' ? (
             <div className="w-full card-game p-4 md:p-8 text-center space-y-4 md:space-y-6 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gray-100">
@@ -2888,13 +2875,13 @@ export default function App() {
                     exit={{ scale: 0.9, opacity: 0 }}
                     className="relative z-10 flex flex-col items-center w-full"
                   >
-                    <div className="relative w-full max-w-[10rem] md:max-w-[14rem] aspect-square bg-white p-2 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-2 border-white flex items-center justify-center">
+                    <div className="relative w-full max-w-[13rem] md:max-w-[16rem] aspect-square bg-white p-1.5 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-2 border-white flex items-center justify-center">
                       <img 
                         src={opponent?.targetImage?.image} 
                         className={`w-full h-full object-cover rounded-xl ${funnyFilter === opponent?.id ? 'invert sepia hue-rotate-90 scale-110' : ''}`}
                         alt="Target"
                       />
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white/90 px-4 py-1 rounded-full font-black text-sm text-[#2D3436] shadow-sm border border-gray-200 backdrop-blur-sm z-10 whitespace-nowrap">
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white/90 px-3 py-0.5 rounded-full font-black text-xs md:text-sm text-[#2D3436] shadow-sm border border-gray-200 backdrop-blur-sm z-10 whitespace-nowrap">
                         {opponent?.targetImage?.name}
                       </div>
                     </div>
@@ -2908,10 +2895,10 @@ export default function App() {
                   <motion.div 
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="relative z-[150] w-full max-w-md px-2 flex flex-col items-center mt-2"
+                    className="relative z-[150] w-full max-w-md px-2 flex flex-col items-center mt-1"
                   >
-                    <form onSubmit={handleGuess} className="w-full flex flex-col gap-2 card-game p-3 md:p-4 guess-glow border-orange-200">
-                      <div className="text-center font-black text-orange-500 animate-pulse mb-1 text-xl md:text-2xl">
+                    <form onSubmit={handleGuess} className="w-full flex flex-col gap-2 card-game p-2 md:p-4 guess-glow border-orange-200">
+                      <div className="text-center font-black text-orange-500 animate-pulse mb-0.5 text-lg md:text-2xl">
                         أسرع! خمن الآن ({room.isFrozen ? room.freezeTimer : room.timer}s)
                       </div>
                       <div className="flex flex-col gap-2">
@@ -2923,7 +2910,7 @@ export default function App() {
                           placeholder="ما هي الصورة؟"
                           className="input-game flex-1 py-2 text-center"
                         />
-                        <button className="btn-game btn-primary w-full py-3 text-base md:text-lg">إرسال</button>
+                        <button className="btn-game btn-primary w-full py-2.5 text-base md:text-lg">إرسال</button>
                       </div>
                     </form>
                   </motion.div>
@@ -2932,7 +2919,7 @@ export default function App() {
 
               {/* Gameplay Chat Box - Moved to Center */}
               {room.gameState !== 'waiting' && room.gameState !== 'finished' && room.gameState !== 'guessing' && (
-                <div className="w-[80%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-56 md:h-64 mt-2 z-20 relative">
+                <div className="w-[85%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-48 md:h-64 mt-1 z-20 relative">
                   {isMutedByOpponent && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                       <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -3024,21 +3011,8 @@ export default function App() {
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#FF6B6B] text-white text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-white shadow-sm whitespace-nowrap z-10">
                   Lvl {getLevel(xp)}
                 </div>
-                <AnimatePresence>
-                  {bubbles.filter(b => b.senderId === me.id).map(bubble => (
-                    <motion.div
-                      key={`me-bubble-${bubble.id}`}
-                      initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.5, y: -20 }}
-                      className="absolute -right-12 -top-4 bg-white px-3 py-2 rounded-2xl rounded-br-none shadow-lg border-2 border-gray-100 text-2xl z-50 pointer-events-none"
-                    >
-                      {bubble.text}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
               </div>
-              <div className="mt-3 font-black text-lg text-[#2D3436] bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm flex items-center gap-2">
+              <div className="mt-1 font-black text-lg text-[#2D3436] bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm flex items-center gap-2">
                 {me.name}
                 {reports > 0 && (
                   <Flag className="w-4 h-4 text-red-500" fill="currentColor" title={`لديك ${reports} إبلاغات`} />
