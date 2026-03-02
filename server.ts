@@ -493,7 +493,10 @@ const app = express();
       // Generate a unique non-sequential ID
       const serial = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const level = getLevel(xp || 0);
-      const filteredName = filterProfanity(name);
+      let filteredName = filterProfanity(name);
+      if (filteredName.length > 15) {
+        filteredName = filteredName.substring(0, 15);
+      }
       
       allPlayers.set(serial, { 
         name: filteredName, 
@@ -516,7 +519,11 @@ const app = express();
     socket.on("update_profile", ({ playerSerial, playerName, avatar }, callback) => {
       const player = allPlayers.get(playerSerial);
       if (player) {
-        player.name = filterProfanity(playerName);
+        let filteredName = filterProfanity(playerName);
+        if (filteredName.length > 15) {
+          filteredName = filteredName.substring(0, 15);
+        }
+        player.name = filteredName;
         player.avatar = avatar;
         savePlayersData();
         const topPlayers = getTopPlayers();
@@ -564,6 +571,11 @@ const app = express();
         return;
       }
       
+      let validAge = age;
+      if (typeof age === 'number' && age > 80) {
+        validAge = 80;
+      }
+      
       if (serverPlayer.isPermanentBan) {
           socket.emit("banned_status", { isPermanent: true });
           return;
@@ -601,7 +613,7 @@ const app = express();
           id: socket.id,
           serial: serial,
           name: actualName,
-          age: age,
+          age: validAge,
           avatar: avatar,
           score: 1000,
           targetImage: null,
@@ -640,6 +652,11 @@ const app = express();
         return;
       }
       
+      let validAge = age;
+      if (typeof age === 'number' && age > 80) {
+        validAge = 80;
+      }
+      
       if (bannedPlayer.isPermanentBan) {
           socket.emit("banned_status", { isPermanent: true });
           return;
@@ -674,7 +691,7 @@ const app = express();
         playerId, 
         playerName: actualName, 
         avatar, 
-        age,
+        age: validAge,
         xp: actualXp,
         streak: streak || 0,
         serial: serial,
