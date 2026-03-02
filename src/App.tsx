@@ -197,38 +197,55 @@ export default function App() {
       const image = new Image();
       image.addEventListener('load', () => resolve(image));
       image.addEventListener('error', (error) => reject(error));
-      image.setAttribute('crossOrigin', 'anonymous');
+      if (!url.startsWith('data:')) {
+        image.setAttribute('crossOrigin', 'anonymous');
+      }
       image.src = url;
     });
 
-  const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
-    const image = await createImage(imageSrc);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+  const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string | null> => {
+    try {
+      const image = await createImage(imageSrc);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
 
-    if (!ctx) return '';
+      if (!ctx) return null;
 
-    canvas.width = 200;
-    canvas.height = 200;
+      canvas.width = 200;
+      canvas.height = 200;
 
-    ctx.drawImage(
-      image,
-      pixelCrop.x,
-      pixelCrop.y,
-      pixelCrop.width,
-      pixelCrop.height,
-      0,
-      0,
-      200,
-      200
-    );
+      ctx.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        200,
+        200
+      );
 
-    return canvas.toDataURL('image/jpeg', 0.7);
+      return canvas.toDataURL('image/jpeg', 0.7);
+    } catch (e) {
+      console.error('Error creating cropped image:', e);
+      return null;
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
+      // Validate file type and size
+      if (!file.type.startsWith('image/')) {
+        setError('يرجى اختيار ملف صورة صالح');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setError('حجم الصورة كبير جداً (الحد الأقصى 5 ميجابايت)');
+        return;
+      }
+
       const reader = new FileReader();
       reader.addEventListener('load', () => {
         setImageSrc(reader.result as string);
@@ -242,14 +259,19 @@ export default function App() {
     try {
       if (imageSrc && croppedAreaPixels) {
         const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels);
-        setCustomAvatar(croppedImage);
-        setAvatar(croppedImage);
-        localStorage.setItem('khamin_custom_avatar', croppedImage);
-        setShowCropper(false);
-        setImageSrc(null); // Clear image source after save
+        if (croppedImage) {
+          setCustomAvatar(croppedImage);
+          setAvatar(croppedImage);
+          localStorage.setItem('khamin_custom_avatar', croppedImage);
+          setShowCropper(false);
+          setImageSrc(null); // Clear image source after save
+        } else {
+          setError('حدث خطأ أثناء معالجة الصورة');
+        }
       }
     } catch (e) {
       console.error(e);
+      setError('حدث خطأ غير متوقع');
     }
   };
 
@@ -1156,715 +1178,121 @@ export default function App() {
                           room.players[0].selectedCategory === room.players[1].selectedCategory &&
                           room.players[0].selectedCategory !== null;
 
-  if (isPermanentBan || (banUntil && banUntil > Date.now())) {
-    const isPermanent = isPermanentBan;
-    const remainingHours = banUntil ? Math.floor((banUntil - Date.now()) / (1000 * 60 * 60)) : 0;
-    const remainingMinutes = banUntil ? Math.floor(((banUntil - Date.now()) % (1000 * 60 * 60)) / (1000 * 60)) : 0;
-    
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gray-900 overflow-y-auto">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={`bg-white rounded-[32px] p-8 max-w-md w-full text-center shadow-2xl border-4 ${isPermanent ? 'border-black' : 'border-red-500'}`}
-        >
-          <div className={`w-24 h-24 ${isPermanent ? 'bg-gray-100' : 'bg-red-100'} rounded-full flex items-center justify-center mx-auto mb-6`}>
-            {isPermanent ? <Trash2 className="w-12 h-12 text-black" /> : <Lock className="w-12 h-12 text-red-500" />}
-          </div>
-          <h1 className="text-3xl font-black text-gray-800 mb-4">
-            {isPermanent ? 'تم حظرك نهائياً' : 'تم حظر حسابك'}
-          </h1>
-          <p className="text-gray-600 font-bold mb-6 text-lg">
-            {isPermanent 
-              ? 'لقد تم حظرك من اللعب نهائياً بسبب تكرار المخالفات (5 مرات حظر مؤقت). لا يمكنك اللعب بهذا الحساب مرة أخرى.'
-              : 'لقد تلقيت أكثر من 10 إبلاغات من لاعبين آخرين، لذلك تم منعك من اللعب مؤقتاً لمدة 24 ساعة.'}
-          </p>
-          
-          {!isPermanent ? (
-            <div className="bg-red-50 rounded-2xl p-6 border-2 border-red-100">
-              <p className="text-red-600 font-black text-sm mb-2">الوقت المتبقي لفك الحظر:</p>
-              <div className="text-4xl font-black text-red-500 font-mono" dir="ltr">
-                {remainingHours}h {remainingMinutes}m
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-2xl p-6 border-2 border-gray-100">
-                <p className="text-gray-600 font-black text-sm">
-                  يمكنك مسح هذا الحساب والبدء من جديد بحساب جديد تماماً.
-                </p>
-              </div>
-              <button 
-                onClick={() => {
-                  const serial = localStorage.getItem('khamin_player_serial');
-                  if (serial && socket) {
-                    socket.emit('delete_account', { playerSerial: serial }, (res: any) => {
-                      if (res.success) {
-                        localStorage.clear();
-                        window.location.reload();
-                      }
-                    });
-                  }
-                }}
-                className="w-full btn-game bg-black text-white py-4 text-xl flex items-center justify-center gap-3 hover:bg-gray-800 transition-all"
-              >
-                <Trash2 className="w-6 h-6" />
-                مسح الحساب والبدء من جديد
-              </button>
-            </div>
-          )}
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (isSearching) {
-    return (
-      <>
-      <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
-          {/* Fixed Header */}
-          <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
-            <div className="flex-1 flex items-center gap-2 md:gap-3">
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
-                <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
-              </div>
-              <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
-            </div>
-            
-            <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
-              {/* Home Button (Cancels Search) */}
-              <button 
-                onClick={() => {
-                  setJoined(false); 
-                  setIsSearching(false); 
-                  setProposedMatch(null); 
-                  setHasResponded(false); 
-                  socket?.emit('leave_matchmaking');
-                }}
-                className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
-                title="الرئيسية"
-              >
-                <Home className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-
-              {/* Info Button */}
-              <button 
-                onClick={toggleLevelInfo}
-                className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
-                title="معلومات المستوى"
-              >
-                <Info className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-
-              {/* Settings Button */}
-              <button 
-                onClick={toggleSettings}
-                className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
-                title="الإعدادات"
-              >
-                <Settings className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-
-              {/* Exit Button */}
-              <button 
-                onClick={() => {
-                  if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(err => console.error(err));
-                  } else {
-                    window.close();
-                  }
-                }}
-                className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
-                title="خروج"
-              >
-                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-            </div>
-          </header>
-
-        <div className="w-full max-w-md card-game p-6 md:p-12 text-center space-y-4 md:space-y-8 relative overflow-hidden">
-          {proposedMatch ? (
+  const renderModals = () => (
+    <>
+      {/* Level Info Modal */}
+      <AnimatePresence>
+        {showLevelInfo && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[5000] flex items-center justify-center p-4"
+            onClick={() => setShowLevelInfo(false)}
+          >
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="space-y-4 md:space-y-6"
-            >
-              <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">تم العثور على منافس!</h2>
-              <div className="flex flex-col items-center p-4 md:p-6 bg-orange-50 rounded-3xl border-4 border-orange-100 relative">
-                <div className="relative mb-2 md:mb-4">
-                  {proposedMatch.opponent.level && renderStars(proposedMatch.opponent.level)}
-                  <div className={`text-6xl md:text-8xl drop-shadow-md animate-bounce w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center border-4 overflow-hidden ${proposedMatch.opponent.level ? getAvatarStyle(proposedMatch.opponent.level) : 'bg-orange-100 border-orange-300'}`}>
-                    {renderAvatarContent(proposedMatch.opponent.avatar)}
-                  </div>
-                </div>
-                <div className="text-xl md:text-2xl font-black text-[#2D3436] mb-1">{proposedMatch.opponent.name}</div>
-                <div className="text-sm md:text-base font-bold text-gray-500">Level {proposedMatch.opponent.level || 1}</div>
-                {matchResponseTimeLeft !== null && (
-                  <div className="mt-4 text-orange-500 font-bold text-lg flex items-center gap-2">
-                    <Timer className="w-5 h-5" />
-                    <span>{matchResponseTimeLeft} ثانية</span>
-                  </div>
-                )}
-              </div>
-              
-              {!hasResponded ? (
-                <div className="flex gap-3 md:gap-4">
-                  <button 
-                    onClick={() => {
-                      setHasResponded(true);
-                      socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'accept' });
-                    }}
-                    className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl animate-pulse"
-                  >
-                    قبول التحدي! ⚔️
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setHasResponded(true);
-                      socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
-                      setProposedMatch(null);
-                    }}
-                    className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
-                  >
-                    رفض
-                  </button>
-                </div>
-              ) : (
-                <div className="text-gray-500 font-bold animate-pulse">
-                  جاري انتظار رد المنافس...
-                </div>
-              )}
-            </motion.div>
-          ) : (
-            <>
-              <div className="relative">
-                <div className="absolute inset-0 bg-blue-400 blur-3xl opacity-20 animate-pulse"></div>
-                <Loader2 className="w-16 h-16 md:w-24 md:h-24 text-blue-500 animate-spin mx-auto relative z-10" />
-              </div>
-              <div className="space-y-2 md:space-y-3 relative z-10">
-                <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">جاري البحث عن منافس...</h2>
-                <p className="text-base md:text-lg text-gray-500 font-bold">يتم البحث عن لاعبين بمستوى قريب منك</p>
-                {searchTimeLeft !== null && (
-                  <div className="flex justify-center items-center gap-2 text-blue-500 font-bold text-lg mt-2">
-                    <Timer className="w-5 h-5" />
-                    <span dir="ltr">{Math.floor(searchTimeLeft / 60)}:{(searchTimeLeft % 60).toString().padStart(2, '0')}</span>
-                  </div>
-                )}
-                <div className="flex flex-col items-center gap-2 mt-2">
-                  <div className="text-sm font-black text-blue-500 bg-blue-50 inline-block px-3 py-1 rounded-full">
-                    عدد المتصلين: {onlineCount}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="pt-4 md:pt-8 relative z-10">
-                <button 
-                  onClick={() => {
-                    setIsSearching(false);
-                    setJoined(false);
-                    socket?.emit('leave_matchmaking');
-                  }}
-                  className="text-gray-400 font-bold hover:text-red-500 transition-colors text-sm md:text-base"
-                >
-                  إلغاء البحث
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-      </>
-    );
-  }
-
-  if (!joined) {
-    return (
-      <>
-        {/* Fixed Header */}
-        <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
-          <div className="flex-1 flex items-center gap-2 md:gap-3">
-            <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
-              <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
-            </div>
-            <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
-          </div>
-          
-          <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
-            {/* Info Button */}
-            <button 
-              onClick={toggleLevelInfo}
-              className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
-              title="معلومات المستوى"
-            >
-              <Info className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-
-            {/* Settings Button */}
-            <button 
-              onClick={toggleSettings}
-              className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
-              title="الإعدادات"
-            >
-              <Settings className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-
-            {/* Exit Button */}
-            <button 
-              onClick={() => {
-                if (document.fullscreenElement) {
-                  document.exitFullscreen().catch(err => console.error(err));
-                } else {
-                  window.close();
-                }
-              }}
-              className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
-              title="خروج"
-            >
-              <LogOut className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-          </div>
-        </header>
-
-        <div className="min-h-screen w-full flex items-center justify-center p-4 pt-24">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md py-8"
-        >
-
-          {/* Profile Card */}
-          <div className="flex items-center gap-3 md:gap-4 bg-white/90 backdrop-blur-sm p-3 md:p-4 rounded-3xl shadow-md border-2 border-white/50 flex-row-reverse mb-6 md:mb-10 w-full">
-              <div className="relative shrink-0">
-                {renderStars(getLevel(xp))}
-                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl md:text-4xl border-4 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
-                  {renderAvatarContent(avatar)}
-                </div>
-              </div>
-              <div className="flex flex-col justify-center flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-1 flex-row-reverse">
-                  <div className="text-sm md:text-base font-black text-[#2D3436] truncate text-right">{playerName || 'لاعب جديد'}</div>
-                  <span className="text-xs md:text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">Level {getLevel(xp)}</span>
-                </div>
-                
-                {/* Level Bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
-                  <div 
-                    className="bg-gradient-to-r from-blue-400 to-blue-600 h-full rounded-full transition-all duration-500" 
-                    style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
-                  ></div>
-                </div>
-                
-                {/* XP Bar */}
-                <div className="w-full bg-gray-100 rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
-                  <div 
-                    className="bg-gradient-to-r from-orange-400 to-orange-500 h-full transition-all duration-500" 
-                    style={{ width: `${(xp / getXpForNextLevel(getLevel(xp))) * 100}%` }}
-                  ></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] md:text-xs font-black text-orange-900 drop-shadow-sm flex items-center gap-1">
-                      <Zap className="w-3 h-3" />
-                      {xp} / {getXpForNextLevel(getLevel(xp))} XP
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          <div className="card-game p-6 md:p-10">
-
-          <div className="space-y-4 md:space-y-10">
-            {/* Top Players Section */}
-            <div className="flex flex-col gap-4">
-              {/* Header Box */}
-              <div className="px-2">
-                <div className="flex items-center justify-between flex-row-reverse">
-                  <h2 className="text-lg md:text-xl font-black text-[#2D3436] flex items-center gap-2">
-                    أبطال التخمين
-                  </h2>
-                  <span className="text-xs md:text-sm font-bold text-orange-500">المتصدرون حالياً</span>
-                </div>
-              </div>
-
-              {/* Separator */}
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-gray-200 dashed"></div></div>
-              </div>
-
-              {/* Podium Box */}
-              <div className="bg-gray-50/30 rounded-[40px] border-2 border-gray-100/50 p-4 md:p-6 pt-12 md:pt-16 mt-8 md:mt-12">
-                <div className="flex items-end justify-center gap-2 md:gap-4">
-                  {/* Rank 2 */}
-                  {topPlayers[1] && (
-                    <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1 z-10">
-                      <div className="relative mb-2 flex flex-col items-center">
-                        {renderStars(topPlayers[1].level)}
-                        <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl border-4 bg-white ${getAvatarStyle(topPlayers[1].level)}`}>
-                          {renderAvatarContent(topPlayers[1].avatar)}
-                        </div>
-                        <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">2</div>
-                      </div>
-                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[1].name}</div>
-                      <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
-                        <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                          Lvl {topPlayers[1].level}
-                        </div>
-                        <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Trophy className="w-2.5 h-2.5" />
-                          {topPlayers[1].wins || 0} فوز
-                        </div>
-                      </div>
-                      <div className="w-full bg-gray-200 h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 border-gray-300"></div>
-                    </div>
-                  )}
-
-                  {/* Rank 1 */}
-                  {topPlayers[0] && (
-                    <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1 z-20 -mt-8 md:-mt-12">
-                      <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
-                        <Crown className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-30" />
-                        {renderStars(topPlayers[0].level)}
-                        <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl border-4 bg-white ${getAvatarStyle(topPlayers[0].level)}`}>
-                          {renderAvatarContent(topPlayers[0].avatar)}
-                        </div>
-                        <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-30 animate-bounce">1</div>
-                      </div>
-                      <div className="text-xs md:text-sm font-black text-[#2D3436] truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{topPlayers[0].name}</div>
-                      <div className="flex flex-col items-center gap-1 mt-1 mb-1">
-                        <div className="text-[10px] font-bold text-gray-500 bg-yellow-100 px-3 py-1 rounded-full">
-                          Lvl {topPlayers[0].level}
-                        </div>
-                        <div className="text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full flex items-center gap-1">
-                          <Trophy className="w-3 h-3" />
-                          {topPlayers[0].wins || 0} فوز
-                        </div>
-                      </div>
-                      <div className="w-full bg-gradient-to-b from-yellow-100 to-yellow-50 h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 border-yellow-300"></div>
-                    </div>
-                  )}
-
-                  {/* Rank 3 */}
-                  {topPlayers[2] && (
-                    <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1 z-10">
-                      <div className="relative mb-2 flex flex-col items-center">
-                        {renderStars(topPlayers[2].level)}
-                        <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl border-4 bg-white ${getAvatarStyle(topPlayers[2].level)}`}>
-                          {renderAvatarContent(topPlayers[2].avatar)}
-                        </div>
-                        <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">3</div>
-                      </div>
-                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[2].name}</div>
-                      <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
-                        <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                          Lvl {topPlayers[2].level}
-                        </div>
-                        <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Trophy className="w-2.5 h-2.5" />
-                          {topPlayers[2].wins || 0} فوز
-                        </div>
-                      </div>
-                      <div className="w-full bg-gray-200 h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 border-gray-300"></div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 md:pt-6 border-t-2 border-gray-100 space-y-3 md:space-y-4">
-              <div>
-                {error && (
-                  <motion.div 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="bg-red-100 border-2 border-red-200 p-2 md:p-4 mb-2 md:mb-4 text-red-600 text-xs md:text-sm font-black rounded-2xl text-center shadow-sm"
-                  >
-                    {error}
-                  </motion.div>
-                )}
-                <label className="block text-base md:text-lg font-black text-[#2D3436] mb-1 md:mb-2 px-1">دخول بكود غرفة</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={roomId}
-                    onChange={(e) => setRoomId(e.target.value)}
-                    placeholder="كود الغرفة..."
-                    className="input-game flex-1 py-2 md:py-4"
-                    maxLength={6}
-                  />
-                  <button 
-                    onClick={handleJoin}
-                    className="btn-game btn-secondary px-4 md:px-6 py-2 md:py-3 text-base md:text-lg"
-                  >
-                    دخول
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative py-1 md:py-2">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-gray-200 dashed"></div></div>
-                <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-white px-3 text-gray-400 font-black">أو</span></div>
-              </div>
-
-              <button 
-                onClick={handleRandomMatch}
-                className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3"
-              >
-                <Users className="w-5 h-5 md:w-6 md:h-6" />
-                بحث عن منافس عشوائي
-              </button>
-            </div>
-          </div>
-        </div>
-
-          {/* Level Info Modal */}
-          <AnimatePresence>
-            {showLevelInfo && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[5000] flex items-center justify-center p-4"
-                onClick={() => setShowLevelInfo(false)}
-              >
-                <motion.div 
-                  initial={{ scale: 0.9, y: 20 }}
-                  animate={{ scale: 1, y: 0 }}
-                  exit={{ scale: 0.9, y: 20 }}
-                  className="card-game p-8 max-w-md w-full relative overflow-hidden text-right"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <button 
-                    onClick={() => setShowLevelInfo(false)}
-                    className="absolute top-4 left-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                  
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                      <Star className="w-6 h-6 text-orange-500 fill-orange-500" />
-                    </div>
-                    <h2 className="text-2xl font-black text-[#2D3436]">نظام المستويات (Levels)</h2>
-                  </div>
-                  
-                  <div className="space-y-4 text-gray-600 font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                    <p>كلما فزت في مباريات أكثر، كلما حصلت على XP وارتفع مستواك!</p>
-                    
-                    <div className="bg-orange-50 p-4 rounded-2xl border-2 border-orange-100">
-                      <h3 className="text-lg font-black text-orange-600 mb-2 flex items-center gap-2">
-                        <Zap className="w-5 h-5" />
-                        ميزة التخمين السريع
-                      </h3>
-                      <p className="text-sm leading-relaxed">
-                        ميزة التخمين السريع تتيح لك محاولة تخمين الصورة قبل انتهاء الوقت.
-                        كلما ارتفع مستواك، كلما تم تفعيل هذه الميزة بشكل أسرع في المباراة (يقل وقت الانتظار بمقدار 3 ثوانٍ لكل مستوى، مما يمنحك أفضلية!).
-                      </p>
-                      <ul className="mt-3 space-y-2 text-sm">
-                        <li className="flex justify-between items-center bg-white p-2 rounded-lg">
-                          <span>المستوى 1</span>
-                          <span className="text-orange-500">بعد 2:30 دقيقة (150 ثانية)</span>
-                        </li>
-                        <li className="flex justify-between items-center bg-white p-2 rounded-lg">
-                          <span>المستوى 25</span>
-                          <span className="text-orange-500">بعد 1:18 دقيقة (78 ثانية)</span>
-                        </li>
-                        <li className="flex justify-between items-center bg-white p-2 rounded-lg">
-                          <span>المستوى 50 (الحد الأقصى)</span>
-                          <span className="text-orange-500 font-black">بعد 0:03 ثوانٍ (تقريباً من البداية!)</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div className="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100">
-                      <h3 className="text-lg font-black text-blue-600 mb-2 flex items-center gap-2">
-                        <Trophy className="w-5 h-5" />
-                        جوائز المستويات
-                      </h3>
-                      <p className="text-sm leading-relaxed mb-3">
-                        احصل على إطارات مميزة ونجوم ذهبية تزين صورتك الشخصية كلما تقدمت في المستويات!
-                      </p>
-                      <ul className="space-y-2 text-sm">
-                        <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-gray-400 shadow-[0_0_10px_rgba(156,163,175,0.5)] flex items-center justify-center relative">
-                            <div className="absolute -top-2 flex"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
-                            <span className="text-xs">🦁</span>
-                          </div>
-                          <span className="flex-1">المستوى 10</span>
-                          <span className="text-blue-500">إطار فضي + نجمة</span>
-                        </li>
-                        <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
-                          <div className="w-8 h-8 rounded-full bg-yellow-50 border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)] flex items-center justify-center relative">
-                            <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
-                            <span className="text-xs">🦁</span>
-                          </div>
-                          <span className="flex-1">المستوى 20</span>
-                          <span className="text-blue-500">إطار ذهبي + نجمتين</span>
-                        </li>
-                        <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
-                          <div className="w-8 h-8 rounded-full bg-emerald-50 border-2 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.6)] flex items-center justify-center relative">
-                            <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
-                            <span className="text-xs">🦁</span>
-                          </div>
-                          <span className="flex-1">المستوى 30</span>
-                          <span className="text-blue-500">إطار زمردي + 3 نجوم</span>
-                        </li>
-                        <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
-                          <div className="w-8 h-8 rounded-full bg-purple-50 border-2 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)] flex items-center justify-center relative">
-                            <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
-                            <span className="text-xs">🦁</span>
-                          </div>
-                          <span className="flex-1">المستوى 40</span>
-                          <span className="text-blue-500">إطار أسطوري + 4 نجوم</span>
-                        </li>
-                        <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
-                          <div className="w-8 h-8 rounded-full bg-red-50 border-2 border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.8)] flex items-center justify-center relative">
-                            <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
-                            <span className="text-xs">🦁</span>
-                          </div>
-                          <span className="flex-1">المستوى 50</span>
-                          <span className="text-blue-500 font-black">إطار ناري + 5 نجوم!</span>
-                        </li>
-                      </ul>
-                    </div>
-                    
-                    <p className="text-sm text-center text-gray-400 mt-4">استمر في اللعب لتصل إلى أعلى مستوى وتتفوق على أصدقائك!</p>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      </div>
-
-      {/* Image Cropper Modal */}
-      <AnimatePresence>
-        {showCropper && imageSrc && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[6000] flex flex-col items-center justify-center p-4"
-          >
-            <div className="relative w-full max-w-md aspect-square bg-black rounded-3xl overflow-hidden mb-8 shadow-2xl border-4 border-white/20">
-              <Cropper
-                image={imageSrc}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                onCropChange={setCrop}
-                onCropComplete={onCropComplete}
-                onZoomChange={setZoom}
-              />
-            </div>
-
-            <div className="w-full max-w-md space-y-6">
-              <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-sm">
-                <label className="block text-white text-center text-sm font-black mb-3">تكبير / تصغير</label>
-                <input
-                  type="range"
-                  value={zoom}
-                  min={1}
-                  max={3}
-                  step={0.1}
-                  aria-labelledby="Zoom"
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                />
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  onClick={handleCropSave}
-                  className="flex-1 btn-game btn-success py-4 text-xl flex items-center justify-center gap-2"
-                >
-                  <Check className="w-6 h-6" />
-                  حفظ الصورة
-                </button>
-                <button
-                  onClick={() => { setShowCropper(false); setImageSrc(null); }}
-                  className="flex-1 btn-game bg-white/10 border-white/20 text-white hover:bg-white/20 py-4 text-xl"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Welcome Modal */}
-      <AnimatePresence>
-        {showWelcomeModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
-          >
-            <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="card-game p-4 md:p-8 w-full max-w-md space-y-4 md:space-y-6"
+              exit={{ scale: 0.9, y: 20 }}
+              className="card-game p-8 max-w-md w-full relative overflow-hidden text-right"
+              onClick={e => e.stopPropagation()}
             >
-              <div className="text-center space-y-2">
-                <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-2 md:mb-4">
-                  <Brain className="w-8 h-8 md:w-10 md:h-10 text-orange-500" />
-                </div>
-                <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">أهلاً بك في خمن تخمينة!</h2>
-                <p className="text-gray-500 font-bold text-sm md:text-base">يرجى إكمال بياناتك للبدء</p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-black text-gray-600 mb-1 text-right">اسم اللاعب</label>
-                  <input 
-                    type="text" 
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value.slice(0, 15))}
-                    placeholder="ادخل اسمك..."
-                    className="input-game"
-                    maxLength={15}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-black text-gray-600 mb-1 text-right">عمر اللاعب</label>
-                  <input 
-                    type="number" 
-                    value={playerAge}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === '') setPlayerAge('');
-                      else {
-                        const num = parseInt(val);
-                        if (!isNaN(num) && num <= 80) setPlayerAge(num);
-                      }
-                    }}
-                    placeholder="ادخل عمرك..."
-                    className="input-game"
-                    max={80}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-black text-gray-600 mb-3 text-right">اختر أفاتار البداية</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {AVATARS.slice(0, 4).map((av, index) => (
-                      <button
-                        key={`welcome-avatar-${av.emoji}-${index}`}
-                        onClick={() => setAvatar(av.emoji)}
-                        className={`w-full aspect-square rounded-xl flex items-center justify-center text-2xl border-2 transition-all ${avatar === av.emoji ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-50 border-gray-200'}`}
-                      >
-                        {av.emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
               <button 
-                onClick={handleRegister}
-                className="w-full btn-game btn-primary py-4 text-xl"
+                onClick={() => setShowLevelInfo(false)}
+                className="absolute top-4 left-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
               >
-                حفظ البيانات والبدء
+                <X className="w-5 h-5" />
               </button>
+              
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <Star className="w-6 h-6 text-orange-500 fill-orange-500" />
+                </div>
+                <h2 className="text-2xl font-black text-[#2D3436]">نظام المستويات (Levels)</h2>
+              </div>
+              
+              <div className="space-y-4 text-gray-600 font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                <p>كلما فزت في مباريات أكثر، كلما حصلت على XP وارتفع مستواك!</p>
+                
+                <div className="bg-orange-50 p-4 rounded-2xl border-2 border-orange-100">
+                  <h3 className="text-lg font-black text-orange-600 mb-2 flex items-center gap-2">
+                    <Zap className="w-5 h-5" />
+                    ميزة التخمين السريع
+                  </h3>
+                  <p className="text-sm leading-relaxed">
+                    ميزة التخمين السريع تتيح لك محاولة تخمين الصورة قبل انتهاء الوقت.
+                    كلما ارتفع مستواك، كلما تم تفعيل هذه الميزة بشكل أسرع في المباراة (يقل وقت الانتظار بمقدار 3 ثوانٍ لكل مستوى، مما يمنحك أفضلية!).
+                  </p>
+                  <ul className="mt-3 space-y-2 text-sm">
+                    <li className="flex justify-between items-center bg-white p-2 rounded-lg">
+                      <span>المستوى 1</span>
+                      <span className="text-orange-500">بعد 2:30 دقيقة (150 ثانية)</span>
+                    </li>
+                    <li className="flex justify-between items-center bg-white p-2 rounded-lg">
+                      <span>المستوى 25</span>
+                      <span className="text-orange-500">بعد 1:18 دقيقة (78 ثانية)</span>
+                    </li>
+                    <li className="flex justify-between items-center bg-white p-2 rounded-lg">
+                      <span>المستوى 50 (الحد الأقصى)</span>
+                      <span className="text-orange-500 font-black">بعد 0:03 ثوانٍ (تقريباً من البداية!)</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100">
+                  <h3 className="text-lg font-black text-blue-600 mb-2 flex items-center gap-2">
+                    <Trophy className="w-5 h-5" />
+                    جوائز المستويات
+                  </h3>
+                  <p className="text-sm leading-relaxed mb-3">
+                    احصل على إطارات مميزة ونجوم ذهبية تزين صورتك الشخصية كلما تقدمت في المستويات!
+                  </p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-gray-400 shadow-[0_0_10px_rgba(156,163,175,0.5)] flex items-center justify-center relative">
+                        <div className="absolute -top-2 flex"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
+                        <span className="text-xs">🦁</span>
+                      </div>
+                      <span className="flex-1">المستوى 10</span>
+                      <span className="text-blue-500">إطار فضي + نجمة</span>
+                    </li>
+                    <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-yellow-50 border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)] flex items-center justify-center relative">
+                        <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
+                        <span className="text-xs">🦁</span>
+                      </div>
+                      <span className="flex-1">المستوى 20</span>
+                      <span className="text-blue-500">إطار ذهبي + نجمتين</span>
+                    </li>
+                    <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-emerald-50 border-2 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.6)] flex items-center justify-center relative">
+                        <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
+                        <span className="text-xs">🦁</span>
+                      </div>
+                      <span className="flex-1">المستوى 30</span>
+                      <span className="text-blue-500">إطار زمردي + 3 نجوم</span>
+                    </li>
+                    <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-purple-50 border-2 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)] flex items-center justify-center relative">
+                        <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
+                        <span className="text-xs">🦁</span>
+                      </div>
+                      <span className="flex-1">المستوى 40</span>
+                      <span className="text-blue-500">إطار أسطوري + 4 نجوم</span>
+                    </li>
+                    <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-red-50 border-2 border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.8)] flex items-center justify-center relative">
+                        <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
+                        <span className="text-xs">🦁</span>
+                      </div>
+                      <span className="flex-1">المستوى 50</span>
+                      <span className="text-blue-500 font-black">إطار ناري + 5 نجوم!</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                <p className="text-sm text-center text-gray-400 mt-4">استمر في اللعب لتصل إلى أعلى مستوى وتتفوق على أصدقائك!</p>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -2156,7 +1584,128 @@ export default function App() {
           </motion.div>
         )}
 
-        {/* Admin Dashboard Modal */}
+        {/* Welcome Modal */}
+        <AnimatePresence>
+          {showWelcomeModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                className="card-game p-4 md:p-8 w-full max-w-md space-y-4 md:space-y-6"
+              >
+                <div className="text-center space-y-2">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-2 md:mb-4">
+                    <Brain className="w-8 h-8 md:w-10 md:h-10 text-orange-500" />
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">أهلاً بك في خمن تخمينة!</h2>
+                  <p className="text-gray-500 font-bold text-sm md:text-base">يرجى إكمال بياناتك للبدء</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-black text-gray-600 mb-1 text-right">اسم اللاعب</label>
+                    <input 
+                      type="text" 
+                      value={playerName}
+                      onChange={(e) => setPlayerName(e.target.value.slice(0, 15))}
+                      placeholder="ادخل اسمك..."
+                      className="input-game"
+                      maxLength={15}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-black text-gray-600 mb-1 text-right">عمر اللاعب</label>
+                    <input 
+                      type="number" 
+                      value={playerAge}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '') setPlayerAge('');
+                        else {
+                          const num = parseInt(val);
+                          if (!isNaN(num) && num <= 80) setPlayerAge(num);
+                        }
+                      }}
+                      placeholder="ادخل عمرك..."
+                      className="input-game"
+                      max={80}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-black text-gray-600 mb-3 text-right">اختر أفاتار البداية</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {AVATARS.slice(0, 4).map((av, index) => (
+                        <button
+                          key={`welcome-avatar-${av.emoji}-${index}`}
+                          onClick={() => setAvatar(av.emoji)}
+                          className={`w-full aspect-square rounded-xl flex items-center justify-center text-2xl border-2 transition-all ${avatar === av.emoji ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-50 border-gray-200'}`}
+                        >
+                          {av.emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleRegister}
+                  className="w-full btn-game btn-primary py-4 text-xl"
+                >
+                  حفظ البيانات والبدء
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {showDeleteConfirm && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                className="bg-white rounded-[32px] p-8 max-w-sm w-full shadow-2xl border-4 border-red-100 text-center space-y-6"
+              >
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                  <AlertTriangle className="w-10 h-10 text-red-500" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black text-gray-900">هل أنت متأكد؟</h3>
+                  <p className="text-gray-500 font-bold leading-relaxed">
+                    سيتم مسح جميع بياناتك، مستواك، ومرات فوزك نهائياً من النظام. لا يمكن التراجع عن هذا الإجراء.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={handleDeleteAccount}
+                    className="w-full btn-game btn-danger py-4 text-xl"
+                  >
+                    نعم، امسح حسابي
+                  </button>
+                  <button 
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="w-full btn-game btn-secondary py-3 text-lg bg-gray-100 border-gray-200 text-gray-600"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Admin Dashboard */}
         <AnimatePresence>
           {showAdminDashboard && (
             <motion.div
@@ -2338,52 +1887,626 @@ export default function App() {
           )}
         </AnimatePresence>
 
-
-
-        {/* Delete Confirmation Modal */}
+        {/* Report Modal */}
         <AnimatePresence>
-          {showDeleteConfirm && (
+          {showReportModal && opponent && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[999]"
+              onClick={() => setShowReportModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="card-game p-8 w-full max-w-md text-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-3xl font-black text-[#2D3436] mb-8">الإبلاغ عن {opponent.name}</h3>
+                <div className="space-y-4 mb-8">
+                  <button 
+                    onClick={() => handleReportPlayer('محتوى مسيء في الشات')}
+                    className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-4 text-lg"
+                  >
+                    محتوى مسيء في الشات
+                  </button>
+                  <button 
+                    onClick={() => handleReportPlayer('سلوك غير لائق')}
+                    className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-4 text-lg"
+                  >
+                    سلوك غير لائق
+                  </button>
+                  <button 
+                    onClick={() => handleReportPlayer('استخدام الغش')}
+                    className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-4 text-lg"
+                  >
+                    استخدام الغش
+                  </button>
+                </div>
+                <button 
+                  onClick={() => setShowReportModal(false)}
+                  className="text-lg font-black text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  إلغاء
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Level Up Overlay */}
+        <AnimatePresence>
+          {showLevelUp !== null && (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+              onClick={() => setShowLevelUp(null)}
             >
               <motion.div 
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                className="bg-white rounded-[32px] p-8 max-w-sm w-full shadow-2xl border-4 border-red-100 text-center space-y-6"
+                initial={{ scale: 0.5, rotate: -10 }}
+                animate={{ scale: 1, rotate: 0 }}
+                className="card-game p-6 md:p-10 text-center max-w-sm w-full relative overflow-hidden border-4 border-yellow-400 bg-gradient-to-br from-white to-yellow-50"
+                onClick={(e) => e.stopPropagation()}
               >
-                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                  <AlertTriangle className="w-10 h-10 text-red-500" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-black text-gray-900">هل أنت متأكد؟</h3>
-                  <p className="text-gray-500 font-bold leading-relaxed">
-                    سيتم مسح جميع بياناتك، مستواك، ومرات فوزك نهائياً من النظام. لا يمكن التراجع عن هذا الإجراء.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-3">
-                  <button 
-                    onClick={handleDeleteAccount}
-                    className="w-full btn-game btn-danger py-4 text-xl"
+                <div className="absolute top-0 left-0 w-full h-2 bg-yellow-400"></div>
+                <div className="mb-4 md:mb-6 relative">
+                  <div className="w-20 h-20 md:w-24 md:h-24 bg-yellow-400 rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(250,204,21,0.5)] animate-pulse">
+                    <Star className="w-10 h-10 md:w-12 md:h-12 text-white fill-current" />
+                  </div>
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white px-3 md:px-4 py-0.5 md:py-1 rounded-full border-2 border-yellow-400 font-black text-xs md:text-base text-yellow-600 shadow-sm"
                   >
-                    نعم، امسح حسابي
-                  </button>
-                  <button 
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className="w-full btn-game btn-secondary py-3 text-lg bg-gray-100 border-gray-200 text-gray-600"
-                  >
-                    إلغاء
-                  </button>
+                    LEVEL UP!
+                  </motion.div>
                 </div>
+                
+                <h2 className="text-3xl md:text-4xl font-black text-[#2D3436] mb-1 md:mb-2">المستوى {showLevelUp}</h2>
+                <p className="text-sm md:text-base text-gray-500 font-bold mb-6 md:mb-8">لقد ارتقيت لمستوى جديد! استمر في الفوز لفتح المزيد من القدرات.</p>
+                
+                <button 
+                  onClick={() => setShowLevelUp(null)}
+                  className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl shadow-[0_6px_0_#D97706]"
+                >
+                  رائع!
+                </button>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
       </AnimatePresence>
 
-      {/* Floating Controls (Bottom Right) - REMOVED */}
+      {/* Image Cropper Modal */}
+      <AnimatePresence>
+        {showCropper && imageSrc && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[6000] flex flex-col items-center justify-center p-4"
+          >
+            <div className="relative w-full max-w-md aspect-square bg-black rounded-3xl overflow-hidden mb-8 shadow-2xl border-4 border-white/20">
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+
+            <div className="w-full max-w-md space-y-6">
+              <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-sm">
+                <label className="block text-white text-center text-sm font-black mb-3">تكبير / تصغير</label>
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                />
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={handleCropSave}
+                  className="flex-1 btn-game btn-success py-4 text-xl flex items-center justify-center gap-2"
+                >
+                  <Check className="w-6 h-6" />
+                  حفظ الصورة
+                </button>
+                <button
+                  onClick={() => { setShowCropper(false); setImageSrc(null); }}
+                  className="flex-1 btn-game bg-white/10 border-white/20 text-white hover:bg-white/20 py-4 text-xl"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+
+  if (isPermanentBan || (banUntil && banUntil > Date.now())) {
+    const isPermanent = isPermanentBan;
+    const remainingHours = banUntil ? Math.floor((banUntil - Date.now()) / (1000 * 60 * 60)) : 0;
+    const remainingMinutes = banUntil ? Math.floor(((banUntil - Date.now()) % (1000 * 60 * 60)) / (1000 * 60)) : 0;
+    
+    return (
+      <>
+      <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gray-900 overflow-y-auto">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className={`bg-white rounded-[32px] p-8 max-w-md w-full text-center shadow-2xl border-4 ${isPermanent ? 'border-black' : 'border-red-500'}`}
+        >
+          <div className={`w-24 h-24 ${isPermanent ? 'bg-gray-100' : 'bg-red-100'} rounded-full flex items-center justify-center mx-auto mb-6`}>
+            {isPermanent ? <Trash2 className="w-12 h-12 text-black" /> : <Lock className="w-12 h-12 text-red-500" />}
+          </div>
+          <h1 className="text-3xl font-black text-gray-800 mb-4">
+            {isPermanent ? 'تم حظرك نهائياً' : 'تم حظر حسابك'}
+          </h1>
+          <p className="text-gray-600 font-bold mb-6 text-lg">
+            {isPermanent 
+              ? 'لقد تم حظرك من اللعب نهائياً بسبب تكرار المخالفات (5 مرات حظر مؤقت). لا يمكنك اللعب بهذا الحساب مرة أخرى.'
+              : 'لقد تلقيت أكثر من 10 إبلاغات من لاعبين آخرين، لذلك تم منعك من اللعب مؤقتاً لمدة 24 ساعة.'}
+          </p>
+          
+          {!isPermanent ? (
+            <div className="bg-red-50 rounded-2xl p-6 border-2 border-red-100">
+              <p className="text-red-600 font-black text-sm mb-2">الوقت المتبقي لفك الحظر:</p>
+              <div className="text-4xl font-black text-red-500 font-mono" dir="ltr">
+                {remainingHours}h {remainingMinutes}m
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-2xl p-6 border-2 border-gray-100">
+                <p className="text-gray-600 font-black text-sm">
+                  يمكنك مسح هذا الحساب والبدء من جديد بحساب جديد تماماً.
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  const serial = localStorage.getItem('khamin_player_serial');
+                  if (serial && socket) {
+                    socket.emit('delete_account', { playerSerial: serial }, (res: any) => {
+                      if (res.success) {
+                        localStorage.clear();
+                        window.location.reload();
+                      }
+                    });
+                  }
+                }}
+                className="w-full btn-game bg-black text-white py-4 text-xl flex items-center justify-center gap-3 hover:bg-gray-800 transition-all"
+              >
+                <Trash2 className="w-6 h-6" />
+                مسح الحساب والبدء من جديد
+              </button>
+            </div>
+          )}
+        </motion.div>
+        {renderModals()}
+      </div>
+      </>
+    );
+  }
+
+  if (isSearching) {
+    return (
+      <>
+      <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
+          {/* Fixed Header */}
+          <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
+            <div className="flex-1 flex items-center gap-2 md:gap-3">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
+                <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
+              </div>
+              <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
+            </div>
+            
+            <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
+              {/* Home Button (Cancels Search) */}
+              <button 
+                onClick={() => {
+                  setJoined(false); 
+                  setIsSearching(false); 
+                  setProposedMatch(null); 
+                  setHasResponded(false); 
+                  socket?.emit('leave_matchmaking');
+                }}
+                className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
+                title="الرئيسية"
+              >
+                <Home className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+
+              {/* Info Button */}
+              <button 
+                onClick={toggleLevelInfo}
+                className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                title="معلومات المستوى"
+              >
+                <Info className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+
+              {/* Settings Button */}
+              <button 
+                onClick={toggleSettings}
+                className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+                title="الإعدادات"
+              >
+                <Settings className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+
+              {/* Exit Button */}
+              <button 
+                onClick={() => {
+                  if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(err => console.error(err));
+                  } else {
+                    window.close();
+                  }
+                }}
+                className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
+                title="خروج"
+              >
+                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            </div>
+          </header>
+
+        <div className="w-full max-w-md card-game p-6 md:p-12 text-center space-y-4 md:space-y-8 relative overflow-hidden">
+          {proposedMatch ? (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-4 md:space-y-6"
+            >
+              <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">تم العثور على منافس!</h2>
+              <div className="flex flex-col items-center p-4 md:p-6 bg-orange-50 rounded-3xl border-4 border-orange-100 relative">
+                <div className="relative mb-2 md:mb-4">
+                  {proposedMatch.opponent.level && renderStars(proposedMatch.opponent.level)}
+                  <div className={`text-6xl md:text-8xl drop-shadow-md animate-bounce w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center border-4 overflow-hidden ${proposedMatch.opponent.level ? getAvatarStyle(proposedMatch.opponent.level) : 'bg-orange-100 border-orange-300'}`}>
+                    {renderAvatarContent(proposedMatch.opponent.avatar)}
+                  </div>
+                </div>
+                <div className="text-xl md:text-2xl font-black text-[#2D3436] mb-1">{proposedMatch.opponent.name}</div>
+                <div className="text-sm md:text-base font-bold text-gray-500">Level {proposedMatch.opponent.level || 1}</div>
+                {matchResponseTimeLeft !== null && (
+                  <div className="mt-4 text-orange-500 font-bold text-lg flex items-center gap-2">
+                    <Timer className="w-5 h-5" />
+                    <span>{matchResponseTimeLeft} ثانية</span>
+                  </div>
+                )}
+              </div>
+              
+              {!hasResponded ? (
+                <div className="flex gap-3 md:gap-4">
+                  <button 
+                    onClick={() => {
+                      setHasResponded(true);
+                      socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'accept' });
+                    }}
+                    className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl animate-pulse"
+                  >
+                    قبول التحدي! ⚔️
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setHasResponded(true);
+                      socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
+                      setProposedMatch(null);
+                    }}
+                    className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+                  >
+                    رفض
+                  </button>
+                </div>
+              ) : (
+                <div className="text-gray-500 font-bold animate-pulse">
+                  جاري انتظار رد المنافس...
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 bg-blue-400 blur-3xl opacity-20 animate-pulse"></div>
+                <Loader2 className="w-16 h-16 md:w-24 md:h-24 text-blue-500 animate-spin mx-auto relative z-10" />
+              </div>
+              <div className="space-y-2 md:space-y-3 relative z-10">
+                <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">جاري البحث عن منافس...</h2>
+                <p className="text-base md:text-lg text-gray-500 font-bold">يتم البحث عن لاعبين بمستوى قريب منك</p>
+                {searchTimeLeft !== null && (
+                  <div className="flex justify-center items-center gap-2 text-blue-500 font-bold text-lg mt-2">
+                    <Timer className="w-5 h-5" />
+                    <span dir="ltr">{Math.floor(searchTimeLeft / 60)}:{(searchTimeLeft % 60).toString().padStart(2, '0')}</span>
+                  </div>
+                )}
+                <div className="flex flex-col items-center gap-2 mt-2">
+                  <div className="text-sm font-black text-blue-500 bg-blue-50 inline-block px-3 py-1 rounded-full">
+                    عدد المتصلين: {onlineCount}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-4 md:pt-8 relative z-10">
+                <button 
+                  onClick={() => {
+                    setIsSearching(false);
+                    setJoined(false);
+                    socket?.emit('leave_matchmaking');
+                  }}
+                  className="text-gray-400 font-bold hover:text-red-500 transition-colors text-sm md:text-base"
+                >
+                  إلغاء البحث
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {renderModals()}
+      </div>
+      </>
+    );
+  }
+
+  if (!joined) {
+    return (
+      <>
+        {/* Fixed Header */}
+        <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
+          <div className="flex-1 flex items-center gap-2 md:gap-3">
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
+              <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
+            </div>
+            <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
+          </div>
+          
+          <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
+            {/* Info Button */}
+            <button 
+              onClick={toggleLevelInfo}
+              className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+              title="معلومات المستوى"
+            >
+              <Info className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+
+            {/* Settings Button */}
+            <button 
+              onClick={toggleSettings}
+              className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+              title="الإعدادات"
+            >
+              <Settings className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+
+            {/* Exit Button */}
+            <button 
+              onClick={() => {
+                if (document.fullscreenElement) {
+                  document.exitFullscreen().catch(err => console.error(err));
+                } else {
+                  window.close();
+                }
+              }}
+              className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
+              title="خروج"
+            >
+              <LogOut className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+          </div>
+        </header>
+
+        <div className="min-h-screen w-full flex items-center justify-center p-4 pt-24">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md py-8"
+        >
+
+          {/* Profile Card */}
+          <div className="flex items-center gap-3 md:gap-4 bg-white/90 backdrop-blur-sm p-3 md:p-4 rounded-3xl shadow-md border-2 border-white/50 flex-row-reverse mb-6 md:mb-10 w-full">
+              <div className="relative shrink-0">
+                {renderStars(getLevel(xp))}
+                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl md:text-4xl border-4 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
+                  {renderAvatarContent(avatar)}
+                </div>
+              </div>
+              <div className="flex flex-col justify-center flex-1 min-w-0">
+                <div className="flex justify-between items-center mb-1 flex-row-reverse">
+                  <div className="text-sm md:text-base font-black text-[#2D3436] truncate text-right">{playerName || 'لاعب جديد'}</div>
+                  <span className="text-xs md:text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">Level {getLevel(xp)}</span>
+                </div>
+                
+                {/* Level Bar */}
+                <div className="w-full bg-gray-200 rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
+                  <div 
+                    className="bg-gradient-to-r from-blue-400 to-blue-600 h-full rounded-full transition-all duration-500" 
+                    style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
+                  ></div>
+                </div>
+                
+                {/* XP Bar */}
+                <div className="w-full bg-gray-100 rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
+                  <div 
+                    className="bg-gradient-to-r from-orange-400 to-orange-500 h-full transition-all duration-500" 
+                    style={{ width: `${(xp / getXpForNextLevel(getLevel(xp))) * 100}%` }}
+                  ></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[10px] md:text-xs font-black text-orange-900 drop-shadow-sm flex items-center gap-1">
+                      <Zap className="w-3 h-3" />
+                      {xp} / {getXpForNextLevel(getLevel(xp))} XP
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          <div className="card-game p-6 md:p-10">
+
+          <div className="space-y-4 md:space-y-10">
+            {/* Top Players Section */}
+            <div className="flex flex-col gap-4">
+              {/* Header Box */}
+              <div className="px-2">
+                <div className="flex items-center justify-between flex-row-reverse">
+                  <h2 className="text-lg md:text-xl font-black text-[#2D3436] flex items-center gap-2">
+                    أبطال التخمين
+                  </h2>
+                  <span className="text-xs md:text-sm font-bold text-orange-500">المتصدرون حالياً</span>
+                </div>
+              </div>
+
+              {/* Separator */}
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-gray-200 dashed"></div></div>
+              </div>
+
+              {/* Podium Box */}
+              <div className="bg-gray-50/30 rounded-[40px] border-2 border-gray-100/50 p-4 md:p-6 pt-12 md:pt-16 mt-8 md:mt-12">
+                <div className="flex items-end justify-center gap-2 md:gap-4">
+                  {/* Rank 2 */}
+                  {topPlayers[1] && (
+                    <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1 z-10">
+                      <div className="relative mb-2 flex flex-col items-center">
+                        {renderStars(topPlayers[1].level)}
+                        <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl border-4 bg-white ${getAvatarStyle(topPlayers[1].level)}`}>
+                          {renderAvatarContent(topPlayers[1].avatar)}
+                        </div>
+                        <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">2</div>
+                      </div>
+                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[1].name}</div>
+                      <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
+                        <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          Lvl {topPlayers[1].level}
+                        </div>
+                        <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Trophy className="w-2.5 h-2.5" />
+                          {topPlayers[1].wins || 0} فوز
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 border-gray-300"></div>
+                    </div>
+                  )}
+
+                  {/* Rank 1 */}
+                  {topPlayers[0] && (
+                    <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1 z-20 -mt-8 md:-mt-12">
+                      <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
+                        <Crown className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-30" />
+                        {renderStars(topPlayers[0].level)}
+                        <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl border-4 bg-white ${getAvatarStyle(topPlayers[0].level)}`}>
+                          {renderAvatarContent(topPlayers[0].avatar)}
+                        </div>
+                        <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-30 animate-bounce">1</div>
+                      </div>
+                      <div className="text-xs md:text-sm font-black text-[#2D3436] truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{topPlayers[0].name}</div>
+                      <div className="flex flex-col items-center gap-1 mt-1 mb-1">
+                        <div className="text-[10px] font-bold text-gray-500 bg-yellow-100 px-3 py-1 rounded-full">
+                          Lvl {topPlayers[0].level}
+                        </div>
+                        <div className="text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full flex items-center gap-1">
+                          <Trophy className="w-3 h-3" />
+                          {topPlayers[0].wins || 0} فوز
+                        </div>
+                      </div>
+                      <div className="w-full bg-gradient-to-b from-yellow-100 to-yellow-50 h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 border-yellow-300"></div>
+                    </div>
+                  )}
+
+                  {/* Rank 3 */}
+                  {topPlayers[2] && (
+                    <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1 z-10">
+                      <div className="relative mb-2 flex flex-col items-center">
+                        {renderStars(topPlayers[2].level)}
+                        <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl border-4 bg-white ${getAvatarStyle(topPlayers[2].level)}`}>
+                          {renderAvatarContent(topPlayers[2].avatar)}
+                        </div>
+                        <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">3</div>
+                      </div>
+                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[2].name}</div>
+                      <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
+                        <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          Lvl {topPlayers[2].level}
+                        </div>
+                        <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Trophy className="w-2.5 h-2.5" />
+                          {topPlayers[2].wins || 0} فوز
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 border-gray-300"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 md:pt-6 border-t-2 border-gray-100 space-y-3 md:space-y-4">
+              <div>
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="bg-red-100 border-2 border-red-200 p-2 md:p-4 mb-2 md:mb-4 text-red-600 text-xs md:text-sm font-black rounded-2xl text-center shadow-sm"
+                  >
+                    {error}
+                  </motion.div>
+                )}
+                <label className="block text-base md:text-lg font-black text-[#2D3436] mb-1 md:mb-2 px-1">دخول بكود غرفة</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={roomId}
+                    onChange={(e) => setRoomId(e.target.value)}
+                    placeholder="كود الغرفة..."
+                    className="input-game flex-1 py-2 md:py-4"
+                    maxLength={6}
+                  />
+                  <button 
+                    onClick={handleJoin}
+                    className="btn-game btn-secondary px-4 md:px-6 py-2 md:py-3 text-base md:text-lg"
+                  >
+                    دخول
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative py-1 md:py-2">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-gray-200 dashed"></div></div>
+                <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-white px-3 text-gray-400 font-black">أو</span></div>
+              </div>
+
+              <button 
+                onClick={handleRandomMatch}
+                className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3"
+              >
+                <Users className="w-5 h-5 md:w-6 md:h-6" />
+                بحث عن منافس عشوائي
+              </button>
+            </div>
+          </div>
+        </div>
+        </motion.div>
+      </div>
+
+      {renderModals()}
       </>
     );
   }
@@ -2612,7 +2735,7 @@ export default function App() {
                       </div>
                     ) : (
                       chatHistory.map((msg, index) => (
-                        <div key={`waiting-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-end' : 'justify-start'}`}>
+                        <div key={`waiting-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
                           <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                             <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
                               {msg.playerName}
@@ -2807,12 +2930,12 @@ export default function App() {
                       </div>
                     ) : (
                       chatHistory.map((msg, index) => (
-                        <div key={`game-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-end' : 'justify-start'}`}>
+                        <div key={`game-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
                           <div className={`max-w-[85%] p-1.5 px-2.5 rounded-xl text-xs font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
-                            <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600' : 'text-blue-600'}`}>
+                            <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
                               {msg.playerName}
                             </div>
-                            <div className="leading-tight">{msg.text}</div>
+                            <div className={`leading-tight ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
                           </div>
                         </div>
                       ))
@@ -3119,98 +3242,7 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Report Modal */}
-      <AnimatePresence>
-        {showReportModal && opponent && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[999]"
-            onClick={() => setShowReportModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="card-game p-8 w-full max-w-md text-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-3xl font-black text-[#2D3436] mb-8">الإبلاغ عن {opponent.name}</h3>
-              <div className="space-y-4 mb-8">
-                <button 
-                  onClick={() => handleReportPlayer('محتوى مسيء في الشات')}
-                  className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-4 text-lg"
-                >
-                  محتوى مسيء في الشات
-                </button>
-                <button 
-                  onClick={() => handleReportPlayer('سلوك غير لائق')}
-                  className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-4 text-lg"
-                >
-                  سلوك غير لائق
-                </button>
-                <button 
-                  onClick={() => handleReportPlayer('استخدام الغش')}
-                  className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-4 text-lg"
-                >
-                  استخدام الغش
-                </button>
-              </div>
-              <button 
-                onClick={() => setShowReportModal(false)}
-                className="text-lg font-black text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                إلغاء
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Level Up Overlay */}
-      <AnimatePresence>
-        {showLevelUp !== null && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
-            onClick={() => setShowLevelUp(null)}
-          >
-            <motion.div 
-              initial={{ scale: 0.5, rotate: -10 }}
-              animate={{ scale: 1, rotate: 0 }}
-              className="card-game p-6 md:p-10 text-center max-w-sm w-full relative overflow-hidden border-4 border-yellow-400 bg-gradient-to-br from-white to-yellow-50"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="absolute top-0 left-0 w-full h-2 bg-yellow-400"></div>
-              <div className="mb-4 md:mb-6 relative">
-                <div className="w-20 h-20 md:w-24 md:h-24 bg-yellow-400 rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(250,204,21,0.5)] animate-pulse">
-                  <Star className="w-10 h-10 md:w-12 md:h-12 text-white fill-current" />
-                </div>
-                <motion.div 
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white px-3 md:px-4 py-0.5 md:py-1 rounded-full border-2 border-yellow-400 font-black text-xs md:text-base text-yellow-600 shadow-sm"
-                >
-                  LEVEL UP!
-                </motion.div>
-              </div>
-              
-              <h2 className="text-3xl md:text-4xl font-black text-[#2D3436] mb-1 md:mb-2">المستوى {showLevelUp}</h2>
-              <p className="text-sm md:text-base text-gray-500 font-bold mb-6 md:mb-8">لقد ارتقيت لمستوى جديد! استمر في الفوز لفتح المزيد من القدرات.</p>
-              
-              <button 
-                onClick={() => setShowLevelUp(null)}
-                className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl shadow-[0_6px_0_#D97706]"
-              >
-                رائع!
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* Connection Status Indicator */}
       <AnimatePresence>
@@ -3243,6 +3275,7 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      {renderModals()}
     </div>
   );
 }
