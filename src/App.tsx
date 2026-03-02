@@ -566,7 +566,8 @@ export default function App() {
         socket.emit('admin_set_admin_status', { 
           serial: playerSerial, 
           isAdmin: true, 
-          email: userData.email 
+          email: userData.email,
+          adminToken: userData.adminToken
         }, (res: any) => {
           console.log('Admin status set response:', res);
           if (res.success) {
