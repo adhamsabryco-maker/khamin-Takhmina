@@ -132,7 +132,17 @@ const app = express();
 
       res.send(`
         <html>
+          <head>
+            <title>Google Auth Success</title>
+            <style>
+              body { font-family: sans-serif; text-align: center; padding: 50px; }
+              .success { color: green; font-size: 20px; margin-bottom: 20px; }
+              button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+            </style>
+          </head>
           <body>
+            <div class="success">تم تسجيل الدخول بنجاح!</div>
+            <p>يتم الآن إغلاق هذه النافذة والعودة للعبة...</p>
             <script>
               const user = ${userPayload};
               
@@ -159,15 +169,19 @@ const app = express();
                 console.error('localStorage failed', e);
               }
 
-              // Close after a short delay to ensure messages are sent
+              // Close window after a short delay
               setTimeout(() => {
-                window.close();
-              }, 500);
+                if (window.opener) {
+                  window.close();
+                } else {
+                  // If not a popup, redirect to home
+                  window.location.href = '/';
+                }
+              }, 1500);
             </script>
-            <div style="font-family: sans-serif; text-align: center; padding: 20px;">
-              <h2>تم تسجيل الدخول بنجاح</h2>
-              <p>جاري إغلاق النافذة...</p>
-            </div>
+            <button onclick="window.close()">إغلاق النافذة</button>
+            <br><br>
+            <a href="/">العودة للرئيسية</a>
           </body>
         </html>
       `);
