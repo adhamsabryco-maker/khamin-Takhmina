@@ -1380,56 +1380,57 @@ export default function App() {
   if (!joined) {
     return (
       <>
+        {/* Fixed Header */}
+        <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
+          <div className="flex-1 flex items-center gap-2 md:gap-3">
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
+              <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
+            </div>
+            <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
+          </div>
+          
+          <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
+            {/* Info Button */}
+            <button 
+              onClick={toggleLevelInfo}
+              className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+              title="معلومات المستوى"
+            >
+              <Info className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+
+            {/* Settings Button */}
+            <button 
+              onClick={toggleSettings}
+              className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+              title="الإعدادات"
+            >
+              <Settings className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+
+            {/* Exit Button */}
+            <button 
+              onClick={() => {
+                if (document.fullscreenElement) {
+                  document.exitFullscreen().catch(err => console.error(err));
+                } else {
+                  window.close();
+                }
+              }}
+              className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
+              title="خروج"
+            >
+              <LogOut className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+          </div>
+        </header>
+
         <div className="min-h-screen w-full flex items-center justify-center p-4 pt-24">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md py-8"
         >
-          {/* Fixed Header */}
-          <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
-            <div className="flex-1 flex items-center gap-2 md:gap-3">
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
-                <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
-              </div>
-              <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
-            </div>
-            
-            <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
-              {/* Info Button */}
-              <button 
-                onClick={toggleLevelInfo}
-                className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
-                title="معلومات المستوى"
-              >
-                <Info className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-
-              {/* Settings Button */}
-              <button 
-                onClick={toggleSettings}
-                className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
-                title="الإعدادات"
-              >
-                <Settings className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-
-              {/* Exit Button */}
-              <button 
-                onClick={() => {
-                  if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(err => console.error(err));
-                  } else {
-                    window.close();
-                  }
-                }}
-                className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
-                title="خروج"
-              >
-                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-            </div>
-          </header>
 
           {/* Profile Card */}
           <div className="flex items-center gap-3 md:gap-4 bg-white/90 backdrop-blur-sm p-3 md:p-4 rounded-3xl shadow-md border-2 border-white/50 flex-row-reverse mb-6 md:mb-10 w-full">
