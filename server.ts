@@ -1456,7 +1456,7 @@ const app = express();
       if (room.timer <= 0) {
         if (room.gameState === "discussion") {
           room.gameState = "guessing";
-          room.timer = 30;
+          room.timer = 60;
           io.to(roomId).emit("room_update", room);
         } else {
           if (intervals.has(roomId)) {
