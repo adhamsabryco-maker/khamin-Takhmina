@@ -373,6 +373,7 @@ export default function App() {
   const [onlineCount, setOnlineCount] = useState(0);
   const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, age: number, level?: number } } | null>(null);
   const [hasResponded, setHasResponded] = useState(false);
+  const [matchResponseTimeLeft, setMatchResponseTimeLeft] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [showLevelInfo, setShowLevelInfo] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -413,6 +414,24 @@ export default function App() {
       }
     };
   }, [isSearching, proposedMatch, socket]);
+
+  // Match response timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (proposedMatch && matchResponseTimeLeft !== null && matchResponseTimeLeft > 0) {
+      interval = setInterval(() => {
+        setMatchResponseTimeLeft(prev => prev !== null ? prev - 1 : null);
+      }, 1000);
+    } else if (matchResponseTimeLeft === 0 && !hasResponded) {
+      setHasResponded(true);
+      socket?.emit('respond_to_match', { matchId: proposedMatch?.matchId, response: 'reject' });
+      setProposedMatch(null);
+      setJoined(false);
+      setIsSearching(false);
+      setMatchResponseTimeLeft(null);
+    }
+    return () => clearInterval(interval);
+  }, [proposedMatch, matchResponseTimeLeft, hasResponded, socket]);
 
   // Global Fullscreen trigger on first interaction
   useEffect(() => {
@@ -791,11 +810,13 @@ export default function App() {
     newSocket.on('match_proposed', (data) => {
       setProposedMatch(data);
       setHasResponded(false);
+      setMatchResponseTimeLeft(10);
     });
 
     newSocket.on('match_rejected', () => {
       setProposedMatch(null);
       setHasResponded(false);
+      setMatchResponseTimeLeft(null);
     });
 
     newSocket.on('random_match_found', ({ roomId }) => {
@@ -804,6 +825,7 @@ export default function App() {
       setJoined(true);
       setProposedMatch(null);
       setHasResponded(false);
+      setMatchResponseTimeLeft(null);
     });
 
     newSocket.on('game_started', () => {
@@ -1266,6 +1288,12 @@ export default function App() {
                 </div>
                 <div className="text-xl md:text-2xl font-black text-[#2D3436] mb-1">{proposedMatch.opponent.name}</div>
                 <div className="text-sm md:text-base font-bold text-gray-500">Level {proposedMatch.opponent.level || 1}</div>
+                {matchResponseTimeLeft !== null && (
+                  <div className="mt-4 text-orange-500 font-bold text-lg flex items-center gap-2">
+                    <Timer className="w-5 h-5" />
+                    <span>{matchResponseTimeLeft} ثانية</span>
+                  </div>
+                )}
               </div>
               
               {!hasResponded ? (
