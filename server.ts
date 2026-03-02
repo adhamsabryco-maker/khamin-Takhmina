@@ -69,15 +69,28 @@ const app = express();
     next();
   });
 
+  app.use(express.json({ limit: '50mb' }));
+
   // Google OAuth Routes (Moved to top)
   const getRedirectUri = (req: express.Request) => {
+    // 1. Priority: Explicit APP_URL from environment (Best for Railway/Production)
+    if (process.env.APP_URL) {
+      // Remove trailing slash if present
+      const baseUrl = process.env.APP_URL.replace(/\/$/, '');
+      return `${baseUrl}/api/auth/google/callback`;
+    }
+
+    // 2. Fallback: Dynamic detection from headers
     const protoHeader = req.headers['x-forwarded-proto'];
     const hostHeader = req.headers['x-forwarded-host'];
     
     const protocol = Array.isArray(protoHeader) ? protoHeader[0] : (protoHeader || req.protocol);
     const host = Array.isArray(hostHeader) ? hostHeader[0] : (hostHeader || req.get('host'));
     
-    return `${protocol}://${host}/api/auth/google/callback`;
+    // Force https in production if not detected
+    const finalProtocol = process.env.NODE_ENV === 'production' ? 'https' : protocol;
+    
+    return `${finalProtocol}://${host}/api/auth/google/callback`;
   };
 
   app.get("/api/auth/test", (req, res) => {
@@ -275,6 +288,17 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN isAdmin INTEGER DEFAULT 0`); } catch (e) {}
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS custom_images (
+      id TEXT PRIMARY KEY,
+      category TEXT,
+      name TEXT,
+      data TEXT,
+      addedBy TEXT,
+      timestamp INTEGER
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS reports (
       id TEXT PRIMARY KEY,
       timestamp INTEGER,
@@ -375,6 +399,42 @@ const app = express();
 
   app.get("/api/admin/players", (req, res) => {
     res.json(Array.from(allPlayers.values()));
+  });
+
+  app.get("/api/admin/images", (req, res) => {
+    try {
+      const images = db.prepare('SELECT id, category, name, timestamp, addedBy FROM custom_images ORDER BY timestamp DESC').all();
+      res.json(images);
+    } catch (error) {
+      console.error("Error fetching images:", error);
+      res.status(500).json({ error: "Failed to fetch images" });
+    }
+  });
+
+  app.post("/api/admin/images", (req, res) => {
+    try {
+      const { category, name, data, addedBy } = req.body;
+      if (!category || !name || !data) {
+        return res.status(400).json({ error: "Missing fields" });
+      }
+      const id = Math.random().toString(36).substring(2, 15);
+      db.prepare('INSERT INTO custom_images (id, category, name, data, addedBy, timestamp) VALUES (?, ?, ?, ?, ?, ?)').run(id, category, name, data, addedBy || 'admin', Date.now());
+      res.json({ success: true, id });
+    } catch (error) {
+      console.error("Error adding image:", error);
+      res.status(500).json({ error: "Failed to add image" });
+    }
+  });
+
+  app.delete("/api/admin/images/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      db.prepare('DELETE FROM custom_images WHERE id = ?').run(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      res.status(500).json({ error: "Failed to delete image" });
+    }
   });
 
   function isBlocked(id1: string, id2: string) {
@@ -1390,11 +1450,22 @@ const app = express();
     intervals.set(roomId, interval);
   }
 
+  function getCategoryImages(category: string) {
+    const staticImages = CATEGORIES[category as keyof typeof CATEGORIES] || [];
+    try {
+      const customImages = db.prepare('SELECT name, data as image FROM custom_images WHERE category = ?').all(category);
+      return [...staticImages, ...customImages];
+    } catch (err) {
+      console.error("Error fetching custom images:", err);
+      return staticImages;
+    }
+  }
+
   function startGame(roomId: string) {
     const room = rooms.get(roomId);
     if (!room) return;
 
-    const categoryImages = CATEGORIES[room.category as keyof typeof CATEGORIES];
+    const categoryImages = getCategoryImages(room.category);
     const shuffled = [...categoryImages].sort(() => 0.5 - Math.random());
     
     room.players[0].targetImage = shuffled[0];
