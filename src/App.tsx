@@ -38,7 +38,7 @@ import {
   RefreshCw,
   Smile,
   LogOut,
-  Download
+  Loader2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import Cropper from 'react-easy-crop';
@@ -174,6 +174,19 @@ export default function App() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  
+  // Sound Settings
+  const [sfxVolume, setSfxVolume] = useState(() => parseFloat(localStorage.getItem('khamin_sfx_volume') || '1'));
+  const [musicVolume, setMusicVolume] = useState(() => parseFloat(localStorage.getItem('khamin_music_volume') || '0.5'));
+
+
+  useEffect(() => {
+    localStorage.setItem('khamin_sfx_volume', sfxVolume.toString());
+  }, [sfxVolume]);
+
+  useEffect(() => {
+    localStorage.setItem('khamin_music_volume', musicVolume.toString());
+  }, [musicVolume]);
 
   const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -385,14 +398,6 @@ export default function App() {
   useEffect(() => {
     // Only start timer if searching AND timer isn't already running (or was paused)
     if (isSearching && !proposedMatch) {
-      // If we just started searching (timer at 60), or if we are resuming search
-      // We should NOT reset to 60 if we are just coming back from a proposed match rejection
-      // BUT, the current logic resets it every time `proposedMatch` becomes null.
-      
-      // To fix this, we need to track if the timer is "active" separately, or just not reset it here.
-      // However, `useEffect` runs when dependencies change.
-      // If we remove `setSearchTimeLeft(60)` from here, we need to set it when STARTING search.
-      
       if (!searchIntervalRef.current) {
          searchIntervalRef.current = setInterval(() => {
           setSearchTimeLeft(prev => {
@@ -435,16 +440,16 @@ export default function App() {
         setMatchResponseTimeLeft((prev) => {
           if (prev <= 1) {
             if (interval) clearInterval(interval);
-            // Auto-reject if not responded or just clear if already accepted
+            // Auto-reject if not responded
             if (!hasResponded) {
               socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
+              setProposedMatch(null);
+              setHasResponded(false);
+              // Return to home page
+              setJoined(false);
+              setIsSearching(false);
             }
-            setProposedMatch(null);
-            setHasResponded(false);
-            // Return to home page
-            setJoined(false);
-            setIsSearching(false);
-            return 30;
+            return 0;
           }
           return prev - 1;
         });
@@ -454,16 +459,6 @@ export default function App() {
       if (interval) clearInterval(interval);
     };
   }, [proposedMatch, hasResponded, socket]);
-
-  // Reset timer ONLY when starting a fresh search
-  useEffect(() => {
-    if (isSearching) {
-       // We only want to reset if this is a NEW search session.
-       // But how do we distinguish "new search" from "returning from rejection"?
-       // We can check if searchTimeLeft is 0 or 60? No.
-       // Let's move the reset to the `handleRandomMatch` function.
-    }
-  }, [isSearching]);
 
   // Global Fullscreen trigger on first interaction
   useEffect(() => {
@@ -518,10 +513,11 @@ export default function App() {
   const playSound = useCallback((key: keyof typeof SOUNDS) => {
     const sound = audioRef.current[key];
     if (sound) {
+      sound.volume = sfxVolume;
       sound.currentTime = 0;
       sound.play().catch(() => {});
     }
-  }, []);
+  }, [sfxVolume]);
 
   const clearPlayerData = () => {
     localStorage.removeItem('khamin_player_serial');
@@ -1239,78 +1235,259 @@ export default function App() {
     );
   }
 
+  if (isSearching) {
+    return (
+      <>
+      <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
+          {/* Fixed Header */}
+          <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md p-3 md:p-4 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-16 md:h-20">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
+                <Brain className="w-6 h-6 md:w-7 md:h-7 text-white" />
+              </div>
+              <div className="font-black text-xl md:text-2xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden md:block">خمن تخمينة</div>
+            </div>
+            
+            <div className="flex items-center gap-2 md:gap-3">
+              {/* Home Button (Cancels Search) */}
+              <button 
+                onClick={() => {
+                  setJoined(false); 
+                  setIsSearching(false); 
+                  setProposedMatch(null); 
+                  setHasResponded(false); 
+                  socket?.emit('leave_matchmaking');
+                }}
+                className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
+                title="الرئيسية"
+              >
+                <Home className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+
+              {/* Info Button */}
+              <button 
+                onClick={() => setShowLevelInfo(true)}
+                className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                title="معلومات المستوى"
+              >
+                <Info className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+
+              {/* Settings Button */}
+              <button 
+                onClick={() => setShowSettingsModal(true)}
+                className="w-10 h-10 md:w-12 md:h-12 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+                title="الإعدادات"
+              >
+                <Settings className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+
+              {/* Exit Button */}
+              <button 
+                onClick={() => {
+                  if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(err => console.error(err));
+                  } else {
+                    window.close();
+                  }
+                }}
+                className="w-10 h-10 md:w-12 md:h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
+                title="خروج"
+              >
+                <LogOut className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+            </div>
+          </header>
+
+        <div className="w-full max-w-md card-game p-6 md:p-12 text-center space-y-4 md:space-y-8 relative overflow-hidden">
+          {proposedMatch ? (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-4 md:space-y-6"
+            >
+              <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">تم العثور على منافس!</h2>
+              <div className="flex flex-col items-center p-4 md:p-6 bg-orange-50 rounded-3xl border-4 border-orange-100 relative">
+                <div className="relative mb-2 md:mb-4">
+                  {proposedMatch.opponent.level && renderStars(proposedMatch.opponent.level)}
+                  <div className={`text-6xl md:text-8xl drop-shadow-md animate-bounce w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center border-4 overflow-hidden ${proposedMatch.opponent.level ? getAvatarStyle(proposedMatch.opponent.level) : 'bg-orange-100 border-orange-300'}`}>
+                    {renderAvatarContent(proposedMatch.opponent.avatar)}
+                  </div>
+                </div>
+                <div className="text-xl md:text-2xl font-black text-[#2D3436] mb-1">{proposedMatch.opponent.name}</div>
+                <div className="text-sm md:text-base font-bold text-gray-500">Level {proposedMatch.opponent.level || 1}</div>
+              </div>
+              
+              {!hasResponded ? (
+                <div className="flex flex-col gap-3 md:gap-4">
+                  <div className="flex gap-3 md:gap-4">
+                    <button 
+                      onClick={() => {
+                        setHasResponded(true);
+                        socket?.emit('accept_match', proposedMatch.matchId);
+                      }}
+                      className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl animate-pulse"
+                    >
+                      قبول التحدي! ⚔️
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setHasResponded(true);
+                        socket?.emit('reject_match', proposedMatch.matchId);
+                        setProposedMatch(null);
+                        setJoined(false);
+                        setIsSearching(false);
+                      }}
+                      className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+                    >
+                      رفض
+                    </button>
+                  </div>
+                  <div className="text-sm font-black text-gray-500">
+                    الوقت المتبقي للرد: {matchResponseTimeLeft} ثانية
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="text-gray-500 font-bold animate-pulse">
+                    جاري انتظار رد المنافس...
+                  </div>
+                  <div className="text-sm font-black text-gray-400">
+                    الوقت المتبقي: {matchResponseTimeLeft} ثانية
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 bg-blue-400 blur-3xl opacity-20 animate-pulse"></div>
+                <Loader2 className="w-16 h-16 md:w-24 md:h-24 text-blue-500 animate-spin mx-auto relative z-10" />
+              </div>
+              <div className="space-y-2 md:space-y-3 relative z-10">
+                <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">جاري البحث عن منافس...</h2>
+                <p className="text-base md:text-lg text-gray-500 font-bold">يتم البحث عن لاعبين بمستوى قريب منك</p>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="text-sm font-black text-blue-500 bg-blue-50 inline-block px-3 py-1 rounded-full">
+                    عدد المتصلين: {onlineCount}
+                  </div>
+                  <div className="text-sm font-black text-gray-500 bg-gray-50 inline-block px-3 py-1 rounded-full">
+                    الوقت المتبقي: {searchTimeLeft} ثانية
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-4 md:pt-8 relative z-10">
+                <button 
+                  onClick={() => {
+                    setIsSearching(false);
+                    setJoined(false);
+                    socket?.emit('leave_matchmaking');
+                  }}
+                  className="text-gray-400 font-bold hover:text-red-500 transition-colors text-sm md:text-base"
+                >
+                  إلغاء البحث
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      </>
+    );
+  }
+
   if (!joined) {
     return (
       <>
-        <div className="min-h-screen w-full flex items-center justify-center p-4">
+        <div className="min-h-screen w-full flex items-center justify-center p-4 pt-24">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md py-8"
         >
-          {/* Top Header */}
-          <div className="flex justify-between items-start mb-6 md:mb-10">
-            {/* Right: Logo & Name */}
-            <div className="flex items-center gap-3 bg-white/90 backdrop-blur-sm px-4 py-2 md:py-3 rounded-full shadow-md border-2 border-white/50">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
-                <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
+          {/* Fixed Header */}
+          <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md p-3 md:p-4 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-16 md:h-20">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
+                <Brain className="w-6 h-6 md:w-7 md:h-7 text-white" />
               </div>
-              <div className="text-right">
-                <h1 className="text-lg md:text-xl font-black text-[#FF6B6B] drop-shadow-sm leading-none">خمن تخمينة</h1>
-              </div>
+              <div className="font-black text-xl md:text-2xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden md:block">خمن تخمينة</div>
             </div>
+            
+            <div className="flex items-center gap-2 md:gap-3">
+              {/* Info Button */}
+              <button 
+                onClick={() => setShowLevelInfo(true)}
+                className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                title="معلومات المستوى"
+              >
+                <Info className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
 
-            {/* Left: RPG Style Avatar & Level Bar */}
-            <div className="flex items-center gap-3 md:gap-4 bg-white/90 backdrop-blur-sm p-2 md:p-3 pr-4 md:pr-6 rounded-full shadow-md border-2 border-white/50 flex-row-reverse">
+              {/* Settings Button */}
+              <button 
+                onClick={() => setShowSettingsModal(true)}
+                className="w-10 h-10 md:w-12 md:h-12 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+                title="الإعدادات"
+              >
+                <Settings className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+
+              {/* Exit Button */}
+              <button 
+                onClick={() => {
+                  if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(err => console.error(err));
+                  } else {
+                    window.close();
+                  }
+                }}
+                className="w-10 h-10 md:w-12 md:h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
+                title="خروج"
+              >
+                <LogOut className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+            </div>
+          </header>
+
+          {/* Profile Card */}
+          <div className="flex items-center gap-3 md:gap-4 bg-white/90 backdrop-blur-sm p-3 md:p-4 rounded-3xl shadow-md border-2 border-white/50 flex-row-reverse mb-6 md:mb-10 w-full">
               <div className="relative shrink-0">
                 {renderStars(getLevel(xp))}
-                <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl md:text-3xl border-4 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
+                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl md:text-4xl border-4 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
                   {renderAvatarContent(avatar)}
                 </div>
               </div>
-              <div className="flex flex-col justify-center min-w-[100px] md:min-w-[140px]">
-                <div className="text-xs md:text-sm font-black text-[#2D3436] mb-1 truncate text-right">{playerName || 'لاعب جديد'}</div>
-                <div className="flex justify-between items-center mb-1 md:mb-2 flex-row-reverse">
-                  <span className="text-[10px] md:text-xs font-black text-gray-600">Level {getLevel(xp)}</span>
-                  <div className="flex gap-2">
-                    <button 
-                      type="button" 
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSettingsModal(true); }} 
-                      className="text-gray-400 hover:text-purple-500 transition-colors relative z-[100] cursor-pointer p-1 -m-1"
-                    >
-                      <Settings className="w-4 md:w-5 h-4 md:h-5" />
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLevelInfo(true); }} 
-                      className="text-gray-400 hover:text-[#FF6B6B] transition-colors relative z-[100] cursor-pointer p-1 -m-1"
-                    >
-                      <Info className="w-4 md:w-5 h-4 md:h-5" />
-                    </button>
-                  </div>
+              <div className="flex flex-col justify-center flex-1 min-w-0">
+                <div className="flex justify-between items-center mb-1 flex-row-reverse">
+                  <div className="text-sm md:text-base font-black text-[#2D3436] truncate text-right">{playerName || 'لاعب جديد'}</div>
+                  <span className="text-xs md:text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">Level {getLevel(xp)}</span>
                 </div>
+                
                 {/* Level Bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-1 md:mb-2" dir="ltr">
+                <div className="w-full bg-gray-200 rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
                   <div 
                     className="bg-gradient-to-r from-blue-400 to-blue-600 h-full rounded-full transition-all duration-500" 
                     style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
                   ></div>
                 </div>
+                
                 {/* XP Bar */}
-                <div className="w-full bg-gray-100 rounded-full h-4 md:h-5 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
+                <div className="w-full bg-gray-100 rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
                   <div 
                     className="bg-gradient-to-r from-orange-400 to-orange-500 h-full transition-all duration-500" 
                     style={{ width: `${(xp / getXpForNextLevel(getLevel(xp))) * 100}%` }}
                   ></div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[8px] md:text-[10px] font-black text-orange-900 drop-shadow-sm">
+                    <span className="text-[10px] md:text-xs font-black text-orange-900 drop-shadow-sm flex items-center gap-1">
+                      <Zap className="w-3 h-3" />
                       {xp} / {getXpForNextLevel(getLevel(xp))} XP
                     </span>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
           <div className="card-game p-6 md:p-10">
 
@@ -1453,29 +1630,9 @@ export default function App() {
                 <Users className="w-5 h-5 md:w-6 md:h-6" />
                 بحث عن منافس عشوائي
               </button>
-
-              {deferredPrompt && (
-                <button 
-                  onClick={() => {
-                    deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then((choiceResult: any) => {
-                      if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted the install prompt');
-                      } else {
-                        console.log('User dismissed the install prompt');
-                      }
-                      setDeferredPrompt(null);
-                    });
-                  }}
-                  className="w-full btn-game py-4 text-xl gap-3 bg-gradient-to-r from-green-400 to-emerald-500 text-white hover:from-green-500 hover:to-emerald-600 shadow-lg shadow-green-200"
-                >
-                  <Download className="w-6 h-6" />
-                  تحميل اللعبة
-                </button>
-              )}
             </div>
           </div>
-          </div>
+        </div>
 
           {/* Level Info Modal */}
           <AnimatePresence>
@@ -1681,9 +1838,10 @@ export default function App() {
                   <input 
                     type="text" 
                     value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
+                    onChange={(e) => setPlayerName(e.target.value.slice(0, 15))}
                     placeholder="ادخل اسمك..."
                     className="input-game"
+                    maxLength={15}
                   />
                 </div>
                 <div>
@@ -1691,9 +1849,17 @@ export default function App() {
                   <input 
                     type="number" 
                     value={playerAge}
-                    onChange={(e) => setPlayerAge(parseInt(e.target.value) || '')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') setPlayerAge('');
+                      else {
+                        const num = parseInt(val);
+                        if (!isNaN(num) && num <= 80) setPlayerAge(num);
+                      }
+                    }}
                     placeholder="ادخل عمرك..."
                     className="input-game"
+                    max={80}
                   />
                 </div>
                 <div>
@@ -1783,8 +1949,9 @@ export default function App() {
                     <input 
                       type="text" 
                       value={playerName}
-                      onChange={(e) => setPlayerName(e.target.value)}
+                      onChange={(e) => setPlayerName(e.target.value.slice(0, 15))}
                       className="input-game"
+                      maxLength={15}
                     />
                   </div>
                   <div>
@@ -1792,8 +1959,16 @@ export default function App() {
                     <input 
                       type="number" 
                       value={playerAge}
-                      onChange={(e) => setPlayerAge(parseInt(e.target.value) || '')}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '') setPlayerAge('');
+                        else {
+                          const num = parseInt(val);
+                          if (!isNaN(num) && num <= 80) setPlayerAge(num);
+                        }
+                      }}
                       className="input-game"
+                      max={80}
                     />
                   </div>
                   
@@ -1862,6 +2037,62 @@ export default function App() {
                       )}
                     </div>
                   </div>
+
+                  {/* Sound Settings */}
+                  <div className="space-y-2 pt-4 border-t border-gray-100">
+                    <h3 className="text-sm font-black text-gray-600 text-right mb-2">الصوت</h3>
+                    
+                    {/* SFX Volume */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center flex-row-reverse">
+                        <label className="text-xs font-bold text-gray-500 flex items-center gap-2">
+                          <Zap className="w-3 h-3 text-orange-500" />
+                          المؤثرات
+                        </label>
+                        <span className="text-[10px] font-bold text-gray-400">{Math.round(sfxVolume * 100)}%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setSfxVolume(0)} className="text-gray-400 hover:text-gray-600">
+                          {sfxVolume === 0 ? <div className="w-4 h-4 relative"><div className="absolute w-full h-0.5 bg-current rotate-45 top-1/2"></div><div className="w-3 h-3 border-2 border-current rounded-full"></div></div> : <div className="w-4 h-4 border-2 border-current rounded-full"></div>}
+                        </button>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="1" 
+                          step="0.1" 
+                          value={sfxVolume} 
+                          onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+                          className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Music Volume */}
+                    <div className="space-y-2 opacity-60">
+                      <div className="flex justify-between items-center flex-row-reverse">
+                        <label className="text-xs font-bold text-gray-500 flex items-center gap-2">
+                          <span className="text-purple-500">🎵</span>
+                          الموسيقى
+                        </label>
+                        <span className="text-[10px] font-bold text-gray-400">{Math.round(musicVolume * 100)}%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setMusicVolume(0)} className="text-gray-400 hover:text-gray-600">
+                           {musicVolume === 0 ? <div className="w-4 h-4 relative"><div className="absolute w-full h-0.5 bg-current rotate-45 top-1/2"></div><div className="w-3 h-3 border-2 border-current rounded-full"></div></div> : <div className="w-4 h-4 border-2 border-current rounded-full"></div>}
+                        </button>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="1" 
+                          step="0.1" 
+                          value={musicVolume} 
+                          onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                          className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                          disabled
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -1927,6 +2158,8 @@ export default function App() {
                   مسح الحساب نهائياً
                 </button>
               </div>
+
+
 
               {/* Admin Access Button */}
               <div className="pt-4 border-t border-gray-100">
@@ -2124,6 +2357,8 @@ export default function App() {
           )}
         </AnimatePresence>
 
+
+
         {/* Delete Confirmation Modal */}
         <AnimatePresence>
           {showDeleteConfirm && (
@@ -2167,179 +2402,33 @@ export default function App() {
         </AnimatePresence>
       </AnimatePresence>
 
-      {/* Floating Controls (Bottom Right) */}
-      <div className="fixed bottom-2 right-2 md:bottom-6 md:right-6 flex flex-col gap-2 md:gap-3 z-[300]">
-        {/* Exit Button - Always shown */}
-        <button 
-          onClick={() => {
-            if (document.fullscreenElement) {
-              document.exitFullscreen().catch(err => console.error(err));
-            } else {
-              window.close();
-            }
-          }}
-          className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
-          title="خروج"
-        >
-          <LogOut className="w-7 h-7 md:w-8 md:h-8" />
-        </button>
-      </div>
+      {/* Floating Controls (Bottom Right) - REMOVED */}
       </>
     );
   }
 
-  if (isSearching) {
-    return (
-      <>
-      <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto">
-        <div className="w-full max-w-md card-game p-6 md:p-12 text-center space-y-4 md:space-y-8 relative overflow-hidden">
-          {proposedMatch ? (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="space-y-4 md:space-y-6"
-            >
-              <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">تم العثور على منافس!</h2>
-              <div className="flex flex-col items-center p-4 md:p-6 bg-orange-50 rounded-3xl border-4 border-orange-100 relative">
-                <div className="relative mb-2 md:mb-4">
-                  {proposedMatch.opponent.level && renderStars(proposedMatch.opponent.level)}
-                  <div className={`text-6xl md:text-8xl drop-shadow-md animate-bounce w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center border-4 overflow-hidden ${proposedMatch.opponent.level ? getAvatarStyle(proposedMatch.opponent.level) : 'bg-orange-100 border-orange-300'}`}>
-                    {renderAvatarContent(proposedMatch.opponent.avatar)}
-                  </div>
-                  {proposedMatch.opponent.level && (
-                    <div className="absolute -bottom-2 md:-bottom-3 left-1/2 -translate-x-1/2 bg-[#FF6B6B] text-white text-[10px] md:text-sm font-black px-2 md:px-3 py-0.5 md:py-1 rounded-full border-2 border-white shadow-sm whitespace-nowrap">
-                      Lvl {proposedMatch.opponent.level}
-                    </div>
-                  )}
-                </div>
-                <div className="font-black text-2xl md:text-3xl text-[#2D3436] mt-1 md:mt-2">{proposedMatch.opponent.name}</div>
-                <div className="text-base md:text-lg font-bold text-gray-500">({proposedMatch.opponent.age} سنة)</div>
-              </div>
-              <div className="flex flex-col gap-2 md:gap-3">
-                {!hasResponded ? (
-                  <>
-                    <div className="text-xl md:text-2xl font-black text-orange-500 mb-2 md:mb-4 font-mono">
-                      {matchResponseTimeLeft}s
-                    </div>
-                    <button 
-                      onClick={() => { setHasResponded(true); socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'accept' }); }}
-                      className="w-full btn-game btn-success py-3 md:py-4 text-lg md:text-xl mb-1 md:mb-3"
-                    >
-                      قبول
-                    </button>
-                    <div className="flex gap-2 md:gap-3 mb-2 md:mb-4">
-                      <button 
-                        onClick={() => { setHasResponded(true); socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' }); }}
-                        className="flex-1 btn-game btn-secondary bg-gray-200 border-gray-300 text-gray-600 hover:bg-gray-300 py-2 md:py-3"
-                      >
-                        رفض
-                      </button>
-                      <button 
-                        onClick={() => { setHasResponded(true); socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'block' }); }}
-                        className="flex-1 btn-game btn-danger py-2 md:py-3 text-xs md:text-sm flex items-center justify-center gap-1"
-                      >
-                        <Ban className="w-4 h-4" />
-                        حظر
-                      </button>
-                    </div>
-                    <button 
-                      onClick={() => { 
-                        setHasResponded(true); 
-                        socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' }); 
-                        setProposedMatch(null);
-                        setIsSearching(false);
-                        setJoined(false);
-                      }}
-                      className="text-sm font-bold text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      إلغاء والعودة للرئيسية
-                    </button>
-                  </>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="text-2xl font-black text-orange-500 font-mono">
-                      {matchResponseTimeLeft}s
-                    </div>
-                    <p className="text-lg font-black text-orange-500 animate-pulse bg-orange-100 py-4 rounded-2xl border-2 border-orange-200">في انتظار رد المنافس...</p>
-                    <button 
-                      onClick={() => { 
-                        setHasResponded(true); 
-                        socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' }); 
-                        setProposedMatch(null);
-                        setIsSearching(false);
-                        setJoined(false);
-                      }}
-                      className="text-sm font-bold text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      إلغاء والعودة للرئيسية
-                    </button>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          ) : (
-            <>
-              <div className="relative inline-block">
-                <div className="w-24 h-24 md:w-32 md:h-32 bg-orange-100 rounded-full flex items-center justify-center animate-bounce border-4 border-orange-200">
-                  <Users className="w-12 h-12 md:w-16 md:h-16 text-orange-500" />
-                </div>
-                <div className="absolute top-0 right-0 w-6 h-6 md:w-8 md:h-8 bg-green-400 rounded-full border-4 border-white animate-ping"></div>
-              </div>
-              <div className="space-y-1 md:space-y-2">
-                <h2 className="text-2xl md:text-4xl font-black text-[#2D3436]">جاري البحث...</h2>
-                <p className="text-sm md:text-lg font-bold text-gray-500">نبحث لك عن منافس قوي الآن</p>
-                <div className="text-4xl md:text-6xl font-black text-orange-500 font-mono tracking-widest drop-shadow-sm">{searchTimeLeft}s</div>
-                <div className="text-[10px] md:text-sm font-black text-gray-500 mt-2 md:mt-4 bg-gray-100 inline-block px-4 md:px-6 py-1 md:py-2 rounded-full border-2 border-gray-200">المتواجدون الآن: {onlineCount}</div>
-              </div>
-              <button 
-                onClick={() => { setJoined(false); setIsSearching(false); setProposedMatch(null); setHasResponded(false); socket?.emit('leave_matchmaking'); }}
-                className="text-base md:text-lg font-black text-gray-400 hover:text-red-500 transition-colors border-b-2 border-transparent hover:border-red-500"
-              >
-                إلغاء البحث
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Floating Controls (Bottom Right) */}
-      <div className="fixed bottom-2 right-2 md:bottom-6 md:right-6 flex flex-col gap-2 md:gap-3 z-[300]">
-        {/* Exit Button - Always shown */}
-        <button 
-          onClick={() => {
-            if (document.fullscreenElement) {
-              document.exitFullscreen().catch(err => console.error(err));
-            } else {
-              window.close();
-            }
-          }}
-          className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
-          title="خروج"
-        >
-          <LogOut className="w-7 h-7 md:w-8 md:h-8" />
-        </button>
-      </div>
-      </>
-    );
+  if (!room) {
+    if (isSearching) return null; // Handled by isSearching block
+    if (!joined) return null; // Handled by !joined block
+    return <div className="min-h-screen w-full flex items-center justify-center text-[#2D3436] font-black text-2xl animate-pulse">جاري التحميل... 🚀</div>;
   }
-
-  if (!room) return <div className="min-h-screen w-full flex items-center justify-center text-[#2D3436] font-black text-2xl animate-pulse">جاري التحميل... 🚀</div>;
 
   return (
-    <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto">
+    <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-20 md:pt-24">
       {/* Header */}
-      <header className="bg-white/90 backdrop-blur-md p-4 flex justify-between items-center z-50 sticky top-0 shadow-sm border-b-4 border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-lg flex items-center justify-center shadow-sm transform rotate-3">
-            <Brain className="w-5 h-5 text-white" />
+      <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md p-3 md:p-4 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-16 md:h-20">
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
+            <Brain className="w-6 h-6 md:w-7 md:h-7 text-white" />
           </div>
-          <div className="font-black text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm">خمن تخمينة</div>
+          <div className="font-black text-xl md:text-2xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden md:block">خمن تخمينة</div>
         </div>
         
-        <div className="flex items-center gap-4">
-          {room.gameState !== 'waiting' && (
-            <div className={`flex items-center justify-center min-w-[90px] gap-2 px-4 py-2 rounded-full text-lg font-black transition-colors border-2 ${room.isFrozen ? 'bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse' : room.timer <= 10 && room.gameState === 'guessing' ? 'bg-red-100 text-red-600 border-red-200 animate-pulse' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-              {room.isFrozen ? <Snowflake className="w-5 h-5" /> : <Timer className="w-5 h-5" />}
+        {/* Game Info (Center) */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
+           {room.gameState !== 'waiting' && (
+            <div className={`flex items-center justify-center min-w-[80px] md:min-w-[90px] gap-1 md:gap-2 px-3 md:px-4 py-1 md:py-2 rounded-full text-base md:text-lg font-black transition-colors border-2 ${room.isFrozen ? 'bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse' : room.timer <= 10 && room.gameState === 'guessing' ? 'bg-red-100 text-red-600 border-red-200 animate-pulse' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+              {room.isFrozen ? <Snowflake className="w-4 h-4 md:w-5 md:h-5" /> : <Timer className="w-4 h-4 md:w-5 md:h-5" />}
               {room.isFrozen ? (
                 <span>{room.freezeTimer}s</span>
               ) : (
@@ -2347,12 +2436,65 @@ export default function App() {
               )}
             </div>
           )}
-          <div className="flex items-center gap-2 bg-blue-100 text-blue-600 px-4 py-2 rounded-full text-sm font-black border-2 border-blue-200">
-            <Users className="w-4 h-4" />
+          <div className="flex items-center gap-1 md:gap-2 bg-blue-100 text-blue-600 px-3 md:px-4 py-1 md:py-2 rounded-full text-xs md:text-sm font-black border-2 border-blue-200">
+            <Users className="w-3 h-3 md:w-4 md:h-4" />
             <span>{room.players.length}/2</span>
           </div>
         </div>
+
+        <div className="flex items-center gap-2 md:gap-3">
+          {/* Home Button (Leave Game) */}
+          <button 
+            onClick={() => {
+                if (room?.gameState === 'guessing' || room?.gameState === 'discussion') {
+                   if (window.confirm('هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟')) {
+                     handleLeaveGame();
+                   }
+                } else {
+                  handleLeaveGame();
+                }
+            }}
+            className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
+            title="الرئيسية"
+          >
+            <Home className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+
+          {/* Info Button */}
+          <button 
+            onClick={() => setShowLevelInfo(true)}
+            className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+            title="معلومات المستوى"
+          >
+            <Info className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+
+          {/* Settings Button */}
+          <button 
+            onClick={() => setShowSettingsModal(true)}
+            className="w-10 h-10 md:w-12 md:h-12 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+            title="الإعدادات"
+          >
+            <Settings className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+
+          {/* Exit Button */}
+          <button 
+            onClick={() => {
+              if (document.fullscreenElement) {
+                document.exitFullscreen().catch(err => console.error(err));
+              } else {
+                window.close();
+              }
+            }}
+            className="w-10 h-10 md:w-12 md:h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
+            title="خروج"
+          >
+            <LogOut className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+        </div>
       </header>
+
 
       <main className="flex-1 relative flex flex-col items-center justify-between py-2 px-2 max-w-md mx-auto w-full">
         {/* Opponent (Top) */}
@@ -2491,10 +2633,10 @@ export default function App() {
                       chatHistory.map((msg, index) => (
                         <div key={`waiting-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
-                            <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600' : 'text-blue-600'}`}>
+                            <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
                               {msg.playerName}
                             </div>
-                            <div className="leading-tight">{msg.text}</div>
+                            <div className={`leading-tight ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
                           </div>
                         </div>
                       ))
@@ -2769,7 +2911,7 @@ export default function App() {
                       initial={{ opacity: 0, scale: 0.5, y: 20 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.5, y: -20 }}
-                      className="absolute -right-12 -top-4 bg-white px-3 py-2 rounded-2xl rounded-bl-none shadow-lg border-2 border-gray-100 text-2xl z-50 pointer-events-none"
+                      className="absolute -right-12 -top-4 bg-white px-3 py-2 rounded-2xl rounded-br-none shadow-lg border-2 border-gray-100 text-2xl z-50 pointer-events-none"
                     >
                       {bubble.text}
                     </motion.div>
@@ -2789,41 +2931,6 @@ export default function App() {
           )}
         </div>
       </main>
-
-      {/* Floating Controls (Bottom Right) */}
-      <div className="fixed bottom-2 right-2 md:bottom-6 md:right-6 flex flex-col gap-2 md:gap-3 z-[300]">
-        {/* Exit Button - Always shown */}
-        <button 
-          onClick={() => {
-            if (document.fullscreenElement) {
-              document.exitFullscreen().catch(err => console.error(err));
-            } else {
-              window.close();
-            }
-          }}
-          className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
-          title="خروج"
-        >
-          <LogOut className="w-7 h-7 md:w-8 md:h-8" />
-        </button>
-
-        {/* Home Button - Shown whenever joined a room */}
-        {room && room.gameState !== 'finished' && (
-          <button 
-            onClick={handleLeaveGame}
-            className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white text-gray-400 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all"
-            title="الرئيسية"
-          >
-            <Home className="w-7 h-7 md:w-8 md:h-8" />
-          </button>
-        )}
-
-        {/* Mic Button - Only when opponent is present */}
-        {(opponent || (room && room.players.length > 1)) && (
-          <>
-          </>
-        )}
-      </div>
 
       {/* Chat Input Popup Removed */}
 
