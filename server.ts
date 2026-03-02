@@ -38,6 +38,8 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 
+const adminTokens = new Set<string>();
+
 async function startServer() {
   try {
   const getLevel = (xp: number) => Math.min(50, Math.floor(Math.sqrt(xp / 50)) + 1);
@@ -128,7 +130,15 @@ const app = express();
       // Check if this email is the admin email
       const isAdmin = email === "adhamsabry.co@gmail.com";
 
-      const userPayload = JSON.stringify({ email, name, picture, isAdmin });
+      let adminToken = null;
+      if (isAdmin) {
+        adminToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        adminTokens.add(adminToken);
+        // Remove token after 2 hours
+        setTimeout(() => adminTokens.delete(adminToken as string), 1000 * 60 * 60 * 2);
+      }
+
+      const userPayload = JSON.stringify({ email, name, picture, isAdmin, adminToken });
 
       res.send(`
         <html>
@@ -1303,7 +1313,7 @@ const app = express();
 
     socket.on("admin_get_players", (callback) => {
       const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
-      if (player?.isAdmin) {
+      if (player?.isAdmin || socket.data?.isAdmin) {
         callback(Array.from(allPlayers.values()));
       } else {
         callback({ error: "Unauthorized" });
@@ -1312,7 +1322,7 @@ const app = express();
 
     socket.on("admin_get_reports", (callback) => {
       const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
-      if (player?.isAdmin) {
+      if (player?.isAdmin || socket.data?.isAdmin) {
         try {
           const reports = db.prepare('SELECT * FROM reports ORDER BY timestamp DESC').all();
           callback(reports);
@@ -1326,7 +1336,7 @@ const app = express();
 
     socket.on("admin_update_player", ({ serial, updates }, callback) => {
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
-      if (admin?.isAdmin) {
+      if (admin?.isAdmin || socket.data?.isAdmin) {
         const player = allPlayers.get(serial);
         if (player) {
           Object.assign(player, updates);
@@ -1353,7 +1363,7 @@ const app = express();
 
     socket.on("admin_delete_player", (serial, callback) => {
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
-      if (admin?.isAdmin) {
+      if (admin?.isAdmin || socket.data?.isAdmin) {
         if (allPlayers.has(serial)) {
           allPlayers.delete(serial);
           db.prepare('DELETE FROM players WHERE serial = ?').run(serial);
@@ -1367,19 +1377,33 @@ const app = express();
       }
     });
 
-    socket.on("admin_set_admin_status", ({ serial, isAdmin, email }, callback) => {
+    socket.on("admin_set_admin_status", ({ serial, isAdmin, email, adminToken }, callback) => {
       // This is a special event to bootstrap the first admin or manage others
       // For security, it should check if the requester is already an admin OR if it's the first one
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
-      if (admin?.isAdmin || email === "adhamsabry.co@gmail.com") {
-        const player = allPlayers.get(serial);
-        if (player) {
-          player.isAdmin = isAdmin;
-          player.email = email;
-          savePlayersData();
-          callback({ success: true });
+      
+      const isValidToken = adminToken && adminTokens.has(adminToken);
+      
+      if (admin?.isAdmin || isValidToken) {
+        if (isValidToken) {
+          socket.data = { ...socket.data, isAdmin: true, email };
+        }
+
+        if (serial) {
+          const player = allPlayers.get(serial);
+          if (player) {
+            player.isAdmin = isAdmin;
+            player.email = email;
+            savePlayersData();
+            callback({ success: true });
+            return;
+          }
+        }
+        
+        if (isValidToken) {
+           callback({ success: true });
         } else {
-          callback({ error: "Player not found" });
+           callback({ error: "Player not found" });
         }
       } else {
         callback({ error: "Unauthorized" });
