@@ -595,6 +595,7 @@ export default function App() {
     };
 
     const handleStorage = (event: StorageEvent) => {
+      if (!socket) return;
       if (event.key === 'google_auth_result' && event.newValue) {
         try {
           const data = JSON.parse(event.newValue);
@@ -614,6 +615,7 @@ export default function App() {
     
     // Check localStorage on mount/focus in case we missed the event
     const checkStorage = () => {
+      if (!socket) return;
       const stored = localStorage.getItem('google_auth_result');
       if (stored) {
         try {
