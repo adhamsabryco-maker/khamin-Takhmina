@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
+  Upload,
+  Trash2,
+  Image as ImageIcon,
   Users, 
   Trophy, 
   Timer, 
@@ -22,13 +25,11 @@ import {
   Star,
   Zap,
   Lock,
-  Upload,
   Camera,
   Check,
   Settings,
   Crown,
   AlertTriangle,
-  Trash2,
   Type,
   Eye,
   Shield,
@@ -169,6 +170,11 @@ export default function App() {
   const [adminPlayers, setAdminPlayers] = useState<any[]>([]);
   const [adminReports, setAdminReports] = useState<any[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminTab, setAdminTab] = useState<'players' | 'images'>('players');
+  const [adminImages, setAdminImages] = useState<any[]>([]);
+  const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
+  const [isUploading, setIsUploading] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -556,6 +562,7 @@ export default function App() {
         }
         
         setIsAdmin(true);
+        setAdminEmail(userData.email);
         socket.emit('admin_set_admin_status', { 
           serial: playerSerial, 
           isAdmin: true, 
@@ -638,6 +645,54 @@ export default function App() {
       window.open(url, 'google_auth', 'width=500,height=600');
     } catch (err) {
       setError('فشل الاتصال بخدمة جوجل.');
+    }
+  };
+
+  const fetchAdminImages = async () => {
+    try {
+      const res = await fetch('/api/admin/images');
+      const data = await res.json();
+      setAdminImages(data);
+    } catch (error) {
+      console.error("Fetch images failed", error);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    if (!newImage.name || !newImage.data) return;
+    setIsUploading(true);
+    try {
+      const response = await fetch('/api/admin/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newImage, addedBy: adminEmail })
+      });
+      if (response.ok) {
+        setNewImage({ ...newImage, name: '', data: '' });
+        fetchAdminImages();
+        alert('تم رفع الصورة بنجاح');
+      } else {
+        alert('فشل رفع الصورة');
+      }
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert('حدث خطأ أثناء الرفع');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteImage = async (id: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذه الصورة؟')) return;
+    try {
+      const response = await fetch(`/api/admin/images/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchAdminImages();
+      } else {
+        alert('فشل حذف الصورة');
+      }
+    } catch (error) {
+      console.error("Delete failed", error);
     }
   };
 
@@ -1740,14 +1795,31 @@ export default function App() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-black text-gray-900">لوحة تحكم المدير</h2>
-                      <p className="text-xs font-bold text-purple-600">إدارة اللاعبين والبلاغات</p>
+                      <div className="flex gap-2 mt-1">
+                        <button 
+                          onClick={() => setAdminTab('players')}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'players' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
+                        >
+                          اللاعبين والبلاغات
+                        </button>
+                        <button 
+                          onClick={() => { setAdminTab('images'); fetchAdminImages(); }}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'images' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
+                        >
+                          إدارة الصور
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <button 
                       onClick={() => {
-                        socket?.emit('admin_get_players', (players: any) => setAdminPlayers(players));
-                        socket?.emit('admin_get_reports', (reports: any) => setAdminReports(reports));
+                        if (adminTab === 'players') {
+                          socket?.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                          socket?.emit('admin_get_reports', (reports: any) => setAdminReports(reports));
+                        } else {
+                          fetchAdminImages();
+                        }
                       }}
                       className="p-3 bg-white rounded-xl border-2 border-gray-100 text-gray-400 hover:text-purple-600 hover:border-purple-100 transition-all"
                     >
@@ -1764,136 +1836,265 @@ export default function App() {
 
                 {/* Content */}
                 <div className="flex-1 overflow-hidden flex">
-                  {/* Sidebar - Reports */}
-                  <div className="w-80 border-l border-gray-100 bg-gray-50/30 overflow-y-auto p-4 space-y-4">
-                    <h3 className="text-sm font-black text-gray-400 uppercase tracking-wider flex items-center gap-2 px-2">
-                      <AlertTriangle className="w-4 h-4" />
-                      آخر البلاغات
-                    </h3>
-                    <div className="space-y-3">
-                      {adminReports.length === 0 ? (
-                        <div className="text-center py-8 text-gray-400 font-bold text-sm">لا توجد بلاغات حالياً</div>
-                      ) : (
-                        adminReports.map((report, index) => (
-                          <div key={`admin-report-${report.id}-${index}`} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2">
-                            <div className="flex justify-between items-start">
-                              <span className="text-[10px] font-black text-gray-400">{new Date(report.timestamp).toLocaleString('ar-EG')}</span>
-                              <div className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-black">بلاغ</div>
-                            </div>
-                            <div className="text-xs font-bold text-gray-700">
-                              <span className="text-purple-600">{report.reporterName}</span> أبلغ عن <span className="text-red-500">{report.reportedName}</span>
-                            </div>
-                            <div className="bg-gray-50 p-2 rounded-lg text-[10px] text-gray-500 font-medium italic">
-                              "{report.reason}"
-                            </div>
-                            <button 
-                              onClick={() => setAdminSearchQuery(report.reportedSerial)}
-                              className="w-full py-1.5 bg-gray-100 hover:bg-purple-100 hover:text-purple-600 rounded-lg text-[10px] font-black transition-colors"
-                            >
-                              فحص اللاعب
-                            </button>
+                  {adminTab === 'players' ? (
+                    <>
+                      {/* Sidebar - Reports */}
+                      <div className="w-80 border-l border-gray-100 bg-gray-50/30 overflow-y-auto p-4 space-y-4">
+                        <h3 className="text-sm font-black text-gray-400 uppercase tracking-wider flex items-center gap-2 px-2">
+                          <AlertTriangle className="w-4 h-4" />
+                          آخر البلاغات
+                        </h3>
+                        <div className="space-y-3">
+                          {adminReports.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400 font-bold text-sm">لا توجد بلاغات حالياً</div>
+                          ) : (
+                            adminReports.map((report, index) => (
+                              <div key={`admin-report-${report.id}-${index}`} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <span className="text-[10px] font-black text-gray-400">{new Date(report.timestamp).toLocaleString('ar-EG')}</span>
+                                  <div className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-black">بلاغ</div>
+                                </div>
+                                <div className="text-xs font-bold text-gray-700">
+                                  <span className="text-purple-600">{report.reporterName}</span> أبلغ عن <span className="text-red-500">{report.reportedName}</span>
+                                </div>
+                                <div className="bg-gray-50 p-2 rounded-lg text-[10px] text-gray-500 font-medium italic">
+                                  "{report.reason}"
+                                </div>
+                                <button 
+                                  onClick={() => setAdminSearchQuery(report.reportedSerial)}
+                                  className="w-full py-1.5 bg-gray-100 hover:bg-purple-100 hover:text-purple-600 rounded-lg text-[10px] font-black transition-colors"
+                                >
+                                  فحص اللاعب
+                                </button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Main Area - Players Management */}
+                      <div className="flex-1 flex flex-col overflow-hidden bg-white">
+                        {/* Search Bar */}
+                        <div className="p-6 border-b border-gray-50">
+                          <div className="relative">
+                            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input 
+                              type="text"
+                              placeholder="ابحث عن لاعب بالاسم أو الرقم التسلسلي..."
+                              value={adminSearchQuery}
+                              onChange={(e) => setAdminSearchQuery(e.target.value)}
+                              className="w-full pr-12 pl-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-purple-400 focus:bg-white transition-all font-bold"
+                            />
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
+                        </div>
 
-                  {/* Main Area - Players Management */}
-                  <div className="flex-1 flex flex-col overflow-hidden bg-white">
-                    {/* Search Bar */}
-                    <div className="p-6 border-b border-gray-50">
-                      <div className="relative">
-                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                        <input 
-                          type="text"
-                          placeholder="ابحث عن لاعب بالاسم أو الرقم التسلسلي..."
-                          value={adminSearchQuery}
-                          onChange={(e) => setAdminSearchQuery(e.target.value)}
-                          className="w-full pr-12 pl-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-purple-400 focus:bg-white transition-all font-bold"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Players List */}
-                    <div className="flex-1 overflow-y-auto p-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {adminPlayers
-                          .filter(p => p.name.includes(adminSearchQuery) || p.serial.includes(adminSearchQuery))
-                          .map((p, index) => (
-                            <div key={`admin-player-${p.serial}-${index}`} className="bg-white border-2 border-gray-100 rounded-3xl p-5 hover:border-purple-200 transition-all group">
-                              <div className="flex items-center gap-4 mb-4">
-                                <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-2xl border-2 border-white shadow-sm overflow-hidden">
-                                  {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.avatar}
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-black text-gray-900">{p.name}</h4>
-                                    {p.isAdmin && <Shield className="w-3 h-3 text-purple-500" />}
+                        {/* Players List */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {adminPlayers
+                              .filter(p => p.name.includes(adminSearchQuery) || p.serial.includes(adminSearchQuery))
+                              .map((p, index) => (
+                                <div key={`admin-player-${p.serial}-${index}`} className="bg-white border-2 border-gray-100 rounded-3xl p-5 hover:border-purple-200 transition-all group">
+                                  <div className="flex items-center gap-4 mb-4">
+                                    <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-2xl border-2 border-white shadow-sm overflow-hidden">
+                                      {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.avatar}
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <h4 className="font-black text-gray-900">{p.name}</h4>
+                                        {p.isAdmin && <Shield className="w-3 h-3 text-purple-500" />}
+                                      </div>
+                                      <div className="text-[10px] font-bold text-gray-400">ID: {p.serial}</div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-xs font-black text-purple-600">Lvl {getLevel(p.xp)}</div>
+                                      <div className="text-[10px] font-bold text-gray-400">{p.xp} XP</div>
+                                    </div>
                                   </div>
-                                  <div className="text-[10px] font-bold text-gray-400">ID: {p.serial}</div>
+
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-gray-50 p-2 rounded-xl text-center">
+                                      <div className="text-[10px] font-bold text-gray-400">الفوز</div>
+                                      <div className="text-sm font-black text-gray-700">{p.wins || 0}</div>
+                                    </div>
+                                    <div className="bg-red-50 p-2 rounded-xl text-center">
+                                      <div className="text-[10px] font-bold text-red-400">البلاغات</div>
+                                      <div className="text-sm font-black text-red-600">{p.reports || 0}</div>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-4 flex gap-2">
+                                    <button 
+                                      onClick={() => {
+                                        const newXP = prompt('ادخل الـ XP الجديد:', p.xp.toString());
+                                        if (newXP !== null) {
+                                          socket?.emit('admin_update_player', { serial: p.serial, updates: { xp: parseInt(newXP) } }, (res: any) => {
+                                            if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                                          });
+                                        }
+                                      }}
+                                      className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-xl text-[10px] font-black hover:bg-purple-600 hover:text-white transition-all"
+                                    >
+                                      تعديل XP
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        if (window.confirm('هل أنت متأكد من حظر هذا اللاعب لمدة 24 ساعة؟')) {
+                                          const banUntil = Date.now() + (24 * 60 * 60 * 1000);
+                                          socket?.emit('admin_update_player', { serial: p.serial, updates: { banUntil, reports: 0 } }, (res: any) => {
+                                            if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                                          });
+                                        }
+                                      }}
+                                      className="flex-1 py-2 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black hover:bg-orange-600 hover:text-white transition-all"
+                                    >
+                                      حظر 24س
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        if (window.confirm('هل أنت متأكد من حذف هذا الحساب نهائياً؟')) {
+                                          socket?.emit('admin_delete_player', p.serial, (res: any) => {
+                                            if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                                          });
+                                        }
+                                      }}
+                                      className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="text-right">
-                                  <div className="text-xs font-black text-purple-600">Lvl {getLevel(p.xp)}</div>
-                                  <div className="text-[10px] font-bold text-gray-400">{p.xp} XP</div>
+                              ))}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    /* Images Management Tab */
+                    <div className="flex-1 overflow-y-auto p-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Upload Form */}
+                        <div className="lg:col-span-1 space-y-6">
+                          <div className="bg-white p-6 rounded-3xl border-2 border-purple-100 shadow-sm">
+                            <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+                              <Upload className="w-5 h-5 text-purple-600" />
+                              رفع صورة جديدة
+                            </h3>
+                            
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">الفئة</label>
+                                <select 
+                                  value={newImage.category}
+                                  onChange={(e) => setNewImage({...newImage, category: e.target.value})}
+                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-700 focus:border-purple-500 outline-none"
+                                >
+                                  <option value="animals">حيوانات</option>
+                                  <option value="inanimate">جماد</option>
+                                  <option value="people">مشاهير</option>
+                                  <option value="food">أكلات</option>
+                                  <option value="movies_series">أفلام ومسلسلات</option>
+                                  <option value="birds">طيور</option>
+                                  <option value="plants">نباتات</option>
+                                  <option value="objects">أشياء</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">اسم الصورة (بالعربي)</label>
+                                <input 
+                                  type="text" 
+                                  value={newImage.name}
+                                  onChange={(e) => setNewImage({...newImage, name: e.target.value})}
+                                  placeholder="مثال: أسد"
+                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-700 focus:border-purple-500 outline-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">الصورة</label>
+                                <div className="relative group cursor-pointer">
+                                  <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                          setNewImage({...newImage, data: reader.result as string});
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                  />
+                                  <div className={`w-full h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-all ${newImage.data ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-gray-50 group-hover:border-purple-300'}`}>
+                                    {newImage.data ? (
+                                      <img src={newImage.data} alt="Preview" className="h-full w-full object-contain p-2" />
+                                    ) : (
+                                      <>
+                                        <ImageIcon className="w-8 h-8 text-gray-400" />
+                                        <span className="text-xs font-bold text-gray-400">اضغط لاختيار صورة</span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="bg-gray-50 p-2 rounded-xl text-center">
-                                  <div className="text-[10px] font-bold text-gray-400">الفوز</div>
-                                  <div className="text-sm font-black text-gray-700">{p.wins || 0}</div>
-                                </div>
-                                <div className="bg-red-50 p-2 rounded-xl text-center">
-                                  <div className="text-[10px] font-bold text-red-400">البلاغات</div>
-                                  <div className="text-sm font-black text-red-600">{p.reports || 0}</div>
-                                </div>
-                              </div>
-
-                              <div className="mt-4 flex gap-2">
-                                <button 
-                                  onClick={() => {
-                                    const newXP = prompt('ادخل الـ XP الجديد:', p.xp.toString());
-                                    if (newXP !== null) {
-                                      socket?.emit('admin_update_player', { serial: p.serial, updates: { xp: parseInt(newXP) } }, (res: any) => {
-                                        if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
-                                      });
-                                    }
-                                  }}
-                                  className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-xl text-[10px] font-black hover:bg-purple-600 hover:text-white transition-all"
-                                >
-                                  تعديل XP
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    if (window.confirm('هل أنت متأكد من حظر هذا اللاعب لمدة 24 ساعة؟')) {
-                                      const banUntil = Date.now() + (24 * 60 * 60 * 1000);
-                                      socket?.emit('admin_update_player', { serial: p.serial, updates: { banUntil, reports: 0 } }, (res: any) => {
-                                        if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
-                                      });
-                                    }
-                                  }}
-                                  className="flex-1 py-2 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black hover:bg-orange-600 hover:text-white transition-all"
-                                >
-                                  حظر 24س
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    if (window.confirm('هل أنت متأكد من حذف هذا الحساب نهائياً؟')) {
-                                      socket?.emit('admin_delete_player', p.serial, (res: any) => {
-                                        if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
-                                      });
-                                    }
-                                  }}
-                                  className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
+                              <button 
+                                onClick={handleImageUpload}
+                                disabled={isUploading || !newImage.name || !newImage.data}
+                                className="w-full py-3 bg-purple-600 text-white rounded-xl font-black hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                              >
+                                {isUploading ? (
+                                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                  <>
+                                    <Upload className="w-5 h-5" />
+                                    رفع الصورة
+                                  </>
+                                )}
+                              </button>
                             </div>
-                          ))}
+                          </div>
+                        </div>
+
+                        {/* Images List */}
+                        <div className="lg:col-span-2 space-y-6">
+                          <div className="bg-white p-6 rounded-3xl border-2 border-purple-100 shadow-sm min-h-[500px]">
+                            <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+                              <ImageIcon className="w-5 h-5 text-purple-600" />
+                              الصور المرفوعة ({adminImages.length})
+                            </h3>
+
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                              {adminImages.map((img) => (
+                                <div key={img.id} className="relative group bg-gray-50 rounded-xl border-2 border-gray-100 overflow-hidden">
+                                  <img src={img.data || `https://picsum.photos/seed/${img.name}/200/200`} alt={img.name} className="w-full aspect-square object-cover" />
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                                    <span className="text-white font-bold text-sm">{img.name}</span>
+                                    <span className="text-white/70 text-xs bg-black/50 px-2 py-1 rounded-full">{img.category}</span>
+                                    <button 
+                                      onClick={() => handleDeleteImage(img.id)}
+                                      className="mt-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                              {adminImages.length === 0 && (
+                                <div className="col-span-full text-center py-12 text-gray-400 font-bold">
+                                  لا توجد صور مرفوعة حالياً
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </motion.div>
             </motion.div>
