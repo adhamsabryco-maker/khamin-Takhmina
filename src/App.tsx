@@ -371,15 +371,12 @@ export default function App() {
   const [isPermanentBan, setIsPermanentBan] = useState(false);
   const [reports, setReports] = useState(0);
   const [onlineCount, setOnlineCount] = useState(0);
-  const [searchTimeLeft, setSearchTimeLeft] = useState(120);
-  const [matchResponseTimeLeft, setMatchResponseTimeLeft] = useState(30);
   const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, age: number, level?: number } } | null>(null);
   const [hasResponded, setHasResponded] = useState(false);
   const [error, setError] = useState('');
   const [showLevelInfo, setShowLevelInfo] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const searchIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -394,71 +391,28 @@ export default function App() {
     };
   }, []);
 
-  // Matchmaking timeout and timer
+  // Matchmaking timeout
   useEffect(() => {
-    // Only start timer if searching AND timer isn't already running (or was paused)
     if (isSearching && !proposedMatch) {
-      if (!searchIntervalRef.current) {
-         searchIntervalRef.current = setInterval(() => {
-          setSearchTimeLeft(prev => {
-            if (prev <= 1) {
-              // Timeout logic moved inside interval to access current state
-              setIsSearching(false);
-              setJoined(false);
-              setProposedMatch(null);
-              setHasResponded(false);
-              socket?.emit('leave_matchmaking');
-              setError('لم يتم العثور على منافس حالياً. يرجى المحاولة في وقت لاحق.');
-              setTimeout(() => setError(''), 5000);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      }
+      searchTimeoutRef.current = setTimeout(() => {
+        setIsSearching(false);
+        setJoined(false);
+        socket?.emit('leave_matchmaking');
+        setError('لم يتم العثور على منافس حالياً. يرجى المحاولة في وقت لاحق.');
+        setTimeout(() => setError(''), 5000);
+      }, 120000);
     } else {
-      // Pause timer when match is proposed, but don't reset it
-      if (searchIntervalRef.current) {
-        clearInterval(searchIntervalRef.current);
-        searchIntervalRef.current = null;
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
       }
     }
 
     return () => {
-      if (searchIntervalRef.current) {
-        clearInterval(searchIntervalRef.current);
-        searchIntervalRef.current = null;
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
       }
     };
   }, [isSearching, proposedMatch, socket]);
-
-  // Match response timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (proposedMatch) {
-      interval = setInterval(() => {
-        setMatchResponseTimeLeft((prev) => {
-          if (prev <= 1) {
-            if (interval) clearInterval(interval);
-            // Auto-reject if not responded
-            if (!hasResponded) {
-              socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
-              setProposedMatch(null);
-              setHasResponded(false);
-              // Return to home page
-              setJoined(false);
-              setIsSearching(false);
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [proposedMatch, hasResponded, socket]);
 
   // Global Fullscreen trigger on first interaction
   useEffect(() => {
@@ -837,7 +791,6 @@ export default function App() {
     newSocket.on('match_proposed', (data) => {
       setProposedMatch(data);
       setHasResponded(false);
-      setMatchResponseTimeLeft(30);
     });
 
     newSocket.on('match_rejected', () => {
@@ -1015,9 +968,6 @@ export default function App() {
     
     localStorage.setItem('khamin_player_name', playerName);
     localStorage.setItem('khamin_player_age', playerAge.toString());
-    
-    // Reset search timer for new search
-    setSearchTimeLeft(120);
     
     socket?.emit('find_random_match', { playerId, playerName, avatar, age: playerAge, xp, streak, wins, serial: playerSerial });
     setIsOpponentBlocked(false);
@@ -1319,42 +1269,32 @@ export default function App() {
               </div>
               
               {!hasResponded ? (
-                <div className="flex flex-col gap-3 md:gap-4">
-                  <div className="flex gap-3 md:gap-4">
-                    <button 
-                      onClick={() => {
-                        setHasResponded(true);
-                        socket?.emit('accept_match', proposedMatch.matchId);
-                      }}
-                      className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl animate-pulse"
-                    >
-                      قبول التحدي! ⚔️
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setHasResponded(true);
-                        socket?.emit('reject_match', proposedMatch.matchId);
-                        setProposedMatch(null);
-                        setJoined(false);
-                        setIsSearching(false);
-                      }}
-                      className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
-                    >
-                      رفض
-                    </button>
-                  </div>
-                  <div className="text-sm font-black text-gray-500">
-                    الوقت المتبقي للرد: {matchResponseTimeLeft} ثانية
-                  </div>
+                <div className="flex gap-3 md:gap-4">
+                  <button 
+                    onClick={() => {
+                      setHasResponded(true);
+                      socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'accept' });
+                    }}
+                    className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl animate-pulse"
+                  >
+                    قبول التحدي! ⚔️
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setHasResponded(true);
+                      socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
+                      setProposedMatch(null);
+                      setJoined(false);
+                      setIsSearching(false);
+                    }}
+                    className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+                  >
+                    رفض
+                  </button>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <div className="text-gray-500 font-bold animate-pulse">
-                    جاري انتظار رد المنافس...
-                  </div>
-                  <div className="text-sm font-black text-gray-400">
-                    الوقت المتبقي: {matchResponseTimeLeft} ثانية
-                  </div>
+                <div className="text-gray-500 font-bold animate-pulse">
+                  جاري انتظار رد المنافس...
                 </div>
               )}
             </motion.div>
@@ -1370,9 +1310,6 @@ export default function App() {
                 <div className="flex flex-col items-center gap-2">
                   <div className="text-sm font-black text-blue-500 bg-blue-50 inline-block px-3 py-1 rounded-full">
                     عدد المتصلين: {onlineCount}
-                  </div>
-                  <div className="text-sm font-black text-gray-500 bg-gray-50 inline-block px-3 py-1 rounded-full">
-                    الوقت المتبقي: {searchTimeLeft} ثانية
                   </div>
                 </div>
               </div>
