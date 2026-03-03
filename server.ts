@@ -138,77 +138,15 @@ const app = express();
         setTimeout(() => adminTokens.delete(adminToken as string), 1000 * 60 * 60 * 2);
       }
 
-      const userPayload = JSON.stringify({ email, name, picture, isAdmin, adminToken });
-
-      res.send(`
-        <html>
-          <head>
-            <title>Google Auth Success</title>
-            <style>
-              body { font-family: sans-serif; text-align: center; padding: 50px; }
-              .success { color: green; font-size: 20px; margin-bottom: 20px; }
-              button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-            </style>
-          </head>
-          <body>
-            <div class="success">تم تسجيل الدخول بنجاح!</div>
-            <p>يتم الآن إغلاق هذه النافذة والعودة للعبة...</p>
-            <script>
-              const user = ${userPayload};
-              
-              // Method 1: postMessage
-              try {
-                if (window.opener) {
-                  window.opener.postMessage({ 
-                    type: 'GOOGLE_AUTH_SUCCESS', 
-                    user: user
-                  }, '*');
-                }
-              } catch (e) {
-                console.error('postMessage failed', e);
-              }
-
-              // Method 2: localStorage (fallback)
-              try {
-                localStorage.setItem('google_auth_result', JSON.stringify({
-                  type: 'GOOGLE_AUTH_SUCCESS',
-                  user: user,
-                  timestamp: Date.now()
-                }));
-              } catch (e) {
-                console.error('localStorage failed', e);
-              }
-
-              // Close window after a short delay
-              setTimeout(() => {
-                if (window.opener && window.opener !== window) {
-                  try {
-                    window.close();
-                  } catch (e) {
-                    console.error('window.close failed', e);
-                  }
-                }
-                
-                // Fallback: If the window didn't close (e.g. mobile browser), redirect to the game
-                setTimeout(() => {
-                  if (!window.closed) {
-                    const params = new URLSearchParams({
-                      admin_auth: 'success',
-                      adminToken: user.adminToken || '',
-                      email: user.email || '',
-                      isAdmin: user.isAdmin ? 'true' : 'false'
-                    });
-                    window.location.href = '/?' + params.toString();
-                  }
-                }, 500);
-              }, 1000);
-            </script>
-            <button onclick="window.location.href = '/'">العودة للعبة</button>
-            <br><br>
-            <a href="/">العودة للرئيسية</a>
-          </body>
-        </html>
-      `);
+      // Redirect directly back to the app with the auth parameters
+      const params = new URLSearchParams({
+        admin_auth: 'success',
+        adminToken: adminToken || '',
+        email: email || '',
+        isAdmin: isAdmin ? 'true' : 'false'
+      });
+      
+      res.redirect('/?' + params.toString());
     } catch (error: any) {
       console.error("Google Auth Error:", error.response?.data || error.message);
       
@@ -236,7 +174,7 @@ const app = express();
               <p>Constructed Redirect URI: <br><strong>${redirectUri}</strong></p>
             </div>
             
-            <button onclick="window.close()" style="margin-top: 20px; padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 5px; cursor: pointer;">إغلاق النافذة</button>
+            <a href="/" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 5px; cursor: pointer; text-decoration: none;">العودة للرئيسية</a>
           </body>
         </html>
       `);
