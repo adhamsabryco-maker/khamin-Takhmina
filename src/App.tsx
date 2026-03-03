@@ -401,6 +401,7 @@ export default function App() {
   const [onlineCount, setOnlineCount] = useState(0);
   const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, age: number, level?: number } } | null>(null);
   const [hasResponded, setHasResponded] = useState(false);
+  const [opponentAccepted, setOpponentAccepted] = useState(false);
   const [matchResponseTimeLeft, setMatchResponseTimeLeft] = useState<number | null>(null);
   const [searchTimeLeft, setSearchTimeLeft] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -429,12 +430,21 @@ export default function App() {
       setDeferredPrompt(e);
     };
 
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (room?.gameState === 'discussion' || room?.gameState === 'guessing') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, []);
+  }, [room?.gameState]);
 
   // Matchmaking timeout
   useEffect(() => {
@@ -883,12 +893,18 @@ export default function App() {
     newSocket.on('match_proposed', (data) => {
       setProposedMatch(data);
       setHasResponded(false);
+      setOpponentAccepted(false);
       setMatchResponseTimeLeft(10);
+    });
+
+    newSocket.on('opponent_accepted', () => {
+      setOpponentAccepted(true);
     });
 
     newSocket.on('match_rejected', () => {
       setProposedMatch(null);
       setHasResponded(false);
+      setOpponentAccepted(false);
       setMatchResponseTimeLeft(null);
     });
 
@@ -898,6 +914,7 @@ export default function App() {
       setJoined(true);
       setProposedMatch(null);
       setHasResponded(false);
+      setOpponentAccepted(false);
       setMatchResponseTimeLeft(null);
       setSearchTimeLeft(null);
     });
@@ -2383,30 +2400,44 @@ export default function App() {
               </div>
               
               {!hasResponded ? (
-                <div className="flex gap-3 md:gap-4">
-                  <button 
-                    onClick={() => {
-                      setHasResponded(true);
-                      socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'accept' });
-                    }}
-                    className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl animate-pulse"
-                  >
-                    قبول التحدي! ⚔️
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setHasResponded(true);
-                      socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
-                      setProposedMatch(null);
-                    }}
-                    className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
-                  >
-                    رفض
-                  </button>
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-3 md:gap-4">
+                    <button 
+                      onClick={() => {
+                        setHasResponded(true);
+                        socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'accept' });
+                      }}
+                      className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl animate-pulse"
+                    >
+                      قبول التحدي! ⚔️
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setHasResponded(true);
+                        socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
+                        setProposedMatch(null);
+                      }}
+                      className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+                    >
+                      رفض
+                    </button>
+                  </div>
+                  {opponentAccepted && (
+                    <div className="text-green-600 font-bold bg-green-50 p-2 rounded-lg border border-green-200 animate-pulse">
+                      المنافس وافق على التحدي! بانتظارك...
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="text-gray-500 font-bold animate-pulse">
-                  جاري انتظار رد المنافس...
+                <div className="flex flex-col items-center gap-2">
+                  <div className="text-gray-500 font-bold animate-pulse">
+                    جاري انتظار رد المنافس...
+                  </div>
+                  {opponentAccepted && (
+                    <div className="text-green-600 font-bold bg-green-50 px-4 py-2 rounded-lg border border-green-200">
+                      المنافس وافق! جاري بدء اللعبة...
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
