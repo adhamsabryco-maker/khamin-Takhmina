@@ -1311,7 +1311,7 @@ export default function App() {
                     <span className="text-xs bg-blue-200 text-blue-700 px-2 py-1 rounded-full">تفتح في المستوى 10</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
-                    تتيح لك الحصول على تلميح إضافي عن الصورة لمساعدتك في التخمين. يمكنك استخدامها مرتين في كل مباراة.
+                    تلميح عن اسم الصورة بأول حرف وثاني حرف لمساعدتك في التخمين. يمكنك استخدامها مرتين في كل مباراة.
                   </p>
                 </div>
 
@@ -1339,7 +1339,7 @@ export default function App() {
                     <span className="text-xs bg-cyan-200 text-cyan-700 px-2 py-1 rounded-full">يفتح في المستوى 30</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
-                    يقوم بتجميد وقت المباراة لمدة 10 ثوانٍ، مما يمنحك وقتاً إضافياً للتفكير والبحث دون أن ينقص الوقت الأصلي.
+                    يقوم بتجميد وقت المباراة لمدة 60 ثانية، مما يمنحك وقتاً إضافياً للتفكير والبحث دون أن ينقص الوقت الأصلي.
                   </p>
                 </div>
 
@@ -1353,7 +1353,7 @@ export default function App() {
                     <span className="text-xs bg-purple-200 text-purple-700 px-2 py-1 rounded-full">يفتح في المستوى 50</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
-                    يتيح لك رؤية ما يكتبه منافسك في صندوق الدردشة قبل أن يرسله، مما يعطيك أفضلية استراتيجية كبيرة جداً!
+                    يتيح لك رؤية صورة منافسك، مما يعطيك أفضلية استراتيجية كبيرة جداً!
                   </p>
                 </div>
 
