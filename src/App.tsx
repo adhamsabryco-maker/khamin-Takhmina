@@ -2316,13 +2316,14 @@ export default function App() {
                                     </h4>
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                       {categoryImages.map((img) => (
-                                        <div key={img.id} className="relative group bg-gray-50 rounded-xl border-2 border-gray-100 overflow-hidden">
+                                        <div key={img.id} className="bg-gray-50 rounded-xl border-2 border-gray-100 overflow-hidden flex flex-col">
                                           <img src={img.data || `https://picsum.photos/seed/${img.name}/200/200`} alt={img.name} className="w-full aspect-square object-cover" />
-                                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
-                                            <span className="text-white font-bold text-sm text-center">{img.name}</span>
+                                          <div className="p-3 flex items-center justify-between gap-2 bg-white border-t border-gray-100">
+                                            <span className="text-gray-700 font-bold text-sm truncate" title={img.name}>{img.name}</span>
                                             <button 
                                               onClick={() => handleDeleteImage(img.id)}
-                                              className="mt-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                              className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors flex-shrink-0"
+                                              title="حذف الصورة"
                                             >
                                               <Trash2 className="w-4 h-4" />
                                             </button>
