@@ -2644,6 +2644,28 @@ export default function App() {
                   )}
                 </div>
               </div>
+
+              {/* Player Rank Info */}
+              {(() => {
+                const myRankIndex = topPlayers.findIndex(p => p.serial === playerSerial);
+                if (myRankIndex !== -1) {
+                  return (
+                    <div className="mt-4 bg-orange-100 border-2 border-orange-300 rounded-2xl p-3 text-center shadow-sm">
+                      <p className="text-orange-800 font-black text-sm md:text-base">
+                        ترتيبك الحالي هو {myRankIndex + 1}/100
+                      </p>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="mt-4 bg-gray-100 border-2 border-gray-300 rounded-2xl p-3 text-center shadow-sm">
+                      <p className="text-gray-600 font-black text-sm md:text-base">
+                        لست ضمن أفضل 100 لاعب حتى الآن. استمر في اللعب!
+                      </p>
+                    </div>
+                  );
+                }
+              })()}
             </div>
 
             <div className="pt-4 md:pt-6 border-t-2 border-gray-100 space-y-3 md:space-y-4">
@@ -2877,13 +2899,14 @@ export default function App() {
                   {CATEGORIES.map(cat => {
                     const isMyChoice = me?.selectedCategory === cat.id;
                     const isOpponentChoice = opponent?.selectedCategory === cat.id;
+                    const isAgreed = isMyChoice && isOpponentChoice;
                     
                     return (
                       <button
                         key={cat.id}
                         onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
                         className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
-                          ${isMyChoice ? 'bg-orange-100 text-orange-600 border-orange-300 scale-105' : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200 hover:text-gray-700'}
+                          ${isAgreed ? 'bg-green-100 text-green-600 border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-orange-600 border-orange-300 scale-105' : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200 hover:text-gray-700'}
                           ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
                         `}
                       >
@@ -2892,6 +2915,11 @@ export default function App() {
                         {isOpponentChoice && !isMyChoice && (
                           <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
                             اقتراح!
+                          </div>
+                        )}
+                        {isAgreed && (
+                          <div className="absolute -top-2 -right-2 bg-green-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                            متفق عليه!
                           </div>
                         )}
                       </button>
@@ -3237,7 +3265,8 @@ export default function App() {
               color: 'text-yellow-500', 
               bg: 'bg-white', 
               disabled: room.timer > getQuickGuessThreshold(getLevel(me?.xp || xp)) || me?.quickGuessUsed,
-              level: 1 
+              level: 1,
+              hide: room.gameState === 'guessing'
             },
             { 
               id: 'hint', 
@@ -3246,7 +3275,7 @@ export default function App() {
               color: 'text-blue-500', 
               bg: 'bg-white', 
               disabled: me?.hintCount >= 2,
-              level: 1
+              level: 10
             },
             { 
               id: 'word_length', 
@@ -3275,7 +3304,7 @@ export default function App() {
               disabled: me?.spyLensUsed,
               level: 50
             }
-          ].map((card) => {
+          ].filter(card => !card.hide).map((card) => {
             const isLocked = getLevel(me?.xp || xp) < card.level;
             
             // Calculate dynamic cooldown for quick_guess based on room.timer
