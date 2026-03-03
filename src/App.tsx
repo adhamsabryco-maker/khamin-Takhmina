@@ -1274,9 +1274,12 @@ export default function App() {
                 <p>كلما فزت في مباريات أكثر، كلما حصلت على XP وارتفع مستواك!</p>
                 
                 <div className="bg-orange-50 p-3 rounded-2xl border-2 border-orange-100">
-                  <h3 className="text-lg font-black text-orange-600 mb-2 flex items-center gap-2">
-                    <Zap className="w-5 h-5" />
-                    ميزة التخمين السريع
+                  <h3 className="text-lg font-black text-orange-600 mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-5 h-5" />
+                      ميزة التخمين السريع
+                    </div>
+                    <span className="text-xs bg-orange-200 text-orange-700 px-2 py-1 rounded-full">تفتح في المستوى 1</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     ميزة التخمين السريع تتيح لك محاولة تخمين الصورة قبل انتهاء الوقت.
@@ -1298,8 +1301,64 @@ export default function App() {
                   </ul>
                 </div>
 
+                {/* Hint */}
                 <div className="bg-blue-50 p-3 rounded-2xl border-2 border-blue-100">
-                  <h3 className="text-lg font-black text-blue-600 mb-2 flex items-center gap-2">
+                  <h3 className="text-lg font-black text-blue-600 mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <HelpCircle className="w-5 h-5" />
+                      النصيحة
+                    </div>
+                    <span className="text-xs bg-blue-200 text-blue-700 px-2 py-1 rounded-full">تفتح في المستوى 10</span>
+                  </h3>
+                  <p className="text-sm leading-relaxed">
+                    تتيح لك الحصول على تلميح إضافي عن الصورة لمساعدتك في التخمين. يمكنك استخدامها مرتين في كل مباراة.
+                  </p>
+                </div>
+
+                {/* Letter Revealer */}
+                <div className="bg-green-50 p-3 rounded-2xl border-2 border-green-100">
+                  <h3 className="text-lg font-black text-green-600 mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Type className="w-5 h-5" />
+                      كاشف الحروف
+                    </div>
+                    <span className="text-xs bg-green-200 text-green-700 px-2 py-1 rounded-full">يفتح في المستوى 20</span>
+                  </h3>
+                  <p className="text-sm leading-relaxed">
+                    يكشف لك عن عدد حروف الكلمة المطلوبة لتسهيل عملية التخمين وتضييق نطاق الاحتمالات.
+                  </p>
+                </div>
+
+                {/* Time Freeze */}
+                <div className="bg-cyan-50 p-3 rounded-2xl border-2 border-cyan-100">
+                  <h3 className="text-lg font-black text-cyan-600 mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Snowflake className="w-5 h-5" />
+                      تجميد الوقت
+                    </div>
+                    <span className="text-xs bg-cyan-200 text-cyan-700 px-2 py-1 rounded-full">يفتح في المستوى 30</span>
+                  </h3>
+                  <p className="text-sm leading-relaxed">
+                    يقوم بتجميد وقت المباراة لمدة 10 ثوانٍ، مما يمنحك وقتاً إضافياً للتفكير والبحث دون أن ينقص الوقت الأصلي.
+                  </p>
+                </div>
+
+                {/* Spy */}
+                <div className="bg-purple-50 p-3 rounded-2xl border-2 border-purple-100">
+                  <h3 className="text-lg font-black text-purple-600 mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-5 h-5" />
+                      الجاسوس
+                    </div>
+                    <span className="text-xs bg-purple-200 text-purple-700 px-2 py-1 rounded-full">يفتح في المستوى 50</span>
+                  </h3>
+                  <p className="text-sm leading-relaxed">
+                    يتيح لك رؤية ما يكتبه منافسك في صندوق الدردشة قبل أن يرسله، مما يعطيك أفضلية استراتيجية كبيرة جداً!
+                  </p>
+                </div>
+
+                <div className="bg-indigo-50 p-3 rounded-2xl border-2 border-indigo-100">
+                  <h3 className="text-lg font-black text-indigo-600 mb-2 flex items-center gap-2">
                     <Trophy className="w-5 h-5" />
                     جوائز المستويات
                   </h3>
