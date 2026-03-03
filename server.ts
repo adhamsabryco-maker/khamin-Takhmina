@@ -813,6 +813,10 @@ const app = express();
       const myData = isP1 ? match.p1 : match.p2;
       const oppData = isP1 ? match.p2 : match.p1;
 
+      if (response === 'accept') {
+        oppData.socket.emit("opponent_accepted");
+      }
+
       if (response === 'block') {
         const myBlocks = blocks.get(myData.playerId) || [];
         myBlocks.push({ blockedId: oppData.playerId, expiresAt: Date.now() + 60 * 60 * 1000 }); // 1 hour
