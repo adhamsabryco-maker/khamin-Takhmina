@@ -2599,7 +2599,7 @@ export default function App() {
               </div>
 
               {/* Podium Box */}
-              <div className="bg-gray-50/30 rounded-[40px] border-2 border-gray-100/50 p-4 md:p-6 pt-12 md:pt-16 mt-8 md:mt-12">
+              <div className="bg-gray-50/30 rounded-[40px] border-2 border-gray-100/50 px-4 md:px-6 pb-2 md:pb-3 pt-12 md:pt-16 mt-8 md:mt-12">
                 <div className="flex items-end justify-center gap-2 md:gap-4">
                   {/* Rank 2 */}
                   {topPlayers[1] && (
@@ -2674,29 +2674,30 @@ export default function App() {
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Player Rank Info */}
-              {(() => {
-                const myRankIndex = topPlayers.findIndex(p => p.serial === playerSerial);
-                if (myRankIndex !== -1) {
-                  return (
-                    <div className="mt-4 bg-orange-100 border-2 border-orange-300 rounded-2xl p-3 text-center shadow-sm">
-                      <p className="text-orange-800 font-black text-sm md:text-base">
-                        ترتيبك الحالي هو {myRankIndex + 1}/100
-                      </p>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <div className="mt-4 bg-gray-100 border-2 border-gray-300 rounded-2xl p-3 text-center shadow-sm">
-                      <p className="text-gray-600 font-black text-sm md:text-base">
-                        لست ضمن أفضل 100 لاعب حتى الآن. استمر في اللعب!
-                      </p>
-                    </div>
-                  );
-                }
-              })()}
+                {/* Player Rank Info */}
+                {(() => {
+                  const myRankIndex = topPlayers.findIndex(p => p.serial === playerSerial);
+                  if (myRankIndex > 2) {
+                    return (
+                      <div className="mt-2 md:mt-3 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-full py-1 px-3 md:py-1.5 md:px-4 text-center shadow-sm mx-auto w-fit">
+                        <p className="text-orange-700 font-bold text-[10px] md:text-[11px]">
+                          ترتيبك الحالي في ابطال التخمين {myRankIndex + 1} 💪
+                        </p>
+                      </div>
+                    );
+                  } else if (myRankIndex === -1) {
+                    return (
+                      <div className="mt-2 md:mt-3 bg-white border border-gray-200 rounded-full py-1 px-3 md:py-1.5 md:px-4 text-center shadow-sm mx-auto w-fit">
+                        <p className="text-gray-500 font-bold text-[10px] md:text-[11px]">
+                          لست ضمن أفضل 100 لاعب حتى الآن. استمر في اللعب!
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
             </div>
 
             <div className="pt-4 md:pt-6 border-t-2 border-gray-100 space-y-3 md:space-y-4">
