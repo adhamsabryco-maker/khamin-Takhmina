@@ -181,15 +181,29 @@ const app = express();
 
               // Close window after a short delay
               setTimeout(() => {
-                if (window.opener) {
-                  window.close();
-                } else {
-                  // If not a popup, redirect to home
-                  window.location.href = '/';
+                if (window.opener && window.opener !== window) {
+                  try {
+                    window.close();
+                  } catch (e) {
+                    console.error('window.close failed', e);
+                  }
                 }
-              }, 1500);
+                
+                // Fallback: If the window didn't close (e.g. mobile browser), redirect to the game
+                setTimeout(() => {
+                  if (!window.closed) {
+                    const params = new URLSearchParams({
+                      admin_auth: 'success',
+                      adminToken: user.adminToken || '',
+                      email: user.email || '',
+                      isAdmin: user.isAdmin ? 'true' : 'false'
+                    });
+                    window.location.href = '/?' + params.toString();
+                  }
+                }, 500);
+              }, 1000);
             </script>
-            <button onclick="window.close()">إغلاق النافذة</button>
+            <button onclick="window.location.href = '/'">العودة للعبة</button>
             <br><br>
             <a href="/">العودة للرئيسية</a>
           </body>
