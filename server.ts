@@ -371,7 +371,7 @@ const app = express();
           if (b.xp !== a.xp) return b.xp - a.xp;
           return (b.wins || 0) - (a.wins || 0);
         })
-        .slice(0, 3)
+        .slice(0, 100)
         .map((p, i) => ({ ...p, rank: i + 1 }));
       topPlayersCacheTime = now;
     }
