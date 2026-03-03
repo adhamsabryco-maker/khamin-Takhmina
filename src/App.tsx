@@ -587,54 +587,7 @@ export default function App() {
       }
     };
 
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
-        console.log('Google Auth Success Event Received via postMessage:', event.data);
-        processAuthSuccess(event.data.user);
-      }
-    };
-
-    const handleStorage = (event: StorageEvent) => {
-      if (!socket) return;
-      if (event.key === 'google_auth_result' && event.newValue) {
-        try {
-          const data = JSON.parse(event.newValue);
-          if (data.type === 'GOOGLE_AUTH_SUCCESS' && Date.now() - data.timestamp < 60000) { // Check if recent (within 1 min)
-            console.log('Google Auth Success Event Received via localStorage:', data);
-            processAuthSuccess(data.user);
-            localStorage.removeItem('google_auth_result'); // Clear it
-          }
-        } catch (e) {
-          console.error('Error parsing storage event data:', e);
-        }
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    window.addEventListener('storage', handleStorage);
-    
-    // Check localStorage on mount/focus in case we missed the event
-    const checkStorage = () => {
-      if (!socket) return;
-      const stored = localStorage.getItem('google_auth_result');
-      if (stored) {
-        try {
-          const data = JSON.parse(stored);
-          if (data.type === 'GOOGLE_AUTH_SUCCESS' && Date.now() - data.timestamp < 60000) {
-            console.log('Google Auth Success found in localStorage on check:', data);
-            processAuthSuccess(data.user);
-            localStorage.removeItem('google_auth_result');
-          }
-        } catch (e) {
-          console.error('Error parsing stored auth data:', e);
-        }
-      }
-    };
-    
-    window.addEventListener('focus', checkStorage);
-    checkStorage(); // Initial check
-
-    // Check URL parameters for fallback auth
+    // Check URL parameters for direct redirect auth
     const checkUrlParams = () => {
       if (!socket) return;
       const params = new URLSearchParams(window.location.search);
@@ -654,9 +607,7 @@ export default function App() {
     checkUrlParams();
 
     return () => {
-      window.removeEventListener('message', handleMessage);
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('focus', checkStorage);
+      // Cleanup if needed
     };
   }, [socket, playerSerial]);
 
@@ -664,7 +615,8 @@ export default function App() {
     try {
       const response = await fetch('/api/auth/google/url');
       const { url } = await response.json();
-      window.open(url, 'google_auth', 'width=500,height=600');
+      // Redirect the current window to Google Auth
+      window.location.href = url;
     } catch (err) {
       setError('فشل الاتصال بخدمة جوجل.');
     }
