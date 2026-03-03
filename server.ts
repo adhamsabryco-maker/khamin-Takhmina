@@ -292,6 +292,35 @@ const app = express();
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS categories (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      icon TEXT,
+      timestamp INTEGER
+    )
+  `);
+
+  // Insert default categories if none exist
+  const catCount = db.prepare('SELECT COUNT(*) as count FROM categories').get() as { count: number };
+  if (catCount.count === 0) {
+    const defaultCategories = [
+      { id: 'people', name: 'اشخاص', icon: '👥' },
+      { id: 'food', name: 'أكلات', icon: '🍕' },
+      { id: 'animals', name: 'حيوانات', icon: '🐘' },
+      { id: 'objects', name: 'جماد', icon: '📦' },
+      { id: 'birds', name: 'طيور', icon: '🦜' },
+      { id: 'plants', name: 'نبات', icon: '🌿' },
+    ];
+    const insertCat = db.prepare('INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)');
+    const insertManyCats = db.transaction((cats) => {
+      for (const cat of cats) {
+        insertCat.run(cat.id, cat.name, cat.icon, Date.now());
+      }
+    });
+    insertManyCats(defaultCategories);
+  }
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS reports (
       id TEXT PRIMARY KEY,
       timestamp INTEGER,
@@ -392,6 +421,44 @@ const app = express();
 
   app.get("/api/admin/players", (req, res) => {
     res.json(Array.from(allPlayers.values()));
+  });
+
+  app.get("/api/categories", (req, res) => {
+    try {
+      const categories = db.prepare('SELECT id, name, icon, timestamp FROM categories ORDER BY timestamp ASC').all();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+
+  app.post("/api/admin/categories", (req, res) => {
+    try {
+      const { name, icon } = req.body;
+      if (!name || !icon) {
+        return res.status(400).json({ error: "Missing fields" });
+      }
+      const id = Math.random().toString(36).substring(2, 15);
+      db.prepare('INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)').run(id, name, icon, Date.now());
+      res.json({ success: true, id, name, icon });
+    } catch (error) {
+      console.error("Error adding category:", error);
+      res.status(500).json({ error: "Failed to add category" });
+    }
+  });
+
+  app.delete("/api/admin/categories/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+      // Also delete images in this category
+      db.prepare('DELETE FROM custom_images WHERE category = ?').run(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({ error: "Failed to delete category" });
+    }
   });
 
   app.get("/api/admin/images", (req, res) => {
@@ -526,50 +593,7 @@ const app = express();
     }
   }
 
-  const CATEGORIES = {
-    people: [
-      { name: "محمد صلاح", image: "https://picsum.photos/seed/salah/200/200" },
-      { name: "عادل إمام", image: "https://picsum.photos/seed/adel/200/200" },
-      { name: "عمرو دياب", image: "https://picsum.photos/seed/amr/200/200" },
-      { name: "ليونيل ميسي", image: "https://picsum.photos/seed/messi/200/200" },
-    ],
-    food: [
-      { name: "كشري", image: "https://picsum.photos/seed/koshary/200/200" },
-      { name: "بيتزا", image: "https://picsum.photos/seed/pizza/200/200" },
-      { name: "شاورما", image: "https://picsum.photos/seed/shawarma/200/200" },
-      { name: "ملوخية", image: "https://picsum.photos/seed/molokhia/200/200" },
-    ],
-    animals: [
-      { name: "أسد", image: "https://picsum.photos/seed/lion/200/200" },
-      { name: "فيل", image: "https://picsum.photos/seed/elephant/200/200" },
-      { name: "زرافة", image: "https://picsum.photos/seed/giraffe/200/200" },
-      { name: "قطة", image: "https://picsum.photos/seed/cat/200/200" },
-    ],
-    objects: [
-      { name: "كرسي", image: "https://picsum.photos/seed/chair/200/200" },
-      { name: "ساعة", image: "https://picsum.photos/seed/clock/200/200" },
-      { name: "مفتاح", image: "https://picsum.photos/seed/key/200/200" },
-      { name: "نظارة", image: "https://picsum.photos/seed/glasses/200/200" },
-    ],
-    birds: [
-      { name: "ببغاء", image: "https://picsum.photos/seed/parrot/200/200" },
-      { name: "صقر", image: "https://picsum.photos/seed/falcon/200/200" },
-      { name: "حمامة", image: "https://picsum.photos/seed/pigeon/200/200" },
-      { name: "نعامة", image: "https://picsum.photos/seed/ostrich/200/200" },
-    ],
-    plants: [
-      { name: "صبار", image: "https://picsum.photos/seed/cactus/200/200" },
-      { name: "وردة", image: "https://picsum.photos/seed/rose/200/200" },
-      { name: "شجرة", image: "https://picsum.photos/seed/tree/200/200" },
-      { name: "نخلة", image: "https://picsum.photos/seed/palm/200/200" },
-    ],
-    movies_series: [
-      { name: "لعبة الحبار", image: "https://picsum.photos/seed/squid/200/200" },
-      { name: "الجوكر", image: "https://picsum.photos/seed/joker/200/200" },
-      { name: "سبايدر مان", image: "https://picsum.photos/seed/spiderman/200/200" },
-      { name: "هاري بوتر", image: "https://picsum.photos/seed/harry/200/200" },
-    ],
-  };
+  const CATEGORIES = {};
 
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
@@ -1462,13 +1486,12 @@ const app = express();
   }
 
   function getCategoryImages(category: string) {
-    const staticImages = CATEGORIES[category as keyof typeof CATEGORIES] || [];
     try {
       const customImages = db.prepare('SELECT name, data as image FROM custom_images WHERE category = ?').all(category);
-      return [...staticImages, ...customImages];
+      return customImages;
     } catch (err) {
       console.error("Error fetching custom images:", err);
-      return staticImages;
+      return [];
     }
   }
 
