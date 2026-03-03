@@ -197,15 +197,32 @@ const app = express();
       `);
     } catch (error: any) {
       console.error("Google Auth Error:", error.response?.data || error.message);
+      
+      const errorDetails = error.response?.data || error.message;
+      let arabicReason = "حدث خطأ غير معروف.";
+      
+      if (errorDetails?.error === 'redirect_uri_mismatch') {
+        arabicReason = "رابط التحويل (Redirect URI) غير متطابق مع المسجل في Google Cloud.";
+      } else if (errorDetails?.error === 'invalid_client') {
+        arabicReason = "بيانات GOOGLE_CLIENT_ID أو GOOGLE_CLIENT_SECRET غير صحيحة.";
+      } else if (errorDetails?.error === 'invalid_grant') {
+        arabicReason = "الكود منتهي الصلاحية أو تم استخدامه بالفعل. يرجى المحاولة مرة أخرى.";
+      }
+
       // Display error to user instead of redirecting, for debugging
       res.status(500).send(`
-        <html>
-          <body style="font-family: sans-serif; padding: 20px; direction: ltr;">
-            <h2 style="color: red;">Authentication Failed</h2>
-            <p>Error details:</p>
-            <pre style="background: #f0f0f0; padding: 10px; border-radius: 5px;">${JSON.stringify(error.response?.data || error.message, null, 2)}</pre>
-            <p>Constructed Redirect URI: <strong>${redirectUri}</strong></p>
-            <p>Please ensure this URI matches exactly what is in Google Cloud Console.</p>
+        <html dir="rtl">
+          <body style="font-family: 'Cairo', sans-serif; padding: 20px; text-align: center; background-color: #fef2f2;">
+            <h2 style="color: #dc2626;">فشل تسجيل الدخول</h2>
+            <p style="font-size: 18px;">السبب المحتمل: <strong>${arabicReason}</strong></p>
+            
+            <div style="margin-top: 30px; padding: 15px; background: #fff; border: 1px solid #fca5a5; border-radius: 8px; text-align: left; direction: ltr;">
+              <p style="margin-top: 0; color: #666;">تفاصيل الخطأ التقني (للمطور):</p>
+              <pre style="background: #f1f5f9; padding: 10px; border-radius: 5px; overflow-x: auto;">${JSON.stringify(errorDetails, null, 2)}</pre>
+              <p>Constructed Redirect URI: <br><strong>${redirectUri}</strong></p>
+            </div>
+            
+            <button onclick="window.close()" style="margin-top: 20px; padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 5px; cursor: pointer;">إغلاق النافذة</button>
           </body>
         </html>
       `);
