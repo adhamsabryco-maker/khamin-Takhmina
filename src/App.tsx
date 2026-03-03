@@ -39,7 +39,8 @@ import {
   RefreshCw,
   Smile,
   LogOut,
-  Loader2
+  Loader2,
+  Plus
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import Cropper from 'react-easy-crop';
