@@ -463,7 +463,7 @@ const app = express();
 
   app.get("/api/admin/images", (req, res) => {
     try {
-      const images = db.prepare('SELECT id, category, name, timestamp, addedBy FROM custom_images ORDER BY timestamp DESC').all();
+      const images = db.prepare('SELECT id, category, name, data, timestamp, addedBy FROM custom_images ORDER BY timestamp DESC').all();
       res.json(images);
     } catch (error) {
       console.error("Error fetching images:", error);
