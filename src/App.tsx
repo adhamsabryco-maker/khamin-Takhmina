@@ -612,10 +612,16 @@ export default function App() {
           isAdmin: params.get('isAdmin') === 'true'
         };
         console.log('Google Auth Success found in URL params:', user);
-        processAuthSuccess(user);
         
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+        if (socket.connected) {
+          processAuthSuccess(user);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+          socket.once('connect', () => {
+            processAuthSuccess(user);
+            window.history.replaceState({}, document.title, window.location.pathname);
+          });
+        }
       }
     };
     checkUrlParams();
@@ -763,8 +769,10 @@ export default function App() {
             setReports(data.reports || 0);
             if (data.isPermanentBan) {
               setIsPermanentBan(true);
+              newSocket.disconnect();
             } else if (data.banUntil && data.banUntil > Date.now()) {
               setBanUntil(data.banUntil);
+              newSocket.disconnect();
             }
             localStorage.setItem('khamin_xp', data.xp.toString());
             localStorage.setItem('khamin_wins', (data.wins || 0).toString());
@@ -1058,6 +1066,7 @@ export default function App() {
       }
       setIsSearching(false);
       setJoined(false);
+      newSocket.disconnect();
     });
 
     return newSocket;
@@ -1965,12 +1974,28 @@ export default function App() {
                                 <div className="bg-gray-50 p-2 rounded-lg text-[10px] text-gray-500 font-medium italic">
                                   "{report.reason}"
                                 </div>
-                                <button 
-                                  onClick={() => setAdminSearchQuery(report.reportedSerial)}
-                                  className="w-full py-1.5 bg-gray-100 hover:bg-purple-100 hover:text-purple-600 rounded-lg text-[10px] font-black transition-colors"
-                                >
-                                  فحص اللاعب
-                                </button>
+                                <div className="flex gap-2">
+                                  <button 
+                                    onClick={() => setAdminSearchQuery(report.reportedSerial)}
+                                    className="flex-1 py-1.5 bg-gray-100 hover:bg-purple-100 hover:text-purple-600 rounded-lg text-[10px] font-black transition-colors"
+                                  >
+                                    فحص اللاعب
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      if (window.confirm('هل أنت متأكد من حذف هذا البلاغ؟')) {
+                                        socket?.emit('admin_delete_report', report.id, (res: any) => {
+                                          if (res.success) {
+                                            setAdminReports(prev => prev.filter(r => r.id !== report.id));
+                                          }
+                                        });
+                                      }
+                                    }}
+                                    className="py-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[10px] font-black transition-colors"
+                                  >
+                                    حذف
+                                  </button>
+                                </div>
                               </div>
                             ))
                           )}
@@ -2054,6 +2079,32 @@ export default function App() {
                                       className="flex-1 py-2 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black hover:bg-orange-600 hover:text-white transition-all"
                                     >
                                       حظر 24س
+                                    </button>
+                                    {p.banUntil > Date.now() && (
+                                      <button 
+                                        onClick={() => {
+                                          if (window.confirm('هل أنت متأكد من إلغاء حظر هذا اللاعب؟')) {
+                                            socket?.emit('admin_update_player', { serial: p.serial, updates: { banUntil: 0 } }, (res: any) => {
+                                              if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                                            });
+                                          }
+                                        }}
+                                        className="flex-1 py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-black hover:bg-green-600 hover:text-white transition-all"
+                                      >
+                                        إلغاء الحظر
+                                      </button>
+                                    )}
+                                    <button 
+                                      onClick={() => {
+                                        if (window.confirm('هل أنت متأكد من حظر هذا اللاعب نهائياً؟')) {
+                                          socket?.emit('admin_update_player', { serial: p.serial, updates: { isPermanentBan: 1, reports: 0 } }, (res: any) => {
+                                            if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                                          });
+                                        }
+                                      }}
+                                      className="flex-1 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black hover:bg-red-600 hover:text-white transition-all"
+                                    >
+                                      حظر نهائي
                                     </button>
                                     <button 
                                       onClick={() => {
