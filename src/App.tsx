@@ -634,6 +634,25 @@ export default function App() {
     window.addEventListener('focus', checkStorage);
     checkStorage(); // Initial check
 
+    // Check URL parameters for fallback auth
+    const checkUrlParams = () => {
+      if (!socket) return;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('admin_auth') === 'success') {
+        const user = {
+          email: params.get('email'),
+          adminToken: params.get('adminToken'),
+          isAdmin: params.get('isAdmin') === 'true'
+        };
+        console.log('Google Auth Success found in URL params:', user);
+        processAuthSuccess(user);
+        
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+    checkUrlParams();
+
     return () => {
       window.removeEventListener('message', handleMessage);
       window.removeEventListener('storage', handleStorage);
