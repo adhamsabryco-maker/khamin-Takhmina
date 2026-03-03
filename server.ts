@@ -1331,6 +1331,20 @@ const app = express();
       }
     });
 
+    socket.on("admin_delete_report", (reportId, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          db.prepare('DELETE FROM reports WHERE id = ?').run(reportId);
+          callback({ success: true });
+        } catch (err) {
+          callback({ error: "Failed to delete report" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
     socket.on("admin_update_player", ({ serial, updates }, callback) => {
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
       if (admin?.isAdmin || socket.data?.isAdmin) {
@@ -1345,6 +1359,11 @@ const app = express();
           for (const [socketId, s] of io.sockets.sockets) {
             if (s.data?.serial === serial) {
               io.to(socketId).emit("player_data_update", player);
+              if (updates.isPermanentBan === 1) {
+                io.to(socketId).emit("banned_status", { isPermanent: true });
+              } else if (updates.banUntil && updates.banUntil > Date.now()) {
+                io.to(socketId).emit("banned_status", { banUntil: updates.banUntil, isPermanent: false });
+              }
               break;
             }
           }
@@ -1365,6 +1384,14 @@ const app = express();
           allPlayers.delete(serial);
           db.prepare('DELETE FROM players WHERE serial = ?').run(serial);
           io.emit("top_players_update", getTopPlayers());
+          
+          for (const [socketId, s] of io.sockets.sockets) {
+            if (s.data?.serial === serial) {
+              io.to(socketId).emit("banned_status", { isPermanent: true });
+              break;
+            }
+          }
+          
           callback({ success: true });
         } else {
           callback({ error: "Player not found" });
