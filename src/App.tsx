@@ -106,15 +106,7 @@ const AVATARS = [
 
 const APP_VERSION = '1.1.1'; // Version for cache clearing
 
-const CATEGORIES = [
-  { id: 'people', name: 'اشخاص', icon: '👥' },
-  { id: 'food', name: 'أكلات', icon: '🍕' },
-  { id: 'animals', name: 'حيوانات', icon: '🐘' },
-  { id: 'objects', name: 'جماد', icon: '📦' },
-  { id: 'birds', name: 'طيور', icon: '🦜' },
-  { id: 'plants', name: 'نبات', icon: '🌿' },
 
-];
 
 const EMOTES = ['😂', '😡', '👍', '👎', '🤔', '🤯', '🎉', '💔'];
 
@@ -174,6 +166,9 @@ export default function App() {
   const [adminTab, setAdminTab] = useState<'players' | 'images'>('players');
   const [adminImages, setAdminImages] = useState<any[]>([]);
   const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
+  const [newCategory, setNewCategory] = useState({ id: '', name: '', icon: '' });
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [adminImageSearchQuery, setAdminImageSearchQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -398,6 +393,7 @@ export default function App() {
   const [banUntil, setBanUntil] = useState<number | null>(null);
   const [isPermanentBan, setIsPermanentBan] = useState(false);
   const [reports, setReports] = useState(0);
+  const [categories, setCategories] = useState<any[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, age: number, level?: number } } | null>(null);
   const [hasResponded, setHasResponded] = useState(false);
@@ -445,6 +441,13 @@ export default function App() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [room?.gameState]);
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => setCategories(data))
+      .catch(err => console.error('Failed to fetch categories:', err));
+  }, []);
 
   // Matchmaking timeout
   useEffect(() => {
@@ -639,6 +642,57 @@ export default function App() {
       setAdminImages(data);
     } catch (error) {
       console.error("Fetch images failed", error);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/categories');
+      const data = await res.json();
+      setCategories(data);
+    } catch (error) {
+      console.error("Fetch categories failed", error);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategory.name || !newCategory.icon) return;
+    setIsAddingCategory(true);
+    try {
+      const id = newCategory.name.toLowerCase().replace(/\s+/g, '_');
+      const response = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name: newCategory.name, icon: newCategory.icon })
+      });
+      if (response.ok) {
+        setNewCategory({ id: '', name: '', icon: '' });
+        fetchCategories();
+        alert('تم إضافة الفئة بنجاح');
+      } else {
+        alert('فشل إضافة الفئة');
+      }
+    } catch (error) {
+      console.error("Add category failed", error);
+      alert('حدث خطأ أثناء الإضافة');
+    } finally {
+      setIsAddingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذه الفئة وجميع الصور المرتبطة بها؟')) return;
+    try {
+      const response = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchCategories();
+        fetchAdminImages();
+      } else {
+        alert('فشل حذف الفئة');
+      }
+    } catch (error) {
+      console.error("Delete category failed", error);
+      alert('حدث خطأ أثناء الحذف');
     }
   };
 
@@ -2039,14 +2093,9 @@ export default function App() {
                                   onChange={(e) => setNewImage({...newImage, category: e.target.value})}
                                   className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-700 focus:border-purple-500 outline-none"
                                 >
-                                  <option value="animals">حيوانات</option>
-                                  <option value="inanimate">جماد</option>
-                                  <option value="people">مشاهير</option>
-                                  <option value="food">أكلات</option>
-                                  <option value="movies_series">أفلام ومسلسلات</option>
-                                  <option value="birds">طيور</option>
-                                  <option value="plants">نباتات</option>
-                                  <option value="objects">أشياء</option>
+                                  {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                  ))}
                                 </select>
                               </div>
 
@@ -2108,35 +2157,141 @@ export default function App() {
                               </button>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Images List */}
-                        <div className="lg:col-span-2 space-y-6">
-                          <div className="bg-white p-6 rounded-3xl border-2 border-purple-100 shadow-sm min-h-[500px]">
+                          {/* Category Management */}
+                          <div className="bg-white p-6 rounded-3xl border-2 border-purple-100 shadow-sm">
                             <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-                              <ImageIcon className="w-5 h-5 text-purple-600" />
-                              الصور المرفوعة ({adminImages.length})
+                              <Plus className="w-5 h-5 text-purple-600" />
+                              إدارة الفئات
                             </h3>
+                            
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">اسم الفئة</label>
+                                <input 
+                                  type="text" 
+                                  value={newCategory.name}
+                                  onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                                  placeholder="مثال: سيارات"
+                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-700 focus:border-purple-500 outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">أيقونة الفئة (إيموجي)</label>
+                                <input 
+                                  type="text" 
+                                  value={newCategory.icon}
+                                  onChange={(e) => setNewCategory({...newCategory, icon: e.target.value})}
+                                  placeholder="مثال: 🚗"
+                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-700 focus:border-purple-500 outline-none"
+                                />
+                              </div>
+                              <button 
+                                onClick={handleAddCategory}
+                                disabled={isAddingCategory || !newCategory.name || !newCategory.icon}
+                                className="w-full py-3 bg-purple-600 text-white rounded-xl font-black hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                              >
+                                {isAddingCategory ? (
+                                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                  <>
+                                    <Plus className="w-5 h-5" />
+                                    إضافة الفئة
+                                  </>
+                                )}
+                              </button>
+                            </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                              {adminImages.map((img) => (
-                                <div key={img.id} className="relative group bg-gray-50 rounded-xl border-2 border-gray-100 overflow-hidden">
-                                  <img src={img.data || `https://picsum.photos/seed/${img.name}/200/200`} alt={img.name} className="w-full aspect-square object-cover" />
-                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
-                                    <span className="text-white font-bold text-sm">{img.name}</span>
-                                    <span className="text-white/70 text-xs bg-black/50 px-2 py-1 rounded-full">{img.category}</span>
+                            <div className="mt-6 space-y-2">
+                              <label className="block text-sm font-bold text-gray-700 mb-2">الفئات الحالية</label>
+                              <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
+                                {categories.map(cat => (
+                                  <div key={cat.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xl">{cat.icon}</span>
+                                      <span className="font-bold text-sm text-gray-700">{cat.name}</span>
+                                    </div>
                                     <button 
-                                      onClick={() => handleDeleteImage(img.id)}
-                                      className="mt-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                      onClick={() => handleDeleteCategory(cat.id)}
+                                      className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
                                   </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Images List */}
+                        <div className="lg:col-span-2 space-y-6">
+                          <div className="bg-white p-6 rounded-3xl border-2 border-purple-100 shadow-sm min-h-[500px] flex flex-col">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                              <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                                <ImageIcon className="w-5 h-5 text-purple-600" />
+                                الصور المرفوعة ({adminImages.length})
+                              </h3>
+                              <div className="relative w-full md:w-64">
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <input 
+                                  type="text"
+                                  placeholder="ابحث عن صورة..."
+                                  value={adminImageSearchQuery}
+                                  onChange={(e) => setAdminImageSearchQuery(e.target.value)}
+                                  className="w-full pr-10 pl-4 py-2 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-purple-400 focus:bg-white transition-all font-bold text-sm"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto pr-2 space-y-8">
+                              {categories.map(category => {
+                                const categoryImages = adminImages.filter(img => 
+                                  img.category === category.id && 
+                                  img.name.toLowerCase().includes(adminImageSearchQuery.toLowerCase())
+                                );
+
+                                if (categoryImages.length === 0) return null;
+
+                                return (
+                                  <div key={category.id} className="space-y-4">
+                                    <h4 className="flex items-center gap-2 text-md font-bold text-gray-700 border-b-2 border-gray-100 pb-2">
+                                      <span className="text-2xl">{category.icon}</span>
+                                      {category.name}
+                                      <span className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full mr-auto">
+                                        {categoryImages.length} صور
+                                      </span>
+                                    </h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                      {categoryImages.map((img) => (
+                                        <div key={img.id} className="relative group bg-gray-50 rounded-xl border-2 border-gray-100 overflow-hidden">
+                                          <img src={img.data || `https://picsum.photos/seed/${img.name}/200/200`} alt={img.name} className="w-full aspect-square object-cover" />
+                                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                                            <span className="text-white font-bold text-sm text-center">{img.name}</span>
+                                            <button 
+                                              onClick={() => handleDeleteImage(img.id)}
+                                              className="mt-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+
                               {adminImages.length === 0 && (
-                                <div className="col-span-full text-center py-12 text-gray-400 font-bold">
+                                <div className="text-center py-12 text-gray-400 font-bold">
                                   لا توجد صور مرفوعة حالياً
+                                </div>
+                              )}
+                              {adminImages.length > 0 && categories.every(cat => 
+                                adminImages.filter(img => img.category === cat.id && img.name.toLowerCase().includes(adminImageSearchQuery.toLowerCase())).length === 0
+                              ) && (
+                                <div className="text-center py-12 text-gray-400 font-bold">
+                                  لا توجد نتائج للبحث
                                 </div>
                               )}
                             </div>
@@ -2987,7 +3142,7 @@ export default function App() {
               <div className="space-y-4">
                 <p className="text-lg font-black text-[#2D3436] uppercase tracking-wide">اختر فئة التخمين</p>
                 <div className="grid grid-cols-3 gap-3">
-                  {CATEGORIES.map(cat => {
+                  {categories.map(cat => {
                     const isMyChoice = me?.selectedCategory === cat.id;
                     const isOpponentChoice = opponent?.selectedCategory === cat.id;
                     const isAgreed = isMyChoice && isOpponentChoice;
