@@ -123,6 +123,7 @@ const enterFullscreen = () => {
 };
 
 export default function App() {
+  const customConfig = useAvatarConfig();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
