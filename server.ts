@@ -867,13 +867,23 @@ const app = express();
       // 1. Handle Category Selection
       if (room.gameState === 'waiting' && !bot.selectedCategory) {
         setTimeout(() => {
-          const categories = ["animals", "food", "people", "objects", "birds", "plants"];
-          const randomCategory = categories[Math.floor(Math.random() * categories.length)];
-          bot.selectedCategory = randomCategory;
+          // Check if opponent has already selected
+          if (player.selectedCategory) {
+             bot.selectedCategory = player.selectedCategory;
+          } else {
+             const categories = ["animals", "food", "people", "objects", "birds", "plants"];
+             const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+             bot.selectedCategory = randomCategory;
+          }
+          
           io.to(room.id).emit("room_update", room);
           
-          // If both selected, start game
-          if (player.selectedCategory) {
+          // Check if both players selected the same category
+          const allSelected = room.players.length === 2 && 
+                            room.players.every((p: any) => p.selectedCategory === bot.selectedCategory);
+          
+          if (allSelected) {
+            room.category = bot.selectedCategory;
             startGame(room.id);
           }
         }, 2000 + Math.random() * 3000);
@@ -888,7 +898,27 @@ const app = express();
       
       // Bot might send a greeting
       setTimeout(() => {
-        const greeting = `أهلاً يا ${player.name}، أنا ${bot.name} وجاهز للتحدي! الفئة هي ${room.category}، وريني شطارتك بقى.`;
+        const categoryNames: Record<string, string> = {
+          animals: "حيوانات",
+          food: "أكلات",
+          people: "أشخاص",
+          objects: "جماد",
+          birds: "طيور",
+          plants: "نبات"
+        };
+        const catName = categoryNames[room.category] || room.category;
+        
+        // Get first name only to sound more casual
+        const firstName = player.name.split(' ')[0];
+        
+        // More natural, slang greetings based on persona could be better, but a generic casual one works for now
+        const greetings = [
+          `منور يا ${firstName}! أنا ${bot.name}. يلا بينا نلعب في ${catName}، وريني هتعرف تكسبني ولا لأ 😉`,
+          `أهلاً يا ${firstName}! جاهز للتحدي؟ الفئة هي ${catName}، ياللا بينا!`,
+          `يا هلا بـ ${firstName}! أنا ${bot.name}، ومستعد جداً للجولة دي في ${catName}.`
+        ];
+        
+        const greeting = greetings[Math.floor(Math.random() * greetings.length)];
         io.to(roomId).emit("chat_bubble", { senderId: bot.id, text: greeting });
         
         // Start questioning loop
