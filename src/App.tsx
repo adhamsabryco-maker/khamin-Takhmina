@@ -284,8 +284,13 @@ export default function App() {
     }
   };
 
-  const renderAvatarContent = (avatarStr: string, level: number = 1) => {
-    return <AvatarDisplay avatar={avatarStr} level={level} customConfig={customConfig} className="w-full h-full" />;
+  const renderAvatarContent = (avatarStr: string, level: number = 1, hideExtras: boolean = false) => {
+    return <AvatarDisplay avatar={avatarStr} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={hideExtras} />;
+  };
+
+  const truncateName = (name: string, limit: number = 10) => {
+    if (!name) return '';
+    return name.length > limit ? name.substring(0, limit) + '...' : name;
   };
 
   // Cache clearing logic
@@ -2863,7 +2868,7 @@ export default function App() {
                         </div>
                         <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
                       </div>
-                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[1].name}</div>
+                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[1].name)}</div>
                       <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
                         <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                           Lvl {topPlayers[1].level}
@@ -2887,7 +2892,7 @@ export default function App() {
                         </div>
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-[60] animate-bounce">1</div>
                       </div>
-                      <div className="text-xs md:text-sm font-black text-[#2D3436] truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{topPlayers[0].name}</div>
+                      <div className="text-xs md:text-sm font-black text-[#2D3436] truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{truncateName(topPlayers[0].name)}</div>
                       <div className="flex flex-col items-center gap-1 mt-1 mb-1">
                         <div className="text-[10px] font-bold text-gray-500 bg-yellow-100 px-3 py-1 rounded-full">
                           Lvl {topPlayers[0].level}
@@ -2910,7 +2915,7 @@ export default function App() {
                         </div>
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
-                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[2].name}</div>
+                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[2].name)}</div>
                       <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
                         <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                           Lvl {topPlayers[2].level}
@@ -2930,8 +2935,8 @@ export default function App() {
                   const myRankIndex = topPlayers.findIndex(p => p.serial === playerSerial);
                   if (myRankIndex > 2) {
                     return (
-                      <div className="mt-2 md:mt-3 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-full py-1 px-3 md:py-1.5 md:px-4 text-center shadow-sm mx-auto w-fit">
-                        <p className="text-orange-700 font-bold text-[10px] md:text-[11px]">
+                      <div className="mt-2 md:mt-3 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-full py-1.5 px-4 md:py-2 md:px-6 text-center shadow-sm mx-auto w-fit">
+                        <p className="text-orange-700 font-bold text-xs md:text-sm">
                           ترتيبك الحالي في ابطال التخمين {myRankIndex + 1} 💪
                         </p>
                       </div>
@@ -3108,7 +3113,7 @@ export default function App() {
           {opponent && (
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
-                {renderAvatarContent(opponent.avatar, opponent.level || 1)}
+                {renderAvatarContent(opponent.avatar, opponent.level || 1, true)}
                 {showHammer === opponent.id && (
                   <motion.div 
                     initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
@@ -3477,7 +3482,7 @@ export default function App() {
           {me && (
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
-                {renderAvatarContent(me.avatar, getLevel(xp))}
+                {renderAvatarContent(me.avatar, getLevel(xp), room.gameState === 'waiting')}
                 {showHammer === me.id && (
                   <motion.div 
                     initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
@@ -3659,7 +3664,7 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4"
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
