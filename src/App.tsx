@@ -324,10 +324,10 @@ export default function App() {
   };
 
   const getQuickGuessThreshold = (level: number) => {
-    // The threshold is when the game timer (300s) reaches (300 - waitTime)
-    // Level 1: 300 - 150 = 150s remaining
-    // Level 10: 300 - 123 = 177s remaining
-    return 300 - getQuickGuessWaitTime(level);
+    // The threshold is when the game timer (600s) reaches (600 - waitTime)
+    // Level 1: 600 - 150 = 450s remaining
+    // Level 10: 600 - 123 = 477s remaining
+    return 600 - getQuickGuessWaitTime(level);
   };
 
   const renderStars = (level: number) => {
@@ -3252,72 +3252,74 @@ export default function App() {
                   })}
                 </div>
 
-                {/* WhatsApp Style Chat Box */}
-                <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-48 mt-4 relative">
-                  {isMutedByOpponent && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
-                      <Lock className="w-12 h-12 mb-2 text-red-400" />
-                      <span className="font-black text-lg text-center px-4">تم حظر الدردشة من قبل المنافس</span>
-                    </div>
-                  )}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
-                    {chatHistory.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-gray-400 font-bold text-sm italic">
-                        ابدأ الدردشة مع منافسك...
+                {/* WhatsApp Style Chat Box - Hidden when consensus reached */}
+                {!consensusReached && (
+                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-48 mt-4 relative">
+                    {isMutedByOpponent && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
+                        <Lock className="w-12 h-12 mb-2 text-red-400" />
+                        <span className="font-black text-lg text-center px-4">تم حظر الدردشة من قبل المنافس</span>
                       </div>
-                    ) : (
-                      chatHistory.map((msg, index) => (
-                        <div key={`waiting-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
-                          <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
-                            <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
-                              {msg.playerName}
-                            </div>
-                            <div className={`leading-tight ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
-                          </div>
+                    )}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+                      {chatHistory.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-gray-400 font-bold text-sm italic">
+                          ابدأ الدردشة مع منافسك...
                         </div>
-                      ))
-                    )}
-                    <div ref={chatEndRef} />
+                      ) : (
+                        chatHistory.map((msg, index) => (
+                          <div key={`waiting-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
+                            <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
+                              <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
+                                {msg.playerName}
+                              </div>
+                              <div className={`leading-tight ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      <div ref={chatEndRef} />
+                    </div>
+                    <form onSubmit={handleSendChat} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative">
+                      <button type="submit" disabled={isMutedByOpponent} className="bg-[#128C7E] text-white p-3 rounded-full shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
+                        <Send className="w-5 h-5" />
+                      </button>
+                      <input 
+                        type="text" 
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="اكتب رسالة..."
+                        className="flex-1 bg-white border-none rounded-full px-4 py-2 text-base outline-none shadow-sm font-bold disabled:bg-gray-200 disabled:cursor-not-allowed"
+                        maxLength={100}
+                        disabled={isMutedByOpponent}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowEmotes(!showEmotes)}
+                        className="bg-white text-gray-500 p-3 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
+                      >
+                        <Smile className="w-5 h-5" />
+                      </button>
+                      {showEmotes && (
+                        <div className="absolute bottom-full left-2 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-2 w-48 z-50">
+                          {EMOTES.map(emote => (
+                            <button
+                              key={emote}
+                              type="button"
+                              onClick={() => {
+                                socket?.emit('send_emote', { roomId: room!.id, emote });
+                                setShowEmotes(false);
+                              }}
+                              className="text-2xl hover:scale-125 transition-transform p-1"
+                            >
+                              {emote}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </form>
                   </div>
-                  <form onSubmit={handleSendChat} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative">
-                    <button type="submit" disabled={isMutedByOpponent} className="bg-[#128C7E] text-white p-3 rounded-full shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
-                      <Send className="w-5 h-5" />
-                    </button>
-                    <input 
-                      type="text" 
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="اكتب رسالة..."
-                      className="flex-1 bg-white border-none rounded-full px-4 py-2 text-base outline-none shadow-sm font-bold disabled:bg-gray-200 disabled:cursor-not-allowed"
-                      maxLength={25}
-                      disabled={isMutedByOpponent}
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowEmotes(!showEmotes)}
-                      className="bg-white text-gray-500 p-3 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
-                    >
-                      <Smile className="w-5 h-5" />
-                    </button>
-                    {showEmotes && (
-                      <div className="absolute bottom-full left-2 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-2 w-48 z-50">
-                        {EMOTES.map(emote => (
-                          <button
-                            key={emote}
-                            type="button"
-                            onClick={() => {
-                              socket?.emit('send_emote', { roomId: room!.id, emote });
-                              setShowEmotes(false);
-                            }}
-                            className="text-2xl hover:scale-125 transition-transform p-1"
-                          >
-                            {emote}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </form>
-                </div>
+                )}
               </div>
 
               {consensusReached ? (
