@@ -77,10 +77,10 @@ const getQuickGuessWaitTime = (level: number) => {
 };
 
 const getQuickGuessThreshold = (level: number) => {
-  // The threshold is when the game timer (300s) reaches (300 - waitTime)
-  // Level 1: 300 - 150 = 150s remaining
-  // Level 10: 300 - 123 = 177s remaining
-  return 300 - getQuickGuessWaitTime(level);
+  // The threshold is when the game timer (600s) reaches (600 - waitTime)
+  // Level 1: 600 - 150 = 450s remaining
+  // Level 10: 600 - 123 = 477s remaining
+  return 600 - getQuickGuessWaitTime(level);
 };
 
 const app = express();
@@ -1936,7 +1936,7 @@ const app = express();
     room.players[1].quickGuessUsed = false;
     
     room.gameState = "discussion";
-    room.timer = 300; // 5 minutes
+    room.timer = 600; // 10 minutes
     room.isPaused = false;
 
     io.to(roomId).emit("room_update", room);
