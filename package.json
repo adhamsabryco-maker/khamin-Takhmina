@@ -14,7 +14,6 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.1",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
