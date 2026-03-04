@@ -2676,7 +2676,7 @@ export default function App() {
             </div>
           </header>
 
-        <div className="w-full max-w-md card-game p-6 md:p-12 text-center space-y-4 md:space-y-8 relative overflow-hidden">
+        <div className="w-full max-w-md card-game p-3 md:p-6 text-center space-y-3 md:space-y-6 relative overflow-hidden">
           {proposedMatch ? (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
@@ -2793,7 +2793,7 @@ export default function App() {
             <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
               <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
             </div>
-            <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
+            <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm block">خمن تخمينة</div>
           </div>
           
           <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
@@ -2838,11 +2838,11 @@ export default function App() {
           </div>
         </header>
 
-        <div className="min-h-screen w-full flex items-center justify-center p-4 pt-24">
+        <div className="min-h-screen w-full flex items-center justify-center p-4 pt-20">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md py-8"
+          className="w-full max-w-md py-2"
         >
 
           {/* Profile Card */}
@@ -2880,28 +2880,21 @@ export default function App() {
               </div>
             </div>
 
-          <div className="card-game p-6 md:p-10">
+          <div className="card-game p-3 md:p-5">
 
-          <div className="space-y-4 md:space-y-10">
+          <div className="space-y-4 md:space-y-6">
             {/* Top Players Section */}
-            <div className="flex flex-col gap-4">
-              {/* Header Box */}
-              <div className="px-2">
-                <div className="flex items-center justify-between flex-row-reverse">
-                  <h2 className="text-lg md:text-xl font-black text-[#2D3436] flex items-center gap-2">
+            <div className="flex flex-col gap-2">
+              
+              {/* Podium Box with Integrated Header */}
+              <div className="bg-gray-50/30 rounded-[32px] border-2 border-gray-100/50 px-3 md:px-5 pb-2 pt-4 mt-2 relative">
+                {/* Integrated Header */}
+                <div className="flex items-center justify-between flex-row-reverse mb-8 border-b border-gray-200/50 pb-2">
+                  <h2 className="text-base md:text-lg font-black text-[#2D3436] flex items-center gap-2">
                     أبطال التخمين
                   </h2>
-                  <span className="text-xs md:text-sm font-bold text-orange-500">المتصدرون حالياً</span>
+                  <span className="text-[10px] md:text-xs font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-full">المتصدرون حالياً</span>
                 </div>
-              </div>
-
-              {/* Separator */}
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-gray-200 dashed"></div></div>
-              </div>
-
-              {/* Podium Box */}
-              <div className="bg-gray-50/30 rounded-[40px] border-2 border-gray-100/50 px-4 md:px-6 pb-2 md:pb-3 pt-12 md:pt-16 mt-8 md:mt-12">
                 <div className="flex items-end justify-center gap-2 md:gap-4">
                   {/* Rank 2 */}
                   {topPlayers[1] && (
@@ -3201,7 +3194,7 @@ export default function App() {
         {/* Center Content: Image or Waiting UI */}
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0 overflow-hidden">
           {room.gameState === 'waiting' ? (
-            <div className="w-full card-game p-4 md:p-8 text-center space-y-4 md:space-y-6 relative overflow-hidden">
+            <div className="w-full card-game p-3 md:p-6 text-center space-y-3 md:space-y-5 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gray-100">
                 <div 
                   className="h-full bg-orange-500 transition-all duration-1000" 
@@ -3223,8 +3216,8 @@ export default function App() {
               </div>
               
               <div className="space-y-4">
-                <p className="text-lg font-black text-[#2D3436] uppercase tracking-wide">اختر فئة التخمين</p>
-                <div className="grid grid-cols-3 gap-3">
+                <p className="text-base font-black text-[#2D3436] uppercase tracking-wide">اختر فئة التخمين</p>
+                <div className="grid grid-cols-4 gap-2">
                   {categories.map(cat => {
                     const isMyChoice = me?.selectedCategory === cat.id;
                     const isOpponentChoice = opponent?.selectedCategory === cat.id;
@@ -3234,13 +3227,13 @@ export default function App() {
                       <button
                         key={cat.id}
                         onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
-                        className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
+                        className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
                           ${isAgreed ? 'bg-green-100 text-green-600 border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-orange-600 border-orange-300 scale-105' : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200 hover:text-gray-700'}
                           ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
                         `}
                       >
-                        <span className="text-4xl">{cat.icon}</span>
-                        <span className="text-sm font-black">{cat.name}</span>
+                        <span className="text-2xl md:text-3xl">{cat.icon}</span>
+                        <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
                         {isOpponentChoice && !isMyChoice && (
                           <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
                             اقتراح!
@@ -3257,7 +3250,7 @@ export default function App() {
                 </div>
 
                 {/* WhatsApp Style Chat Box */}
-                <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-64 mt-6 relative">
+                <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-48 mt-4 relative">
                   {isMutedByOpponent && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                       <Lock className="w-12 h-12 mb-2 text-red-400" />
