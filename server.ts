@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -23,7 +24,10 @@ const upload = multer({ storage: storage });
 import { filterProfanity } from "./src/profanityFilter";
 import { GoogleGenAI } from "@google/genai";
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy_key_to_prevent_crash" });
+if (!process.env.GEMINI_API_KEY) {
+  console.warn("WARNING: GEMINI_API_KEY is not set. AI features will not work.");
+}
 
 const BOT_PERSONAS = [
   { name: "زيزو", age: 22, level: 15, avatar: "free1", personality: "هزار وفرفشة، بيحب يستخدم كلمات زي 'يا زميلي' و 'يا صاحبي' و 'أنجز يا وحش'" },
