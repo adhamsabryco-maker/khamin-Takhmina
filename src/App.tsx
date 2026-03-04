@@ -125,7 +125,7 @@ const enterFullscreen = () => {
 };
 
 export default function App() {
-  const customConfig = useAvatarConfig();
+  const { customConfig, refreshConfig } = useAvatarConfig();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
@@ -768,6 +768,10 @@ export default function App() {
     });
     
     setSocket(newSocket);
+
+    newSocket.on('config_updated', () => {
+      refreshConfig();
+    });
 
     newSocket.on('connect', () => {
       console.log('Socket connected successfully! ID:', newSocket.id);
@@ -3113,7 +3117,7 @@ export default function App() {
           {opponent && (
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
-                {renderAvatarContent(opponent.avatar, opponent.level || 1, true)}
+                {renderAvatarContent(opponent.avatar, opponent.level || 1, false)}
                 {showHammer === opponent.id && (
                   <motion.div 
                     initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
@@ -3482,7 +3486,7 @@ export default function App() {
           {me && (
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
-                {renderAvatarContent(me.avatar, getLevel(xp), room.gameState === 'waiting')}
+                {renderAvatarContent(me.avatar, getLevel(xp), false)}
                 {showHammer === me.id && (
                   <motion.div 
                     initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
@@ -3702,7 +3706,7 @@ export default function App() {
                   onClick={() => socket?.emit('play_again', { roomId })}
                   className="w-full btn-game btn-success py-2 md:py-3 text-base md:text-lg"
                 >
-                  لعب مرة أخرى
+                  اللعب مره اخري مع المنافس
                 </button>
                 <button 
                   onClick={() => window.location.reload()}
