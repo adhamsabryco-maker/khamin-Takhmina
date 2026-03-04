@@ -170,11 +170,6 @@ export default function App() {
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
   const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization'>('players');
   const [adminImages, setAdminImages] = useState<any[]>([]);
-  const [customConfig, setCustomConfig] = useState<any>({ avatars: {}, frames: {}, stars: {} });
-
-  useEffect(() => {
-    fetch('/api/config').then(res => res.json()).then(setCustomConfig);
-  }, []);
 
   const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
   const [newCategory, setNewCategory] = useState({ id: '', name: '', icon: '' });
