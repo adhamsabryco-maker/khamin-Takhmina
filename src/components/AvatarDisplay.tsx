@@ -1,16 +1,19 @@
 import React from 'react';
 
 export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full h-full" }: { avatar: string, level: number, customConfig: any, className?: string }) => {
+  const customAvatar = customConfig.avatars?.[level];
   const frame = customConfig.frames?.[level];
   const star = customConfig.stars?.[level];
+
+  const displayAvatar = customAvatar ? `/uploads/${customAvatar}` : avatar;
 
   return (
     <div className={`relative ${className}`}>
       {/* Avatar */}
-      {avatar.startsWith('data:image') || avatar.startsWith('http') ? (
-        <img src={avatar} className="w-full h-full object-cover rounded-full" alt="Avatar" />
+      {displayAvatar.startsWith('data:image') || displayAvatar.startsWith('http') || displayAvatar.startsWith('/uploads/') ? (
+        <img src={displayAvatar} className="w-full h-full object-cover rounded-full" alt="Avatar" />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-4xl">{avatar}</div>
+        <div className="w-full h-full flex items-center justify-center text-4xl">{displayAvatar}</div>
       )}
 
       {/* Frame */}
