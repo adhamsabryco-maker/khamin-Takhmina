@@ -252,7 +252,8 @@ const app = express();
   const allPlayers = new Map<string, { 
     name: string, 
     level: number, 
-    avatar: string, 
+    avatar: string,
+    gender?: string, 
     xp: number, 
     serial: string, 
     wins: number, 
@@ -328,11 +329,13 @@ const app = express();
       avatar TEXT,
       xp INTEGER,
       wins INTEGER,
-      level INTEGER
+      level INTEGER,
+      gender TEXT
     )
   `);
 
   // Add new columns for reporting system if they don't exist
+  try { db.exec(`ALTER TABLE players ADD COLUMN gender TEXT DEFAULT 'boy'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN reports INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN banUntil INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN banCount INTEGER DEFAULT 0`); } catch (e) {}
@@ -395,8 +398,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin)
   `);
 
   function savePlayerData(serial: string) {
@@ -406,6 +409,7 @@ const app = express();
       
       insertPlayer.run({
         ...player,
+        gender: player.gender || 'boy',
         reportedBy: JSON.stringify(player.reportedBy || []),
         email: player.email || null,
         isAdmin: player.isAdmin ? 1 : 0
@@ -420,6 +424,7 @@ const app = express();
     for (const player of players) {
       insertPlayer.run({
         ...player,
+        gender: player.gender || 'boy',
         reportedBy: JSON.stringify(player.reportedBy || []),
         email: player.email || null,
         isAdmin: player.isAdmin ? 1 : 0
@@ -455,6 +460,7 @@ const app = express();
         
         allPlayers.set(row.serial, {
           ...row,
+          gender: row.gender || 'boy',
           reports: row.reports || 0,
           banUntil: row.banUntil || 0,
           banCount: row.banCount || 0,
@@ -776,7 +782,7 @@ const app = express();
 تحدث بالعامية المصرية الشعبية فقط. لا تخرج عن الشخصية. لا تذكر أنك ذكاء اصطناعي. رد باختصار.
 `;
         const response = await genAI.models.generateContent({
-          model: "gemini-1.5-flash",
+          model: "gemini-3-flash-preview",
           contents: history,
           config: {
             systemInstruction,
@@ -858,7 +864,7 @@ const app = express();
       // 1. Handle Category Selection
       if (room.gameState === 'waiting' && !bot.selectedCategory) {
         setTimeout(() => {
-          const categories = ["animals", "food", "people", "places", "things", "birds"];
+          const categories = ["animals", "food", "people", "objects", "birds", "plants"];
           const randomCategory = categories[Math.floor(Math.random() * categories.length)];
           bot.selectedCategory = randomCategory;
           io.to(room.id).emit("room_update", room);
@@ -907,7 +913,7 @@ const app = express();
 تحدث بالعامية المصرية الشعبية فقط. لا تخرج عن الشخصية. لا تذكر أنك ذكاء اصطناعي. رد باختصار.
 `;
         const response = await genAI.models.generateContent({
-          model: "gemini-1.5-flash",
+          model: "gemini-3-flash-preview",
           contents: history,
           config: {
             systemInstruction,
@@ -937,7 +943,7 @@ const app = express();
     console.log("User connected:", socket.id);
     broadcastOnlineCount();
 
-    socket.on("register_player", ({ name, avatar, xp }, callback) => {
+    socket.on("register_player", ({ name, avatar, xp, gender }, callback) => {
       // Generate a unique non-sequential ID
       const serial = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const level = getLevel(xp || 0);
@@ -950,6 +956,7 @@ const app = express();
         name: filteredName, 
         level, 
         avatar, 
+        gender: gender || 'boy',
         xp: xp || 0, 
         serial, 
         wins: 0, 
@@ -964,7 +971,7 @@ const app = express();
       io.emit("top_players_update", getTopPlayers());
     });
 
-    socket.on("update_profile", ({ playerSerial, playerName, avatar }, callback) => {
+    socket.on("update_profile", ({ playerSerial, playerName, avatar, gender }, callback) => {
       const player = allPlayers.get(playerSerial);
       if (player) {
         let filteredName = filterProfanity(playerName);
@@ -973,6 +980,7 @@ const app = express();
         }
         player.name = filteredName;
         player.avatar = avatar;
+        if (gender) player.gender = gender;
         savePlayerData(playerSerial);
         const topPlayers = getTopPlayers();
         io.emit("top_players_update", topPlayers);
