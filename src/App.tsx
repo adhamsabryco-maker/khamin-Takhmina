@@ -46,6 +46,7 @@ import confetti from 'canvas-confetti';
 import { AdminCustomization } from './components/AdminCustomization';
 import { AvatarDisplay } from './components/AvatarDisplay';
 import { useAvatarConfig } from './contexts/AvatarContext';
+import { STATIC_ASSETS } from './constants';
 import Cropper from 'react-easy-crop';
 
 // Audio URLs
@@ -106,6 +107,7 @@ const AVATARS = [
   { id: 'avatar-lvl-20.png', level: 20 },
   { id: 'avatar-lvl-30.png', level: 30 },
   { id: 'avatar-lvl-40.png', level: 40 },
+  { id: 'avatar-lvl-50.png', level: 50 },
 ];
 
 const APP_VERSION = '1.1.1'; // Version for cache clearing
@@ -325,10 +327,28 @@ export default function App() {
     const starsCount = Math.floor(level / 10);
     if (starsCount === 0) return null;
     
+    const getMilestoneLevel = (lvl: number) => {
+      if (lvl >= 50) return 50;
+      if (lvl >= 40) return 40;
+      if (lvl >= 30) return 30;
+      if (lvl >= 20) return 20;
+      if (lvl >= 10) return 10;
+      return 1;
+    };
+    const milestoneLevel = getMilestoneLevel(level);
+
+    const customStar = customConfig.stars?.[milestoneLevel];
+    const staticStar = STATIC_ASSETS.stars[milestoneLevel as keyof typeof STATIC_ASSETS.stars];
+    const displayStar = customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null);
+
     return (
-      <div className="flex justify-center gap-0.5 mt-1">
+      <div className="flex justify-center gap-1 mt-1">
         {Array.from({ length: starsCount }).map((_, i) => (
-          <Star key={i} className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-sm" />
+          displayStar ? (
+            <img key={i} src={displayStar} className="w-4 h-4 object-contain drop-shadow-sm" alt="Star" />
+          ) : (
+            <Star key={i} className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-sm" />
+          )
         ))}
       </div>
     );
@@ -2886,7 +2906,7 @@ export default function App() {
                         <div className="w-14 h-14 md:w-16 md:h-16">
                           {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level)}
                         </div>
-                        <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">2</div>
+                        <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[1].name}</div>
                       <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
@@ -2906,11 +2926,11 @@ export default function App() {
                   {topPlayers[0] && (
                     <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1 z-20 -mt-8 md:-mt-12">
                       <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
-                        <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-30" />
+                        <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-[60]" />
                         <div className="w-16 h-16 md:w-20 md:h-20">
                           {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level)}
                         </div>
-                        <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-30 animate-bounce">1</div>
+                        <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-[60] animate-bounce">1</div>
                       </div>
                       <div className="text-xs md:text-sm font-black text-[#2D3436] truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{topPlayers[0].name}</div>
                       <div className="flex flex-col items-center gap-1 mt-1 mb-1">
@@ -2933,7 +2953,7 @@ export default function App() {
                         <div className="w-14 h-14 md:w-16 md:h-16">
                           {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level)}
                         </div>
-                        <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">3</div>
+                        <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{topPlayers[2].name}</div>
                       <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
