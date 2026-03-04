@@ -78,20 +78,20 @@ export const AdminCustomization = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Avatars */}
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> الأفاتار (مستوى 10, 20, 30, 40)</h3>
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> الأفاتار (4 مجانية + 4 حسب المستوى)</h3>
           <div className="grid grid-cols-2 gap-4">
-            {[10, 20, 30, 40].map((level) => (
+            {['free1', 'free2', 'free3', 'free4', 10, 20, 30, 40].map((level) => (
               <div key={level} className="space-y-2">
-                <span className="font-bold">مستوى {level}</span>
+                <span className="font-bold">{typeof level === 'string' ? `مجاني ${level.replace('free', '')}` : `مستوى ${level}`}</span>
                 {(config.avatars as any)[level] ? (
                   <div className="relative aspect-square border-2 border-gray-200 rounded-xl overflow-hidden">
                     <img src={`/uploads/${(config.avatars as any)[level]}`} className="w-full h-full object-cover" />
-                    <button onClick={() => handleDelete('avatar', level)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete('avatar', level as any)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ) : (
                   <label className="aspect-square border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center cursor-pointer hover:border-purple-400">
                     <Upload className="w-6 h-6 text-gray-400" />
-                    <input type="file" className="hidden" onChange={(e) => handleUpload(e, 'avatar', level)} />
+                    <input type="file" className="hidden" onChange={(e) => handleUpload(e, 'avatar', level as any)} />
                   </label>
                 )}
               </div>
