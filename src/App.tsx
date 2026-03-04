@@ -2889,7 +2889,7 @@ export default function App() {
               {/* Podium Box with Integrated Header */}
               <div className="bg-gray-50/30 rounded-[32px] border-2 border-gray-100/50 px-3 md:px-5 pb-2 pt-4 mt-2 relative">
                 {/* Integrated Header */}
-                <div className="flex items-center justify-between flex-row-reverse mb-8 border-b border-gray-200/50 pb-2">
+                <div className="flex items-center justify-between flex-row-reverse mb-8 pb-2">
                   <h2 className="text-base md:text-lg font-black text-[#2D3436] flex items-center gap-2">
                     أبطال التخمين
                   </h2>
