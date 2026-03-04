@@ -101,14 +101,14 @@ interface Room {
 }
 
 const AVATARS = [
-  { id: 'avatar-free-01.png', level: 1 },
-  { id: 'avatar-free-02.png', level: 1 },
-  { id: 'avatar-free-03.png', level: 1 },
-  { id: 'avatar-free-04.png', level: 1 },
-  { id: 'avatar-lvl-10.png', level: 10 },
-  { id: 'avatar-lvl-20.png', level: 20 },
-  { id: 'avatar-lvl-30.png', level: 30 },
-  { id: 'avatar-lvl-40.png', level: 40 },
+  { id: 'avatar-free-01.png', level: 1, gender: 'girl' },
+  { id: 'avatar-free-02.png', level: 1, gender: 'boy' },
+  { id: 'avatar-free-03.png', level: 1, gender: 'girl' },
+  { id: 'avatar-free-04.png', level: 1, gender: 'boy' },
+  { id: 'avatar-lvl-10.png', level: 10, gender: 'girl' },
+  { id: 'avatar-lvl-20.png', level: 20, gender: 'boy' },
+  { id: 'avatar-lvl-30.png', level: 30, gender: 'girl' },
+  { id: 'avatar-lvl-40.png', level: 40, gender: 'boy' },
 ];
 
 const APP_VERSION = '1.1.1'; // Version for cache clearing
@@ -139,6 +139,7 @@ export default function App() {
     const storedAge = localStorage.getItem('khamin_player_age');
     return storedAge ? parseInt(storedAge) : '';
   });
+  const [gender, setGender] = useState<'boy' | 'girl'>(() => (localStorage.getItem('khamin_player_gender') as 'boy' | 'girl') || 'boy');
   const [playerId] = useState(() => {
     let id = localStorage.getItem('khamin_player_id');
     if (!id) {
@@ -1183,13 +1184,14 @@ export default function App() {
       setError('يرجى إدخال اسمك وعمرك أولاً');
       return;
     }
-    socket?.emit('register_player', { name: playerName, avatar, xp }, ({ serial, name }: { serial: string, name: string }) => {
+    socket?.emit('register_player', { name: playerName, avatar, xp, gender }, ({ serial, name }: { serial: string, name: string }) => {
       if (serial) {
         setPlayerSerial(serial);
         setPlayerName(name); // Update with filtered name
         localStorage.setItem('khamin_player_serial', serial);
         localStorage.setItem('khamin_player_name', name);
         localStorage.setItem('khamin_player_age', playerAge.toString());
+        localStorage.setItem('khamin_player_gender', gender);
         localStorage.setItem('khamin_player_avatar', avatar);
         localStorage.setItem('khamin_wins', '0');
         setShowWelcomeModal(false);
@@ -1230,7 +1232,8 @@ export default function App() {
         playerSerial: playerSerial,
         playerName: playerName, // Fixed: was 'name', server expects 'playerName'
         age: playerAge, 
-        avatar: avatar 
+        avatar: avatar,
+        gender: gender
       }, 
       ({ topPlayers, name }: { topPlayers: any[], name: string }) => {
         // 2. In the callback, update with the authoritative list from the server
@@ -1247,6 +1250,7 @@ export default function App() {
     // Update local storage
     localStorage.setItem('khamin_player_name', playerName);
     localStorage.setItem('khamin_player_avatar', avatar);
+    localStorage.setItem('khamin_player_gender', gender);
 
     // 3. Close the modal
     setShowSettingsModal(false);
@@ -1581,11 +1585,29 @@ export default function App() {
                       max={80}
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-black text-gray-600 mb-1 text-right">الجنس</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setGender('boy')}
+                        className={`flex-1 py-2 rounded-xl font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-2 border-blue-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100'}`}
+                      >
+                        ولد 👦
+                      </button>
+                      <button
+                        onClick={() => setGender('girl')}
+                        className={`flex-1 py-2 rounded-xl font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-2 border-pink-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100'}`}
+                      >
+                        بنت 👧
+                      </button>
+                    </div>
+                  </div>
                   
                   <div>
                     <label className="block text-sm font-black text-gray-600 mb-3 text-right">تغيير الأفاتار</label>
                     <div className="grid grid-cols-4 gap-2">
-                      {AVATARS.map((av, index) => {
+                      {AVATARS.filter(av => av.gender === gender).map((av, index) => {
                         const isLocked = getLevel(xp) < av.level;
                         return (
                           <button
@@ -1840,9 +1862,26 @@ export default function App() {
                     />
                   </div>
                   <div>
+                    <label className="block text-sm font-black text-gray-600 mb-1 text-right">الجنس</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setGender('boy')}
+                        className={`flex-1 py-3 rounded-xl font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-2 border-blue-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100'}`}
+                      >
+                        ولد 👦
+                      </button>
+                      <button
+                        onClick={() => setGender('girl')}
+                        className={`flex-1 py-3 rounded-xl font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-2 border-pink-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100'}`}
+                      >
+                        بنت 👧
+                      </button>
+                    </div>
+                  </div>
+                  <div>
                     <label className="block text-sm font-black text-gray-600 mb-3 text-right">اختر أفاتار البداية</label>
                     <div className="grid grid-cols-4 gap-2">
-                      {AVATARS.slice(0, 4).map((av, index) => (
+                      {AVATARS.filter(av => av.gender === gender).slice(0, 4).map((av, index) => (
                         <button
                           key={`welcome-avatar-${av.id}-${index}`}
                           onClick={() => setAvatar(av.id)}
