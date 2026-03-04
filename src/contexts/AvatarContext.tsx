@@ -5,12 +5,16 @@ const AvatarContext = createContext<any>(null);
 export const AvatarProvider = ({ children }: { children: React.ReactNode }) => {
   const [customConfig, setCustomConfig] = useState<any>({ avatars: {}, frames: {}, stars: {} });
 
-  useEffect(() => {
+  const refreshConfig = () => {
     fetch('/api/config').then(res => res.json()).then(setCustomConfig);
+  };
+
+  useEffect(() => {
+    refreshConfig();
   }, []);
 
   return (
-    <AvatarContext.Provider value={customConfig}>
+    <AvatarContext.Provider value={{ customConfig, refreshConfig }}>
       {children}
     </AvatarContext.Provider>
   );
