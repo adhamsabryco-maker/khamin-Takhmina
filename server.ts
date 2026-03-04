@@ -6,9 +6,12 @@ import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import Database from 'better-sqlite3';
+import multer from "multer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const upload = multer({ dest: 'public/uploads/' });
 
 import { filterProfanity } from "./src/profanityFilter";
 
@@ -72,6 +75,7 @@ const app = express();
   });
 
   app.use(express.json({ limit: '50mb' }));
+  app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
   // Google OAuth Routes (Moved to top)
   const getRedirectUri = (req: express.Request) => {
@@ -95,8 +99,21 @@ const app = express();
     return `${finalProtocol}://${host}/api/auth/google/callback`;
   };
 
-  app.get("/api/auth/test", (req, res) => {
-    res.send("Auth Test Route Working");
+  app.post("/api/upload", upload.single("image"), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    res.json({ filename: req.file.filename });
+  });
+
+  app.post("/api/config", (req, res) => {
+    fs.writeFileSync(path.join(__dirname, 'public/uploads/config.json'), JSON.stringify(req.body));
+    res.json({ success: true });
+  });
+
+  app.get("/api/config", (req, res) => {
+    const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'public/uploads/config.json'), 'utf-8'));
+    res.json(config);
   });
 
   app.get("/api/auth/google/url", (req, res) => {
