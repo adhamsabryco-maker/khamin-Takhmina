@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Image as ImageIcon } from 'lucide-react';
+import { Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
 
 export const AdminCustomization = () => {
   const [uploading, setUploading] = useState(false);
