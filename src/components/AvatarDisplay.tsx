@@ -2,7 +2,7 @@ import React from 'react';
 import { Star } from 'lucide-react';
 import { STATIC_ASSETS } from '../constants';
 
-export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full h-full" }: { avatar: string, level: number, customConfig: any, className?: string }) => {
+export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean }) => {
   const getMilestoneLevel = (lvl: number) => {
     if (lvl >= 50) return 50;
     if (lvl >= 40) return 40;
@@ -42,8 +42,8 @@ export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full
                      (staticAvatar ? `/assets/${Array.isArray(staticAvatar) ? staticAvatar[0] : staticAvatar}` : 
                      avatar)));
 
-  const displayFrame = customFrame ? `/uploads/${customFrame}` : (staticFrame ? `/assets/${staticFrame}` : null);
-  const displayStar = customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null);
+  const displayFrame = !hideExtras && (customFrame ? `/uploads/${customFrame}` : (staticFrame ? `/assets/${staticFrame}` : null));
+  const displayStar = !hideExtras && (customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null));
 
   const getAvatarStyle = (lvl: number) => {
     if (lvl >= 50) return 'bg-red-50 border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.8)]';
@@ -55,6 +55,7 @@ export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full
   };
 
   const renderStarsFallback = (lvl: number) => {
+    if (hideExtras) return null;
     const starsCount = Math.floor(lvl / 10);
     if (starsCount === 0) return null;
     return (
