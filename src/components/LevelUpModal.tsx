@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Star, Trophy, Sparkles } from 'lucide-react';
+import { Star, Trophy, Sparkles, Zap, Clock, Scissors, SkipForward, Eye } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AvatarDisplay } from './AvatarDisplay';
+
+const LEVEL_REWARDS: Record<number, { name: string; description: string; icon: any; color: string }> = {
+  10: { name: 'تلميح', description: 'يكشف لك أول وتاني حرف من الكلمة', icon: Zap, color: 'text-yellow-500' },
+  20: { name: 'كاشف الحروف', description: 'يكشف لك عدد احرف الكلمة', icon: Clock, color: 'text-blue-500' },
+  30: { name: 'تجميد الوقت', description: 'يوقف العداد لمدة 60 ثانية', icon: Scissors, color: 'text-red-500' },
+  40: { name: 'قريباً...', description: 'تنتظرك اهم وسيلة مساعدة عند lvl 50', icon: SkipForward, color: 'text-purple-500' },
+  50: { name: 'الجاسوس', description: 'يكشف لك صورة التخمين', icon: Eye, color: 'text-emerald-500' },
+};
 
 interface LevelUpModalProps {
   level: number;
@@ -202,6 +210,29 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
             )}
           </AnimatePresence>
         </div>
+
+        {/* Helper Tool Reward */}
+        {isMilestone && LEVEL_REWARDS[level] && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: showContent ? 1 : 0, y: showContent ? 0 : 20 }}
+            transition={{ delay: 0.6 }}
+            className="mb-6 bg-gray-50 rounded-2xl p-4 border-2 border-gray-100 relative overflow-hidden mx-2"
+          >
+            <div className="absolute top-0 right-0 bg-yellow-400 text-white text-[10px] font-black px-2 py-0.5 rounded-bl-lg">
+              جديد!
+            </div>
+            <div className="flex items-center flex-row-reverse gap-3">
+              <div className={`w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center border-2 border-gray-100 shrink-0 ${LEVEL_REWARDS[level].color}`}>
+                {React.createElement(LEVEL_REWARDS[level].icon, { className: "w-6 h-6" })}
+              </div>
+              <div className="text-right flex-1">
+                <h3 className={`font-black text-sm ${LEVEL_REWARDS[level].color}`}>{LEVEL_REWARDS[level].name}</h3>
+                <p className="text-xs font-bold text-gray-500 leading-tight mt-0.5">{LEVEL_REWARDS[level].description}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Footer Section */}
         <motion.div

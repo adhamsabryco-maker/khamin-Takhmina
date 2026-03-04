@@ -2,7 +2,7 @@ import React from 'react';
 import { Star } from 'lucide-react';
 import { STATIC_ASSETS } from '../constants';
 
-export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean }) => {
+export const AvatarDisplay = React.memo(({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean }) => {
   const getMilestoneLevel = (lvl: number) => {
     if (lvl >= 50) return 50;
     if (lvl >= 40) return 40;
@@ -122,4 +122,4 @@ export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full
       )}
     </div>
   );
-};
+});
