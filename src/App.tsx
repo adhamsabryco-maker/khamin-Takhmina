@@ -3151,6 +3151,9 @@ export default function App() {
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
                 {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false)}
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-white shadow-sm z-20 whitespace-nowrap">
+                  Lvl {opponent.level || getLevel(opponent.xp || 0)}
+                </div>
                 {showHammer === opponent.id && (
                   <motion.div 
                     initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
@@ -3520,6 +3523,9 @@ export default function App() {
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
                 {renderAvatarContent(me.avatar, getLevel(xp), false)}
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-white shadow-sm z-20 whitespace-nowrap">
+                  Lvl {getLevel(xp)}
+                </div>
                 {showHammer === me.id && (
                   <motion.div 
                     initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
