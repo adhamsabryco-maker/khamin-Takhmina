@@ -1,10 +1,13 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import { AvatarProvider } from './contexts/AvatarContext';
 import App from './App.tsx';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AvatarProvider>
+      <App />
+    </AvatarProvider>
   </StrictMode>,
 );

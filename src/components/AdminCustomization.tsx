@@ -1,0 +1,104 @@
+import React, { useState, useEffect } from 'react';
+import { Upload, Image as ImageIcon } from 'lucide-react';
+
+export const AdminCustomization = () => {
+  const [uploading, setUploading] = useState(false);
+
+  const [config, setConfig] = useState({ avatars: {}, frames: {}, stars: {} });
+
+  useEffect(() => {
+    fetch('/api/config').then(res => res.json()).then(setConfig);
+  }, []);
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: string, level?: number) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      
+      const newConfig = { ...config };
+      if (type === 'avatar') {
+        (newConfig.avatars as any)[level!] = data.filename;
+      } else if (type === 'frame') {
+        (newConfig.frames as any)[level!] = data.filename;
+      } else if (type === 'star') {
+        (newConfig.stars as any)[level!] = data.filename;
+      }
+      
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig),
+      });
+      setConfig(newConfig);
+      alert('تم رفع الصورة وحفظ الإعدادات بنجاح!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('حدث خطأ أثناء رفع الصورة');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="p-6 space-y-8 overflow-y-auto h-full">
+      <h2 className="text-2xl font-black text-gray-900">إدارة تخصيص اللعبة</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Avatars */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> الأفاتار (8 صور)</h3>
+          <div className="grid grid-cols-4 gap-2">
+            {[...Array(8)].map((_, i) => (
+              <label key={i} className="aspect-square border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center cursor-pointer hover:border-purple-400">
+                <Upload className="w-6 h-6 text-gray-400" />
+                <input type="file" className="hidden" onChange={(e) => handleUpload(e, 'avatar', i)} />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Frames */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> الإطارات (حسب المستوى)</h3>
+          <div className="space-y-2">
+            {[10, 20, 30, 40, 50].map((level) => (
+              <div key={level} className="flex items-center justify-between p-2 border border-gray-100 rounded-xl">
+                <span className="font-bold">مستوى {level}</span>
+                <label className="btn-game btn-secondary py-1 px-3 cursor-pointer">
+                  رفع
+                  <input type="file" className="hidden" onChange={(e) => handleUpload(e, 'frame', level)} />
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Stars */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> النجوم (حسب المستوى)</h3>
+          <div className="space-y-2">
+            {[10, 20, 30, 40, 50].map((level) => (
+              <div key={level} className="flex items-center justify-between p-2 border border-gray-100 rounded-xl">
+                <span className="font-bold">مستوى {level}</span>
+                <label className="btn-game btn-secondary py-1 px-3 cursor-pointer">
+                  رفع
+                  <input type="file" className="hidden" onChange={(e) => handleUpload(e, 'star', level)} />
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

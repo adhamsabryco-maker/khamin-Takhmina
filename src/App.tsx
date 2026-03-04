@@ -43,6 +43,9 @@ import {
   Plus
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { AdminCustomization } from './components/AdminCustomization';
+import { AvatarDisplay } from './components/AvatarDisplay';
+import { useAvatarConfig } from './contexts/AvatarContext';
 import Cropper from 'react-easy-crop';
 
 // Audio URLs
@@ -164,8 +167,14 @@ export default function App() {
   const [adminReports, setAdminReports] = useState<any[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
-  const [adminTab, setAdminTab] = useState<'players' | 'images'>('players');
+  const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization'>('players');
   const [adminImages, setAdminImages] = useState<any[]>([]);
+  const [customConfig, setCustomConfig] = useState<any>({ avatars: {}, frames: {}, stars: {} });
+
+  useEffect(() => {
+    fetch('/api/config').then(res => res.json()).then(setCustomConfig);
+  }, []);
+
   const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
   const [newCategory, setNewCategory] = useState({ id: '', name: '', icon: '' });
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -277,11 +286,8 @@ export default function App() {
     }
   };
 
-  const renderAvatarContent = (avatarStr: string) => {
-    if (avatarStr && avatarStr.startsWith('data:image')) {
-      return <img src={avatarStr} className="w-full h-full object-cover rounded-full" alt="Avatar" />;
-    }
-    return avatarStr;
+  const renderAvatarContent = (avatarStr: string, level: number = 1) => {
+    return <AvatarDisplay avatar={avatarStr} level={level} customConfig={customConfig} className="w-full h-full" />;
   };
 
   // Cache clearing logic
@@ -1533,7 +1539,7 @@ export default function App() {
                     <div className="relative">
                       {renderStars(getLevel(xp))}
                       <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl border-4 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
-                        {renderAvatarContent(avatar)}
+                        {renderAvatarContent(avatar, getLevel(xp))}
                       </div>
                     </div>
                     <div className="text-right flex-1">
@@ -1942,10 +1948,16 @@ export default function App() {
                           اللاعبين والبلاغات
                         </button>
                         <button 
-                          onClick={() => { setAdminTab('images'); fetchAdminImages(); }}
+                          onClick={() => setAdminTab('images')}
                           className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'images' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
                         >
                           إدارة الصور
+                        </button>
+                        <button 
+                          onClick={() => setAdminTab('customization')}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'customization' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
+                        >
+                          تخصيص اللعبة
                         </button>
                       </div>
                     </div>
@@ -1979,7 +1991,9 @@ export default function App() {
 
                 {/* Content */}
                 <div className="flex-1 overflow-hidden flex">
-                  {adminTab === 'players' ? (
+                  {adminTab === 'customization' ? (
+                    <AdminCustomization />
+                  ) : adminTab === 'players' ? (
                     <>
                       {/* Sidebar - Reports */}
                       <div className="w-80 border-l border-gray-100 bg-gray-50/30 overflow-y-auto p-4 space-y-4">
@@ -2688,7 +2702,7 @@ export default function App() {
                 <div className="relative mb-2 md:mb-4">
                   {proposedMatch.opponent.level && renderStars(proposedMatch.opponent.level)}
                   <div className={`text-6xl md:text-8xl drop-shadow-md animate-bounce w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center border-4 overflow-hidden ${proposedMatch.opponent.level ? getAvatarStyle(proposedMatch.opponent.level) : 'bg-orange-100 border-orange-300'}`}>
-                    {renderAvatarContent(proposedMatch.opponent.avatar)}
+                    {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || 1)}
                   </div>
                 </div>
                 <div className="text-xl md:text-2xl font-black text-[#2D3436] mb-1">{proposedMatch.opponent.name}</div>
@@ -2853,7 +2867,7 @@ export default function App() {
               <div className="relative shrink-0">
                 {renderStars(getLevel(xp))}
                 <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl md:text-4xl border-4 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
-                  {renderAvatarContent(avatar)}
+                  {renderAvatarContent(avatar, getLevel(xp))}
                 </div>
               </div>
               <div className="flex flex-col justify-center flex-1 min-w-0">
@@ -2915,7 +2929,7 @@ export default function App() {
                       <div className="relative mb-2 flex flex-col items-center">
                         {renderStars(topPlayers[1].level)}
                         <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl border-4 bg-white ${getAvatarStyle(topPlayers[1].level)}`}>
-                          {renderAvatarContent(topPlayers[1].avatar)}
+                          {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">2</div>
                       </div>
@@ -2940,7 +2954,7 @@ export default function App() {
                         <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-30" />
                         {renderStars(topPlayers[0].level)}
                         <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl border-4 bg-white ${getAvatarStyle(topPlayers[0].level)}`}>
-                          {renderAvatarContent(topPlayers[0].avatar)}
+                          {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-30 animate-bounce">1</div>
                       </div>
@@ -2964,7 +2978,7 @@ export default function App() {
                       <div className="relative mb-2 flex flex-col items-center">
                         {renderStars(topPlayers[2].level)}
                         <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl border-4 bg-white ${getAvatarStyle(topPlayers[2].level)}`}>
-                          {renderAvatarContent(topPlayers[2].avatar)}
+                          {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">3</div>
                       </div>
@@ -3168,7 +3182,7 @@ export default function App() {
               <div className="relative">
                 {opponent.xp !== undefined && renderStars(getLevel(opponent.xp))}
                 <div className={`relative w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center text-3xl md:text-5xl border-4 transition-transform ${opponent.xp !== undefined ? getAvatarStyle(getLevel(opponent.xp)) : 'bg-white border-white shadow-[0_4px_0_rgba(0,0,0,0.1)]'} ${funnyFilter === opponent.id ? 'animate-shake' : ''}`}>
-                  {renderAvatarContent(opponent.avatar)}
+                  {renderAvatarContent(opponent.avatar, opponent.level || 1)}
                   {showHammer === opponent.id && (
                     <motion.div 
                       initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
@@ -3545,7 +3559,7 @@ export default function App() {
               <div className="relative">
                 {renderStars(getLevel(xp))}
                 <div className={`relative w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center text-3xl md:text-5xl border-4 transition-transform ${getAvatarStyle(getLevel(xp))} ${funnyFilter === me.id ? 'animate-shake' : ''}`}>
-                  {renderAvatarContent(me.avatar)}
+                  {renderAvatarContent(me.avatar, getLevel(xp))}
                   {showHammer === me.id && (
                     <motion.div 
                       initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
