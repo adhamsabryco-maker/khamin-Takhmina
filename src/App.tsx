@@ -158,12 +158,12 @@ export default function App() {
     }
   });
   const [customAvatar, setCustomAvatar] = useState(() => localStorage.getItem('khamin_custom_avatar') || '');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('khamin_is_admin') === 'true');
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [adminPlayers, setAdminPlayers] = useState<any[]>([]);
   const [adminReports, setAdminReports] = useState<any[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
+  const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
   const [adminTab, setAdminTab] = useState<'players' | 'images'>('players');
   const [adminImages, setAdminImages] = useState<any[]>([]);
   const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
@@ -559,6 +559,8 @@ export default function App() {
     localStorage.removeItem('khamin_xp');
     localStorage.removeItem('khamin_wins');
     localStorage.removeItem('khamin_streak');
+    localStorage.removeItem('khamin_is_admin');
+    localStorage.removeItem('khamin_admin_email');
     setPlayerSerial('');
     setPlayerName('');
     setPlayerAge('');
@@ -584,6 +586,8 @@ export default function App() {
         
         setIsAdmin(true);
         setAdminEmail(userData.email);
+        localStorage.setItem('khamin_is_admin', 'true');
+        localStorage.setItem('khamin_admin_email', userData.email);
         socket.emit('admin_set_admin_status', { 
           serial: playerSerial, 
           isAdmin: true, 
@@ -777,6 +781,11 @@ export default function App() {
       const serial = localStorage.getItem('khamin_player_serial');
       if (serial) {
         newSocket.emit('set_player_serial_for_socket', serial);
+        const isAdmin = localStorage.getItem('khamin_is_admin') === 'true';
+        const adminEmail = localStorage.getItem('khamin_admin_email');
+        if (isAdmin) {
+          newSocket.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail });
+        }
         // Fetch actual server data
         newSocket.emit('get_player_data', serial, (data: any) => {
           if (data) {
