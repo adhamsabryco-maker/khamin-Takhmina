@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { useAvatarConfig } from '../contexts/AvatarContext';
 
 export const AdminCustomization = () => {
   const [uploading, setUploading] = useState(false);
-
-  const [config, setConfig] = useState({ avatars: {}, frames: {}, stars: {} });
-
-  useEffect(() => {
-    fetch('/api/config').then(res => res.json()).then(setConfig);
-  }, []);
+  const { customConfig: config, refreshConfig } = useAvatarConfig();
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: string, level?: number) => {
     const file = event.target.files?.[0];
@@ -39,7 +35,7 @@ export const AdminCustomization = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig),
       });
-      setConfig(newConfig);
+      refreshConfig();
       alert('تم رفع الصورة وحفظ الإعدادات بنجاح!');
     } catch (error) {
       console.error('Upload error:', error);
@@ -63,7 +59,7 @@ export const AdminCustomization = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig),
       });
-      setConfig(newConfig);
+      refreshConfig();
       alert('تم حذف الصورة بنجاح!');
     } catch (error) {
       console.error('Delete error:', error);
