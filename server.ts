@@ -106,6 +106,17 @@ const app = express();
     res.json({ filename: req.file.filename });
   });
 
+  app.delete("/api/upload/:filename", (req, res) => {
+    const { filename } = req.params;
+    const filePath = path.join(__dirname, 'public/uploads', filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: "File not found" });
+    }
+  });
+
   app.post("/api/config", (req, res) => {
     fs.writeFileSync(path.join(__dirname, 'public/uploads/config.json'), JSON.stringify(req.body));
     res.json({ success: true });
