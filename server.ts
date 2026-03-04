@@ -1409,9 +1409,7 @@ const app = express();
       const isValidToken = adminToken && adminTokens.has(adminToken);
       
       if (admin?.isAdmin || isValidToken) {
-        if (isValidToken) {
-          socket.data = { ...socket.data, isAdmin: true, email };
-        }
+        socket.data = { ...socket.data, isAdmin: true, email: email || admin?.email, serial: serial || admin?.serial };
 
         if (serial) {
           const player = allPlayers.get(serial);
