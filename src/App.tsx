@@ -77,6 +77,7 @@ interface Player {
   spyLensUsed?: boolean;
   reported: boolean; // Added for player reporting feature
   xp: number;
+  level?: number;
   streak: number;
   serial?: string;
   wins?: number;
@@ -2646,10 +2647,10 @@ export default function App() {
               <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">تم العثور على منافس!</h2>
               <div className="flex flex-col items-center p-4 md:p-6 bg-orange-50 rounded-3xl border-4 border-orange-100 relative">
                 <div className="relative mb-2 md:mb-4 w-24 h-24 md:w-32 md:h-32">
-                  {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || 1)}
+                  {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0))}
                 </div>
                 <div className="text-xl md:text-2xl font-black text-[#2D3436] mb-1">{proposedMatch.opponent.name}</div>
-                <div className="text-sm md:text-base font-bold text-gray-500">Level {proposedMatch.opponent.level || 1}</div>
+                <div className="text-sm md:text-base font-bold text-gray-500">Level {proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0)}</div>
                 {matchResponseTimeLeft !== null && (
                   <div className="mt-4 text-orange-500 font-bold text-lg flex items-center gap-2">
                     <Timer className="w-5 h-5" />
@@ -2868,14 +2869,14 @@ export default function App() {
                     <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1 z-10">
                       <div className="relative mb-2 flex flex-col items-center">
                         <div className="w-14 h-14 md:w-16 md:h-16">
-                          {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level)}
+                          {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0))}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[1].name)}</div>
                       <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
                         <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                          Lvl {topPlayers[1].level}
+                          Lvl {topPlayers[1].level || getLevel(topPlayers[1].xp || 0)}
                         </div>
                         <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Trophy className="w-2.5 h-2.5" />
@@ -2892,14 +2893,14 @@ export default function App() {
                       <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
                         <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-[60]" />
                         <div className="w-16 h-16 md:w-20 md:h-20">
-                          {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level)}
+                          {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level || getLevel(topPlayers[0].xp || 0))}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-[60] animate-bounce">1</div>
                       </div>
                       <div className="text-xs md:text-sm font-black text-[#2D3436] truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{truncateName(topPlayers[0].name)}</div>
                       <div className="flex flex-col items-center gap-1 mt-1 mb-1">
                         <div className="text-[10px] font-bold text-gray-500 bg-yellow-100 px-3 py-1 rounded-full">
-                          Lvl {topPlayers[0].level}
+                          Lvl {topPlayers[0].level || getLevel(topPlayers[0].xp || 0)}
                         </div>
                         <div className="text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full flex items-center gap-1">
                           <Trophy className="w-3 h-3" />
@@ -2915,14 +2916,14 @@ export default function App() {
                     <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1 z-10">
                       <div className="relative mb-2 flex flex-col items-center">
                         <div className="w-14 h-14 md:w-16 md:h-16">
-                          {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level)}
+                          {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level || getLevel(topPlayers[2].xp || 0))}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[2].name)}</div>
                       <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
                         <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                          Lvl {topPlayers[2].level}
+                          Lvl {topPlayers[2].level || getLevel(topPlayers[2].xp || 0)}
                         </div>
                         <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Trophy className="w-2.5 h-2.5" />
@@ -3117,7 +3118,7 @@ export default function App() {
           {opponent && (
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
-                {renderAvatarContent(opponent.avatar, opponent.level || 1, false)}
+                {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false)}
                 {showHammer === opponent.id && (
                   <motion.div 
                     initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
