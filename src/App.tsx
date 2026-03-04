@@ -45,6 +45,7 @@ import {
 import confetti from 'canvas-confetti';
 import { AdminCustomization } from './components/AdminCustomization';
 import { AvatarDisplay } from './components/AvatarDisplay';
+import { LevelUpModal } from './components/LevelUpModal';
 import { useAvatarConfig } from './contexts/AvatarContext';
 import { STATIC_ASSETS } from './constants';
 import Cropper from 'react-easy-crop';
@@ -2435,45 +2436,12 @@ export default function App() {
         {/* Level Up Overlay */}
         <AnimatePresence>
           {showLevelUp !== null && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
-              onClick={() => setShowLevelUp(null)}
-            >
-              <motion.div 
-                initial={{ scale: 0.5, rotate: -10 }}
-                animate={{ scale: 1, rotate: 0 }}
-                className="card-game p-4 text-center max-w-sm w-full relative overflow-hidden border-4 border-yellow-400 bg-gradient-to-br from-white to-yellow-50"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="absolute top-0 left-0 w-full h-2 bg-yellow-400"></div>
-                <div className="mb-4 relative">
-                  <div className="w-20 h-20 md:w-24 md:h-24 bg-yellow-400 rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(250,204,21,0.5)] animate-pulse">
-                    <Star className="w-10 h-10 md:w-12 md:h-12 text-white fill-current" />
-                  </div>
-                  <motion.div 
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white px-3 md:px-4 py-0.5 md:py-1 rounded-full border-2 border-yellow-400 font-black text-xs md:text-base text-yellow-600 shadow-sm"
-                  >
-                    LEVEL UP!
-                  </motion.div>
-                </div>
-                
-                <h2 className="text-3xl md:text-4xl font-black text-[#2D3436] mb-1 md:mb-2">المستوى {showLevelUp}</h2>
-                <p className="text-sm md:text-base text-gray-500 font-bold mb-4">لقد ارتقيت لمستوى جديد! استمر في الفوز لفتح المزيد من القدرات.</p>
-                
-                <button 
-                  onClick={() => setShowLevelUp(null)}
-                  className="w-full btn-game btn-primary py-2 text-lg md:text-xl shadow-[0_6px_0_#D97706]"
-                >
-                  رائع!
-                </button>
-              </motion.div>
-            </motion.div>
+            <LevelUpModal 
+              level={showLevelUp} 
+              avatar={avatar} 
+              customConfig={customConfig} 
+              onClose={() => setShowLevelUp(null)} 
+            />
           )}
         </AnimatePresence>
       </AnimatePresence>
