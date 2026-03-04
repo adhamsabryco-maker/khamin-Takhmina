@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Star, Trophy, Sparkles, Zap, Clock, Scissors, SkipForward, Eye } from 'lucide-react';
+import { Star, Trophy, Sparkles, Zap, Clock, Scissors, SkipForward, Eye, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AvatarDisplay } from './AvatarDisplay';
 
@@ -113,6 +113,14 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
         {/* Background Glow */}
         <div className={`absolute inset-0 bg-gradient-to-br ${getLevelColor(level)} opacity-5 rounded-[28px]`} />
         
+        {/* Close Button (X) */}
+        <button 
+          onClick={onClose}
+          className="absolute top-3 right-3 p-1.5 bg-gray-100/50 hover:bg-red-100 rounded-full text-gray-400 hover:text-red-500 transition-colors z-50 backdrop-blur-sm"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
         {/* Header Section */}
         <div className="relative mb-2">
           <motion.div
@@ -250,7 +258,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
             onClick={onClose}
             className={`w-full py-3 rounded-xl text-white text-lg font-black shadow-lg transition-all active:scale-95 bg-gradient-to-r ${getLevelColor(level)} hover:brightness-110`}
           >
-            استمرار المغامرة!
+            إغلاق
           </button>
         </motion.div>
 
