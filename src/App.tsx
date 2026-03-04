@@ -98,14 +98,14 @@ interface Room {
 }
 
 const AVATARS = [
-  { emoji: '🦁', level: 1 },
-  { emoji: '🦊', level: 1 },
-  { emoji: '🐼', level: 1 },
-  { emoji: '🐨', level: 1 },
-  { emoji: '🐯', level: 10 },
-  { emoji: '🐸', level: 20 },
-  { emoji: '🐙', level: 30 },
-  { emoji: '🦄', level: 40 },
+  { id: 'avatar-free-01.png', level: 1 },
+  { id: 'avatar-free-02.png', level: 1 },
+  { id: 'avatar-free-03.png', level: 1 },
+  { id: 'avatar-free-04.png', level: 1 },
+  { id: 'avatar-lvl-10.png', level: 10 },
+  { id: 'avatar-lvl-20.png', level: 20 },
+  { id: 'avatar-lvl-30.png', level: 30 },
+  { id: 'avatar-lvl-40.png', level: 40 },
 ];
 
 const APP_VERSION = '1.1.1'; // Version for cache clearing
@@ -321,45 +321,15 @@ export default function App() {
     return 300 - getQuickGuessWaitTime(level);
   };
 
-  const getAvatarStyle = (level: number) => {
-    if (level >= 50) return 'bg-red-50 border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.8)]';
-    if (level >= 40) return 'bg-purple-50 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]';
-    if (level >= 30) return 'bg-emerald-50 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.6)]';
-    if (level >= 20) return 'bg-yellow-50 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)]';
-    if (level >= 10) return 'bg-gray-100 border-gray-400 shadow-[0_0_10px_rgba(156,163,175,0.5)]';
-    return 'bg-orange-100 border-orange-300 shadow-inner';
-  };
-
-  const renderStars = (level: number, type: 'linear' | 'circular' = 'circular') => {
+  const renderStars = (level: number) => {
     const starsCount = Math.floor(level / 10);
     if (starsCount === 0) return null;
     
-    if (type === 'linear') {
-      return (
-        <div className="flex justify-center gap-0.5 mt-1">
-          {Array.from({ length: starsCount }).map((_, i) => (
-            <Star key={i} className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-sm" />
-          ))}
-        </div>
-      );
-    }
-
     return (
-      <div className="absolute inset-0 z-10 pointer-events-none animate-[spin_10s_linear_infinite]">
-        {Array.from({ length: starsCount }).map((_, i) => {
-          const angle = (i * 360) / starsCount;
-          return (
-            <div 
-              key={i} 
-              className="absolute inset-0 flex items-start justify-center"
-              style={{ transform: `rotate(${angle}deg)` }}
-            >
-              <div className="-mt-2">
-                <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-md" style={{ transform: `rotate(-${angle}deg)` }} />
-              </div>
-            </div>
-          );
-        })}
+      <div className="flex justify-center gap-0.5 mt-1">
+        {Array.from({ length: starsCount }).map((_, i) => (
+          <Star key={i} className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-sm" />
+        ))}
       </div>
     );
   };
@@ -369,7 +339,7 @@ export default function App() {
     localStorage.setItem('khamin_streak', streak.toString());
   }, [xp, streak]);
 
-  const [avatar, setAvatar] = useState(() => localStorage.getItem('khamin_player_avatar') || AVATARS[0].emoji);
+  const [avatar, setAvatar] = useState(() => localStorage.getItem('khamin_player_avatar') || AVATARS[0].id);
 
   useEffect(() => {
     localStorage.setItem('khamin_player_avatar', avatar);
@@ -1458,41 +1428,36 @@ export default function App() {
                   </p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-gray-400 shadow-[0_0_10px_rgba(156,163,175,0.5)] flex items-center justify-center relative">
-                        <div className="absolute -top-2 flex"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
-                        <span className="text-xs">🦁</span>
+                      <div className="w-10 h-10">
+                        {renderAvatarContent(avatar, 10)}
                       </div>
                       <span className="flex-1">المستوى 10</span>
                       <span className="text-blue-500">إطار فضي + نجمة</span>
                     </li>
                     <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
-                      <div className="w-8 h-8 rounded-full bg-yellow-50 border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)] flex items-center justify-center relative">
-                        <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
-                        <span className="text-xs">🦁</span>
+                      <div className="w-10 h-10">
+                        {renderAvatarContent(avatar, 20)}
                       </div>
                       <span className="flex-1">المستوى 20</span>
                       <span className="text-blue-500">إطار ذهبي + نجمتين</span>
                     </li>
                     <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
-                      <div className="w-8 h-8 rounded-full bg-emerald-50 border-2 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.6)] flex items-center justify-center relative">
-                        <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
-                        <span className="text-xs">🦁</span>
+                      <div className="w-10 h-10">
+                        {renderAvatarContent(avatar, 30)}
                       </div>
                       <span className="flex-1">المستوى 30</span>
                       <span className="text-blue-500">إطار زمردي + 3 نجوم</span>
                     </li>
                     <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
-                      <div className="w-8 h-8 rounded-full bg-purple-50 border-2 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)] flex items-center justify-center relative">
-                        <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
-                        <span className="text-xs">🦁</span>
+                      <div className="w-10 h-10">
+                        {renderAvatarContent(avatar, 40)}
                       </div>
                       <span className="flex-1">المستوى 40</span>
                       <span className="text-blue-500">إطار أسطوري + 4 نجوم</span>
                     </li>
                     <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
-                      <div className="w-8 h-8 rounded-full bg-red-50 border-2 border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.8)] flex items-center justify-center relative">
-                        <div className="absolute -top-2 flex gap-0.5"><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /><Star className="w-2 h-2 text-yellow-500 fill-yellow-500" /></div>
-                        <span className="text-xs">🦁</span>
+                      <div className="w-10 h-10">
+                        {renderAvatarContent(avatar, 50)}
                       </div>
                       <span className="flex-1">المستوى 50</span>
                       <span className="text-blue-500 font-black">إطار ناري + 5 نجوم!</span>
@@ -1532,11 +1497,8 @@ export default function App() {
                 {/* Stats Section */}
                 <div className="bg-gray-100 p-3 rounded-2xl border-2 border-gray-200 space-y-4">
                   <div className="flex items-center gap-4 flex-row-reverse">
-                    <div className="relative">
-                      {renderStars(getLevel(xp))}
-                      <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl border-4 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
-                        {renderAvatarContent(avatar, getLevel(xp))}
-                      </div>
+                    <div className="relative w-16 h-16">
+                      {renderAvatarContent(avatar, getLevel(xp))}
                     </div>
                     <div className="text-right flex-1">
                       <div className="font-black text-lg text-[#2D3436]">{playerName}</div>
@@ -1556,7 +1518,7 @@ export default function App() {
                         ></div>
                       </div>
                     </div>
-                    {renderStars(getLevel(xp), 'linear')}
+                    {renderStars(getLevel(xp))}
                   </div>
                 </div>
 
@@ -1597,14 +1559,16 @@ export default function App() {
                         const isLocked = getLevel(xp) < av.level;
                         return (
                           <button
-                            key={`settings-avatar-${av.emoji}-${index}`}
-                            onClick={() => !isLocked && setAvatar(av.emoji)}
+                            key={`settings-avatar-${av.id}-${index}`}
+                            onClick={() => !isLocked && setAvatar(av.id)}
                             disabled={isLocked}
-                            className={`relative aspect-square rounded-xl flex items-center justify-center text-2xl border-2 transition-all ${avatar === av.emoji ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-100 border-gray-300 hover:bg-gray-200'} ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
+                            className={`relative aspect-square rounded-xl flex items-center justify-center border-2 transition-all overflow-hidden ${avatar === av.id ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-100 border-gray-300 hover:bg-gray-200'} ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
                           >
-                            {av.emoji}
+                            <div className="w-full h-full p-1">
+                              {renderAvatarContent(av.id, getLevel(xp))}
+                            </div>
                             {isLocked && (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 rounded-xl">
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 rounded-xl z-20">
                                 <Lock className="w-4 h-4 text-white" />
                                 <span className="text-[9px] font-bold text-white mt-1">Lvl {av.level}</span>
                               </div>
@@ -1850,11 +1814,13 @@ export default function App() {
                     <div className="grid grid-cols-4 gap-2">
                       {AVATARS.slice(0, 4).map((av, index) => (
                         <button
-                          key={`welcome-avatar-${av.emoji}-${index}`}
-                          onClick={() => setAvatar(av.emoji)}
-                          className={`w-full aspect-square rounded-xl flex items-center justify-center text-2xl border-2 transition-all ${avatar === av.emoji ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-50 border-gray-200'}`}
+                          key={`welcome-avatar-${av.id}-${index}`}
+                          onClick={() => setAvatar(av.id)}
+                          className={`w-full aspect-square rounded-xl flex items-center justify-center border-2 transition-all overflow-hidden ${avatar === av.id ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-50 border-gray-200'}`}
                         >
-                          {av.emoji}
+                          <div className="w-full h-full p-1">
+                            {renderAvatarContent(av.id, 1)}
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -2065,8 +2031,8 @@ export default function App() {
                               .map((p, index) => (
                                 <div key={`admin-player-${p.serial}-${index}`} className="bg-white border-2 border-gray-100 rounded-3xl p-5 hover:border-purple-200 transition-all group">
                                   <div className="flex items-center gap-4 mb-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-2xl border-2 border-white shadow-sm overflow-hidden">
-                                      {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.avatar}
+                                    <div className="w-14 h-14">
+                                      {renderAvatarContent(p.avatar, getLevel(p.xp))}
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
@@ -2695,11 +2661,8 @@ export default function App() {
             >
               <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">تم العثور على منافس!</h2>
               <div className="flex flex-col items-center p-4 md:p-6 bg-orange-50 rounded-3xl border-4 border-orange-100 relative">
-                <div className="relative mb-2 md:mb-4">
-                  {proposedMatch.opponent.level && renderStars(proposedMatch.opponent.level)}
-                  <div className={`text-6xl md:text-8xl drop-shadow-md animate-bounce w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center border-4 overflow-hidden ${proposedMatch.opponent.level ? getAvatarStyle(proposedMatch.opponent.level) : 'bg-orange-100 border-orange-300'}`}>
-                    {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || 1)}
-                  </div>
+                <div className="relative mb-2 md:mb-4 w-24 h-24 md:w-32 md:h-32">
+                  {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || 1)}
                 </div>
                 <div className="text-xl md:text-2xl font-black text-[#2D3436] mb-1">{proposedMatch.opponent.name}</div>
                 <div className="text-sm md:text-base font-bold text-gray-500">Level {proposedMatch.opponent.level || 1}</div>
@@ -2860,11 +2823,8 @@ export default function App() {
 
           {/* Profile Card */}
           <div className="flex items-center gap-3 md:gap-4 bg-white/90 backdrop-blur-sm p-3 md:p-4 rounded-3xl shadow-md border-2 border-white/50 flex-row-reverse mb-6 md:mb-10 w-full">
-              <div className="relative shrink-0">
-                {renderStars(getLevel(xp))}
-                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl md:text-4xl border-4 overflow-hidden ${getAvatarStyle(getLevel(xp))}`}>
-                  {renderAvatarContent(avatar, getLevel(xp))}
-                </div>
+              <div className="relative shrink-0 w-16 h-16 md:w-20 md:h-20">
+                {renderAvatarContent(avatar, getLevel(xp))}
               </div>
               <div className="flex flex-col justify-center flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-1 flex-row-reverse">
@@ -2923,8 +2883,7 @@ export default function App() {
                   {topPlayers[1] && (
                     <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1 z-10">
                       <div className="relative mb-2 flex flex-col items-center">
-                        {renderStars(topPlayers[1].level)}
-                        <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl border-4 bg-white ${getAvatarStyle(topPlayers[1].level)}`}>
+                        <div className="w-14 h-14 md:w-16 md:h-16">
                           {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">2</div>
@@ -2948,8 +2907,7 @@ export default function App() {
                     <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1 z-20 -mt-8 md:-mt-12">
                       <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
                         <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-30" />
-                        {renderStars(topPlayers[0].level)}
-                        <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-3xl border-4 bg-white ${getAvatarStyle(topPlayers[0].level)}`}>
+                        <div className="w-16 h-16 md:w-20 md:h-20">
                           {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-30 animate-bounce">1</div>
@@ -2972,8 +2930,7 @@ export default function App() {
                   {topPlayers[2] && (
                     <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1 z-10">
                       <div className="relative mb-2 flex flex-col items-center">
-                        {renderStars(topPlayers[2].level)}
-                        <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl border-4 bg-white ${getAvatarStyle(topPlayers[2].level)}`}>
+                        <div className="w-14 h-14 md:w-16 md:h-16">
                           {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-20">3</div>
@@ -3175,25 +3132,17 @@ export default function App() {
         <div className="relative flex flex-col items-center w-full">
           {opponent && (
             <>
-              <div className="relative">
-                {opponent.xp !== undefined && renderStars(getLevel(opponent.xp))}
-                <div className={`relative w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center text-3xl md:text-5xl border-4 transition-transform ${opponent.xp !== undefined ? getAvatarStyle(getLevel(opponent.xp)) : 'bg-white border-white shadow-[0_4px_0_rgba(0,0,0,0.1)]'} ${funnyFilter === opponent.id ? 'animate-shake' : ''}`}>
-                  {renderAvatarContent(opponent.avatar, opponent.level || 1)}
-                  {showHammer === opponent.id && (
-                    <motion.div 
-                      initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
-                      animate={{ rotate: 45, y: -30, x: 0, opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute -top-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
-                    >
-                      <Hammer className="w-20 h-20 text-[#2D3436] fill-[#FF9F43] drop-shadow-lg" />
-                    </motion.div>
-                  )}
-                </div>
-                {opponent.xp !== undefined && (
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#FF6B6B] text-white text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-white shadow-sm whitespace-nowrap z-10">
-                    Lvl {getLevel(opponent.xp)}
-                  </div>
+              <div className="relative w-16 h-16 md:w-24 md:h-24">
+                {renderAvatarContent(opponent.avatar, opponent.level || 1)}
+                {showHammer === opponent.id && (
+                  <motion.div 
+                    initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
+                    animate={{ rotate: 45, y: -30, x: 0, opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute -top-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+                  >
+                    <Hammer className="w-20 h-20 text-[#2D3436] fill-[#FF9F43] drop-shadow-lg" />
+                  </motion.div>
                 )}
               </div>
               <div className="mt-1 font-black text-base flex items-center gap-2 text-[#2D3436] bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm">
@@ -3552,24 +3501,18 @@ export default function App() {
         <div className="relative flex flex-col items-center">
           {me && (
             <>
-              <div className="relative">
-                {renderStars(getLevel(xp))}
-                <div className={`relative w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center text-3xl md:text-5xl border-4 transition-transform ${getAvatarStyle(getLevel(xp))} ${funnyFilter === me.id ? 'animate-shake' : ''}`}>
-                  {renderAvatarContent(me.avatar, getLevel(xp))}
-                  {showHammer === me.id && (
-                    <motion.div 
-                      initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
-                      animate={{ rotate: 45, y: -30, x: 0, opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute -top-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
-                    >
-                      <Hammer className="w-20 h-20 text-[#2D3436] fill-[#FF9F43] drop-shadow-lg" />
-                    </motion.div>
-                  )}
-                </div>
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#FF6B6B] text-white text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-white shadow-sm whitespace-nowrap z-10">
-                  Lvl {getLevel(xp)}
-                </div>
+              <div className="relative w-16 h-16 md:w-24 md:h-24">
+                {renderAvatarContent(me.avatar, getLevel(xp))}
+                {showHammer === me.id && (
+                  <motion.div 
+                    initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
+                    animate={{ rotate: 45, y: -30, x: 0, opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute -top-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+                  >
+                    <Hammer className="w-20 h-20 text-[#2D3436] fill-[#FF9F43] drop-shadow-lg" />
+                  </motion.div>
+                )}
               </div>
               <div className="mt-1 font-black text-lg text-[#2D3436] bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm flex items-center gap-2">
                 {me.name}
