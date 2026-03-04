@@ -369,29 +369,51 @@ const app = express();
     )
   `);
 
-    const insertPlayer = db.prepare(`
-      INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin)
-      VALUES (@serial, @name, @avatar, @xp, @wins, @level, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin)
-    `);
+  const insertPlayer = db.prepare(`
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin)
+  `);
 
-    const insertMany = db.transaction((players) => {
-      for (const player of players) {
-        insertPlayer.run({
-          ...player,
-          reportedBy: JSON.stringify(player.reportedBy || []),
-          email: player.email || null,
-          isAdmin: player.isAdmin ? 1 : 0
-        });
-      }
-    });
+  function savePlayerData(serial: string) {
+    try {
+      const player = allPlayers.get(serial);
+      if (!player) return;
+      
+      insertPlayer.run({
+        ...player,
+        reportedBy: JSON.stringify(player.reportedBy || []),
+        email: player.email || null,
+        isAdmin: player.isAdmin ? 1 : 0
+      });
+      invalidateTopPlayersCache();
+    } catch (err) {
+      console.error(`Failed to save player data for ${serial}:`, err);
+    }
+  }
 
-  function savePlayersData() {
+  const insertMany = db.transaction((players) => {
+    for (const player of players) {
+      insertPlayer.run({
+        ...player,
+        reportedBy: JSON.stringify(player.reportedBy || []),
+        email: player.email || null,
+        isAdmin: player.isAdmin ? 1 : 0
+      });
+    }
+  });
+
+  function saveAllPlayersData() {
     try {
       const players = Array.from(allPlayers.values());
+      // Only run full save if queue is small or during maintenance
+      // For performance, we prefer individual saves
+      if (players.length > 100) {
+        console.log(`[DB] Warning: Full save of ${players.length} players. This might block the event loop.`);
+      }
       insertMany(players);
       invalidateTopPlayersCache();
     } catch (err) {
-      console.error("Failed to save players data:", err);
+      console.error("Failed to save all players data:", err);
     }
   }
 
@@ -547,84 +569,87 @@ const app = express();
   }
 
   function processQueue() {
-    if (matchmakingQueue.length < 2) return;
-    
-    const now = Date.now();
+    let matchFound = true;
+    while (matchFound && matchmakingQueue.length >= 2) {
+      matchFound = false;
+      const now = Date.now();
 
-    for (let i = 0; i < matchmakingQueue.length; i++) {
-      for (let j = i + 1; j < matchmakingQueue.length; j++) {
-        const p1 = matchmakingQueue[i];
-        const p2 = matchmakingQueue[j];
-        
-        // Check if blocked
-        if (isBlocked(p1.playerId, p2.playerId)) continue;
-
-        // Check if temporarily skipped (10 seconds cooldown)
-        const p1SkippedP2 = p1.skipped?.get(p2.playerId);
-        const p2SkippedP1 = p2.skipped?.get(p1.playerId);
-
-        if (p1SkippedP2 && now < p1SkippedP2 + 10000) continue;
-        if (p2SkippedP1 && now < p2SkippedP1 + 10000) continue;
+      for (let i = 0; i < matchmakingQueue.length; i++) {
+        for (let j = i + 1; j < matchmakingQueue.length; j++) {
+          const p1 = matchmakingQueue[i];
+          const p2 = matchmakingQueue[j];
           
-        // Match found
-        // Remove from highest index first to avoid shifting issues
-        matchmakingQueue.splice(j, 1);
-        matchmakingQueue.splice(i, 1);
-        
-        const matchId = `match_${Math.random().toString(36).substr(2, 9)}`;
-        
-        const timeoutId = setTimeout(() => {
-          const match = pendingMatches.get(matchId);
-          if (match) {
-            pendingMatches.delete(matchId);
-            
-            if (match.p1Response !== 'accept') {
-               match.p1.socket.emit("match_rejected");
-               // Add to skipped list
-               if (!match.p1.skipped) match.p1.skipped = new Map();
-               match.p1.skipped.set(match.p2.playerId, Date.now());
-               matchmakingQueue.push(match.p1);
-            } else {
-               match.p1.socket.emit("match_rejected");
-               matchmakingQueue.unshift(match.p1);
-            }
-            
-            if (match.p2Response !== 'accept') {
-               match.p2.socket.emit("match_rejected");
-               // Add to skipped list
-               if (!match.p2.skipped) match.p2.skipped = new Map();
-               match.p2.skipped.set(match.p1.playerId, Date.now());
-               matchmakingQueue.push(match.p2);
-            } else {
-               match.p2.socket.emit("match_rejected");
-               matchmakingQueue.unshift(match.p2);
-            }
-            
-            processQueue();
-          }
-        }, 10000);
+          // Check if blocked
+          if (isBlocked(p1.playerId, p2.playerId)) continue;
 
-        pendingMatches.set(matchId, {
-          id: matchId,
-          p1,
-          p2,
-          p1Response: null,
-          p2Response: null,
-          timeoutId
-        });
+          // Check if temporarily skipped (10 seconds cooldown)
+          const p1SkippedP2 = p1.skipped?.get(p2.playerId);
+          const p2SkippedP1 = p2.skipped?.get(p1.playerId);
 
-        p1.socket.emit("match_proposed", {
-          matchId,
-          opponent: { name: p2.playerName, avatar: p2.avatar, age: p2.age, level: getLevel(p2.xp || 0) }
-        });
-        p2.socket.emit("match_proposed", {
-          matchId,
-          opponent: { name: p1.playerName, avatar: p1.avatar, age: p1.age, level: getLevel(p1.xp || 0) }
-        });
-        
-        // Restart processing since array mutated
-        processQueue();
-        return;
+          if (p1SkippedP2 && now < p1SkippedP2 + 10000) continue;
+          if (p2SkippedP1 && now < p2SkippedP1 + 10000) continue;
+            
+          // Match found
+          matchFound = true;
+          // Remove from highest index first to avoid shifting issues
+          matchmakingQueue.splice(j, 1);
+          matchmakingQueue.splice(i, 1);
+          
+          const matchId = `match_${Math.random().toString(36).substr(2, 9)}`;
+          
+          const timeoutId = setTimeout(() => {
+            const match = pendingMatches.get(matchId);
+            if (match) {
+              pendingMatches.delete(matchId);
+              
+              if (match.p1Response !== 'accept') {
+                 match.p1.socket.emit("match_rejected");
+                 // Add to skipped list
+                 if (!match.p1.skipped) match.p1.skipped = new Map();
+                 match.p1.skipped.set(match.p2.playerId, Date.now());
+                 matchmakingQueue.push(match.p1);
+              } else {
+                 match.p1.socket.emit("match_rejected");
+                 matchmakingQueue.unshift(match.p1);
+              }
+              
+              if (match.p2Response !== 'accept') {
+                 match.p2.socket.emit("match_rejected");
+                 // Add to skipped list
+                 if (!match.p2.skipped) match.p2.skipped = new Map();
+                 match.p2.skipped.set(match.p1.playerId, Date.now());
+                 matchmakingQueue.push(match.p2);
+              } else {
+                 match.p2.socket.emit("match_rejected");
+                 matchmakingQueue.unshift(match.p2);
+              }
+              
+              setImmediate(() => processQueue());
+            }
+          }, 10000);
+
+          pendingMatches.set(matchId, {
+            id: matchId,
+            p1,
+            p2,
+            p1Response: null,
+            p2Response: null,
+            timeoutId
+          });
+
+          p1.socket.emit("match_proposed", {
+            matchId,
+            opponent: { name: p2.playerName, avatar: p2.avatar, age: p2.age, level: getLevel(p2.xp || 0) }
+          });
+          p2.socket.emit("match_proposed", {
+            matchId,
+            opponent: { name: p1.playerName, avatar: p1.avatar, age: p1.age, level: getLevel(p1.xp || 0) }
+          });
+          
+          // Break inner and outer loops to restart with the new queue state
+          break;
+        }
+        if (matchFound) break;
       }
     }
   }
@@ -657,7 +682,7 @@ const app = express();
         isPermanentBan: 0,
         reportedBy: [] 
       });
-      savePlayersData();
+      savePlayerData(serial);
       callback({ serial, name: filteredName });
       io.emit("top_players_update", getTopPlayers());
     });
@@ -671,7 +696,7 @@ const app = express();
         }
         player.name = filteredName;
         player.avatar = avatar;
-        savePlayersData();
+        savePlayerData(playerSerial);
         const topPlayers = getTopPlayers();
         io.emit("top_players_update", topPlayers);
         if (callback) callback({ topPlayers, name: player.name });
@@ -1231,7 +1256,7 @@ const app = express();
                   io.to(reportedPlayer.id).emit("banned_status", { banUntil: serverReportedPlayer.banUntil, isPermanent: false });
                 }
               }
-              savePlayersData();
+              savePlayerData(serverReportedPlayer.serial);
               if (callback) callback({ success: true });
             } else {
               console.log(`Report rejected: Already reported within 24h by ${serverReporter.name}`);
@@ -1388,7 +1413,7 @@ const app = express();
         if (player) {
           Object.assign(player, updates);
           if (updates.xp !== undefined) player.level = getLevel(updates.xp);
-          savePlayersData();
+          savePlayerData(serial);
           io.emit("top_players_update", getTopPlayers());
           
           // Find socket ID for this player serial to send direct update
@@ -1452,7 +1477,7 @@ const app = express();
           if (player) {
             player.isAdmin = isAdmin;
             player.email = email;
-            savePlayersData();
+            savePlayerData(serial);
             callback({ success: true });
             return;
           }
@@ -1675,6 +1700,7 @@ const app = express();
           player.xp = p.xp;
           player.level = getLevel(p.xp);
           player.wins = p.wins || 0;
+          savePlayerData(player.serial);
         } else {
           // Fallback to name search
           for (const [serial, data] of allPlayers.entries()) {
@@ -1682,12 +1708,12 @@ const app = express();
               data.xp = p.xp;
               data.level = getLevel(p.xp);
               data.wins = p.wins || 0;
+              savePlayerData(serial);
               break;
             }
           }
         }
       });
-      savePlayersData();
       io.emit("top_players_update", getTopPlayers());
 
       io.to(roomId).emit("game_finished", { 
