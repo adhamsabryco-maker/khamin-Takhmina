@@ -2432,18 +2432,6 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Level Up Overlay */}
-        <AnimatePresence>
-          {showLevelUp !== null && (
-            <LevelUpModal 
-              level={showLevelUp} 
-              avatar={avatar} 
-              customConfig={customConfig} 
-              onClose={() => setShowLevelUp(null)} 
-            />
-          )}
-        </AnimatePresence>
       </AnimatePresence>
 
       {/* Image Cropper Modal */}
@@ -3676,50 +3664,62 @@ export default function App() {
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="card-game p-4 md:p-8 text-center max-w-md w-full relative overflow-hidden"
+              className="card-game p-4 md:p-6 text-center max-w-sm w-full relative overflow-hidden"
             >
               {room.winnerId === me?.id ? (
-                <div className="mb-4 md:mb-6 relative z-10">
-                  <div className="w-16 h-16 md:w-24 md:h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-4 border-4 border-yellow-200 animate-bounce">
-                    <Trophy className="w-8 h-8 md:w-12 md:h-12 text-yellow-500" />
+                <div className="mb-3 md:mb-4 relative z-10">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-1 md:mb-2 border-4 border-yellow-200 animate-bounce">
+                    <Trophy className="w-6 h-6 md:w-8 md:h-8 text-yellow-500" />
                   </div>
-                  <h2 className="text-2xl md:text-4xl font-black text-green-500 mb-1 md:mb-2 drop-shadow-sm">مبروك! لقد فزت</h2>
-                  <p className="text-gray-400 font-black text-sm md:text-lg">أداء رائع يا بطل! 🏆</p>
+                  <h2 className="text-xl md:text-2xl font-black text-green-500 mb-0.5 md:mb-1 drop-shadow-sm">مبروك! لقد فزت</h2>
+                  <p className="text-gray-400 font-black text-xs md:text-sm">أداء رائع يا بطل! 🏆</p>
                 </div>
               ) : (
-                <div className="mb-4 md:mb-6 relative z-10">
-                  <div className="text-4xl md:text-6xl mb-2 md:mb-4 animate-pulse">😢</div>
-                  <h2 className="text-2xl md:text-4xl font-black text-red-500 mb-1 md:mb-2 drop-shadow-sm">للأسف! لقد خسرت</h2>
-                  <p className="text-gray-400 font-black text-sm md:text-lg">حظ أوفر في المرة القادمة</p>
+                <div className="mb-3 md:mb-4 relative z-10">
+                  <div className="text-3xl md:text-4xl mb-1 md:mb-2 animate-pulse">😢</div>
+                  <h2 className="text-xl md:text-2xl font-black text-red-500 mb-0.5 md:mb-1 drop-shadow-sm">للأسف! لقد خسرت</h2>
+                  <p className="text-gray-400 font-black text-xs md:text-sm">حظ أوفر في المرة القادمة</p>
                 </div>
               )}
               
-              <div className="flex flex-col items-center mb-4 md:mb-6 bg-gray-100 p-3 md:p-4 rounded-[24px] border-4 border-gray-200">
-                <div className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-2 md:mb-3 tracking-wider">الصورة التي كان يجب تخمينها</div>
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden bg-white shadow-md mb-2 md:mb-3 border-4 border-white">
-                  <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-white shadow-md mb-2 md:mb-3 border-4 border-white">
+              <div className="flex flex-col items-center mb-3 md:mb-4 bg-gray-100 p-2 md:p-3 rounded-[20px] border-4 border-gray-200">
+                <div className="text-[8px] md:text-[10px] font-black uppercase text-gray-400 mb-1 md:mb-2 tracking-wider">الصورة التي كان يجب تخمينها</div>
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden bg-white shadow-md mb-1 md:mb-2 border-2 border-white">
+                  <div className="relative w-full h-full">
                     <img src={me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
                   </div>
                 </div>
-                <div className="font-black text-xl md:text-2xl text-[#2D3436]">{me?.targetImage?.name}</div>
+                <div className="font-black text-lg md:text-xl text-[#2D3436]">{me?.targetImage?.name}</div>
               </div>
 
-              <div className="flex flex-col gap-2 md:gap-3">
+              <div className="flex flex-col gap-1.5 md:gap-2">
                 <button 
                   onClick={() => socket?.emit('play_again', { roomId })}
-                  className="w-full btn-game btn-success py-3 md:py-4 text-lg md:text-xl"
+                  className="w-full btn-game btn-success py-2 md:py-3 text-base md:text-lg"
                 >
-                  لعب مرة أخرى مع نفس اللاعب
+                  لعب مرة أخرى
                 </button>
                 <button 
                   onClick={() => window.location.reload()}
-                  className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl"
+                  className="w-full btn-game btn-primary py-2 md:py-3 text-base md:text-lg"
                 >
-                  الذهاب للصفحة الرئيسية
+                  الرئيسية
                 </button>
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Level Up Overlay */}
+      <AnimatePresence>
+        {showLevelUp !== null && (
+          <LevelUpModal 
+            level={showLevelUp} 
+            avatar={avatar} 
+            customConfig={customConfig} 
+            onClose={() => setShowLevelUp(null)} 
+          />
         )}
       </AnimatePresence>
 
