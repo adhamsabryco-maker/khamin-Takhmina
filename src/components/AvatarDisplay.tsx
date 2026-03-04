@@ -3,20 +3,45 @@ import { Star } from 'lucide-react';
 import { STATIC_ASSETS } from '../constants';
 
 export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full h-full" }: { avatar: string, level: number, customConfig: any, className?: string }) => {
-  const customAvatar = customConfig.avatars?.[level];
-  const customFrame = customConfig.frames?.[level];
-  const customStar = customConfig.stars?.[level];
+  const getMilestoneLevel = (lvl: number) => {
+    if (lvl >= 50) return 50;
+    if (lvl >= 40) return 40;
+    if (lvl >= 30) return 30;
+    if (lvl >= 20) return 20;
+    if (lvl >= 10) return 10;
+    return 1;
+  };
 
-  const staticAvatar = !customAvatar && STATIC_ASSETS.avatars[level as keyof typeof STATIC_ASSETS.avatars];
-  const staticFrame = !customFrame && STATIC_ASSETS.frames[level as keyof typeof STATIC_ASSETS.frames];
-  const staticStar = !customStar && STATIC_ASSETS.stars[level as keyof typeof STATIC_ASSETS.stars];
+  const milestoneLevel = getMilestoneLevel(level);
+
+  // Check for specific avatar replacements based on the selected avatar ID
+  let avatarReplacement = null;
+  if (avatar === 'avatar-free-01.png') avatarReplacement = customConfig.avatars?.['free1'];
+  else if (avatar === 'avatar-free-02.png') avatarReplacement = customConfig.avatars?.['free2'];
+  else if (avatar === 'avatar-free-03.png') avatarReplacement = customConfig.avatars?.['free3'];
+  else if (avatar === 'avatar-free-04.png') avatarReplacement = customConfig.avatars?.['free4'];
+  else if (avatar === 'avatar-lvl-10.png') avatarReplacement = customConfig.avatars?.[10];
+  else if (avatar === 'avatar-lvl-20.png') avatarReplacement = customConfig.avatars?.[20];
+  else if (avatar === 'avatar-lvl-30.png') avatarReplacement = customConfig.avatars?.[30];
+  else if (avatar === 'avatar-lvl-40.png') avatarReplacement = customConfig.avatars?.[40];
+  else if (avatar === 'avatar-lvl-50.png') avatarReplacement = customConfig.avatars?.[50];
+
+  const customAvatar = customConfig.avatars?.[milestoneLevel];
+  const customFrame = customConfig.frames?.[milestoneLevel];
+  const customStar = customConfig.stars?.[milestoneLevel];
+
+  const staticAvatar = !customAvatar && STATIC_ASSETS.avatars[milestoneLevel as keyof typeof STATIC_ASSETS.avatars];
+  const staticFrame = !customFrame && STATIC_ASSETS.frames[milestoneLevel as keyof typeof STATIC_ASSETS.frames];
+  const staticStar = !customStar && STATIC_ASSETS.stars[milestoneLevel as keyof typeof STATIC_ASSETS.stars];
 
   const isFilename = typeof avatar === 'string' && avatar.includes('.png');
   
-  let displayAvatar = customAvatar ? `/uploads/${customAvatar}` : 
+  let displayAvatar = avatarReplacement ? `/uploads/${avatarReplacement}` :
                      (isFilename ? `/assets/${avatar}` : 
+                     (customAvatar ? `/uploads/${customAvatar}` :
                      (staticAvatar ? `/assets/${Array.isArray(staticAvatar) ? staticAvatar[0] : staticAvatar}` : 
-                     avatar));
+                     avatar)));
+
   const displayFrame = customFrame ? `/uploads/${customFrame}` : (staticFrame ? `/assets/${staticFrame}` : null);
   const displayStar = customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null);
 
@@ -33,7 +58,7 @@ export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full
     const starsCount = Math.floor(lvl / 10);
     if (starsCount === 0) return null;
     return (
-      <div className="absolute inset-0 z-10 pointer-events-none animate-[spin_10s_linear_infinite]">
+      <div className="absolute inset-0 z-30 pointer-events-none animate-[spin_15s_linear_infinite]">
         {Array.from({ length: starsCount }).map((_, i) => {
           const angle = (i * 360) / starsCount;
           return (
@@ -42,8 +67,20 @@ export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full
               className="absolute inset-0 flex items-start justify-center"
               style={{ transform: `rotate(${angle}deg)` }}
             >
-              <div className="-mt-2">
-                <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-md" style={{ transform: `rotate(-${angle}deg)` }} />
+              <div className="-mt-3">
+                {displayStar ? (
+                  <img 
+                    src={displayStar} 
+                    className="w-5 h-5 object-contain drop-shadow-md" 
+                    style={{ transform: `rotate(-${angle}deg)` }} 
+                    alt="Star"
+                  />
+                ) : (
+                  <Star 
+                    className="w-4 h-4 text-yellow-500 fill-yellow-500 drop-shadow-md" 
+                    style={{ transform: `rotate(-${angle}deg)` }} 
+                  />
+                )}
               </div>
             </div>
           );
@@ -53,27 +90,34 @@ export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full
   };
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Fallback Stars (only if no custom/static star image) */}
-      {!displayStar && renderStarsFallback(level)}
+    <div className={`relative flex items-center justify-center ${className}`}>
+      {/* Stars Animation Layer - Now on top of Frame */}
+      {renderStarsFallback(level)}
 
-      {/* Avatar Container with Fallback Style (only if no custom/static frame image) */}
-      <div className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden border-4 ${!displayFrame ? getAvatarStyle(level) : ''}`}>
+      {/* Avatar Container */}
+      <div className={`
+        relative
+        w-full h-full 
+        rounded-full 
+        flex items-center justify-center 
+        overflow-hidden 
+        z-10
+        ${displayFrame ? 'p-1.5' : `border-4 ${getAvatarStyle(level)}`}
+      `}>
         {displayAvatar.startsWith('data:image') || displayAvatar.startsWith('http') || displayAvatar.startsWith('/uploads/') || displayAvatar.startsWith('/assets/') ? (
-          <img src={displayAvatar} className="w-full h-full object-cover" alt="Avatar" />
+          <img src={displayAvatar} className="w-full h-full object-cover rounded-full" alt="Avatar" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-inherit">{displayAvatar}</div>
+          <div className="w-full h-full flex items-center justify-center text-inherit font-black">{displayAvatar}</div>
         )}
       </div>
 
-      {/* Frame Image */}
+      {/* Frame Image Layer */}
       {displayFrame && (
-        <img src={displayFrame} className="absolute inset-0 w-full h-full object-contain pointer-events-none" alt="Frame" />
-      )}
-
-      {/* Star Image */}
-      {displayStar && (
-        <img src={displayStar} className="absolute -top-4 -right-4 w-12 h-12 animate-spin-slow pointer-events-none" alt="Star" />
+        <img 
+          src={displayFrame} 
+          className="absolute inset-0 w-[115%] h-[115%] -top-[7.5%] -left-[7.5%] max-w-none object-contain pointer-events-none z-20" 
+          alt="Frame" 
+        />
       )}
     </div>
   );

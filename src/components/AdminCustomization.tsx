@@ -80,7 +80,7 @@ export const AdminCustomization = () => {
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> الأفاتار (4 مجانية + 4 حسب المستوى)</h3>
           <div className="grid grid-cols-2 gap-4">
-            {['free1', 'free2', 'free3', 'free4', 10, 20, 30, 40].map((level) => (
+            {['free1', 'free2', 'free3', 'free4', 10, 20, 30, 40, 50].map((level) => (
               <div key={level} className="space-y-2">
                 <span className="font-bold">{typeof level === 'string' ? `مجاني ${level.replace('free', '')}` : `مستوى ${level}`}</span>
                 {(config.avatars as any)[level] ? (
