@@ -800,13 +800,17 @@ const app = express();
     if (!bot) return;
 
     const player = room.players.find((p: any) => !p.isBot);
+    if (!player) return;
 
     setTimeout(async () => {
       const currentRoom = rooms.get(roomId);
       if (!currentRoom || currentRoom.gameState !== 'guessing') return;
 
-      const targetImage = player.targetImage;
-      const winCount = playerBotHistory.get(player.playerId) || 0;
+      const currentPlayer = currentRoom.players.find((p: any) => !p.isBot);
+      if (!currentPlayer) return;
+
+      const targetImage = currentPlayer.targetImage;
+      const winCount = playerBotHistory.get(currentPlayer.playerId) || 0;
       
       // Win 2, Lose 1 logic
       const shouldWin = winCount % 3 !== 2;
@@ -844,6 +848,7 @@ const app = express();
     if (!bot) return;
 
     const player = room.players.find((p: any) => !p.isBot);
+    if (!player) return;
 
     if (event === 'room_update') {
       // 1. Handle Category Selection
@@ -889,7 +894,6 @@ const app = express();
 
       // Call Gemini
       try {
-        const model = genAI.models.get({ model: "gemini-1.5-flash" });
         const systemInstruction = `
 أنت لاعب مصري في لعبة تخمين صور. اسمك وشخصيتك هي: ${bot.persona}.
 الفئة الحالية هي: ${room.category}.
