@@ -21,6 +21,18 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 import { filterProfanity } from "./src/profanityFilter";
+import { GoogleGenAI } from "@google/genai";
+
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+
+const BOT_PERSONAS = [
+  { name: "زيزو", age: 22, level: 15, avatar: "free1", personality: "هزار وفرفشة، بيحب يستخدم كلمات زي 'يا زميلي' و 'يا صاحبي' و 'أنجز يا وحش'" },
+  { name: "منة", age: 20, level: 8, avatar: "free2", personality: "هادية ومركزة، كلامها قليل ومحدد، بتستخدم 'أيوة' و 'لأ' و 'مش عارفة'" },
+  { name: "أبو مكة", age: 35, level: 42, avatar: "free3", personality: "حريف وقديم في اللعبة، كلامه فيه حكمة شوية وبيحب يشجع المنافس 'عاش يا بطل'" },
+  { name: "حمو", age: 19, level: 5, avatar: "free4", personality: "لسه جديد وبيتعلم، بيغلط كتير وبيهزر على نفسه 'أنا ضايع خالص يا جدعان'" },
+  { name: "سارة", age: 24, level: 25, avatar: "free1", personality: "ذكية وبتحب التحدي، بتسأل أسئلة صعبة وبتحاول توقع المنافس في الغلط" },
+  { name: "ميدو", age: 21, level: 12, avatar: "free2", personality: "بيحب الرغي والكلام الجانبي، ممكن يحكي موقف حصل معاه وهو بيلعب" }
+];
 
 // Global Error Handlers to prevent server crashes
 process.on('uncaughtException', (err) => {
@@ -131,7 +143,16 @@ const app = express();
   });
 
   app.get("/api/config", (req, res) => {
-    const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'public/uploads/config.json'), 'utf-8'));
+    const configPath = path.join(__dirname, 'public/uploads/config.json');
+    let config = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false };
+    if (fs.existsSync(configPath)) {
+      try {
+        const savedConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        config = { ...config, ...savedConfig };
+      } catch (e) {
+        console.error("Error reading config:", e);
+      }
+    }
     res.json(config);
   });
 
@@ -654,6 +675,254 @@ const app = express();
     }
   }
 
+  function checkBotMatchmaking() {
+    const configPath = path.join(__dirname, 'public/uploads/config.json');
+    let aiBotEnabled = false;
+    if (fs.existsSync(configPath)) {
+      try {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        aiBotEnabled = !!config.aiBotEnabled;
+      } catch (e) {}
+    }
+
+    if (!aiBotEnabled) return;
+
+    const now = Date.now();
+    for (let i = 0; i < matchmakingQueue.length; i++) {
+      const p = matchmakingQueue[i];
+      // If player has been waiting for more than 10 seconds
+      if (p.joinedAt && now - p.joinedAt > 10000) {
+        // Create a bot match
+        matchmakingQueue.splice(i, 1);
+        
+        const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
+        const matchId = `match_bot_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Mock bot player
+        const botPlayer = {
+          playerId: `bot_${Math.random().toString(36).substr(2, 9)}`,
+          playerName: botPersona.name,
+          avatar: botPersona.avatar,
+          age: botPersona.age,
+          xp: (botPersona.level - 1) * (botPersona.level - 1) * 50, // Approximate XP for level
+          isBot: true,
+          persona: botPersona.personality,
+          socket: {
+            id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
+            emit: (event: string, data: any) => {
+              // Bot "receives" events here
+              handleBotEvent(matchId, event, data);
+            }
+          }
+        };
+
+        pendingMatches.set(matchId, {
+          id: matchId,
+          p1: p,
+          p2: botPlayer,
+          p1Response: null,
+          p2Response: 'accept', // Bot always accepts
+          timeoutId: setTimeout(() => {
+            const match = pendingMatches.get(matchId);
+            if (match && match.p1Response !== 'accept') {
+              pendingMatches.delete(matchId);
+              match.p1.socket.emit("match_rejected");
+              matchmakingQueue.push(match.p1);
+              setImmediate(() => processQueue());
+            }
+          }, 10000)
+        });
+
+        p.socket.emit("match_proposed", {
+          matchId,
+          opponent: { name: botPlayer.playerName, avatar: botPlayer.avatar, age: botPlayer.age, level: botPersona.level }
+        });
+
+        break; // Only one bot match per check to avoid overwhelming
+      }
+    }
+  }
+
+  setInterval(checkBotMatchmaking, 5000);
+
+  const botConversations = new Map<string, any[]>();
+  const playerBotHistory = new Map<string, number>();
+
+  function startBotQuestioning(roomId: string) {
+    const room = rooms.get(roomId);
+    if (!room || room.gameState !== 'discussion') return;
+
+    const bot = room.players.find((p: any) => p.isBot);
+    if (!bot) return;
+
+    const interval = setInterval(async () => {
+      const currentRoom = rooms.get(roomId);
+      if (!currentRoom || currentRoom.gameState !== 'discussion') {
+        clearInterval(interval);
+        return;
+      }
+
+      try {
+        const history = botConversations.get(roomId) || [];
+        const systemInstruction = `
+أنت لاعب مصري في لعبة تخمين صور. اسمك وشخصيتك هي: ${bot.persona}.
+الفئة الحالية هي: ${currentRoom.category}.
+أنت تحاول تخمين الصورة التي مع المنافس.
+اسأل سؤالاً ذكياً واحداً فقط بالعامية المصرية لتعرف الصورة. لا تذكر اسم الصورة مباشرة.
+تحدث بالعامية المصرية الشعبية فقط. لا تخرج عن الشخصية. لا تذكر أنك ذكاء اصطناعي. رد باختصار.
+`;
+        const response = await genAI.models.generateContent({
+          model: "gemini-1.5-flash",
+          contents: history,
+          config: {
+            systemInstruction,
+            maxOutputTokens: 100,
+            temperature: 0.9,
+          }
+        });
+
+        const botQuestion = response.text || "هو حيوان كبير؟";
+        history.push({ role: 'model', parts: [{ text: botQuestion }] });
+        botConversations.set(roomId, history);
+
+        io.to(roomId).emit("chat_bubble", { senderId: bot.id, text: botQuestion });
+      } catch (error) {
+        console.error("Bot Questioning Error:", error);
+      }
+    }, 25000 + Math.random() * 10000);
+  }
+
+  function startBotGuessing(roomId: string) {
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const bot = room.players.find((p: any) => p.isBot);
+    if (!bot) return;
+
+    const player = room.players.find((p: any) => !p.isBot);
+
+    setTimeout(async () => {
+      const currentRoom = rooms.get(roomId);
+      if (!currentRoom || currentRoom.gameState !== 'guessing') return;
+
+      const targetImage = player.targetImage;
+      const winCount = playerBotHistory.get(player.playerId) || 0;
+      
+      // Win 2, Lose 1 logic
+      const shouldWin = winCount % 3 !== 2;
+      playerBotHistory.set(player.playerId, winCount + 1);
+
+      let guess = targetImage;
+      if (!shouldWin) {
+        // Find a wrong guess from the same category
+        const categoryImages = getCategoryImages(currentRoom.category);
+        const wrongImages = categoryImages.filter(img => img !== targetImage);
+        guess = wrongImages[Math.floor(Math.random() * wrongImages.length)] || "مش عارف";
+      }
+
+      // Submit bot guess
+      bot.hasGuessed = true;
+      const correct = guess === targetImage;
+      io.to(roomId).emit("guess_result", { playerId: bot.id, correct });
+
+      if (correct) {
+        endGame(roomId, bot.name);
+      } else {
+        // If both guessed and wrong, end game
+        if (room.players.every((p: any) => p.hasGuessed)) {
+          endGame(roomId, null);
+        }
+      }
+    }, 10000 + Math.random() * 15000);
+  }
+
+  async function handleBotEvent(roomId: string, event: string, data: any) {
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const bot = room.players.find((p: any) => p.isBot);
+    if (!bot) return;
+
+    const player = room.players.find((p: any) => !p.isBot);
+
+    if (event === 'room_update') {
+      // 1. Handle Category Selection
+      if (room.gameState === 'waiting' && !bot.selectedCategory) {
+        setTimeout(() => {
+          const categories = ["animals", "food", "people", "places", "things", "birds"];
+          const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+          bot.selectedCategory = randomCategory;
+          io.to(room.id).emit("room_update", room);
+          
+          // If both selected, start game
+          if (player.selectedCategory) {
+            startGame(room.id);
+          }
+        }, 2000 + Math.random() * 3000);
+      }
+    }
+
+    if (event === 'game_started') {
+      // Initialize conversation
+      botConversations.set(roomId, [
+        { role: 'user', parts: [{ text: `أهلاً يا زميلي، أنا ${bot.name} وجاهز للتحدي!` }] }
+      ]);
+      
+      // Bot might send a greeting
+      setTimeout(() => {
+        const greeting = `أهلاً يا ${player.name}، أنا ${bot.name} وجاهز للتحدي! الفئة هي ${room.category}، وريني شطارتك بقى.`;
+        io.to(roomId).emit("chat_bubble", { senderId: bot.id, text: greeting });
+        
+        // Start questioning loop
+        startBotQuestioning(roomId);
+      }, 3000);
+    }
+
+    if (event === 'chat_message') {
+      const { senderId, text } = data;
+      if (senderId === bot.id) return; // Don't respond to self
+
+      // Add to history
+      const history = botConversations.get(roomId) || [];
+      history.push({ role: 'user', parts: [{ text }] });
+      botConversations.set(roomId, history);
+
+      // Call Gemini
+      try {
+        const model = genAI.models.get({ model: "gemini-1.5-flash" });
+        const systemInstruction = `
+أنت لاعب مصري في لعبة تخمين صور. اسمك وشخصيتك هي: ${bot.persona}.
+الفئة الحالية هي: ${room.category}.
+الصورة التي معك (التي يجب على المنافس تخمينها) هي: ${bot.targetImage}.
+المنافس سألك سؤالاً أو قال شيئاً، أجب عليه بصدق (نعم أو لا) إذا كان سؤالاً عن صورتك، مع إضافة لمسة من شخصيتك المصرية العامية.
+إذا سألك عن صورتك وكانت الإجابة "نعم"، قل "نعم" بأسلوبك. إذا كانت "لا"، قل "لا" بأسلوبك.
+تحدث بالعامية المصرية الشعبية فقط. لا تخرج عن الشخصية. لا تذكر أنك ذكاء اصطناعي. رد باختصار.
+`;
+        const response = await genAI.models.generateContent({
+          model: "gemini-1.5-flash",
+          contents: history,
+          config: {
+            systemInstruction,
+            maxOutputTokens: 100,
+            temperature: 0.8,
+          }
+        });
+
+        const botReply = response.text || "مش عارف أقول إيه والله!";
+        history.push({ role: 'model', parts: [{ text: botReply }] });
+        botConversations.set(roomId, history);
+
+        // Delay response to feel natural
+        setTimeout(() => {
+          io.to(roomId).emit("chat_bubble", { senderId: bot.id, text: botReply });
+        }, 2000 + Math.random() * 3000);
+
+      } catch (error) {
+        console.error("Gemini Error:", error);
+      }
+    }
+  }
+
   const CATEGORIES = {};
 
   io.on("connection", (socket) => {
@@ -940,10 +1209,12 @@ const app = express();
         
         const roomId = `random_${Math.random().toString(36).substr(2, 9)}`;
         match.p1.socket.join(roomId);
-        match.p2.socket.join(roomId);
+        if (!match.p2.isBot) {
+          match.p2.socket.join(roomId);
+        }
 
         const p1ServerPlayer = allPlayers.get(match.p1.serial);
-        const p2ServerPlayer = allPlayers.get(match.p2.serial);
+        const p2ServerPlayer = match.p2.isBot ? null : allPlayers.get(match.p2.serial);
 
         const room = {
           id: roomId,
@@ -975,7 +1246,7 @@ const app = express();
             {
               id: match.p2.socket.id,
               playerId: match.p2.playerId,
-              serial: match.p2.serial,
+              serial: match.p2.serial || 'bot_serial',
               name: match.p2.playerName,
               age: match.p2.age,
               avatar: match.p2.avatar,
@@ -994,7 +1265,9 @@ const app = express();
               streak: match.p2.streak || 0,
               wins: match.p2.wins || 0,
               reports: p2ServerPlayer ? p2ServerPlayer.reports : 0,
-              reportedBy: p2ServerPlayer ? p2ServerPlayer.reportedBy : []
+              reportedBy: p2ServerPlayer ? p2ServerPlayer.reportedBy : [],
+              isBot: match.p2.isBot,
+              persona: match.p2.persona
             }
           ],
           gameState: "waiting",
@@ -1009,6 +1282,10 @@ const app = express();
         startWaitingInterval(roomId);
         io.to(roomId).emit("room_update", room);
         io.to(roomId).emit("random_match_found", { roomId });
+        
+        if (match.p2.isBot) {
+          handleBotEvent(matchId, 'room_update', room);
+        }
       }
     });
 
@@ -1064,6 +1341,12 @@ const app = express();
 
         console.log(`Broadcasting chat to room ${roomId}`);
         io.to(roomId).emit("chat_bubble", { senderId: socket.id, text: messageToSend });
+
+        // Trigger bot response if applicable
+        const bot = room.players.find((p: any) => p.isBot);
+        if (bot) {
+          handleBotEvent(roomId, 'chat_message', { senderId: socket.id, text: messageToSend });
+        }
       } else {
         console.log(`Room ${roomId} not found for chat`);
       }
@@ -1602,6 +1885,12 @@ const app = express();
     io.to(roomId).emit("room_update", room);
     io.to(roomId).emit("game_started"); // Signal client to start initial cooldowns
 
+    // Trigger bot if applicable
+    const bot = room.players.find((p: any) => p.isBot);
+    if (bot) {
+      handleBotEvent(roomId, 'game_started', null);
+    }
+
     if (intervals.has(roomId)) {
       clearInterval(intervals.get(roomId));
       intervals.delete(roomId);
@@ -1649,6 +1938,12 @@ const app = express();
           room.gameState = "guessing";
           room.timer = 60;
           io.to(roomId).emit("room_update", room);
+          
+          // Trigger bot guessing if applicable
+          const bot = room.players.find((p: any) => p.isBot);
+          if (bot) {
+            startBotGuessing(roomId);
+          }
         } else {
           if (intervals.has(roomId)) {
             clearInterval(intervals.get(roomId));
