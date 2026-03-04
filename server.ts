@@ -30,12 +30,14 @@ if (!process.env.GEMINI_API_KEY) {
 }
 
 const BOT_PERSONAS = [
-  { name: "زيزو", age: 22, level: 15, avatar: "free1", personality: "هزار وفرفشة، بيحب يستخدم كلمات زي 'يا زميلي' و 'يا صاحبي' و 'أنجز يا وحش'" },
-  { name: "منة", age: 20, level: 8, avatar: "free2", personality: "هادية ومركزة، كلامها قليل ومحدد، بتستخدم 'أيوة' و 'لأ' و 'مش عارفة'" },
-  { name: "أبو مكة", age: 35, level: 42, avatar: "free3", personality: "حريف وقديم في اللعبة، كلامه فيه حكمة شوية وبيحب يشجع المنافس 'عاش يا بطل'" },
-  { name: "حمو", age: 19, level: 5, avatar: "free4", personality: "لسه جديد وبيتعلم، بيغلط كتير وبيهزر على نفسه 'أنا ضايع خالص يا جدعان'" },
-  { name: "سارة", age: 24, level: 25, avatar: "free1", personality: "ذكية وبتحب التحدي، بتسأل أسئلة صعبة وبتحاول توقع المنافس في الغلط" },
-  { name: "ميدو", age: 21, level: 12, avatar: "free2", personality: "بيحب الرغي والكلام الجانبي، ممكن يحكي موقف حصل معاه وهو بيلعب" }
+  { name: "زيزو", age: 22, level: 15, avatar: "avatar-free-02.png", gender: "boy", personality: "هزار وفرفشة، بيحب يستخدم كلمات زي 'يا زميلي' و 'يا صاحبي' و 'أنجز يا وحش'" },
+  { name: "منة", age: 20, level: 8, avatar: "avatar-free-01.png", gender: "girl", personality: "هادية ومركزة، كلامها قليل ومحدد، بتستخدم 'أيوة' و 'لأ' و 'مش عارفة'" },
+  { name: "أبو مكة", age: 35, level: 42, avatar: "avatar-lvl-20.png", gender: "boy", personality: "حريف وقديم في اللعبة، كلامه فيه حكمة شوية وبيحب يشجع المنافس 'عاش يا بطل'" },
+  { name: "حمو", age: 19, level: 5, avatar: "avatar-free-04.png", gender: "boy", personality: "لسه جديد وبيتعلم، بيغلط كتير وبيهزر على نفسه 'أنا ضايع خالص يا جدعان'" },
+  { name: "سارة", age: 24, level: 25, avatar: "avatar-lvl-10.png", gender: "girl", personality: "ذكية وبتحب التحدي، بتسأل أسئلة صعبة وبتحاول توقع المنافس في الغلط" },
+  { name: "ميدو", age: 21, level: 12, avatar: "avatar-lvl-40.png", gender: "boy", personality: "بيحب الرغي والكلام الجانبي، ممكن يحكي موقف حصل معاه وهو بيلعب" },
+  { name: "نور", age: 23, level: 18, avatar: "avatar-free-03.png", gender: "girl", personality: "بتحب الضحك والهزار، بس ذكية جداً في اللعب" },
+  { name: "ليلى", age: 26, level: 30, avatar: "avatar-lvl-30.png", gender: "girl", personality: "جدية شوية، بس بتحب المنافسة الشريفة" }
 ];
 
 // Global Error Handlers to prevent server crashes
@@ -714,6 +716,7 @@ const app = express();
           playerName: botPersona.name,
           avatar: botPersona.avatar,
           age: botPersona.age,
+          gender: botPersona.gender,
           xp: (botPersona.level - 1) * (botPersona.level - 1) * 50, // Approximate XP for level
           isBot: true,
           persona: botPersona.personality,
@@ -1301,7 +1304,8 @@ const app = express();
         io.to(roomId).emit("random_match_found", { roomId });
         
         if (match.p2.isBot) {
-          handleBotEvent(matchId, 'room_update', room);
+          // IMPORTANT: Pass roomId, not matchId
+          handleBotEvent(roomId, 'room_update', room);
         }
       }
     });
@@ -1322,6 +1326,12 @@ const app = express();
           }
           
           io.to(roomId).emit("room_update", room);
+
+          // Trigger bot to check if it needs to select a category
+          const bot = room.players.find((p: any) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, 'room_update', room);
+          }
         }
       }
     });
