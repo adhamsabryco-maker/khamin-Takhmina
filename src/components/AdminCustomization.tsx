@@ -140,6 +140,37 @@ export const AdminCustomization = () => {
             ))}
           </div>
         </div>
+
+        {/* AI Bot Settings */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm md:col-span-2">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🤖 إعدادات الذكاء الاصطناعي (AI Bot)</h3>
+          <div className="flex items-center justify-between p-4 bg-purple-50 rounded-2xl border border-purple-100">
+            <div>
+              <p className="font-bold text-purple-900">تفعيل بوت الذكاء الاصطناعي</p>
+              <p className="text-sm text-purple-700">عند التفعيل، سيقوم البوت باللعب مع اللاعبين في حالة عدم وجود منافس حقيقي.</p>
+            </div>
+            <button 
+              onClick={async () => {
+                const newConfig = { ...config, aiBotEnabled: !config.aiBotEnabled };
+                try {
+                  await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newConfig),
+                  });
+                  refreshConfig();
+                } catch (error) {
+                  alert('حدث خطأ أثناء تحديث الإعدادات');
+                }
+              }}
+              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none ${config.aiBotEnabled ? 'bg-purple-600' : 'bg-gray-300'}`}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${config.aiBotEnabled ? 'translate-x-7' : 'translate-x-1'}`}
+              />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
