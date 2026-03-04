@@ -1154,7 +1154,8 @@ const app = express();
         streak: streak || 0,
         serial: serial,
         wins: actualWins,
-        skipped: new Map() // Initialize skipped map (playerId -> timestamp)
+        skipped: new Map(), // Initialize skipped map (playerId -> timestamp)
+        joinedAt: Date.now()
       });
       socket.emit("waiting_for_match");
       processQueue();
