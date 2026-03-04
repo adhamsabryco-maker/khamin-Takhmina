@@ -67,17 +67,17 @@ export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full
               className="absolute inset-0 flex items-start justify-center"
               style={{ transform: `rotate(${angle}deg)` }}
             >
-              <div className="-mt-3">
+              <div className="-mt-2">
                 {displayStar ? (
                   <img 
                     src={displayStar} 
-                    className="w-5 h-5 object-contain drop-shadow-md" 
+                    className="w-3.5 h-3.5 object-contain drop-shadow-md" 
                     style={{ transform: `rotate(-${angle}deg)` }} 
                     alt="Star"
                   />
                 ) : (
                   <Star 
-                    className="w-4 h-4 text-yellow-500 fill-yellow-500 drop-shadow-md" 
+                    className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-md" 
                     style={{ transform: `rotate(-${angle}deg)` }} 
                   />
                 )}
@@ -115,7 +115,7 @@ export const AvatarDisplay = ({ avatar, level, customConfig, className = "w-full
       {displayFrame && (
         <img 
           src={displayFrame} 
-          className="absolute inset-0 w-[115%] h-[115%] -top-[7.5%] -left-[7.5%] max-w-none object-contain pointer-events-none z-20" 
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] h-[115%] max-w-none object-contain pointer-events-none z-20" 
           alt="Frame" 
         />
       )}
