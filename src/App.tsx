@@ -402,6 +402,9 @@ export default function App() {
   const [matchResponseTimeLeft, setMatchResponseTimeLeft] = useState<number | null>(null);
   const [searchTimeLeft, setSearchTimeLeft] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [hasSeenLevelInfo, setHasSeenLevelInfo] = useState(() => {
+    return localStorage.getItem('khamin_seen_level_info') === 'true';
+  });
   const [showLevelInfo, setShowLevelInfo] = useState(false);
   
   const toggleSettings = () => {
@@ -412,6 +415,10 @@ export default function App() {
   };
 
   const toggleLevelInfo = () => {
+    if (!hasSeenLevelInfo) {
+      setHasSeenLevelInfo(true);
+      localStorage.setItem('khamin_seen_level_info', 'true');
+    }
     setShowLevelInfo(!showLevelInfo);
     setShowSettingsModal(false);
     setShowAdminDashboard(false);
@@ -587,9 +594,6 @@ export default function App() {
           if (res.success) {
             setShowAdminDashboard(true);
             setShowSettingsModal(false);
-            // Fetch admin data
-            socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
-            socket.emit('admin_get_reports', (reports: any) => setAdminReports(reports));
           } else {
             console.error('Failed to set admin status:', res.error);
             setError('فشل في تحديث صلاحيات الإدارة: ' + (res.error || 'خطأ غير معروف'));
@@ -646,11 +650,23 @@ export default function App() {
     try {
       const res = await fetch('/api/admin/images');
       const data = await res.json();
-      setAdminImages(data);
+      if (Array.isArray(data)) setAdminImages(data);
     } catch (error) {
       console.error("Fetch images failed", error);
     }
   };
+
+  useEffect(() => {
+    if (showAdminDashboard && socket) {
+      socket.emit('admin_get_players', (players: any) => {
+        if (Array.isArray(players)) setAdminPlayers(players);
+      });
+      socket.emit('admin_get_reports', (reports: any) => {
+        if (Array.isArray(reports)) setAdminReports(reports);
+      });
+      fetchAdminImages();
+    }
+  }, [showAdminDashboard, socket]);
 
   const fetchCategories = async () => {
     try {
@@ -1929,8 +1945,12 @@ export default function App() {
                     <button 
                       onClick={() => {
                         if (adminTab === 'players') {
-                          socket?.emit('admin_get_players', (players: any) => setAdminPlayers(players));
-                          socket?.emit('admin_get_reports', (reports: any) => setAdminReports(reports));
+                          socket?.emit('admin_get_players', (players: any) => {
+                            if (Array.isArray(players)) setAdminPlayers(players);
+                          });
+                          socket?.emit('admin_get_reports', (reports: any) => {
+                            if (Array.isArray(reports)) setAdminReports(reports);
+                          });
                         } else {
                           fetchAdminImages();
                         }
@@ -2059,7 +2079,7 @@ export default function App() {
                                         const newXP = prompt('ادخل الـ XP الجديد:', p.xp.toString());
                                         if (newXP !== null) {
                                           socket?.emit('admin_update_player', { serial: p.serial, updates: { xp: parseInt(newXP) } }, (res: any) => {
-                                            if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                                            if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                           });
                                         }
                                       }}
@@ -2072,7 +2092,7 @@ export default function App() {
                                         if (window.confirm('هل أنت متأكد من حظر هذا اللاعب لمدة 24 ساعة؟')) {
                                           const banUntil = Date.now() + (24 * 60 * 60 * 1000);
                                           socket?.emit('admin_update_player', { serial: p.serial, updates: { banUntil, reports: 0 } }, (res: any) => {
-                                            if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                                            if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                           });
                                         }
                                       }}
@@ -2085,7 +2105,7 @@ export default function App() {
                                         onClick={() => {
                                           if (window.confirm('هل أنت متأكد من إلغاء حظر هذا اللاعب؟')) {
                                             socket?.emit('admin_update_player', { serial: p.serial, updates: { banUntil: 0 } }, (res: any) => {
-                                              if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                                              if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                             });
                                           }
                                         }}
@@ -2098,7 +2118,7 @@ export default function App() {
                                       onClick={() => {
                                         if (window.confirm('هل أنت متأكد من حظر هذا اللاعب نهائياً؟')) {
                                           socket?.emit('admin_update_player', { serial: p.serial, updates: { isPermanentBan: 1, reports: 0 } }, (res: any) => {
-                                            if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                                            if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                           });
                                         }
                                       }}
@@ -2110,7 +2130,7 @@ export default function App() {
                                       onClick={() => {
                                         if (window.confirm('هل أنت متأكد من حذف هذا الحساب نهائياً؟')) {
                                           socket?.emit('admin_delete_player', p.serial, (res: any) => {
-                                            if (res.success) socket.emit('admin_get_players', (players: any) => setAdminPlayers(players));
+                                            if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                           });
                                         }
                                       }}
@@ -2609,10 +2629,16 @@ export default function App() {
               {/* Info Button */}
               <button 
                 onClick={toggleLevelInfo}
-                className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors relative"
                 title="معلومات المستوى"
               >
                 <Info className="w-4 h-4 md:w-5 md:h-5" />
+                {!hasSeenLevelInfo && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                  </span>
+                )}
               </button>
 
               {/* Settings Button */}
@@ -2768,10 +2794,16 @@ export default function App() {
             {/* Info Button */}
             <button 
               onClick={toggleLevelInfo}
-              className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+              className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors relative"
               title="معلومات المستوى"
             >
               <Info className="w-4 h-4 md:w-5 md:h-5" />
+              {!hasSeenLevelInfo && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                </span>
+              )}
             </button>
 
             {/* Settings Button */}
@@ -3080,10 +3112,16 @@ export default function App() {
           {/* Info Button */}
           <button 
             onClick={toggleLevelInfo}
-            className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors"
+            className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors relative"
             title="معلومات المستوى"
           >
             <Info className="w-4 h-4 md:w-5 md:h-5" />
+            {!hasSeenLevelInfo && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+              </span>
+            )}
           </button>
 
           {/* Settings Button */}
