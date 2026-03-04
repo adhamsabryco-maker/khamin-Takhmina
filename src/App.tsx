@@ -107,7 +107,6 @@ const AVATARS = [
   { id: 'avatar-lvl-20.png', level: 20 },
   { id: 'avatar-lvl-30.png', level: 30 },
   { id: 'avatar-lvl-40.png', level: 40 },
-  { id: 'avatar-lvl-50.png', level: 50 },
 ];
 
 const APP_VERSION = '1.1.1'; // Version for cache clearing
@@ -1585,7 +1584,7 @@ export default function App() {
                             className={`relative aspect-square rounded-xl flex items-center justify-center border-2 transition-all overflow-hidden ${avatar === av.id ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-100 border-gray-300 hover:bg-gray-200'} ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
                           >
                             <div className="w-full h-full p-1">
-                              {renderAvatarContent(av.id, getLevel(xp))}
+                              {renderAvatarContent(av.id, 1)}
                             </div>
                             {isLocked && (
                               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 rounded-xl z-20">
