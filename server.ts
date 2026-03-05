@@ -143,6 +143,7 @@ const app = express();
   });
 
   app.post("/api/config", (req, res) => {
+    console.log('[API] Received config update:', req.body);
     fs.writeFileSync(path.join(__dirname, 'public/uploads/config.json'), JSON.stringify(req.body));
     io.emit('config_updated', req.body);
     res.json({ success: true });
