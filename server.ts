@@ -142,25 +142,26 @@ const app = express();
     }
   });
 
+  let configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false };
+  const configPath = path.join(__dirname, 'public/uploads/config.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      configCache = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    } catch (e) {
+      console.error("Error reading config:", e);
+    }
+  }
+
   app.post("/api/config", (req, res) => {
     console.log('[API] Received config update:', req.body);
-    fs.writeFileSync(path.join(__dirname, 'public/uploads/config.json'), JSON.stringify(req.body));
+    configCache = req.body;
+    fs.writeFileSync(configPath, JSON.stringify(req.body));
     io.emit('config_updated', req.body);
     res.json({ success: true });
   });
 
   app.get("/api/config", (req, res) => {
-    const configPath = path.join(__dirname, 'public/uploads/config.json');
-    let config = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false };
-    if (fs.existsSync(configPath)) {
-      try {
-        const savedConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-        config = { ...config, ...savedConfig };
-      } catch (e) {
-        console.error("Error reading config:", e);
-      }
-    }
-    res.json(config);
+    res.json(configCache);
   });
 
   app.get("/api/auth/google/url", (req, res) => {
@@ -760,6 +761,7 @@ const app = express();
   setInterval(checkBotMatchmaking, 5000);
 
   const botConversations = new Map<string, any[]>();
+  const botIntervals = new Map<string, NodeJS.Timeout>();
   const playerBotHistory = new Map<string, number>();
 
   function startBotQuestioning(roomId: string) {
@@ -769,10 +771,13 @@ const app = express();
     const bot = room.players.find((p: any) => p.isBot);
     if (!bot) return;
 
+    if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+
     const interval = setInterval(async () => {
       const currentRoom = rooms.get(roomId);
       if (!currentRoom || currentRoom.gameState !== 'discussion') {
         clearInterval(interval);
+        botIntervals.delete(roomId);
         return;
       }
 
@@ -807,6 +812,7 @@ const app = express();
         console.error("Bot Questioning Error:", error);
       }
     }, 25000 + Math.random() * 10000);
+    botIntervals.set(roomId, interval);
   }
 
   function startBotGuessing(roomId: string) {
