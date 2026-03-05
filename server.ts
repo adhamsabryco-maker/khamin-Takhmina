@@ -1043,20 +1043,15 @@ const app = express();
     });
     
     socket.on("delete_account", ({ playerSerial }, callback) => {
-      if (allPlayers.has(playerSerial)) {
+      // Always try to delete from DB
+      try {
+        db.prepare('DELETE FROM players WHERE serial = ?').run(playerSerial);
         allPlayers.delete(playerSerial);
-        
-        // Delete from DB directly
-        try {
-          db.prepare('DELETE FROM players WHERE serial = ?').run(playerSerial);
-        } catch (err) {
-          console.error("Failed to delete player from DB:", err);
-        }
-
         io.emit("top_players_update", getTopPlayers());
         if (callback) callback({ success: true });
-      } else {
-        if (callback) callback({ success: false, error: "Player not found" });
+      } catch (err) {
+        console.error("Failed to delete player from DB:", err);
+        if (callback) callback({ success: false, error: "Database error" });
       }
     });
 
