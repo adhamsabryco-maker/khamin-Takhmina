@@ -3146,7 +3146,7 @@ export default function App() {
 
       <main className="flex-1 relative flex flex-col items-center justify-between py-2 px-2 max-w-md mx-auto w-full">
         {/* Opponent (Top) */}
-        <div className="relative flex flex-col items-center w-full">
+        <div className="relative flex flex-col items-center justify-center w-full flex-1">
           {opponent && (
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
@@ -3195,7 +3195,7 @@ export default function App() {
         </div>
 
         {/* Center Content: Image or Waiting UI */}
-        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0 overflow-hidden">
+        <div className="flex-[2] flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0 overflow-hidden">
           {room.gameState === 'waiting' ? (
             <div className="w-full card-game p-3 md:p-6 text-center space-y-3 md:space-y-5 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gray-100">
@@ -3516,7 +3516,7 @@ export default function App() {
         </div>
 
         {/* Player (Bottom) */}
-        <div className="relative flex flex-col items-center">
+        <div className="relative flex flex-col items-center justify-center flex-1">
           {me && (
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
