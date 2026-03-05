@@ -758,7 +758,7 @@ const app = express();
     }
   }
 
-  setInterval(checkBotMatchmaking, 5000);
+  // setInterval(checkBotMatchmaking, 5000);
 
   const botConversations = new Map<string, any[]>();
   const botIntervals = new Map<string, NodeJS.Timeout>();
