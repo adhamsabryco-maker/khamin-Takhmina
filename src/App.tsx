@@ -3033,8 +3033,11 @@ export default function App() {
               </div>
 
               <button 
-                onClick={handleRandomMatch}
-                className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleRandomMatch();
+                }}
+                className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-pointer"
               >
                 <Users className="w-5 h-5 md:w-6 md:h-6" />
                 بحث عن منافس عشوائي
@@ -3088,8 +3091,11 @@ export default function App() {
         <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
           {/* Home Button (Leave Game) */}
           <button 
-            onClick={handleLeaveGame}
-            className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              handleLeaveGame();
+            }}
+            className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors cursor-pointer"
             title="الرئيسية"
           >
             <Home className="w-4 h-4 md:w-5 md:h-5" />
