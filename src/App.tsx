@@ -3711,43 +3711,43 @@ export default function App() {
               initial={{ scale: 0.8, y: 50, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               transition={{ type: 'spring', damping: 15 }}
-              className="relative max-w-xs w-full bg-white rounded-[32px] shadow-2xl p-6 text-center border-4 border-white"
+              className="relative max-w-xs w-full bg-white rounded-[32px] shadow-2xl p-4 text-center border-4 border-white"
             >
               {room.winnerId === me?.id ? (
-                <div className="mb-6">
-                  <div className="w-20 h-20 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-xl animate-bounce">
-                    <Trophy className="w-10 h-10 text-white" />
+                <div className="mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-2 border-4 border-white shadow-xl animate-bounce">
+                    <Trophy className="w-8 h-8 text-white" />
                   </div>
-                  <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-500 to-emerald-600 mb-2">مبروك! فزت</h2>
-                  <p className="text-gray-500 font-bold text-sm">أداء أسطوري يا بطل! 🏆</p>
+                  <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-500 to-emerald-600 mb-1">مبروك! فزت</h2>
+                  <p className="text-gray-500 font-bold text-xs">أداء أسطوري يا بطل! 🏆</p>
                 </div>
               ) : (
-                <div className="mb-6">
-                  <div className="w-20 h-20 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-xl">
-                    <span className="text-4xl">😢</span>
+                <div className="mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-2 border-4 border-white shadow-xl">
+                    <span className="text-3xl">😢</span>
                   </div>
-                  <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-600 mb-2">للأسف! خسرت</h2>
-                  <p className="text-gray-500 font-bold text-sm">حظ أوفر في المرة القادمة</p>
+                  <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-600 mb-1">للأسف! خسرت</h2>
+                  <p className="text-gray-500 font-bold text-xs">حظ أوفر في المرة القادمة</p>
                 </div>
               )}
               
-              <div className="flex flex-col items-center mb-6 bg-gray-50 p-4 rounded-[24px] border-2 border-gray-100">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white shadow-inner mb-3 border-4 border-white">
+              <div className="flex flex-col items-center mb-4 bg-gray-50 p-3 rounded-[24px] border-2 border-gray-100">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-inner mb-2 border-4 border-white">
                   <img src={me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
                 </div>
-                <div className="font-black text-xl text-gray-800">{me?.targetImage?.name}</div>
+                <div className="font-black text-lg text-gray-800">{me?.targetImage?.name}</div>
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
                 <button 
                   onClick={() => socket?.emit('play_again', { roomId })}
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-green-400 to-emerald-500 text-white text-lg font-black shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                  className="w-full py-2.5 rounded-full bg-gradient-to-b from-green-300 to-green-600 text-white text-base font-black shadow-[0_4px_0_#065f46] hover:brightness-110 active:scale-95 transition-all border-b-4 border-green-800"
                 >
-                  العب تاني!
+                  العب تاني مع المنافس
                 </button>
                 <button 
                   onClick={() => window.location.reload()}
-                  className="w-full py-3 rounded-2xl bg-gray-200 text-gray-700 text-lg font-black hover:bg-gray-300 active:scale-95 transition-all"
+                  className="w-full py-2.5 rounded-full bg-gradient-to-b from-gray-200 to-gray-400 text-gray-700 text-base font-black shadow-[0_4px_0_#4b5563] hover:brightness-110 active:scale-95 transition-all border-b-4 border-gray-600"
                 >
                   الرئيسية
                 </button>
