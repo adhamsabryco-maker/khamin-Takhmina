@@ -115,6 +115,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
         
         {/* Close Button (X) */}
         <button 
+          type="button"
           onClick={onClose}
           className="absolute top-3 right-3 p-1.5 bg-gray-100/50 hover:bg-red-100 rounded-full text-gray-400 hover:text-red-500 transition-colors z-50 backdrop-blur-sm"
         >
@@ -255,6 +256,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
           </p>
           
           <button
+            type="button"
             onClick={onClose}
             className={`w-full py-3 rounded-xl text-white text-lg font-black shadow-lg transition-all active:scale-95 bg-gradient-to-r ${getLevelColor(level)} hover:brightness-110`}
           >
