@@ -30,10 +30,13 @@ export const AdminCustomization = () => {
         (newConfig.stars as any)[level!] = data.filename;
       }
       
+      // Ensure aiBotEnabled is preserved if it exists
+      const finalConfig = { ...newConfig, aiBotEnabled: config.aiBotEnabled ?? false };
+      
       await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newConfig),
+        body: JSON.stringify(finalConfig),
       });
       refreshConfig();
       alert('تم رفع الصورة وحفظ الإعدادات بنجاح!');
@@ -54,10 +57,13 @@ export const AdminCustomization = () => {
       const newConfig = { ...config };
       delete (newConfig as any)[type + 's'][level];
       
+      // Ensure aiBotEnabled is preserved if it exists
+      const finalConfig = { ...newConfig, aiBotEnabled: config.aiBotEnabled ?? false };
+      
       await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newConfig),
+        body: JSON.stringify(finalConfig),
       });
       refreshConfig();
       alert('تم حذف الصورة بنجاح!');
