@@ -1,7 +1,7 @@
 export const STATIC_ASSETS = {
   avatars: {
     1: ['avatar-free-01.png', 'avatar-free-02.png', 'avatar-free-03.png', 'avatar-free-04.png'],
-    10: 'avatar-lvl-10.png',
+    10: ['avatar-lvl-10-1.png', 'avatar-lvl-10-2.png', 'avatar-lvl-10-3.png', 'avatar-lvl-10-4.png'],
     20: 'avatar-lvl-20.png',
     30: 'avatar-lvl-30.png',
     40: 'avatar-lvl-40.png',
