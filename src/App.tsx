@@ -3747,7 +3747,7 @@ export default function App() {
                 </button>
                 <button 
                   onClick={() => window.location.reload()}
-                  className="w-full py-3 rounded-full bg-[linear-gradient(45deg,#f97316,#c2410c)] text-white text-base font-black [box-shadow:#3c40434d_0_1px_2px_0,#3c404326_0_2px_6px_2px,#0000004d_0_30px_60px_-30px,#34343459_0_-2px_6px_0_inset] hover:brightness-110 active:scale-95 transition-all"
+                  className="w-full py-3 rounded-full bg-[linear-gradient(45deg,#ec4899,#be185d)] text-white text-base font-black [box-shadow:#3c40434d_0_1px_2px_0,#3c404326_0_2px_6px_2px,#0000004d_0_30px_60px_-30px,#34343459_0_-2px_6px_0_inset] hover:brightness-110 active:scale-95 transition-all"
                 >
                   الرئيسية
                 </button>
