@@ -1870,7 +1870,7 @@ export default function App() {
                   <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-2 md:mb-4">
                     <Brain className="w-8 h-8 md:w-10 md:h-10 text-orange-500" />
                   </div>
-                  <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">أهلاً بك في خمن تخمينة!</h2>
+                  <h2 className="text-xl md:text-2xl font-black text-[#2D3436]">أهلاً بك في خمن تخمينة!</h2>
                   <p className="text-gray-500 font-bold text-sm md:text-base">يرجى إكمال بياناتك للبدء</p>
                 </div>
 
@@ -1889,10 +1889,14 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-black text-gray-600 mb-1 text-right">عمر اللاعب</label>
                     <input 
-                      type="number" 
+                      type="text" 
                       value={playerAge}
                       onChange={(e) => {
-                        const val = e.target.value;
+                        const convertArabicNumbers = (str: string) => {
+                          return str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632))
+                                    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776));
+                        };
+                        const val = convertArabicNumbers(e.target.value);
                         if (val === '') setPlayerAge('');
                         else {
                           const num = parseInt(val);
@@ -1901,7 +1905,7 @@ export default function App() {
                       }}
                       placeholder="ادخل عمرك..."
                       className="input-game"
-                      max={80}
+                      maxLength={2}
                     />
                   </div>
                   <div>
