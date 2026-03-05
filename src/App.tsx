@@ -3206,8 +3206,8 @@ export default function App() {
                 ></div>
               </div>
               <div className="flex justify-between items-center bg-white/50 p-3 rounded-2xl border border-orange-100 shadow-sm">
-                <h2 className="text-lg md:text-xl font-black text-orange-600">
-                  {room.players.length < 2 ? 'بانتظار المنافس...' : 'اتفقوا على نفس الفئة للبدء!'}
+                <h2 className={`text-lg md:text-xl font-black text-orange-600 ${room.players.length >= 2 ? 'animate-pulse' : ''}`}>
+                  {room.players.length < 2 ? 'بانتظار المنافس...' : 'اتفقوا على فئة التخمين للبدء!'}
                 </h2>
                 <div className={`text-lg font-black font-mono px-3 py-1 rounded-lg ${room.isFrozen ? 'text-cyan-500 bg-cyan-50 animate-pulse' : 'text-red-500 bg-gray-100'}`}>
                   {room.isFrozen ? (
@@ -3324,7 +3324,7 @@ export default function App() {
                 )}
               </div>
 
-              {consensusReached ? (
+              {consensusReached && (
                 <motion.button 
                   initial={{ scale: 0.9 }}
                   animate={{ scale: 1 }}
@@ -3333,10 +3333,6 @@ export default function App() {
                 >
                   ابدأ اللعبة الآن! 🚀
                 </motion.button>
-              ) : (
-                <div className="text-sm font-black text-orange-500 bg-orange-100 py-3 rounded-xl animate-pulse border-2 border-orange-200">
-                  {room.players.length < 2 ? 'بانتظار دخول لاعب آخر...' : 'اتفقوا على نفس الفئة للبدء!'}
-                </div>
               )}
             </div>
           ) : (
