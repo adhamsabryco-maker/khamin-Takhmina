@@ -778,11 +778,14 @@ const app = express();
       try {
         const history = botConversations.get(roomId) || [];
         const systemInstruction = `
-أنت لاعب مصري في لعبة تخمين صور. اسمك وشخصيتك هي: ${bot.persona}.
-الفئة الحالية هي: ${currentRoom.category}.
-أنت تحاول تخمين الصورة التي مع المنافس.
-اسأل سؤالاً ذكياً واحداً فقط بالعامية المصرية لتعرف الصورة. لا تذكر اسم الصورة مباشرة.
-تحدث بالعامية المصرية الشعبية فقط. لا تخرج عن الشخصية. لا تذكر أنك ذكاء اصطناعي. رد باختصار.
+أنت لاعب مصري حقيقي في لعبة تخمين صور. اسمك وشخصيتك هي: ${bot.persona}.
+تحدث بالعامية المصرية العامية تماماً، كأنك شاب مصري بيلعب مع صحابه.
+استخدم كلمات عامية، اختصارات، ورموز تعبيرية (Emojis) بشكل طبيعي.
+لا تخرج عن الشخصية أبداً. لا تذكر أبداً أنك ذكاء اصطناعي أو بوت.
+إذا سألك المنافس، رد عليه بأسلوب طبيعي، أحياناً رد بسؤال، وأحياناً رد بإجابة مباشرة.
+إذا كان دورك في التخمين، اسأل أسئلة ذكية عن الصورة.
+إذا كان دورك في الإجابة، أجب بصدق (نعم أو لا) مع إضافة تعليق بشخصيتك.
+ردودك يجب أن تكون قصيرة، عفوية، وواقعية جداً.
 `;
         const response = await genAI.models.generateContent({
           model: "gemini-3-flash-preview",
@@ -864,29 +867,49 @@ const app = express();
     if (!player) return;
 
     if (event === 'room_update') {
+      // Initialize conversation if not already done
+      if (!botConversations.has(roomId)) {
+        botConversations.set(roomId, [
+          { role: 'user', parts: [{ text: `أهلاً يا زميلي، أنا ${bot.name} وجاهز للتحدي!` }] }
+        ]);
+      }
+      
       // 1. Handle Category Selection
-      if (room.gameState === 'waiting' && !bot.selectedCategory) {
-        setTimeout(() => {
-          // Check if opponent has already selected
-          if (player.selectedCategory) {
-             bot.selectedCategory = player.selectedCategory;
-          } else {
-             const categories = ["animals", "food", "people", "objects", "birds", "plants"];
-             const randomCategory = categories[Math.floor(Math.random() * categories.length)];
-             bot.selectedCategory = randomCategory;
-          }
+      if (room.gameState === 'waiting') {
+        // Trigger bot to think about category and chat if it hasn't already
+        // Only trigger once to avoid infinite loops or spam
+        if (!botConversations.has(roomId + '_category_triggered')) {
+          botConversations.set(roomId + '_category_triggered', true);
           
-          io.to(room.id).emit("room_update", room);
-          
-          // Check if both players selected the same category
-          const allSelected = room.players.length === 2 && 
-                            room.players.every((p: any) => p.selectedCategory === bot.selectedCategory);
-          
-          if (allSelected) {
-            room.category = bot.selectedCategory;
-            startGame(room.id);
-          }
-        }, 2000 + Math.random() * 3000);
+          // Simulate thinking time
+          setTimeout(() => {
+            const categories = ["animals", "food", "people", "objects", "birds", "plants"];
+            const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+            bot.selectedCategory = randomCategory;
+            
+            const catNames: Record<string, string> = { animals: "حيوانات", food: "أكلات", people: "أشخاص", objects: "جماد", birds: "طيور", plants: "نبات" };
+            const categoryName = catNames[randomCategory] || randomCategory;
+            
+            // Send the chat message as the bot
+            handleBotEvent(roomId, 'chat_message', { senderId: bot.id, text: `إيه رأيك نلعب في ${categoryName}؟` });
+            
+            // Add the bot's choice to the conversation history so it remembers it
+            const history = botConversations.get(roomId) || [];
+            history.push({ role: 'model', parts: [{ text: `إيه رأيك نلعب في ${categoryName}؟` }] });
+            botConversations.set(roomId, history);
+            
+            io.to(room.id).emit("room_update", room);
+          }, 3000 + Math.random() * 2000); // 3-5 seconds thinking time
+        }
+        
+        // Check if both players selected the same category
+        const allSelected = room.players.length === 2 && 
+                          room.players.every((p: any) => p.selectedCategory === bot.selectedCategory);
+        
+        if (allSelected) {
+          room.category = bot.selectedCategory;
+          // startGame(room.id); // Removed automatic start
+        }
       }
     }
 
@@ -896,34 +919,8 @@ const app = express();
         { role: 'user', parts: [{ text: `أهلاً يا زميلي، أنا ${bot.name} وجاهز للتحدي!` }] }
       ]);
       
-      // Bot might send a greeting
-      setTimeout(() => {
-        const categoryNames: Record<string, string> = {
-          animals: "حيوانات",
-          food: "أكلات",
-          people: "أشخاص",
-          objects: "جماد",
-          birds: "طيور",
-          plants: "نبات"
-        };
-        const catName = categoryNames[room.category] || room.category;
-        
-        // Get first name only to sound more casual
-        const firstName = player.name.split(' ')[0];
-        
-        // More natural, slang greetings based on persona could be better, but a generic casual one works for now
-        const greetings = [
-          `منور يا ${firstName}! أنا ${bot.name}. يلا بينا نلعب في ${catName}، وريني هتعرف تكسبني ولا لأ 😉`,
-          `أهلاً يا ${firstName}! جاهز للتحدي؟ الفئة هي ${catName}، ياللا بينا!`,
-          `يا هلا بـ ${firstName}! أنا ${bot.name}، ومستعد جداً للجولة دي في ${catName}.`
-        ];
-        
-        const greeting = greetings[Math.floor(Math.random() * greetings.length)];
-        io.to(roomId).emit("chat_bubble", { senderId: bot.id, text: greeting });
-        
-        // Start questioning loop
-        startBotQuestioning(roomId);
-      }, 3000);
+      // Start questioning loop
+      startBotQuestioning(roomId);
     }
 
     if (event === 'chat_message') {
@@ -937,14 +934,16 @@ const app = express();
 
       // Call Gemini
       try {
-        const systemInstruction = `
-أنت لاعب مصري في لعبة تخمين صور. اسمك وشخصيتك هي: ${bot.persona}.
-الفئة الحالية هي: ${room.category}.
-الصورة التي معك (التي يجب على المنافس تخمينها) هي: ${bot.targetImage}.
-المنافس سألك سؤالاً أو قال شيئاً، أجب عليه بصدق (نعم أو لا) إذا كان سؤالاً عن صورتك، مع إضافة لمسة من شخصيتك المصرية العامية.
-إذا سألك عن صورتك وكانت الإجابة "نعم"، قل "نعم" بأسلوبك. إذا كانت "لا"، قل "لا" بأسلوبك.
-تحدث بالعامية المصرية الشعبية فقط. لا تخرج عن الشخصية. لا تذكر أنك ذكاء اصطناعي. رد باختصار.
-`;
+        const systemInstruction = `أنت لاعب مصري حقيقي في لعبة تخمين صور. اسمك وشخصيتك هي: ${bot.persona}. 
+        تحدث بالعامية المصرية العامية تماماً، كأنك شاب مصري بيلعب مع صحابه. 
+        استخدم كلمات عامية، اختصارات، ورموز تعبيرية (Emojis) بشكل طبيعي جداً.
+        
+        أنت الآن في مرحلة "اختيار الفئة". 
+        - إذا لم يتم الاتفاق على فئة بعد، تفاعل مع اقتراحات المنافس. لا توافق فوراً! ناقش، اعترض، اقترح فئة أخرى، أو عبر عن حماسك أو رفضك للفئة المقترحة.
+        - كن عفوياً جداً. أحياناً اكتب كلمات ناقصة، أو أخطاء إملائية بسيطة (مثل "طيور" بدل "طيور" أو "اكلات" بدل "أكلات")، أو استخدم "..." كثيراً.
+        - لا تكن منظماً أو آلياً. ردودك يجب أن تكون قصيرة، عفوية، وواقعية جداً.
+        - لا تذكر أبداً أنك ذكاء اصطناعي أو بوت.
+        `;
         const response = await genAI.models.generateContent({
           model: "gemini-3-flash-preview",
           contents: history,
@@ -959,10 +958,12 @@ const app = express();
         history.push({ role: 'model', parts: [{ text: botReply }] });
         botConversations.set(roomId, history);
 
-        // Delay response to feel natural
+        // Calculate typing delay based on text length (approx 50ms per character)
+        const typingDelay = Math.min(5000, Math.max(1000, botReply.length * 50));
+        
         setTimeout(() => {
           io.to(roomId).emit("chat_bubble", { senderId: bot.id, text: botReply });
-        }, 2000 + Math.random() * 3000);
+        }, typingDelay);
 
       } catch (error) {
         console.error("Gemini Error:", error);
