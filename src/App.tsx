@@ -3093,12 +3093,13 @@ export default function App() {
           <button 
             onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               handleLeaveGame();
             }}
-            className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors cursor-pointer"
+            className="w-12 h-12 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors cursor-pointer touch-manipulation"
             title="الرئيسية"
           >
-            <Home className="w-4 h-4 md:w-5 md:h-5" />
+            <Home className="w-6 h-6 md:w-5 md:h-5" />
           </button>
 
           {/* Info Button */}
