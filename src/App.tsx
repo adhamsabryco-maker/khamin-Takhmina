@@ -406,6 +406,35 @@ export default function App() {
     return localStorage.getItem('khamin_seen_level_info') === 'true';
   });
   const [showLevelInfo, setShowLevelInfo] = useState(false);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      if (!localStorage.getItem('khamin_install_dismissed')) {
+        setShowInstallModal(true);
+      }
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult: any) => {
+        setShowInstallModal(false);
+        setDeferredPrompt(null);
+      });
+    }
+  };
+
+  const handleCloseInstallModal = () => {
+    setShowInstallModal(false);
+    localStorage.setItem('khamin_install_dismissed', 'true');
+  };
   
   const toggleSettings = () => {
     setShowSettingsModal(!showSettingsModal);
@@ -425,15 +454,9 @@ export default function App() {
     setShowReportModal(false);
   };
 
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (room?.gameState === 'discussion' || room?.gameState === 'guessing') {
         e.preventDefault();
@@ -441,11 +464,9 @@ export default function App() {
       }
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [room?.gameState]);
@@ -1564,7 +1585,13 @@ export default function App() {
                     <input 
                       type="text" 
                       value={playerName}
-                      onChange={(e) => setPlayerName(e.target.value.slice(0, 15))}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+                        if (!emojiRegex.test(name)) {
+                          setPlayerName(name.slice(0, 15));
+                        }
+                      }}
                       className="input-game"
                       maxLength={15}
                     />
@@ -1575,7 +1602,10 @@ export default function App() {
                       type="number" 
                       value={playerAge}
                       onChange={(e) => {
-                        const val = e.target.value;
+                        const convertArabicNumbers = (str: string) => {
+                          return str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632));
+                        };
+                        const val = convertArabicNumbers(e.target.value);
                         if (val === '') setPlayerAge('');
                         else {
                           const num = parseInt(val);
@@ -3058,6 +3088,33 @@ export default function App() {
 
   return (
     <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-16 md:pt-20">
+      {/* Install Modal */}
+      {showInstallModal && deferredPrompt && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl border-4 border-orange-500">
+            <div className="w-20 h-20 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
+              <span className="text-4xl">🎮</span>
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">خمن تخمينة</h2>
+            <p className="text-gray-600 mb-6 font-medium">
+              لعبة خمن تخمينة هي لعبة جماعية أونلاين لشخصين مع مؤثرات تفاعلية وكروت مساعدة
+            </p>
+            <button 
+              onClick={handleInstallClick}
+              className="w-full py-4 bg-orange-500 text-white font-black rounded-2xl text-lg hover:bg-orange-600 transition-colors mb-3"
+            >
+              تثبيت اللعبة
+            </button>
+            <button 
+              onClick={handleCloseInstallModal}
+              className="w-full py-2 text-gray-400 font-bold hover:text-gray-600"
+            >
+              ليس الآن
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
         <div className="flex-1 flex items-center gap-2 md:gap-3">
