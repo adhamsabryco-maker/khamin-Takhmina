@@ -1,0 +1,16 @@
+{
+  "name": "خمن تخمينة",
+  "short_name": "خمن تخمينة",
+  "description": "لعبة تخمين كلمات ممتعة",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
