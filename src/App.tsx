@@ -3340,45 +3340,41 @@ export default function App() {
           ) : (
             <div className="relative w-full flex flex-col items-center">
               {/* Quick Guess Overlay for the one guessing */}
-              <AnimatePresence>
-                {room.isPaused && room.pausingPlayerId === me?.id && (
-                  <motion.div 
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-                  >
-                    <div className="w-full max-w-md card-game p-8 text-center relative">
-                      <div className="text-8xl font-black text-red-500 mb-4 drop-shadow-md">{room.quickGuessTimer}</div>
-                      <h3 className="text-3xl font-black text-[#2D3436] mb-6">تخمين سريع!</h3>
-                      <form onSubmit={handleQuickGuess} className="flex flex-col gap-3">
-                        <input 
-                          autoFocus
-                          type="text" 
-                          value={guess}
-                          onChange={(e) => setGuess(e.target.value)}
-                          placeholder="ما هي الصورة؟"
-                          className="input-game text-center text-2xl"
-                        />
-                        <button className="btn-game btn-primary py-4 text-xl">إرسال</button>
-                        
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            if (getLevel(xp) >= 20) {
-                              socket?.emit('cancel_quick_guess', { roomId });
-                            }
-                          }}
-                          disabled={getLevel(xp) < 20}
-                          className={`btn-game py-3 text-lg flex items-center justify-center gap-2 ${getLevel(xp) >= 20 ? 'bg-gray-500 hover:bg-gray-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                        >
-                          {getLevel(xp) < 20 && <Lock className="w-4 h-4" />}
-                          {getLevel(xp) < 20 ? 'تراجع (Lvl 20)' : 'تراجع'}
-                        </button>
-                      </form>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {room.isPaused && room.pausingPlayerId === me?.id && (
+                <div 
+                  className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                >
+                  <div className="w-full max-w-md card-game p-8 text-center relative">
+                    <div className="text-8xl font-black text-red-500 mb-4 drop-shadow-md">{room.quickGuessTimer}</div>
+                    <h3 className="text-3xl font-black text-[#2D3436] mb-6">تخمين سريع!</h3>
+                    <form onSubmit={handleQuickGuess} className="flex flex-col gap-3">
+                      <input 
+                        autoFocus
+                        type="text" 
+                        value={guess}
+                        onChange={(e) => setGuess(e.target.value)}
+                        placeholder="ما هي الصورة؟"
+                        className="input-game text-center text-2xl"
+                      />
+                      <button className="btn-game btn-primary py-4 text-xl">إرسال</button>
+                      
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          if (getLevel(xp) >= 20) {
+                            socket?.emit('cancel_quick_guess', { roomId });
+                          }
+                        }}
+                        disabled={getLevel(xp) < 20}
+                        className={`btn-game py-3 text-lg flex items-center justify-center gap-2 ${getLevel(xp) >= 20 ? 'bg-gray-500 hover:bg-gray-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                      >
+                        {getLevel(xp) < 20 && <Lock className="w-4 h-4" />}
+                        {getLevel(xp) < 20 ? 'تراجع (Lvl 20)' : 'تراجع'}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
 
               {/* Quick Guess Message for the opponent */}
               <AnimatePresence>
