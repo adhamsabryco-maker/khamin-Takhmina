@@ -3274,7 +3274,7 @@ export default function App() {
                 ></div>
               </div>
               <div className="flex justify-between items-center bg-white/50 p-3 rounded-2xl border border-orange-100 shadow-sm">
-                <h2 className={`text-lg md:text-xl font-black text-orange-600 ${room.players.length >= 2 ? 'animate-pulse' : ''}`}>
+                <h2 className={`text-lg md:text-xl font-black text-orange-600 ${room.players.length < 2 ? 'animate-pulse' : ''}`}>
                   {room.players.length < 2 ? 'بانتظار المنافس...' : 'اتفقوا على فئة التخمين للبدء!'}
                 </h2>
                 <div className={`text-lg font-black font-mono px-3 py-1 rounded-lg ${room.isFrozen ? 'text-cyan-500 bg-cyan-50 animate-pulse' : 'text-red-500 bg-gray-100'}`}>
@@ -3322,8 +3322,8 @@ export default function App() {
                   })}
                 </div>
 
-                {/* WhatsApp Style Chat Box - Hidden when consensus reached */}
-                {!consensusReached && (
+                {/* WhatsApp Style Chat Box - Hidden when consensus reached or waiting for opponent */}
+                {!consensusReached && room.players.length >= 2 && (
                   <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-48 mt-4 relative">
                     {isMutedByOpponent && (
                       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
