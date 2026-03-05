@@ -3732,7 +3732,7 @@ export default function App() {
               )}
               
               <div className="flex flex-col items-center mb-4 bg-gray-50 p-3 rounded-[24px] border-2 border-gray-100">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-inner mb-2 border-4 border-white">
+                <div className="w-28 h-28 rounded-2xl overflow-hidden bg-white shadow-inner mb-2 border-4 border-white">
                   <img src={me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
                 </div>
                 <div className="font-black text-lg text-gray-800">{me?.targetImage?.name}</div>
@@ -3741,13 +3741,13 @@ export default function App() {
               <div className="flex flex-col gap-2">
                 <button 
                   onClick={() => socket?.emit('play_again', { roomId })}
-                  className="w-full py-2.5 rounded-full bg-gradient-to-b from-green-300 to-green-600 text-white text-base font-black shadow-[0_4px_0_#065f46] hover:brightness-110 active:scale-95 transition-all border-b-4 border-green-800"
+                  className="w-full py-3 rounded-full bg-gradient-to-b from-green-300 to-green-600 text-white text-base font-black border border-green-400 shadow-[0_4px_10px_rgba(0,0,0,0.3),inset_0_2px_2px_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-95 transition-all"
                 >
                   العب تاني مع المنافس
                 </button>
                 <button 
                   onClick={() => window.location.reload()}
-                  className="w-full py-2.5 rounded-full bg-gradient-to-b from-gray-200 to-gray-400 text-gray-700 text-base font-black shadow-[0_4px_0_#4b5563] hover:brightness-110 active:scale-95 transition-all border-b-4 border-gray-600"
+                  className="w-full py-3 rounded-full bg-gradient-to-b from-gray-200 to-gray-500 text-white text-base font-black border border-gray-300 shadow-[0_4px_10px_rgba(0,0,0,0.3),inset_0_2px_2px_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-95 transition-all"
                 >
                   الرئيسية
                 </button>
