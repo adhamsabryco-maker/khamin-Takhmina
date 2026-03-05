@@ -3205,9 +3205,11 @@ export default function App() {
                   style={{ width: `${(room.timer / 60) * 100}%` }}
                 ></div>
               </div>
-              <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-black text-orange-500">بانتظار المنافس...</h2>
-                <div className={`text-xl font-black font-mono px-3 py-1 rounded-lg ${room.isFrozen ? 'text-cyan-500 bg-cyan-50 animate-pulse' : 'text-red-500 bg-gray-100'}`}>
+              <div className="flex justify-between items-center bg-white/50 p-3 rounded-2xl border border-orange-100 shadow-sm">
+                <h2 className="text-lg md:text-xl font-black text-orange-600">
+                  {room.players.length < 2 ? 'بانتظار المنافس...' : 'اتفقوا على نفس الفئة للبدء!'}
+                </h2>
+                <div className={`text-lg font-black font-mono px-3 py-1 rounded-lg ${room.isFrozen ? 'text-cyan-500 bg-cyan-50 animate-pulse' : 'text-red-500 bg-gray-100'}`}>
                   {room.isFrozen ? (
                     <div className="flex items-center gap-1">
                       <Snowflake className="w-4 h-4" />
@@ -3220,7 +3222,6 @@ export default function App() {
               </div>
               
               <div className="space-y-4">
-                <p className="text-base font-black text-[#2D3436] uppercase tracking-wide">اختر فئة التخمين</p>
                 <div className="grid grid-cols-4 gap-2">
                   {categories.map(cat => {
                     const isMyChoice = me?.selectedCategory === cat.id;
