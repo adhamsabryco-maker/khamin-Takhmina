@@ -3741,13 +3741,13 @@ export default function App() {
               <div className="flex flex-col gap-2">
                 <button 
                   onClick={() => socket?.emit('play_again', { roomId })}
-                  className="w-full py-3 rounded-full bg-[linear-gradient(45deg,#3b82f6,#1d4ed8)] text-white text-base font-black [box-shadow:#3c40434d_0_1px_2px_0,#3c404326_0_2px_6px_2px,#0000004d_0_30px_60px_-30px,#34343459_0_-2px_6px_0_inset] hover:brightness-110 active:scale-95 transition-all"
+                  className="w-full btn-game btn-success py-3 text-base"
                 >
                   العب تاني مع المنافس
                 </button>
                 <button 
                   onClick={() => window.location.reload()}
-                  className="w-full py-3 rounded-full bg-[linear-gradient(45deg,#ec4899,#be185d)] text-white text-base font-black [box-shadow:#3c40434d_0_1px_2px_0,#3c404326_0_2px_6px_2px,#0000004d_0_30px_60px_-30px,#34343459_0_-2px_6px_0_inset] hover:brightness-110 active:scale-95 transition-all"
+                  className="w-full btn-game btn-primary py-3 text-base"
                 >
                   الرئيسية
                 </button>
