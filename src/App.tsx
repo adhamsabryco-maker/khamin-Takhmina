@@ -2626,13 +2626,16 @@ export default function App() {
               <button 
                 onClick={() => {
                   const serial = localStorage.getItem('khamin_player_serial');
-                  if (serial && socket) {
-                    socket.emit('delete_account', { playerSerial: serial }, (res: any) => {
-                      if (res.success) {
+                  if (serial) {
+                    if (socket && socket.connected) {
+                      socket.emit('delete_account', { playerSerial: serial }, (res: any) => {
                         localStorage.clear();
                         window.location.reload();
-                      }
-                    });
+                      });
+                    } else {
+                      localStorage.clear();
+                      window.location.reload();
+                    }
                   }
                 }}
                 className="w-full btn-game bg-black text-white py-4 text-xl flex items-center justify-center gap-3 hover:bg-gray-800 transition-all"
