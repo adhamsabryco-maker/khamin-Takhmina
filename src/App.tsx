@@ -1859,12 +1859,12 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4 overflow-y-auto"
             >
               <motion.div
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
-                className="card-game p-4 w-full max-w-md space-y-4"
+                className="card-game p-4 w-full max-w-sm space-y-3 my-auto"
               >
                 <div className="text-center space-y-2">
                   <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-2 md:mb-4">
