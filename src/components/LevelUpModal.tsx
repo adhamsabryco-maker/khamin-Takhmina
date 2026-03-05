@@ -117,9 +117,9 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
         <button 
           type="button"
           onClick={onClose}
-          className="absolute top-3 right-3 p-1.5 bg-gray-100/50 hover:bg-red-100 rounded-full text-gray-400 hover:text-red-500 transition-colors z-50 backdrop-blur-sm"
+          className="absolute -top-3 -right-3 p-3 bg-red-500 hover:bg-red-600 rounded-full text-white shadow-lg transition-all z-50"
         >
-          <X className="w-4 h-4" />
+          <X className="w-6 h-6" />
         </button>
 
         {/* Header Section */}
@@ -254,14 +254,6 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
               ? "واو! لقد وصلت لمستوى أسطوري. استمر في التألق وفتح المزيد من المفاجآت!"
               : "رائع جداً! مهاراتك في تحسن مستمر. المستوى القادم ينتظرك!"}
           </p>
-          
-          <button
-            type="button"
-            onClick={onClose}
-            className={`w-full py-3 rounded-xl text-white text-lg font-black shadow-lg transition-all active:scale-95 bg-gradient-to-r ${getLevelColor(level)} hover:brightness-110`}
-          >
-            إغلاق
-          </button>
         </motion.div>
 
         {/* Decorative Elements */}
