@@ -100,14 +100,14 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 overflow-hidden"
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 overflow-hidden cursor-pointer"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.8, y: 50, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         transition={{ type: 'spring', damping: 15 }}
-        className="relative max-w-xs w-full bg-white rounded-[32px] shadow-[0_0_100px_rgba(255,215,0,0.3)] p-4 text-center border-4 border-yellow-400/30"
+        className="relative max-w-xs w-full bg-white rounded-[32px] shadow-[0_0_100px_rgba(255,215,0,0.3)] p-4 text-center border-4 border-yellow-400/30 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Background Glow */}
