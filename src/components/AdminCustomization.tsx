@@ -151,7 +151,9 @@ export const AdminCustomization = () => {
             </div>
             <button 
               onClick={async () => {
+                console.log('Current config:', config);
                 const newConfig = { ...config, aiBotEnabled: !config.aiBotEnabled };
+                console.log('New config:', newConfig);
                 try {
                   await fetch('/api/config', {
                     method: 'POST',
