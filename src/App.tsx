@@ -3741,13 +3741,13 @@ export default function App() {
               <div className="flex flex-col gap-2">
                 <button 
                   onClick={() => socket?.emit('play_again', { roomId })}
-                  className="w-full py-3 rounded-full bg-gradient-to-b from-green-400 to-green-700 text-white text-base font-black border border-green-300 shadow-[0_4px_10px_rgba(0,0,0,0.3),inset_0_2px_2px_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-95 transition-all"
+                  className="w-full py-3 rounded-full bg-[linear-gradient(45deg,#22c55e,#15803d)] text-white text-base font-black [box-shadow:#3c40434d_0_1px_2px_0,#3c404326_0_2px_6px_2px,#0000004d_0_30px_60px_-30px,#34343459_0_-2px_6px_0_inset] hover:brightness-110 active:scale-95 transition-all"
                 >
                   العب تاني مع المنافس
                 </button>
                 <button 
                   onClick={() => window.location.reload()}
-                  className="w-full py-3 rounded-full bg-gradient-to-b from-gray-300 to-gray-600 text-white text-base font-black border border-gray-200 shadow-[0_4px_10px_rgba(0,0,0,0.3),inset_0_2px_2px_rgba(255,255,255,0.5)] hover:brightness-110 active:scale-95 transition-all"
+                  className="w-full py-3 rounded-full bg-[linear-gradient(45deg,#9ca3af,#4b5563)] text-white text-base font-black [box-shadow:#3c40434d_0_1px_2px_0,#3c404326_0_2px_6px_2px,#0000004d_0_30px_60px_-30px,#34343459_0_-2px_6px_0_inset] hover:brightness-110 active:scale-95 transition-all"
                 >
                   الرئيسية
                 </button>
