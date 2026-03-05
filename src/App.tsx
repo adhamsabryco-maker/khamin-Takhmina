@@ -20,6 +20,7 @@ import {
   Home,
   Flag,
   Ban,
+  MessageSquareOff,
   Info,
   Brain,
   Star,
@@ -3186,7 +3187,7 @@ export default function App() {
                   className={`${isOpponentBlocked ? 'text-red-500 bg-red-100' : 'text-gray-400 hover:bg-gray-100'} p-1.5 rounded-full transition-all`}
                   title={isOpponentBlocked ? "إلغاء الحظر" : "حظر اللاعب (كتم الصوت والدردشة)"}
                 >
-                  <Ban className="w-4 h-4" />
+                  <MessageSquareOff className="w-4 h-4" />
                 </button>
               </div>
               {opponent.age && <div className="text-xs text-gray-500 font-bold mt-1">({opponent.age} سنة)</div>}
@@ -3576,7 +3577,7 @@ export default function App() {
 
       {/* Help Cards (Bottom Left) - Vertical Stack */}
       {room.gameState !== 'waiting' && (
-        <div className="fixed bottom-2 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
+        <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
           {[
             { 
               id: 'quick_guess', 
