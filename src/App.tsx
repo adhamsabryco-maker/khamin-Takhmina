@@ -3088,15 +3088,7 @@ export default function App() {
         <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
           {/* Home Button (Leave Game) */}
           <button 
-            onClick={() => {
-                if (room?.gameState === 'guessing' || room?.gameState === 'discussion') {
-                   if (window.confirm('هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟')) {
-                     handleLeaveGame();
-                   }
-                } else {
-                   handleLeaveGame();
-                }
-            }}
+            onClick={handleLeaveGame}
             className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
             title="الرئيسية"
           >
