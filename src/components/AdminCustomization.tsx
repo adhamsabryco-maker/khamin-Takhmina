@@ -82,9 +82,9 @@ export const AdminCustomization = () => {
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> الأفاتار (4 مجانية + 4 حسب المستوى)</h3>
           <div className="grid grid-cols-2 gap-4">
-            {['free1', 'free2', 'free3', 'free4', 10, 20, 30, 40, 50].map((level) => (
+            {['free-boy-1', 'free-boy-2', 'free-boy-3', 'free-boy-4', 'free-girl-1', 'free-girl-2', 'free-girl-3', 'free-girl-4', 'boy-10', 'girl-10', 'boy-20', 'girl-20', 'boy-30', 'girl-30', 'boy-40', 'girl-40'].map((level) => (
               <div key={level} className="space-y-2">
-                <span className="font-bold">{typeof level === 'string' ? `مجاني ${level.replace('free', '')}` : `مستوى ${level}`}</span>
+                <span className="font-bold text-sm">{level.replace('-', ' ')}</span>
                 {(config.avatars as any)[level] ? (
                   <div className="relative aspect-square border-2 border-gray-200 rounded-xl overflow-hidden">
                     <img src={`/uploads/${(config.avatars as any)[level]}`} className="w-full h-full object-cover" />

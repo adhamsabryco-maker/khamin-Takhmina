@@ -16,15 +16,18 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
 
   // Check for specific avatar replacements based on the selected avatar ID
   let avatarReplacement = null;
-  if (avatar === 'avatar-free-01.png') avatarReplacement = customConfig.avatars?.['free1'];
-  else if (avatar === 'avatar-free-02.png') avatarReplacement = customConfig.avatars?.['free2'];
-  else if (avatar === 'avatar-free-03.png') avatarReplacement = customConfig.avatars?.['free3'];
-  else if (avatar === 'avatar-free-04.png') avatarReplacement = customConfig.avatars?.['free4'];
-  else if (avatar === 'avatar-lvl-10.png') avatarReplacement = customConfig.avatars?.[10];
-  else if (avatar === 'avatar-lvl-20.png') avatarReplacement = customConfig.avatars?.[20];
-  else if (avatar === 'avatar-lvl-30.png') avatarReplacement = customConfig.avatars?.[30];
-  else if (avatar === 'avatar-lvl-40.png') avatarReplacement = customConfig.avatars?.[40];
-  else if (avatar === 'avatar-lvl-50.png') avatarReplacement = customConfig.avatars?.[50];
+  const avatarMap: Record<string, string> = {
+    'avatar-free-boy-01.png': 'free-boy-1', 'avatar-free-boy-02.png': 'free-boy-2', 'avatar-free-boy-03.png': 'free-boy-3', 'avatar-free-boy-04.png': 'free-boy-4',
+    'avatar-free-girl-01.png': 'free-girl-1', 'avatar-free-girl-02.png': 'free-girl-2', 'avatar-free-girl-03.png': 'free-girl-3', 'avatar-free-girl-04.png': 'free-girl-4',
+    'avatar-lvl-boy-10.png': 'boy-10', 'avatar-lvl-girl-10.png': 'girl-10',
+    'avatar-lvl-boy-20.png': 'boy-20', 'avatar-lvl-girl-20.png': 'girl-20',
+    'avatar-lvl-boy-30.png': 'boy-30', 'avatar-lvl-girl-30.png': 'girl-30',
+    'avatar-lvl-boy-40.png': 'boy-40', 'avatar-lvl-girl-40.png': 'girl-40',
+  };
+  
+  if (avatarMap[avatar]) {
+    avatarReplacement = customConfig.avatars?.[avatarMap[avatar]];
+  }
 
   const customAvatar = customConfig.avatars?.[milestoneLevel];
   const customFrame = customConfig.frames?.[milestoneLevel];
