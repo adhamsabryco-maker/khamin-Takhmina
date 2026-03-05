@@ -102,14 +102,24 @@ interface Room {
 }
 
 const AVATARS = [
-  { id: 'avatar-free-01.png', level: 1, gender: 'girl' },
-  { id: 'avatar-free-02.png', level: 1, gender: 'boy' },
-  { id: 'avatar-free-03.png', level: 1, gender: 'girl' },
-  { id: 'avatar-free-04.png', level: 1, gender: 'boy' },
-  { id: 'avatar-lvl-10.png', level: 10, gender: 'girl' },
-  { id: 'avatar-lvl-20.png', level: 20, gender: 'boy' },
-  { id: 'avatar-lvl-30.png', level: 30, gender: 'girl' },
-  { id: 'avatar-lvl-40.png', level: 40, gender: 'boy' },
+  // Boys
+  { id: 'avatar-free-boy-01.png', level: 1, gender: 'boy' },
+  { id: 'avatar-free-boy-02.png', level: 1, gender: 'boy' },
+  { id: 'avatar-free-boy-03.png', level: 1, gender: 'boy' },
+  { id: 'avatar-free-boy-04.png', level: 1, gender: 'boy' },
+  { id: 'avatar-lvl-boy-10.png', level: 10, gender: 'boy' },
+  { id: 'avatar-lvl-boy-20.png', level: 20, gender: 'boy' },
+  { id: 'avatar-lvl-boy-30.png', level: 30, gender: 'boy' },
+  { id: 'avatar-lvl-boy-40.png', level: 40, gender: 'boy' },
+  // Girls
+  { id: 'avatar-free-girl-01.png', level: 1, gender: 'girl' },
+  { id: 'avatar-free-girl-02.png', level: 1, gender: 'girl' },
+  { id: 'avatar-free-girl-03.png', level: 1, gender: 'girl' },
+  { id: 'avatar-free-girl-04.png', level: 1, gender: 'girl' },
+  { id: 'avatar-lvl-girl-10.png', level: 10, gender: 'girl' },
+  { id: 'avatar-lvl-girl-20.png', level: 20, gender: 'girl' },
+  { id: 'avatar-lvl-girl-30.png', level: 30, gender: 'girl' },
+  { id: 'avatar-lvl-girl-40.png', level: 40, gender: 'girl' },
 ];
 
 const APP_VERSION = '1.1.1'; // Version for cache clearing
@@ -1603,13 +1613,15 @@ export default function App() {
                       value={playerAge}
                       onChange={(e) => {
                         const convertArabicNumbers = (str: string) => {
-                          return str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632));
+                          // تحويل الأرقام العربية (٠-٩) والأرقام الفارسية (۰-۹)
+                          return str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632))
+                                    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776));
                         };
                         const val = convertArabicNumbers(e.target.value);
                         if (val === '') setPlayerAge('');
                         else {
                           const num = parseInt(val);
-                          if (!isNaN(num) && num <= 80) setPlayerAge(num);
+                          if (!isNaN(num) && num >= 0 && num <= 80) setPlayerAge(num);
                         }
                       }}
                       className="input-game"
