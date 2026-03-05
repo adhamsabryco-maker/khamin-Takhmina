@@ -886,7 +886,7 @@ const app = express();
         // Trigger bot to think about category and chat if it hasn't already
         // Only trigger once to avoid infinite loops or spam
         if (!botConversations.has(roomId + '_category_triggered')) {
-          botConversations.set(roomId + '_category_triggered', true);
+          botConversations.set(roomId + '_category_triggered', []);
           
           // Simulate thinking time
           setTimeout(() => {
