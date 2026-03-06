@@ -1250,9 +1250,14 @@ const app = express();
         myData.socket.emit("match_rejected");
         
         matchmakingQueue.unshift(oppData); // Put innocent back at front
-        matchmakingQueue.push(myData); // Put rejector back at end
+        processQueue(); // Allow innocent player to find a new match immediately
         
-        processQueue();
+        // Delay putting rejector back into the queue for 3 seconds
+        setTimeout(() => {
+          matchmakingQueue.push(myData); // Put rejector back at end
+          processQueue();
+        }, 3000);
+        
         return;
       }
 
