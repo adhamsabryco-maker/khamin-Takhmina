@@ -22,7 +22,6 @@ import {
   Ban,
   MessageSquareOff,
   Info,
-  Brain,
   Star,
   Zap,
   Lock,
@@ -1866,9 +1865,7 @@ export default function App() {
                 className="card-game p-4 w-full max-w-sm space-y-3 my-auto"
               >
                 <div className="text-center space-y-2">
-                  <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-2 md:mb-4">
-                    <Brain className="w-8 h-8 md:w-10 md:h-10 text-orange-500" />
-                  </div>
+                  <img src="/icon-3.png" alt="Logo" className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-2 md:mb-4 object-contain" />
                   <h2 className="text-xl md:text-2xl font-black text-[#2D3436]">أهلاً بك في خمن تخمينة!</h2>
                   <p className="text-gray-500 font-bold text-sm md:text-base">يرجى إكمال بياناتك للبدء</p>
                 </div>
@@ -2662,9 +2659,7 @@ export default function App() {
           {/* Fixed Header */}
           <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
             <div className="flex-1 flex items-center gap-2 md:gap-3">
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
-                <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
-              </div>
+              <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
               <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
             </div>
             
@@ -2824,9 +2819,7 @@ export default function App() {
         {/* Fixed Header */}
         <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
           <div className="flex-1 flex items-center gap-2 md:gap-3">
-            <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
-              <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
-            </div>
+            <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
             <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm block">خمن تخمينة</div>
           </div>
           
@@ -3106,9 +3099,7 @@ export default function App() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
         <div className="flex-1 flex items-center gap-2 md:gap-3">
-          <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] rounded-xl flex items-center justify-center shadow-md transform rotate-3">
-            <Brain className="w-5 h-5 md:w-6 md:h-6 text-white" />
-          </div>
+          <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
           <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
         </div>
         
