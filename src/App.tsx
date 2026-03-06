@@ -3358,9 +3358,9 @@ export default function App() {
                         type="text" 
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
-                        placeholder="اكتب رسالة..."
+                        placeholder="اسأل المنافس وخمن الاجابة..."
                         className="flex-1 bg-white border-none rounded-full px-4 py-2 text-base outline-none shadow-sm font-bold disabled:bg-gray-200 disabled:cursor-not-allowed"
-                        maxLength={100}
+                        maxLength={200}
                         disabled={isMutedByOpponent}
                       />
                       <button 
@@ -3521,7 +3521,7 @@ export default function App() {
                   <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
                     {chatHistory.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-gray-400 font-bold text-sm italic">
-                        دردشة سريعة...
+                        اسأل المنافس وخمن الاجابة...
                       </div>
                     ) : (
                       chatHistory.map((msg, index) => (
@@ -3553,7 +3553,7 @@ export default function App() {
                     <button 
                       type="button" 
                       onClick={() => setShowEmotes(!showEmotes)}
-                      className="bg-white text-gray-500 p-2 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
+                      className="bg-white text-gray-500 p-2 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all w-10 h-10 flex items-center justify-center"
                     >
                       <Smile className="w-5 h-5" />
                     </button>
