@@ -39,7 +39,6 @@ import {
   UserPlus,
   RefreshCw,
   Smile,
-  LogOut,
   Loader2,
   Plus
 } from 'lucide-react';
@@ -2708,21 +2707,6 @@ export default function App() {
               >
                 <Settings className="w-4 h-4 md:w-5 md:h-5" />
               </button>
-
-              {/* Exit Button */}
-              <button 
-                onClick={() => {
-                  if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(err => console.error(err));
-                  } else {
-                    window.close();
-                  }
-                }}
-                className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
-                title="خروج"
-              >
-                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
             </div>
           </header>
 
@@ -2869,21 +2853,6 @@ export default function App() {
               title="الإعدادات"
             >
               <Settings className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-
-            {/* Exit Button */}
-            <button 
-              onClick={() => {
-                if (document.fullscreenElement) {
-                  document.exitFullscreen().catch(err => console.error(err));
-                } else {
-                  window.close();
-                }
-              }}
-              className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
-              title="خروج"
-            >
-              <LogOut className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </div>
         </header>
@@ -3193,21 +3162,6 @@ export default function App() {
             title="الإعدادات"
           >
             <Settings className="w-4 h-4 md:w-5 md:h-5" />
-          </button>
-
-          {/* Exit Button */}
-          <button 
-            onClick={() => {
-              if (document.fullscreenElement) {
-                document.exitFullscreen().catch(err => console.error(err));
-              } else {
-                window.close();
-              }
-            }}
-            className="w-9 h-9 md:w-10 md:h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
-            title="خروج"
-          >
-            <LogOut className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
       </header>
