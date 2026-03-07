@@ -2376,7 +2376,7 @@ const app = express();
         if (winner.level >= 50 && !winner.useToken) {
            winnerXP = 0; // Cap progress if no token used at level 50+
         } else if (winner.useToken) {
-           winnerXP += 400; // Bonus XP for using token
+           winnerXP += 1000; // Bonus XP for using token
         }
 
         winner.xp = (winner.xp || 0) + winnerXP;
