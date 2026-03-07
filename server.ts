@@ -2182,13 +2182,15 @@ const app = express();
           const elapsedSeconds = room.startTime ? (Date.now() - room.startTime) / 1000 : 0;
           const isIntentional = reason === 'client namespace disconnect' || leavingPlayer.intentionallyLeft;
           
-          if (room.gameState !== "finished" && room.gameState !== "waiting" && elapsedSeconds > 60 && isIntentional) {
-            // Deduct token by ending game with opponent as winner
-            // We do this BEFORE removing the player so endGame can process them as the loser
-            endGame(roomId, opponent ? opponent.name : null);
-          } else if (room.gameState !== "finished") {
-            // Just stop game without deducting tokens if it's network issue or < 60s
-            socket.to(roomId).emit("game_stopped", { reason: `انقطع اتصال ${leavingPlayer.name}` });
+          if (room.gameState !== "finished" && room.gameState !== "waiting") {
+            if (elapsedSeconds > 60 && isIntentional) {
+              // Deduct token by ending game with opponent as winner
+              // We do this BEFORE removing the player so endGame can process them as the loser
+              endGame(roomId, opponent ? opponent.name : null);
+            } else {
+              // Just stop game without deducting tokens if it's network issue or < 60s
+              socket.to(roomId).emit("game_stopped", { reason: `انقطع اتصال ${leavingPlayer.name}` });
+            }
           }
 
           // Now remove the player and cleanup
@@ -2391,9 +2393,15 @@ const app = express();
           player.level = getLevel(p.xp);
           player.wins = p.wins || 0;
           
+          // Deduct token logic:
+          // 1. If player WON and used a token (Bonus XP case) -> Deduct
+          // 2. If player LOST and used a token (Penalty/Cost case) -> Deduct
+          // Basically, if useToken is true, we deduct it regardless of outcome when the game ends.
+          // This covers the "intentional disconnect" case because endGame is called, making them the loser.
+          
           if (p.useToken && (player.tokens || 0) > 0) {
             player.tokens = (player.tokens || 0) - 1;
-            p.useToken = false; // Prevent deducting again if play_again is used
+            p.useToken = false; // Prevent deducting again
           }
           
           savePlayerData(player.serial);
