@@ -3442,8 +3442,8 @@ export default function App() {
               <div className="p-4 overflow-y-auto flex-1 space-y-3 bg-gray-50" dir="rtl">
                 {/* Current User Rank (Sticky at top if exists) */}
                 {topPlayers.findIndex(p => p.serial === playerSerial) !== -1 && (
-                  <div className="sticky top-0 z-10 mb-4 shadow-md">
-                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 rounded-xl flex items-center gap-3 border-2 border-purple-400">
+                  <div className="sticky top-0 z-50 -mx-4 px-4 pb-4 pt-0 bg-gray-50/95 backdrop-blur-sm shadow-sm">
+                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 rounded-xl flex items-center gap-3 border-2 border-purple-400 shadow-lg">
                       <div className="font-black text-xl w-8 text-center bg-white/20 rounded-lg py-1">
                         #{topPlayers.findIndex(p => p.serial === playerSerial) + 1}
                       </div>
