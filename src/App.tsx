@@ -1364,10 +1364,16 @@ export default function App() {
 
   const handleLeaveGame = () => {
     const isGameActive = room?.gameState === 'guessing' || room?.gameState === 'discussion';
+    const me = room?.players.find(p => p.id === socket?.id);
     
     // Only show confirmation if the game is active (playing)
     if (isGameActive) {
-      if (!window.confirm('هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟')) {
+      let message = 'هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟';
+      if (me?.useToken) {
+        message += '\n\nتحذير: إذا انسحبت الآن، ستخسر الـ Token المستخدمة!';
+      }
+      
+      if (!window.confirm(message)) {
         return;
       }
       socket?.emit('intentional_leave', { roomId });
