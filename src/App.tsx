@@ -3305,15 +3305,13 @@ export default function App() {
                         onClick={() => setShowLeaderboardModal(true)}
                         className="mt-3 w-full group relative overflow-hidden bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl p-0.5 shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all"
                       >
-                        <div className="bg-white/10 backdrop-blur-sm rounded-[14px] py-2 px-4 flex items-center justify-between">
-                          <div className="flex flex-col items-start">
-                            <span className="text-[10px] text-indigo-100 font-medium">ترتيبك في أبطال التخمين</span>
-                            <span className="text-white font-black text-lg flex items-center gap-2">
-                              #{myRankIndex + 1}
-                              <span className="text-base">💪</span>
-                            </span>
+                        <div className="bg-white/10 backdrop-blur-sm rounded-[14px] py-3 px-4 flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-white">
+                            <span className="font-bold text-sm md:text-base">ترتيبك في أبطال التخمين:</span>
+                            <span className="font-black text-lg md:text-xl bg-white/20 px-2 rounded-lg">#{myRankIndex + 1}</span>
+                            <span className="text-lg">💪</span>
                           </div>
-                          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center animate-pulse group-hover:bg-white group-hover:text-indigo-600 transition-colors">
+                          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center animate-pulse group-hover:bg-white group-hover:text-indigo-600 transition-colors shrink-0">
                             <ChevronLeft className="w-5 h-5" />
                           </div>
                         </div>
@@ -3323,13 +3321,13 @@ export default function App() {
                     return (
                       <button 
                         onClick={() => setShowLeaderboardModal(true)}
-                        className="mt-3 w-full group bg-white border-2 border-gray-100 hover:border-purple-200 rounded-2xl py-2 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
+                        className="mt-3 w-full group bg-white border-2 border-gray-100 hover:border-purple-200 rounded-2xl py-3 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
                       >
-                        <div className="flex flex-col items-start">
-                          <span className="text-[10px] text-gray-400 font-bold">لست ضمن الـ Top 100</span>
-                          <span className="text-gray-600 font-black text-xs">استمر في اللعب للوصول للقمة! 🚀</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-bold text-xs md:text-sm">لست ضمن الـ Top 100..</span>
+                          <span className="text-purple-600 font-black text-xs md:text-sm">شد حيلك! 🚀</span>
                         </div>
-                        <div className="w-8 h-8 bg-gray-50 group-hover:bg-purple-50 rounded-full flex items-center justify-center transition-colors">
+                        <div className="w-8 h-8 bg-gray-50 group-hover:bg-purple-50 rounded-full flex items-center justify-center transition-colors shrink-0">
                            <ChevronLeft className="w-4 h-4 text-gray-400 group-hover:text-purple-500 transition-colors animate-pulse" />
                         </div>
                       </button>
