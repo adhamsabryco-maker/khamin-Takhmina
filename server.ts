@@ -70,7 +70,7 @@ const adminTokens = new Set<string>();
 
 async function startServer() {
   try {
-  const getLevel = (xp: number) => Math.min(50, Math.floor(Math.sqrt(xp / 50)) + 1);
+  const getLevel = (xp: number) => Math.floor(Math.sqrt(xp / 50)) + 1;
 const getQuickGuessWaitTime = (level: number) => {
   // Level 1: 150s wait, Level 50: 3s wait (decreases 3s per level)
   return Math.max(3, 150 - (level - 1) * 3);
