@@ -2367,9 +2367,18 @@ const app = express();
       const updates: any = {};
       if (winner) {
         let winnerXP = 100 + (winner.streak || 0) * 10;
-        if (winner.useToken) {
-          winnerXP += 400; // Bonus XP for using token
+        
+        // Level 50+ Logic:
+        // If level >= 50 and NO token used -> NO XP gain
+        // If level >= 50 and token used -> Normal XP + 400 Bonus
+        // If level < 50 -> Normal XP (and bonus if token used)
+        
+        if (winner.level >= 50 && !winner.useToken) {
+           winnerXP = 0; // Cap progress if no token used at level 50+
+        } else if (winner.useToken) {
+           winnerXP += 400; // Bonus XP for using token
         }
+
         winner.xp = (winner.xp || 0) + winnerXP;
         winner.level = getLevel(winner.xp);
         winner.streak = (winner.streak || 0) + 1;
@@ -2378,6 +2387,13 @@ const app = express();
       }
       if (loser) {
         let loserXP = 20;
+        
+        // Level 50+ Logic for loser:
+        // If level >= 50 and NO token used -> NO XP gain (even the small loser XP)
+        if (loser.level >= 50 && !loser.useToken) {
+            loserXP = 0;
+        }
+
         loser.xp = (loser.xp || 0) + loserXP;
         loser.level = getLevel(loser.xp);
         loser.streak = 0;
@@ -2394,11 +2410,7 @@ const app = express();
           player.wins = p.wins || 0;
           
           // Deduct token logic:
-          // 1. If player WON and used a token (Bonus XP case) -> Deduct
-          // 2. If player LOST and used a token (Penalty/Cost case) -> Deduct
-          // Basically, if useToken is true, we deduct it regardless of outcome when the game ends.
-          // This covers the "intentional disconnect" case because endGame is called, making them the loser.
-          
+          // Always deduct if useToken was true, regardless of win/loss/level
           if (p.useToken && (player.tokens || 0) > 0) {
             player.tokens = (player.tokens || 0) - 1;
             p.useToken = false; // Prevent deducting again
