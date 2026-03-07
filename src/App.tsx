@@ -3302,24 +3302,35 @@ export default function App() {
                     return (
                       <button 
                         onClick={() => setShowLeaderboardModal(true)}
-                        className="mt-2 md:mt-3 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-full py-1.5 px-4 md:py-2 md:px-6 text-center shadow-sm mx-auto w-fit hover:scale-105 transition-transform cursor-pointer"
+                        className="mt-3 w-full group relative overflow-hidden bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl p-0.5 shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all"
                       >
-                        <p className="text-orange-700 font-bold text-xs md:text-sm flex items-center gap-2">
-                          <span>ترتيبك الحالي في ابطال التخمين {myRankIndex + 1} 💪</span>
-                          <span className="text-[10px] bg-orange-200 px-1.5 rounded text-orange-800">اضغط للعرض</span>
-                        </p>
+                        <div className="bg-white/10 backdrop-blur-sm rounded-[14px] py-2 px-4 flex items-center justify-between">
+                          <div className="flex flex-col items-start">
+                            <span className="text-[10px] text-indigo-100 font-medium">ترتيبك في أبطال التخمين</span>
+                            <span className="text-white font-black text-lg flex items-center gap-2">
+                              #{myRankIndex + 1}
+                              <span className="text-base">💪</span>
+                            </span>
+                          </div>
+                          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center animate-pulse group-hover:bg-white group-hover:text-indigo-600 transition-colors">
+                            <ChevronLeft className="w-5 h-5" />
+                          </div>
+                        </div>
                       </button>
                     );
                   } else if (myRankIndex === -1) {
                     return (
                       <button 
                         onClick={() => setShowLeaderboardModal(true)}
-                        className="mt-2 md:mt-3 bg-white border border-gray-200 rounded-full py-1 px-3 md:py-1.5 md:px-4 text-center shadow-sm mx-auto w-fit hover:scale-105 transition-transform cursor-pointer"
+                        className="mt-3 w-full group bg-white border-2 border-gray-100 hover:border-purple-200 rounded-2xl py-2 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
                       >
-                        <p className="text-gray-500 font-bold text-[10px] md:text-[11px] flex items-center gap-2">
-                          <span>لست ضمن أفضل 100 لاعب حتى الآن. استمر في اللعب!</span>
-                          <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-600">عرض الترتيب</span>
-                        </p>
+                        <div className="flex flex-col items-start">
+                          <span className="text-[10px] text-gray-400 font-bold">لست ضمن الـ Top 100</span>
+                          <span className="text-gray-600 font-black text-xs">استمر في اللعب للوصول للقمة! 🚀</span>
+                        </div>
+                        <div className="w-8 h-8 bg-gray-50 group-hover:bg-purple-50 rounded-full flex items-center justify-center transition-colors">
+                           <ChevronLeft className="w-4 h-4 text-gray-400 group-hover:text-purple-500 transition-colors animate-pulse" />
+                        </div>
                       </button>
                     );
                   }
