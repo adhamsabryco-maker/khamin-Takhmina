@@ -302,7 +302,9 @@ const app = express();
     reportedBy: { reporterSerial: string, timestamp: number }[],
     email?: string,
     isAdmin?: boolean,
-    tokens?: number
+    tokens?: number,
+    adsWatchedToday?: number,
+    lastAdWatchDate?: string
   }>();
 
   let dbPath = process.env.DB_PATH || path.join(__dirname, 'players.db');
@@ -383,6 +385,8 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN email TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN isAdmin INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN tokens INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN adsWatchedToday INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -459,8 +463,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate)
   `);
 
   function savePlayerData(serial: string) {
@@ -474,7 +478,9 @@ const app = express();
         reportedBy: JSON.stringify(player.reportedBy || []),
         email: player.email || null,
         isAdmin: player.isAdmin ? 1 : 0,
-        tokens: player.tokens || 0
+        tokens: player.tokens || 0,
+        adsWatchedToday: player.adsWatchedToday || 0,
+        lastAdWatchDate: player.lastAdWatchDate || null
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -490,7 +496,9 @@ const app = express();
         reportedBy: JSON.stringify(player.reportedBy || []),
         email: player.email || null,
         isAdmin: player.isAdmin ? 1 : 0,
-        tokens: player.tokens || 0
+        tokens: player.tokens || 0,
+        adsWatchedToday: player.adsWatchedToday || 0,
+        lastAdWatchDate: player.lastAdWatchDate || null
       });
     }
   });
@@ -531,7 +539,9 @@ const app = express();
           reportedBy: reportedBy,
           email: row.email,
           isAdmin: row.isAdmin === 1,
-          tokens: row.tokens || 0
+          tokens: row.tokens || 0,
+          adsWatchedToday: row.adsWatchedToday || 0,
+          lastAdWatchDate: row.lastAdWatchDate || null
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -1182,11 +1192,77 @@ const app = express();
         banCount: 0,
         isPermanentBan: 0,
         reportedBy: [],
-        tokens: 0
+        tokens: 0,
+        adsWatchedToday: 0,
+        lastAdWatchDate: null
       });
       savePlayerData(serial);
       callback({ serial, name: filteredName });
       io.emit("top_players_update", getTopPlayers(true));
+    });
+
+    socket.on("watch_ad_request", ({ serial }) => {
+      const player = allPlayers.get(serial);
+      if (!player) return;
+
+      // 1. Check Level
+      const level = getLevel(player.xp);
+      if (level < 50) {
+        socket.emit("ad_error", "يجب الوصول للمستوى 50 لاستخدام هذه الميزة");
+        return;
+      }
+
+      // 2. Check Date & Reset if needed
+      const today = new Date().toISOString().split('T')[0];
+      if (player.lastAdWatchDate !== today) {
+        player.adsWatchedToday = 0;
+        player.lastAdWatchDate = today;
+      }
+
+      // 3. Check Limit
+      if ((player.adsWatchedToday || 0) >= 5) {
+        socket.emit("ad_error", "لقد استهلكت جميع المحاولات اليومية (5/5)");
+        return;
+      }
+
+      // 4. Grant Reward
+      player.adsWatchedToday = (player.adsWatchedToday || 0) + 1;
+      player.tokens = (player.tokens || 0) + 1;
+      
+      savePlayerData(serial); // Persist changes
+
+      socket.emit("ad_success", { 
+        tokens: player.tokens, 
+        adsWatched: player.adsWatchedToday,
+        maxAds: 5
+      });
+      
+      // Notify player of update
+      socket.emit("player_stats_update", {
+        xp: player.xp,
+        level: getLevel(player.xp),
+        streak: 0,
+        wins: player.wins || 0,
+        tokens: player.tokens
+      });
+    });
+
+    socket.on("check_ad_status", ({ serial }) => {
+      const player = allPlayers.get(serial);
+      if (!player) return;
+
+      const today = new Date().toISOString().split('T')[0];
+      if (player.lastAdWatchDate !== today) {
+        player.adsWatchedToday = 0;
+        player.lastAdWatchDate = today;
+        savePlayerData(serial);
+      }
+
+      socket.emit("ad_status", {
+        adsWatched: player.adsWatchedToday || 0,
+        maxAds: 5,
+        canWatch: (player.adsWatchedToday || 0) < 5 && getLevel(player.xp) >= 50
+      });
     });
 
     socket.on("update_profile", ({ playerSerial, playerName, avatar, gender }, callback) => {
