@@ -38,12 +38,14 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
   const staticStar = !customStar && STATIC_ASSETS.stars[milestoneLevel as keyof typeof STATIC_ASSETS.stars];
 
   const isFilename = typeof avatar === 'string' && avatar.includes('.png');
+  const isDataUrl = typeof avatar === 'string' && avatar.startsWith('data:image');
   
-  let displayAvatar = avatarReplacement ? `/uploads/${avatarReplacement}` :
+  let displayAvatar = isDataUrl ? avatar :
+                     (avatarReplacement ? `/uploads/${avatarReplacement}` :
                      (isFilename ? `/assets/${avatar}` : 
                      (customAvatar ? `/uploads/${customAvatar}` :
                      (staticAvatar ? `/assets/${Array.isArray(staticAvatar) ? staticAvatar[0] : staticAvatar}` : 
-                     avatar)));
+                     avatar))));
 
   const displayFrame = !hideExtras && (customFrame ? `/uploads/${customFrame}` : (staticFrame ? `/assets/${staticFrame}` : null));
   const displayStar = !hideExtras && (customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null));
