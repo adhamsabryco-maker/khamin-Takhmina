@@ -180,6 +180,7 @@ export default function App() {
   const [xp, setXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0'));
   const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0'));
   const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0'));
+  const [tokens, setTokens] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -577,6 +578,7 @@ export default function App() {
   const [cooldowns, setCooldowns] = useState<{ [key: string]: number }>({});
   const [showReportModal, setShowReportModal] = useState(false);
   const [isOpponentBlocked, setIsOpponentBlocked] = useState(false);
+  const [useToken, setUseToken] = useState(false);
   const [isMutedByOpponent, setIsMutedByOpponent] = useState(false);
   const isOpponentBlockedRef = useRef(isOpponentBlocked);
   useEffect(() => { isOpponentBlockedRef.current = isOpponentBlocked; }, [isOpponentBlocked]);
@@ -844,6 +846,7 @@ export default function App() {
             setXp(data.xp);
             setWins(data.wins || 0);
             setReports(data.reports || 0);
+            setTokens(data.tokens || 0);
             if (data.isPermanentBan) {
               setIsPermanentBan(true);
               newSocket.disconnect();
@@ -893,6 +896,10 @@ export default function App() {
       if (data.wins !== undefined) {
         setWins(data.wins);
         localStorage.setItem('khamin_wins', data.wins.toString());
+      }
+      if (data.tokens !== undefined) {
+        setTokens(data.tokens);
+        localStorage.setItem('khamin_tokens', data.tokens.toString());
       }
       if (data.name !== undefined) {
         setPlayerName(data.name);
@@ -1224,7 +1231,7 @@ export default function App() {
     localStorage.setItem('khamin_player_name', playerName);
     localStorage.setItem('khamin_player_age', playerAge.toString());
     
-    socket?.emit('find_random_match', { playerId, playerName, avatar, age: playerAge, xp, streak, wins, serial: playerSerial });
+    socket?.emit('find_random_match', { playerId, playerName, avatar, age: playerAge, xp, streak, wins, serial: playerSerial, useToken });
     setIsOpponentBlocked(false);
   };
 
@@ -2182,10 +2189,14 @@ export default function App() {
                                     </div>
                                   </div>
 
-                                  <div className="grid grid-cols-2 gap-2">
+                                  <div className="grid grid-cols-3 gap-2">
                                     <div className="bg-gray-50 p-2 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-gray-400">الفوز</div>
                                       <div className="text-sm font-black text-gray-700">{p.wins || 0}</div>
+                                    </div>
+                                    <div className="bg-purple-50 p-2 rounded-xl text-center">
+                                      <div className="text-[10px] font-bold text-purple-400">Tokens</div>
+                                      <div className="text-sm font-black text-purple-600">{p.tokens || 0}</div>
                                     </div>
                                     <div className="bg-red-50 p-2 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-red-400">البلاغات</div>
@@ -2206,6 +2217,20 @@ export default function App() {
                                       className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-xl text-[10px] font-black hover:bg-purple-600 hover:text-white transition-all"
                                     >
                                       تعديل XP
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        const tokensToAdd = prompt('كم عدد الـ Tokens التي تريد إضافتها؟', '1');
+                                        if (tokensToAdd !== null && !isNaN(parseInt(tokensToAdd))) {
+                                          const currentTokens = p.tokens || 0;
+                                          socket?.emit('admin_update_player', { serial: p.serial, updates: { tokens: currentTokens + parseInt(tokensToAdd) } }, (res: any) => {
+                                            if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
+                                          });
+                                        }
+                                      }}
+                                      className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black hover:bg-blue-600 hover:text-white transition-all"
+                                    >
+                                      إعطاء Tokens
                                     </button>
                                     <button 
                                       onClick={() => {
@@ -2888,7 +2913,12 @@ export default function App() {
               <div className="flex flex-col justify-center flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-1 flex-row-reverse">
                   <div className="text-sm md:text-base font-black text-[#2D3436] truncate text-right">{playerName || 'لاعب جديد'}</div>
-                  <span className="text-xs md:text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">Level {getLevel(xp)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs md:text-sm font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100 flex items-center gap-1">
+                      {tokens} <span className="text-[10px] text-purple-400">Tokens</span>
+                    </span>
+                    <span className="text-xs md:text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">Level {getLevel(xp)}</span>
+                  </div>
                 </div>
                 
                 {/* Level Bar */}
@@ -3066,12 +3096,32 @@ export default function App() {
                 <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-white px-3 text-gray-400 font-black">أو</span></div>
               </div>
 
+              <div className="flex items-center gap-3 mb-4 bg-purple-50 p-3 rounded-xl border-2 border-purple-100">
+                <input 
+                  type="checkbox" 
+                  id="useToken" 
+                  checked={useToken} 
+                  onChange={(e) => setUseToken(e.target.checked)}
+                  disabled={tokens <= 0}
+                  className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer disabled:opacity-50"
+                />
+                <label htmlFor="useToken" className="flex-1 flex items-center justify-between cursor-pointer select-none">
+                  <span className={`font-bold ${tokens > 0 ? 'text-purple-900' : 'text-gray-400'}`}>
+                    استخدام Token للعب مع مستوى 40+
+                  </span>
+                  <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg shadow-sm border border-purple-100">
+                    <span className="font-black text-purple-600">{tokens}</span>
+                    <span className="text-xs text-gray-500 font-bold">Tokens</span>
+                  </div>
+                </label>
+              </div>
+
               <button 
                 onClick={handleRandomMatch}
                 className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-pointer touch-manipulation"
               >
                 <Users className="w-5 h-5 md:w-6 md:h-6" />
-                بحث عن منافس عشوائي
+                بحث عشوائي
               </button>
             </div>
           </div>
