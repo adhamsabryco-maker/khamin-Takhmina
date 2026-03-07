@@ -301,7 +301,8 @@ const app = express();
     isPermanentBan: number,
     reportedBy: { reporterSerial: string, timestamp: number }[],
     email?: string,
-    isAdmin?: boolean
+    isAdmin?: boolean,
+    tokens?: number
   }>();
 
   let dbPath = process.env.DB_PATH || path.join(__dirname, 'players.db');
@@ -879,20 +880,12 @@ const app = express();
     const now = Date.now();
     for (let i = 0; i < matchmakingQueue.length; i++) {
       const p = matchmakingQueue[i];
-      // If player has been waiting for more than 10 seconds
-      if (p.joinedAt && now - p.joinedAt > 10000) {
+      // If player has been waiting for more than 10 seconds and is not using a token
+      if (p.joinedAt && now - p.joinedAt > 10000 && !p.useToken) {
         // Create a bot match
         matchmakingQueue.splice(i, 1);
         
-        let availablePersonas = BOT_PERSONAS;
-        if (p.useToken) {
-          availablePersonas = BOT_PERSONAS.filter(persona => persona.level >= 40);
-          if (availablePersonas.length === 0) {
-            availablePersonas = [{ name: "المعلم", age: 40, level: 50, avatar: "avatar-lvl-50.png", gender: "boy", personality: "محترف جداً، لا يرحم في اللعب" }];
-          }
-        }
-        
-        const botPersona = availablePersonas[Math.floor(Math.random() * availablePersonas.length)];
+        const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
         const matchId = `match_bot_${Math.random().toString(36).substr(2, 9)}`;
         
         // Mock bot player
