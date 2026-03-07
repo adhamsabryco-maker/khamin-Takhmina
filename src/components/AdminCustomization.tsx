@@ -148,18 +148,15 @@ export const AdminCustomization = () => {
         </div>
 
         {/* AI Bot Settings */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm md:col-span-2">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🤖 إعدادات الذكاء الاصطناعي (AI Bot)</h3>
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🤖 بوت الذكاء الاصطناعي</h3>
           <div className="flex items-center justify-between p-4 bg-purple-50 rounded-2xl border border-purple-100">
             <div>
-              <p className="font-bold text-purple-900">تفعيل بوت الذكاء الاصطناعي</p>
-              <p className="text-sm text-purple-700">عند التفعيل، سيقوم البوت باللعب مع اللاعبين في حالة عدم وجود منافس حقيقي.</p>
+              <p className="font-bold text-purple-900">تفعيل البوت</p>
             </div>
             <button 
               onClick={async () => {
-                console.log('Current config:', config);
                 const newConfig = { ...config, aiBotEnabled: !config.aiBotEnabled };
-                console.log('New config:', newConfig);
                 try {
                   await fetch('/api/config', {
                     method: 'POST',
@@ -177,6 +174,50 @@ export const AdminCustomization = () => {
                 className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${config.aiBotEnabled ? 'translate-x-7' : 'translate-x-1'}`}
               />
             </button>
+          </div>
+        </div>
+
+        {/* App Version Settings */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🔄 إصدار التطبيق (لتحديث الأيقونة)</h3>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input 
+                type="text" 
+                value={config.version || '1.0.0'} 
+                onChange={async (e) => {
+                  // We don't save on every keystroke to avoid too many writes
+                  // But for simplicity in this UI, we can just use a local state and a save button
+                }}
+                className="flex-1 px-4 py-2 border-2 border-gray-100 rounded-xl focus:border-purple-400 outline-none font-mono"
+                placeholder="مثلاً: 1.0.1"
+                id="version-input"
+              />
+              <button 
+                onClick={async () => {
+                  const input = document.getElementById('version-input') as HTMLInputElement;
+                  const newVersion = input.value;
+                  const newConfig = { ...config, version: newVersion };
+                  try {
+                    await fetch('/api/config', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(newConfig),
+                    });
+                    refreshConfig();
+                    alert('تم تحديث إصدار التطبيق بنجاح! سيتم تحديث الأيقونة عند المستخدمين تلقائياً.');
+                  } catch (error) {
+                    alert('حدث خطأ أثناء تحديث الإصدار');
+                  }
+                }}
+                className="btn-game btn-primary py-2 px-6"
+              >
+                حفظ
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">
+              تغيير هذا الرقم يجبر المتصفح على تحميل الأيقونة الجديدة (`icon.svg`) حتى لو كانت مخزنة في الذاكرة المؤقتة.
+            </p>
           </div>
         </div>
       </div>
