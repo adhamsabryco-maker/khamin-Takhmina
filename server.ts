@@ -545,9 +545,9 @@ const app = express();
   let cachedTopPlayers: any[] = [];
   let topPlayersCacheTime = 0;
 
-  function getTopPlayers() {
+  function getTopPlayers(force = false) {
     const now = Date.now();
-    if (now - topPlayersCacheTime > 60000) { // Cache for 1 minute
+    if (force || now - topPlayersCacheTime > 60000) { // Cache for 1 minute unless forced
       cachedTopPlayers = Array.from(allPlayers.values())
         .sort((a, b) => {
           if (b.xp !== a.xp) return b.xp - a.xp;
@@ -1186,7 +1186,7 @@ const app = express();
       });
       savePlayerData(serial);
       callback({ serial, name: filteredName });
-      io.emit("top_players_update", getTopPlayers());
+      io.emit("top_players_update", getTopPlayers(true));
     });
 
     socket.on("update_profile", ({ playerSerial, playerName, avatar, gender }, callback) => {
@@ -1200,7 +1200,7 @@ const app = express();
         player.avatar = avatar;
         if (gender) player.gender = gender;
         savePlayerData(playerSerial);
-        const topPlayers = getTopPlayers();
+        const topPlayers = getTopPlayers(true);
         io.emit("top_players_update", topPlayers);
         if (callback) callback({ topPlayers, name: player.name });
       }
@@ -1224,7 +1224,7 @@ const app = express();
       try {
         db.prepare('DELETE FROM players WHERE serial = ?').run(playerSerial);
         allPlayers.delete(playerSerial);
-        io.emit("top_players_update", getTopPlayers());
+        io.emit("top_players_update", getTopPlayers(true));
         if (callback) callback({ success: true });
       } catch (err) {
         console.error("Failed to delete player from DB:", err);
@@ -1306,6 +1306,7 @@ const app = express();
           spyLensUsed: false,
           reported: false,
           xp: actualXp,
+          level: getLevel(actualXp),
           streak: streak || 0,
           wins: actualWins,
           reports: actualReports,
@@ -1479,6 +1480,7 @@ const app = express();
               spyLensUsed: false,
               reported: false,
               xp: match.p1.xp || 0,
+              level: getLevel(match.p1.xp || 0),
               streak: match.p1.streak || 0,
               wins: match.p1.wins || 0,
               reports: p1ServerPlayer ? p1ServerPlayer.reports : 0,
@@ -1504,6 +1506,7 @@ const app = express();
               spyLensUsed: false,
               reported: false,
               xp: match.p2.xp || 0,
+              level: getLevel(match.p2.xp || 0),
               streak: match.p2.streak || 0,
               wins: match.p2.wins || 0,
               reports: p2ServerPlayer ? p2ServerPlayer.reports : 0,
@@ -2054,7 +2057,7 @@ const app = express();
           Object.assign(player, updates);
           if (updates.xp !== undefined) player.level = getLevel(updates.xp);
           savePlayerData(serial);
-          io.emit("top_players_update", getTopPlayers());
+          io.emit("top_players_update", getTopPlayers(true));
           
           // Find socket ID for this player serial to send direct update
           for (const [socketId, s] of io.sockets.sockets) {
@@ -2366,15 +2369,17 @@ const app = express();
           winnerXP += 400; // Bonus XP for using token
         }
         winner.xp = (winner.xp || 0) + winnerXP;
+        winner.level = getLevel(winner.xp);
         winner.streak = (winner.streak || 0) + 1;
         winner.wins = (winner.wins || 0) + 1;
-        updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true };
+        updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true, level: winner.level };
       }
       if (loser) {
         let loserXP = 20;
         loser.xp = (loser.xp || 0) + loserXP;
+        loser.level = getLevel(loser.xp);
         loser.streak = 0;
-        updates[loser.id] = { xp: loserXP, streak: 0, wins: loser.wins || 0, won: false };
+        updates[loser.id] = { xp: loserXP, streak: 0, wins: loser.wins || 0, won: false, level: loser.level };
       }
 
       // Update allPlayers leaderboard
@@ -2411,7 +2416,7 @@ const app = express();
           }
         }
       });
-      io.emit("top_players_update", getTopPlayers());
+      io.emit("top_players_update", getTopPlayers(true));
 
       io.to(roomId).emit("game_finished", { 
         room, 
