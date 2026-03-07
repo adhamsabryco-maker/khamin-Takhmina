@@ -858,6 +858,7 @@ export default function App() {
             setWins(data.wins || 0);
             setReports(data.reports || 0);
             setTokens(data.tokens || 0);
+            localStorage.setItem('khamin_tokens', (data.tokens || 0).toString());
             if (data.isPermanentBan) {
               setIsPermanentBan(true);
               newSocket.disconnect();
