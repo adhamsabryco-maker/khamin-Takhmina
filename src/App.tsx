@@ -195,6 +195,64 @@ export default function App() {
     e.stopPropagation();
     setShowTokenInfoModal(!showTokenInfoModal);
   };
+
+  const [showAdModal, setShowAdModal] = useState(false);
+  const [adStatus, setAdStatus] = useState({ adsWatched: 0, maxAds: 5, canWatch: false });
+  const [adTimer, setAdTimer] = useState(0);
+
+  useEffect(() => {
+    if (socket && isConnected && playerSerial) {
+      socket.emit('check_ad_status', { serial: playerSerial });
+
+      socket.on('ad_status', (status) => {
+        setAdStatus(status);
+      });
+
+      socket.on('ad_success', (data) => {
+        setTokens(data.tokens);
+        localStorage.setItem('khamin_tokens', data.tokens.toString());
+        setAdStatus(prev => ({ ...prev, adsWatched: data.adsWatched, canWatch: data.adsWatched < data.maxAds }));
+        setShowAdModal(false);
+        playSound('win');
+        alert('تمت إضافة الـ Token بنجاح! 🎉');
+      });
+
+      socket.on('ad_error', (msg) => {
+        setShowAdModal(false);
+        alert(msg);
+      });
+
+      return () => {
+        socket.off('ad_status');
+        socket.off('ad_success');
+        socket.off('ad_error');
+      };
+    }
+  }, [socket, isConnected, playerSerial]);
+
+  const handleWatchAd = () => {
+    if (!adStatus.canWatch) return;
+    setShowAdModal(true);
+    setAdTimer(15); // 15 seconds mock ad
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (showAdModal && adTimer > 0) {
+      interval = setInterval(() => {
+        setAdTimer(prev => prev - 1);
+      }, 1000);
+    } else if (showAdModal && adTimer === 0) {
+      // Ad finished
+    }
+    return () => clearInterval(interval);
+  }, [showAdModal, adTimer]);
+
+  const claimAdReward = () => {
+    if (adTimer > 0) return;
+    socket?.emit('watch_ad_request', { serial: playerSerial });
+  };
+
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [topPlayers, setTopPlayers] = useState<any[]>(() => {
@@ -1478,6 +1536,33 @@ export default function App() {
 
                 <div className="space-y-3">
                   <h3 className="font-black text-gray-800 mb-2">باقات الـ Tokens</h3>
+
+                  {/* Free Ad Reward - Level 50+ Only */}
+                  {getLevel(xp) >= 50 && (
+                    <div className="flex items-center justify-between p-4 border-2 border-green-400 rounded-2xl bg-green-50 relative overflow-hidden mb-4">
+                      <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-sm z-10">
+                        مجاناً (Level 50+)
+                      </div>
+                      <div className="flex items-center gap-3 relative z-10">
+                        <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl animate-pulse">
+                          📺
+                        </div>
+                        <div>
+                          <div className="font-black text-gray-800">شاهد إعلان = 1 Token</div>
+                          <div className="text-xs font-bold text-gray-500">
+                            متبقي لك اليوم: <span className="text-green-600">{5 - adStatus.adsWatched}/5</span>
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={handleWatchAd}
+                        disabled={!adStatus.canWatch}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${adStatus.canWatch ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                      >
+                        {adStatus.canWatch ? 'شاهد الآن' : 'انتهت المحاولات'}
+                      </button>
+                    </div>
+                  )}
                   
                   {/* Package 1 */}
                   <div className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-purple-200 transition-colors bg-white">
@@ -3303,7 +3388,7 @@ export default function App() {
                     return (
                       <button 
                         onClick={() => setShowLeaderboardModal(true)}
-                        className="mt-3 w-full group relative overflow-hidden bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl p-0.5 shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                        className="mt-3 w-full group relative overflow-hidden bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl p-0.5 shadow-lg shadow-orange-200 hover:shadow-xl hover:-translate-y-0.5 transition-all"
                       >
                         <div className="bg-white/10 backdrop-blur-sm rounded-[14px] py-3 px-4 flex items-center justify-between">
                           <div className="flex items-center gap-2 text-white">
@@ -3311,8 +3396,9 @@ export default function App() {
                             <span className="font-black text-lg md:text-xl bg-white/20 px-2 rounded-lg">#{myRankIndex + 1}</span>
                             <span className="text-lg">💪</span>
                           </div>
-                          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center animate-pulse group-hover:bg-white group-hover:text-indigo-600 transition-colors shrink-0">
-                            <ChevronLeft className="w-5 h-5" />
+                          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse group-hover:bg-white group-hover:text-orange-600 transition-colors shrink-0 relative">
+                            <div className="absolute inset-0 rounded-full border-2 border-white/50 animate-ping opacity-50"></div>
+                            <ChevronLeft className="w-6 h-6" />
                           </div>
                         </div>
                       </button>
@@ -3321,14 +3407,14 @@ export default function App() {
                     return (
                       <button 
                         onClick={() => setShowLeaderboardModal(true)}
-                        className="mt-3 w-full group bg-white border-2 border-gray-100 hover:border-purple-200 rounded-2xl py-3 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
+                        className="mt-3 w-full group bg-white border-2 border-gray-100 hover:border-orange-200 rounded-2xl py-3 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-gray-500 font-bold text-xs md:text-sm">لست ضمن الـ Top 100..</span>
-                          <span className="text-purple-600 font-black text-xs md:text-sm">شد حيلك! 🚀</span>
+                          <span className="text-orange-600 font-black text-xs md:text-sm">شد حيلك! 🚀</span>
                         </div>
-                        <div className="w-8 h-8 bg-gray-50 group-hover:bg-purple-50 rounded-full flex items-center justify-center transition-colors shrink-0">
-                           <ChevronLeft className="w-4 h-4 text-gray-400 group-hover:text-purple-500 transition-colors animate-pulse" />
+                        <div className="w-8 h-8 bg-gray-50 group-hover:bg-orange-50 rounded-full flex items-center justify-center transition-colors shrink-0">
+                           <ChevronLeft className="w-4 h-4 text-gray-400 group-hover:text-orange-500 transition-colors animate-pulse" />
                         </div>
                       </button>
                     );
@@ -3442,8 +3528,8 @@ export default function App() {
               <div className="overflow-y-auto flex-1 bg-gray-50" dir="rtl">
                 {/* Current User Rank (Sticky at top if exists) */}
                 {topPlayers.findIndex(p => p.serial === playerSerial) !== -1 && (
-                  <div className="sticky top-0 z-50 px-4 py-3 bg-gray-50/95 backdrop-blur-sm shadow-sm border-b border-gray-100">
-                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 rounded-xl flex items-center gap-3 border-2 border-purple-400 shadow-lg">
+                  <div className="sticky top-0 z-[100] px-4 pb-3 pt-0 bg-gray-50/95 backdrop-blur-sm shadow-sm border-b border-gray-100">
+                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 rounded-b-xl flex items-center gap-3 border-x-2 border-b-2 border-purple-400 shadow-lg">
                       <div className="font-black text-xl w-8 text-center bg-white/20 rounded-lg py-1">
                         #{topPlayers.findIndex(p => p.serial === playerSerial) + 1}
                       </div>
@@ -4351,6 +4437,44 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Mock Ad Modal */}
+      <AnimatePresence>
+        {showAdModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-4 text-white"
+          >
+            <div className="absolute top-4 right-4 bg-gray-800 px-4 py-2 rounded-full font-black text-sm">
+              {adTimer > 0 ? `إغلاق بعد ${adTimer}s` : 'يمكنك الإغلاق الآن'}
+            </div>
+            
+            <div className="text-center space-y-6 max-w-md">
+              <div className="w-24 h-24 bg-gray-800 rounded-3xl flex items-center justify-center mx-auto animate-bounce">
+                <span className="text-6xl">📺</span>
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-3xl font-black text-yellow-400">إعلان تجريبي</h2>
+                <p className="text-gray-400 font-bold">هذا مجرد محاكاة للإعلان. في النسخة النهائية سيظهر هنا إعلان حقيقي من Google.</p>
+              </div>
+
+              {adTimer === 0 && (
+                <motion.button
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  onClick={claimAdReward}
+                  className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black text-xl shadow-lg shadow-green-500/30 transition-all"
+                >
+                  استلام المكافأة (1 Token) 🎁
+                </motion.button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {renderModals()}
     </div>
   );
