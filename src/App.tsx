@@ -338,11 +338,11 @@ export default function App() {
     }
   }, []);
 
-  const getLevel = (xp: number) => Math.min(50, Math.floor(Math.sqrt(xp / 50)) + 1);
+  const getLevel = (xp: number) => Math.floor(Math.sqrt(xp / 50)) + 1;
   const getXpProgress = (xp: number) => {
     const level = getLevel(xp);
-    const currentLevelXp = 50 * Math.pow(level - 1, 2);
-    const nextLevelXp = 50 * Math.pow(level, 2);
+    const currentLevelXp = getXpForCurrentLevel(level);
+    const nextLevelXp = getXpForNextLevel(level);
     const progress = ((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100;
     return Math.min(100, Math.max(0, progress));
   };
@@ -1572,7 +1572,7 @@ export default function App() {
                       <span className="text-orange-500">بعد 1:18 دقيقة (78 ثانية)</span>
                     </li>
                     <li className="flex justify-between items-center bg-white p-2 rounded-lg">
-                      <span>المستوى 50 (الحد الأقصى)</span>
+                      <span>المستوى 50</span>
                       <span className="text-orange-500 font-black">بعد 0:03 ثوانٍ (تقريباً من البداية!)</span>
                     </li>
                   </ul>
