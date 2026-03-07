@@ -3439,10 +3439,10 @@ export default function App() {
                 <p className="text-white/80 text-sm font-bold">أقوى اللاعبين في اللعبة</p>
               </div>
 
-              <div className="p-4 overflow-y-auto flex-1 space-y-3 bg-gray-50" dir="rtl">
+              <div className="overflow-y-auto flex-1 bg-gray-50" dir="rtl">
                 {/* Current User Rank (Sticky at top if exists) */}
                 {topPlayers.findIndex(p => p.serial === playerSerial) !== -1 && (
-                  <div className="sticky top-0 z-50 -mx-4 px-4 pb-4 pt-0 bg-gray-50/95 backdrop-blur-sm shadow-sm">
+                  <div className="sticky top-0 z-50 px-4 py-3 bg-gray-50/95 backdrop-blur-sm shadow-sm border-b border-gray-100">
                      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 rounded-xl flex items-center gap-3 border-2 border-purple-400 shadow-lg">
                       <div className="font-black text-xl w-8 text-center bg-white/20 rounded-lg py-1">
                         #{topPlayers.findIndex(p => p.serial === playerSerial) + 1}
@@ -3453,7 +3453,7 @@ export default function App() {
                       <div className="flex-1 min-w-0 text-right">
                         <div className="font-black truncate">أنت ({playerName})</div>
                         <div className="text-xs text-white/80 font-bold flex items-center gap-2">
-                          <span>مستوى {getLevel(xp)}</span>
+                          <span dir="ltr">Lvl {getLevel(xp)}</span>
                           <span>•</span>
                           <span>{wins} فوز</span>
                         </div>
@@ -3463,7 +3463,7 @@ export default function App() {
                 )}
 
                 {/* List of Players */}
-                <div className="space-y-2">
+                <div className="p-4 space-y-2">
                   {topPlayers.map((player, index) => {
                     const isMe = player.serial === playerSerial;
                     return (
@@ -3492,7 +3492,7 @@ export default function App() {
                             {player.name} {isMe && '(أنت)'}
                           </div>
                           <div className="text-xs text-gray-500 font-bold flex items-center gap-2">
-                            <span className="bg-gray-100 px-1.5 rounded text-gray-600">مستوى {player.level}</span>
+                            <span className="bg-gray-100 px-1.5 rounded text-gray-600" dir="ltr">Lvl {player.level}</span>
                             <span className="text-gray-300">•</span>
                             <span className="text-green-600">{player.wins} فوز</span>
                           </div>
