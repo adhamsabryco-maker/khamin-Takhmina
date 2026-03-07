@@ -186,6 +186,13 @@ export default function App() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
+  const [showTokenInfoModal, setShowTokenInfoModal] = useState(false);
+
+  const toggleTokenInfo = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowTokenInfoModal(!showTokenInfoModal);
+  };
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [topPlayers, setTopPlayers] = useState<any[]>(() => {
@@ -3351,38 +3358,107 @@ export default function App() {
                 <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-white px-3 text-gray-400 font-black">أو</span></div>
               </div>
 
-              <div className="flex items-center gap-3 mb-4 bg-purple-50 p-3 rounded-xl border-2 border-purple-100">
-                <input 
-                  type="checkbox" 
-                  id="useToken" 
-                  checked={useToken} 
-                  onChange={(e) => setUseToken(e.target.checked)}
-                  disabled={tokens <= 0}
-                  className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer disabled:opacity-50"
-                />
-                <label htmlFor="useToken" className="flex-1 flex items-center justify-between cursor-pointer select-none">
-                  <span className={`font-bold ${tokens > 0 ? 'text-purple-900' : 'text-gray-400'}`}>
-                    استخدام Token للعب مع مستوى 40+
-                  </span>
-                  <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg shadow-sm border border-purple-100">
-                    <span className="font-black text-purple-600">{tokens}</span>
-                    <span className="text-xs text-gray-500 font-bold">Tokens</span>
-                  </div>
-                </label>
-              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleRandomMatch}
+                  className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-pointer touch-manipulation"
+                >
+                  <Users className="w-5 h-5 md:w-6 md:h-6" />
+                  بحث عشوائي
+                </button>
 
-              <button 
-                onClick={handleRandomMatch}
-                className="w-full btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-pointer touch-manipulation"
-              >
-                <Users className="w-5 h-5 md:w-6 md:h-6" />
-                بحث عشوائي
-              </button>
+                <div className="flex items-center gap-2 bg-purple-50 p-2 rounded-xl border-2 border-purple-100 h-full">
+                  <input 
+                    type="checkbox" 
+                    id="useToken" 
+                    checked={useToken} 
+                    onChange={(e) => setUseToken(e.target.checked)}
+                    disabled={tokens <= 0}
+                    className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer disabled:opacity-50"
+                  />
+                  <label htmlFor="useToken" className="flex items-center gap-1 cursor-pointer select-none">
+                    <button onClick={toggleTokenInfo} className="font-black text-purple-600 hover:underline">Token</button>
+                    <span className="font-black text-gray-700">({tokens})</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         </motion.div>
       </div>
+
+      {/* Token Info Modal */}
+      <AnimatePresence>
+        {showTokenInfoModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[5000] flex items-center justify-center p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowTokenInfoModal(false);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]"
+            >
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 p-6 text-center relative shrink-0">
+                <button 
+                  onClick={() => setShowTokenInfoModal(false)}
+                  className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
+                  <Zap className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-black text-white mb-1">ما هو الـ Token؟</h2>
+              </div>
+
+              <div className="p-6 overflow-y-auto flex-1 space-y-4 text-right" dir="rtl">
+                <div className="space-y-4 text-gray-700">
+                  <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                    <h3 className="font-black text-purple-700 mb-2 flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      ما فائدته؟
+                    </h3>
+                    <p className="text-sm font-bold leading-relaxed">
+                      الـ Token هو تذكرتك للعب مع المحترفين! يسمح لك باللعب ضد لاعبين مستواهم 40 أو أعلى، والحصول على XP إضافي (400 XP) عند الفوز.
+                    </p>
+                  </div>
+
+                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <h3 className="font-black text-blue-700 mb-2 flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4" />
+                      من أين أشتريه؟
+                    </h3>
+                    <p className="text-sm font-bold leading-relaxed">
+                      يمكنك شراء الـ Tokens من المتجر (أيقونة السلة في الأعلى) باستخدام رصيدك.
+                    </p>
+                  </div>
+
+                  <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                    <h3 className="font-black text-orange-700 mb-2 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      تحذير هام!
+                    </h3>
+                    <ul className="text-sm font-bold list-disc list-inside space-y-1">
+                      <li>يتم خصم الـ Token بمجرد بدء البحث.</li>
+                      <li>إذا انسحبت من المباراة (خرجت أو أغلقت اللعبة) ستخسر الـ Token.</li>
+                      <li>إذا خسرت المباراة، ستخسر الـ Token.</li>
+                      <li>إذا فزت، سيتم استهلاك الـ Token ولكن ستحصل على مكافأة XP ضخمة!</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {renderModals()}
       </>
