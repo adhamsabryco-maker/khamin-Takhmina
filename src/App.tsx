@@ -338,7 +338,7 @@ export default function App() {
     }
   }, []);
 
-  const getLevel = (xp: number) => Math.floor(Math.sqrt(xp / 50)) + 1;
+  const getLevel = (xp: number) => Math.min(50, Math.floor(Math.sqrt(xp / 50)) + 1);
   const getXpProgress = (xp: number) => {
     const level = getLevel(xp);
     const currentLevelXp = 50 * Math.pow(level - 1, 2);
