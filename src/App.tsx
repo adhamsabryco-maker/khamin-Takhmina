@@ -39,7 +39,8 @@ import {
   RefreshCw,
   Smile,
   Loader2,
-  Plus
+  Plus,
+  ShoppingCart
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AdminCustomization } from './components/AdminCustomization';
@@ -184,6 +185,7 @@ export default function App() {
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showShopModal, setShowShopModal] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [topPlayers, setTopPlayers] = useState<any[]>(() => {
@@ -201,7 +203,7 @@ export default function App() {
   const [adminReports, setAdminReports] = useState<any[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
-  const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization'>('players');
+  const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop'>('players');
   const [adminImages, setAdminImages] = useState<any[]>([]);
 
   const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
@@ -466,6 +468,15 @@ export default function App() {
   
   const toggleSettings = () => {
     setShowSettingsModal(!showSettingsModal);
+    setShowLevelInfo(false);
+    setShowAdminDashboard(false);
+    setShowReportModal(false);
+    setShowShopModal(false);
+  };
+
+  const toggleShop = () => {
+    setShowShopModal(!showShopModal);
+    setShowSettingsModal(false);
     setShowLevelInfo(false);
     setShowAdminDashboard(false);
     setShowReportModal(false);
@@ -1390,6 +1401,120 @@ export default function App() {
 
   const renderModals = () => (
     <>
+      {/* Shop Modal */}
+      <AnimatePresence>
+        {showShopModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[5000] flex items-center justify-center p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowShopModal(false);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]"
+            >
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 p-6 text-center relative shrink-0">
+                <button 
+                  onClick={() => setShowShopModal(false)}
+                  className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
+                  <ShoppingCart className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-black text-white mb-1">المتجر</h2>
+                <p className="text-purple-100 text-sm font-bold">احصل على Tokens للعب مع المحترفين!</p>
+              </div>
+
+              <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                <div className="flex items-center justify-between bg-purple-50 p-4 rounded-2xl border-2 border-purple-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                      <Zap className="w-6 h-6 text-purple-500" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-gray-500">رصيدك الحالي</div>
+                      <div className="text-lg font-black text-purple-700">{tokens} Tokens</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-black text-gray-800 mb-2">باقات الـ Tokens</h3>
+                  
+                  {/* Package 1 */}
+                  <div className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-purple-200 transition-colors bg-white">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl font-black text-purple-600">
+                        1
+                      </div>
+                      <div>
+                        <div className="font-black text-gray-800">1 Token</div>
+                        <div className="text-xs font-bold text-gray-500">مباراة واحدة مع مستوى 40+</div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md shadow-purple-200"
+                    >
+                      10 ج.م
+                    </button>
+                  </div>
+
+                  {/* Package 2 */}
+                  <div className="flex items-center justify-between p-4 border-2 border-purple-400 rounded-2xl bg-purple-50 relative">
+                    <div className="absolute -top-3 left-4 bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm">
+                      الأكثر مبيعاً
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-purple-200 rounded-xl flex items-center justify-center text-2xl font-black text-purple-700">
+                        5
+                      </div>
+                      <div>
+                        <div className="font-black text-gray-800">5 Tokens</div>
+                        <div className="text-xs font-bold text-gray-500">5 مباريات + 1 مجاناً</div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md shadow-purple-200"
+                    >
+                      40 ج.م
+                    </button>
+                  </div>
+
+                  {/* Package 3 */}
+                  <div className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-purple-200 transition-colors bg-white">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl font-black text-purple-600">
+                        10
+                      </div>
+                      <div>
+                        <div className="font-black text-gray-800">10 Tokens</div>
+                        <div className="text-xs font-bold text-gray-500">10 مباريات + 3 مجاناً</div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md shadow-purple-200"
+                    >
+                      70 ج.م
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Level Info Modal */}
       <AnimatePresence>
         {showLevelInfo && (
@@ -2059,6 +2184,12 @@ export default function App() {
                         >
                           تخصيص اللعبة
                         </button>
+                        <button 
+                          onClick={() => setAdminTab('shop')}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'shop' ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'}`}
+                        >
+                          المتجر والـ Tokens
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2091,7 +2222,81 @@ export default function App() {
 
                 {/* Content */}
                 <div className="flex-1 overflow-hidden flex">
-                  {adminTab === 'customization' ? (
+                  {adminTab === 'shop' ? (
+                    <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+                      <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                          <h3 className="text-xl font-black text-gray-800 mb-4 flex items-center gap-2">
+                            <ShoppingCart className="w-6 h-6 text-orange-500" />
+                            إدارة المتجر والـ Tokens
+                          </h3>
+                          <p className="text-gray-500 mb-6 font-bold">
+                            من هنا يمكنك إدارة باقات الـ Tokens وإرسال Tokens مجانية للاعبين.
+                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Send Tokens Form */}
+                            <div className="bg-orange-50 p-5 rounded-xl border border-orange-100">
+                              <h4 className="font-black text-orange-800 mb-4 flex items-center gap-2">
+                                <Zap className="w-5 h-5" />
+                                إرسال Tokens للاعب
+                              </h4>
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-bold text-orange-600 mb-1">معرف اللاعب (Serial)</label>
+                                  <input 
+                                    type="text" 
+                                    placeholder="مثال: player_12345"
+                                    className="w-full p-2 rounded-lg border border-orange-200 focus:outline-none focus:border-orange-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-bold text-orange-600 mb-1">عدد الـ Tokens</label>
+                                  <input 
+                                    type="number" 
+                                    min="1"
+                                    defaultValue="5"
+                                    className="w-full p-2 rounded-lg border border-orange-200 focus:outline-none focus:border-orange-500"
+                                  />
+                                </div>
+                                <button 
+                                  onClick={() => alert('سيتم تفعيل هذه الخاصية قريباً')}
+                                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-2 rounded-lg transition-colors"
+                                >
+                                  إرسال
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Packages Management */}
+                            <div className="bg-white p-5 rounded-xl border border-gray-200">
+                              <h4 className="font-black text-gray-800 mb-4">الباقات الحالية</h4>
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                  <div className="font-bold text-sm">باقة 1 Token</div>
+                                  <div className="text-orange-600 font-black">10 ج.م</div>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                                  <div className="font-bold text-sm">باقة 5 Tokens</div>
+                                  <div className="text-orange-600 font-black">40 ج.م</div>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                  <div className="font-bold text-sm">باقة 10 Tokens</div>
+                                  <div className="text-orange-600 font-black">70 ج.م</div>
+                                </div>
+                                <button 
+                                  onClick={() => alert('سيتم تفعيل تعديل الباقات قريباً')}
+                                  className="w-full text-sm text-gray-500 hover:text-orange-600 font-bold py-2 border border-dashed border-gray-300 rounded-lg mt-2 transition-colors"
+                                >
+                                  + إضافة / تعديل باقة
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : adminTab === 'customization' ? (
                     <AdminCustomization />
                   ) : adminTab === 'players' ? (
                     <>
@@ -2742,6 +2947,15 @@ export default function App() {
                 )}
               </button>
 
+              {/* Shop Button */}
+              <button 
+                onClick={toggleShop}
+                className="w-9 h-9 md:w-10 md:h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center hover:bg-orange-100 hover:text-orange-600 transition-colors"
+                title="المتجر"
+              >
+                <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+
               {/* Settings Button */}
               <button 
                 onClick={toggleSettings}
@@ -2885,6 +3099,15 @@ export default function App() {
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
                 </span>
               )}
+            </button>
+
+            {/* Shop Button */}
+            <button 
+              onClick={toggleShop}
+              className="w-9 h-9 md:w-10 md:h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center hover:bg-orange-100 hover:text-orange-600 transition-colors"
+              title="المتجر"
+            >
+              <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
             </button>
 
             {/* Settings Button */}
@@ -3217,6 +3440,15 @@ export default function App() {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
               </span>
             )}
+          </button>
+
+          {/* Shop Button */}
+          <button 
+            onClick={toggleShop}
+            className="w-9 h-9 md:w-10 md:h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center hover:bg-orange-100 hover:text-orange-600 transition-colors"
+            title="المتجر"
+          >
+            <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
           </button>
 
           {/* Settings Button */}
