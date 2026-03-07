@@ -2925,7 +2925,7 @@ export default function App() {
               <div className="bg-gray-50/30 rounded-[32px] border-2 border-gray-100/50 px-3 md:px-5 pb-2 pt-4 mt-2 relative">
                 {/* Integrated Header */}
                 <div className="flex items-center justify-between flex-row-reverse mb-8 pb-2">
-                  <h2 className="text-base md:text-lg font-black text-[#2D3436] flex items-center gap-2">
+                  <h2 className="text-sm md:text-base font-black text-[#2D3436] flex items-center gap-2">
                     أبطال التخمين
                   </h2>
                   <span className="text-[10px] md:text-xs font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-full">المتصدرون حالياً</span>
