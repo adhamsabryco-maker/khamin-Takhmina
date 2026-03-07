@@ -22,13 +22,13 @@ export default defineConfig(({mode}) => {
           display: 'fullscreen',
           icons: [
             {
-              src: 'icon.svg',
+              src: 'icon.svg?v=1.0.1',
               sizes: '192x192',
               type: 'image/svg+xml',
               purpose: 'any maskable'
             },
             {
-              src: 'icon.svg',
+              src: 'icon.svg?v=1.0.1',
               sizes: '512x512',
               type: 'image/svg+xml',
               purpose: 'any maskable'
