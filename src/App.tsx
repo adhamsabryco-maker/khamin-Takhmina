@@ -2152,6 +2152,10 @@ export default function App() {
                               className="w-full pr-12 pl-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-purple-400 focus:bg-white transition-all font-bold"
                             />
                           </div>
+                          <div className="mt-3 text-sm font-bold text-gray-500 flex items-center gap-2">
+                            <Users className="w-4 h-4" />
+                            إجمالي عدد اللاعبين المسجلين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{adminPlayers.length}</span>
+                          </div>
                         </div>
 
                         {/* Players List */}
