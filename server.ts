@@ -142,15 +142,49 @@ const app = express();
     }
   });
 
-  let configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false };
+  let configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false, version: '1.0.0' };
   const configPath = path.join(__dirname, 'public/uploads/config.json');
   if (fs.existsSync(configPath)) {
     try {
       configCache = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (!configCache.version) configCache.version = '1.0.0';
     } catch (e) {
       console.error("Error reading config:", e);
     }
   }
+
+  // Dynamic manifest.json to support versioning
+  app.get("/manifest.json", (req, res) => {
+    const version = configCache.version || '1.0.0';
+    res.json({
+      "name": "خمن تخمينة",
+      "short_name": "خمن تخمينة",
+      "description": "لعبة تخمين كلمات ممتعة",
+      "start_url": "/",
+      "display": "standalone",
+      "background_color": "#ffffff",
+      "theme_color": "#ffffff",
+      "icons": [
+        {
+          "src": `/icon.svg?v=${version}`,
+          "sizes": "any",
+          "type": "image/svg+xml"
+        },
+        {
+          "src": `/icon.svg?v=${version}`,
+          "sizes": "192x192",
+          "type": "image/svg+xml",
+          "purpose": "any maskable"
+        },
+        {
+          "src": `/icon.svg?v=${version}`,
+          "sizes": "512x512",
+          "type": "image/svg+xml",
+          "purpose": "any maskable"
+        }
+      ]
+    });
+  });
 
   app.post("/api/config", (req, res) => {
     console.log('[API] Received config update:', req.body);
