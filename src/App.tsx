@@ -318,7 +318,7 @@ export default function App() {
     return <AvatarDisplay avatar={avatarStr} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={hideExtras} />;
   };
 
-  const truncateName = (name: string, limit: number = 10) => {
+  const truncateName = (name: string, limit: number = 12) => {
     if (!name) return '';
     return name.length > limit ? name.substring(0, limit) + '...' : name;
   };
