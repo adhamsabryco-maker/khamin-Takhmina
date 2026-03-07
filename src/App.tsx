@@ -497,6 +497,7 @@ export default function App() {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (room?.gameState === 'discussion' || room?.gameState === 'guessing') {
+        socket?.emit('intentional_leave', { roomId });
         e.preventDefault();
         e.returnValue = '';
       }
@@ -507,7 +508,7 @@ export default function App() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [room?.gameState]);
+  }, [room?.gameState, roomId, socket]);
 
   useEffect(() => {
     fetch('/api/categories')
@@ -1369,6 +1370,7 @@ export default function App() {
       if (!window.confirm('هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟')) {
         return;
       }
+      socket?.emit('intentional_leave', { roomId });
     }
     
     socket?.emit('leave_room', { roomId });
