@@ -2838,7 +2838,7 @@ export default function App() {
         {/* Fixed Header */}
         <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
           <div className="flex-1 flex items-center gap-2 md:gap-3">
-            <img src={`/icon.svg?v=${appVersion}`} alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
+            <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
             <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm block">خمن تخمينة</div>
           </div>
           
@@ -3118,7 +3118,7 @@ export default function App() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
         <div className="flex-1 flex items-center gap-2 md:gap-3">
-          <img src={`/icon.svg?v=${appVersion}`} alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
+          <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
           <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
         </div>
         
