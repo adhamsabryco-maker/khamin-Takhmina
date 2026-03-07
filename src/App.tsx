@@ -338,10 +338,9 @@ export default function App() {
     }
   }, []);
 
-  const getLevel = (xp: number) => Math.min(50, Math.floor(Math.sqrt(xp / 50)) + 1);
+  const getLevel = (xp: number) => Math.floor(Math.sqrt(xp / 50)) + 1;
   const getXpProgress = (xp: number) => {
     const level = getLevel(xp);
-    if (level >= 50) return 100;
     const currentLevelXp = 50 * Math.pow(level - 1, 2);
     const nextLevelXp = 50 * Math.pow(level, 2);
     const progress = ((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100;
@@ -1724,13 +1723,24 @@ export default function App() {
                     <div>
                       <div className="flex justify-between items-center mb-1 flex-row-reverse">
                         <span className="text-xs font-black text-gray-600">Level {getLevel(xp)}</span>
-                        <span className="text-[10px] font-bold text-gray-400">{xp} / {getXpForNextLevel(getLevel(xp))} XP</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden" dir="ltr">
+                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden mb-2" dir="ltr">
                         <div 
                           className="bg-gradient-to-r from-blue-400 to-blue-600 h-full transition-all duration-500" 
                           style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
                         ></div>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-5 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
+                        <div 
+                          className="bg-gradient-to-r from-orange-400 to-orange-500 h-full transition-all duration-500" 
+                          style={{ width: `${getXpProgress(xp)}%` }}
+                        ></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-[10px] font-black text-orange-900 drop-shadow-sm flex items-center gap-1">
+                            <Zap className="w-3 h-3" />
+                            {xp} / {getXpForNextLevel(getLevel(xp))} XP
+                          </span>
+                        </div>
                       </div>
                     </div>
                     {renderStars(getLevel(xp))}
@@ -3156,7 +3166,7 @@ export default function App() {
                 <div className="w-full bg-gray-100 rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
                   <div 
                     className="bg-gradient-to-r from-orange-400 to-orange-500 h-full transition-all duration-500" 
-                    style={{ width: `${(xp / getXpForNextLevel(getLevel(xp))) * 100}%` }}
+                    style={{ width: `${getXpProgress(xp)}%` }}
                   ></div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-[10px] md:text-xs font-black text-orange-900 drop-shadow-sm flex items-center gap-1">
