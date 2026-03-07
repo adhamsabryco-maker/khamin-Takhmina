@@ -187,6 +187,7 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
   const [showTokenInfoModal, setShowTokenInfoModal] = useState(false);
+  const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
 
   const toggleTokenInfo = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -3299,19 +3300,27 @@ export default function App() {
                   const myRankIndex = topPlayers.findIndex(p => p.serial === playerSerial);
                   if (myRankIndex > 2) {
                     return (
-                      <div className="mt-2 md:mt-3 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-full py-1.5 px-4 md:py-2 md:px-6 text-center shadow-sm mx-auto w-fit">
-                        <p className="text-orange-700 font-bold text-xs md:text-sm">
-                          ترتيبك الحالي في ابطال التخمين {myRankIndex + 1} 💪
+                      <button 
+                        onClick={() => setShowLeaderboardModal(true)}
+                        className="mt-2 md:mt-3 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-full py-1.5 px-4 md:py-2 md:px-6 text-center shadow-sm mx-auto w-fit hover:scale-105 transition-transform cursor-pointer"
+                      >
+                        <p className="text-orange-700 font-bold text-xs md:text-sm flex items-center gap-2">
+                          <span>ترتيبك الحالي في ابطال التخمين {myRankIndex + 1} 💪</span>
+                          <span className="text-[10px] bg-orange-200 px-1.5 rounded text-orange-800">اضغط للعرض</span>
                         </p>
-                      </div>
+                      </button>
                     );
                   } else if (myRankIndex === -1) {
                     return (
-                      <div className="mt-2 md:mt-3 bg-white border border-gray-200 rounded-full py-1 px-3 md:py-1.5 md:px-4 text-center shadow-sm mx-auto w-fit">
-                        <p className="text-gray-500 font-bold text-[10px] md:text-[11px]">
-                          لست ضمن أفضل 100 لاعب حتى الآن. استمر في اللعب!
+                      <button 
+                        onClick={() => setShowLeaderboardModal(true)}
+                        className="mt-2 md:mt-3 bg-white border border-gray-200 rounded-full py-1 px-3 md:py-1.5 md:px-4 text-center shadow-sm mx-auto w-fit hover:scale-105 transition-transform cursor-pointer"
+                      >
+                        <p className="text-gray-500 font-bold text-[10px] md:text-[11px] flex items-center gap-2">
+                          <span>لست ضمن أفضل 100 لاعب حتى الآن. استمر في اللعب!</span>
+                          <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-600">عرض الترتيب</span>
                         </p>
-                      </div>
+                      </button>
                     );
                   }
                   return null;
@@ -3387,6 +3396,113 @@ export default function App() {
         </div>
         </motion.div>
       </div>
+
+      {/* Leaderboard Modal */}
+      <AnimatePresence>
+        {showLeaderboardModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[5000] flex items-center justify-center p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowLeaderboardModal(false);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative flex flex-col max-h-[85vh]"
+            >
+              <div className="bg-gradient-to-r from-orange-500 to-red-600 p-6 text-center relative shrink-0">
+                <button 
+                  onClick={() => setShowLeaderboardModal(false)}
+                  className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
+                  <Trophy className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-black text-white mb-1">أبطال التخمين (Top 100)</h2>
+                <p className="text-white/80 text-sm font-bold">أقوى اللاعبين في اللعبة</p>
+              </div>
+
+              <div className="p-4 overflow-y-auto flex-1 space-y-3 bg-gray-50" dir="rtl">
+                {/* Current User Rank (Sticky at top if exists) */}
+                {topPlayers.findIndex(p => p.serial === playerSerial) !== -1 && (
+                  <div className="sticky top-0 z-10 mb-4 shadow-md">
+                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 rounded-xl flex items-center gap-3 border-2 border-purple-400">
+                      <div className="font-black text-xl w-8 text-center bg-white/20 rounded-lg py-1">
+                        #{topPlayers.findIndex(p => p.serial === playerSerial) + 1}
+                      </div>
+                      <div className="relative w-10 h-10 rounded-full border-2 border-white/50 overflow-hidden bg-white/10">
+                        {renderAvatarContent(avatar, getLevel(xp), true)}
+                      </div>
+                      <div className="flex-1 min-w-0 text-right">
+                        <div className="font-black truncate">أنت ({playerName})</div>
+                        <div className="text-xs text-white/80 font-bold flex items-center gap-2">
+                          <span>مستوى {getLevel(xp)}</span>
+                          <span>•</span>
+                          <span>{wins} فوز</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* List of Players */}
+                <div className="space-y-2">
+                  {topPlayers.map((player, index) => {
+                    const isMe = player.serial === playerSerial;
+                    return (
+                      <div 
+                        key={index} 
+                        className={`
+                          flex items-center gap-3 p-3 rounded-xl border-2 transition-transform
+                          ${isMe ? 'bg-purple-50 border-purple-200 ring-2 ring-purple-100' : 'bg-white border-gray-100'}
+                        `}
+                      >
+                        <div className={`
+                          font-black text-lg w-8 text-center rounded-lg py-1
+                          ${index === 0 ? 'text-yellow-500 bg-yellow-50' : 
+                            index === 1 ? 'text-gray-400 bg-gray-50' : 
+                            index === 2 ? 'text-orange-500 bg-orange-50' : 'text-gray-400'}
+                        `}>
+                          {index + 1}
+                        </div>
+                        
+                        <div className="relative w-10 h-10 rounded-full border border-gray-100 overflow-hidden bg-gray-50">
+                          {renderAvatarContent(player.avatar, player.level, true)}
+                        </div>
+
+                        <div className="flex-1 min-w-0 text-right">
+                          <div className={`font-black truncate ${isMe ? 'text-purple-700' : 'text-gray-800'}`}>
+                            {player.name} {isMe && '(أنت)'}
+                          </div>
+                          <div className="text-xs text-gray-500 font-bold flex items-center gap-2">
+                            <span className="bg-gray-100 px-1.5 rounded text-gray-600">مستوى {player.level}</span>
+                            <span className="text-gray-300">•</span>
+                            <span className="text-green-600">{player.wins} فوز</span>
+                          </div>
+                        </div>
+
+                        {index < 3 && (
+                          <Trophy className={`w-5 h-5 ${
+                            index === 0 ? 'text-yellow-500' : 
+                            index === 1 ? 'text-gray-400' : 'text-orange-500'
+                          }`} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Token Info Modal */}
       <AnimatePresence>
