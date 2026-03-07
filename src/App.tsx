@@ -1169,7 +1169,20 @@ export default function App() {
 
   useEffect(() => {
     const newSocket = connectSocket();
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (roomRef.current && (roomRef.current.gameState === 'guessing' || roomRef.current.gameState === 'discussion')) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for Chrome
+        newSocket.emit('intentional_leave', { roomId: roomRef.current.id });
+        return 'هل تريد حقاً مغادرة اللعبة؟ ستخسر الـ Token المستخدمة!';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       newSocket.disconnect();
     };
   }, [connectSocket]);
