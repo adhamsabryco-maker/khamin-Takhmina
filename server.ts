@@ -2137,7 +2137,18 @@ const app = express();
       socket.data = { serial };
     });
 
-    socket.on("disconnect", () => {
+    socket.on("intentional_leave", ({ roomId }) => {
+      const room = rooms.get(roomId);
+      if (room) {
+        const player = room.players.find((p: any) => p.id === socket.id);
+        if (player) {
+          player.intentionallyLeft = true;
+          // We don't disconnect here, we let the client disconnect or navigate
+        }
+      }
+    });
+
+    socket.on("disconnect", (reason) => {
       broadcastOnlineCount();
       // Remove from matchmaking queue
       const qIndex = matchmakingQueue.findIndex(p => p.id === socket.id);
@@ -2159,9 +2170,27 @@ const app = express();
         const index = room.players.findIndex((p: any) => p.id === socket.id);
         if (index !== -1) {
           const leavingPlayer = room.players[index];
+          const opponent = room.players.find((p: any) => p.id !== socket.id);
+          
+          // Logic for Token deduction:
+          // 1. Game must have started (startTime exists)
+          // 2. More than 60 seconds passed
+          // 3. Disconnect is intentional (client namespace disconnect OR intentionallyLeft flag)
+          const elapsedSeconds = room.startTime ? (Date.now() - room.startTime) / 1000 : 0;
+          const isIntentional = reason === 'client namespace disconnect' || leavingPlayer.intentionallyLeft;
+          
+          if (room.gameState !== "finished" && room.gameState !== "waiting" && elapsedSeconds > 60 && isIntentional) {
+            // Deduct token by ending game with opponent as winner
+            // We do this BEFORE removing the player so endGame can process them as the loser
+            endGame(roomId, opponent ? opponent.name : null);
+          } else if (room.gameState !== "finished") {
+            // Just stop game without deducting tokens if it's network issue or < 60s
+            socket.to(roomId).emit("game_stopped", { reason: `انقطع اتصال ${leavingPlayer.name}` });
+          }
+
+          // Now remove the player and cleanup
           room.players.splice(index, 1);
           
-          // Stop the game for everyone and delete room to ensure fresh start
           if (intervals.has(roomId)) {
             clearInterval(intervals.get(roomId));
             intervals.delete(roomId);
@@ -2169,9 +2198,8 @@ const app = express();
           
           if (room.gameState === "waiting") {
             socket.to(roomId).emit("opponent_left_lobby");
-          } else {
-            socket.to(roomId).emit("game_stopped", { reason: `انقطع اتصال ${leavingPlayer.name}` });
           }
+          
           rooms.delete(roomId);
         }
       });
@@ -2237,6 +2265,7 @@ const app = express();
     
     room.gameState = "discussion";
     room.timer = 600; // 10 minutes
+    room.startTime = Date.now();
     room.isPaused = false;
 
     io.to(roomId).emit("room_update", room);
