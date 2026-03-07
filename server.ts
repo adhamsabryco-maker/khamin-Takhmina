@@ -381,6 +381,28 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN reportedBy TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN email TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN isAdmin INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN tokens INTEGER DEFAULT 0`); } catch (e) {}
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS shop_items (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      description TEXT,
+      price REAL,
+      type TEXT,
+      image TEXT,
+      amount INTEGER,
+      active INTEGER DEFAULT 1,
+      timestamp INTEGER
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    )
+  `);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS custom_images (
@@ -436,8 +458,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens)
   `);
 
   function savePlayerData(serial: string) {
@@ -450,7 +472,8 @@ const app = express();
         gender: player.gender || 'boy',
         reportedBy: JSON.stringify(player.reportedBy || []),
         email: player.email || null,
-        isAdmin: player.isAdmin ? 1 : 0
+        isAdmin: player.isAdmin ? 1 : 0,
+        tokens: player.tokens || 0
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -465,7 +488,8 @@ const app = express();
         gender: player.gender || 'boy',
         reportedBy: JSON.stringify(player.reportedBy || []),
         email: player.email || null,
-        isAdmin: player.isAdmin ? 1 : 0
+        isAdmin: player.isAdmin ? 1 : 0,
+        tokens: player.tokens || 0
       });
     }
   });
@@ -505,7 +529,8 @@ const app = express();
           isPermanentBan: row.isPermanentBan || 0,
           reportedBy: reportedBy,
           email: row.email,
-          isAdmin: row.isAdmin === 1
+          isAdmin: row.isAdmin === 1,
+          tokens: row.tokens || 0
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -548,6 +573,116 @@ const app = express();
 
   app.get("/api/admin/players", (req, res) => {
     res.json(Array.from(allPlayers.values()));
+  });
+
+  // Paymob Integration
+  app.post("/api/paymob/initiate", async (req, res) => {
+    try {
+      const { itemId, playerSerial } = req.body;
+      const player = allPlayers.get(playerSerial);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const item = db.prepare('SELECT * FROM shop_items WHERE id = ? AND active = 1').get(itemId) as any;
+      if (!item) return res.status(404).json({ error: "Item not found" });
+
+      const settingsRows = db.prepare('SELECT * FROM settings').all();
+      const settings = settingsRows.reduce((acc: any, row: any) => {
+        acc[row.key] = row.value;
+        return acc;
+      }, {});
+
+      if (!settings.paymob_api_key || !settings.paymob_integration_id || !settings.paymob_iframe_id) {
+        return res.status(500).json({ error: "Paymob settings not configured" });
+      }
+
+      // 1. Authentication
+      const authRes = await fetch("https://accept.paymob.com/api/auth/tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_key: settings.paymob_api_key })
+      });
+      const authData = await authRes.json();
+      const authToken = authData.token;
+
+      // 2. Order Registration
+      const amountCents = Math.round(item.price * 100);
+      const orderRes = await fetch("https://accept.paymob.com/api/ecommerce/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          auth_token: authToken,
+          delivery_needed: "false",
+          amount_cents: amountCents,
+          currency: "EGP",
+          items: [{
+            name: item.name,
+            amount_cents: amountCents,
+            description: item.description,
+            quantity: "1"
+          }]
+        })
+      });
+      const orderData = await orderRes.json();
+      const orderId = orderData.id;
+
+      // 3. Payment Key Request
+      const paymentKeyRes = await fetch("https://accept.paymob.com/api/acceptance/payment_keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          auth_token: authToken,
+          amount_cents: amountCents,
+          expiration: 3600,
+          order_id: orderId,
+          billing_data: {
+            apartment: "NA", email: player.email || "test@test.com", floor: "NA", first_name: player.name,
+            street: "NA", building: "NA", phone_number: "01000000000", shipping_method: "NA",
+            postal_code: "NA", city: "NA", country: "EG", last_name: player.serial, state: "NA"
+          },
+          currency: "EGP",
+          integration_id: settings.paymob_integration_id
+        })
+      });
+      const paymentKeyData = await paymentKeyRes.json();
+      const paymentToken = paymentKeyData.token;
+
+      // Save order info to verify later
+      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(`order_${orderId}`, JSON.stringify({ playerSerial, itemId }));
+
+      const iframeUrl = `https://accept.paymob.com/api/acceptance/iframes/${settings.paymob_iframe_id}?payment_token=${paymentToken}`;
+      res.json({ url: iframeUrl });
+    } catch (err) {
+      console.error("Paymob initiate error:", err);
+      res.status(500).json({ error: "Payment initiation failed" });
+    }
+  });
+
+  app.post("/api/paymob/webhook", (req, res) => {
+    try {
+      const { obj } = req.body;
+      if (obj && obj.success === true) {
+        const orderId = obj.order.id;
+        const orderInfoRow = db.prepare('SELECT value FROM settings WHERE key = ?').get(`order_${orderId}`) as any;
+        
+        if (orderInfoRow) {
+          const orderInfo = JSON.parse(orderInfoRow.value);
+          const player = allPlayers.get(orderInfo.playerSerial);
+          const item = db.prepare('SELECT * FROM shop_items WHERE id = ?').get(orderInfo.itemId) as any;
+
+          if (player && item) {
+            if (item.type === 'token') {
+              player.tokens = (player.tokens || 0) + (item.amount || 1);
+              savePlayerData(player.serial);
+            }
+            // If it's avatar or frame, we'd need a purchased_items array, but for now tokens are the main thing
+          }
+        }
+      }
+      res.status(200).send("OK");
+    } catch (err) {
+      console.error("Paymob webhook error:", err);
+      res.status(500).send("Error");
+    }
   });
 
   app.get("/api/categories", (req, res) => {
@@ -651,6 +786,12 @@ const app = express();
           // Check if blocked
           if (isBlocked(p1.playerId, p2.playerId)) continue;
 
+          // Check token constraints
+          const p1Level = getLevel(p1.xp);
+          const p2Level = getLevel(p2.xp);
+          if (p1.useToken && p2Level < 40) continue;
+          if (p2.useToken && p1Level < 40) continue;
+
           // Check if temporarily skipped (10 seconds cooldown)
           const p1SkippedP2 = p1.skipped?.get(p2.playerId);
           const p2SkippedP1 = p2.skipped?.get(p1.playerId);
@@ -743,7 +884,15 @@ const app = express();
         // Create a bot match
         matchmakingQueue.splice(i, 1);
         
-        const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
+        let availablePersonas = BOT_PERSONAS;
+        if (p.useToken) {
+          availablePersonas = BOT_PERSONAS.filter(persona => persona.level >= 40);
+          if (availablePersonas.length === 0) {
+            availablePersonas = [{ name: "المعلم", age: 40, level: 50, avatar: "avatar-lvl-50.png", gender: "boy", personality: "محترف جداً، لا يرحم في اللعب" }];
+          }
+        }
+        
+        const botPersona = availablePersonas[Math.floor(Math.random() * availablePersonas.length)];
         const matchId = `match_bot_${Math.random().toString(36).substr(2, 9)}`;
         
         // Mock bot player
@@ -1039,7 +1188,8 @@ const app = express();
         banUntil: 0, 
         banCount: 0,
         isPermanentBan: 0,
-        reportedBy: [] 
+        reportedBy: [],
+        tokens: 0
       });
       savePlayerData(serial);
       callback({ serial, name: filteredName });
@@ -1180,11 +1330,16 @@ const app = express();
       }
     });
 
-    socket.on("find_random_match", ({ playerId, playerName, avatar, age, xp, streak, serial, wins }) => {
+    socket.on("find_random_match", ({ playerId, playerName, avatar, age, xp, streak, serial, wins, useToken }) => {
       // Check if player is banned
       const bannedPlayer = allPlayers.get(serial);
       if (!bannedPlayer) {
         socket.emit("auth_error");
+        return;
+      }
+
+      if (useToken && (bannedPlayer.tokens || 0) <= 0) {
+        socket.emit("error", "لا تملك Tokens كافية");
         return;
       }
       
@@ -1232,6 +1387,7 @@ const app = express();
         streak: streak || 0,
         serial: serial,
         wins: actualWins,
+        useToken: !!useToken,
         skipped: new Map(), // Initialize skipped map (playerId -> timestamp)
         joinedAt: Date.now()
       });
@@ -1333,7 +1489,8 @@ const app = express();
               streak: match.p1.streak || 0,
               wins: match.p1.wins || 0,
               reports: p1ServerPlayer ? p1ServerPlayer.reports : 0,
-              reportedBy: p1ServerPlayer ? p1ServerPlayer.reportedBy : []
+              reportedBy: p1ServerPlayer ? p1ServerPlayer.reportedBy : [],
+              useToken: match.p1.useToken
             },
             {
               id: match.p2.socket.id,
@@ -1359,7 +1516,8 @@ const app = express();
               reports: p2ServerPlayer ? p2ServerPlayer.reports : 0,
               reportedBy: p2ServerPlayer ? p2ServerPlayer.reportedBy : [],
               isBot: match.p2.isBot,
-              persona: match.p2.persona
+              persona: match.p2.persona,
+              useToken: match.p2.useToken
             }
           ],
           gameState: "waiting",
@@ -1760,6 +1918,113 @@ const app = express();
       }
     });
 
+    socket.on("admin_get_shop_items", (callback) => {
+      const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (player?.isAdmin || socket.data?.isAdmin) {
+        try {
+          const items = db.prepare('SELECT * FROM shop_items ORDER BY timestamp DESC').all();
+          callback(items);
+        } catch (err) {
+          callback({ error: "Database error" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_add_shop_item", (item, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          const id = Math.random().toString(36).substring(2, 15);
+          db.prepare('INSERT INTO shop_items (id, name, description, price, type, image, amount, active, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+            id, item.name, item.description, item.price, item.type, item.image, item.amount || 0, item.active ? 1 : 0, Date.now()
+          );
+          callback({ success: true, id });
+        } catch (err) {
+          callback({ error: "Database error" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_update_shop_item", ({ id, updates }, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          const setClause = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+          const values = Object.values(updates);
+          db.prepare(`UPDATE shop_items SET ${setClause} WHERE id = ?`).run(...values, id);
+          callback({ success: true });
+        } catch (err) {
+          callback({ error: "Database error" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_delete_shop_item", (id, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          db.prepare('DELETE FROM shop_items WHERE id = ?').run(id);
+          callback({ success: true });
+        } catch (err) {
+          callback({ error: "Database error" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_get_settings", (callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          const rows = db.prepare('SELECT * FROM settings').all();
+          const settings = rows.reduce((acc: any, row: any) => {
+            acc[row.key] = row.value;
+            return acc;
+          }, {});
+          callback(settings);
+        } catch (err) {
+          callback({ error: "Database error" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_update_settings", (settings, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
+          db.transaction(() => {
+            for (const [key, value] of Object.entries(settings)) {
+              stmt.run(key, String(value));
+            }
+          })();
+          callback({ success: true });
+        } catch (err) {
+          callback({ error: "Database error" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("get_shop_items", (callback) => {
+      try {
+        const items = db.prepare('SELECT * FROM shop_items WHERE active = 1 ORDER BY timestamp DESC').all();
+        callback(items);
+      } catch (err) {
+        callback([]);
+      }
+    });
+
     socket.on("admin_get_reports", (callback) => {
       const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
       if (player?.isAdmin || socket.data?.isAdmin) {
@@ -2074,16 +2339,20 @@ const app = express();
       // Calculate updates
       const updates: any = {};
       if (winner) {
-        const winnerXP = 100 + (winner.streak || 0) * 10;
+        let winnerXP = 100 + (winner.streak || 0) * 10;
+        if (winner.useToken) {
+          winnerXP += 400; // Bonus XP for using token
+        }
         winner.xp = (winner.xp || 0) + winnerXP;
         winner.streak = (winner.streak || 0) + 1;
         winner.wins = (winner.wins || 0) + 1;
         updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true };
       }
       if (loser) {
-        loser.xp = (loser.xp || 0) + 20;
+        let loserXP = 20;
+        loser.xp = (loser.xp || 0) + loserXP;
         loser.streak = 0;
-        updates[loser.id] = { xp: 20, streak: 0, wins: loser.wins || 0, won: false };
+        updates[loser.id] = { xp: loserXP, streak: 0, wins: loser.wins || 0, won: false };
       }
 
       // Update allPlayers leaderboard
@@ -2094,6 +2363,12 @@ const app = express();
           player.xp = p.xp;
           player.level = getLevel(p.xp);
           player.wins = p.wins || 0;
+          
+          if (p.useToken && (player.tokens || 0) > 0) {
+            player.tokens = (player.tokens || 0) - 1;
+            p.useToken = false; // Prevent deducting again if play_again is used
+          }
+          
           savePlayerData(player.serial);
         } else {
           // Fallback to name search
@@ -2102,6 +2377,12 @@ const app = express();
               data.xp = p.xp;
               data.level = getLevel(p.xp);
               data.wins = p.wins || 0;
+              
+              if (p.useToken && (data.tokens || 0) > 0) {
+                data.tokens = (data.tokens || 0) - 1;
+                p.useToken = false;
+              }
+              
               savePlayerData(serial);
               break;
             }
