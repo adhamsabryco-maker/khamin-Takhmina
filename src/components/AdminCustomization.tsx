@@ -5,6 +5,13 @@ import { useAvatarConfig } from '../contexts/AvatarContext';
 export const AdminCustomization = () => {
   const [uploading, setUploading] = useState(false);
   const { customConfig: config, refreshConfig } = useAvatarConfig();
+  const [versionInput, setVersionInput] = useState(config.version || '1.0.0');
+
+  useEffect(() => {
+    if (config.version) {
+      setVersionInput(config.version);
+    }
+  }, [config.version]);
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: string, level?: number) => {
     const file = event.target.files?.[0];
@@ -184,20 +191,14 @@ export const AdminCustomization = () => {
             <div className="flex items-center gap-3">
               <input 
                 type="text" 
-                value={config.version || '1.0.0'} 
-                onChange={async (e) => {
-                  // We don't save on every keystroke to avoid too many writes
-                  // But for simplicity in this UI, we can just use a local state and a save button
-                }}
+                value={versionInput} 
+                onChange={(e) => setVersionInput(e.target.value)}
                 className="flex-1 px-4 py-2 border-2 border-gray-100 rounded-xl focus:border-purple-400 outline-none font-mono"
                 placeholder="مثلاً: 1.0.1"
-                id="version-input"
               />
               <button 
                 onClick={async () => {
-                  const input = document.getElementById('version-input') as HTMLInputElement;
-                  const newVersion = input.value;
-                  const newConfig = { ...config, version: newVersion };
+                  const newConfig = { ...config, version: versionInput };
                   try {
                     await fetch('/api/config', {
                       method: 'POST',
