@@ -12,6 +12,7 @@ import {
   Sparkles, 
   Gamepad2,
   ChevronRight,
+  ChevronLeft,
   HelpCircle,
   Snowflake,
   MessageSquare,
