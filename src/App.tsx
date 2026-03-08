@@ -352,6 +352,7 @@ export default function App() {
   const [showShopModal, setShowShopModal] = useState(false);
   const [showTokenInfoModal, setShowTokenInfoModal] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
+  const [activePowerUp, setActivePowerUp] = useState<string | null>(null);
 
   const toggleTokenInfo = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -396,11 +397,33 @@ export default function App() {
 
   const claimAdReward = () => {
     if (adTimer > 0) return;
-    // TODO: Re-enable this once Google Adsense is integrated
-    console.log('Ad reward claim disabled until Google Adsense is integrated');
-    alert('نظام الإعلانات قيد التطوير حالياً، سيتم تفعيله قريباً!');
+    
+    if (activePowerUp) {
+      // 1. Send message to opponent
+      const powerUpName = {
+        quick_guess: 'تخمين سريع',
+        hint: 'نصيحة',
+        word_length: 'كاشف الحروف',
+        time_freeze: 'تجميد الوقت',
+        spy_lens: 'الجاسوس'
+      }[activePowerUp];
+      
+      socket?.emit('send_chat', { 
+        roomId, 
+        message: `يقوم ${playerName} بمشاهدة إعلان لفتح واستخدام وسيلة مساعدة "${powerUpName}" انتظر قليلاً.` 
+      });
+
+      // 2. Emit use_card
+      socket?.emit('use_card', { roomId, cardType: activePowerUp });
+      
+      // 3. Reset
+      setActivePowerUp(null);
+    } else {
+      // Original token reward logic
+      socket?.emit('watch_ad_request', { serial: playerSerial });
+    }
+    
     setShowAdModal(false);
-    // socket?.emit('watch_ad_request', { serial: playerSerial });
   };
 
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
@@ -1757,14 +1780,13 @@ export default function App() {
     if (roomId.startsWith('random_')) setRoomId('');
   };
 
-  const useCard = (type: 'quick_guess' | 'hint') => {
+  const useCard = (type: 'quick_guess' | 'hint' | 'word_length' | 'time_freeze' | 'spy_lens') => {
     if (cooldowns[type] > 0) return;
-    socket?.emit('use_card', { roomId, cardType: type });
     
-    // Hint has 150s cooldown (2.5m)
-    if (type === 'hint') {
-      setCooldowns(prev => ({ ...prev, [type]: 150 }));
-    }
+    // Set active power-up and show ad modal
+    setActivePowerUp(type);
+    setShowAdModal(true);
+    setAdTimer(5); // 5 seconds ad simulation
   };
 
   const me = room?.players.find(p => p.id === socket?.id);
@@ -1946,6 +1968,27 @@ export default function App() {
                       70 ج.م
                     </button>
                   </div>
+
+                  {/* Ad-free Power-ups Package (Level 50+) */}
+                  {getLevel(xp) >= 50 && (
+                    <div className="flex items-center justify-between p-4 border-2 border-accent-orange rounded-2xl bg-orange-50 mt-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-accent-orange-soft rounded-xl flex items-center justify-center text-2xl">
+                          ⚡
+                        </div>
+                        <div>
+                          <div className="font-black text-brown-dark">باقة المحترفين</div>
+                          <div className="text-xs font-bold text-brown-muted">استخدم وسائل المساعدة بدون إعلانات</div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
+                        className="bg-accent-orange hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
+                      >
+                        150 ج.م
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
