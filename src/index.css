@@ -69,6 +69,18 @@
 
   /* Modal Background */
   --bg-modal: #ffffff;
+
+  /* Progress Bars */
+  --level-bar-bg: #f6e6cd;
+  --level-bar-fill: #3b82f6;
+  --xp-bar-bg: #f6e6cd;
+  --xp-bar-fill: #fb923c;
+  --xp-bar-text: #7c2d12;
+  --xp-bar-text-active: #ffffff;
+  --report-bar-bg: #f6e6cd;
+  --report-bar-low: #10b981;
+  --report-bar-medium: #f97316;
+  --report-bar-high: #ef4444;
 }
 
 /* 

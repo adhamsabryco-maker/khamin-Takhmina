@@ -117,6 +117,16 @@ interface ThemeConfig {
 
   // Modal
   modalBg: string;
+  levelBarBg: string;
+  levelBarFill: string;
+  xpBarBg: string;
+  xpBarFill: string;
+  xpBarText: string;
+  xpBarTextActive: string;
+  reportBarBg: string;
+  reportBarLow: string;
+  reportBarMedium: string;
+  reportBarHigh: string;
 }
 
 const DEFAULT_THEME: ThemeConfig = {
@@ -170,6 +180,16 @@ const DEFAULT_THEME: ThemeConfig = {
   rank3Border: '#F97316', // orange-500
   
   modalBg: '#ffffff',
+  levelBarBg: '#f6e6cd',
+  levelBarFill: '#3b82f6',
+  xpBarBg: '#f6e6cd',
+  xpBarFill: '#fb923c',
+  xpBarText: '#7c2d12',
+  xpBarTextActive: '#ffffff',
+  reportBarBg: '#f6e6cd',
+  reportBarLow: '#10b981',
+  reportBarMedium: '#f97316',
+  reportBarHigh: '#ef4444',
 };
 
 // Types
@@ -426,6 +446,18 @@ export default function App() {
 
     // Modal
     root.style.setProperty('--bg-modal', themeConfig.modalBg);
+
+    // Progress Bars
+    root.style.setProperty('--level-bar-bg', themeConfig.levelBarBg);
+    root.style.setProperty('--level-bar-fill', themeConfig.levelBarFill);
+    root.style.setProperty('--xp-bar-bg', themeConfig.xpBarBg);
+    root.style.setProperty('--xp-bar-fill', themeConfig.xpBarFill);
+    root.style.setProperty('--xp-bar-text', themeConfig.xpBarText);
+    root.style.setProperty('--xp-bar-text-active', themeConfig.xpBarTextActive);
+    root.style.setProperty('--report-bar-bg', themeConfig.reportBarBg);
+    root.style.setProperty('--report-bar-low', themeConfig.reportBarLow);
+    root.style.setProperty('--report-bar-medium', themeConfig.reportBarMedium);
+    root.style.setProperty('--report-bar-high', themeConfig.reportBarHigh);
 
     // Danger Button
     root.style.setProperty('--btn-danger-bg-start', themeConfig.btnDangerBgStart);
@@ -2119,19 +2151,19 @@ export default function App() {
                       <div className="flex justify-between items-center mb-1 flex-row-reverse">
                         <span className="text-xs font-black text-brown-muted">Level {getLevel(xp)}</span>
                       </div>
-                      <div className="w-full bg-[#F6E6CD] rounded-full h-2 overflow-hidden mb-2" dir="ltr">
+                      <div className="w-full bg-[var(--level-bar-bg)] rounded-full h-2 overflow-hidden mb-2" dir="ltr">
                         <div 
-                          className="bg-gradient-to-r from-blue-400 to-blue-600 h-full transition-all duration-500" 
-                          style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
+                          className="h-full transition-all duration-500" 
+                          style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
                         ></div>
                       </div>
-                      <div className="w-full bg-[#F6E6CD] rounded-full h-5 shadow-inner overflow-hidden relative border border-[#E1CCAB]" dir="ltr">
+                      <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 shadow-inner overflow-hidden relative border border-[#E1CCAB]" dir="ltr">
                         <div 
-                          className="bg-gradient-to-r from-orange-400 to-orange-500 h-full transition-all duration-500" 
-                          style={{ width: `${getXpProgress(xp)}%` }}
+                          className="h-full transition-all duration-500" 
+                          style={{ width: `${getXpProgress(xp)}%`, backgroundColor: 'var(--xp-bar-fill)' }}
                         ></div>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-[10px] font-black text-orange-900 drop-shadow-sm flex items-center gap-1">
+                          <span className="text-[10px] font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(xp) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
                             <Zap className="w-3 h-3" />
                             {xp} / {getXpForNextLevel(getLevel(xp))} XP
                           </span>
@@ -2362,11 +2394,14 @@ export default function App() {
                         متبقي {Math.max(0, 10 - reports)} للحظر
                       </span>
                     </div>
-                    <div className="h-2 bg-[#F6E6CD] rounded-full overflow-hidden">
+                    <div className="h-2 bg-[var(--report-bar-bg)] rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
-                        animate={{ width: `${(reports / 10) * 100}%` }}
-                        className={`h-full ${reports >= 7 ? 'bg-red-500' : reports >= 4 ? 'bg-orange-500' : 'bg-emerald-500'}`}
+                        animate={{ width: `${Math.min(100, (reports / 10) * 100)}%` }}
+                        className="h-full"
+                        style={{ 
+                          backgroundColor: reports >= 7 ? 'var(--report-bar-high)' : reports >= 4 ? 'var(--report-bar-medium)' : 'var(--report-bar-low)' 
+                        }}
                       />
                     </div>
                   </div>
@@ -2789,6 +2824,66 @@ export default function App() {
                                     className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
                                   />
                                 </div>
+                              </div>
+                            </div>
+
+                            {/* Progress Bars */}
+                            <div className="space-y-4">
+                              <h4 className="font-black text-brown-dark border-b pb-2">أشرطة التقدم (Progress Bars)</h4>
+                              
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">خلفية شريط المستوى</label>
+                                <input type="color" value={themeConfig.levelBarBg} onChange={(e) => setThemeConfig({...themeConfig, levelBarBg: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">تعبئة شريط المستوى</label>
+                                <input type="color" value={themeConfig.levelBarFill} onChange={(e) => setThemeConfig({...themeConfig, levelBarFill: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">خلفية شريط الـ XP</label>
+                                <input type="color" value={themeConfig.xpBarBg} onChange={(e) => setThemeConfig({...themeConfig, xpBarBg: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">تعبئة شريط الـ XP</label>
+                                <input type="color" value={themeConfig.xpBarFill} onChange={(e) => setThemeConfig({...themeConfig, xpBarFill: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">نص الـ XP (قبل المليء)</label>
+                                <input type="color" value={themeConfig.xpBarText} onChange={(e) => setThemeConfig({...themeConfig, xpBarText: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">نص الـ XP (بعد المليء)</label>
+                                <input type="color" value={themeConfig.xpBarTextActive} onChange={(e) => setThemeConfig({...themeConfig, xpBarTextActive: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+                            </div>
+
+                            {/* Report Bar */}
+                            <div className="space-y-4">
+                              <h4 className="font-black text-brown-dark border-b pb-2">شريط البلاغات</h4>
+                              
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">خلفية شريط البلاغات</label>
+                                <input type="color" value={themeConfig.reportBarBg} onChange={(e) => setThemeConfig({...themeConfig, reportBarBg: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون البلاغات (منخفض)</label>
+                                <input type="color" value={themeConfig.reportBarLow} onChange={(e) => setThemeConfig({...themeConfig, reportBarLow: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون البلاغات (متوسط)</label>
+                                <input type="color" value={themeConfig.reportBarMedium} onChange={(e) => setThemeConfig({...themeConfig, reportBarMedium: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون البلاغات (مرتفع)</label>
+                                <input type="color" value={themeConfig.reportBarHigh} onChange={(e) => setThemeConfig({...themeConfig, reportBarHigh: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
                               </div>
                             </div>
 
