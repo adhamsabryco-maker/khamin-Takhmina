@@ -425,7 +425,19 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAdModal, adTimer]);
 
-  const [hasProPackage, setHasProPackage] = useState(() => localStorage.getItem('khamin_pro_package') === 'true');
+  const [proPackageExpiry, setProPackageExpiry] = useState<number | null>(() => {
+    const saved = localStorage.getItem('khamin_pro_package_expiry');
+    if (saved) return parseInt(saved);
+    if (localStorage.getItem('khamin_pro_package') === 'true') {
+      const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
+      localStorage.setItem('khamin_pro_package_expiry', expiry.toString());
+      localStorage.removeItem('khamin_pro_package');
+      return expiry;
+    }
+    return null;
+  });
+  const hasProPackage = proPackageExpiry !== null && proPackageExpiry > Date.now();
+  const proPackageDaysLeft = hasProPackage ? Math.ceil((proPackageExpiry! - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [topPlayers, setTopPlayers] = useState<any[]>(() => {
@@ -1334,6 +1346,12 @@ export default function App() {
 
     newSocket.on('game_finished', ({ room, winnerId, updates }) => {
       setRoom(room);
+      setCooldowns({});
+      setReadyPowerUps([]);
+      setActivePowerUp(null);
+      setShowAdConfirmation(false);
+      setShowAdModal(false);
+      setAdTimer(0);
       const isWinner = winnerId === newSocket.id;
       if (isWinner) {
         playSound('win');
@@ -1431,6 +1449,11 @@ export default function App() {
     newSocket.on('game_started', () => {
       setChatHistory([]);
       setCooldowns({});
+      setReadyPowerUps([]);
+      setActivePowerUp(null);
+      setShowAdConfirmation(false);
+      setShowAdModal(false);
+      setAdTimer(0);
     });
 
     newSocket.on('quick_guess_started', ({ playerId }) => {
@@ -1481,6 +1504,12 @@ export default function App() {
       setChatHistory([]);
       setRoomId(prev => prev.startsWith('random_') ? '' : prev);
       setIsOpponentBlocked(false);
+      setCooldowns({});
+      setReadyPowerUps([]);
+      setActivePowerUp(null);
+      setShowAdConfirmation(false);
+      setShowAdModal(false);
+      setAdTimer(0);
       setTimeout(() => setError(''), 5000);
     });
 
@@ -1492,6 +1521,12 @@ export default function App() {
       setChatHistory([]);
       setRoomId(prev => prev.startsWith('random_') ? '' : prev);
       setIsOpponentBlocked(false);
+      setCooldowns({});
+      setReadyPowerUps([]);
+      setActivePowerUp(null);
+      setShowAdConfirmation(false);
+      setShowAdModal(false);
+      setAdTimer(0);
       setError('غادر المنافس الغرفة');
       setTimeout(() => setError(''), 3000);
     });
@@ -1780,6 +1815,12 @@ export default function App() {
     setHint(null);
     setChatHistory([]); // Clear chat
     setIsOpponentBlocked(false);
+    setCooldowns({});
+    setReadyPowerUps([]);
+    setActivePowerUp(null);
+    setShowAdConfirmation(false);
+    setShowAdModal(false);
+    setAdTimer(0);
     if (roomId.startsWith('random_')) setRoomId('');
   };
 
@@ -1986,11 +2027,10 @@ export default function App() {
                         </div>
                       </div>
                       <button 
-                        onClick={handleWatchAd}
-                        disabled={(!adStatus.canWatch || adStatus.loading) || getLevel(xp) < 50}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${getLevel(xp) >= 50 && adStatus.canWatch ? 'bg-accent-green hover:brightness-110 text-white' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
+                        onClick={() => alert('سيتم تفعيل الإعلانات قريباً!')}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 bg-gray-300 text-brown-muted cursor-not-allowed`}
                       >
-                        {getLevel(xp) < 50 ? 'مستوى 50+ مطلوب' : (adStatus.loading ? 'جاري التحميل...' : (adStatus.canWatch ? 'شاهد الآن' : 'انتهت المحاولات'))}
+                        قريباً
                       </button>
                     </div>
                   )}
@@ -2066,22 +2106,27 @@ export default function App() {
                         <div className="text-xs font-bold text-brown-muted">استخدم وسائل المساعدة بدون إعلانات</div>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => {
-                        if (getLevel(xp) < 50) {
-                          alert('يجب أن تصل للمستوى 50 لتتمكن من شراء هذه الباقة!');
-                        } else {
-                          // Mocking purchase for now
-                          setHasProPackage(true);
-                          localStorage.setItem('khamin_pro_package', 'true');
-                          alert('تم تفعيل باقة المحترفين بنجاح!');
-                        }
-                      }}
-                      disabled={hasProPackage}
-                      className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md ${getLevel(xp) >= 50 && !hasProPackage ? 'bg-accent-orange hover:brightness-110 text-white' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
-                    >
-                      {hasProPackage ? 'تم الشراء' : '150 ج.م'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {isAdmin && (
+                        <button 
+                          onClick={() => {
+                            const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
+                            setProPackageExpiry(expiry);
+                            localStorage.setItem('khamin_pro_package_expiry', expiry.toString());
+                            alert('تم تفعيل باقة المحترفين للتجربة (30 يوم)!');
+                          }}
+                          className="px-3 py-2 rounded-xl font-black text-xs transition-all shadow-md bg-yellow-400 hover:bg-yellow-500 text-yellow-900"
+                        >
+                          تفعيل للتجربة
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md bg-gray-300 text-brown-muted cursor-not-allowed`}
+                      >
+                        {hasProPackage ? 'تم الشراء' : 'قريباً'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4180,6 +4225,21 @@ export default function App() {
                 <div className="flex justify-between items-center mb-1 flex-row-reverse">
                   <div className="text-sm md:text-base font-black text-main truncate text-right">{playerName || 'لاعب جديد'}</div>
                   <div className="flex items-center gap-2">
+                    <span 
+                      className={`text-xs md:text-sm font-black box-game px-2 py-0.5 flex items-center gap-1 transition-all ${
+                        hasProPackage 
+                          ? 'text-yellow-600' 
+                          : 'text-gray-400 opacity-70'
+                      }`} 
+                      title="باقة المحترفين"
+                    >
+                      <Zap className={`w-3 h-3 transition-all ${
+                        hasProPackage 
+                          ? 'fill-yellow-500 text-yellow-500 animate-pulse' 
+                          : 'fill-gray-400 text-gray-400'
+                      }`} />
+                      <span className="text-[10px]" dir="ltr">Day({proPackageDaysLeft})</span>
+                    </span>
                     <span className="text-xs md:text-sm font-black text-accent-purple box-game px-2 py-0.5 flex items-center gap-1">
                       {tokens} <span className="text-[10px] text-accent-purple">Tokens</span>
                     </span>
