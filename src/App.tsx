@@ -108,6 +108,15 @@ interface ThemeConfig {
   rank3BgStart: string;
   rank3BgEnd: string;
   rank3Border: string;
+
+  // Success Button
+  btnSuccessBgStart: string;
+  btnSuccessBgEnd: string;
+  btnSuccessBorder: string;
+  btnSuccessHover: string;
+
+  // Modal
+  modalBg: string;
 }
 
 const DEFAULT_THEME: ThemeConfig = {
@@ -128,6 +137,11 @@ const DEFAULT_THEME: ThemeConfig = {
   btnSecondaryBgEnd: '#ade03e',
   btnSecondaryBorder: '#348d20',
   btnSecondaryHover: '#92CB79',
+
+  btnSuccessBgStart: '#1DD1A1',
+  btnSuccessBgEnd: '#10AC84',
+  btnSuccessBorder: '#10AC84',
+  btnSuccessHover: '#3DE1B1',
 
   btnDangerBgStart: '#FF9F43',
   btnDangerBgEnd: '#FFB66D',
@@ -154,6 +168,8 @@ const DEFAULT_THEME: ThemeConfig = {
   rank3BgStart: '#FB923C', // orange-400
   rank3BgEnd: '#F6E6CD',
   rank3Border: '#F97316', // orange-500
+  
+  modalBg: '#ffffff',
 };
 
 // Types
@@ -401,6 +417,15 @@ export default function App() {
     root.style.setProperty('--btn-secondary-bg-end', themeConfig.btnSecondaryBgEnd);
     root.style.setProperty('--btn-secondary-border', themeConfig.btnSecondaryBorder);
     root.style.setProperty('--btn-secondary-hover', themeConfig.btnSecondaryHover);
+
+    // Success Button
+    root.style.setProperty('--btn-success-bg-start', themeConfig.btnSuccessBgStart);
+    root.style.setProperty('--btn-success-bg-end', themeConfig.btnSuccessBgEnd);
+    root.style.setProperty('--btn-success-border', themeConfig.btnSuccessBorder);
+    root.style.setProperty('--btn-success-hover', themeConfig.btnSuccessHover);
+
+    // Modal
+    root.style.setProperty('--bg-modal', themeConfig.modalBg);
 
     // Danger Button
     root.style.setProperty('--btn-danger-bg-start', themeConfig.btnDangerBgStart);
@@ -2752,6 +2777,19 @@ export default function App() {
                                   />
                                 </div>
                               </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون النوافذ المنبثقة (Modals)</label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.modalBg}</span>
+                                  <input 
+                                    type="color" 
+                                    value={themeConfig.modalBg}
+                                    onChange={(e) => setThemeConfig({...themeConfig, modalBg: e.target.value})}
+                                    className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                                  />
+                                </div>
+                              </div>
                             </div>
 
                             {/* Text & Borders */}
@@ -2845,6 +2883,28 @@ export default function App() {
                                     <input type="color" value={themeConfig.btnSecondaryHover} onChange={(e) => setThemeConfig({...themeConfig, btnSecondaryHover: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
                                   </div>
                                   <button className="btn-game btn-secondary w-full py-2 mt-2">تجربة الزر</button>
+                                </div>
+
+                                {/* Success Button */}
+                                <div className="space-y-2">
+                                  <h5 className="text-xs font-black text-brown-light">زر النجاح (Success) - الأخضر</h5>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">بداية التدرج</label>
+                                    <input type="color" value={themeConfig.btnSuccessBgStart} onChange={(e) => setThemeConfig({...themeConfig, btnSuccessBgStart: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">نهاية التدرج</label>
+                                    <input type="color" value={themeConfig.btnSuccessBgEnd} onChange={(e) => setThemeConfig({...themeConfig, btnSuccessBgEnd: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">الحدود</label>
+                                    <input type="color" value={themeConfig.btnSuccessBorder} onChange={(e) => setThemeConfig({...themeConfig, btnSuccessBorder: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">عند التحويم (Hover)</label>
+                                    <input type="color" value={themeConfig.btnSuccessHover} onChange={(e) => setThemeConfig({...themeConfig, btnSuccessHover: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <button className="btn-game btn-success w-full py-2 mt-2">تجربة الزر</button>
                                 </div>
 
                                 {/* Danger Button */}
@@ -4936,7 +4996,7 @@ export default function App() {
               initial={{ scale: 0.8, y: 50, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               transition={{ type: 'spring', damping: 15 }}
-              className="relative max-w-xs w-full bg-white rounded-[32px] shadow-2xl p-4 text-center border-4 border-white"
+              className="relative max-w-xs w-full bg-modal-theme rounded-[32px] shadow-2xl p-4 text-center border-4 border-white"
             >
               {room.winnerId === me?.id ? (
                 <div className="mb-4">

@@ -60,6 +60,15 @@
   --rank-3-bg-start: #FB923C;
   --rank-3-bg-end: #F6E6CD;
   --rank-3-border: #F97316;
+
+  /* Success Button (Green) */
+  --btn-success-bg-start: #1DD1A1;
+  --btn-success-bg-end: #10AC84;
+  --btn-success-border: #10AC84;
+  --btn-success-hover: #3DE1B1;
+
+  /* Modal Background */
+  --bg-modal: #ffffff;
 }
 
 /* 
@@ -223,13 +232,23 @@ body {
 
 /* Success Action (Green) */
 .btn-success {
-  @apply bg-[#1DD1A1] text-white rounded-2xl border-b-[6px] border-[#10AC84] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+  @apply text-white rounded-2xl border-b-[6px] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+  background: linear-gradient(to top, var(--btn-success-bg-start), var(--btn-success-bg-end));
+  border-color: var(--btn-success-border);
+  transition: transform 0.2s, shadow 0.2s, border-color 0.2s, background 0.2s;
 }
 .btn-success:hover {
-  @apply bg-[#3DE1B1] -translate-y-[2px];
+  @apply -translate-y-[2px];
+  filter: brightness(1.1);
+  background: var(--btn-success-hover);
 }
 .btn-success:active {
   @apply border-b-0 translate-y-[4px];
+}
+
+/* Modal Background Class */
+.bg-modal-theme {
+  background-color: var(--bg-modal);
 }
 
 /* Danger/Warning Action (Yellow/Orange) */
