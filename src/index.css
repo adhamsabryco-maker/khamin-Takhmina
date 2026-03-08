@@ -10,6 +10,21 @@
   --color-brown-soft: #D2B48C;
 }
 
+:root {
+  --bg-body-start: #7C4737;
+  --bg-body-end: #433431;
+  --text-main: #533933;
+  --text-light: #FBF4E1;
+  --border-game: #E1CCAB;
+  --bg-box: #F6E6CD;
+  --bg-card: #fbf4e1;
+  --btn-primary-bg: #FF6B6B;
+  --btn-primary-border: #EE5253;
+  --btn-secondary-bg-start: #5ab72e;
+  --btn-secondary-bg-end: #ade03e;
+  --btn-secondary-border: #348d20;
+}
+
 /* 
   CASUAL GAME UI THEME - "JUICY POP"
   Style: High Contrast, Tactile, Vibrant, Cartoon-like
@@ -17,35 +32,43 @@
 
 body {
   font-family: "Fredoka", "Cairo", sans-serif;
-  background: radial-gradient(circle at center, #7C4737 0%, #433431 100%);
+  background: radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%);
   background-attachment: fixed;
-  color: #533933;
+  color: var(--text-main);
   direction: rtl;
 }
 
 .text-main {
-  color: #533933;
+  color: var(--text-main);
 }
 
 .text-light {
-  color: #FBF4E1;
+  color: var(--text-light);
 }
 
 .border-game {
-  border-color: #E1CCAB;
+  border-color: var(--border-game);
 }
 
 .box-game {
-  @apply bg-[#F6E6CD] border-2 border-[#E1CCAB] rounded-xl;
+  @apply border-2 rounded-xl;
+  background-color: var(--bg-box);
+  border-color: var(--border-game);
 }
 
 .checkbox-game {
-  @apply appearance-none w-5 h-5 bg-[#FBF4E1] border-2 border-[#E1CCAB] rounded cursor-pointer checked:bg-[#CAA683] transition-all relative;
+  @apply appearance-none w-5 h-5 border-2 rounded cursor-pointer transition-all relative;
+  background-color: var(--bg-card);
+  border-color: var(--border-game);
+}
+.checkbox-game:checked {
+  background-color: #CAA683; /* Keep checked state separate for now or make variable */
 }
 
 .checkbox-game:checked::after {
   content: '✓';
-  @apply absolute inset-0 flex items-center justify-center text-[#533933] font-black text-xs;
+  @apply absolute inset-0 flex items-center justify-center font-black text-xs;
+  color: var(--text-main);
 }
 
 /* Custom Scrollbar */
@@ -75,10 +98,13 @@ body {
 
 /* Primary Action (Orange/Red) */
 .btn-primary {
-  @apply bg-[#FF6B6B] text-white rounded-2xl border-b-[6px] border-[#EE5253] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+  @apply text-white rounded-2xl border-b-[6px] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-border);
 }
 .btn-primary:hover {
-  @apply bg-[#FF8787] -translate-y-[2px];
+  @apply -translate-y-[2px];
+  filter: brightness(1.1);
 }
 .btn-primary:active {
   @apply border-b-0 translate-y-[4px];
@@ -86,15 +112,17 @@ body {
 
 /* Secondary Action (Green Gradient) */
 .btn-secondary {
-  background: #5ab72e; /* Fallback color */
-  background: linear-gradient(to top, #5ab72e, #ade03e);
-  @apply text-white rounded-2xl border-b-[6px] border-[#348d20] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+  background: var(--btn-secondary-bg-start); /* Fallback color */
+  background: linear-gradient(to top, var(--btn-secondary-bg-start), var(--btn-secondary-bg-end));
+  @apply text-white rounded-2xl border-b-[6px] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+  border-color: var(--btn-secondary-border);
   transition: transform 0.2s, shadow 0.2s, border-color 0.2s, background 0.2s;
 }
 .btn-secondary:hover {
   @apply -translate-y-[2px];
-  background: #92CB79;
+  filter: brightness(1.1);
   background-image: none; /* Ensure gradient is removed cleanly */
+  background-color: var(--btn-secondary-bg-end);
 }
 .btn-secondary:active {
   @apply border-b-0 translate-y-[4px];
@@ -124,21 +152,30 @@ body {
 
 /* 2. The "Game Card" Container */
 .card-game {
-  @apply bg-[#fbf4e1] rounded-[32px] border-[4px] border-[#E1CCAB] shadow-[0_8px_0_rgba(0,0,0,0.05)];
+  @apply rounded-[32px] border-[4px] shadow-[0_8px_0_rgba(0,0,0,0.05)];
+  background-color: var(--bg-card);
+  border-color: var(--border-game);
 }
 
 /* 2.1. The "Player Data Card" Container */
 .player-card {
-  @apply bg-[#fbf4e1] rounded-[32px] border-2 border-[#E1CCAB] shadow-md backdrop-blur-sm;
+  @apply rounded-[32px] border-2 shadow-md backdrop-blur-sm;
+  background-color: var(--bg-card);
+  border-color: var(--border-game);
 }
 
 /* 3. The "Chunky" Input */
 .input-game {
-  @apply w-full bg-[#f6e6cd] border-[3px] border-[#e1ccab] rounded-2xl p-4 text-lg font-bold text-[#533933] placeholder-[#CAA683] outline-none transition-all;
+  @apply w-full border-[3px] rounded-2xl p-4 text-lg font-bold placeholder-[#CAA683] outline-none transition-all;
+  background-color: var(--bg-box);
+  border-color: var(--border-game);
+  color: var(--text-main);
   box-shadow: inset 0 4px 8px rgba(0,0,0,0.1), inset 0 1px 2px rgba(0,0,0,0.05);
 }
 .input-game:focus {
-  @apply bg-[#f6e6cd] border-[#e1ccab] shadow-[0_0_0_4px_rgba(225,204,171,0.4),_inset_0_4px_8px_rgba(0,0,0,0.1)];
+  @apply shadow-[0_0_0_4px_rgba(225,204,171,0.4),_inset_0_4px_8px_rgba(0,0,0,0.1)];
+  background-color: var(--bg-box);
+  border-color: var(--border-game);
 }
 
 /* Animations */

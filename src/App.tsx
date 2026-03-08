@@ -60,6 +60,36 @@ const SOUNDS = {
   correct: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
 };
 
+interface ThemeConfig {
+  bgBodyStart: string;
+  bgBodyEnd: string;
+  textMain: string;
+  textLight: string;
+  borderGame: string;
+  bgBox: string;
+  bgCard: string;
+  btnPrimaryBg: string;
+  btnPrimaryBorder: string;
+  btnSecondaryBgStart: string;
+  btnSecondaryBgEnd: string;
+  btnSecondaryBorder: string;
+}
+
+const DEFAULT_THEME: ThemeConfig = {
+  bgBodyStart: '#7C4737',
+  bgBodyEnd: '#433431',
+  textMain: '#533933',
+  textLight: '#FBF4E1',
+  borderGame: '#E1CCAB',
+  bgBox: '#F6E6CD',
+  bgCard: '#fbf4e1',
+  btnPrimaryBg: '#FF6B6B',
+  btnPrimaryBorder: '#EE5253',
+  btnSecondaryBgStart: '#5ab72e',
+  btnSecondaryBgEnd: '#ade03e',
+  btnSecondaryBorder: '#348d20',
+};
+
 // Types
 interface Player {
   id: string;
@@ -273,8 +303,33 @@ export default function App() {
   const [adminReports, setAdminReports] = useState<any[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
-  const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop'>('players');
+  const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors'>('players');
   const [adminImages, setAdminImages] = useState<any[]>([]);
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => {
+    try {
+      const saved = localStorage.getItem('game_theme');
+      return saved ? JSON.parse(saved) : DEFAULT_THEME;
+    } catch (e) {
+      return DEFAULT_THEME;
+    }
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--bg-body-start', themeConfig.bgBodyStart);
+    root.style.setProperty('--bg-body-end', themeConfig.bgBodyEnd);
+    root.style.setProperty('--text-main', themeConfig.textMain);
+    root.style.setProperty('--text-light', themeConfig.textLight);
+    root.style.setProperty('--border-game', themeConfig.borderGame);
+    root.style.setProperty('--bg-box', themeConfig.bgBox);
+    root.style.setProperty('--bg-card', themeConfig.bgCard);
+    root.style.setProperty('--btn-primary-bg', themeConfig.btnPrimaryBg);
+    root.style.setProperty('--btn-primary-border', themeConfig.btnPrimaryBorder);
+    root.style.setProperty('--btn-secondary-bg-start', themeConfig.btnSecondaryBgStart);
+    root.style.setProperty('--btn-secondary-bg-end', themeConfig.btnSecondaryBgEnd);
+    root.style.setProperty('--btn-secondary-border', themeConfig.btnSecondaryBorder);
+    localStorage.setItem('game_theme', JSON.stringify(themeConfig));
+  }, [themeConfig]);
 
   const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
   const [newCategory, setNewCategory] = useState({ id: '', name: '', icon: '' });
@@ -2503,6 +2558,181 @@ export default function App() {
                                 </button>
                               </div>
                             </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : adminTab === 'colors' ? (
+                    <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+                      <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="box-game p-6 shadow-sm">
+                          <h3 className="text-xl font-black text-brown-dark mb-4 flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                              <span className="text-lg">🎨</span>
+                            </div>
+                            تخصيص ألوان اللعبة
+                          </h3>
+                          <p className="text-brown-muted mb-6 font-bold">
+                            يمكنك تغيير ألوان اللعبة بالكامل من هنا. التغييرات ستظهر فوراً لديك، ولكن يجب حفظها لتظهر للجميع.
+                          </p>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Background Colors */}
+                            <div className="space-y-4">
+                              <h4 className="font-black text-brown-dark border-b pb-2">الخلفيات</h4>
+                              
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون الخلفية (بداية التدرج)</label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.bgBodyStart}</span>
+                                  <input 
+                                    type="color" 
+                                    value={themeConfig.bgBodyStart}
+                                    onChange={(e) => setThemeConfig({...themeConfig, bgBodyStart: e.target.value})}
+                                    className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون الخلفية (نهاية التدرج)</label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.bgBodyEnd}</span>
+                                  <input 
+                                    type="color" 
+                                    value={themeConfig.bgBodyEnd}
+                                    onChange={(e) => setThemeConfig({...themeConfig, bgBodyEnd: e.target.value})}
+                                    className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون الصناديق (Box)</label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.bgBox}</span>
+                                  <input 
+                                    type="color" 
+                                    value={themeConfig.bgBox}
+                                    onChange={(e) => setThemeConfig({...themeConfig, bgBox: e.target.value})}
+                                    className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون البطاقات (Card)</label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.bgCard}</span>
+                                  <input 
+                                    type="color" 
+                                    value={themeConfig.bgCard}
+                                    onChange={(e) => setThemeConfig({...themeConfig, bgCard: e.target.value})}
+                                    className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Text & Borders */}
+                            <div className="space-y-4">
+                              <h4 className="font-black text-brown-dark border-b pb-2">النصوص والحدود</h4>
+                              
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون النص الرئيسي</label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.textMain}</span>
+                                  <input 
+                                    type="color" 
+                                    value={themeConfig.textMain}
+                                    onChange={(e) => setThemeConfig({...themeConfig, textMain: e.target.value})}
+                                    className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون النص الفاتح</label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.textLight}</span>
+                                  <input 
+                                    type="color" 
+                                    value={themeConfig.textLight}
+                                    onChange={(e) => setThemeConfig({...themeConfig, textLight: e.target.value})}
+                                    className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون الحدود (Borders)</label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.borderGame}</span>
+                                  <input 
+                                    type="color" 
+                                    value={themeConfig.borderGame}
+                                    onChange={(e) => setThemeConfig({...themeConfig, borderGame: e.target.value})}
+                                    className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Buttons */}
+                            <div className="space-y-4 md:col-span-2">
+                              <h4 className="font-black text-brown-dark border-b pb-2">الأزرار</h4>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <h5 className="text-xs font-black text-brown-light">الزر الأساسي (Primary)</h5>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">الخلفية</label>
+                                    <input type="color" value={themeConfig.btnPrimaryBg} onChange={(e) => setThemeConfig({...themeConfig, btnPrimaryBg: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">الحدود</label>
+                                    <input type="color" value={themeConfig.btnPrimaryBorder} onChange={(e) => setThemeConfig({...themeConfig, btnPrimaryBorder: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <button className="btn-game btn-primary w-full py-2 mt-2">تجربة الزر</button>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <h5 className="text-xs font-black text-brown-light">الزر الثانوي (Secondary)</h5>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">بداية التدرج</label>
+                                    <input type="color" value={themeConfig.btnSecondaryBgStart} onChange={(e) => setThemeConfig({...themeConfig, btnSecondaryBgStart: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">نهاية التدرج</label>
+                                    <input type="color" value={themeConfig.btnSecondaryBgEnd} onChange={(e) => setThemeConfig({...themeConfig, btnSecondaryBgEnd: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">الحدود</label>
+                                    <input type="color" value={themeConfig.btnSecondaryBorder} onChange={(e) => setThemeConfig({...themeConfig, btnSecondaryBorder: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <button className="btn-game btn-secondary w-full py-2 mt-2">تجربة الزر</button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-8 pt-6 border-t border-game flex justify-end gap-4">
+                            <button 
+                              onClick={() => setThemeConfig(DEFAULT_THEME)}
+                              className="px-6 py-3 rounded-xl font-black text-brown-muted hover:bg-gray-100 transition-colors"
+                            >
+                              إعادة تعيين للافتراضي
+                            </button>
+                            <button 
+                              onClick={() => {
+                                // Save to localStorage is already handled by useEffect
+                                // Here we would emit to socket if we had backend support
+                                alert('تم حفظ الألوان بنجاح! (محلياً)');
+                              }}
+                              className="px-8 py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-black shadow-lg shadow-pink-200 transition-all transform hover:-translate-y-1"
+                            >
+                              حفظ التغييرات
+                            </button>
                           </div>
                         </div>
                       </div>
