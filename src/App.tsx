@@ -413,7 +413,11 @@ export default function App() {
     root.style.setProperty('--color-accent-purple', themeConfig.accentPurple);
     root.style.setProperty('--color-accent-blue', themeConfig.accentBlue);
     root.style.setProperty('--color-accent-green', themeConfig.accentGreen);
-
+    
+    // Also set these for backgrounds and borders if needed by CSS classes
+    // Note: The CSS classes .bg-accent-orange use var(--color-accent-orange) directly, 
+    // so we don't need separate variables unless we want different shades.
+    
     // Text Shades
     root.style.setProperty('--text-muted', themeConfig.textMuted);
     root.style.setProperty('--text-light-accent', themeConfig.textLightAccent);
@@ -1716,14 +1720,14 @@ export default function App() {
               </div>
               
               <div className="space-y-2">
-                <h2 className="text-3xl font-black text-yellow-400">إعلان تجريبي</h2>
+                <h2 className="text-3xl font-black text-accent-orange">إعلان تجريبي</h2>
                 <p className="text-brown-light font-bold">هذا مجرد محاكاة للإعلان. في النسخة النهائية سيظهر هنا إعلان حقيقي من Google.</p>
               </div>
 
               {adTimer === 0 && (
                 <button
                   onClick={claimAdReward}
-                  className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black text-xl shadow-lg shadow-green-500/30 transition-all"
+                  className="bg-accent-green hover:brightness-110 text-white px-8 py-4 rounded-2xl font-black text-xl shadow-lg transition-all"
                 >
                   استلام المكافأة (1 Token) 🎁
                 </button>
@@ -1784,24 +1788,24 @@ export default function App() {
                   {/* Free Ad Reward - Level 1+ Only */}
                   {getLevel(xp) >= 1 && (
                     <div className="flex items-center justify-between p-4 border-2 border-game box-game relative overflow-hidden mb-4">
-                      <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-sm z-10">
+                      <div className="absolute top-0 right-0 bg-accent-green text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-sm z-10">
                         مجاناً (Level 1+)
                       </div>
                       <div className="flex items-center gap-3 relative z-10">
-                        <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl animate-pulse">
+                        <div className="w-12 h-12 bg-accent-green-soft rounded-xl flex items-center justify-center text-2xl animate-pulse">
                           📺
                         </div>
                         <div>
                           <div className="font-black text-brown-dark">شاهد إعلان = 1 Token</div>
                           <div className="text-xs font-bold text-brown-muted">
-                            متبقي لك اليوم: <span className="text-green-600">{5 - adStatus.adsWatched}/5</span>
+                            متبقي لك اليوم: <span className="text-accent-green">{5 - adStatus.adsWatched}/5</span>
                           </div>
                         </div>
                       </div>
                       <button 
                         onClick={handleWatchAd}
                         disabled={(!adStatus.canWatch || adStatus.loading) && getLevel(xp) >= 50}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${getLevel(xp) >= 50 && adStatus.canWatch ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${getLevel(xp) >= 50 && adStatus.canWatch ? 'bg-accent-green hover:brightness-110 text-white' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
                       >
                         {getLevel(xp) < 50 ? 'مستوى 50+ مطلوب' : (adStatus.loading ? 'جاري التحميل...' : (adStatus.canWatch ? 'شاهد الآن' : 'انتهت المحاولات'))}
                       </button>
@@ -1809,9 +1813,9 @@ export default function App() {
                   )}
                   
                   {/* Package 1 */}
-                  <div className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-purple-200 transition-colors bg-white">
+                  <div className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-accent-purple transition-colors bg-white">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl font-black text-purple-600">
+                      <div className="w-12 h-12 bg-accent-purple-soft rounded-xl flex items-center justify-center text-2xl font-black text-accent-purple">
                         1
                       </div>
                       <div>
@@ -1821,7 +1825,7 @@ export default function App() {
                     </div>
                     <button 
                       onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md shadow-purple-200"
+                      className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
                     >
                       10 ج.م
                     </button>
@@ -1829,11 +1833,11 @@ export default function App() {
 
                   {/* Package 2 */}
                   <div className="flex items-center justify-between box-game p-4 relative">
-                    <div className="absolute -top-3 left-4 bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm">
+                    <div className="absolute -top-3 left-4 bg-accent-orange text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm">
                       الأكثر مبيعاً
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-purple-200 rounded-xl flex items-center justify-center text-2xl font-black text-purple-700">
+                      <div className="w-12 h-12 bg-accent-purple-soft rounded-xl flex items-center justify-center text-2xl font-black text-accent-purple">
                         5
                       </div>
                       <div>
@@ -1843,16 +1847,16 @@ export default function App() {
                     </div>
                     <button 
                       onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md shadow-purple-200"
+                      className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
                     >
                       40 ج.م
                     </button>
                   </div>
 
                   {/* Package 3 */}
-                  <div className="flex items-center justify-between p-4 box-game hover:border-purple-200 transition-colors">
+                  <div className="flex items-center justify-between p-4 box-game hover:border-accent-purple transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl font-black text-purple-600">
+                      <div className="w-12 h-12 bg-accent-purple-soft rounded-xl flex items-center justify-center text-2xl font-black text-accent-purple">
                         10
                       </div>
                       <div>
@@ -1862,7 +1866,7 @@ export default function App() {
                     </div>
                     <button 
                       onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md shadow-purple-200"
+                      className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
                     >
                       70 ج.م
                     </button>
@@ -1900,7 +1904,7 @@ export default function App() {
               
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <Star className="w-6 h-6 text-orange-500 fill-orange-500" />
+                  <Star className="w-6 h-6 text-accent-orange fill-accent-orange" />
                 </div>
                 <h2 className="text-2xl font-black text-main">نظام المستويات (Levels)</h2>
               </div>
@@ -1909,12 +1913,12 @@ export default function App() {
                 <p>كلما فزت في مباريات أكثر، كلما حصلت على XP وارتفع مستواك!</p>
                 
                 <div className="box-game p-3 space-y-4">
-                  <h3 className="text-lg font-black text-orange-600 mb-2 flex items-center justify-between">
+                  <h3 className="text-lg font-black text-accent-orange mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Zap className="w-5 h-5" />
                       ميزة التخمين السريع
                     </div>
-                    <span className="text-xs bg-orange-200 text-orange-700 px-2 py-1 rounded-full">تفتح في المستوى 1</span>
+                    <span className="text-xs bg-orange-200 text-accent-orange px-2 py-1 rounded-full">تفتح في المستوى 1</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     ميزة التخمين السريع تتيح لك محاولة تخمين الصورة قبل انتهاء الوقت.
@@ -1923,27 +1927,27 @@ export default function App() {
                   <ul className="mt-3 space-y-2 text-sm">
                     <li className="flex justify-between items-center box-game p-2">
                       <span>المستوى 1</span>
-                      <span className="text-orange-500">بعد 2:30 دقيقة (150 ثانية)</span>
+                      <span className="text-accent-orange">بعد 2:30 دقيقة (150 ثانية)</span>
                     </li>
                     <li className="flex justify-between items-center box-game p-2">
                       <span>المستوى 25</span>
-                      <span className="text-orange-500">بعد 1:18 دقيقة (78 ثانية)</span>
+                      <span className="text-accent-orange">بعد 1:18 دقيقة (78 ثانية)</span>
                     </li>
                     <li className="flex justify-between items-center box-game p-2">
                       <span>المستوى 50</span>
-                      <span className="text-orange-500 font-black">بعد 0:03 ثوانٍ (تقريباً من البداية!)</span>
+                      <span className="text-accent-orange font-black">بعد 0:03 ثوانٍ (تقريباً من البداية!)</span>
                     </li>
                   </ul>
                 </div>
 
                 {/* Hint */}
                 <div className="box-game p-3">
-                  <h3 className="text-lg font-black text-blue-600 mb-2 flex items-center justify-between">
+                  <h3 className="text-lg font-black text-accent-blue mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <HelpCircle className="w-5 h-5" />
                       النصيحة
                     </div>
-                    <span className="text-xs bg-blue-200 text-blue-700 px-2 py-1 rounded-full">تفتح في المستوى 10</span>
+                    <span className="text-xs bg-blue-200 text-accent-blue px-2 py-1 rounded-full">تفتح في المستوى 10</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     تلميح عن اسم الصورة بأول حرف وثاني حرف لمساعدتك في التخمين. يمكنك استخدامها مرتين في كل مباراة.
@@ -1952,12 +1956,12 @@ export default function App() {
 
                 {/* Letter Revealer */}
                 <div className="box-game p-3">
-                  <h3 className="text-lg font-black text-green-600 mb-2 flex items-center justify-between">
+                  <h3 className="text-lg font-black text-accent-green mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Type className="w-5 h-5" />
                       كاشف الحروف
                     </div>
-                    <span className="text-xs bg-green-200 text-green-700 px-2 py-1 rounded-full">يفتح في المستوى 20</span>
+                    <span className="text-xs bg-green-200 text-accent-green px-2 py-1 rounded-full">يفتح في المستوى 20</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     يكشف لك عن عدد حروف الكلمة المطلوبة لتسهيل عملية التخمين وتضييق نطاق الاحتمالات.
@@ -1980,12 +1984,12 @@ export default function App() {
 
                 {/* Spy */}
                 <div className="box-game p-3">
-                  <h3 className="text-lg font-black text-purple-600 mb-2 flex items-center justify-between">
+                  <h3 className="text-lg font-black text-accent-purple mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Eye className="w-5 h-5" />
                       الجاسوس
                     </div>
-                    <span className="text-xs bg-purple-200 text-purple-700 px-2 py-1 rounded-full">يفتح في المستوى 50</span>
+                    <span className="text-xs bg-purple-200 text-accent-purple px-2 py-1 rounded-full">يفتح في المستوى 50</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     يتيح لك رؤية صورة منافسك، مما يعطيك أفضلية استراتيجية كبيرة جداً!
@@ -2538,31 +2542,31 @@ export default function App() {
                       <div className="flex gap-2 mt-1">
                         <button 
                           onClick={() => setAdminTab('players')}
-                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'players' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'players' ? 'bg-accent-purple text-white' : 'bg-accent-purple-soft text-accent-purple hover:bg-accent-purple-soft'}`}
                         >
                           اللاعبين والبلاغات
                         </button>
                         <button 
                           onClick={() => setAdminTab('images')}
-                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'images' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'images' ? 'bg-accent-purple text-white' : 'bg-accent-purple-soft text-accent-purple hover:bg-accent-purple-soft'}`}
                         >
                           إدارة الصور
                         </button>
                         <button 
                           onClick={() => setAdminTab('customization')}
-                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'customization' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'customization' ? 'bg-accent-purple text-white' : 'bg-accent-purple-soft text-accent-purple hover:bg-accent-purple-soft'}`}
                         >
                           تخصيص اللعبة
                         </button>
                         <button 
                           onClick={() => setAdminTab('shop')}
-                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'shop' ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'}`}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'shop' ? 'bg-accent-orange text-white' : 'bg-accent-orange-soft text-accent-orange hover:bg-accent-orange-soft'}`}
                         >
                           المتجر والـ Tokens
                         </button>
                         <button 
                           onClick={() => setAdminTab('colors')}
-                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'colors' ? 'bg-pink-500 text-white' : 'bg-pink-100 text-pink-600 hover:bg-pink-200'}`}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'colors' ? 'bg-accent-blue text-white' : 'bg-accent-blue-soft text-accent-blue hover:bg-accent-blue-soft'}`}
                         >
                           ألوان اللعبة
                         </button>
@@ -2677,7 +2681,7 @@ export default function App() {
                       <div className="max-w-4xl mx-auto space-y-6">
                         <div className="box-game p-6 shadow-sm">
                           <h3 className="text-xl font-black text-brown-dark mb-4 flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full bg-accent-blue-soft flex items-center justify-center">
                               <span className="text-lg">🎨</span>
                             </div>
                             تخصيص ألوان اللعبة
@@ -2988,7 +2992,7 @@ export default function App() {
                                 // Here we would emit to socket if we had backend support
                                 alert('تم حفظ الألوان بنجاح! (محلياً)');
                               }}
-                              className="px-8 py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-black shadow-lg shadow-pink-200 transition-all transform hover:-translate-y-1"
+                              className="px-8 py-3 bg-accent-blue hover:brightness-110 text-white rounded-xl font-black shadow-lg transition-all transform hover:-translate-y-1"
                             >
                               حفظ التغييرات
                             </button>
@@ -3789,7 +3793,7 @@ export default function App() {
             {/* Info Button */}
             <button 
               onClick={toggleLevelInfo}
-              className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors relative"
+              className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-accent-blue rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-accent-blue transition-colors relative"
               title="معلومات المستوى"
             >
               <Info className="w-4 h-4 md:w-5 md:h-5" />
@@ -3804,7 +3808,7 @@ export default function App() {
             {/* Shop Button */}
             <button 
               onClick={toggleShop}
-              className="w-9 h-9 md:w-10 md:h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center hover:bg-orange-100 hover:text-orange-600 transition-colors"
+              className="w-9 h-9 md:w-10 md:h-10 bg-accent-orange-light text-accent-orange rounded-xl flex items-center justify-center hover:bg-accent-orange-soft hover:text-accent-orange transition-colors"
               title="المتجر"
             >
               <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
@@ -3813,7 +3817,7 @@ export default function App() {
             {/* Settings Button */}
             <button 
               onClick={toggleSettings}
-              className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+              className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-accent-purple rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-accent-purple transition-colors"
               title="الإعدادات"
             >
               <Settings className="w-4 h-4 md:w-5 md:h-5" />
@@ -3837,17 +3841,17 @@ export default function App() {
                 <div className="flex justify-between items-center mb-1 flex-row-reverse">
                   <div className="text-sm md:text-base font-black text-main truncate text-right">{playerName || 'لاعب جديد'}</div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs md:text-sm font-black text-purple-600 box-game px-2 py-0.5 flex items-center gap-1">
-                      {tokens} <span className="text-[10px] text-purple-400">Tokens</span>
+                    <span className="text-xs md:text-sm font-black text-accent-purple box-game px-2 py-0.5 flex items-center gap-1">
+                      {tokens} <span className="text-[10px] text-accent-purple">Tokens</span>
                     </span>
-                    <span className="text-xs md:text-sm font-black text-blue-600 box-game px-2 py-0.5">Level {getLevel(xp)}</span>
+                    <span className="text-xs md:text-sm font-black text-accent-blue box-game px-2 py-0.5">Level {getLevel(xp)}</span>
                   </div>
                 </div>
                 
                 {/* Level Bar */}
                 <div className="w-full bg-[#F6E6CD] rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
                   <div 
-                    className="bg-gradient-to-r from-blue-400 to-blue-600 h-full rounded-full transition-all duration-500" 
+                    className="bg-accent-blue h-full rounded-full transition-all duration-500" 
                     style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
                   ></div>
                 </div>
@@ -3855,11 +3859,11 @@ export default function App() {
                 {/* XP Bar */}
                 <div className="w-full bg-[#F6E6CD] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
                   <div 
-                    className="bg-gradient-to-r from-orange-400 to-orange-500 h-full transition-all duration-500" 
+                    className="bg-accent-orange h-full transition-all duration-500" 
                     style={{ width: `${getXpProgress(xp)}%` }}
                   ></div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] md:text-xs font-black text-orange-900 drop-shadow-sm flex items-center gap-1">
+                    <span className="text-[10px] md:text-xs font-black text-white drop-shadow-sm flex items-center gap-1">
                       <Zap className="w-3 h-3" />
                       {xp} / {getXpForNextLevel(getLevel(xp))} XP
                     </span>
@@ -3881,7 +3885,7 @@ export default function App() {
                   <h2 className="text-sm md:text-base font-black text-main flex items-center gap-2">
                     أبطال التخمين
                   </h2>
-                  <span className="text-[10px] md:text-xs font-bold text-orange-500 box-game px-2 py-1 rounded-full">المتصدرون حالياً</span>
+                  <span className="text-[10px] md:text-xs font-bold text-accent-orange box-game px-2 py-1 rounded-full">المتصدرون حالياً</span>
                 </div>
                 <div className="flex items-end justify-center gap-2 md:gap-4">
                   {/* Rank 2 */}
@@ -3898,7 +3902,7 @@ export default function App() {
                         <div className="text-[9px] font-bold text-brown-muted bg-gray-100 px-2 py-0.5 rounded-full">
                           Lvl {topPlayers[1].level || getLevel(topPlayers[1].xp || 0)}
                         </div>
-                        <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <div className="text-[9px] font-bold text-accent-green bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Trophy className="w-2.5 h-2.5" />
                           {topPlayers[1].wins || 0} فوز
                         </div>
@@ -3922,7 +3926,7 @@ export default function App() {
                         <div className="text-[10px] font-bold text-brown-muted bg-yellow-100 px-3 py-1 rounded-full">
                           Lvl {topPlayers[0].level || getLevel(topPlayers[0].xp || 0)}
                         </div>
-                        <div className="text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full flex items-center gap-1">
+                        <div className="text-[10px] font-bold text-accent-green bg-green-50 px-3 py-1 rounded-full flex items-center gap-1">
                           <Trophy className="w-3 h-3" />
                           {topPlayers[0].wins || 0} فوز
                         </div>
@@ -3945,7 +3949,7 @@ export default function App() {
                         <div className="text-[9px] font-bold text-brown-muted bg-gray-100 px-2 py-0.5 rounded-full">
                           Lvl {topPlayers[2].level || getLevel(topPlayers[2].xp || 0)}
                         </div>
-                        <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <div className="text-[9px] font-bold text-accent-green bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Trophy className="w-2.5 h-2.5" />
                           {topPlayers[2].wins || 0} فوز
                         </div>
@@ -3985,10 +3989,10 @@ export default function App() {
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-brown-muted font-bold text-xs md:text-sm">لست ضمن الـ Top 100..</span>
-                          <span className="text-orange-600 font-black text-xs md:text-sm">شد حيلك! 🚀</span>
+                          <span className="text-accent-orange font-black text-xs md:text-sm">شد حيلك! 🚀</span>
                         </div>
-                        <div className="w-8 h-8 bg-gray-50 group-hover:bg-orange-50 rounded-full flex items-center justify-center transition-colors shrink-0">
-                           <ChevronLeft className="w-4 h-4 text-brown-light group-hover:text-orange-500 transition-colors animate-pulse" />
+                        <div className="w-8 h-8 bg-gray-50 group-hover:bg-accent-orange-light rounded-full flex items-center justify-center transition-colors shrink-0">
+                           <ChevronLeft className="w-4 h-4 text-brown-light group-hover:text-accent-orange transition-colors animate-pulse" />
                         </div>
                       </button>
                     );
@@ -4057,7 +4061,7 @@ export default function App() {
                       className="checkbox-game disabled:opacity-50"
                     />
                     <label htmlFor="useToken" className="cursor-pointer select-none flex items-center gap-1">
-                      <button onClick={toggleTokenInfo} className="font-black text-purple-600 hover:underline text-sm truncate">Token</button>
+                      <button onClick={toggleTokenInfo} className="font-black text-accent-purple hover:underline text-sm truncate">Token</button>
                       <span className="font-black text-main text-sm">({tokens})</span>
                     </label>
                   </div>
@@ -4144,7 +4148,7 @@ export default function App() {
                           font-black text-lg w-8 text-center rounded-lg py-1
                           ${index === 0 ? 'text-yellow-500 bg-yellow-50' : 
                             index === 1 ? 'text-brown-light bg-gray-50' : 
-                            index === 2 ? 'text-orange-500 bg-orange-50' : 'text-brown-light'}
+                            index === 2 ? 'text-accent-orange bg-accent-orange-light' : 'text-brown-light'}
                         `}>
                           {index + 1}
                         </div>
@@ -4268,8 +4272,8 @@ export default function App() {
       {/* Install Modal */}
       {showInstallModal && deferredPrompt && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl border-4 border-orange-500">
-            <div className="w-20 h-20 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl border-4 border-accent-orange">
+            <div className="w-20 h-20 mx-auto mb-4 bg-accent-orange-soft rounded-full flex items-center justify-center">
               <span className="text-4xl">🎮</span>
             </div>
             <h2 className="text-2xl font-black text-brown-dark mb-2">خمن تخمينة</h2>
@@ -4278,7 +4282,7 @@ export default function App() {
             </p>
             <button 
               onClick={handleInstallClick}
-              className="w-full py-4 bg-orange-500 text-white font-black rounded-2xl text-lg hover:bg-orange-600 transition-colors mb-3"
+              className="w-full py-4 bg-accent-orange hover:brightness-110 text-white font-black rounded-2xl text-lg transition-colors mb-3"
             >
               تثبيت اللعبة
             </button>
@@ -4296,7 +4300,7 @@ export default function App() {
       <header className="fixed top-0 left-0 right-0 bg-[#FBF4E1]/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-game h-14 md:h-16">
         <div className="flex-1 flex items-center gap-2 md:gap-3">
           <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
-          <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
+          <div className="font-black text-lg md:text-xl text-accent-orange tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
         </div>
         
         {/* Game Info (Center) */}
@@ -4311,7 +4315,7 @@ export default function App() {
               )}
             </div>
           )}
-          <div className="flex items-center gap-1 bg-blue-100 text-blue-600 px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-black border-2 border-blue-200">
+          <div className="flex items-center gap-1 bg-accent-blue-soft text-accent-blue px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-black border-2 border-accent-blue">
             <Users className="w-3 h-3 md:w-3.5 md:h-3.5" />
             <span>{room.players.length}/2</span>
           </div>
@@ -4330,7 +4334,7 @@ export default function App() {
           {/* Info Button */}
           <button 
             onClick={toggleLevelInfo}
-            className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors relative"
+            className="w-9 h-9 md:w-10 md:h-10 bg-accent-blue-light text-accent-blue rounded-xl flex items-center justify-center hover:bg-accent-blue-soft hover:text-accent-blue transition-colors relative"
             title="معلومات المستوى"
           >
             <Info className="w-4 h-4 md:w-5 md:h-5" />
@@ -4345,7 +4349,7 @@ export default function App() {
           {/* Shop Button */}
           <button 
             onClick={toggleShop}
-            className="w-9 h-9 md:w-10 md:h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center hover:bg-orange-100 hover:text-orange-600 transition-colors"
+            className="w-9 h-9 md:w-10 md:h-10 bg-accent-orange-light text-accent-orange rounded-xl flex items-center justify-center hover:bg-accent-orange-soft hover:text-accent-orange transition-colors"
             title="المتجر"
           >
             <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
@@ -4354,7 +4358,7 @@ export default function App() {
           {/* Settings Button */}
           <button 
             onClick={toggleSettings}
-            className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+            className="w-9 h-9 md:w-10 md:h-10 bg-accent-purple-light text-accent-purple rounded-xl flex items-center justify-center hover:bg-accent-purple-soft hover:text-accent-purple transition-colors"
             title="الإعدادات"
           >
             <Settings className="w-4 h-4 md:w-5 md:h-5" />
@@ -4419,12 +4423,12 @@ export default function App() {
             <div className="w-full card-game p-3 md:p-6 text-center space-y-3 md:space-y-5 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#F6E6CD]">
                 <div 
-                  className="h-full bg-orange-500 transition-all duration-1000" 
+                  className="h-full bg-accent-orange transition-all duration-1000" 
                   style={{ width: `${(room.timer / 60) * 100}%` }}
                 ></div>
               </div>
               <div className="flex justify-between items-center bg-white/50 p-3 rounded-2xl border border-orange-100 shadow-sm">
-                <h2 className={`text-lg md:text-xl font-black text-orange-600 ${room.players.length < 2 ? 'animate-pulse' : ''}`}>
+                <h2 className={`text-lg md:text-xl font-black text-accent-orange ${room.players.length < 2 ? 'animate-pulse' : ''}`}>
                   {room.players.length < 2 ? 'بانتظار المنافس...' : 'اتفقوا على فئة التخمين للبدء!'}
                 </h2>
                 <div className={`text-lg font-black font-mono px-3 py-1 rounded-lg ${room.isFrozen ? 'text-cyan-500 bg-cyan-50 animate-pulse' : 'text-red-500 bg-gray-100'}`}>
@@ -4451,19 +4455,19 @@ export default function App() {
                         key={cat.id}
                         onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
                         className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
-                          ${isAgreed ? 'bg-green-100 text-green-600 border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-orange-600 border-orange-300 scale-105' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
+                          ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
                           ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
                         `}
                       >
                         <span className="text-2xl md:text-3xl">{cat.icon}</span>
                         <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
                         {isOpponentChoice && !isMyChoice && (
-                          <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                          <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
                             اقتراح!
                           </div>
                         )}
                         {isAgreed && (
-                          <div className="absolute -top-2 -right-2 bg-green-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                          <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
                             متفق عليه!
                           </div>
                         )}
@@ -4490,7 +4494,7 @@ export default function App() {
                         chatHistory.map((msg, index) => (
                           <div key={`waiting-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
                             <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
-                              <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
+                              <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-accent-green text-right' : 'text-accent-blue text-left'}`}>
                                 {msg.playerName}
                               </div>
                               <div className={`leading-tight ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>

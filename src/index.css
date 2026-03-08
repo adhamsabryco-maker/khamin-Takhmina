@@ -95,6 +95,35 @@ body {
 .text-accent-blue { color: var(--color-accent-blue); }
 .text-accent-green { color: var(--color-accent-green); }
 
+/* Accent Background Classes */
+.bg-accent-orange { background-color: var(--color-accent-orange); }
+.bg-accent-purple { background-color: var(--color-accent-purple); }
+.bg-accent-blue { background-color: var(--color-accent-blue); }
+.bg-accent-green { background-color: var(--color-accent-green); }
+
+/* Light Accent Background Classes (Derived) */
+.bg-accent-orange-light { background-color: color-mix(in srgb, var(--color-accent-orange), white 90%); }
+.bg-accent-purple-light { background-color: color-mix(in srgb, var(--color-accent-purple), white 90%); }
+.bg-accent-blue-light { background-color: color-mix(in srgb, var(--color-accent-blue), white 90%); }
+.bg-accent-green-light { background-color: color-mix(in srgb, var(--color-accent-green), white 90%); }
+
+.bg-accent-orange-soft { background-color: color-mix(in srgb, var(--color-accent-orange), white 80%); }
+.bg-accent-purple-soft { background-color: color-mix(in srgb, var(--color-accent-purple), white 80%); }
+.bg-accent-blue-soft { background-color: color-mix(in srgb, var(--color-accent-blue), white 80%); }
+.bg-accent-green-soft { background-color: color-mix(in srgb, var(--color-accent-green), white 80%); }
+
+/* Accent Border Classes */
+.border-accent-orange { border-color: var(--color-accent-orange); }
+.border-accent-purple { border-color: var(--color-accent-purple); }
+.border-accent-blue { border-color: var(--color-accent-blue); }
+.border-accent-green { border-color: var(--color-accent-green); }
+
+/* Accent Fill Classes */
+.fill-accent-orange { fill: var(--color-accent-orange); }
+.fill-accent-purple { fill: var(--color-accent-purple); }
+.fill-accent-blue { fill: var(--color-accent-blue); }
+.fill-accent-green { fill: var(--color-accent-green); }
+
 /* Rank Classes */
 .rank-1-bar {
   background: linear-gradient(to bottom, var(--rank-1-bg-start), var(--rank-1-bg-end));
