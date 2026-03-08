@@ -556,6 +556,55 @@ const app = express();
 
   loadPlayersData();
 
+  // Load Theme Config
+  let themeConfig = {
+    bgBodyStart: '#fbf4e1',
+    bgBodyEnd: '#fbf4e1',
+    bgBox: '#ffffff',
+    bgCard: '#ffffff',
+    textMain: '#432818',
+    textLight: '#8d6e63',
+    textMuted: '#9ca3af',
+    textLightAccent: '#f3e8ff',
+    textSoft: '#d1d5db',
+    borderGame: '#ffe6a7',
+    btnPrimaryBgStart: '#f97316',
+    btnPrimaryBgEnd: '#ea580c',
+    btnPrimaryBorder: '#c2410c',
+    btnPrimaryHover: '#ea580c',
+    btnSecondaryBgStart: '#a855f7',
+    btnSecondaryBgEnd: '#9333ea',
+    btnSecondaryBorder: '#7e22ce',
+    btnSecondaryHover: '#9333ea',
+    btnDangerBgStart: '#ef4444',
+    btnDangerBgEnd: '#dc2626',
+    btnDangerBorder: '#b91c1c',
+    btnDangerHover: '#dc2626',
+    accentOrange: '#f97316',
+    accentPurple: '#a855f7',
+    accentBlue: '#3b82f6',
+    accentGreen: '#22c55e',
+    rank1BgStart: '#fbbf24',
+    rank1BgEnd: '#d97706',
+    rank1Border: '#b45309',
+    rank2BgStart: '#94a3b8',
+    rank2BgEnd: '#64748b',
+    rank2Border: '#475569',
+    rank3BgStart: '#d6d3d1',
+    rank3BgEnd: '#a8a29e',
+    rank3Border: '#78716c',
+  };
+
+  try {
+    const savedTheme = db.prepare('SELECT value FROM settings WHERE key = ?').get('theme_config');
+    if (savedTheme) {
+      themeConfig = { ...themeConfig, ...JSON.parse(savedTheme.value) };
+      console.log("[Theme] Loaded saved theme config.");
+    }
+  } catch (e) {
+    console.error("Failed to load theme config:", e);
+  }
+
   let cachedTopPlayers: any[] = [];
   let topPlayersCacheTime = 0;
 
@@ -1173,6 +1222,20 @@ const app = express();
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
     broadcastOnlineCount();
+
+    // Send current theme to new user
+    socket.emit('theme_updated', themeConfig);
+
+    socket.on('admin_save_theme', (newTheme) => {
+      console.log("[Theme] Admin updated theme");
+      themeConfig = { ...themeConfig, ...newTheme };
+      try {
+        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('theme_config', JSON.stringify(themeConfig));
+        io.emit('theme_updated', themeConfig); // Broadcast to all
+      } catch (e) {
+        console.error("Failed to save theme:", e);
+      }
+    });
 
     socket.on("register_player", ({ name, avatar, xp, gender }, callback) => {
       // Generate a unique non-sequential ID
