@@ -1558,7 +1558,7 @@ export default function App() {
               
               <div className="space-y-2">
                 <h2 className="text-3xl font-black text-yellow-400">إعلان تجريبي</h2>
-                <p className="text-gray-400 font-bold">هذا مجرد محاكاة للإعلان. في النسخة النهائية سيظهر هنا إعلان حقيقي من Google.</p>
+                <p className="text-brown-light font-bold">هذا مجرد محاكاة للإعلان. في النسخة النهائية سيظهر هنا إعلان حقيقي من Google.</p>
               </div>
 
               {adTimer === 0 && (
@@ -1602,29 +1602,29 @@ export default function App() {
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
                   <ShoppingCart className="w-8 h-8 text-white" />
                 </div>
-                <h2 className="text-2xl font-black text-white mb-1">المتجر</h2>
+                <h2 className="text-2xl font-black text-light mb-1">المتجر</h2>
                 <p className="text-purple-100 text-sm font-bold">احصل على Tokens للعب مع المحترفين!</p>
               </div>
 
               <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                <div className="flex items-center justify-between bg-purple-50 p-4 rounded-2xl border-2 border-purple-100">
+                <div className="flex items-center justify-between box-game p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
                       <Zap className="w-6 h-6 text-purple-500" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-gray-500">رصيدك الحالي</div>
+                      <div className="text-xs font-bold text-brown-muted">رصيدك الحالي</div>
                       <div className="text-lg font-black text-purple-700">{tokens} Tokens</div>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <h3 className="font-black text-gray-800 mb-2">باقات الـ Tokens</h3>
+                  <h3 className="font-black text-brown-dark mb-2">باقات الـ Tokens</h3>
 
                   {/* Free Ad Reward - Level 1+ Only */}
                   {getLevel(xp) >= 1 && (
-                    <div className="flex items-center justify-between p-4 border-2 border-green-400 rounded-2xl bg-green-50 relative overflow-hidden mb-4">
+                    <div className="flex items-center justify-between p-4 border-2 border-game box-game relative overflow-hidden mb-4">
                       <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-sm z-10">
                         مجاناً (Level 1+)
                       </div>
@@ -1633,8 +1633,8 @@ export default function App() {
                           📺
                         </div>
                         <div>
-                          <div className="font-black text-gray-800">شاهد إعلان = 1 Token</div>
-                          <div className="text-xs font-bold text-gray-500">
+                          <div className="font-black text-brown-dark">شاهد إعلان = 1 Token</div>
+                          <div className="text-xs font-bold text-brown-muted">
                             متبقي لك اليوم: <span className="text-green-600">{5 - adStatus.adsWatched}/5</span>
                           </div>
                         </div>
@@ -1642,7 +1642,7 @@ export default function App() {
                       <button 
                         onClick={handleWatchAd}
                         disabled={(!adStatus.canWatch || adStatus.loading) && getLevel(xp) >= 50}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${getLevel(xp) >= 50 && adStatus.canWatch ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${getLevel(xp) >= 50 && adStatus.canWatch ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
                       >
                         {getLevel(xp) < 50 ? 'مستوى 50+ مطلوب' : (adStatus.loading ? 'جاري التحميل...' : (adStatus.canWatch ? 'شاهد الآن' : 'انتهت المحاولات'))}
                       </button>
@@ -1656,8 +1656,8 @@ export default function App() {
                         1
                       </div>
                       <div>
-                        <div className="font-black text-gray-800">1 Token</div>
-                        <div className="text-xs font-bold text-gray-500">مباراة واحدة مع مستوى 40+</div>
+                        <div className="font-black text-brown-dark">1 Token</div>
+                        <div className="text-xs font-bold text-brown-muted">مباراة واحدة مع مستوى 40+</div>
                       </div>
                     </div>
                     <button 
@@ -1669,7 +1669,7 @@ export default function App() {
                   </div>
 
                   {/* Package 2 */}
-                  <div className="flex items-center justify-between p-4 border-2 border-purple-400 rounded-2xl bg-purple-50 relative">
+                  <div className="flex items-center justify-between box-game p-4 relative">
                     <div className="absolute -top-3 left-4 bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm">
                       الأكثر مبيعاً
                     </div>
@@ -1678,8 +1678,8 @@ export default function App() {
                         5
                       </div>
                       <div>
-                        <div className="font-black text-gray-800">5 Tokens</div>
-                        <div className="text-xs font-bold text-gray-500">5 مباريات + 1 مجاناً</div>
+                        <div className="font-black text-brown-dark">5 Tokens</div>
+                        <div className="text-xs font-bold text-brown-muted">5 مباريات + 1 مجاناً</div>
                       </div>
                     </div>
                     <button 
@@ -1691,14 +1691,14 @@ export default function App() {
                   </div>
 
                   {/* Package 3 */}
-                  <div className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-purple-200 transition-colors bg-white">
+                  <div className="flex items-center justify-between p-4 box-game hover:border-purple-200 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl font-black text-purple-600">
                         10
                       </div>
                       <div>
-                        <div className="font-black text-gray-800">10 Tokens</div>
-                        <div className="text-xs font-bold text-gray-500">10 مباريات + 3 مجاناً</div>
+                        <div className="font-black text-brown-dark">10 Tokens</div>
+                        <div className="text-xs font-bold text-brown-muted">10 مباريات + 3 مجاناً</div>
                       </div>
                     </div>
                     <button 
@@ -1734,7 +1734,7 @@ export default function App() {
             >
               <button 
                 onClick={() => setShowLevelInfo(false)}
-                className="absolute top-4 left-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+                className="absolute top-4 left-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-brown-muted hover:bg-gray-200 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1743,13 +1743,13 @@ export default function App() {
                 <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
                   <Star className="w-6 h-6 text-orange-500 fill-orange-500" />
                 </div>
-                <h2 className="text-2xl font-black text-[#2D3436]">نظام المستويات (Levels)</h2>
+                <h2 className="text-2xl font-black text-main">نظام المستويات (Levels)</h2>
               </div>
               
-              <div className="space-y-2 text-gray-600 font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-2 text-brown-muted font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                 <p>كلما فزت في مباريات أكثر، كلما حصلت على XP وارتفع مستواك!</p>
                 
-                <div className="bg-orange-50 p-3 rounded-2xl border-2 border-orange-100">
+                <div className="box-game p-3 space-y-4">
                   <h3 className="text-lg font-black text-orange-600 mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Zap className="w-5 h-5" />
@@ -1762,15 +1762,15 @@ export default function App() {
                     كلما ارتفع مستواك، كلما تم تفعيل هذه الميزة بشكل أسرع في المباراة (يقل وقت الانتظار بمقدار 3 ثوانٍ لكل مستوى، مما يمنحك أفضلية!).
                   </p>
                   <ul className="mt-3 space-y-2 text-sm">
-                    <li className="flex justify-between items-center bg-white p-2 rounded-lg">
+                    <li className="flex justify-between items-center box-game p-2">
                       <span>المستوى 1</span>
                       <span className="text-orange-500">بعد 2:30 دقيقة (150 ثانية)</span>
                     </li>
-                    <li className="flex justify-between items-center bg-white p-2 rounded-lg">
+                    <li className="flex justify-between items-center box-game p-2">
                       <span>المستوى 25</span>
                       <span className="text-orange-500">بعد 1:18 دقيقة (78 ثانية)</span>
                     </li>
-                    <li className="flex justify-between items-center bg-white p-2 rounded-lg">
+                    <li className="flex justify-between items-center box-game p-2">
                       <span>المستوى 50</span>
                       <span className="text-orange-500 font-black">بعد 0:03 ثوانٍ (تقريباً من البداية!)</span>
                     </li>
@@ -1778,7 +1778,7 @@ export default function App() {
                 </div>
 
                 {/* Hint */}
-                <div className="bg-blue-50 p-3 rounded-2xl border-2 border-blue-100">
+                <div className="box-game p-3">
                   <h3 className="text-lg font-black text-blue-600 mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <HelpCircle className="w-5 h-5" />
@@ -1792,7 +1792,7 @@ export default function App() {
                 </div>
 
                 {/* Letter Revealer */}
-                <div className="bg-green-50 p-3 rounded-2xl border-2 border-green-100">
+                <div className="box-game p-3">
                   <h3 className="text-lg font-black text-green-600 mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Type className="w-5 h-5" />
@@ -1806,7 +1806,7 @@ export default function App() {
                 </div>
 
                 {/* Time Freeze */}
-                <div className="bg-cyan-50 p-3 rounded-2xl border-2 border-cyan-100">
+                <div className="box-game p-3">
                   <h3 className="text-lg font-black text-cyan-600 mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Snowflake className="w-5 h-5" />
@@ -1820,7 +1820,7 @@ export default function App() {
                 </div>
 
                 {/* Spy */}
-                <div className="bg-purple-50 p-3 rounded-2xl border-2 border-purple-100">
+                <div className="box-game p-3">
                   <h3 className="text-lg font-black text-purple-600 mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Eye className="w-5 h-5" />
@@ -1833,7 +1833,7 @@ export default function App() {
                   </p>
                 </div>
 
-                <div className="bg-indigo-50 p-3 rounded-2xl border-2 border-indigo-100">
+                <div className="box-game p-3">
                   <h3 className="text-lg font-black text-indigo-600 mb-2 flex items-center gap-2">
                     <Trophy className="w-5 h-5" />
                     جوائز المستويات
@@ -1842,35 +1842,35 @@ export default function App() {
                     احصل على إطارات مميزة ونجوم ذهبية تزين صورتك الشخصية كلما تقدمت في المستويات!
                   </p>
                   <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
+                    <li className="flex items-center gap-3 box-game p-2">
                       <div className="w-10 h-10">
                         {renderAvatarContent(avatar, 10)}
                       </div>
                       <span className="flex-1">المستوى 10</span>
                       <span className="text-blue-500">إطار فضي + نجمة</span>
                     </li>
-                    <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
+                    <li className="flex items-center gap-3 box-game p-2">
                       <div className="w-10 h-10">
                         {renderAvatarContent(avatar, 20)}
                       </div>
                       <span className="flex-1">المستوى 20</span>
                       <span className="text-blue-500">إطار ذهبي + نجمتين</span>
                     </li>
-                    <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
+                    <li className="flex items-center gap-3 box-game p-2">
                       <div className="w-10 h-10">
                         {renderAvatarContent(avatar, 30)}
                       </div>
                       <span className="flex-1">المستوى 30</span>
                       <span className="text-blue-500">إطار زمردي + 3 نجوم</span>
                     </li>
-                    <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
+                    <li className="flex items-center gap-3 box-game p-2">
                       <div className="w-10 h-10">
                         {renderAvatarContent(avatar, 40)}
                       </div>
                       <span className="flex-1">المستوى 40</span>
                       <span className="text-blue-500">إطار أسطوري + 4 نجوم</span>
                     </li>
-                    <li className="flex items-center gap-3 bg-white p-2 rounded-lg">
+                    <li className="flex items-center gap-3 box-game p-2">
                       <div className="w-10 h-10">
                         {renderAvatarContent(avatar, 50)}
                       </div>
@@ -1880,7 +1880,7 @@ export default function App() {
                   </ul>
                 </div>
                 
-                <p className="text-sm text-center text-gray-400 mt-4">استمر في اللعب لتصل إلى أعلى مستوى وتتفوق على أصدقائك!</p>
+                <p className="text-sm text-center text-brown-light mt-4">استمر في اللعب لتصل إلى أعلى مستوى وتتفوق على أصدقائك!</p>
               </div>
             </motion.div>
           </motion.div>
@@ -1904,34 +1904,34 @@ export default function App() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center flex-row-reverse">
-                <h2 className="text-2xl font-black text-[#2D3436]">ملف اللاعب</h2>
-                <button onClick={() => setShowSettingsModal(false)} className="text-gray-400 hover:text-red-500"><X className="w-6 h-6" /></button>
+                <h2 className="text-2xl font-black text-main">ملف اللاعب</h2>
+                <button onClick={() => setShowSettingsModal(false)} className="text-brown-light hover:text-red-500"><X className="w-6 h-6" /></button>
               </div>
 
               <div className="space-y-4">
                 {/* Stats Section */}
-                <div className="bg-gray-100 p-3 rounded-2xl border-2 border-gray-200 space-y-4">
+                <div className="bg-[#FBF4E1] p-3 rounded-2xl border-2 border-[#E1CCAB] space-y-4">
                   <div className="flex items-center gap-4 flex-row-reverse">
                     <div className="relative w-16 h-16">
                       {renderAvatarContent(avatar, getLevel(xp))}
                     </div>
                     <div className="text-right flex-1">
-                      <div className="font-black text-lg text-[#2D3436]">{playerName}</div>
+                      <div className="font-black text-lg text-main">{playerName}</div>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     <div>
                       <div className="flex justify-between items-center mb-1 flex-row-reverse">
-                        <span className="text-xs font-black text-gray-600">Level {getLevel(xp)}</span>
+                        <span className="text-xs font-black text-brown-muted">Level {getLevel(xp)}</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden mb-2" dir="ltr">
+                      <div className="w-full bg-[#F6E6CD] rounded-full h-2 overflow-hidden mb-2" dir="ltr">
                         <div 
                           className="bg-gradient-to-r from-blue-400 to-blue-600 h-full transition-all duration-500" 
                           style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
                         ></div>
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-5 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
+                      <div className="w-full bg-[#F6E6CD] rounded-full h-5 shadow-inner overflow-hidden relative border border-[#E1CCAB]" dir="ltr">
                         <div 
                           className="bg-gradient-to-r from-orange-400 to-orange-500 h-full transition-all duration-500" 
                           style={{ width: `${getXpProgress(xp)}%` }}
@@ -1951,7 +1951,7 @@ export default function App() {
                 {/* Edit Section */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-black text-gray-600 mb-1 text-right">الاسم</label>
+                    <label className="block text-sm font-black text-brown-muted mb-1 text-right">الاسم</label>
                     <input 
                       type="text" 
                       value={playerName}
@@ -1967,7 +1967,7 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-black text-gray-600 mb-1 text-right">العمر</label>
+                    <label className="block text-sm font-black text-brown-muted mb-1 text-right">العمر</label>
                     <input 
                       type="number" 
                       value={playerAge}
@@ -1990,17 +1990,17 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-black text-gray-600 mb-1 text-right">الجنس</label>
+                    <label className="block text-sm font-black text-brown-muted mb-1 text-right">الجنس</label>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setGender('boy')}
-                        className={`flex-1 py-2 rounded-xl font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-2 border-blue-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100'}`}
+                        className={`flex-1 py-2 box-game font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'text-brown-light opacity-60'}`}
                       >
                         ولد 👦
                       </button>
                       <button
                         onClick={() => setGender('girl')}
-                        className={`flex-1 py-2 rounded-xl font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-2 border-pink-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100'}`}
+                        className={`flex-1 py-2 box-game font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-pink-200' : 'text-brown-light opacity-60'}`}
                       >
                         بنت 👧
                       </button>
@@ -2008,7 +2008,7 @@ export default function App() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-black text-gray-600 mb-3 text-right">تغيير الأفاتار</label>
+                    <label className="block text-sm font-black text-brown-muted mb-3 text-right">تغيير الأفاتار</label>
                     <div className="grid grid-cols-4 gap-2">
                       {AVATARS.filter(av => av.gender === gender).map((av, index) => {
                         const isLocked = getLevel(xp) < av.level;
@@ -2017,7 +2017,7 @@ export default function App() {
                             key={`settings-avatar-${av.id}-${index}`}
                             onClick={() => !isLocked && setAvatar(av.id)}
                             disabled={isLocked}
-                            className={`relative aspect-square rounded-xl flex items-center justify-center border-2 transition-all overflow-hidden ${avatar === av.id ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-100 border-gray-300 hover:bg-gray-200'} ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
+                            className={`relative aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${avatar === av.id ? 'bg-orange-100 border-orange-400 scale-105' : 'hover:bg-gray-200'} ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
                           >
                             <div className="w-full h-full p-1">
                               {renderAvatarContent(av.id, 1)}
@@ -2035,18 +2035,18 @@ export default function App() {
                   </div>
 
                   {/* Custom Avatar in Settings */}
-                  <div className="pt-2 border-t border-gray-100">
+                  <div className="pt-2 border-t border-game">
                     <div className="flex items-center justify-between mb-2 flex-row-reverse">
-                      <span className="text-xs font-black text-gray-500">أفاتار مخصص</span>
+                      <span className="text-xs font-black text-brown-muted">أفاتار مخصص</span>
                       <div className="flex items-center gap-1 bg-purple-100 text-purple-600 px-3 py-1 rounded-full text-xs font-black">
                         <Star className="w-3.5 h-3.5 fill-purple-600" />
                         Level 50
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <label className={`relative flex-1 flex flex-col items-center justify-center p-2 rounded-xl border-2 border-dashed transition-all cursor-pointer ${getLevel(xp) >= 50 ? 'border-purple-400 bg-purple-100 hover:bg-purple-200' : 'border-gray-300 bg-gray-100 cursor-not-allowed'}`}>
+                      <label className={`relative flex-1 flex flex-col items-center justify-center p-2 rounded-xl border-2 border-dashed transition-all cursor-pointer ${getLevel(xp) >= 50 ? 'border-purple-400 bg-purple-100 hover:bg-purple-200' : 'border-[#E1CCAB] bg-[#FBF4E1] cursor-not-allowed'}`}>
                         <input 
-                          type="file" 
+                          type="file"  
                           accept="image/*" 
                           className="hidden" 
                           disabled={getLevel(xp) < 50}
@@ -2059,15 +2059,15 @@ export default function App() {
                           </>
                         ) : (
                           <>
-                            <Lock className="w-5 h-5 text-gray-500 mb-1" />
-                            <span className="text-[10px] font-black text-gray-500">مغلق</span>
+                            <Lock className="w-5 h-5 text-brown-muted mb-1" />
+                            <span className="text-[10px] font-black text-brown-muted">مغلق</span>
                           </>
                         )}
                       </label>
                       {customAvatar && (
                         <button
                           onClick={() => setAvatar(customAvatar)}
-                          className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 ${avatar === customAvatar ? 'border-purple-500' : 'border-gray-200'}`}
+                          className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 ${avatar === customAvatar ? 'border-purple-500' : 'border-[#E1CCAB]'}`}
                         >
                           <img src={customAvatar} className="w-full h-full object-cover" alt="Custom" />
                         </button>
@@ -2076,20 +2076,20 @@ export default function App() {
                   </div>
 
                   {/* Sound Settings */}
-                  <div className="space-y-2 pt-2 border-t border-gray-100">
-                    <h3 className="text-sm font-black text-gray-600 text-right mb-2">الصوت</h3>
+                  <div className="space-y-2 pt-2 border-t border-game">
+                    <h3 className="text-sm font-black text-brown-muted text-right mb-2">الصوت</h3>
                     
                     {/* SFX Volume */}
                     <div className="space-y-2">
                       <div className="flex justify-between items-center flex-row-reverse">
-                        <label className="text-xs font-bold text-gray-500 flex items-center gap-2">
+                        <label className="text-xs font-bold text-brown-muted flex items-center gap-2">
                           <Zap className="w-3 h-3 text-orange-500" />
                           المؤثرات
                         </label>
-                        <span className="text-[10px] font-bold text-gray-400">{Math.round(sfxVolume * 100)}%</span>
+                        <span className="text-[10px] font-bold text-brown-light">{Math.round(sfxVolume * 100)}%</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => setSfxVolume(0)} className="text-gray-400 hover:text-gray-600">
+                        <button onClick={() => setSfxVolume(0)} className="text-brown-light hover:text-brown-muted">
                           {sfxVolume === 0 ? <div className="w-4 h-4 relative"><div className="absolute w-full h-0.5 bg-current rotate-45 top-1/2"></div><div className="w-3 h-3 border-2 border-current rounded-full"></div></div> : <div className="w-4 h-4 border-2 border-current rounded-full"></div>}
                         </button>
                         <input 
@@ -2099,7 +2099,7 @@ export default function App() {
                           step="0.1" 
                           value={sfxVolume} 
                           onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                          className="flex-1 h-1.5 bg-[#F6E6CD] rounded-lg appearance-none cursor-pointer accent-orange-500"
                         />
                       </div>
                     </div>
@@ -2107,14 +2107,14 @@ export default function App() {
                     {/* Music Volume */}
                     <div className="space-y-2 opacity-60">
                       <div className="flex justify-between items-center flex-row-reverse">
-                        <label className="text-xs font-bold text-gray-500 flex items-center gap-2">
+                        <label className="text-xs font-bold text-brown-muted flex items-center gap-2">
                           <span className="text-purple-500">🎵</span>
                           الموسيقى
                         </label>
-                        <span className="text-[10px] font-bold text-gray-400">{Math.round(musicVolume * 100)}%</span>
+                        <span className="text-[10px] font-bold text-brown-light">{Math.round(musicVolume * 100)}%</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => setMusicVolume(0)} className="text-gray-400 hover:text-gray-600">
+                        <button onClick={() => setMusicVolume(0)} className="text-brown-light hover:text-brown-muted">
                            {musicVolume === 0 ? <div className="w-4 h-4 relative"><div className="absolute w-full h-0.5 bg-current rotate-45 top-1/2"></div><div className="w-3 h-3 border-2 border-current rounded-full"></div></div> : <div className="w-4 h-4 border-2 border-current rounded-full"></div>}
                         </button>
                         <input 
@@ -2124,7 +2124,7 @@ export default function App() {
                           step="0.1" 
                           value={musicVolume} 
                           onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                          className="flex-1 h-1.5 bg-[#F6E6CD] rounded-lg appearance-none cursor-pointer accent-purple-500"
                           disabled
                         />
                       </div>
@@ -2133,21 +2133,21 @@ export default function App() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-black text-gray-600 text-right">الإنجازات</label>
+                  <label className="block text-sm font-black text-brown-muted text-right">الإنجازات</label>
                   <div className="grid grid-cols-3 gap-2">
-                    <div className={`p-2 rounded-xl border flex flex-col items-center transition-all ${wins > 0 ? 'bg-orange-50 border-orange-100' : 'bg-gray-50 border-gray-100 opacity-40'}`}>
-                      <Trophy className={`w-5 h-5 ${wins > 0 ? 'text-orange-400' : 'text-gray-400'}`} />
-                      <span className={`text-[8px] font-black mt-1 ${wins > 0 ? 'text-orange-600' : 'text-gray-600'}`}>
+                    <div className={`p-2 box-game flex flex-col items-center transition-all ${wins > 0 ? 'bg-orange-50' : 'opacity-40'}`}>
+                      <Trophy className={`w-5 h-5 ${wins > 0 ? 'text-orange-400' : 'text-brown-light'}`} />
+                      <span className={`text-[8px] font-black mt-1 ${wins > 0 ? 'text-orange-600' : 'text-brown-muted'}`}>
                         {wins} فوز
                       </span>
                     </div>
-                    <div className={`p-2 rounded-xl border flex flex-col items-center transition-all ${streak >= 5 ? 'bg-blue-50 border-blue-100' : 'bg-gray-50 border-gray-100 opacity-40'}`}>
-                      <Zap className={`w-5 h-5 ${streak >= 5 ? 'text-blue-400' : 'text-gray-400'}`} />
-                      <span className={`text-[8px] font-black mt-1 ${streak >= 5 ? 'text-blue-600' : 'text-gray-600'}`}>سلسلة {streak}</span>
+                    <div className={`p-2 box-game flex flex-col items-center transition-all ${streak >= 5 ? 'bg-blue-50' : 'opacity-40'}`}>
+                      <Zap className={`w-5 h-5 ${streak >= 5 ? 'text-blue-400' : 'text-brown-light'}`} />
+                      <span className={`text-[8px] font-black mt-1 ${streak >= 5 ? 'text-blue-600' : 'text-brown-muted'}`}>سلسلة {streak}</span>
                     </div>
-                    <div className={`p-2 rounded-xl border flex flex-col items-center transition-all ${getLevel(xp) >= 10 ? 'bg-purple-50 border-purple-100' : 'bg-gray-50 border-gray-100 opacity-40'}`}>
-                      <Star className={`w-5 h-5 ${getLevel(xp) >= 10 ? 'text-purple-400' : 'text-gray-400'}`} />
-                      <span className={`text-[8px] font-black mt-1 ${getLevel(xp) >= 10 ? 'text-purple-600' : 'text-gray-600'}`}>مستوى {getLevel(xp)}</span>
+                    <div className={`p-2 box-game flex flex-col items-center transition-all ${getLevel(xp) >= 10 ? 'bg-purple-50' : 'opacity-40'}`}>
+                      <Star className={`w-5 h-5 ${getLevel(xp) >= 10 ? 'text-purple-400' : 'text-brown-light'}`} />
+                      <span className={`text-[8px] font-black mt-1 ${getLevel(xp) >= 10 ? 'text-purple-600' : 'text-brown-muted'}`}>مستوى {getLevel(xp)}</span>
                     </div>
                   </div>
                 </div>
@@ -2155,20 +2155,20 @@ export default function App() {
                 {/* Reports Status */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between flex-row-reverse">
-                    <label className="text-sm font-black text-gray-600">حالة الحساب</label>
-                    <span className="text-[10px] font-black text-gray-400">10 إبلاغات = حظر 24 ساعة</span>
+                    <label className="text-sm font-black text-brown-muted">حالة الحساب</label>
+                    <span className="text-[10px] font-black text-brown-light">10 إبلاغات = حظر 24 ساعة</span>
                   </div>
-                  <div className="bg-gray-50 rounded-2xl p-3 border-2 border-gray-100">
+                  <div className="box-game p-3">
                     <div className="flex items-center justify-between mb-2 flex-row-reverse">
                       <div className="flex items-center gap-2">
-                        <Flag className={`w-4 h-4 ${reports > 0 ? 'text-red-500' : 'text-gray-400'}`} fill={reports > 0 ? "currentColor" : "none"} />
-                        <span className="text-xs font-black text-gray-700">عدد الإبلاغات: {reports}</span>
+                        <Flag className={`w-4 h-4 ${reports > 0 ? 'text-red-500' : 'text-brown-light'}`} fill={reports > 0 ? "currentColor" : "none"} />
+                        <span className="text-xs font-black text-brown-dark">عدد الإبلاغات: {reports}</span>
                       </div>
                       <span className="text-[10px] font-black text-red-500">
                         متبقي {Math.max(0, 10 - reports)} للحظر
                       </span>
                     </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-2 bg-[#F6E6CD] rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${(reports / 10) * 100}%` }}
@@ -2186,7 +2186,7 @@ export default function App() {
                 حفظ التعديلات
               </button>
 
-              <div className="pt-2 border-t border-gray-100">
+              <div className="pt-2 border-t border-game">
                 <button 
                   onClick={() => setShowDeleteConfirm(true)}
                   className="w-full text-sm font-black text-red-400 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
@@ -2199,10 +2199,10 @@ export default function App() {
 
 
               {/* Admin Access Button */}
-              <div className="pt-2 border-t border-gray-100">
+              <div className="pt-2 border-t border-game">
                 <button 
                   onClick={isAdmin ? () => { setShowAdminDashboard(true); setShowSettingsModal(false); } : handleAdminLogin}
-                  className={`w-full py-2 rounded-xl flex items-center justify-center gap-2 text-sm font-black transition-all ${isAdmin ? 'bg-purple-100 text-purple-600 border-2 border-purple-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100 hover:bg-gray-100'}`}
+                  className={`w-full py-2 rounded-xl flex items-center justify-center gap-2 text-sm font-black transition-all ${isAdmin ? 'bg-purple-100 text-purple-600 border-2 border-purple-200' : 'bg-gray-50 text-brown-light border-2 border-gray-100 hover:bg-gray-100'}`}
                 >
                   <Shield className="w-4 h-4" />
                   {isAdmin ? 'فتح لوحة الإدارة' : 'دخول الإدارة (للمديرين فقط)'}
@@ -2228,13 +2228,13 @@ export default function App() {
               >
                 <div className="text-center space-y-2">
                   <img src="/icon-3.png" alt="Logo" className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-2 md:mb-4 object-contain" />
-                  <h2 className="text-xl md:text-2xl font-black text-[#2D3436]">أهلاً بك في خمن تخمينة!</h2>
-                  <p className="text-gray-500 font-bold text-sm md:text-base">يرجى إكمال بياناتك للبدء</p>
+                  <h2 className="text-xl md:text-2xl font-black text-main">أهلاً بك في خمن تخمينة!</h2>
+                  <p className="text-brown-muted font-bold text-sm md:text-base">يرجى إكمال بياناتك للبدء</p>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-black text-gray-600 mb-1 text-right">اسم اللاعب</label>
+                    <label className="block text-sm font-black text-brown-muted mb-1 text-right">اسم اللاعب</label>
                     <input 
                       type="text" 
                       value={playerName}
@@ -2245,7 +2245,7 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-black text-gray-600 mb-1 text-right">عمر اللاعب</label>
+                    <label className="block text-sm font-black text-brown-muted mb-1 text-right">عمر اللاعب</label>
                     <input 
                       type="text" 
                       value={playerAge}
@@ -2267,30 +2267,30 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-black text-gray-600 mb-1 text-right">الجنس</label>
+                    <label className="block text-sm font-black text-brown-muted mb-1 text-right">الجنس</label>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setGender('boy')}
-                        className={`flex-1 py-3 rounded-xl font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-2 border-blue-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100'}`}
+                        className={`flex-1 py-3 box-game font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'text-brown-light opacity-60'}`}
                       >
                         ولد 👦
                       </button>
                       <button
                         onClick={() => setGender('girl')}
-                        className={`flex-1 py-3 rounded-xl font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-2 border-pink-200' : 'bg-gray-50 text-gray-400 border-2 border-gray-100'}`}
+                        className={`flex-1 py-3 box-game font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-pink-200' : 'text-brown-light opacity-60'}`}
                       >
                         بنت 👧
                       </button>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-black text-gray-600 mb-3 text-right">اختر أفاتار البداية</label>
+                    <label className="block text-sm font-black text-brown-muted mb-3 text-right">اختر أفاتار البداية</label>
                     <div className="grid grid-cols-4 gap-2">
                       {AVATARS.filter(av => av.gender === gender).slice(0, 4).map((av, index) => (
                         <button
                           key={`welcome-avatar-${av.id}-${index}`}
                           onClick={() => setAvatar(av.id)}
-                          className={`w-full aspect-square rounded-xl flex items-center justify-center border-2 transition-all overflow-hidden ${avatar === av.id ? 'bg-orange-100 border-orange-400 scale-105' : 'bg-gray-50 border-gray-200'}`}
+                          className={`w-full aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${avatar === av.id ? 'bg-orange-100 border-orange-400 scale-105' : ''}`}
                         >
                           <div className="w-full h-full p-1">
                             {renderAvatarContent(av.id, 1)}
@@ -2330,8 +2330,8 @@ export default function App() {
                   <AlertTriangle className="w-10 h-10 text-red-500" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-2xl font-black text-gray-900">هل أنت متأكد؟</h3>
-                  <p className="text-gray-500 font-bold leading-relaxed">
+                  <h3 className="text-2xl font-black text-brown-dark">هل أنت متأكد؟</h3>
+                  <p className="text-brown-muted font-bold leading-relaxed">
                     سيتم مسح جميع بياناتك، مستواك، ومرات فوزك نهائياً من النظام. لا يمكن التراجع عن هذا الإجراء.
                   </p>
                 </div>
@@ -2344,7 +2344,7 @@ export default function App() {
                   </button>
                   <button 
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="w-full btn-game btn-secondary py-3 text-lg bg-gray-100 border-gray-200 text-gray-600"
+                    className="w-full btn-game btn-secondary py-3 text-lg bg-gray-100 border-gray-200 text-brown-muted"
                   >
                     إلغاء
                   </button>
@@ -2369,13 +2369,13 @@ export default function App() {
                 className="bg-white rounded-[40px] w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl border-4 border-purple-100"
               >
                 {/* Header */}
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-purple-50/50">
+                <div className="p-6 border-b border-game flex items-center justify-between bg-[#FBF4E1]/90 backdrop-blur-sm">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-200">
                       <Shield className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-black text-gray-900">لوحة تحكم المدير</h2>
+                      <h2 className="text-2xl font-black text-brown-dark">لوحة تحكم المدير</h2>
                       <div className="flex gap-2 mt-1">
                         <button 
                           onClick={() => setAdminTab('players')}
@@ -2418,13 +2418,13 @@ export default function App() {
                           fetchAdminImages();
                         }
                       }}
-                      className="p-3 bg-white rounded-xl border-2 border-gray-100 text-gray-400 hover:text-purple-600 hover:border-purple-100 transition-all"
+                      className="p-3 bg-white rounded-xl border-2 border-gray-100 text-brown-light hover:text-purple-600 hover:border-purple-100 transition-all"
                     >
                       <RefreshCw className="w-5 h-5" />
                     </button>
                     <button 
                       onClick={() => setShowAdminDashboard(false)}
-                      className="p-3 bg-white rounded-xl border-2 border-gray-100 text-gray-400 hover:text-red-500 hover:border-red-100 transition-all"
+                      className="p-3 bg-white rounded-xl border-2 border-gray-100 text-brown-light hover:text-red-500 hover:border-red-100 transition-all"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -2436,18 +2436,18 @@ export default function App() {
                   {adminTab === 'shop' ? (
                     <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
                       <div className="max-w-4xl mx-auto space-y-6">
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                          <h3 className="text-xl font-black text-gray-800 mb-4 flex items-center gap-2">
+                        <div className="box-game p-6 shadow-sm">
+                          <h3 className="text-xl font-black text-brown-dark mb-4 flex items-center gap-2">
                             <ShoppingCart className="w-6 h-6 text-orange-500" />
                             إدارة المتجر والـ Tokens
                           </h3>
-                          <p className="text-gray-500 mb-6 font-bold">
+                          <p className="text-brown-muted mb-6 font-bold">
                             من هنا يمكنك إدارة باقات الـ Tokens وإرسال Tokens مجانية للاعبين.
                           </p>
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Send Tokens Form */}
-                            <div className="bg-orange-50 p-5 rounded-xl border border-orange-100">
+                            <div className="box-game p-5">
                               <h4 className="font-black text-orange-800 mb-4 flex items-center gap-2">
                                 <Zap className="w-5 h-5" />
                                 إرسال Tokens للاعب
@@ -2480,24 +2480,24 @@ export default function App() {
                             </div>
 
                             {/* Packages Management */}
-                            <div className="bg-white p-5 rounded-xl border border-gray-200">
-                              <h4 className="font-black text-gray-800 mb-4">الباقات الحالية</h4>
+                            <div className="box-game p-5">
+                              <h4 className="font-black text-brown-dark mb-4">الباقات الحالية</h4>
                               <div className="space-y-3">
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div className="flex items-center justify-between p-3 box-game">
                                   <div className="font-bold text-sm">باقة 1 Token</div>
                                   <div className="text-orange-600 font-black">10 ج.م</div>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                                <div className="flex items-center justify-between p-3 box-game bg-orange-50">
                                   <div className="font-bold text-sm">باقة 5 Tokens</div>
                                   <div className="text-orange-600 font-black">40 ج.م</div>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div className="flex items-center justify-between p-3 box-game">
                                   <div className="font-bold text-sm">باقة 10 Tokens</div>
                                   <div className="text-orange-600 font-black">70 ج.م</div>
                                 </div>
                                 <button 
                                   onClick={() => alert('سيتم تفعيل تعديل الباقات قريباً')}
-                                  className="w-full text-sm text-gray-500 hover:text-orange-600 font-bold py-2 border border-dashed border-gray-300 rounded-lg mt-2 transition-colors"
+                                  className="w-full text-sm text-brown-muted hover:text-orange-600 font-bold py-2 border border-dashed border-gray-300 rounded-lg mt-2 transition-colors"
                                 >
                                   + إضافة / تعديل باقة
                                 </button>
@@ -2513,24 +2513,24 @@ export default function App() {
                     <>
                       {/* Sidebar - Reports */}
                       <div className="w-80 border-l border-gray-100 bg-gray-50/30 overflow-y-auto p-4 space-y-4">
-                        <h3 className="text-sm font-black text-gray-400 uppercase tracking-wider flex items-center gap-2 px-2">
+                        <h3 className="text-sm font-black text-brown-light uppercase tracking-wider flex items-center gap-2 px-2">
                           <AlertTriangle className="w-4 h-4" />
                           آخر البلاغات
                         </h3>
                         <div className="space-y-3">
                           {adminReports.length === 0 ? (
-                            <div className="text-center py-8 text-gray-400 font-bold text-sm">لا توجد بلاغات حالياً</div>
+                            <div className="text-center py-8 text-brown-light font-bold text-sm">لا توجد بلاغات حالياً</div>
                           ) : (
                             adminReports.map((report, index) => (
-                              <div key={`admin-report-${report.id}-${index}`} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2">
+                              <div key={`admin-report-${report.id}-${index}`} className="box-game p-4 shadow-sm space-y-2">
                                 <div className="flex justify-between items-start">
-                                  <span className="text-[10px] font-black text-gray-400">{new Date(report.timestamp).toLocaleString('ar-EG')}</span>
+                                  <span className="text-[10px] font-black text-brown-light">{new Date(report.timestamp).toLocaleString('ar-EG')}</span>
                                   <div className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-black">بلاغ</div>
                                 </div>
-                                <div className="text-xs font-bold text-gray-700">
+                                <div className="text-xs font-bold text-brown-dark">
                                   <span className="text-purple-600">{report.reporterName}</span> أبلغ عن <span className="text-red-500">{report.reportedName}</span>
                                 </div>
-                                <div className="bg-gray-50 p-2 rounded-lg text-[10px] text-gray-500 font-medium italic">
+                                <div className="bg-gray-50 p-2 rounded-lg text-[10px] text-brown-muted font-medium italic">
                                   "{report.reason}"
                                 </div>
                                 <div className="flex gap-2">
@@ -2566,7 +2566,7 @@ export default function App() {
                         {/* Search Bar */}
                         <div className="p-6 border-b border-gray-50">
                           <div className="relative">
-                            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-brown-light w-5 h-5" />
                             <input 
                               type="text"
                               placeholder="ابحث عن لاعب بالاسم أو الرقم التسلسلي..."
@@ -2575,7 +2575,7 @@ export default function App() {
                               className="w-full pr-12 pl-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-purple-400 focus:bg-white transition-all font-bold"
                             />
                           </div>
-                          <div className="mt-3 text-sm font-bold text-gray-500 flex items-center gap-2">
+                          <div className="mt-3 text-sm font-bold text-brown-muted flex items-center gap-2">
                             <Users className="w-4 h-4" />
                             إجمالي عدد اللاعبين المسجلين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{adminPlayers.length}</span>
                           </div>
@@ -2587,28 +2587,28 @@ export default function App() {
                             {adminPlayers
                               .filter(p => p.name.includes(adminSearchQuery) || p.serial.includes(adminSearchQuery))
                               .map((p, index) => (
-                                <div key={`admin-player-${p.serial}-${index}`} className="bg-white border-2 border-gray-100 rounded-3xl p-5 hover:border-purple-200 transition-all group">
+                                <div key={`admin-player-${p.serial}-${index}`} className="box-game p-5 hover:border-purple-200 transition-all group">
                                   <div className="flex items-center gap-4 mb-4">
                                     <div className="w-14 h-14">
                                       {renderAvatarContent(p.avatar, getLevel(p.xp))}
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
-                                        <h4 className="font-black text-gray-900">{p.name}</h4>
+                                        <h4 className="font-black text-brown-dark">{p.name}</h4>
                                         {p.isAdmin && <Shield className="w-3 h-3 text-purple-500" />}
                                       </div>
-                                      <div className="text-[10px] font-bold text-gray-400">ID: {p.serial}</div>
+                                      <div className="text-[10px] font-bold text-brown-light">ID: {p.serial}</div>
                                     </div>
                                     <div className="text-right">
                                       <div className="text-xs font-black text-purple-600">Lvl {getLevel(p.xp)}</div>
-                                      <div className="text-[10px] font-bold text-gray-400">{p.xp} XP</div>
+                                      <div className="text-[10px] font-bold text-brown-light">{p.xp} XP</div>
                                     </div>
                                   </div>
 
                                   <div className="grid grid-cols-3 gap-2">
                                     <div className="bg-gray-50 p-2 rounded-xl text-center">
-                                      <div className="text-[10px] font-bold text-gray-400">الفوز</div>
-                                      <div className="text-sm font-black text-gray-700">{p.wins || 0}</div>
+                                      <div className="text-[10px] font-bold text-brown-light">الفوز</div>
+                                      <div className="text-sm font-black text-brown-dark">{p.wins || 0}</div>
                                     </div>
                                     <div className="bg-purple-50 p-2 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-purple-400">Tokens</div>
@@ -2712,19 +2712,19 @@ export default function App() {
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Upload Form */}
                         <div className="lg:col-span-1 space-y-6">
-                          <div className="bg-white p-6 rounded-3xl border-2 border-purple-100 shadow-sm">
-                            <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+                          <div className="box-game p-6 shadow-sm">
+                            <h3 className="text-lg font-black text-brown-dark mb-4 flex items-center gap-2">
                               <Upload className="w-5 h-5 text-purple-600" />
                               رفع صورة جديدة
                             </h3>
                             
                             <div className="space-y-4">
                               <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">الفئة</label>
+                                <label className="block text-sm font-bold text-brown-dark mb-1">الفئة</label>
                                 <select 
                                   value={newImage.category}
                                   onChange={(e) => setNewImage({...newImage, category: e.target.value})}
-                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-700 focus:border-purple-500 outline-none"
+                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
                                 >
                                   {categories.map(cat => (
                                     <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -2733,18 +2733,18 @@ export default function App() {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">اسم الصورة (بالعربي)</label>
+                                <label className="block text-sm font-bold text-brown-dark mb-1">اسم الصورة (بالعربي)</label>
                                 <input 
                                   type="text" 
                                   value={newImage.name}
                                   onChange={(e) => setNewImage({...newImage, name: e.target.value})}
                                   placeholder="مثال: أسد"
-                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-700 focus:border-purple-500 outline-none"
+                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
                                 />
                               </div>
 
                               <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">الصورة</label>
+                                <label className="block text-sm font-bold text-brown-dark mb-1">الصورة</label>
                                 <div className="relative group cursor-pointer">
                                   <input 
                                     type="file" 
@@ -2766,8 +2766,8 @@ export default function App() {
                                       <img src={newImage.data} alt="Preview" className="h-full w-full object-contain p-2" />
                                     ) : (
                                       <>
-                                        <ImageIcon className="w-8 h-8 text-gray-400" />
-                                        <span className="text-xs font-bold text-gray-400">اضغط لاختيار صورة</span>
+                                        <ImageIcon className="w-8 h-8 text-brown-light" />
+                                        <span className="text-xs font-bold text-brown-light">اضغط لاختيار صورة</span>
                                       </>
                                     )}
                                   </div>
@@ -2792,31 +2792,31 @@ export default function App() {
                           </div>
 
                           {/* Category Management */}
-                          <div className="bg-white p-6 rounded-3xl border-2 border-purple-100 shadow-sm">
-                            <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+                          <div className="box-game p-6 shadow-sm">
+                            <h3 className="text-lg font-black text-brown-dark mb-4 flex items-center gap-2">
                               <Plus className="w-5 h-5 text-purple-600" />
                               إدارة الفئات
                             </h3>
                             
                             <div className="space-y-4">
                               <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">اسم الفئة</label>
+                                <label className="block text-sm font-bold text-brown-dark mb-1">اسم الفئة</label>
                                 <input 
                                   type="text" 
                                   value={newCategory.name}
                                   onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
                                   placeholder="مثال: سيارات"
-                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-700 focus:border-purple-500 outline-none"
+                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">أيقونة الفئة (إيموجي)</label>
+                                <label className="block text-sm font-bold text-brown-dark mb-1">أيقونة الفئة (إيموجي)</label>
                                 <input 
                                   type="text" 
                                   value={newCategory.icon}
                                   onChange={(e) => setNewCategory({...newCategory, icon: e.target.value})}
                                   placeholder="مثال: 🚗"
-                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-700 focus:border-purple-500 outline-none"
+                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
                                 />
                               </div>
                               <button 
@@ -2836,13 +2836,13 @@ export default function App() {
                             </div>
 
                             <div className="mt-6 space-y-2">
-                              <label className="block text-sm font-bold text-gray-700 mb-2">الفئات الحالية</label>
+                              <label className="block text-sm font-bold text-brown-dark mb-2">الفئات الحالية</label>
                               <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
                                 {categories.map(cat => (
-                                  <div key={cat.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                  <div key={cat.id} className="flex items-center justify-between p-2 box-game">
                                     <div className="flex items-center gap-2">
                                       <span className="text-xl">{cat.icon}</span>
-                                      <span className="font-bold text-sm text-gray-700">{cat.name}</span>
+                                      <span className="font-bold text-sm text-brown-dark">{cat.name}</span>
                                     </div>
                                     <button 
                                       onClick={() => handleDeleteCategory(cat.id)}
@@ -2861,12 +2861,12 @@ export default function App() {
                         <div className="lg:col-span-2 space-y-6">
                           <div className="bg-white p-6 rounded-3xl border-2 border-purple-100 shadow-sm min-h-[500px] flex flex-col">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                              <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                              <h3 className="text-lg font-black text-brown-dark flex items-center gap-2">
                                 <ImageIcon className="w-5 h-5 text-purple-600" />
                                 الصور المرفوعة ({adminImages.length})
                               </h3>
                               <div className="relative w-full md:w-64">
-                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-brown-light w-4 h-4" />
                                 <input 
                                   type="text"
                                   placeholder="ابحث عن صورة..."
@@ -2888,7 +2888,7 @@ export default function App() {
 
                                 return (
                                   <div key={category.id} className="space-y-4">
-                                    <h4 className="flex items-center gap-2 text-md font-bold text-gray-700 border-b-2 border-gray-100 pb-2">
+                                    <h4 className="flex items-center gap-2 text-md font-bold text-brown-dark border-b-2 border-gray-100 pb-2">
                                       <span className="text-2xl">{category.icon}</span>
                                       {category.name}
                                       <span className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full mr-auto">
@@ -2897,10 +2897,10 @@ export default function App() {
                                     </h4>
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                       {categoryImages.map((img) => (
-                                        <div key={img.id} className="bg-gray-50 rounded-xl border-2 border-gray-100 overflow-hidden flex flex-col">
+                                        <div key={img.id} className="box-game overflow-hidden flex flex-col">
                                           <img src={img.data || `https://picsum.photos/seed/${img.name}/200/200`} alt={img.name} className="w-full aspect-square object-cover" />
-                                          <div className="p-3 flex items-center justify-between gap-2 bg-white border-t border-gray-100">
-                                            <span className="text-gray-700 font-bold text-sm truncate" title={img.name}>{img.name}</span>
+                                          <div className="p-3 flex items-center justify-between gap-2 bg-white border-t border-game">
+                                            <span className="text-brown-dark font-bold text-sm truncate" title={img.name}>{img.name}</span>
                                             <button 
                                               onClick={() => handleDeleteImage(img.id)}
                                               className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors flex-shrink-0"
@@ -2917,14 +2917,14 @@ export default function App() {
                               })}
 
                               {adminImages.length === 0 && (
-                                <div className="text-center py-12 text-gray-400 font-bold">
+                                <div className="text-center py-12 text-brown-light font-bold">
                                   لا توجد صور مرفوعة حالياً
                                 </div>
                               )}
                               {adminImages.length > 0 && categories.every(cat => 
                                 adminImages.filter(img => img.category === cat.id && img.name.toLowerCase().includes(adminImageSearchQuery.toLowerCase())).length === 0
                               ) && (
-                                <div className="text-center py-12 text-gray-400 font-bold">
+                                <div className="text-center py-12 text-brown-light font-bold">
                                   لا توجد نتائج للبحث
                                 </div>
                               )}
@@ -2957,7 +2957,7 @@ export default function App() {
                 className="card-game p-4 w-full max-w-md text-center"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-3xl font-black text-[#2D3436] mb-4">الإبلاغ عن {opponent.name}</h3>
+                <h3 className="text-3xl font-black text-main mb-4">الإبلاغ عن {opponent.name}</h3>
                 <div className="space-y-4 mb-4">
                   <button 
                     onClick={() => handleReportPlayer('محتوى مسيء في الشات')}
@@ -2980,7 +2980,7 @@ export default function App() {
                 </div>
                 <button 
                   onClick={() => setShowReportModal(false)}
-                  className="text-lg font-black text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-lg font-black text-brown-light hover:text-brown-muted transition-colors"
                 >
                   إلغاء
                 </button>
@@ -3064,17 +3064,17 @@ export default function App() {
           <div className={`w-24 h-24 ${isPermanent ? 'bg-gray-100' : 'bg-red-100'} rounded-full flex items-center justify-center mx-auto mb-6`}>
             {isPermanent ? <Trash2 className="w-12 h-12 text-black" /> : <Lock className="w-12 h-12 text-red-500" />}
           </div>
-          <h1 className="text-3xl font-black text-gray-800 mb-4">
+          <h1 className="text-3xl font-black text-brown-dark mb-4">
             {isPermanent ? 'تم حظرك نهائياً' : 'تم حظر حسابك'}
           </h1>
-          <p className="text-gray-600 font-bold mb-6 text-lg">
+          <p className="text-brown-muted font-bold mb-6 text-lg">
             {isPermanent 
               ? 'لقد تم حظرك من اللعب نهائياً بسبب تكرار المخالفات (5 مرات حظر مؤقت). لا يمكنك اللعب بهذا الحساب مرة أخرى.'
               : 'لقد تلقيت أكثر من 10 إبلاغات من لاعبين آخرين، لذلك تم منعك من اللعب مؤقتاً لمدة 24 ساعة.'}
           </p>
           
           {!isPermanent ? (
-            <div className="bg-red-50 rounded-2xl p-6 border-2 border-red-100">
+            <div className="box-game p-6">
               <p className="text-red-600 font-black text-sm mb-2">الوقت المتبقي لفك الحظر:</p>
               <div className="text-4xl font-black text-red-500 font-mono" dir="ltr">
                 {remainingHours}h {remainingMinutes}m
@@ -3082,8 +3082,8 @@ export default function App() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-gray-50 rounded-2xl p-6 border-2 border-gray-100">
-                <p className="text-gray-600 font-black text-sm">
+              <div className="box-game p-6">
+                <p className="text-brown-muted font-black text-sm">
                   يمكنك مسح هذا الحساب والبدء من جديد بحساب جديد تماماً.
                 </p>
               </div>
@@ -3121,7 +3121,7 @@ export default function App() {
       <>
       <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
           {/* Fixed Header */}
-          <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
+          <header className="fixed top-0 left-0 right-0 bg-[#FBF4E1]/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-game h-14 md:h-16">
             <div className="flex-1 flex items-center gap-2 md:gap-3">
               <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
               <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
@@ -3137,7 +3137,7 @@ export default function App() {
                   setHasResponded(false); 
                   socket?.emit('leave_matchmaking');
                 }}
-                className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors"
+                className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-brown-muted rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-brown-dark transition-colors"
                 title="الرئيسية"
               >
                 <Home className="w-4 h-4 md:w-5 md:h-5" />
@@ -3185,13 +3185,13 @@ export default function App() {
               animate={{ opacity: 1, scale: 1 }}
               className="space-y-4 md:space-y-6"
             >
-              <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">تم العثور على منافس!</h2>
+              <h2 className="text-2xl md:text-3xl font-black text-main">تم العثور على منافس!</h2>
               <div className="flex flex-col items-center p-4 md:p-6 bg-orange-50 rounded-3xl border-4 border-orange-100 relative">
                 <div className="relative mb-2 md:mb-4 w-24 h-24 md:w-32 md:h-32">
                   {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0))}
                 </div>
-                <div className="text-xl md:text-2xl font-black text-[#2D3436] mb-1">{proposedMatch.opponent.name}</div>
-                <div className="text-sm md:text-base font-bold text-gray-500">Level {proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0)}</div>
+                <div className="text-xl md:text-2xl font-black text-main mb-1">{proposedMatch.opponent.name}</div>
+                <div className="text-sm md:text-base font-bold text-brown-muted">Level {proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0)}</div>
                 {matchResponseTimeLeft !== null && (
                   <div className="mt-4 text-orange-500 font-bold text-lg flex items-center gap-2">
                     <Timer className="w-5 h-5" />
@@ -3218,7 +3218,7 @@ export default function App() {
                         socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
                         setProposedMatch(null);
                       }}
-                      className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+                      className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-brown-muted border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
                     >
                       رفض
                     </button>
@@ -3231,7 +3231,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2">
-                  <div className="text-gray-500 font-bold animate-pulse">
+                  <div className="text-brown-muted font-bold animate-pulse">
                     جاري انتظار رد المنافس...
                   </div>
                   {opponentAccepted && (
@@ -3249,8 +3249,8 @@ export default function App() {
                 <Loader2 className="w-16 h-16 md:w-24 md:h-24 text-blue-500 animate-spin mx-auto relative z-10" />
               </div>
               <div className="space-y-2 md:space-y-3 relative z-10">
-                <h2 className="text-2xl md:text-3xl font-black text-[#2D3436]">جاري البحث عن منافس...</h2>
-                <p className="text-base md:text-lg text-gray-500 font-bold">يتم البحث عن لاعبين بمستوى قريب منك</p>
+                <h2 className="text-2xl md:text-3xl font-black text-main">جاري البحث عن منافس...</h2>
+                <p className="text-base md:text-lg text-brown-muted font-bold">يتم البحث عن لاعبين بمستوى قريب منك</p>
                 {searchTimeLeft !== null && (
                   <div className="flex justify-center items-center gap-2 text-blue-500 font-bold text-lg mt-2">
                     <Timer className="w-5 h-5" />
@@ -3290,7 +3290,7 @@ export default function App() {
     return (
       <>
         {/* Fixed Header */}
-        <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
+        <header className="fixed top-0 left-0 right-0 bg-[#FBF4E1]/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-game h-14 md:h-16">
           <div className="flex-1 flex items-center gap-2 md:gap-3">
             <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
             <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm block">خمن تخمينة</div>
@@ -3346,17 +3346,17 @@ export default function App() {
               </div>
               <div className="flex flex-col justify-center flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-1 flex-row-reverse">
-                  <div className="text-sm md:text-base font-black text-[#2D3436] truncate text-right">{playerName || 'لاعب جديد'}</div>
+                  <div className="text-sm md:text-base font-black text-main truncate text-right">{playerName || 'لاعب جديد'}</div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs md:text-sm font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100 flex items-center gap-1">
+                    <span className="text-xs md:text-sm font-black text-purple-600 box-game px-2 py-0.5 flex items-center gap-1">
                       {tokens} <span className="text-[10px] text-purple-400">Tokens</span>
                     </span>
-                    <span className="text-xs md:text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">Level {getLevel(xp)}</span>
+                    <span className="text-xs md:text-sm font-black text-blue-600 box-game px-2 py-0.5">Level {getLevel(xp)}</span>
                   </div>
                 </div>
                 
                 {/* Level Bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
+                <div className="w-full bg-[#F6E6CD] rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
                   <div 
                     className="bg-gradient-to-r from-blue-400 to-blue-600 h-full rounded-full transition-all duration-500" 
                     style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
@@ -3364,7 +3364,7 @@ export default function App() {
                 </div>
                 
                 {/* XP Bar */}
-                <div className="w-full bg-gray-100 rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
+                <div className="w-full bg-[#F6E6CD] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
                   <div 
                     className="bg-gradient-to-r from-orange-400 to-orange-500 h-full transition-all duration-500" 
                     style={{ width: `${getXpProgress(xp)}%` }}
@@ -3386,13 +3386,13 @@ export default function App() {
             <div className="flex flex-col gap-2">
               
               {/* Podium Box with Integrated Header */}
-              <div className="bg-gray-50/30 rounded-[32px] border-2 border-gray-100/50 px-3 md:px-5 pb-2 pt-4 mt-2 relative">
+              <div className="box-game px-3 md:px-5 pb-2 pt-4 mt-2 relative">
                 {/* Integrated Header */}
                 <div className="flex items-center justify-between flex-row-reverse mb-8 pb-2">
-                  <h2 className="text-sm md:text-base font-black text-[#2D3436] flex items-center gap-2">
+                  <h2 className="text-sm md:text-base font-black text-main flex items-center gap-2">
                     أبطال التخمين
                   </h2>
-                  <span className="text-[10px] md:text-xs font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-full">المتصدرون حالياً</span>
+                  <span className="text-[10px] md:text-xs font-bold text-orange-500 box-game px-2 py-1 rounded-full">المتصدرون حالياً</span>
                 </div>
                 <div className="flex items-end justify-center gap-2 md:gap-4">
                   {/* Rank 2 */}
@@ -3402,11 +3402,11 @@ export default function App() {
                         <div className="w-14 h-14 md:w-16 md:h-16">
                           {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0))}
                         </div>
-                        <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
+                        <div className="absolute -top-2 -right-2 bg-gray-200 text-brown-muted w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
                       </div>
-                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[1].name)}</div>
+                      <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[1].name)}</div>
                       <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
-                        <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                        <div className="text-[9px] font-bold text-brown-muted bg-gray-100 px-2 py-0.5 rounded-full">
                           Lvl {topPlayers[1].level || getLevel(topPlayers[1].xp || 0)}
                         </div>
                         <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -3428,9 +3428,9 @@ export default function App() {
                         </div>
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-[60] animate-bounce">1</div>
                       </div>
-                      <div className="text-xs md:text-sm font-black text-[#2D3436] truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{truncateName(topPlayers[0].name)}</div>
+                      <div className="text-xs md:text-sm font-black text-main truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{truncateName(topPlayers[0].name)}</div>
                       <div className="flex flex-col items-center gap-1 mt-1 mb-1">
-                        <div className="text-[10px] font-bold text-gray-500 bg-yellow-100 px-3 py-1 rounded-full">
+                        <div className="text-[10px] font-bold text-brown-muted bg-yellow-100 px-3 py-1 rounded-full">
                           Lvl {topPlayers[0].level || getLevel(topPlayers[0].xp || 0)}
                         </div>
                         <div className="text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full flex items-center gap-1">
@@ -3451,9 +3451,9 @@ export default function App() {
                         </div>
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
-                      <div className="text-[10px] md:text-xs font-black text-[#2D3436] truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[2].name)}</div>
+                      <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[2].name)}</div>
                       <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
-                        <div className="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                        <div className="text-[9px] font-bold text-brown-muted bg-gray-100 px-2 py-0.5 rounded-full">
                           Lvl {topPlayers[2].level || getLevel(topPlayers[2].xp || 0)}
                         </div>
                         <div className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -3492,14 +3492,14 @@ export default function App() {
                     return (
                       <button 
                         onClick={() => setShowLeaderboardModal(true)}
-                        className="mt-3 w-full group bg-white border-2 border-gray-100 hover:border-orange-200 rounded-2xl py-3 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
+                        className="mt-3 w-full group box-game hover:border-orange-200 py-3 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-500 font-bold text-xs md:text-sm">لست ضمن الـ Top 100..</span>
+                          <span className="text-brown-muted font-bold text-xs md:text-sm">لست ضمن الـ Top 100..</span>
                           <span className="text-orange-600 font-black text-xs md:text-sm">شد حيلك! 🚀</span>
                         </div>
                         <div className="w-8 h-8 bg-gray-50 group-hover:bg-orange-50 rounded-full flex items-center justify-center transition-colors shrink-0">
-                           <ChevronLeft className="w-4 h-4 text-gray-400 group-hover:text-orange-500 transition-colors animate-pulse" />
+                           <ChevronLeft className="w-4 h-4 text-brown-light group-hover:text-orange-500 transition-colors animate-pulse" />
                         </div>
                       </button>
                     );
@@ -3509,7 +3509,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="pt-4 md:pt-6 border-t-2 border-gray-100 space-y-3 md:space-y-4">
+            <div className="pt-4 md:pt-6 border-t-2 border-game space-y-3 md:space-y-4">
               <div>
                 {error && (
                   <motion.div 
@@ -3520,7 +3520,7 @@ export default function App() {
                     {error}
                   </motion.div>
                 )}
-                <label className="block text-base md:text-lg font-black text-[#2D3436] mb-1 md:mb-2 px-1">دخول بكود غرفة</label>
+                <label className="block text-base md:text-lg font-black text-main mb-1 md:mb-2 px-1">دخول بكود غرفة</label>
                 <div className="flex gap-2">
                   <input 
                     type="text" 
@@ -3544,8 +3544,8 @@ export default function App() {
               </div>
 
               <div className="relative py-1 md:py-2">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-gray-200 dashed"></div></div>
-                <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-white px-3 text-gray-400 font-black">أو</span></div>
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-game dashed"></div></div>
+                <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-[#fbf4e1] px-3 text-brown-light font-black">أو</span></div>
               </div>
 
               <div className="flex items-center gap-2">
@@ -3557,7 +3557,7 @@ export default function App() {
                   بحث عشوائي
                 </button>
 
-                <div className="flex flex-col bg-purple-50 p-2 rounded-xl border-2 border-purple-100 h-16">
+                <div className="flex flex-col box-game p-2 h-16">
                   <div className="flex items-center gap-2 flex-1">
                     <input 
                       type="checkbox" 
@@ -3565,16 +3565,16 @@ export default function App() {
                       checked={useToken} 
                       onChange={(e) => setUseToken(e.target.checked)}
                       disabled={tokens <= 0}
-                      className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer disabled:opacity-50"
+                      className="checkbox-game disabled:opacity-50"
                     />
                     <label htmlFor="useToken" className="cursor-pointer select-none flex items-center gap-1">
                       <button onClick={toggleTokenInfo} className="font-black text-purple-600 hover:underline text-sm truncate">Token</button>
-                      <span className="font-black text-gray-700 text-sm">({tokens})</span>
+                      <span className="font-black text-main text-sm">({tokens})</span>
                     </label>
                   </div>
-                  <div className="border-t border-purple-200 mt-1 mb-0.5"></div>
+                  <div className="border-t border-game mt-1 mb-0.5"></div>
                   <div className="w-full text-left" dir="ltr">
-                    <span className="text-xs text-gray-700 font-black">Level 50+</span>
+                    <span className="text-xs text-main font-black">Level 50+</span>
                   </div>
                 </div>
               </div>
@@ -3612,7 +3612,7 @@ export default function App() {
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
                   <Trophy className="w-8 h-8 text-white" />
                 </div>
-                <h2 className="text-2xl font-black text-white mb-1">أبطال التخمين (Top 100)</h2>
+                <h2 className="text-2xl font-black text-light mb-1">أبطال التخمين (Top 100)</h2>
                 <p className="text-white/80 text-sm font-bold">أقوى اللاعبين في اللعبة</p>
               </div>
 
@@ -3654,8 +3654,8 @@ export default function App() {
                         <div className={`
                           font-black text-lg w-8 text-center rounded-lg py-1
                           ${index === 0 ? 'text-yellow-500 bg-yellow-50' : 
-                            index === 1 ? 'text-gray-400 bg-gray-50' : 
-                            index === 2 ? 'text-orange-500 bg-orange-50' : 'text-gray-400'}
+                            index === 1 ? 'text-brown-light bg-gray-50' : 
+                            index === 2 ? 'text-orange-500 bg-orange-50' : 'text-brown-light'}
                         `}>
                           {index + 1}
                         </div>
@@ -3665,12 +3665,12 @@ export default function App() {
                         </div>
 
                         <div className="flex-1 min-w-0 text-right">
-                          <div className={`font-black truncate ${isMe ? 'text-purple-700' : 'text-gray-800'}`}>
+                          <div className={`font-black truncate ${isMe ? 'text-purple-700' : 'text-brown-dark'}`}>
                             {player.name} {isMe && '(أنت)'}
                           </div>
-                          <div className="text-xs text-gray-500 font-bold flex items-center gap-2">
-                            <span className="bg-gray-100 px-1.5 rounded text-gray-600" dir="ltr">Lvl {player.level}</span>
-                            <span className="text-gray-300">•</span>
+                          <div className="text-xs text-brown-muted font-bold flex items-center gap-2">
+                            <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="ltr">Lvl {player.level}</span>
+                            <span className="text-brown-light">•</span>
                             <span className="text-green-600">{player.wins} فوز</span>
                           </div>
                         </div>
@@ -3678,7 +3678,7 @@ export default function App() {
                         {index < 3 && (
                           <Trophy className={`w-5 h-5 ${
                             index === 0 ? 'text-yellow-500' : 
-                            index === 1 ? 'text-gray-400' : 'text-orange-500'
+                            index === 1 ? 'text-brown-light' : 'text-orange-500'
                           }`} />
                         )}
                       </div>
@@ -3719,12 +3719,12 @@ export default function App() {
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
                   <Zap className="w-8 h-8 text-white" />
                 </div>
-                <h2 className="text-2xl font-black text-white mb-1">ما هو الـ Token؟</h2>
+                <h2 className="text-2xl font-black text-light mb-1">ما هو الـ Token؟</h2>
               </div>
 
               <div className="p-6 overflow-y-auto flex-1 space-y-4 text-right" dir="rtl">
-                <div className="space-y-4 text-gray-700">
-                  <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                <div className="space-y-4 text-brown-dark">
+                  <div className="box-game p-4">
                     <h3 className="font-black text-purple-700 mb-2 flex items-center gap-2">
                       <Zap className="w-4 h-4" />
                       ما فائدته؟
@@ -3734,7 +3734,7 @@ export default function App() {
                     </p>
                   </div>
 
-                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                  <div className="box-game p-4">
                     <h3 className="font-black text-blue-700 mb-2 flex items-center gap-2">
                       <ShoppingCart className="w-4 h-4" />
                       من أين أشتريه؟
@@ -3744,7 +3744,7 @@ export default function App() {
                     </p>
                   </div>
 
-                  <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                  <div className="box-game p-4">
                     <h3 className="font-black text-orange-700 mb-2 flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4" />
                       تحذير هام!
@@ -3771,7 +3771,7 @@ export default function App() {
   if (!room) {
     if (isSearching) return null; // Handled by isSearching block
     if (!joined) return null; // Handled by !joined block
-    return <div className="min-h-screen w-full flex items-center justify-center text-[#2D3436] font-black text-2xl animate-pulse">جاري التحميل... 🚀</div>;
+    return <div className="min-h-screen w-full flex items-center justify-center text-main font-black text-2xl animate-pulse">جاري التحميل... 🚀</div>;
   }
 
   return (
@@ -3783,8 +3783,8 @@ export default function App() {
             <div className="w-20 h-20 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
               <span className="text-4xl">🎮</span>
             </div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">خمن تخمينة</h2>
-            <p className="text-gray-600 mb-6 font-medium">
+            <h2 className="text-2xl font-black text-brown-dark mb-2">خمن تخمينة</h2>
+            <p className="text-brown-muted mb-6 font-medium">
               لعبة خمن تخمينة هي لعبة جماعية أونلاين لشخصين مع مؤثرات تفاعلية وكروت مساعدة
             </p>
             <button 
@@ -3795,7 +3795,7 @@ export default function App() {
             </button>
             <button 
               onClick={handleCloseInstallModal}
-              className="w-full py-2 text-gray-400 font-bold hover:text-gray-600"
+              className="w-full py-2 text-brown-light font-bold hover:text-brown-muted"
             >
               ليس الآن
             </button>
@@ -3804,7 +3804,7 @@ export default function App() {
       )}
 
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-gray-100 h-14 md:h-16">
+      <header className="fixed top-0 left-0 right-0 bg-[#FBF4E1]/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-game h-14 md:h-16">
         <div className="flex-1 flex items-center gap-2 md:gap-3">
           <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
           <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
@@ -3813,7 +3813,7 @@ export default function App() {
         {/* Game Info (Center) */}
         <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-2 mx-2">
            {room.gameState !== 'waiting' && (
-            <div className={`flex items-center justify-center min-w-[70px] md:min-w-[80px] gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-full text-sm md:text-base font-black transition-colors border-2 ${room.isFrozen ? 'bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse' : room.timer <= 10 && room.gameState === 'guessing' ? 'bg-red-100 text-red-600 border-red-200 animate-pulse' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+            <div className={`flex items-center justify-center min-w-[70px] md:min-w-[80px] gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-full text-sm md:text-base font-black transition-colors border-2 ${room.isFrozen ? 'bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse' : room.timer <= 10 && room.gameState === 'guessing' ? 'bg-red-100 text-red-600 border-red-200 animate-pulse' : 'bg-gray-100 text-brown-muted border-gray-200'}`}>
               {room.isFrozen ? <Snowflake className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Timer className="w-3.5 h-3.5 md:w-4 md:h-4" />}
               {room.isFrozen ? (
                 <span className="text-xs md:text-sm">{room.freezeTimer}s</span>
@@ -3832,7 +3832,7 @@ export default function App() {
           {/* Home Button (Leave Game) */}
           <button 
             onClick={handleLeaveGame}
-            className="w-12 h-12 md:w-10 md:h-10 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-gray-700 transition-colors cursor-pointer touch-manipulation"
+            className="w-12 h-12 md:w-10 md:h-10 bg-gray-100 text-brown-muted rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-brown-dark transition-colors cursor-pointer touch-manipulation"
             title="الرئيسية"
           >
             <Home className="w-6 h-6 md:w-5 md:h-5" />
@@ -3881,7 +3881,7 @@ export default function App() {
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
                 {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false)}
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-white shadow-sm z-20 whitespace-nowrap">
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-[#E1CCAB] shadow-sm z-20 whitespace-nowrap">
                   Lvl {opponent.level || getLevel(opponent.xp || 0)}
                 </div>
                 {showHammer === opponent.id && (
@@ -3895,11 +3895,11 @@ export default function App() {
                   </motion.div>
                 )}
               </div>
-              <div className="mt-1 font-black text-base flex items-center gap-2 text-[#2D3436] bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm">
+              <div className="mt-1 font-black text-base flex items-center gap-2 text-main bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm">
                 {opponent.name}
                 <button 
                   onClick={() => setShowReportModal(true)}
-                  className={`${opponent.reports && opponent.reports > 0 ? 'text-red-500' : 'text-gray-400'} hover:bg-red-50 p-1.5 rounded-full transition-all`}
+                  className={`${opponent.reports && opponent.reports > 0 ? 'text-red-500' : 'text-brown-light'} hover:bg-red-50 p-1.5 rounded-full transition-all`}
                   title={opponent.reports && opponent.reports > 0 ? `هذا اللاعب لديه ${opponent.reports} إبلاغات` : "الإبلاغ عن هذا اللاعب"}
                 >
                   <Flag 
@@ -3913,13 +3913,13 @@ export default function App() {
                     setIsOpponentBlocked(newBlockedState);
                     socket?.emit('toggle_mute_opponent', { roomId, isMuted: newBlockedState });
                   }}
-                  className={`${isOpponentBlocked ? 'text-red-500 bg-red-100' : 'text-gray-400 hover:bg-gray-100'} p-1.5 rounded-full transition-all`}
+                  className={`${isOpponentBlocked ? 'text-red-500 bg-red-100' : 'text-brown-light hover:bg-gray-100'} p-1.5 rounded-full transition-all`}
                   title={isOpponentBlocked ? "إلغاء الحظر" : "حظر اللاعب (كتم الصوت والدردشة)"}
                 >
                   <MessageSquareOff className="w-4 h-4" />
                 </button>
               </div>
-              {opponent.age && <div className="text-xs text-gray-500 font-bold mt-1">({opponent.age} سنة)</div>}
+              {opponent.age && <div className="text-xs text-brown-muted font-bold mt-1">({opponent.age} سنة)</div>}
             </>
           )}
         </div>
@@ -3928,7 +3928,7 @@ export default function App() {
         <div className="flex-[2] flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0 overflow-hidden">
           {room.gameState === 'waiting' ? (
             <div className="w-full card-game p-3 md:p-6 text-center space-y-3 md:space-y-5 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gray-100">
+              <div className="absolute top-0 left-0 w-full h-1 bg-[#F6E6CD]">
                 <div 
                   className="h-full bg-orange-500 transition-all duration-1000" 
                   style={{ width: `${(room.timer / 60) * 100}%` }}
@@ -3962,7 +3962,7 @@ export default function App() {
                         key={cat.id}
                         onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
                         className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
-                          ${isAgreed ? 'bg-green-100 text-green-600 border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-orange-600 border-orange-300 scale-105' : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200 hover:text-gray-700'}
+                          ${isAgreed ? 'bg-green-100 text-green-600 border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-orange-600 border-orange-300 scale-105' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
                           ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
                         `}
                       >
@@ -3994,13 +3994,13 @@ export default function App() {
                     )}
                     <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
                       {chatHistory.length === 0 ? (
-                        <div className="h-full flex items-center justify-center text-gray-400 font-bold text-sm italic">
+                        <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic">
                           ابدأ الدردشة مع منافسك...
                         </div>
                       ) : (
                         chatHistory.map((msg, index) => (
                           <div key={`waiting-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
-                            <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
+                            <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
                               <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
                                 {msg.playerName}
                               </div>
@@ -4027,7 +4027,7 @@ export default function App() {
                       <button 
                         type="button" 
                         onClick={() => setShowEmotes(!showEmotes)}
-                        className="bg-white text-gray-500 p-3 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
+                        className="bg-white text-brown-muted p-3 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
                       >
                         <Smile className="w-5 h-5" />
                       </button>
@@ -4073,7 +4073,7 @@ export default function App() {
                 >
                   <div className="w-full max-w-md card-game p-8 text-center relative">
                     <div className="text-8xl font-black text-red-500 mb-4 drop-shadow-md">{room.quickGuessTimer}</div>
-                    <h3 className="text-3xl font-black text-[#2D3436] mb-6">تخمين سريع!</h3>
+                    <h3 className="text-3xl font-black text-main mb-6">تخمين سريع!</h3>
                     <form onSubmit={handleQuickGuess} className="flex flex-col gap-3">
                       <input 
                         autoFocus
@@ -4093,7 +4093,7 @@ export default function App() {
                           }
                         }}
                         disabled={getLevel(xp) < 20}
-                        className={`btn-game py-3 text-lg flex items-center justify-center gap-2 ${getLevel(xp) >= 20 ? 'bg-gray-500 hover:bg-gray-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                        className={`btn-game py-3 text-lg flex items-center justify-center gap-2 ${getLevel(xp) >= 20 ? 'bg-brown-muted hover:bg-brown-dark text-white' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
                       >
                         {getLevel(xp) < 20 && <Lock className="w-4 h-4" />}
                         {getLevel(xp) < 20 ? 'تراجع (Lvl 20)' : 'تراجع'}
@@ -4134,7 +4134,7 @@ export default function App() {
                         className={`w-full h-full object-cover rounded-xl ${funnyFilter === opponent?.id ? 'invert sepia hue-rotate-90 scale-110' : ''}`}
                         alt="Target"
                       />
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white/90 px-3 py-0.5 rounded-full font-black text-xs md:text-sm text-[#2D3436] shadow-sm border border-gray-200 backdrop-blur-sm z-10 whitespace-nowrap">
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white/90 px-3 py-0.5 rounded-full font-black text-xs md:text-sm text-main shadow-sm border border-gray-200 backdrop-blur-sm z-10 whitespace-nowrap">
                         {opponent?.targetImage?.name}
                       </div>
                     </div>
@@ -4181,13 +4181,13 @@ export default function App() {
                   )}
                   <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
                     {chatHistory.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-gray-400 font-bold text-sm italic">
+                      <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic">
                         اسأل المنافس وخمن الاجابة...
                       </div>
                     ) : (
                       chatHistory.map((msg, index) => (
                         <div key={`game-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
-                          <div className={`max-w-[85%] p-1.5 px-2.5 rounded-xl text-xs font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
+                          <div className={`max-w-[85%] p-1.5 px-2.5 rounded-xl text-xs font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
                             <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
                               {msg.playerName}
                             </div>
@@ -4214,7 +4214,7 @@ export default function App() {
                     <button 
                       type="button" 
                       onClick={() => setShowEmotes(!showEmotes)}
-                      className="bg-white text-gray-500 p-2 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all w-10 h-10 flex items-center justify-center"
+                      className="bg-white text-brown-muted p-2 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all w-10 h-10 flex items-center justify-center"
                     >
                       <Smile className="w-5 h-5" />
                     </button>
@@ -4248,7 +4248,7 @@ export default function App() {
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
                 {renderAvatarContent(me.avatar, getLevel(xp), false)}
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-white shadow-sm z-20 whitespace-nowrap">
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-[#E1CCAB] shadow-sm z-20 whitespace-nowrap">
                   Lvl {getLevel(xp)}
                 </div>
                 {showHammer === me.id && (
@@ -4262,13 +4262,13 @@ export default function App() {
                   </motion.div>
                 )}
               </div>
-              <div className="mt-1 font-black text-lg text-[#2D3436] bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm flex items-center gap-2">
+              <div className="mt-1 font-black text-lg text-main bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm flex items-center gap-2">
                 {me.name}
                 {reports > 0 && (
                   <Flag className="w-4 h-4 text-red-500" fill="currentColor" title={`لديك ${reports} إبلاغات`} />
                 )}
               </div>
-              {me.age && <div className="text-xs text-gray-500 font-bold mt-1">({me.age} سنة)</div>}
+              {me.age && <div className="text-xs text-brown-muted font-bold mt-1">({me.age} سنة)</div>}
               
 
             </>
@@ -4372,7 +4372,7 @@ export default function App() {
                 title={card.name}
               >
                 {isLocked ? (
-                  <div className="flex flex-col items-center justify-center text-gray-400">
+                  <div className="flex flex-col items-center justify-center text-brown-light">
                     <Lock className="w-4 h-4 md:w-5 md:h-5 mb-0.5" />
                     <span className="text-[8px] md:text-[9px] font-black">Lvl {card.level}</span>
                   </div>
@@ -4446,7 +4446,7 @@ export default function App() {
                     <Trophy className="w-8 h-8 text-white" />
                   </div>
                   <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-500 to-emerald-600 mb-1">مبروك! فزت</h2>
-                  <p className="text-gray-500 font-bold text-xs">أداء أسطوري يا بطل! 🏆</p>
+                  <p className="text-brown-muted font-bold text-xs">أداء أسطوري يا بطل! 🏆</p>
                 </div>
               ) : (
                 <div className="mb-4">
@@ -4454,15 +4454,15 @@ export default function App() {
                     <span className="text-3xl">😢</span>
                   </div>
                   <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-600 mb-1">للأسف! خسرت</h2>
-                  <p className="text-gray-500 font-bold text-xs">حظ أوفر في المرة القادمة</p>
+                  <p className="text-brown-muted font-bold text-xs">حظ أوفر في المرة القادمة</p>
                 </div>
               )}
               
-              <div className="flex flex-col items-center mb-4 bg-gray-50 p-1 rounded-[24px] border-2 border-gray-100">
-                <div className="w-32 h-32 rounded-2xl overflow-hidden bg-white shadow-inner border-4 border-white">
+              <div className="flex flex-col items-center mb-4 box-game p-1">
+                <div className="w-32 h-32 rounded-2xl overflow-hidden bg-white shadow-inner border-4 border-[#E1CCAB]">
                   <img src={me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
                 </div>
-                <div className="font-black text-lg text-gray-800 mt-1">{me?.targetImage?.name}</div>
+                <div className="font-black text-lg text-brown-dark mt-1">{me?.targetImage?.name}</div>
               </div>
 
               <div className="flex flex-col gap-2">
@@ -4513,7 +4513,7 @@ export default function App() {
             ) : (
               <div className="w-3 h-3 bg-red-500 rounded-full"></div>
             )}
-            <span className="text-sm font-black text-[#2D3436]">
+            <span className="text-sm font-black text-main">
               {isConnecting ? 'جاري الاتصال...' : isConnected ? 'متصل' : 'غير متصل'}
             </span>
             {!isConnected && !isConnecting && (

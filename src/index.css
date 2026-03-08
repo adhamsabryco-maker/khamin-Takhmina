@@ -3,6 +3,11 @@
 
 @theme {
   --font-sans: "Fredoka", "Cairo", system-ui, sans-serif;
+  
+  --color-brown-dark: #533933;
+  --color-brown-muted: #8B736B;
+  --color-brown-light: #A68B7C;
+  --color-brown-soft: #D2B48C;
 }
 
 /* 
@@ -12,9 +17,35 @@
 
 body {
   font-family: "Fredoka", "Cairo", sans-serif;
-  background-color: #543a33;
-  color: #2D3436;
+  background: radial-gradient(circle at center, #7C4737 0%, #433431 100%);
+  background-attachment: fixed;
+  color: #533933;
   direction: rtl;
+}
+
+.text-main {
+  color: #533933;
+}
+
+.text-light {
+  color: #FBF4E1;
+}
+
+.border-game {
+  border-color: #E1CCAB;
+}
+
+.box-game {
+  @apply bg-[#F6E6CD] border-2 border-[#E1CCAB] rounded-xl;
+}
+
+.checkbox-game {
+  @apply appearance-none w-5 h-5 bg-[#FBF4E1] border-2 border-[#E1CCAB] rounded cursor-pointer checked:bg-[#CAA683] transition-all relative;
+}
+
+.checkbox-game:checked::after {
+  content: '✓';
+  @apply absolute inset-0 flex items-center justify-center text-[#533933] font-black text-xs;
 }
 
 /* Custom Scrollbar */
@@ -55,12 +86,15 @@ body {
 
 /* Secondary Action (Green Gradient) */
 .btn-secondary {
+  background: #5ab72e; /* Fallback color */
   background: linear-gradient(to top, #5ab72e, #ade03e);
   @apply text-white rounded-2xl border-b-[6px] border-[#348d20] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+  transition: transform 0.2s, shadow 0.2s, border-color 0.2s, background 0.2s;
 }
 .btn-secondary:hover {
-  @apply bg-[#92CB79] -translate-y-[2px];
+  @apply -translate-y-[2px];
   background: #92CB79;
+  background-image: none; /* Ensure gradient is removed cleanly */
 }
 .btn-secondary:active {
   @apply border-b-0 translate-y-[4px];
@@ -90,21 +124,21 @@ body {
 
 /* 2. The "Game Card" Container */
 .card-game {
-  @apply bg-[#fbf4e1] rounded-[32px] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.05)];
+  @apply bg-[#fbf4e1] rounded-[32px] border-[4px] border-[#E1CCAB] shadow-[0_8px_0_rgba(0,0,0,0.05)];
 }
 
 /* 2.1. The "Player Data Card" Container */
 .player-card {
-  @apply bg-[#fbf4e1] rounded-[32px] border-2 border-white/50 shadow-md backdrop-blur-sm;
+  @apply bg-[#fbf4e1] rounded-[32px] border-2 border-[#E1CCAB] shadow-md backdrop-blur-sm;
 }
 
 /* 3. The "Chunky" Input */
 .input-game {
-  @apply w-full bg-[#f6e6cd] border-[3px] border-[#e1ccab] rounded-2xl p-4 text-lg font-bold text-[#2D3436] placeholder-[#B2BEC3] outline-none transition-all;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+  @apply w-full bg-[#f6e6cd] border-[3px] border-[#e1ccab] rounded-2xl p-4 text-lg font-bold text-[#533933] placeholder-[#CAA683] outline-none transition-all;
+  box-shadow: inset 0 4px 8px rgba(0,0,0,0.1), inset 0 1px 2px rgba(0,0,0,0.05);
 }
 .input-game:focus {
-  @apply bg-[#f6e6cd] border-[#e1ccab] shadow-[0_0_0_4px_rgba(225,204,171,0.4)];
+  @apply bg-[#f6e6cd] border-[#e1ccab] shadow-[0_0_0_4px_rgba(225,204,171,0.4),_inset_0_4px_8px_rgba(0,0,0,0.1)];
 }
 
 /* Animations */
