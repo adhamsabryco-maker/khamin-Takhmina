@@ -193,7 +193,7 @@ export const AdminCustomization = () => {
                 type="text" 
                 value={versionInput} 
                 onChange={(e) => setVersionInput(e.target.value)}
-                className="flex-1 px-4 py-2 border-2 border-gray-100 rounded-xl focus:border-purple-400 outline-none font-mono"
+                className="input-game"
                 placeholder="مثلاً: 1.0.1"
               />
               <button 
