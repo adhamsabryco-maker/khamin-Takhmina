@@ -593,6 +593,11 @@ const app = express();
     rank3BgStart: '#d6d3d1',
     rank3BgEnd: '#a8a29e',
     rank3Border: '#78716c',
+    btnSuccessBgStart: '#1dd1a1',
+    btnSuccessBgEnd: '#10ac84',
+    btnSuccessBorder: '#10ac84',
+    btnSuccessHover: '#3de1b1',
+    modalBg: '#ffffff',
   };
 
   try {
