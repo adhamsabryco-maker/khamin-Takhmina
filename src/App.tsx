@@ -3999,21 +3999,21 @@ export default function App() {
                 </div>
                 
                 {/* Level Bar */}
-                <div className="w-full bg-[#F6E6CD] rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
+                <div className="w-full bg-[var(--level-bar-bg)] rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
                   <div 
-                    className="bg-accent-blue h-full rounded-full transition-all duration-500" 
-                    style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%` }}
+                    className="h-full rounded-full transition-all duration-500" 
+                    style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
                   ></div>
                 </div>
                 
                 {/* XP Bar */}
-                <div className="w-full bg-[#F6E6CD] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-gray-200" dir="ltr">
+                <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-[#E1CCAB]" dir="ltr">
                   <div 
-                    className="bg-accent-orange h-full transition-all duration-500" 
-                    style={{ width: `${getXpProgress(xp)}%` }}
+                    className="h-full transition-all duration-500" 
+                    style={{ width: `${getXpProgress(xp)}%`, backgroundColor: 'var(--xp-bar-fill)' }}
                   ></div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] md:text-xs font-black text-white drop-shadow-sm flex items-center gap-1">
+                    <span className="text-[10px] md:text-xs font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(xp) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
                       <Zap className="w-3 h-3" />
                       {xp} / {getXpForNextLevel(getLevel(xp))} XP
                     </span>
