@@ -198,6 +198,10 @@ const app = express();
     res.json(configCache);
   });
 
+  app.get("/api/version", (req, res) => {
+    res.json({ version: configCache.version || '1.0.0' });
+  });
+
   app.get("/api/auth/google/url", (req, res) => {
     const redirectUri = getRedirectUri(req);
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email%20profile`;
@@ -1205,10 +1209,10 @@ const app = express();
       const player = allPlayers.get(serial);
       if (!player) return;
 
-      // 1. Check Level
+      // 1. Check Level (Changed to 1 for testing)
       const level = getLevel(player.xp);
-      if (level < 50) {
-        socket.emit("ad_error", "يجب الوصول للمستوى 50 لاستخدام هذه الميزة");
+      if (level < 1) {
+        socket.emit("ad_error", "يجب الوصول للمستوى 1 لاستخدام هذه الميزة");
         return;
       }
 
@@ -1261,7 +1265,7 @@ const app = express();
       socket.emit("ad_status", {
         adsWatched: player.adsWatchedToday || 0,
         maxAds: 5,
-        canWatch: (player.adsWatchedToday || 0) < 5 && getLevel(player.xp) >= 50
+        canWatch: (player.adsWatchedToday || 0) < 5 && getLevel(player.xp) >= 1
       });
     });
 
