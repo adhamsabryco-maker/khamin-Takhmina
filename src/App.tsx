@@ -3538,19 +3538,25 @@ export default function App() {
                   بحث عشوائي
                 </button>
 
-                <div className="flex items-center gap-2 bg-purple-50 p-2 rounded-xl border-2 border-purple-100 h-full">
-                  <input 
-                    type="checkbox" 
-                    id="useToken" 
-                    checked={useToken} 
-                    onChange={(e) => setUseToken(e.target.checked)}
-                    disabled={tokens <= 0}
-                    className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer disabled:opacity-50"
-                  />
-                  <label htmlFor="useToken" className="flex items-center gap-1 cursor-pointer select-none">
-                    <button onClick={toggleTokenInfo} className="font-black text-purple-600 hover:underline">Token</button>
-                    <span className="font-black text-gray-700">({tokens})</span>
-                  </label>
+                <div className="flex flex-col bg-purple-50 p-2 rounded-xl border-2 border-purple-100 h-16">
+                  <div className="flex items-center gap-2 flex-1">
+                    <input 
+                      type="checkbox" 
+                      id="useToken" 
+                      checked={useToken} 
+                      onChange={(e) => setUseToken(e.target.checked)}
+                      disabled={tokens <= 0}
+                      className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer disabled:opacity-50"
+                    />
+                    <label htmlFor="useToken" className="cursor-pointer select-none flex items-center gap-1">
+                      <button onClick={toggleTokenInfo} className="font-black text-purple-600 hover:underline text-sm truncate">Token</button>
+                      <span className="font-black text-gray-700 text-sm">({tokens})</span>
+                    </label>
+                  </div>
+                  <div className="border-t border-purple-200 mt-1 mb-0.5"></div>
+                  <div className="w-full text-left" dir="ltr">
+                    <span className="text-xs text-gray-700 font-black">Level 50+</span>
+                  </div>
                 </div>
               </div>
             </div>
