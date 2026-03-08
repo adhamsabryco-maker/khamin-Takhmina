@@ -5213,7 +5213,8 @@ export default function App() {
             },
             { 
               id: 'hint', 
-              name: 'نصيحة', 
+              name: 'النصيحة', 
+              description: 'تلميح يكشف لك أول وتاني حرف من الكلمة.',
               icon: HelpCircle, 
               color: 'text-blue-500', 
               bg: 'bg-white', 
@@ -5223,6 +5224,7 @@ export default function App() {
             { 
               id: 'word_length', 
               name: 'كاشف الحروف', 
+              description: 'يكشف لك عدد احرف الكلمة.',
               icon: Type, 
               color: 'text-green-500', 
               bg: 'bg-white', 
@@ -5232,6 +5234,7 @@ export default function App() {
             { 
               id: 'time_freeze', 
               name: 'تجميد الوقت', 
+              description: 'يوقف العداد الاساسي لمدة 60 ثانية.',
               icon: Snowflake, 
               color: 'text-cyan-500', 
               bg: 'bg-white', 
@@ -5241,6 +5244,7 @@ export default function App() {
             { 
               id: 'spy_lens', 
               name: 'الجاسوس', 
+              description: 'يكشف لك صورة التخمين.',
               icon: Eye, 
               color: 'text-purple-500', 
               bg: 'bg-white', 
@@ -5291,9 +5295,23 @@ export default function App() {
                 )}
                 
                 {/* Tooltip */}
-                <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-800 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                  {card.name}
-                  {isLocked && <span className="block text-red-300 text-[10px]">مطلوب مستوى {card.level}</span>}
+                <div className={`absolute left-full ml-3 px-3 py-2 ${isLocked ? 'bg-orange-50 border-2 border-orange-200 text-brown-dark w-48' : 'bg-gray-800 text-white'} text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg text-right`}>
+                  {isLocked && card.description ? (
+                    <div className="flex flex-col gap-1.5 whitespace-normal">
+                      <div className="flex items-center gap-1.5">
+                        <card.icon className={`w-4 h-4 ${card.color}`} />
+                        <span className="font-black text-sm">{card.name}</span>
+                      </div>
+                      <p className="text-[10px] text-brown-muted leading-relaxed">
+                        {card.description}
+                      </p>
+                      <span className="block text-red-500 text-[10px] mt-0.5 font-black bg-red-50 px-2 py-0.5 rounded-md w-fit border border-red-100">
+                        مقفول (مطلوب مستوى {card.level})
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="whitespace-nowrap">{card.name}</span>
+                  )}
                 </div>
               </button>
             );
