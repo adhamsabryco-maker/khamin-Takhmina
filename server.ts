@@ -2075,6 +2075,8 @@ const app = express();
         
         startWaitingInterval(roomId);
         io.to(roomId).emit("room_update", room);
+      } else if (!room) {
+        socket.emit("opponent_left_lobby");
       }
     });
 
