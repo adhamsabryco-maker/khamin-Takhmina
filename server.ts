@@ -1870,6 +1870,21 @@ const app = express();
       }
     });
 
+    socket.on("ad_started", ({ roomId }) => {
+      const room = rooms.get(roomId);
+      if (room) {
+        if (!room.adPausedPlayers) room.adPausedPlayers = new Set();
+        room.adPausedPlayers.add(socket.id);
+      }
+    });
+
+    socket.on("ad_ended", ({ roomId }) => {
+      const room = rooms.get(roomId);
+      if (room && room.adPausedPlayers) {
+        room.adPausedPlayers.delete(socket.id);
+      }
+    });
+
     socket.on("submit_quick_guess", ({ roomId, guess }) => {
       const room = rooms.get(roomId);
       if (room && room.isPaused && room.pausingPlayerId === socket.id) {
@@ -2475,6 +2490,11 @@ const app = express();
           room.freezeTimer = 0;
           io.to(roomId).emit("freeze_ended");
         }
+        return; // Skip main timer decrement
+      }
+
+      // Handle Ad Pause
+      if (room.adPausedPlayers && room.adPausedPlayers.size > 0) {
         return; // Skip main timer decrement
       }
 
