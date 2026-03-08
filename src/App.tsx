@@ -400,24 +400,8 @@ export default function App() {
     if (adTimer > 0) return;
     
     if (activePowerUp) {
-      // 1. Send message to opponent
-      const powerUpName = {
-        quick_guess: 'تخمين سريع',
-        hint: 'نصيحة',
-        word_length: 'كاشف الحروف',
-        time_freeze: 'تجميد الوقت',
-        spy_lens: 'الجاسوس'
-      }[activePowerUp];
-      
-      socket?.emit('send_chat', { 
-        roomId, 
-        message: `يقوم ${playerName} بمشاهدة إعلان لفتح واستخدام وسيلة مساعدة "${powerUpName}" انتظر قليلاً.` 
-      });
-
-      // 2. Emit use_card
-      socket?.emit('use_card', { roomId, cardType: activePowerUp });
-      
-      // 3. Reset
+      // Just close the modal, don't use the power-up automatically.
+      // The player will use it manually after the ad.
       setActivePowerUp(null);
     } else {
       // Original token reward logic
@@ -1822,6 +1806,21 @@ export default function App() {
                     setShowAdConfirmation(false);
                     setShowAdModal(true);
                     setAdTimer(5);
+                    
+                    // Send message to opponent immediately
+                    const powerUpName = {
+                      quick_guess: 'تخمين سريع',
+                      hint: 'نصيحة',
+                      word_length: 'كاشف الحروف',
+                      time_freeze: 'تجميد الوقت',
+                      spy_lens: 'الجاسوس'
+                    }[activePowerUp || ''];
+                    
+                    socket?.emit('send_chat', { 
+                      roomId, 
+                      message: `يقوم ${playerName} بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"، انتظر قليلاً.` 
+                    });
+
                     // Start timer
                     const interval = setInterval(() => {
                       setAdTimer(prev => {
@@ -1880,7 +1879,7 @@ export default function App() {
                   onClick={claimAdReward}
                   className="bg-accent-green hover:brightness-110 text-white px-8 py-4 rounded-2xl font-black text-xl shadow-lg transition-all"
                 >
-                  إغلاق الإعلان 🎁
+                  استلام المكافأة 🎁
                 </button>
               )}
             </div>
