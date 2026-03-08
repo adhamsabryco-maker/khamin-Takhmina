@@ -42,6 +42,24 @@
   --color-accent-purple: #9333EA;
   --color-accent-blue: #3B82F6;
   --color-accent-green: #16A34A;
+
+  /* Text Shades */
+  --text-muted: #8B736B;
+  --text-light-accent: #A68B7C;
+  --text-soft: #D2B48C;
+
+  /* Ranks */
+  --rank-1-bg-start: #FDE047;
+  --rank-1-bg-end: #F6E6CD;
+  --rank-1-border: #FACC15;
+
+  --rank-2-bg-start: #D1D5DB;
+  --rank-2-bg-end: #F6E6CD;
+  --rank-2-border: #9CA3AF;
+
+  --rank-3-bg-start: #FB923C;
+  --rank-3-bg-end: #F6E6CD;
+  --rank-3-border: #F97316;
 }
 
 /* 
@@ -65,11 +83,31 @@ body {
   color: var(--text-light);
 }
 
+/* Text Shades Classes */
+.text-brown-dark { color: var(--text-main); }
+.text-brown-muted { color: var(--text-muted); }
+.text-brown-light { color: var(--text-light-accent); }
+.text-brown-soft { color: var(--text-soft); }
+
 /* Accent Text Classes */
 .text-accent-orange { color: var(--color-accent-orange); }
 .text-accent-purple { color: var(--color-accent-purple); }
 .text-accent-blue { color: var(--color-accent-blue); }
 .text-accent-green { color: var(--color-accent-green); }
+
+/* Rank Classes */
+.rank-1-bar {
+  background: linear-gradient(to bottom, var(--rank-1-bg-start), var(--rank-1-bg-end));
+  border-color: var(--rank-1-border);
+}
+.rank-2-bar {
+  background: linear-gradient(to bottom, var(--rank-2-bg-start), var(--rank-2-bg-end));
+  border-color: var(--rank-2-border);
+}
+.rank-3-bar {
+  background: linear-gradient(to bottom, var(--rank-3-bg-start), var(--rank-3-bg-end));
+  border-color: var(--rank-3-border);
+}
 
 .border-game {
   border-color: var(--border-game);

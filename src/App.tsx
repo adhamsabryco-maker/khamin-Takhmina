@@ -90,6 +90,24 @@ interface ThemeConfig {
   accentPurple: string;
   accentBlue: string;
   accentGreen: string;
+
+  // Text Shades
+  textMuted: string;
+  textLightAccent: string;
+  textSoft: string;
+
+  // Ranks (Bar Charts)
+  rank1BgStart: string;
+  rank1BgEnd: string;
+  rank1Border: string;
+
+  rank2BgStart: string;
+  rank2BgEnd: string;
+  rank2Border: string;
+
+  rank3BgStart: string;
+  rank3BgEnd: string;
+  rank3Border: string;
 }
 
 const DEFAULT_THEME: ThemeConfig = {
@@ -120,6 +138,22 @@ const DEFAULT_THEME: ThemeConfig = {
   accentPurple: '#9333EA',
   accentBlue: '#3B82F6',
   accentGreen: '#16A34A',
+
+  textMuted: '#8B736B',
+  textLightAccent: '#A68B7C',
+  textSoft: '#D2B48C',
+
+  rank1BgStart: '#FDE047', // yellow-300
+  rank1BgEnd: '#F6E6CD',
+  rank1Border: '#FACC15', // yellow-400
+
+  rank2BgStart: '#D1D5DB', // gray-300
+  rank2BgEnd: '#F6E6CD',
+  rank2Border: '#9CA3AF', // gray-400
+
+  rank3BgStart: '#FB923C', // orange-400
+  rank3BgEnd: '#F6E6CD',
+  rank3Border: '#F97316', // orange-500
 };
 
 // Types
@@ -379,6 +413,24 @@ export default function App() {
     root.style.setProperty('--color-accent-purple', themeConfig.accentPurple);
     root.style.setProperty('--color-accent-blue', themeConfig.accentBlue);
     root.style.setProperty('--color-accent-green', themeConfig.accentGreen);
+
+    // Text Shades
+    root.style.setProperty('--text-muted', themeConfig.textMuted);
+    root.style.setProperty('--text-light-accent', themeConfig.textLightAccent);
+    root.style.setProperty('--text-soft', themeConfig.textSoft);
+
+    // Ranks
+    root.style.setProperty('--rank-1-bg-start', themeConfig.rank1BgStart);
+    root.style.setProperty('--rank-1-bg-end', themeConfig.rank1BgEnd);
+    root.style.setProperty('--rank-1-border', themeConfig.rank1Border);
+
+    root.style.setProperty('--rank-2-bg-start', themeConfig.rank2BgStart);
+    root.style.setProperty('--rank-2-bg-end', themeConfig.rank2BgEnd);
+    root.style.setProperty('--rank-2-border', themeConfig.rank2Border);
+
+    root.style.setProperty('--rank-3-bg-start', themeConfig.rank3BgStart);
+    root.style.setProperty('--rank-3-bg-end', themeConfig.rank3BgEnd);
+    root.style.setProperty('--rank-3-border', themeConfig.rank3Border);
 
     localStorage.setItem('game_theme', JSON.stringify(themeConfig));
   }, [themeConfig]);
@@ -2831,6 +2883,96 @@ export default function App() {
                                 </div>
                               </div>
                             </div>
+                            {/* Text Shades */}
+                            <div className="space-y-4 md:col-span-2">
+                              <h4 className="font-black text-brown-dark border-b pb-2">درجات النصوص (Text Shades)</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                  <label className="text-sm font-bold text-brown-muted">نص باهت (Muted)</label>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.textMuted}</span>
+                                    <input type="color" value={themeConfig.textMuted} onChange={(e) => setThemeConfig({...themeConfig, textMuted: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                                  </div>
+                                  <p className="text-xs font-bold" style={{ color: themeConfig.textMuted }}>نص تجريبي باهت</p>
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-sm font-bold text-brown-muted">نص فاتح (Light Accent)</label>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.textLightAccent}</span>
+                                    <input type="color" value={themeConfig.textLightAccent} onChange={(e) => setThemeConfig({...themeConfig, textLightAccent: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                                  </div>
+                                  <p className="text-xs font-bold" style={{ color: themeConfig.textLightAccent }}>نص تجريبي فاتح</p>
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-sm font-bold text-brown-muted">نص ناعم (Soft)</label>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{themeConfig.textSoft}</span>
+                                    <input type="color" value={themeConfig.textSoft} onChange={(e) => setThemeConfig({...themeConfig, textSoft: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                                  </div>
+                                  <p className="text-xs font-bold" style={{ color: themeConfig.textSoft }}>نص تجريبي ناعم</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Ranks (Bar Charts) */}
+                            <div className="space-y-4 md:col-span-2">
+                              <h4 className="font-black text-brown-dark border-b pb-2">ألوان المراكز (Leaderboard Bars)</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Rank 1 */}
+                                <div className="space-y-2">
+                                  <h5 className="text-xs font-black text-brown-light">المركز الأول 🥇</h5>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">بداية التدرج</label>
+                                    <input type="color" value={themeConfig.rank1BgStart} onChange={(e) => setThemeConfig({...themeConfig, rank1BgStart: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">نهاية التدرج</label>
+                                    <input type="color" value={themeConfig.rank1BgEnd} onChange={(e) => setThemeConfig({...themeConfig, rank1BgEnd: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">الحدود</label>
+                                    <input type="color" value={themeConfig.rank1Border} onChange={(e) => setThemeConfig({...themeConfig, rank1Border: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="w-full h-16 rounded-t-xl border-t-4" style={{ background: `linear-gradient(to bottom, ${themeConfig.rank1BgStart}, ${themeConfig.rank1BgEnd})`, borderColor: themeConfig.rank1Border }}></div>
+                                </div>
+
+                                {/* Rank 2 */}
+                                <div className="space-y-2">
+                                  <h5 className="text-xs font-black text-brown-light">المركز الثاني 🥈</h5>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">بداية التدرج</label>
+                                    <input type="color" value={themeConfig.rank2BgStart} onChange={(e) => setThemeConfig({...themeConfig, rank2BgStart: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">نهاية التدرج</label>
+                                    <input type="color" value={themeConfig.rank2BgEnd} onChange={(e) => setThemeConfig({...themeConfig, rank2BgEnd: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">الحدود</label>
+                                    <input type="color" value={themeConfig.rank2Border} onChange={(e) => setThemeConfig({...themeConfig, rank2Border: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="w-full h-12 rounded-t-xl border-t-4" style={{ background: `linear-gradient(to bottom, ${themeConfig.rank2BgStart}, ${themeConfig.rank2BgEnd})`, borderColor: themeConfig.rank2Border }}></div>
+                                </div>
+
+                                {/* Rank 3 */}
+                                <div className="space-y-2">
+                                  <h5 className="text-xs font-black text-brown-light">المركز الثالث 🥉</h5>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">بداية التدرج</label>
+                                    <input type="color" value={themeConfig.rank3BgStart} onChange={(e) => setThemeConfig({...themeConfig, rank3BgStart: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">نهاية التدرج</label>
+                                    <input type="color" value={themeConfig.rank3BgEnd} onChange={(e) => setThemeConfig({...themeConfig, rank3BgEnd: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">الحدود</label>
+                                    <input type="color" value={themeConfig.rank3Border} onChange={(e) => setThemeConfig({...themeConfig, rank3Border: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="w-full h-8 rounded-t-xl border-t-4" style={{ background: `linear-gradient(to bottom, ${themeConfig.rank3BgStart}, ${themeConfig.rank3BgEnd})`, borderColor: themeConfig.rank3Border }}></div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
 
                           <div className="mt-8 pt-6 border-t border-game flex justify-end gap-4">
@@ -3761,7 +3903,7 @@ export default function App() {
                           {topPlayers[1].wins || 0} فوز
                         </div>
                       </div>
-                      <div className="w-full bg-gradient-to-b from-cyan-400 to-[#F6E6CD] h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 border-cyan-500"></div>
+                      <div className="w-full rank-2-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4"></div>
                     </div>
                   )}
 
@@ -3785,7 +3927,7 @@ export default function App() {
                           {topPlayers[0].wins || 0} فوز
                         </div>
                       </div>
-                      <div className="w-full bg-gradient-to-b from-yellow-300 to-[#F6E6CD] h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 border-yellow-400"></div>
+                      <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4"></div>
                     </div>
                   )}
 
@@ -3808,7 +3950,7 @@ export default function App() {
                           {topPlayers[2].wins || 0} فوز
                         </div>
                       </div>
-                      <div className="w-full bg-gradient-to-b from-orange-400 to-[#F6E6CD] h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 border-orange-500"></div>
+                      <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4"></div>
                     </div>
                   )}
                 </div>
