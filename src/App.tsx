@@ -3438,7 +3438,7 @@ export default function App() {
                           {topPlayers[0].wins || 0} فوز
                         </div>
                       </div>
-                      <div className="w-full bg-gradient-to-b from-yellow-500 to-[#F6E6CD] h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 border-yellow-600"></div>
+                      <div className="w-full bg-gradient-to-b from-yellow-300 to-[#F6E6CD] h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 border-yellow-400"></div>
                     </div>
                   )}
 
@@ -3461,7 +3461,7 @@ export default function App() {
                           {topPlayers[2].wins || 0} فوز
                         </div>
                       </div>
-                      <div className="w-full bg-gradient-to-b from-orange-500 to-[#F6E6CD] h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 border-orange-600"></div>
+                      <div className="w-full bg-gradient-to-b from-orange-400 to-[#F6E6CD] h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 border-orange-500"></div>
                     </div>
                   )}
                 </div>
