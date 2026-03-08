@@ -4225,24 +4225,6 @@ export default function App() {
                 <div className="flex justify-between items-center mb-1 flex-row-reverse">
                   <div className="text-sm md:text-base font-black text-main truncate text-right">{playerName || 'لاعب جديد'}</div>
                   <div className="flex items-center gap-2">
-                    <span 
-                      className={`text-xs md:text-sm font-black box-game px-2 py-0.5 flex items-center gap-1 transition-all ${
-                        hasProPackage 
-                          ? 'text-yellow-600' 
-                          : 'text-gray-400 opacity-70'
-                      }`} 
-                      title="باقة المحترفين"
-                    >
-                      <Zap className={`w-3 h-3 transition-all ${
-                        hasProPackage 
-                          ? 'fill-yellow-500 text-yellow-500 animate-pulse' 
-                          : 'fill-gray-400 text-gray-400'
-                      }`} />
-                      <span className="text-[10px]" dir="ltr">Day({proPackageDaysLeft})</span>
-                    </span>
-                    <span className="text-xs md:text-sm font-black text-accent-purple box-game px-2 py-0.5 flex items-center gap-1">
-                      {tokens} <span className="text-[10px] text-accent-purple">Tokens</span>
-                    </span>
                     <span className="text-xs md:text-sm font-black text-accent-blue box-game px-2 py-0.5">Level {getLevel(xp)}</span>
                   </div>
                 </div>
@@ -4256,7 +4238,7 @@ export default function App() {
                 </div>
                 
                 {/* XP Bar */}
-                <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-[#E1CCAB]" dir="ltr">
+                <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-[#E1CCAB] mb-2" dir="ltr">
                   <div 
                     className="h-full transition-all duration-500" 
                     style={{ width: `${getXpProgress(xp)}%`, backgroundColor: 'var(--xp-bar-fill)' }}
@@ -4267,6 +4249,28 @@ export default function App() {
                       {xp} / {getXpForNextLevel(getLevel(xp))} XP
                     </span>
                   </div>
+                </div>
+                
+                {/* Tokens and Pro Package */}
+                <div className="flex items-center justify-end gap-2 mt-1">
+                  <span 
+                    className={`text-xs md:text-sm font-black box-game px-2 py-0.5 flex items-center justify-center gap-1 transition-all h-[26px] md:h-[30px] ${
+                      hasProPackage 
+                        ? 'text-yellow-600' 
+                        : 'text-gray-400 opacity-70'
+                    }`} 
+                    title="باقة المحترفين"
+                  >
+                    <Zap className={`w-3 h-3 transition-all ${
+                      hasProPackage 
+                        ? 'fill-yellow-500 text-yellow-500 animate-pulse' 
+                        : 'fill-gray-400 text-gray-400'
+                    }`} />
+                    <span className="text-[10px]" dir="ltr">Day({proPackageDaysLeft})</span>
+                  </span>
+                  <span className="text-xs md:text-sm font-black text-accent-purple box-game px-2 py-0.5 flex items-center justify-center gap-1 h-[26px] md:h-[30px]">
+                    {tokens} <span className="text-[10px] text-accent-purple">Tokens</span>
+                  </span>
                 </div>
               </div>
             </div>
