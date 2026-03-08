@@ -1900,7 +1900,7 @@ export default function App() {
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="card-game p-4 w-full max-w-md space-y-4 overflow-y-auto max-h-[90vh]"
+              className="card-game p-4 w-full max-w-md space-y-4 overflow-y-auto max-h-[90vh] overflow-x-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center flex-row-reverse">
