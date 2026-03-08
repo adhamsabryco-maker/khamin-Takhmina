@@ -407,14 +407,7 @@ export default function App() {
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
   const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors'>('players');
   const [adminImages, setAdminImages] = useState<any[]>([]);
-  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => {
-    try {
-      const saved = localStorage.getItem('game_theme');
-      return saved ? JSON.parse(saved) : DEFAULT_THEME;
-    } catch (e) {
-      return DEFAULT_THEME;
-    }
-  });
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(DEFAULT_THEME);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -492,8 +485,6 @@ export default function App() {
     root.style.setProperty('--rank-3-bg-start', themeConfig.rank3BgStart);
     root.style.setProperty('--rank-3-bg-end', themeConfig.rank3BgEnd);
     root.style.setProperty('--rank-3-border', themeConfig.rank3Border);
-
-    localStorage.setItem('game_theme', JSON.stringify(themeConfig));
   }, [themeConfig]);
 
   const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
@@ -1259,7 +1250,6 @@ export default function App() {
     newSocket.on('theme_updated', (newTheme: ThemeConfig) => {
       console.log('Theme updated from server:', newTheme);
       setThemeConfig(newTheme);
-      localStorage.setItem('khamin_theme_config', JSON.stringify(newTheme));
     });
 
     newSocket.on('timer_update', (timer: number) => {
