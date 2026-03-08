@@ -418,6 +418,14 @@ export default function App() {
     setShowAdModal(false);
   };
 
+  useEffect(() => {
+    if (showAdModal && adTimer === 0) {
+      claimAdReward();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAdModal, adTimer]);
+
+  const [hasProPackage, setHasProPackage] = useState(() => localStorage.getItem('khamin_pro_package') === 'true');
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [topPlayers, setTopPlayers] = useState<any[]>(() => {
@@ -1779,7 +1787,7 @@ export default function App() {
     if (cooldowns[type] > 0) return;
     
     // Quick guess doesn't require an ad
-    if (type === 'quick_guess' || readyPowerUps.includes(type) || getLevel(xp) >= 50) {
+    if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage) {
       // Actually use the card
       socket?.emit('use_card', { roomId, cardType: type });
       
@@ -1844,7 +1852,7 @@ export default function App() {
                     
                     socket?.emit('send_chat', { 
                       roomId, 
-                      message: `يقوم ${playerName} بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"، انتظر قليلاً.` 
+                      text: `يقوم ${playerName} بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"، انتظر قليلاً.` 
                     });
                     
                     socket?.emit('ad_started', { roomId });
@@ -1903,12 +1911,9 @@ export default function App() {
               </div>
 
               {adTimer === 0 && (
-                <button
-                  onClick={claimAdReward}
-                  className="bg-accent-green hover:brightness-110 text-white px-8 py-4 rounded-2xl font-black text-xl shadow-lg transition-all"
-                >
-                  استلام المكافأة 🎁
-                </button>
+                <div className="text-accent-green font-black text-xl animate-pulse">
+                  جاري استلام المكافأة...
+                </div>
               )}
             </div>
           </motion.div>
@@ -1963,11 +1968,11 @@ export default function App() {
                 <div className="space-y-3">
                   <h3 className="font-black text-brown-dark mb-2">باقات الـ Tokens</h3>
 
-                  {/* Free Ad Reward - Level 1+ Only */}
+                  {/* Free Ad Reward - Level 50+ Only */}
                   {getLevel(xp) >= 1 && (
                     <div className="flex items-center justify-between p-4 border-2 border-game box-game relative overflow-hidden mb-4">
                       <div className="absolute top-0 right-0 bg-accent-green text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-sm z-10">
-                        مجاناً (Level 1+)
+                        مجاناً (Level 50+)
                       </div>
                       <div className="flex items-center gap-3 relative z-10">
                         <div className="w-12 h-12 bg-accent-green-soft rounded-xl flex items-center justify-center text-2xl animate-pulse">
@@ -1982,7 +1987,7 @@ export default function App() {
                       </div>
                       <button 
                         onClick={handleWatchAd}
-                        disabled={(!adStatus.canWatch || adStatus.loading) && getLevel(xp) >= 50}
+                        disabled={(!adStatus.canWatch || adStatus.loading) || getLevel(xp) < 50}
                         className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${getLevel(xp) >= 50 && adStatus.canWatch ? 'bg-accent-green hover:brightness-110 text-white' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
                       >
                         {getLevel(xp) < 50 ? 'مستوى 50+ مطلوب' : (adStatus.loading ? 'جاري التحميل...' : (adStatus.canWatch ? 'شاهد الآن' : 'انتهت المحاولات'))}
@@ -2062,11 +2067,20 @@ export default function App() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => getLevel(xp) < 50 ? alert('سيتم تفعيل الدفع قريباً!') : null}
-                      disabled={getLevel(xp) >= 50}
-                      className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md ${getLevel(xp) < 50 ? 'bg-accent-orange hover:brightness-110 text-white' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
+                      onClick={() => {
+                        if (getLevel(xp) < 50) {
+                          alert('يجب أن تصل للمستوى 50 لتتمكن من شراء هذه الباقة!');
+                        } else {
+                          // Mocking purchase for now
+                          setHasProPackage(true);
+                          localStorage.setItem('khamin_pro_package', 'true');
+                          alert('تم تفعيل باقة المحترفين بنجاح!');
+                        }
+                      }}
+                      disabled={hasProPackage}
+                      className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md ${getLevel(xp) >= 50 && !hasProPackage ? 'bg-accent-orange hover:brightness-110 text-white' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
                     >
-                      {getLevel(xp) >= 50 ? 'مفعل تلقائياً' : '150 ج.م'}
+                      {hasProPackage ? 'تم الشراء' : '150 ج.م'}
                     </button>
                   </div>
                 </div>
