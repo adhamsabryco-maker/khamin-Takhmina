@@ -64,7 +64,7 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
     const starsCount = Math.floor(lvl / 10);
     if (starsCount === 0) return null;
     return (
-      <div className="absolute inset-0 z-30 pointer-events-none animate-[spin_15s_linear_infinite]">
+      <div className="absolute -inset-4 z-30 pointer-events-none animate-[spin_15s_linear_infinite]">
         {Array.from({ length: starsCount }).map((_, i) => {
           const angle = (i * 360) / starsCount;
           return (
