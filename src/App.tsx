@@ -97,6 +97,7 @@ interface ThemeConfig {
   shopTokenText: string;
   shopInfoTitle: string;
   shopWarningTitle: string;
+  shopModalBg: string;
 
   // Text Shades
   textMuted: string;
@@ -175,6 +176,7 @@ const DEFAULT_THEME: ThemeConfig = {
   shopTokenText: '#4338ca',
   shopInfoTitle: '#1d4ed8',
   shopWarningTitle: '#c2410c',
+  shopModalBg: '#ffffff',
 
   textMuted: '#8B736B',
   textLightAccent: '#A68B7C',
@@ -504,6 +506,7 @@ export default function App() {
     root.style.setProperty('--shop-token-text', themeConfig.shopTokenText);
     root.style.setProperty('--shop-info-title', themeConfig.shopInfoTitle);
     root.style.setProperty('--shop-warning-title', themeConfig.shopWarningTitle);
+    root.style.setProperty('--shop-modal-bg', themeConfig.shopModalBg);
   }, [themeConfig]);
 
   const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
@@ -1885,7 +1888,7 @@ export default function App() {
                   )}
                   
                   {/* Package 1 */}
-                  <div className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-accent-purple transition-colors bg-white">
+                  <div className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-accent-purple transition-colors box-game">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-accent-purple-soft rounded-xl flex items-center justify-center text-2xl font-black text-accent-purple">
                         1
@@ -3171,6 +3174,10 @@ export default function App() {
                               <div className="flex items-center justify-between">
                                 <label className="text-sm font-bold text-brown-muted">لون عنوان التحذير</label>
                                 <input type="color" value={themeConfig.shopWarningTitle} onChange={(e) => setThemeConfig({...themeConfig, shopWarningTitle: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">خلفية النوافذ</label>
+                                <input type="color" value={themeConfig.shopModalBg} onChange={(e) => setThemeConfig({...themeConfig, shopModalBg: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
                               </div>
                             </div>
                           </div>
