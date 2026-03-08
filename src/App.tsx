@@ -141,6 +141,22 @@ export default function App() {
   const appVersion = customConfig.version || '1.0.0';
 
   useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const response = await fetch('/api/version');
+        const data = await response.json();
+        if (data.version && data.version !== appVersion) {
+          console.log('New version detected, reloading...');
+          window.location.reload();
+        }
+      } catch (e) {
+        console.error('Failed to check version', e);
+      }
+    };
+    checkVersion();
+  }, [appVersion]);
+
+  useEffect(() => {
     if (customConfig.version) {
       const version = customConfig.version;
       
@@ -197,7 +213,8 @@ export default function App() {
   };
 
   const [showAdModal, setShowAdModal] = useState(false);
-  const [adStatus, setAdStatus] = useState({ adsWatched: 0, maxAds: 5, canWatch: false });
+  console.log('App rendering, showAdModal:', showAdModal);
+  const [adStatus, setAdStatus] = useState({ adsWatched: 0, maxAds: 5, canWatch: false, loading: true });
   const [adTimer, setAdTimer] = useState(0);
 
   useEffect(() => {
@@ -205,7 +222,7 @@ export default function App() {
       socket.emit('check_ad_status', { serial: playerSerial });
 
       socket.on('ad_status', (status) => {
-        setAdStatus(status);
+        setAdStatus({ ...status, loading: false });
       });
 
       socket.on('ad_success', (data) => {
@@ -230,27 +247,13 @@ export default function App() {
     }
   }, [socket, isConnected, playerSerial]);
 
-  const handleWatchAd = () => {
-    if (!adStatus.canWatch) return;
-    setShowAdModal(true);
-    setAdTimer(15); // 15 seconds mock ad
-  };
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (showAdModal && adTimer > 0) {
-      interval = setInterval(() => {
-        setAdTimer(prev => prev - 1);
-      }, 1000);
-    } else if (showAdModal && adTimer === 0) {
-      // Ad finished
-    }
-    return () => clearInterval(interval);
-  }, [showAdModal, adTimer]);
-
   const claimAdReward = () => {
     if (adTimer > 0) return;
-    socket?.emit('watch_ad_request', { serial: playerSerial });
+    // TODO: Re-enable this once Google Adsense is integrated
+    console.log('Ad reward claim disabled until Google Adsense is integrated');
+    alert('نظام الإعلانات قيد التطوير حالياً، سيتم تفعيله قريباً!');
+    setShowAdModal(false);
+    // socket?.emit('watch_ad_request', { serial: playerSerial });
   };
 
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
@@ -1371,6 +1374,33 @@ export default function App() {
     setGuess('');
   };
 
+  const handleWatchAd = () => {
+    console.log('handleWatchAd called. Current adStatus:', adStatus);
+    if (getLevel(xp) < 50) {
+      alert('يجب أن تصل للمستوى 50 لتتمكن من مشاهدة الإعلانات!');
+      return;
+    }
+    if (!adStatus.canWatch) {
+      console.log('Cannot watch ad: limit reached or level too low');
+      alert('انتهت المحاولات لهذا اليوم!');
+      return;
+    }
+    
+    console.log('Setting showAdModal to true');
+    setShowAdModal(true);
+    setAdTimer(15);
+
+    const timer = setInterval(() => {
+      setAdTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   const handleProfileUpdate = () => {
     if (!socket) return;
 
@@ -1489,6 +1519,42 @@ export default function App() {
 
   const renderModals = () => (
     <>
+      {/* Mock Ad Modal */}
+      <AnimatePresence>
+        {showAdModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-4 text-white"
+          >
+            <div className="absolute top-4 right-4 bg-gray-800 px-4 py-2 rounded-full font-black text-sm">
+              {adTimer > 0 ? `إغلاق بعد ${adTimer}s` : 'يمكنك الإغلاق الآن'}
+            </div>
+            
+            <div className="text-center space-y-6 max-w-md">
+              <div className="w-24 h-24 bg-gray-800 rounded-3xl flex items-center justify-center mx-auto animate-bounce">
+                <span className="text-6xl">📺</span>
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-3xl font-black text-yellow-400">إعلان تجريبي</h2>
+                <p className="text-gray-400 font-bold">هذا مجرد محاكاة للإعلان. في النسخة النهائية سيظهر هنا إعلان حقيقي من Google.</p>
+              </div>
+
+              {adTimer === 0 && (
+                <button
+                  onClick={claimAdReward}
+                  className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black text-xl shadow-lg shadow-green-500/30 transition-all"
+                >
+                  استلام المكافأة (1 Token) 🎁
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Shop Modal */}
       <AnimatePresence>
         {showShopModal && (
@@ -1537,11 +1603,11 @@ export default function App() {
                 <div className="space-y-3">
                   <h3 className="font-black text-gray-800 mb-2">باقات الـ Tokens</h3>
 
-                  {/* Free Ad Reward - Level 50+ Only */}
-                  {getLevel(xp) >= 50 && (
+                  {/* Free Ad Reward - Level 1+ Only */}
+                  {getLevel(xp) >= 1 && (
                     <div className="flex items-center justify-between p-4 border-2 border-green-400 rounded-2xl bg-green-50 relative overflow-hidden mb-4">
                       <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-sm z-10">
-                        مجاناً (Level 50+)
+                        مجاناً (Level 1+)
                       </div>
                       <div className="flex items-center gap-3 relative z-10">
                         <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl animate-pulse">
@@ -1556,10 +1622,10 @@ export default function App() {
                       </div>
                       <button 
                         onClick={handleWatchAd}
-                        disabled={!adStatus.canWatch}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${adStatus.canWatch ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                        disabled={(!adStatus.canWatch || adStatus.loading) && getLevel(xp) >= 50}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${getLevel(xp) >= 50 && adStatus.canWatch ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                       >
-                        {adStatus.canWatch ? 'شاهد الآن' : 'انتهت المحاولات'}
+                        {getLevel(xp) < 50 ? 'مستوى 50+ مطلوب' : (adStatus.loading ? 'جاري التحميل...' : (adStatus.canWatch ? 'شاهد الآن' : 'انتهت المحاولات'))}
                       </button>
                     </div>
                   )}
@@ -3554,7 +3620,7 @@ export default function App() {
                     const isMe = player.serial === playerSerial;
                     return (
                       <div 
-                        key={index} 
+                        key={player.serial} 
                         className={`
                           flex items-center gap-3 p-3 rounded-xl border-2 transition-transform
                           ${isMe ? 'bg-purple-50 border-purple-200 ring-2 ring-purple-100' : 'bg-white border-gray-100'}
@@ -4437,44 +4503,6 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Mock Ad Modal */}
-      <AnimatePresence>
-        {showAdModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-4 text-white"
-          >
-            <div className="absolute top-4 right-4 bg-gray-800 px-4 py-2 rounded-full font-black text-sm">
-              {adTimer > 0 ? `إغلاق بعد ${adTimer}s` : 'يمكنك الإغلاق الآن'}
-            </div>
-            
-            <div className="text-center space-y-6 max-w-md">
-              <div className="w-24 h-24 bg-gray-800 rounded-3xl flex items-center justify-center mx-auto animate-bounce">
-                <span className="text-6xl">📺</span>
-              </div>
-              
-              <div className="space-y-2">
-                <h2 className="text-3xl font-black text-yellow-400">إعلان تجريبي</h2>
-                <p className="text-gray-400 font-bold">هذا مجرد محاكاة للإعلان. في النسخة النهائية سيظهر هنا إعلان حقيقي من Google.</p>
-              </div>
-
-              {adTimer === 0 && (
-                <motion.button
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  onClick={claimAdReward}
-                  className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black text-xl shadow-lg shadow-green-500/30 transition-all"
-                >
-                  استلام المكافأة (1 Token) 🎁
-                </motion.button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {renderModals()}
     </div>
   );
