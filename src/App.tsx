@@ -409,6 +409,25 @@ export default function App() {
   }, []);
 
   const getLevel = (xp: number) => Math.floor(Math.sqrt(xp / 50)) + 1;
+  const sortPlayers = (players: any[]) => {
+    return [...players].sort((a, b) => {
+      const levelA = a.level || getLevel(a.xp || 0);
+      const levelB = b.level || getLevel(b.xp || 0);
+      if (levelB !== levelA) return levelB - levelA;
+      
+      const xpA = a.xp || 0;
+      const xpB = b.xp || 0;
+      if (xpB !== xpA) return xpB - xpA;
+      
+      const winsA = a.wins || 0;
+      const winsB = b.wins || 0;
+      if (winsB !== winsA) return winsB - winsA;
+      
+      const streakA = a.streak || 0;
+      const streakB = b.streak || 0;
+      return streakB - streakA;
+    });
+  };
   const getXpProgress = (xp: number) => {
     const level = getLevel(xp);
     const currentLevelXp = getXpForCurrentLevel(level);
@@ -948,7 +967,7 @@ export default function App() {
       }
 
       newSocket.emit('get_top_players', (players: any[]) => {
-        setTopPlayers(players);
+        setTopPlayers(sortPlayers(players));
         localStorage.setItem('khamin_top_players', JSON.stringify(players));
       });
     });
@@ -992,7 +1011,7 @@ export default function App() {
     });
 
     newSocket.on('top_players_update', (players: any[]) => {
-      setTopPlayers(players);
+      setTopPlayers(sortPlayers(players));
       localStorage.setItem('khamin_top_players', JSON.stringify(players));
     });
 
@@ -1416,7 +1435,7 @@ export default function App() {
       ({ topPlayers, name }: { topPlayers: any[], name: string }) => {
         // 2. In the callback, update with the authoritative list from the server
         if (topPlayers) {
-          setTopPlayers(topPlayers);
+          setTopPlayers(sortPlayers(topPlayers));
         }
         if (name) {
           setPlayerName(name);
