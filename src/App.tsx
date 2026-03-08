@@ -3414,7 +3414,7 @@ export default function App() {
                           {topPlayers[1].wins || 0} فوز
                         </div>
                       </div>
-                      <div className="w-full bg-gradient-to-b from-slate-300 to-[#F6E6CD] h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 border-slate-400"></div>
+                      <div className="w-full bg-gradient-to-b from-cyan-400 to-[#F6E6CD] h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 border-cyan-500"></div>
                     </div>
                   )}
 
@@ -3438,7 +3438,7 @@ export default function App() {
                           {topPlayers[0].wins || 0} فوز
                         </div>
                       </div>
-                      <div className="w-full bg-gradient-to-b from-yellow-400 to-[#F6E6CD] h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 border-yellow-500"></div>
+                      <div className="w-full bg-gradient-to-b from-yellow-500 to-[#F6E6CD] h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 border-yellow-600"></div>
                     </div>
                   )}
 
@@ -3461,7 +3461,7 @@ export default function App() {
                           {topPlayers[2].wins || 0} فوز
                         </div>
                       </div>
-                      <div className="w-full bg-gradient-to-b from-orange-300 to-[#F6E6CD] h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 border-orange-400"></div>
+                      <div className="w-full bg-gradient-to-b from-orange-500 to-[#F6E6CD] h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 border-orange-600"></div>
                     </div>
                   )}
                 </div>
