@@ -18,11 +18,30 @@
   --border-game: #E1CCAB;
   --bg-box: #F6E6CD;
   --bg-card: #fbf4e1;
-  --btn-primary-bg: #FF6B6B;
+  
+  /* Primary Button (Red/Orange) */
+  --btn-primary-bg-start: #FF6B6B;
+  --btn-primary-bg-end: #FF8787;
   --btn-primary-border: #EE5253;
+  --btn-primary-hover: #FF5252;
+
+  /* Secondary Button (Green) */
   --btn-secondary-bg-start: #5ab72e;
   --btn-secondary-bg-end: #ade03e;
   --btn-secondary-border: #348d20;
+  --btn-secondary-hover: #92CB79;
+
+  /* Danger Button (Yellow/Orange) */
+  --btn-danger-bg-start: #FF9F43;
+  --btn-danger-bg-end: #FFB66D;
+  --btn-danger-border: #EE5A24;
+  --btn-danger-hover: #FFB66D;
+
+  /* Accent Colors */
+  --color-accent-orange: #F97316;
+  --color-accent-purple: #9333EA;
+  --color-accent-blue: #3B82F6;
+  --color-accent-green: #16A34A;
 }
 
 /* 
@@ -45,6 +64,12 @@ body {
 .text-light {
   color: var(--text-light);
 }
+
+/* Accent Text Classes */
+.text-accent-orange { color: var(--color-accent-orange); }
+.text-accent-purple { color: var(--color-accent-purple); }
+.text-accent-blue { color: var(--color-accent-blue); }
+.text-accent-green { color: var(--color-accent-green); }
 
 .border-game {
   border-color: var(--border-game);
@@ -99,12 +124,14 @@ body {
 /* Primary Action (Orange/Red) */
 .btn-primary {
   @apply text-white rounded-2xl border-b-[6px] shadow-[0_4px_0_rgba(0,0,0,0.1)];
-  background-color: var(--btn-primary-bg);
+  background: linear-gradient(to top, var(--btn-primary-bg-start), var(--btn-primary-bg-end));
   border-color: var(--btn-primary-border);
+  transition: transform 0.2s, shadow 0.2s, border-color 0.2s, background 0.2s;
 }
 .btn-primary:hover {
   @apply -translate-y-[2px];
   filter: brightness(1.1);
+  background: var(--btn-primary-hover);
 }
 .btn-primary:active {
   @apply border-b-0 translate-y-[4px];
@@ -121,8 +148,7 @@ body {
 .btn-secondary:hover {
   @apply -translate-y-[2px];
   filter: brightness(1.1);
-  background-image: none; /* Ensure gradient is removed cleanly */
-  background-color: var(--btn-secondary-bg-end);
+  background: var(--btn-secondary-hover);
 }
 .btn-secondary:active {
   @apply border-b-0 translate-y-[4px];
@@ -141,10 +167,15 @@ body {
 
 /* Danger/Warning Action (Yellow/Orange) */
 .btn-danger {
-  @apply bg-[#FF9F43] text-white rounded-2xl border-b-[6px] border-[#EE5A24] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+  @apply text-white rounded-2xl border-b-[6px] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+  background: linear-gradient(to top, var(--btn-danger-bg-start), var(--btn-danger-bg-end));
+  border-color: var(--btn-danger-border);
+  transition: transform 0.2s, shadow 0.2s, border-color 0.2s, background 0.2s;
 }
 .btn-danger:hover {
-  @apply bg-[#FFB66D] -translate-y-[2px];
+  @apply -translate-y-[2px];
+  filter: brightness(1.1);
+  background: var(--btn-danger-hover);
 }
 .btn-danger:active {
   @apply border-b-0 translate-y-[4px];

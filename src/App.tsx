@@ -68,11 +68,28 @@ interface ThemeConfig {
   borderGame: string;
   bgBox: string;
   bgCard: string;
-  btnPrimaryBg: string;
+  
+  // Buttons
+  btnPrimaryBgStart: string;
+  btnPrimaryBgEnd: string;
   btnPrimaryBorder: string;
+  btnPrimaryHover: string;
+  
   btnSecondaryBgStart: string;
   btnSecondaryBgEnd: string;
   btnSecondaryBorder: string;
+  btnSecondaryHover: string;
+
+  btnDangerBgStart: string;
+  btnDangerBgEnd: string;
+  btnDangerBorder: string;
+  btnDangerHover: string;
+
+  // Accents
+  accentOrange: string;
+  accentPurple: string;
+  accentBlue: string;
+  accentGreen: string;
 }
 
 const DEFAULT_THEME: ThemeConfig = {
@@ -83,11 +100,26 @@ const DEFAULT_THEME: ThemeConfig = {
   borderGame: '#E1CCAB',
   bgBox: '#F6E6CD',
   bgCard: '#fbf4e1',
-  btnPrimaryBg: '#FF6B6B',
+  
+  btnPrimaryBgStart: '#FF6B6B',
+  btnPrimaryBgEnd: '#FF8787',
   btnPrimaryBorder: '#EE5253',
+  btnPrimaryHover: '#FF5252',
+  
   btnSecondaryBgStart: '#5ab72e',
   btnSecondaryBgEnd: '#ade03e',
   btnSecondaryBorder: '#348d20',
+  btnSecondaryHover: '#92CB79',
+
+  btnDangerBgStart: '#FF9F43',
+  btnDangerBgEnd: '#FFB66D',
+  btnDangerBorder: '#EE5A24',
+  btnDangerHover: '#FFB66D',
+
+  accentOrange: '#F97316',
+  accentPurple: '#9333EA',
+  accentBlue: '#3B82F6',
+  accentGreen: '#16A34A',
 };
 
 // Types
@@ -323,11 +355,31 @@ export default function App() {
     root.style.setProperty('--border-game', themeConfig.borderGame);
     root.style.setProperty('--bg-box', themeConfig.bgBox);
     root.style.setProperty('--bg-card', themeConfig.bgCard);
-    root.style.setProperty('--btn-primary-bg', themeConfig.btnPrimaryBg);
+    
+    // Primary Button
+    root.style.setProperty('--btn-primary-bg-start', themeConfig.btnPrimaryBgStart);
+    root.style.setProperty('--btn-primary-bg-end', themeConfig.btnPrimaryBgEnd);
     root.style.setProperty('--btn-primary-border', themeConfig.btnPrimaryBorder);
+    root.style.setProperty('--btn-primary-hover', themeConfig.btnPrimaryHover);
+    
+    // Secondary Button
     root.style.setProperty('--btn-secondary-bg-start', themeConfig.btnSecondaryBgStart);
     root.style.setProperty('--btn-secondary-bg-end', themeConfig.btnSecondaryBgEnd);
     root.style.setProperty('--btn-secondary-border', themeConfig.btnSecondaryBorder);
+    root.style.setProperty('--btn-secondary-hover', themeConfig.btnSecondaryHover);
+
+    // Danger Button
+    root.style.setProperty('--btn-danger-bg-start', themeConfig.btnDangerBgStart);
+    root.style.setProperty('--btn-danger-bg-end', themeConfig.btnDangerBgEnd);
+    root.style.setProperty('--btn-danger-border', themeConfig.btnDangerBorder);
+    root.style.setProperty('--btn-danger-hover', themeConfig.btnDangerHover);
+
+    // Accents
+    root.style.setProperty('--color-accent-orange', themeConfig.accentOrange);
+    root.style.setProperty('--color-accent-purple', themeConfig.accentPurple);
+    root.style.setProperty('--color-accent-blue', themeConfig.accentBlue);
+    root.style.setProperty('--color-accent-green', themeConfig.accentGreen);
+
     localStorage.setItem('game_theme', JSON.stringify(themeConfig));
   }, [themeConfig]);
 
@@ -2688,20 +2740,30 @@ export default function App() {
                             <div className="space-y-4 md:col-span-2">
                               <h4 className="font-black text-brown-dark border-b pb-2">الأزرار</h4>
                               
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Primary Button */}
                                 <div className="space-y-2">
                                   <h5 className="text-xs font-black text-brown-light">الزر الأساسي (Primary)</h5>
                                   <div className="flex items-center justify-between">
-                                    <label className="text-sm font-bold text-brown-muted">الخلفية</label>
-                                    <input type="color" value={themeConfig.btnPrimaryBg} onChange={(e) => setThemeConfig({...themeConfig, btnPrimaryBg: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                    <label className="text-sm font-bold text-brown-muted">بداية التدرج</label>
+                                    <input type="color" value={themeConfig.btnPrimaryBgStart} onChange={(e) => setThemeConfig({...themeConfig, btnPrimaryBgStart: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">نهاية التدرج</label>
+                                    <input type="color" value={themeConfig.btnPrimaryBgEnd} onChange={(e) => setThemeConfig({...themeConfig, btnPrimaryBgEnd: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <label className="text-sm font-bold text-brown-muted">الحدود</label>
                                     <input type="color" value={themeConfig.btnPrimaryBorder} onChange={(e) => setThemeConfig({...themeConfig, btnPrimaryBorder: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
                                   </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">عند التحويم (Hover)</label>
+                                    <input type="color" value={themeConfig.btnPrimaryHover} onChange={(e) => setThemeConfig({...themeConfig, btnPrimaryHover: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
                                   <button className="btn-game btn-primary w-full py-2 mt-2">تجربة الزر</button>
                                 </div>
 
+                                {/* Secondary Button */}
                                 <div className="space-y-2">
                                   <h5 className="text-xs font-black text-brown-light">الزر الثانوي (Secondary)</h5>
                                   <div className="flex items-center justify-between">
@@ -2716,7 +2778,56 @@ export default function App() {
                                     <label className="text-sm font-bold text-brown-muted">الحدود</label>
                                     <input type="color" value={themeConfig.btnSecondaryBorder} onChange={(e) => setThemeConfig({...themeConfig, btnSecondaryBorder: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
                                   </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">عند التحويم (Hover)</label>
+                                    <input type="color" value={themeConfig.btnSecondaryHover} onChange={(e) => setThemeConfig({...themeConfig, btnSecondaryHover: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
                                   <button className="btn-game btn-secondary w-full py-2 mt-2">تجربة الزر</button>
+                                </div>
+
+                                {/* Danger Button */}
+                                <div className="space-y-2">
+                                  <h5 className="text-xs font-black text-brown-light">زر الخطر (Danger)</h5>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">بداية التدرج</label>
+                                    <input type="color" value={themeConfig.btnDangerBgStart} onChange={(e) => setThemeConfig({...themeConfig, btnDangerBgStart: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">نهاية التدرج</label>
+                                    <input type="color" value={themeConfig.btnDangerBgEnd} onChange={(e) => setThemeConfig({...themeConfig, btnDangerBgEnd: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">الحدود</label>
+                                    <input type="color" value={themeConfig.btnDangerBorder} onChange={(e) => setThemeConfig({...themeConfig, btnDangerBorder: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-brown-muted">عند التحويم (Hover)</label>
+                                    <input type="color" value={themeConfig.btnDangerHover} onChange={(e) => setThemeConfig({...themeConfig, btnDangerHover: e.target.value})} className="w-8 h-8 rounded cursor-pointer" />
+                                  </div>
+                                  <button className="btn-game btn-danger w-full py-2 mt-2">تجربة الزر</button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Accent Colors */}
+                            <div className="space-y-4 md:col-span-2">
+                              <h4 className="font-black text-brown-dark border-b pb-2">ألوان النصوص المميزة (Accents)</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="space-y-2">
+                                  <label className="text-sm font-bold text-accent-orange">البرتقالي</label>
+                                  <input type="color" value={themeConfig.accentOrange} onChange={(e) => setThemeConfig({...themeConfig, accentOrange: e.target.value})} className="w-full h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-sm font-bold text-accent-purple">البنفسجي</label>
+                                  <input type="color" value={themeConfig.accentPurple} onChange={(e) => setThemeConfig({...themeConfig, accentPurple: e.target.value})} className="w-full h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-sm font-bold text-accent-blue">الأزرق</label>
+                                  <input type="color" value={themeConfig.accentBlue} onChange={(e) => setThemeConfig({...themeConfig, accentBlue: e.target.value})} className="w-full h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-sm font-bold text-accent-green">الأخضر</label>
+                                  <input type="color" value={themeConfig.accentGreen} onChange={(e) => setThemeConfig({...themeConfig, accentGreen: e.target.value})} className="w-full h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
                                 </div>
                               </div>
                             </div>
