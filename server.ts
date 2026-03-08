@@ -598,6 +598,16 @@ const app = express();
     btnSuccessBorder: '#10ac84',
     btnSuccessHover: '#3de1b1',
     modalBg: '#ffffff',
+    levelBarBg: '#f6e6cd',
+    levelBarFill: '#3b82f6',
+    xpBarBg: '#f6e6cd',
+    xpBarFill: '#fb923c',
+    xpBarText: '#7c2d12',
+    xpBarTextActive: '#ffffff',
+    reportBarBg: '#f6e6cd',
+    reportBarLow: '#10b981',
+    reportBarMedium: '#f97316',
+    reportBarHigh: '#ef4444',
   };
 
   try {
