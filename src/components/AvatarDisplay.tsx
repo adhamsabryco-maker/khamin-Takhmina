@@ -55,7 +55,7 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
     if (lvl >= 40) return 'bg-purple-50 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]';
     if (lvl >= 30) return 'bg-emerald-50 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.6)]';
     if (lvl >= 20) return 'bg-yellow-50 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)]';
-    if (lvl >= 10) return 'bg-gray-100 border-gray-400 shadow-[0_0_10px_rgba(156,163,175,0.5)]';
+    if (lvl >= 10) return 'bg-brown-soft/20 border-brown-light shadow-[0_0_10px_rgba(166,139,124,0.5)]';
     return 'bg-orange-100 border-orange-300 shadow-inner';
   };
 

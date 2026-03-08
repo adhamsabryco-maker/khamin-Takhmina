@@ -82,11 +82,11 @@ export const AdminCustomization = () => {
 
   return (
     <div className="p-6 space-y-8 overflow-y-auto h-full">
-      <h2 className="text-2xl font-black text-gray-900">إدارة تخصيص اللعبة</h2>
+      <h2 className="text-2xl font-black text-main">إدارة تخصيص اللعبة</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Avatars */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+        <div className="box-game p-6 shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> الأفاتار (4 مجانية + 4 حسب المستوى)</h3>
           <div className="grid grid-cols-2 gap-4">
             {['free-boy-1', 'free-boy-2', 'free-boy-3', 'free-boy-4', 'free-girl-1', 'free-girl-2', 'free-girl-3', 'free-girl-4', 'boy-10', 'girl-10', 'boy-20', 'girl-20', 'boy-30', 'girl-30', 'boy-40', 'girl-40'].map((level) => (
@@ -99,7 +99,7 @@ export const AdminCustomization = () => {
                   </div>
                 ) : (
                   <label className="aspect-square border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center cursor-pointer hover:border-purple-400">
-                    <Upload className="w-6 h-6 text-gray-400" />
+                    <Upload className="w-6 h-6 text-brown-light" />
                     <input type="file" className="hidden" onChange={(e) => handleUpload(e, 'avatar', level as any)} />
                   </label>
                 )}
@@ -109,7 +109,7 @@ export const AdminCustomization = () => {
         </div>
 
         {/* Frames */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+        <div className="box-game p-6 shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> الإطارات (حسب المستوى)</h3>
           <div className="space-y-2">
             {[10, 20, 30, 40, 50].map((level) => (
@@ -132,7 +132,7 @@ export const AdminCustomization = () => {
         </div>
 
         {/* Stars */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+        <div className="box-game p-6 shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> النجوم (حسب المستوى)</h3>
           <div className="space-y-2">
             {[10, 20, 30, 40, 50].map((level) => (
@@ -155,7 +155,7 @@ export const AdminCustomization = () => {
         </div>
 
         {/* AI Bot Settings */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+        <div className="box-game p-6 shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🤖 بوت الذكاء الاصطناعي</h3>
           <div className="flex items-center justify-between p-4 bg-purple-50 rounded-2xl border border-purple-100">
             <div>
@@ -185,7 +185,7 @@ export const AdminCustomization = () => {
         </div>
 
         {/* App Version Settings */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+        <div className="box-game p-6 shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🔄 إصدار التطبيق (لتحديث الأيقونة)</h3>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -216,7 +216,7 @@ export const AdminCustomization = () => {
                 حفظ
               </button>
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-brown-muted">
               تغيير هذا الرقم يجبر المتصفح على تحميل الأيقونة الجديدة (`icon.svg`) حتى لو كانت مخزنة في الذاكرة المؤقتة.
             </p>
           </div>

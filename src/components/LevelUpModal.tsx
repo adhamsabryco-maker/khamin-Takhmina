@@ -144,7 +144,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
             </h1>
             <div className="flex items-center justify-center gap-2 mt-0.5">
               <Sparkles className="w-3 h-3 text-yellow-500 animate-pulse" />
-              <span className="text-lg font-black text-gray-800">المستوى {level}</span>
+              <span className="text-lg font-black text-brown-dark">المستوى {level}</span>
               <Sparkles className="w-3 h-3 text-yellow-500 animate-pulse" />
             </div>
           </motion.div>
@@ -159,8 +159,8 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
                 exit={{ opacity: 0, scale: 0.5 }}
                 className="w-full max-w-[180px]"
               >
-                <div className="text-[10px] font-black text-gray-400 mb-1 uppercase tracking-widest">جاري الارتقاء...</div>
-                <div className="h-4 bg-gray-100 rounded-full overflow-hidden border-2 border-gray-200 p-0.5" dir="ltr">
+                <div className="text-[10px] font-black text-brown-light mb-1 uppercase tracking-widest">جاري الارتقاء...</div>
+                <div className="h-4 bg-[#F6E6CD] rounded-full overflow-hidden border-2 border-brown-soft/20 p-0.5" dir="ltr">
                   <motion.div
                     className={`h-full rounded-full bg-gradient-to-r ${getLevelColor(level)} shadow-[0_0_15px_rgba(250,204,21,0.5)]`}
                     style={{ width: `${progress * 100}%` }}
@@ -220,24 +220,23 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
           </AnimatePresence>
         </div>
 
-        {/* Helper Tool Reward */}
-        {isMilestone && LEVEL_REWARDS[level] && (
+          {isMilestone && LEVEL_REWARDS[level] && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: showContent ? 1 : 0, y: showContent ? 0 : 20 }}
             transition={{ delay: 0.6 }}
-            className="mb-4 bg-gray-50 rounded-xl p-3 border border-gray-100 relative overflow-hidden mx-1"
+            className="mb-4 box-game p-3 relative overflow-hidden mx-1"
           >
             <div className="absolute top-0 right-0 bg-yellow-400 text-white text-[9px] font-black px-1.5 py-0.5 rounded-bl-md">
               جديد!
             </div>
             <div className="flex items-center flex-row-reverse gap-2">
-              <div className={`w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center border border-gray-100 shrink-0 ${LEVEL_REWARDS[level].color}`}>
+              <div className={`w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center border border-brown-soft/20 shrink-0 ${LEVEL_REWARDS[level].color}`}>
                 {React.createElement(LEVEL_REWARDS[level].icon, { className: "w-5 h-5" })}
               </div>
               <div className="text-right flex-1">
                 <h3 className={`font-black text-xs ${LEVEL_REWARDS[level].color}`}>{LEVEL_REWARDS[level].name}</h3>
-                <p className="text-[10px] font-bold text-gray-500 leading-tight mt-0.5">{LEVEL_REWARDS[level].description}</p>
+                <p className="text-[10px] font-bold text-brown-muted leading-tight mt-0.5">{LEVEL_REWARDS[level].description}</p>
               </div>
             </div>
           </motion.div>
@@ -249,7 +248,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
           animate={{ opacity: showContent ? 1 : 0 }}
           className="space-y-3"
         >
-          <p className="text-gray-500 font-bold text-sm leading-relaxed px-2">
+          <p className="text-brown-muted font-bold text-sm leading-relaxed px-2">
             {isMilestone 
               ? "واو! لقد وصلت لمستوى أسطوري. استمر في التألق وفتح المزيد من المفاجآت!"
               : "رائع جداً! مهاراتك في تحسن مستمر. المستوى القادم ينتظرك!"}
