@@ -90,6 +90,13 @@ interface ThemeConfig {
   accentPurple: string;
   accentBlue: string;
   accentGreen: string;
+  
+  // Shop & Token
+  shopHeaderStart: string;
+  shopHeaderEnd: string;
+  shopTokenText: string;
+  shopInfoTitle: string;
+  shopWarningTitle: string;
 
   // Text Shades
   textMuted: string;
@@ -162,6 +169,12 @@ const DEFAULT_THEME: ThemeConfig = {
   accentPurple: '#9333EA',
   accentBlue: '#3B82F6',
   accentGreen: '#16A34A',
+
+  shopHeaderStart: '#a855f7',
+  shopHeaderEnd: '#4f46e5',
+  shopTokenText: '#4338ca',
+  shopInfoTitle: '#1d4ed8',
+  shopWarningTitle: '#c2410c',
 
   textMuted: '#8B736B',
   textLightAccent: '#A68B7C',
@@ -485,6 +498,12 @@ export default function App() {
     root.style.setProperty('--rank-3-bg-start', themeConfig.rank3BgStart);
     root.style.setProperty('--rank-3-bg-end', themeConfig.rank3BgEnd);
     root.style.setProperty('--rank-3-border', themeConfig.rank3Border);
+
+    root.style.setProperty('--shop-header-start', themeConfig.shopHeaderStart);
+    root.style.setProperty('--shop-header-end', themeConfig.shopHeaderEnd);
+    root.style.setProperty('--shop-token-text', themeConfig.shopTokenText);
+    root.style.setProperty('--shop-info-title', themeConfig.shopInfoTitle);
+    root.style.setProperty('--shop-warning-title', themeConfig.shopWarningTitle);
   }, [themeConfig]);
 
   const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
@@ -1808,7 +1827,7 @@ export default function App() {
               exit={{ scale: 0.9, y: 20 }}
               className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]"
             >
-              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 p-6 text-center relative shrink-0">
+              <div className="p-6 text-center relative shrink-0" style={{ background: `linear-gradient(to right, var(--shop-header-start), var(--shop-header-end))` }}>
                 <button 
                   onClick={() => setShowShopModal(false)}
                   className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
@@ -1830,7 +1849,7 @@ export default function App() {
                     </div>
                     <div>
                       <div className="text-xs font-bold text-brown-muted">رصيدك الحالي</div>
-                      <div className="text-lg font-black text-purple-700">{tokens} Tokens</div>
+                      <div className="text-lg font-black" style={{ color: 'var(--shop-token-text)' }}>{tokens} Tokens</div>
                     </div>
                   </div>
                 </div>
@@ -3130,6 +3149,32 @@ export default function App() {
                             </div>
                           </div>
 
+                          <div className="mt-8 pt-6 border-t border-game">
+                            <h3 className="text-lg font-bold mb-4">ألوان المتجر والـ Tokens</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">بداية تدرج المتجر</label>
+                                <input type="color" value={themeConfig.shopHeaderStart} onChange={(e) => setThemeConfig({...themeConfig, shopHeaderStart: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">نهاية تدرج المتجر</label>
+                                <input type="color" value={themeConfig.shopHeaderEnd} onChange={(e) => setThemeConfig({...themeConfig, shopHeaderEnd: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون نص الـ Token</label>
+                                <input type="color" value={themeConfig.shopTokenText} onChange={(e) => setThemeConfig({...themeConfig, shopTokenText: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون عنوان المعلومات</label>
+                                <input type="color" value={themeConfig.shopInfoTitle} onChange={(e) => setThemeConfig({...themeConfig, shopInfoTitle: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-brown-muted">لون عنوان التحذير</label>
+                                <input type="color" value={themeConfig.shopWarningTitle} onChange={(e) => setThemeConfig({...themeConfig, shopWarningTitle: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
+                              </div>
+                            </div>
+                          </div>
+
                           <div className="mt-8 pt-6 border-t border-game flex justify-end gap-4">
                             <button 
                               onClick={() => setThemeConfig(DEFAULT_THEME)}
@@ -4352,7 +4397,7 @@ export default function App() {
               exit={{ scale: 0.9, y: 20 }}
               className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]"
             >
-              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 p-6 text-center relative shrink-0">
+              <div className="p-6 text-center relative shrink-0" style={{ background: `linear-gradient(to right, var(--shop-header-start), var(--shop-header-end))` }}>
                 <button 
                   onClick={() => setShowTokenInfoModal(false)}
                   className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
@@ -4368,7 +4413,7 @@ export default function App() {
               <div className="p-6 overflow-y-auto flex-1 space-y-4 text-right" dir="rtl">
                 <div className="space-y-4 text-brown-dark">
                   <div className="box-game p-4">
-                    <h3 className="font-black text-purple-700 mb-2 flex items-center gap-2">
+                    <h3 className="font-black mb-2 flex items-center gap-2" style={{ color: 'var(--shop-info-title)' }}>
                       <Zap className="w-4 h-4" />
                       ما فائدته؟
                     </h3>
@@ -4378,7 +4423,7 @@ export default function App() {
                   </div>
 
                   <div className="box-game p-4">
-                    <h3 className="font-black text-blue-700 mb-2 flex items-center gap-2">
+                    <h3 className="font-black mb-2 flex items-center gap-2" style={{ color: 'var(--shop-info-title)' }}>
                       <ShoppingCart className="w-4 h-4" />
                       من أين أشتريه؟
                     </h3>
@@ -4388,7 +4433,7 @@ export default function App() {
                   </div>
 
                   <div className="box-game p-4">
-                    <h3 className="font-black text-orange-700 mb-2 flex items-center gap-2">
+                    <h3 className="font-black mb-2 flex items-center gap-2" style={{ color: 'var(--shop-warning-title)' }}>
                       <AlertTriangle className="w-4 h-4" />
                       تحذير هام!
                     </h3>
