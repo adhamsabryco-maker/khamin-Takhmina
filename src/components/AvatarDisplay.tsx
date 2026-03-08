@@ -96,7 +96,7 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
   };
 
   return (
-    <div className={`relative flex items-center justify-center ${className}`}>
+    <div className={`relative flex items-center justify-center overflow-hidden ${className}`}>
       {/* Stars Animation Layer - Now on top of Frame */}
       {renderStarsFallback(level)}
 
