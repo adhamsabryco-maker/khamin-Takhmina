@@ -12,14 +12,7 @@
 
 body {
   font-family: "Fredoka", "Cairo", sans-serif;
-  background-color: #FFEB3B; /* Fallback */
-  /* Polka dot pattern */
-  background-image: 
-    radial-gradient(#FFC107 20%, transparent 20%),
-    radial-gradient(#FFC107 20%, transparent 20%);
-  background-size: 20px 20px;
-  background-position: 0 0, 10px 10px;
-  background-attachment: fixed;
+  background-color: #543a33;
   color: #2D3436;
   direction: rtl;
 }
@@ -60,12 +53,14 @@ body {
   @apply border-b-0 translate-y-[4px];
 }
 
-/* Secondary Action (Blue/Cyan) */
+/* Secondary Action (Green Gradient) */
 .btn-secondary {
-  @apply bg-[#48DBFB] text-white rounded-2xl border-b-[6px] border-[#0ABDE3] shadow-[0_4px_0_rgba(0,0,0,0.1)];
+  background: linear-gradient(to top, #5ab72e, #ade03e);
+  @apply text-white rounded-2xl border-b-[6px] border-[#348d20] shadow-[0_4px_0_rgba(0,0,0,0.1)];
 }
 .btn-secondary:hover {
-  @apply bg-[#6CE4FC] -translate-y-[2px];
+  @apply bg-[#92CB79] -translate-y-[2px];
+  background: #92CB79;
 }
 .btn-secondary:active {
   @apply border-b-0 translate-y-[4px];
@@ -95,16 +90,21 @@ body {
 
 /* 2. The "Game Card" Container */
 .card-game {
-  @apply bg-white rounded-[32px] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.05)];
+  @apply bg-[#fbf4e1] rounded-[32px] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.05)];
+}
+
+/* 2.1. The "Player Data Card" Container */
+.player-card {
+  @apply bg-[#fbf4e1] rounded-[32px] border-2 border-white/50 shadow-md backdrop-blur-sm;
 }
 
 /* 3. The "Chunky" Input */
 .input-game {
-  @apply w-full bg-[#F7F9FC] border-[3px] border-[#E0E6ED] rounded-2xl p-4 text-lg font-bold text-[#2D3436] placeholder-[#B2BEC3] outline-none transition-all;
+  @apply w-full bg-[#f6e6cd] border-[3px] border-[#e1ccab] rounded-2xl p-4 text-lg font-bold text-[#2D3436] placeholder-[#B2BEC3] outline-none transition-all;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
 }
 .input-game:focus {
-  @apply bg-white border-[#48DBFB] shadow-[0_0_0_4px_rgba(72,219,251,0.2)];
+  @apply bg-[#f6e6cd] border-[#e1ccab] shadow-[0_0_0_4px_rgba(225,204,171,0.4)];
 }
 
 /* Animations */

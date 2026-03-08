@@ -3340,7 +3340,7 @@ export default function App() {
         >
 
           {/* Profile Card */}
-          <div className="flex items-center gap-3 md:gap-4 bg-white/90 backdrop-blur-sm p-3 md:p-4 rounded-3xl shadow-md border-2 border-white/50 flex-row-reverse mb-6 md:mb-10 w-full">
+          <div className="player-card flex items-center gap-3 md:gap-4 p-3 md:p-4 flex-row-reverse mb-6 md:mb-10 w-full">
               <div className="relative shrink-0 w-16 h-16 md:w-20 md:h-20">
                 {renderAvatarContent(avatar, getLevel(xp))}
               </div>
