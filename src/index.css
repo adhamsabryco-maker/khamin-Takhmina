@@ -69,6 +69,7 @@
 
   /* Modal Background */
   --bg-modal: #ffffff;
+  --shop-modal-bg: #ffffff;
 
   /* Progress Bars */
   --level-bar-bg: #f6e6cd;
@@ -260,7 +261,7 @@ body {
 
 /* Modal Background Class */
 .bg-modal-theme {
-  background-color: var(--bg-modal);
+  background-color: var(--shop-modal-bg);
 }
 
 /* Danger/Warning Action (Yellow/Orange) */
