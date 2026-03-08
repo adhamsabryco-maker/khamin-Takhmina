@@ -1199,6 +1199,12 @@ export default function App() {
       setJoined(true);
     });
 
+    newSocket.on('theme_updated', (newTheme: ThemeConfig) => {
+      console.log('Theme updated from server:', newTheme);
+      setThemeConfig(newTheme);
+      localStorage.setItem('khamin_theme_config', JSON.stringify(newTheme));
+    });
+
     newSocket.on('timer_update', (timer: number) => {
       setRoom(prev => prev ? { ...prev, timer } : null);
     });
@@ -2988,9 +2994,8 @@ export default function App() {
                             </button>
                             <button 
                               onClick={() => {
-                                // Save to localStorage is already handled by useEffect
-                                // Here we would emit to socket if we had backend support
-                                alert('تم حفظ الألوان بنجاح! (محلياً)');
+                                socket?.emit('admin_save_theme', themeConfig);
+                                alert('تم حفظ الألوان بنجاح! (على السيرفر)');
                               }}
                               className="px-8 py-3 bg-accent-blue hover:brightness-110 text-white rounded-xl font-black shadow-lg transition-all transform hover:-translate-y-1"
                             >
