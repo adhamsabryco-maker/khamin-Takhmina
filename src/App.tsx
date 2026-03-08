@@ -145,7 +145,7 @@ export default function App() {
       try {
         const response = await fetch('/api/version');
         const data = await response.json();
-        if (data.version && data.version !== appVersion) {
+        if (data.version && appVersion !== '1.0.0' && data.version !== appVersion) {
           console.log('New version detected, reloading...');
           window.location.reload();
         }
