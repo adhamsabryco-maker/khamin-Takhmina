@@ -2456,6 +2456,12 @@ export default function App() {
                         >
                           المتجر والـ Tokens
                         </button>
+                        <button 
+                          onClick={() => setAdminTab('colors')}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'colors' ? 'bg-pink-500 text-white' : 'bg-pink-100 text-pink-600 hover:bg-pink-200'}`}
+                        >
+                          ألوان اللعبة
+                        </button>
                       </div>
                     </div>
                   </div>
