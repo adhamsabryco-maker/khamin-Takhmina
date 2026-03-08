@@ -1969,26 +1969,25 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Ad-free Power-ups Package (Level 50+) */}
-                  {getLevel(xp) >= 50 && (
-                    <div className="flex items-center justify-between p-4 border-2 border-accent-orange rounded-2xl bg-orange-50 mt-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-accent-orange-soft rounded-xl flex items-center justify-center text-2xl">
-                          ⚡
-                        </div>
-                        <div>
-                          <div className="font-black text-brown-dark">باقة المحترفين</div>
-                          <div className="text-xs font-bold text-brown-muted">استخدم وسائل المساعدة بدون إعلانات</div>
-                        </div>
+                  {/* Ad-free Power-ups Package (Visible to all, locked for 50+) */}
+                  <div className="flex items-center justify-between p-4 border-2 border-accent-orange rounded-2xl bg-orange-50 mt-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-accent-orange-soft rounded-xl flex items-center justify-center text-2xl">
+                        ⚡
                       </div>
-                      <button 
-                        onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
-                        className="bg-accent-orange hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
-                      >
-                        150 ج.م
-                      </button>
+                      <div>
+                        <div className="font-black text-brown-dark">باقة المحترفين</div>
+                        <div className="text-xs font-bold text-brown-muted">استخدم وسائل المساعدة بدون إعلانات</div>
+                      </div>
                     </div>
-                  )}
+                    <button 
+                      onClick={() => getLevel(xp) < 50 ? alert('سيتم تفعيل الدفع قريباً!') : null}
+                      disabled={getLevel(xp) >= 50}
+                      className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md ${getLevel(xp) < 50 ? 'bg-accent-orange hover:brightness-110 text-white' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
+                    >
+                      {getLevel(xp) >= 50 ? 'مفعل تلقائياً' : '150 ج.م'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
