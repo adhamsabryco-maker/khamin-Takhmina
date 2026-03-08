@@ -362,6 +362,7 @@ export default function App() {
 
   const [showAdModal, setShowAdModal] = useState(false);
   const [showAdConfirmation, setShowAdConfirmation] = useState(false);
+  const [readyPowerUps, setReadyPowerUps] = useState<string[]>([]);
   console.log('App rendering, showAdModal:', showAdModal);
   const [adStatus, setAdStatus] = useState({ adsWatched: 0, maxAds: 5, canWatch: false, loading: true });
   const [adTimer, setAdTimer] = useState(0);
@@ -400,12 +401,18 @@ export default function App() {
     if (adTimer > 0) return;
     
     if (activePowerUp) {
-      // Just close the modal, don't use the power-up automatically.
-      // The player will use it manually after the ad.
+      // Add to ready power-ups so the user can use it manually
+      if (!readyPowerUps.includes(activePowerUp)) {
+        setReadyPowerUps(prev => [...prev, activePowerUp]);
+      }
       setActivePowerUp(null);
     } else {
       // Original token reward logic
       socket?.emit('watch_ad_request', { serial: playerSerial });
+    }
+    
+    if (roomId) {
+      socket?.emit('ad_ended', { roomId });
     }
     
     setShowAdModal(false);
@@ -1653,6 +1660,9 @@ export default function App() {
     
     console.log('Setting showAdModal to true');
     setShowAdModal(true);
+    if (roomId) {
+      socket?.emit('ad_started', { roomId });
+    }
     setAdTimer(15);
 
     const timer = setInterval(() => {
@@ -1768,9 +1778,25 @@ export default function App() {
   const useCard = (type: 'quick_guess' | 'hint' | 'word_length' | 'time_freeze' | 'spy_lens') => {
     if (cooldowns[type] > 0) return;
     
-    // Set active power-up and show confirmation modal
-    setActivePowerUp(type);
-    setShowAdConfirmation(true);
+    // Quick guess doesn't require an ad
+    if (type === 'quick_guess' || readyPowerUps.includes(type) || getLevel(xp) >= 50) {
+      // Actually use the card
+      socket?.emit('use_card', { roomId, cardType: type });
+      
+      // Remove from ready
+      if (type !== 'quick_guess') {
+        setReadyPowerUps(prev => prev.filter(p => p !== type));
+      }
+      
+      // Hint has 150s cooldown (2.5m)
+      if (type === 'hint') {
+        setCooldowns(prev => ({ ...prev, [type]: 150 }));
+      }
+    } else {
+      // Set active power-up and show confirmation modal
+      setActivePowerUp(type);
+      setShowAdConfirmation(true);
+    }
   };
 
   // Update Ad Modal logic to include confirmation
@@ -1820,6 +1846,8 @@ export default function App() {
                       roomId, 
                       message: `يقوم ${playerName} بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"، انتظر قليلاً.` 
                     });
+                    
+                    socket?.emit('ad_started', { roomId });
 
                     // Start timer
                     const interval = setInterval(() => {
@@ -5153,12 +5181,14 @@ export default function App() {
 
             // Only disable other cards during quick guess if they are specifically quick guess, or if game is finished
             const isCardDisabled = isLocked || card.disabled || cardCooldown > 0 || room.gameState === 'finished' || (room.isPaused && card.id === 'quick_guess');
+            const isReady = readyPowerUps.includes(card.id);
+            
             return (
               <button 
                 key={card.id}
                 onClick={() => !isLocked && useCard(card.id as any)}
                 disabled={isCardDisabled}
-                className={`relative w-10 h-10 md:w-16 md:h-16 rounded-full ${card.bg} flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-80 disabled:grayscale disabled:cursor-not-allowed group`}
+                className={`relative w-10 h-10 md:w-16 md:h-16 rounded-full ${card.bg} flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-80 disabled:grayscale disabled:cursor-not-allowed group ${isReady ? 'ring-4 ring-accent-green ring-offset-2 animate-pulse' : ''}`}
                 title={card.name}
               >
                 {isLocked ? (
@@ -5168,6 +5198,12 @@ export default function App() {
                   </div>
                 ) : (
                   <card.icon className={`w-5 h-5 md:w-8 md:h-8 ${card.color}`} />
+                )}
+                
+                {isReady && !isLocked && (
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-accent-green rounded-full border-2 border-white flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
+                  </div>
                 )}
                 
                 {cardCooldown > 0 && !isLocked && (
