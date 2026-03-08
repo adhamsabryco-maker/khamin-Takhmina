@@ -361,6 +361,7 @@ export default function App() {
   };
 
   const [showAdModal, setShowAdModal] = useState(false);
+  const [showAdConfirmation, setShowAdConfirmation] = useState(false);
   console.log('App rendering, showAdModal:', showAdModal);
   const [adStatus, setAdStatus] = useState({ adsWatched: 0, maxAds: 5, canWatch: false, loading: true });
   const [adTimer, setAdTimer] = useState(0);
@@ -1783,11 +1784,16 @@ export default function App() {
   const useCard = (type: 'quick_guess' | 'hint' | 'word_length' | 'time_freeze' | 'spy_lens') => {
     if (cooldowns[type] > 0) return;
     
-    // Set active power-up and show ad modal
+    // Set active power-up and show confirmation modal
     setActivePowerUp(type);
-    setShowAdModal(true);
-    setAdTimer(5); // 5 seconds ad simulation
+    setShowAdConfirmation(true);
   };
+
+  // Update Ad Modal logic to include confirmation
+  // ... (Inside renderModals)
+  // I need to update the modal content to show confirmation first, then the ad.
+  // Actually, let's add a new state `showAdConfirmation`
+
 
   const me = room?.players.find(p => p.id === socket?.id);
   const opponent = room?.players.find(p => p.id !== socket?.id);
@@ -1798,6 +1804,54 @@ export default function App() {
 
   const renderModals = () => (
     <>
+      {/* Ad Confirmation Modal */}
+      <AnimatePresence>
+        {showAdConfirmation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 text-white"
+          >
+            <div className="bg-modal-theme p-8 rounded-[2rem] text-center max-w-sm w-full space-y-6">
+              <h2 className="text-2xl font-black text-accent-orange">وسيلة مساعدة</h2>
+              <p className="text-brown-dark font-bold">هل تود مشاهدة إعلان لفتح واستخدام وسيلة المساعدة "{activePowerUp ? {quick_guess: 'تخمين سريع', hint: 'نصيحة', word_length: 'كاشف الحروف', time_freeze: 'تجميد الوقت', spy_lens: 'الجاسوس'}[activePowerUp] : ''}"؟</p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => {
+                    setShowAdConfirmation(false);
+                    setShowAdModal(true);
+                    setAdTimer(5);
+                    // Start timer
+                    const interval = setInterval(() => {
+                      setAdTimer(prev => {
+                        if (prev <= 1) {
+                          clearInterval(interval);
+                          return 0;
+                        }
+                        return prev - 1;
+                      });
+                    }, 1000);
+                  }}
+                  className="flex-1 bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black"
+                >
+                  نعم، شاهد الآن
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowAdConfirmation(false);
+                    setActivePowerUp(null);
+                  }}
+                  className="flex-1 bg-gray-500 hover:brightness-110 text-white py-4 rounded-2xl font-black"
+                >
+                  لا
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Mock Ad Modal */}
       <AnimatePresence>
         {showAdModal && (
@@ -1826,7 +1880,7 @@ export default function App() {
                   onClick={claimAdReward}
                   className="bg-accent-green hover:brightness-110 text-white px-8 py-4 rounded-2xl font-black text-xl shadow-lg transition-all"
                 >
-                  استلام المكافأة (1 Token) 🎁
+                  إغلاق الإعلان 🎁
                 </button>
               )}
             </div>
