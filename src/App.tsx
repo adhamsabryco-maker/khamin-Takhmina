@@ -439,6 +439,7 @@ export default function App() {
   const hasProPackage = proPackageExpiry !== null && proPackageExpiry > Date.now();
   const proPackageDaysLeft = hasProPackage ? Math.ceil((proPackageExpiry! - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [topPlayers, setTopPlayers] = useState<any[]>(() => {
     try {
@@ -5268,8 +5269,15 @@ export default function App() {
             return (
               <button 
                 key={card.id}
-                onClick={() => !isLocked && useCard(card.id as any)}
-                disabled={isCardDisabled}
+                onClick={() => {
+                  if (!isLocked) {
+                    useCard(card.id as any);
+                  } else {
+                    setActiveTooltip(card.id);
+                    setTimeout(() => setActiveTooltip(null), 4000);
+                  }
+                }}
+                disabled={isCardDisabled && !isLocked}
                 className={`relative w-10 h-10 md:w-16 md:h-16 rounded-full ${card.bg} flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-80 disabled:grayscale disabled:cursor-not-allowed group ${isReady ? 'ring-4 ring-accent-green ring-offset-2 animate-pulse' : ''}`}
                 title={card.name}
               >
@@ -5295,14 +5303,14 @@ export default function App() {
                 )}
                 
                 {/* Tooltip */}
-                <div className={`absolute left-full ml-3 px-3 py-2 ${isLocked ? 'bg-orange-50 border-2 border-orange-200 text-brown-dark w-48' : 'bg-gray-800 text-white'} text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg text-right`}>
+                <div className={`absolute left-full ml-3 px-3 py-2 ${isLocked ? 'w-48' : 'bg-gray-800 text-white'} text-xs font-bold rounded-xl ${activeTooltip === card.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity pointer-events-none z-50 shadow-lg text-right`} style={isLocked ? { backgroundColor: '#F6E6CD', borderColor: '#E1CCAB', borderWidth: '2px', color: '#533933' } : {}}>
                   {isLocked && card.description ? (
                     <div className="flex flex-col gap-1.5 whitespace-normal">
                       <div className="flex items-center gap-1.5">
                         <card.icon className={`w-4 h-4 ${card.color}`} />
                         <span className="font-black text-sm">{card.name}</span>
                       </div>
-                      <p className="text-[10px] text-brown-muted leading-relaxed">
+                      <p className="text-[10px] leading-relaxed opacity-90">
                         {card.description}
                       </p>
                       <span className="block text-red-500 text-[10px] mt-0.5 font-black bg-red-50 px-2 py-0.5 rounded-md w-fit border border-red-100">
