@@ -1893,16 +1893,11 @@ const app = express();
           room.isPaused = false;
           room.pausingPlayerId = null;
           room.quickGuessTimer = 0;
-          // Refund the usage? The requirement says "cancel the quick guess state and resume", 
-          // usually "cancel" implies you didn't use it, but the requirement says "resume without penalty".
-          // However, "quickGuessUsed" was set to true when started. 
-          // If we want to allow them to try again later, we should set quickGuessUsed = false.
-          // But the prompt says "cancel the quick guess state", implying just exiting the modal.
-          // Let's assume it consumes the "use" for this turn unless specified otherwise, 
-          // but usually "cancel" means "I changed my mind, let me go back to discussion".
-          // If it consumes the use, they can't do it again. 
-          // Let's keep quickGuessUsed = true for now as it's a "one time use" card usually.
-          // Wait, "resume without penalty" might mean they don't lose the game (which happens if timer runs out or wrong guess).
+          
+          // Refund the usage so it remains available
+          if (player) {
+            player.quickGuessUsed = false;
+          }
           
           io.to(roomId).emit("room_update", room);
         }
