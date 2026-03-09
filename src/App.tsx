@@ -1384,7 +1384,8 @@ export default function App() {
         confetti({
           particleCount: 150,
           spread: 70,
-          origin: { y: 0.6 }
+          origin: { y: 0.6 },
+          zIndex: 10001
         });
       } else {
         playSound('lose');
