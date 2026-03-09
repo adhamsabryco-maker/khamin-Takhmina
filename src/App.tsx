@@ -277,6 +277,9 @@ const APP_VERSION = '1.1.1'; // Version for cache clearing
 
 const EMOTES = ['😂', '😡', '👍', '👎', '🤔', '🤯', '🎉', '💔'];
 
+const POWER_UP_UNLOCKS = [10, 20, 30, 40, 50];
+const AVATAR_UNLOCKS = [10, 20, 30, 40, 50];
+
 const enterFullscreen = () => {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(err => {
@@ -796,6 +799,12 @@ export default function App() {
   const [hasSeenLevelInfo, setHasSeenLevelInfo] = useState(() => {
     return localStorage.getItem('khamin_seen_level_info') === 'true';
   });
+  const [lastSeenPowerUpLevel, setLastSeenPowerUpLevel] = useState(() => {
+    return parseInt(localStorage.getItem('khamin_last_seen_powerup_level') || '1');
+  });
+  const [lastSeenAvatarLevel, setLastSeenAvatarLevel] = useState(() => {
+    return parseInt(localStorage.getItem('khamin_last_seen_avatar_level') || '1');
+  });
   const [showLevelInfo, setShowLevelInfo] = useState(false);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -828,6 +837,12 @@ export default function App() {
   };
   
   const toggleSettings = () => {
+    if (showSettingsModal) {
+      // Closing
+      const currentLevel = getLevel(xp);
+      setLastSeenAvatarLevel(currentLevel);
+      localStorage.setItem('khamin_last_seen_avatar_level', currentLevel.toString());
+    }
     setShowSettingsModal(!showSettingsModal);
     setShowLevelInfo(false);
     setShowAdminDashboard(false);
@@ -844,6 +859,12 @@ export default function App() {
   };
 
   const toggleLevelInfo = () => {
+    if (showLevelInfo) {
+      // Closing
+      const currentLevel = getLevel(xp);
+      setLastSeenPowerUpLevel(currentLevel);
+      localStorage.setItem('khamin_last_seen_powerup_level', currentLevel.toString());
+    }
     if (!hasSeenLevelInfo) {
       setHasSeenLevelInfo(true);
       localStorage.setItem('khamin_seen_level_info', 'true');
@@ -2166,7 +2187,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[5000] flex items-center justify-center p-4"
-            onClick={() => setShowLevelInfo(false)}
+            onClick={toggleLevelInfo}
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
@@ -2176,7 +2197,7 @@ export default function App() {
               onClick={e => e.stopPropagation()}
             >
               <button 
-                onClick={() => setShowLevelInfo(false)}
+                onClick={toggleLevelInfo}
                 className="absolute top-4 left-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-brown-muted hover:bg-gray-200 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -2223,9 +2244,12 @@ export default function App() {
                 {/* Hint */}
                 <div className="box-game p-3">
                   <h3 className="text-lg font-black text-accent-blue mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 relative">
                       <HelpCircle className="w-5 h-5" />
                       النصيحة
+                      {getLevel(xp) >= 10 && lastSeenPowerUpLevel < 10 && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
                     </div>
                     <span className="text-xs bg-blue-200 text-accent-blue px-2 py-1 rounded-full">تفتح في المستوى 10</span>
                   </h3>
@@ -2237,9 +2261,12 @@ export default function App() {
                 {/* Letter Revealer */}
                 <div className="box-game p-3">
                   <h3 className="text-lg font-black text-accent-green mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 relative">
                       <Type className="w-5 h-5" />
                       كاشف الحروف
+                      {getLevel(xp) >= 20 && lastSeenPowerUpLevel < 20 && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
                     </div>
                     <span className="text-xs bg-green-200 text-accent-green px-2 py-1 rounded-full">يفتح في المستوى 20</span>
                   </h3>
@@ -2251,9 +2278,12 @@ export default function App() {
                 {/* Time Freeze */}
                 <div className="box-game p-3">
                   <h3 className="text-lg font-black text-cyan-600 mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 relative">
                       <Snowflake className="w-5 h-5" />
                       تجميد الوقت
+                      {getLevel(xp) >= 30 && lastSeenPowerUpLevel < 30 && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
                     </div>
                     <span className="text-xs bg-cyan-200 text-cyan-700 px-2 py-1 rounded-full">يفتح في المستوى 30</span>
                   </h3>
@@ -2265,9 +2295,12 @@ export default function App() {
                 {/* Word Count */}
                 <div className="box-game p-3">
                   <h3 className="text-lg font-black text-indigo-600 mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 relative">
                       <Hash className="w-5 h-5" />
                       عدد الكلمات
+                      {getLevel(xp) >= 40 && lastSeenPowerUpLevel < 40 && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
                     </div>
                     <span className="text-xs bg-indigo-200 text-indigo-700 px-2 py-1 rounded-full">يفتح في المستوى 40</span>
                   </h3>
@@ -2279,9 +2312,12 @@ export default function App() {
                 {/* Spy */}
                 <div className="box-game p-3">
                   <h3 className="text-lg font-black text-accent-purple mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 relative">
                       <Eye className="w-5 h-5" />
                       الجاسوس
+                      {getLevel(xp) >= 50 && lastSeenPowerUpLevel < 50 && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
                     </div>
                     <span className="text-xs bg-purple-200 text-accent-purple px-2 py-1 rounded-full">يفتح في المستوى 50</span>
                   </h3>
@@ -2352,7 +2388,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-md z-[5000] flex items-center justify-center p-4"
-            onClick={() => setShowSettingsModal(false)}
+            onClick={toggleSettings}
           >
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
@@ -2362,7 +2398,7 @@ export default function App() {
             >
               <div className="flex justify-between items-center flex-row-reverse">
                 <h2 className="text-2xl font-black text-main">ملف اللاعب</h2>
-                <button onClick={() => setShowSettingsModal(false)} className="text-brown-light hover:text-red-500"><X className="w-6 h-6" /></button>
+                <button onClick={toggleSettings} className="text-brown-light hover:text-red-500"><X className="w-6 h-6" /></button>
               </div>
 
               <div className="space-y-4">
@@ -2479,11 +2515,15 @@ export default function App() {
                             <div className="w-full h-full p-1">
                               {renderAvatarContent(av.id, 1)}
                             </div>
-                            {isLocked && (
+                            {isLocked ? (
                               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 rounded-xl z-20">
                                 <Lock className="w-4 h-4 text-white" />
                                 <span className="text-[9px] font-bold text-white mt-1">Lvl {av.level}</span>
                               </div>
+                            ) : (
+                              getLevel(xp) >= av.level && lastSeenAvatarLevel < av.level && (
+                                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse z-30"></span>
+                              )
                             )}
                           </button>
                         );
@@ -2493,8 +2533,11 @@ export default function App() {
 
                   {/* Custom Avatar in Settings */}
                   <div className="pt-2 border-t border-game">
-                    <div className="flex items-center justify-between mb-2 flex-row-reverse">
+                    <div className="flex items-center justify-between mb-2 flex-row-reverse relative">
                       <span className="text-xs font-black text-brown-muted">أفاتار مخصص</span>
+                      {getLevel(xp) >= 50 && lastSeenAvatarLevel < 50 && (
+                        <span className="absolute top-0 right-20 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
                       <div className="flex items-center gap-1 bg-purple-100 text-purple-600 px-3 py-1 rounded-full text-xs font-black">
                         <Star className="w-3.5 h-3.5 fill-purple-600" />
                         Level 50
@@ -4779,7 +4822,7 @@ export default function App() {
             title="معلومات المستوى"
           >
             <Info className="w-4 h-4 md:w-5 md:h-5" />
-            {!hasSeenLevelInfo && (
+            {(POWER_UP_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenPowerUpLevel < lvl)) && (
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
@@ -4799,10 +4842,16 @@ export default function App() {
           {/* Settings Button */}
           <button 
             onClick={toggleSettings}
-            className="w-9 h-9 md:w-10 md:h-10 bg-accent-purple-light text-accent-purple rounded-xl flex items-center justify-center hover:bg-accent-purple-soft hover:text-accent-purple transition-colors"
+            className="w-9 h-9 md:w-10 md:h-10 bg-accent-purple-light text-accent-purple rounded-xl flex items-center justify-center hover:bg-accent-purple-soft hover:text-accent-purple transition-colors relative"
             title="الإعدادات"
           >
             <Settings className="w-4 h-4 md:w-5 md:h-5" />
+            {(AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+              </span>
+            )}
           </button>
         </div>
       </header>
