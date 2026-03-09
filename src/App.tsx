@@ -4108,7 +4108,7 @@ export default function App() {
                 title="معلومات المستوى"
               >
                 <Info className="w-4 h-4 md:w-5 md:h-5" />
-                {!hasSeenLevelInfo && (
+                {(POWER_UP_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenPowerUpLevel < lvl)) && (
                   <span className="absolute -top-1 -right-1 flex h-3 w-3">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
@@ -4128,10 +4128,16 @@ export default function App() {
               {/* Settings Button */}
               <button 
                 onClick={toggleSettings}
-                className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors"
+                className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors relative"
                 title="الإعدادات"
               >
                 <Settings className="w-4 h-4 md:w-5 md:h-5" />
+                {(AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                  </span>
+                )}
               </button>
             </div>
           </header>
@@ -4262,7 +4268,7 @@ export default function App() {
               title="معلومات المستوى"
             >
               <Info className="w-4 h-4 md:w-5 md:h-5" />
-              {!hasSeenLevelInfo && (
+              {(POWER_UP_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenPowerUpLevel < lvl)) && (
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
@@ -4282,10 +4288,16 @@ export default function App() {
             {/* Settings Button */}
             <button 
               onClick={toggleSettings}
-              className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-accent-purple rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-accent-purple transition-colors"
+              className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-accent-purple rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-accent-purple transition-colors relative"
               title="الإعدادات"
             >
               <Settings className="w-4 h-4 md:w-5 md:h-5" />
+              {(AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                </span>
+              )}
             </button>
           </div>
         </header>
