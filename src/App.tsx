@@ -5542,7 +5542,14 @@ export default function App() {
                   العب تاني مع المنافس
                 </button>
                 <button 
-                  onClick={() => window.location.reload()}
+                  onClick={() => {
+                    setJoined(false);
+                    setRoom(null);
+                    setIsSearching(false);
+                    setProposedMatch(null);
+                    setHasResponded(false);
+                    setOpponentAccepted(false);
+                  }}
                   className="w-full btn-game btn-primary py-3 text-base"
                 >
                   الرئيسية
