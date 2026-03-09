@@ -62,14 +62,16 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
         angle: 60,
         spread: 55,
         origin: { x: 0 },
-        colors: colors
+        colors: colors,
+        zIndex: 10001
       });
       confetti({
         particleCount: 5,
         angle: 120,
         spread: 55,
         origin: { x: 1 },
-        colors: colors
+        colors: colors,
+        zIndex: 10001
       });
 
       if (Date.now() < end) {
@@ -82,7 +84,8 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
       particleCount: 100,
       spread: 70,
       origin: { y: 0.6 },
-      colors: colors
+      colors: colors,
+      zIndex: 10001
     });
   };
 
