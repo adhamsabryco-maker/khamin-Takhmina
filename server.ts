@@ -1748,6 +1748,33 @@ const app = express();
         const sender = room.players.find((p: any) => p.id === socket.id);
         let messageToSend = filterProfanity(text);
 
+        // Prevent cheating: Check if the message contains the answer for any player in the room
+        let isCheating = false;
+        room.players.forEach((p: any) => {
+          if (p.targetImage && p.targetImage.name) {
+            const normalizedAnswer = normalizeEgyptian(p.targetImage.name).toLowerCase();
+            const normalizedText = normalizeEgyptian(text).toLowerCase();
+            
+            // Block Arabic answer
+            if (normalizedAnswer.length >= 2 && normalizedText.includes(normalizedAnswer)) {
+              isCheating = true;
+            }
+
+            // Block English answer if translation is available
+            if (p.targetImage.englishName) {
+              const engAnswer = p.targetImage.englishName.toLowerCase();
+              const engText = text.toLowerCase();
+              if (engAnswer.length >= 3 && engText.includes(engAnswer)) {
+                isCheating = true;
+              }
+            }
+          }
+        });
+
+        if (isCheating) {
+          messageToSend = "(ممنوع تسريب الإجابة!)";
+        }
+
         if (sender && sender.age < 13) {
           console.log(`Child player ${sender.name} (${sender.id}) sent: "${text}". Message replaced.`);
           messageToSend = "(رسالة طفل)"; // Generic message for children
@@ -2451,6 +2478,26 @@ const app = express();
     
     room.players[0].targetImage = shuffled[0];
     room.players[1].targetImage = shuffled[1 % shuffled.length];
+
+    // Get English translations for cheating prevention (background)
+    room.players.forEach(async (p: any) => {
+      if (p.targetImage && p.targetImage.name) {
+        try {
+          const response = await genAI.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: `Translate this Arabic word to English (one word only, lowercase): ${p.targetImage.name}`,
+          });
+          const translated = response.text?.trim().toLowerCase();
+          if (translated && translated.length > 2) {
+            p.targetImage.englishName = translated;
+            console.log(`[Cheat Prevention] Translated "${p.targetImage.name}" to "${translated}"`);
+          }
+        } catch (e) {
+          console.error("Translation error for cheat prevention:", e);
+        }
+      }
+    });
+
     room.players[0].hintCount = 0;
     room.players[1].hintCount = 0;
     room.players[0].quickGuessUsed = false;
