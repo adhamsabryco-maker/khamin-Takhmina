@@ -41,7 +41,8 @@ import {
   Smile,
   Loader2,
   Plus,
-  ShoppingCart
+  ShoppingCart,
+  Hash
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AdminCustomization } from './components/AdminCustomization';
@@ -1479,6 +1480,16 @@ export default function App() {
       setTimeout(() => setHint(null), 5000);
     });
 
+    newSocket.on('word_count_result', ({ count }) => {
+      let wordText = 'كلمة واحدة';
+      if (count === 2) wordText = 'كلمتين';
+      else if (count >= 3 && count <= 10) wordText = `${count} كلمات`;
+      else if (count > 10) wordText = `${count} كلمة`;
+      
+      setHint(`الإجابة تتكون من ${wordText}`);
+      setTimeout(() => setHint(null), 5000);
+    });
+
     newSocket.on('freeze_started', ({ playerId }) => {
       playSound('countdown');
     });
@@ -1825,7 +1836,7 @@ export default function App() {
     if (roomId.startsWith('random_')) setRoomId('');
   };
 
-  const useCard = (type: 'quick_guess' | 'hint' | 'word_length' | 'time_freeze' | 'spy_lens') => {
+  const useCard = (type: 'quick_guess' | 'hint' | 'word_length' | 'word_count' | 'time_freeze' | 'spy_lens') => {
     if (cooldowns[type] > 0) return;
     
     // Quick guess doesn't require an ad
@@ -1875,7 +1886,7 @@ export default function App() {
           >
             <div className="bg-modal-theme p-8 rounded-[2rem] text-center max-w-sm w-full space-y-6">
               <h2 className="text-2xl font-black text-accent-orange">وسيلة مساعدة</h2>
-              <p className="text-brown-dark font-bold">هل تود مشاهدة إعلان لفتح واستخدام وسيلة المساعدة "{activePowerUp ? {quick_guess: 'تخمين سريع', hint: 'نصيحة', word_length: 'كاشف الحروف', time_freeze: 'تجميد الوقت', spy_lens: 'الجاسوس'}[activePowerUp] : ''}"؟</p>
+              <p className="text-brown-dark font-bold">هل تود مشاهدة إعلان لفتح واستخدام وسيلة المساعدة "{activePowerUp ? {quick_guess: 'تخمين سريع', hint: 'نصيحة', word_length: 'كاشف الحروف', word_count: 'عدد الكلمات', time_freeze: 'تجميد الوقت', spy_lens: 'الجاسوس'}[activePowerUp] : ''}"؟</p>
               <div className="flex gap-4">
                 <button 
                   onClick={() => {
@@ -1888,6 +1899,7 @@ export default function App() {
                       quick_guess: 'تخمين سريع',
                       hint: 'نصيحة',
                       word_length: 'كاشف الحروف',
+                      word_count: 'عدد الكلمات',
                       time_freeze: 'تجميد الوقت',
                       spy_lens: 'الجاسوس'
                     }[activePowerUp || ''];
@@ -5241,6 +5253,16 @@ export default function App() {
               bg: 'bg-white', 
               disabled: me?.timeFreezeUsed || room.isFrozen,
               level: 30
+            },
+            { 
+              id: 'word_count', 
+              name: 'عدد الكلمات', 
+              description: 'يكشف لك عدد كلمات صورة التخمين.',
+              icon: Hash, 
+              color: 'text-indigo-500', 
+              bg: 'bg-white', 
+              disabled: me?.wordCountUsed,
+              level: 40
             },
             { 
               id: 'spy_lens', 
