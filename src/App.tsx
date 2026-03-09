@@ -2252,6 +2252,20 @@ export default function App() {
                   </p>
                 </div>
 
+                {/* Word Count */}
+                <div className="box-game p-3">
+                  <h3 className="text-lg font-black text-indigo-600 mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Hash className="w-5 h-5" />
+                      عدد الكلمات
+                    </div>
+                    <span className="text-xs bg-indigo-200 text-indigo-700 px-2 py-1 rounded-full">يفتح في المستوى 40</span>
+                  </h3>
+                  <p className="text-sm leading-relaxed">
+                    يكشف لك عن عدد الكلمات في اسم الصورة المطلوبة، مما يساعدك في معرفة ما إذا كانت الإجابة كلمة واحدة أم أكثر.
+                  </p>
+                </div>
+
                 {/* Spy */}
                 <div className="box-game p-3">
                   <h3 className="text-lg font-black text-accent-purple mb-2 flex items-center justify-between">
