@@ -2248,7 +2248,7 @@ export default function App() {
                       <HelpCircle className="w-5 h-5" />
                       النصيحة
                       {getLevel(xp) >= 10 && lastSeenPowerUpLevel < 10 && (
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
                     <span className="text-xs bg-blue-200 text-accent-blue px-2 py-1 rounded-full">تفتح في المستوى 10</span>
@@ -2265,7 +2265,7 @@ export default function App() {
                       <Type className="w-5 h-5" />
                       كاشف الحروف
                       {getLevel(xp) >= 20 && lastSeenPowerUpLevel < 20 && (
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
                     <span className="text-xs bg-green-200 text-accent-green px-2 py-1 rounded-full">يفتح في المستوى 20</span>
@@ -2282,7 +2282,7 @@ export default function App() {
                       <Snowflake className="w-5 h-5" />
                       تجميد الوقت
                       {getLevel(xp) >= 30 && lastSeenPowerUpLevel < 30 && (
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
                     <span className="text-xs bg-cyan-200 text-cyan-700 px-2 py-1 rounded-full">يفتح في المستوى 30</span>
@@ -2299,7 +2299,7 @@ export default function App() {
                       <Hash className="w-5 h-5" />
                       عدد الكلمات
                       {getLevel(xp) >= 40 && lastSeenPowerUpLevel < 40 && (
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
                     <span className="text-xs bg-indigo-200 text-indigo-700 px-2 py-1 rounded-full">يفتح في المستوى 40</span>
@@ -2316,7 +2316,7 @@ export default function App() {
                       <Eye className="w-5 h-5" />
                       الجاسوس
                       {getLevel(xp) >= 50 && lastSeenPowerUpLevel < 50 && (
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
                     <span className="text-xs bg-purple-200 text-accent-purple px-2 py-1 rounded-full">يفتح في المستوى 50</span>
@@ -2522,7 +2522,7 @@ export default function App() {
                               </div>
                             ) : (
                               getLevel(xp) >= av.level && lastSeenAvatarLevel < av.level && (
-                                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse z-30"></span>
+                                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse z-30"></span>
                               )
                             )}
                           </button>
@@ -2536,7 +2536,7 @@ export default function App() {
                     <div className="flex items-center justify-between mb-2 flex-row-reverse relative">
                       <span className="text-xs font-black text-brown-muted">أفاتار مخصص</span>
                       {getLevel(xp) >= 50 && lastSeenAvatarLevel < 50 && (
-                        <span className="absolute top-0 right-20 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                        <span className="absolute top-0 right-20 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                       <div className="flex items-center gap-1 bg-purple-100 text-purple-600 px-3 py-1 rounded-full text-xs font-black">
                         <Star className="w-3.5 h-3.5 fill-purple-600" />
@@ -4109,9 +4109,9 @@ export default function App() {
               >
                 <Info className="w-4 h-4 md:w-5 md:h-5" />
                 {(POWER_UP_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenPowerUpLevel < lvl)) && (
-                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
                   </span>
                 )}
               </button>
@@ -4133,9 +4133,9 @@ export default function App() {
               >
                 <Settings className="w-4 h-4 md:w-5 md:h-5" />
                 {(AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) && (
-                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
                   </span>
                 )}
               </button>
@@ -4269,9 +4269,9 @@ export default function App() {
             >
               <Info className="w-4 h-4 md:w-5 md:h-5" />
               {(POWER_UP_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenPowerUpLevel < lvl)) && (
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
                 </span>
               )}
             </button>
@@ -4293,9 +4293,9 @@ export default function App() {
             >
               <Settings className="w-4 h-4 md:w-5 md:h-5" />
               {(AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) && (
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
                 </span>
               )}
             </button>
@@ -4835,9 +4835,9 @@ export default function App() {
           >
             <Info className="w-4 h-4 md:w-5 md:h-5" />
             {(POWER_UP_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenPowerUpLevel < lvl)) && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
               </span>
             )}
           </button>
@@ -4859,9 +4859,9 @@ export default function App() {
           >
             <Settings className="w-4 h-4 md:w-5 md:h-5" />
             {(AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
               </span>
             )}
           </button>
