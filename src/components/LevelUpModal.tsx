@@ -8,7 +8,7 @@ const LEVEL_REWARDS: Record<number, { name: string; description: string; icon: a
   10: { name: 'النصيحة', description: 'تلميح يكشف لك أول وتاني حرف من الكلمة.', icon: HelpCircle, color: 'text-blue-500' },
   20: { name: 'كاشف الحروف', description: 'يكشف لك عدد احرف الكلمة.', icon: Type, color: 'text-green-500' },
   30: { name: 'تجميد الوقت', description: 'يوقف العداد الاساسي لمدة 60 ثانية.', icon: Snowflake, color: 'text-cyan-500' },
-  40: { name: 'عدد الكلمات', description: 'يكشف لك عدد كلمات صورة التخمين', icon: Hash, color: 'text-purple-500' },
+  40: { name: 'قريباً...', description: 'تنتظرك اهم وسيلة مساعدة عند lvl 50', icon: SkipForward, color: 'text-purple-500' },
   50: { name: 'الجاسوس', description: 'يكشف لك صورة التخمين.', icon: Eye, color: 'text-purple-500' },
 };
 
