@@ -42,7 +42,8 @@ import {
   Loader2,
   Plus,
   ShoppingCart,
-  Hash
+  Hash,
+  Copy
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AdminCustomization } from './components/AdminCustomization';
@@ -779,6 +780,8 @@ export default function App() {
 
   const [joined, setJoined] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [banUntil, setBanUntil] = useState<number | null>(null);
   const [isPermanentBan, setIsPermanentBan] = useState(false);
   const [reports, setReports] = useState(0);
@@ -1413,6 +1416,7 @@ export default function App() {
     });
 
     newSocket.on('waiting_for_match', () => {
+      setIsPrivate(false);
       setIsSearching(true);
       setJoined(true);
       setProposedMatch(null);
@@ -1439,6 +1443,7 @@ export default function App() {
 
     newSocket.on('random_match_found', ({ roomId }) => {
       setRoomId(roomId);
+      setIsPrivate(false);
       setIsSearching(false);
       setJoined(true);
       setProposedMatch(null);
@@ -1511,6 +1516,7 @@ export default function App() {
       setError(reason);
       setRoom(null);
       setJoined(false);
+      setIsPrivate(false);
       setGuess('');
       setHint(null);
       setChatHistory([]);
@@ -1528,6 +1534,7 @@ export default function App() {
     newSocket.on('opponent_left_lobby', () => {
       setRoom(null);
       setJoined(false);
+      setIsPrivate(false);
       setGuess('');
       setHint(null);
       setChatHistory([]);
@@ -1559,6 +1566,7 @@ export default function App() {
       }
       setIsSearching(false);
       setJoined(false);
+      setIsPrivate(false);
       newSocket.disconnect();
     });
 
@@ -1631,6 +1639,7 @@ export default function App() {
     
     localStorage.setItem('khamin_player_name', playerName);
     localStorage.setItem('khamin_player_age', playerAge.toString());
+    setIsPrivate(true);
     socket?.emit('join_room', { roomId, playerName, avatar, age: playerAge, xp, streak, wins, serial: playerSerial });
     setIsOpponentBlocked(false);
   };
@@ -1652,7 +1661,7 @@ export default function App() {
     
     localStorage.setItem('khamin_player_name', playerName);
     localStorage.setItem('khamin_player_age', playerAge.toString());
-    
+    setIsPrivate(false);
     socket?.emit('find_random_match', { playerId, playerName, avatar, age: playerAge, xp, streak, wins, serial: playerSerial, useToken });
     setIsOpponentBlocked(false);
   };
@@ -1823,6 +1832,7 @@ export default function App() {
     socket?.emit('leave_room', { roomId });
     setRoom(null);
     setJoined(false);
+    setIsPrivate(false);
     setGuess('');
     setHint(null);
     setChatHistory([]); // Clear chat
@@ -4037,6 +4047,7 @@ export default function App() {
                 onClick={() => {
                   setJoined(false); 
                   setIsSearching(false); 
+                  setIsPrivate(false);
                   setProposedMatch(null); 
                   setHasResponded(false); 
                   socket?.emit('leave_matchmaking');
@@ -4874,6 +4885,37 @@ export default function App() {
               </div>
               
               <div className="space-y-4">
+                {isPrivate && room.players.length < 2 && (
+                  <div className="bg-blue-50 border-2 border-blue-200 p-3 rounded-2xl text-accent-blue font-black text-sm md:text-base">
+                    ابعت كود الغرفة 
+                    <div className="relative inline-block">
+                      <AnimatePresence>
+                        {copied && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: 10, x: '-50%' }}
+                            animate={{ opacity: 1, y: -40, x: '-50%' }}
+                            exit={{ opacity: 0, scale: 0.5 }}
+                            className="absolute left-1/2 bg-green-500 text-white text-[10px] px-2 py-1 rounded-lg shadow-lg whitespace-nowrap z-50 pointer-events-none font-bold"
+                          >
+                            تم النسخ! ✅
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(roomId);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                        className="bg-white px-3 py-1 rounded-xl border-2 border-accent-blue mx-2 text-accent-blue hover:bg-blue-50 transition-all flex items-center gap-2 shadow-sm active:scale-95"
+                      >
+                        <span className="font-mono text-lg">{roomId}</span>
+                        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    لاصحابك.
+                  </div>
+                )}
                 <div className="grid grid-cols-4 gap-2">
                   {categories.map(cat => {
                     const isMyChoice = me?.selectedCategory === cat.id;
