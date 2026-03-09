@@ -1461,6 +1461,7 @@ const app = express();
           quickGuessUsed: false,
           wordLengthUsed: false,
           timeFreezeUsed: false,
+          wordCountUsed: false,
           spyLensUsed: false,
           reported: false,
           xp: actualXp,
@@ -1635,6 +1636,7 @@ const app = express();
               quickGuessUsed: false,
               wordLengthUsed: false,
               timeFreezeUsed: false,
+              wordCountUsed: false,
               spyLensUsed: false,
               reported: false,
               xp: match.p1.xp || 0,
@@ -1661,6 +1663,7 @@ const app = express();
               quickGuessUsed: false,
               wordLengthUsed: false,
               timeFreezeUsed: false,
+              wordCountUsed: false,
               spyLensUsed: false,
               reported: false,
               xp: match.p2.xp || 0,
@@ -1822,6 +1825,15 @@ const app = express();
           player.wordLengthUsed = true;
           const targetName = player.targetImage.name;
           socket.emit("word_length_result", { length: targetName.length });
+          io.to(roomId).emit("room_update", room);
+        }
+      } else if (cardType === "word_count") {
+        const playerLevel = getLevel(player.xp || 0);
+        if (playerLevel >= 40 && !player.wordCountUsed) {
+          player.wordCountUsed = true;
+          const targetName = player.targetImage.name;
+          const wordCount = targetName.trim().split(/\s+/).length;
+          socket.emit("word_count_result", { count: wordCount });
           io.to(roomId).emit("room_update", room);
         }
       } else if (cardType === "time_freeze") {
@@ -2064,6 +2076,7 @@ const app = express();
           p.quickGuessUsed = false;
           p.wordLengthUsed = false;
           p.timeFreezeUsed = false;
+          p.wordCountUsed = false;
           p.spyLensUsed = false;
         });
         
