@@ -124,7 +124,7 @@ body::after {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: radial-gradient(rgba(255, 140, 0, 0.3) 20%, transparent 20%);
+  background-image: radial-gradient(rgba(255, 140, 0, 0.842) 30%, transparent 30%);
   background-size: 20px 20px;
   mask-image: radial-gradient(circle at center, black 0%, transparent 100%);
   -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 100%);
