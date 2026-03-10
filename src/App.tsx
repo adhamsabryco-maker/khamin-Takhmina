@@ -60,6 +60,7 @@ const SOUNDS = {
   lose: 'https://assets.mixkit.co/active_storage/sfx/1433/1433-preview.mp3',
   countdown: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3',
   correct: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
+  message: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3',
 };
 
 interface ThemeConfig {
@@ -287,6 +288,17 @@ const enterFullscreen = () => {
     });
   }
 };
+
+const TypingIndicator = () => (
+  <div className="flex items-center gap-1 px-3 py-2 bg-white rounded-xl rounded-tl-none shadow-sm w-fit border border-gray-100">
+    <span className="text-[10px] font-bold text-accent-blue mr-1">المنافس يكتب</span>
+    <div className="flex gap-0.5">
+      <span className="w-1 h-1 bg-accent-blue rounded-full typing-dot"></span>
+      <span className="w-1 h-1 bg-accent-blue rounded-full typing-dot"></span>
+      <span className="w-1 h-1 bg-accent-blue rounded-full typing-dot"></span>
+    </div>
+  </div>
+);
 
 export default function App() {
   const { customConfig, refreshConfig } = useAvatarConfig();
@@ -978,7 +990,26 @@ export default function App() {
 
   const [guess, setGuess] = useState('');
   const [chatInput, setChatInput] = useState('');
+  const [isOpponentTyping, setIsOpponentTyping] = useState(false);
   const [showEmotes, setShowEmotes] = useState(false);
+
+  // Typing logic
+  useEffect(() => {
+    if (!socket || !roomId) return;
+    
+    if (chatInput.trim().length > 0) {
+      socket.emit('typing', { roomId });
+      
+      const timeout = setTimeout(() => {
+        socket.emit('stop_typing', { roomId });
+      }, 3000);
+      
+      return () => clearTimeout(timeout);
+    } else {
+      socket.emit('stop_typing', { roomId });
+    }
+  }, [chatInput, socket, roomId]);
+
   const [chatHistory, setChatHistory] = useState<{ id: string; senderId: string; text: string; playerName: string; avatar: string }[]>([]);
   const [bubbles, setBubbles] = useState<{ id: string; senderId: string; text: string }[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -1370,6 +1401,11 @@ export default function App() {
       const sender = roomRef.current?.players.find((p: any) => p.id === senderId);
       const msgId = Math.random().toString(36).substr(2, 9);
       
+      // Play message sound for incoming messages
+      if (senderId !== newSocket.id) {
+        playSound('message');
+      }
+
       setChatHistory(prev => {
         if (prev.some(m => m.id === msgId)) return prev;
         return [...prev, { 
@@ -1380,6 +1416,14 @@ export default function App() {
           avatar: sender?.avatar || '👤'
         }];
       });
+    });
+
+    newSocket.on('opponent_typing', () => {
+      setIsOpponentTyping(true);
+    });
+
+    newSocket.on('opponent_stop_typing', () => {
+      setIsOpponentTyping(false);
     });
 
     newSocket.on('guess_result', ({ playerId, correct }) => {
@@ -5069,6 +5113,11 @@ export default function App() {
                           </div>
                         ))
                       )}
+                      {isOpponentTyping && (
+                        <div className="flex justify-end">
+                          <TypingIndicator />
+                        </div>
+                      )}
                       <div ref={chatEndRef} />
                     </div>
                     <form onSubmit={handleSendChat} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative">
@@ -5255,6 +5304,11 @@ export default function App() {
                           </div>
                         </div>
                       ))
+                    )}
+                    {isOpponentTyping && (
+                      <div className="flex justify-end">
+                        <TypingIndicator />
+                      </div>
                     )}
                     <div ref={chatEndRef} />
                   </div>
