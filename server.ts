@@ -1795,6 +1795,9 @@ const app = express();
 
         console.log(`Broadcasting chat to room ${roomId}`);
         io.to(roomId).emit("chat_bubble", { senderId: socket.id, text: messageToSend });
+        
+        // Clear typing status when message is sent
+        socket.to(roomId).emit("opponent_stop_typing");
 
         // Trigger bot response if applicable
         const bot = room.players.find((p: any) => p.isBot);
@@ -1804,6 +1807,14 @@ const app = express();
       } else {
         console.log(`Room ${roomId} not found for chat`);
       }
+    });
+
+    socket.on("typing", ({ roomId }) => {
+      socket.to(roomId).emit("opponent_typing");
+    });
+
+    socket.on("stop_typing", ({ roomId }) => {
+      socket.to(roomId).emit("opponent_stop_typing");
     });
 
     socket.on("submit_guess", ({ roomId, guess }) => {
