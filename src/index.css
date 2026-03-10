@@ -108,6 +108,7 @@ body {
   min-height: 100vh;
   position: relative;
   z-index: 0;
+  background: radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%) fixed;
 }
 
 body::before {
@@ -115,7 +116,29 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -2;
-  background: radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%);
+  background: 
+    /* Layer 1: Thin frequent lines - More Saturated & Visible */
+    repeating-conic-gradient(
+      from 0deg at center,
+      rgba(180, 40, 0, 0.22) 0deg 0.5deg,
+      transparent 0.5deg 8deg
+    ),
+    /* Layer 2: Thicker lines - Stronger presence */
+    repeating-conic-gradient(
+      from 15deg at center,
+      rgba(180, 40, 0, 0.18) 0deg 1.5deg,
+      transparent 1.5deg 22deg
+    ),
+    /* Layer 3: Medium lines */
+    repeating-conic-gradient(
+      from 45deg at center,
+      rgba(180, 40, 0, 0.14) 0deg 1deg,
+      transparent 1deg 16deg
+    );
+  /* Smooth gradient: Start visibility earlier and make it stronger at the edges */
+  mask-image: radial-gradient(circle at center, transparent 5%, black 85%);
+  -webkit-mask-image: radial-gradient(circle at center, transparent 5%, black 85%);
+  pointer-events: none;
 }
 
 body::after {
