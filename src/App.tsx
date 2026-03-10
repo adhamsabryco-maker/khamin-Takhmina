@@ -61,6 +61,7 @@ const SOUNDS = {
   countdown: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3',
   correct: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
   message: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3',
+  click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
 };
 
 interface ThemeConfig {
@@ -374,6 +375,7 @@ export default function App() {
   const toggleTokenInfo = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    playSound('click');
     setShowTokenInfoModal(!showTokenInfoModal);
   };
 
@@ -882,6 +884,7 @@ export default function App() {
   };
 
   const toggleSettings = () => {
+    playSound('click');
     if (showSettingsModal) {
       closeAllModals();
     } else {
@@ -891,6 +894,7 @@ export default function App() {
   };
 
   const toggleShop = () => {
+    playSound('click');
     if (showShopModal) {
       closeAllModals();
     } else {
@@ -900,6 +904,7 @@ export default function App() {
   };
 
   const toggleLevelInfo = () => {
+    playSound('click');
     if (showLevelInfo) {
       closeAllModals();
     } else {
@@ -1714,6 +1719,7 @@ export default function App() {
   }, []);
 
   const handleJoin = () => {
+    playSound('click');
     if (!playerSerial) {
       setShowWelcomeModal(true);
       return;
@@ -1740,6 +1746,7 @@ export default function App() {
   };
 
   const handleRandomMatch = () => {
+    playSound('click');
     if (!playerSerial) {
       setShowWelcomeModal(true);
       return;
@@ -1762,6 +1769,7 @@ export default function App() {
   };
 
   const handleRegister = () => {
+    playSound('click');
     if (!playerName.trim() || !playerAge) {
       setError('يرجى إدخال اسمك وعمرك أولاً');
       return;
@@ -1787,6 +1795,7 @@ export default function App() {
   const handleGuess = (e: React.FormEvent) => {
     e.preventDefault();
     if (!guess.trim()) return;
+    playSound('click');
     socket?.emit('submit_guess', { roomId, guess });
     setGuess('');
   };
@@ -1794,6 +1803,7 @@ export default function App() {
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
+    playSound('click');
     socket?.emit('send_chat', { roomId, text: chatInput });
     setChatInput('');
   };
@@ -1904,10 +1914,12 @@ export default function App() {
   };
 
   const handleStartGame = () => {
+    playSound('click');
     socket?.emit('start_game_request', { roomId });
   };
 
   const handleLeaveGame = () => {
+    playSound('click');
     const isGameActive = room?.gameState === 'guessing' || room?.gameState === 'discussion';
     const me = room?.players.find(p => p.id === socket?.id);
     
@@ -1930,6 +1942,7 @@ export default function App() {
 
   const useCard = (type: 'quick_guess' | 'hint' | 'word_length' | 'word_count' | 'time_freeze' | 'spy_lens') => {
     if (cooldowns[type] > 0) return;
+    playSound('click');
     
     // Quick guess doesn't require an ad
     if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage) {
@@ -4232,6 +4245,7 @@ export default function App() {
                   <div className="flex gap-3 md:gap-4">
                     <button 
                       onClick={() => {
+                        playSound('click');
                         setHasResponded(true);
                         socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'accept' });
                       }}
@@ -4241,6 +4255,7 @@ export default function App() {
                     </button>
                     <button 
                       onClick={() => {
+                        playSound('click');
                         setHasResponded(true);
                         socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
                         setProposedMatch(null);
@@ -5135,7 +5150,10 @@ export default function App() {
                       />
                       <button 
                         type="button" 
-                        onClick={() => setShowEmotes(!showEmotes)}
+                        onClick={() => {
+                          playSound('click');
+                          setShowEmotes(!showEmotes);
+                        }}
                         className="bg-white text-brown-muted p-3 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
                       >
                         <Smile className="w-5 h-5" />
@@ -5147,6 +5165,7 @@ export default function App() {
                               key={emote}
                               type="button"
                               onClick={() => {
+                                playSound('click');
                                 socket?.emit('send_emote', { roomId: room!.id, emote });
                                 setShowEmotes(false);
                               }}
@@ -5327,7 +5346,10 @@ export default function App() {
                     />
                     <button 
                       type="button" 
-                      onClick={() => setShowEmotes(!showEmotes)}
+                      onClick={() => {
+                        playSound('click');
+                        setShowEmotes(!showEmotes);
+                      }}
                       className="bg-white text-brown-muted p-2 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all w-10 h-10 flex items-center justify-center"
                     >
                       <Smile className="w-5 h-5" />
@@ -5339,6 +5361,7 @@ export default function App() {
                             key={emote}
                             type="button"
                             onClick={() => {
+                              playSound('click');
                               socket?.emit('send_emote', { roomId: room!.id, emote });
                               setShowEmotes(false);
                             }}
