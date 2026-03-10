@@ -1864,20 +1864,7 @@ export default function App() {
     }
     
     socket?.emit('leave_room', { roomId });
-    setRoom(null);
-    setJoined(false);
-    setIsPrivate(false);
-    setGuess('');
-    setHint(null);
-    setChatHistory([]); // Clear chat
-    setIsOpponentBlocked(false);
-    setCooldowns({});
-    setReadyPowerUps([]);
-    setActivePowerUp(null);
-    setShowAdConfirmation(false);
-    setShowAdModal(false);
-    setAdTimer(0);
-    if (roomId.startsWith('random_')) setRoomId('');
+    window.location.reload();
   };
 
   const useCard = (type: 'quick_guess' | 'hint' | 'word_length' | 'word_count' | 'time_freeze' | 'spy_lens') => {
@@ -4107,13 +4094,8 @@ export default function App() {
               {/* Home Button (Cancels Search) */}
               <button 
                 onClick={() => {
-                  setJoined(false); 
-                  setIsSearching(false); 
-                  setIsPrivate(false);
-                  setProposedMatch(null); 
-                  setHasResponded(false); 
                   socket?.emit('leave_matchmaking');
-                  setRoomId(prev => prev.startsWith('random_') ? '' : prev);
+                  window.location.reload();
                 }}
                 className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-gray-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                 title="الرئيسية"
@@ -5601,7 +5583,13 @@ export default function App() {
             level={showLevelUp} 
             avatar={avatar} 
             customConfig={customConfig} 
-            onClose={() => setShowLevelUp(null)} 
+            onClose={() => {
+              setLastSeenPowerUpLevel(showLevelUp);
+              localStorage.setItem('khamin_last_seen_powerup_level', showLevelUp.toString());
+              setLastSeenAvatarLevel(showLevelUp);
+              localStorage.setItem('khamin_last_seen_avatar_level', showLevelUp.toString());
+              setShowLevelUp(null);
+            }} 
           />
         )}
       </AnimatePresence>
