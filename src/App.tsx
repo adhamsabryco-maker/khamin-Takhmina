@@ -4160,22 +4160,22 @@ export default function App() {
             </div>
           </header>
 
-        <div className="w-full max-w-md card-game p-3 md:p-6 text-center space-y-3 md:space-y-6 relative overflow-hidden">
+        <div className="w-full max-w-md card-game p-3 md:p-4 text-center space-y-2 md:space-y-4 relative overflow-hidden">
           {proposedMatch ? (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="space-y-4 md:space-y-6"
+              className="space-y-2 md:space-y-4"
             >
-              <h2 className="text-2xl md:text-3xl font-black text-main">تم العثور على منافس!</h2>
-              <div className="flex flex-col items-center p-4 md:p-6 bg-orange-50 rounded-3xl border-4 border-orange-100 relative">
-                <div className="relative mb-2 md:mb-4 w-24 h-24 md:w-32 md:h-32">
+              <h2 className="text-2xl md:text-3xl font-black text-main uppercase tracking-tight" style={{ textShadow: '2px 2px 0px #FFF, -1px -1px 0 #FFF, 1px -1px 0 #FFF, -1px 1px 0 #FFF, 1px 1px 0 #FFF' }}>تم العثور على منافس!</h2>
+              <div className="flex flex-col items-center p-3 md:p-4 bg-white rounded-3xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
+                <div className="relative mb-1 md:mb-2 w-20 h-20 md:w-24 md:h-24">
                   {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0))}
                 </div>
                 <div className="text-xl md:text-2xl font-black text-main mb-1">{proposedMatch.opponent.name}</div>
-                <div className="text-sm md:text-base font-bold text-brown-muted">Level {proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0)}</div>
+                <div className="text-sm md:text-base font-bold text-black bg-gray-100 border-2 border-black px-3 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Level {proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0)}</div>
                 {matchResponseTimeLeft !== null && (
-                  <div className="mt-4 text-orange-500 font-bold text-lg flex items-center gap-2">
+                  <div className="mt-2 text-accent-blue font-black text-lg flex items-center gap-2 bg-white border-2 border-black px-4 py-2 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                     <Timer className="w-5 h-5" />
                     <span>{matchResponseTimeLeft} ثانية</span>
                   </div>
@@ -4190,7 +4190,7 @@ export default function App() {
                         setHasResponded(true);
                         socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'accept' });
                       }}
-                      className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl animate-pulse"
+                      className="flex-1 btn-game btn-success py-3 md:py-4 text-lg md:text-xl animate-pulse"
                     >
                       قبول التحدي! ⚔️
                     </button>
@@ -4200,24 +4200,24 @@ export default function App() {
                         socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
                         setProposedMatch(null);
                       }}
-                      className="flex-1 btn-game btn-secondary py-3 md:py-4 text-lg md:text-xl bg-gray-100 text-brown-muted border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+                      className="flex-1 btn-game btn-danger py-3 md:py-4 text-lg md:text-xl"
                     >
                       رفض
                     </button>
                   </div>
                   {opponentAccepted && (
-                    <div className="text-green-600 font-bold bg-green-50 p-2 rounded-lg border border-green-200 animate-pulse">
+                    <div className="text-black font-black bg-accent-green p-3 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] animate-pulse">
                       المنافس وافق على التحدي! بانتظارك...
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="text-brown-muted font-bold animate-pulse">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="text-black font-black bg-accent-yellow px-4 py-3 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] animate-pulse">
                     جاري انتظار رد المنافس...
                   </div>
                   {opponentAccepted && (
-                    <div className="text-green-600 font-bold bg-green-50 px-4 py-2 rounded-lg border border-green-200">
+                    <div className="text-black font-black bg-accent-green px-4 py-3 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                       المنافس وافق! جاري بدء اللعبة...
                     </div>
                   )}
@@ -4226,34 +4226,44 @@ export default function App() {
             </motion.div>
           ) : (
             <>
-              <div className="relative">
-                <div className="absolute inset-0 bg-blue-400 blur-3xl opacity-20 animate-pulse"></div>
-                <Loader2 className="w-16 h-16 md:w-24 md:h-24 text-blue-500 animate-spin mx-auto relative z-10" />
+              <div className="relative py-3 md:py-4">
+                <div className="absolute inset-0 bg-accent-blue blur-3xl opacity-20 animate-pulse"></div>
+                <div className="w-16 h-16 md:w-20 md:h-20 mx-auto relative z-10 bg-white border-4 border-black rounded-full flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <Loader2 className="w-8 h-8 md:w-10 md:h-10 text-accent-blue animate-spin" />
+                </div>
               </div>
               <div className="space-y-2 md:space-y-3 relative z-10">
-                <h2 className="text-2xl md:text-3xl font-black text-main">جاري البحث عن منافس...</h2>
-                <p className="text-base md:text-lg text-brown-muted font-bold">يتم البحث عن لاعبين بمستوى قريب منك</p>
+                <h2 className="text-2xl md:text-3xl font-black text-main uppercase tracking-tight" style={{ textShadow: '2px 2px 0px #FFF, -1px -1px 0 #FFF, 1px -1px 0 #FFF, -1px 1px 0 #FFF, 1px 1px 0 #FFF' }}>
+                  جاري البحث عن منافس...
+                </h2>
+                <div className="flex justify-center">
+                  <p className="text-sm md:text-base text-black font-bold bg-gray-100 border-2 border-black inline-block px-4 py-2 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    يتم البحث عن لاعبين بمستوى قريب منك
+                  </p>
+                </div>
                 {searchTimeLeft !== null && (
-                  <div className="flex justify-center items-center gap-2 text-blue-500 font-bold text-lg mt-2">
-                    <Timer className="w-5 h-5" />
-                    <span dir="ltr">{Math.floor(searchTimeLeft / 60)}:{(searchTimeLeft % 60).toString().padStart(2, '0')}</span>
+                  <div className="flex justify-center mt-2">
+                    <div className="flex items-center gap-2 text-accent-blue font-black text-xl bg-white border-2 border-black inline-flex px-4 py-2 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                      <Timer className="w-6 h-6" />
+                      <span dir="ltr">{Math.floor(searchTimeLeft / 60)}:{(searchTimeLeft % 60).toString().padStart(2, '0')}</span>
+                    </div>
                   </div>
                 )}
-                <div className="flex flex-col items-center gap-2 mt-2">
-                  <div className="text-sm font-black text-blue-500 bg-blue-50 inline-block px-3 py-1 rounded-full">
+                <div className="flex justify-center mt-2">
+                  <div className="text-xs md:text-sm font-black text-black bg-accent-green border-2 border-black inline-block px-4 py-2 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                     عدد المتصلين: {onlineCount}
                   </div>
                 </div>
               </div>
               
-              <div className="pt-4 md:pt-8 relative z-10">
+              <div className="pt-3 md:pt-4 relative z-10 w-full">
                 <button 
                   onClick={() => {
                     setIsSearching(false);
                     setJoined(false);
                     socket?.emit('leave_matchmaking');
                   }}
-                  className="px-8 py-3 bg-red-500 text-white rounded-full font-bold hover:bg-red-600 transition-all shadow-lg hover:shadow-red-500/30 text-sm md:text-base"
+                  className="w-full btn-game btn-danger py-3 md:py-4 text-lg md:text-xl"
                 >
                   إلغاء البحث
                 </button>
