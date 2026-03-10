@@ -110,7 +110,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
         initial={{ scale: 0.8, y: 50, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         transition={{ type: 'spring', damping: 15 }}
-        className="relative max-w-xs w-full bg-white rounded-[32px] shadow-[0_0_100px_rgba(255,215,0,0.3)] p-4 text-center border-4 border-yellow-400/30 cursor-default"
+        className="relative max-w-xs w-full bg-white rounded-none shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 text-center border-4 border-black cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Background Glow */}
@@ -120,7 +120,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
         <button 
           type="button"
           onClick={onClose}
-          className="absolute -top-3 -right-3 p-3 bg-red-500 hover:bg-red-600 rounded-full text-white shadow-lg transition-all z-50"
+          className="absolute -top-4 -right-4 p-2 bg-red-500 hover:bg-red-600 border-4 border-black rounded-none text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all z-50 active:translate-y-1 active:shadow-none"
         >
           <X className="w-6 h-6" />
         </button>
@@ -131,7 +131,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
             initial={{ rotate: -180, scale: 0 }}
             animate={{ rotate: 0, scale: 1 }}
             transition={{ type: 'spring', delay: 0.3 }}
-            className="w-16 h-16 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center mx-auto shadow-2xl border-4 border-white"
+            className="w-16 h-16 bg-yellow-400 rounded-none flex items-center justify-center mx-auto shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black"
           >
             <Trophy className="w-8 h-8 text-white drop-shadow-lg" />
           </motion.div>
@@ -142,12 +142,12 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
             transition={{ delay: 0.5 }}
             className="mt-2"
           >
-            <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-orange-600 leading-tight">
+            <h1 className="text-4xl font-black text-yellow-400 leading-tight tracking-widest" style={{ WebkitTextStroke: '2px black' }}>
               LEVEL UP!
             </h1>
             <div className="flex items-center justify-center gap-2 mt-0.5">
               <Sparkles className="w-3 h-3 text-yellow-500 animate-pulse" />
-              <span className="text-lg font-black text-brown-dark">المستوى {level}</span>
+              <span className="text-xl font-black text-black">المستوى {level}</span>
               <Sparkles className="w-3 h-3 text-yellow-500 animate-pulse" />
             </div>
           </motion.div>
@@ -163,9 +163,9 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
                 className="w-full max-w-[180px]"
               >
                 <div className="text-[10px] font-black text-brown-light mb-1 uppercase tracking-widest">جاري الارتقاء...</div>
-                <div className="h-4 bg-[#F6E6CD] rounded-full overflow-hidden border-2 border-brown-soft/20 p-0.5" dir="ltr">
+                <div className="h-6 bg-white rounded-none overflow-hidden border-4 border-black p-0.5" dir="ltr">
                   <motion.div
-                    className={`h-full rounded-full bg-gradient-to-r ${getLevelColor(level)} shadow-[0_0_15px_rgba(250,204,21,0.5)]`}
+                    className={`h-full rounded-none bg-yellow-400 border-r-4 border-black`}
                     style={{ width: `${progress * 100}%` }}
                   />
                 </div>
@@ -199,7 +199,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
                   initial={{ x: 40, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="absolute -right-6 top-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded-xl shadow-lg border border-yellow-400 z-20"
+                  className="absolute -right-6 top-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black z-20"
                 >
                   <div className="flex flex-col items-center">
                     <span className="text-sm font-black text-yellow-600">{Math.floor(level / 10)}</span>
@@ -213,7 +213,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.5 }}
-                    className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-1 rounded-full text-xs font-black shadow-lg border border-white z-30 whitespace-nowrap"
+                    className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-4 py-1 rounded-none text-xs font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black z-30 whitespace-nowrap"
                   >
                     إنجاز تاريخي! 🏆
                   </motion.div>
@@ -230,11 +230,11 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
             transition={{ delay: 0.6 }}
             className="mb-4 box-game p-3 relative overflow-hidden mx-1"
           >
-            <div className="absolute top-0 right-0 bg-yellow-400 text-white text-[9px] font-black px-1.5 py-0.5 rounded-bl-md">
+            <div className="absolute top-0 right-0 bg-yellow-400 text-black border-b-4 border-l-4 border-black text-[9px] font-black px-1.5 py-0.5 rounded-none">
               جديد!
             </div>
             <div className="flex items-center flex-row-reverse gap-2">
-              <div className={`w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center border border-brown-soft/20 shrink-0 ${LEVEL_REWARDS[level].color}`}>
+              <div className={`w-10 h-10 rounded-none bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center border-4 border-black shrink-0 ${LEVEL_REWARDS[level].color}`}>
                 {React.createElement(LEVEL_REWARDS[level].icon, { className: "w-5 h-5" })}
               </div>
               <div className="text-right flex-1">
