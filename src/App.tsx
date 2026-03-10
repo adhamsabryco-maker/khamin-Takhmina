@@ -847,43 +847,53 @@ export default function App() {
     localStorage.setItem('khamin_install_dismissed', 'true');
   };
   
-  const toggleSettings = () => {
-    if (!showSettingsModal) {
-      // Opening
+  const closeAllModals = () => {
+    if (showSettingsModal) {
       const currentLevel = getLevel(xp);
       setLastSeenAvatarLevel(currentLevel);
       localStorage.setItem('khamin_last_seen_avatar_level', currentLevel.toString());
     }
-    setShowSettingsModal(!showSettingsModal);
+    if (showLevelInfo) {
+      const currentLevel = getLevel(xp);
+      setLastSeenPowerUpLevel(currentLevel);
+      localStorage.setItem('khamin_last_seen_powerup_level', currentLevel.toString());
+    }
+    setShowSettingsModal(false);
     setShowLevelInfo(false);
     setShowAdminDashboard(false);
     setShowReportModal(false);
     setShowShopModal(false);
   };
 
+  const toggleSettings = () => {
+    if (showSettingsModal) {
+      closeAllModals();
+    } else {
+      closeAllModals();
+      setShowSettingsModal(true);
+    }
+  };
+
   const toggleShop = () => {
-    setShowShopModal(!showShopModal);
-    setShowSettingsModal(false);
-    setShowLevelInfo(false);
-    setShowAdminDashboard(false);
-    setShowReportModal(false);
+    if (showShopModal) {
+      closeAllModals();
+    } else {
+      closeAllModals();
+      setShowShopModal(true);
+    }
   };
 
   const toggleLevelInfo = () => {
-    if (!showLevelInfo) {
-      // Opening
-      const currentLevel = getLevel(xp);
-      setLastSeenPowerUpLevel(currentLevel);
-      localStorage.setItem('khamin_last_seen_powerup_level', currentLevel.toString());
+    if (showLevelInfo) {
+      closeAllModals();
+    } else {
+      closeAllModals();
+      if (!hasSeenLevelInfo) {
+        setHasSeenLevelInfo(true);
+        localStorage.setItem('khamin_seen_level_info', 'true');
+      }
+      setShowLevelInfo(true);
     }
-    if (!hasSeenLevelInfo) {
-      setHasSeenLevelInfo(true);
-      localStorage.setItem('khamin_seen_level_info', 'true');
-    }
-    setShowLevelInfo(!showLevelInfo);
-    setShowSettingsModal(false);
-    setShowAdminDashboard(false);
-    setShowReportModal(false);
   };
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1052,8 +1062,8 @@ export default function App() {
         }, (res: any) => {
           console.log('Admin status set response:', res);
           if (res.success) {
+            closeAllModals();
             setShowAdminDashboard(true);
-            setShowSettingsModal(false);
           } else {
             console.error('Failed to set admin status:', res.error);
             setError('فشل في تحديث صلاحيات الإدارة: ' + (res.error || 'خطأ غير معروف'));
@@ -1804,7 +1814,7 @@ export default function App() {
     localStorage.setItem('khamin_player_gender', gender);
 
     // 3. Close the modal
-    setShowSettingsModal(false);
+    closeAllModals();
   };
 
   const handleDeleteAccount = () => {
@@ -1814,7 +1824,7 @@ export default function App() {
         setJoined(false);
         setIsSearching(false);
         setRoom(null);
-        setShowSettingsModal(false);
+        closeAllModals();
         setShowDeleteConfirm(false);
         
         // Ensure state is cleared before showing welcome modal
@@ -2704,7 +2714,7 @@ export default function App() {
               {/* Admin Access Button */}
               <div className="pt-2 border-t border-game">
                 <button 
-                  onClick={isAdmin ? () => { setShowAdminDashboard(true); setShowSettingsModal(false); } : handleAdminLogin}
+                  onClick={isAdmin ? () => { closeAllModals(); setShowAdminDashboard(true); } : handleAdminLogin}
                   className={`w-full py-2 rounded-xl flex items-center justify-center gap-2 text-sm font-black transition-all ${isAdmin ? 'bg-purple-100 text-purple-600 border-2 border-purple-200' : 'bg-gray-50 text-brown-light border-2 border-gray-100 hover:bg-gray-100'}`}
                 >
                   <Shield className="w-4 h-4" />
@@ -5035,7 +5045,7 @@ export default function App() {
                         <span className="font-black text-lg text-center px-4">تم حظر الدردشة من قبل المنافس</span>
                       </div>
                     )}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat font-cairo">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
                       {chatHistory.length === 0 ? (
                         <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic">
                           ابدأ الدردشة مع منافسك...
@@ -5054,7 +5064,7 @@ export default function App() {
                       )}
                       <div ref={chatEndRef} />
                     </div>
-                    <form onSubmit={handleSendChat} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative font-cairo">
+                    <form onSubmit={handleSendChat} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative">
                       <button type="submit" disabled={isMutedByOpponent} className="bg-[#128C7E] text-white p-3 rounded-full shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
                         <Send className="w-5 h-5" />
                       </button>
@@ -5064,7 +5074,7 @@ export default function App() {
                         onChange={(e) => setChatInput(e.target.value)}
                         placeholder="اسأل المنافس وخمن الاجابة..."
                         className="flex-1 bg-white border-none rounded-full px-4 py-2 text-base outline-none shadow-sm font-bold disabled:bg-gray-200 disabled:cursor-not-allowed"
-                        maxLength={200}
+                        maxLength={250}
                         disabled={isMutedByOpponent}
                       />
                       <button 
@@ -5222,7 +5232,7 @@ export default function App() {
                       <span className="font-black text-lg text-center px-4">تم حظر الدردشة من قبل المنافس</span>
                     </div>
                   )}
-                  <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat font-cairo">
+                  <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
                     {chatHistory.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic">
                         اسأل المنافس وخمن الاجابة...
@@ -5241,7 +5251,7 @@ export default function App() {
                     )}
                     <div ref={chatEndRef} />
                   </div>
-                  <form onSubmit={handleSendChat} className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative font-cairo">
+                  <form onSubmit={handleSendChat} className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative">
                     <button type="submit" disabled={isMutedByOpponent} className="bg-[#128C7E] text-white p-3 rounded-full shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
                       <Send className="w-5 h-5" />
                     </button>
@@ -5251,7 +5261,7 @@ export default function App() {
                       onChange={(e) => setChatInput(e.target.value)}
                       placeholder="دردشة..."
                       className="flex-1 bg-white border-none rounded-full px-3 py-1.5 text-base outline-none shadow-sm font-bold disabled:bg-gray-200 disabled:cursor-not-allowed"
-                      maxLength={25}
+                      maxLength={250}
                       disabled={isMutedByOpponent}
                     />
                     <button 
