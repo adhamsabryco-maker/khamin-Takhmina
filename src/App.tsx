@@ -4543,7 +4543,7 @@ export default function App() {
 
               <div className="relative py-1 md:py-2">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-game dashed"></div></div>
-                <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-[#fbf4e1] px-3 text-brown-light font-black">أو</span></div>
+                <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-[#FFD700] px-3 text-brown-light font-black">أو</span></div>
               </div>
 
               <div className="flex items-center gap-2">
