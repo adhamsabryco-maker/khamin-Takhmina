@@ -922,6 +922,7 @@ export default function App() {
       setIsSearching(false);
       setJoined(false);
       socket?.emit('leave_matchmaking');
+      setRoomId(prev => prev.startsWith('random_') ? '' : prev);
       setError('لم يتم العثور على منافس حالياً. يرجى المحاولة في وقت لاحق.');
       setTimeout(() => setError(''), 5000);
       setSearchTimeLeft(null);
@@ -4112,6 +4113,7 @@ export default function App() {
                   setProposedMatch(null); 
                   setHasResponded(false); 
                   socket?.emit('leave_matchmaking');
+                  setRoomId(prev => prev.startsWith('random_') ? '' : prev);
                 }}
                 className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-gray-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                 title="الرئيسية"
@@ -4262,6 +4264,7 @@ export default function App() {
                     setIsSearching(false);
                     setJoined(false);
                     socket?.emit('leave_matchmaking');
+                    setRoomId(prev => prev.startsWith('random_') ? '' : prev);
                   }}
                   className="w-full btn-game btn-danger py-3 md:py-4 text-lg md:text-xl"
                 >
@@ -5575,8 +5578,7 @@ export default function App() {
                 </button>
                 <button 
                   onClick={() => {
-                    setJoined(false);
-                    setRoom(null);
+                    handleLeaveGame();
                     setIsSearching(false);
                     setProposedMatch(null);
                     setHasResponded(false);
