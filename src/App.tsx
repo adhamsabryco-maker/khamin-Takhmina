@@ -463,9 +463,20 @@ export default function App() {
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
   const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors'>('players');
   const [adminImages, setAdminImages] = useState<any[]>([]);
-  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(DEFAULT_THEME);
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => {
+    const saved = localStorage.getItem('khamin_theme_config');
+    if (saved) {
+      try {
+        return { ...DEFAULT_THEME, ...JSON.parse(saved) };
+      } catch (e) {
+        return DEFAULT_THEME;
+      }
+    }
+    return DEFAULT_THEME;
+  });
 
   useEffect(() => {
+    localStorage.setItem('khamin_theme_config', JSON.stringify(themeConfig));
     const root = document.documentElement;
     root.style.setProperty('--bg-body-start', themeConfig.bgBodyStart);
     root.style.setProperty('--bg-body-end', themeConfig.bgBodyEnd);
