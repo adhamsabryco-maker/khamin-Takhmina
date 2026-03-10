@@ -121,13 +121,14 @@ body::before {
 body::after {
   content: "";
   position: fixed;
-  inset: 0;
+  inset: -50%;
   z-index: -1;
   pointer-events: none;
   background-image: radial-gradient(rgba(255, 140, 0, 0.842) 30%, transparent 30%);
   background-size: 20px 20px;
-  mask-image: radial-gradient(circle at center, black 0%, transparent 100%);
-  -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 100%);
+  transform: rotate(45deg);
+  mask-image: radial-gradient(circle at center, black 0%, transparent 50%);
+  -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 50%);
 }
 
 #root {

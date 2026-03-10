@@ -4484,15 +4484,15 @@ export default function App() {
                         onClick={() => setShowLeaderboardModal(true)}
                         className="mt-3 w-full group relative overflow-hidden bg-orange-500 rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all"
                       >
-                        <div className="bg-white/10 backdrop-blur-sm rounded-[14px] py-3 px-4 flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-white">
+                        <div className="bg-white rounded-[14px] py-3 px-4 flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-black">
                             <span className="font-bold text-sm md:text-base">ترتيبك في أبطال التخمين:</span>
-                            <span className="font-black text-lg md:text-xl bg-white/20 px-2 rounded-lg">#{myRankIndex + 1}</span>
+                            <span className="font-black text-lg md:text-xl bg-orange-100 text-orange-600 px-2 rounded-lg">#{myRankIndex + 1}</span>
                             <span className="text-lg">💪</span>
                           </div>
-                          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse group-hover:bg-white group-hover:text-orange-600 transition-colors shrink-0 relative">
-                            <div className="absolute inset-0 rounded-full border-2 border-white/50 animate-ping opacity-50"></div>
-                            <ChevronLeft className="w-6 h-6" />
+                          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center animate-pulse group-hover:bg-orange-200 transition-colors shrink-0 relative">
+                            <div className="absolute inset-0 rounded-full border-2 border-orange-500/50 animate-ping opacity-50"></div>
+                            <ChevronLeft className="w-6 h-6 text-orange-600" />
                           </div>
                         </div>
                       </button>
@@ -4554,7 +4554,7 @@ export default function App() {
 
               <div className="relative py-1 md:py-2">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-game dashed"></div></div>
-                <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-[#FFD700] px-3 text-brown-light font-black">أو</span></div>
+                <div className="relative flex justify-center text-[10px] md:text-xs uppercase"><span className="bg-[#FFFFFF] px-3 text-brown-light font-black">أو</span></div>
               </div>
 
               <div className="flex items-center gap-2">
@@ -4618,10 +4618,10 @@ export default function App() {
                 >
                   <X className="w-5 h-5" />
                 </button>
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
-                  <Trophy className="w-8 h-8 text-white" />
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg border-2 border-yellow-400">
+                  <Trophy className="w-8 h-8 text-yellow-500" />
                 </div>
-                <h2 className="text-2xl font-black text-light mb-1">أبطال التخمين (Top 100)</h2>
+                <h2 className="text-2xl font-black text-white mb-1">أبطال التخمين (Top 100)</h2>
                 <p className="text-white/80 text-sm font-bold">أقوى اللاعبين في اللعبة</p>
               </div>
 
@@ -4633,7 +4633,7 @@ export default function App() {
                       <div className="font-black text-xl w-8 text-center bg-white/20 rounded-lg py-1">
                         #{topPlayers.findIndex(p => p.serial === playerSerial) + 1}
                       </div>
-                      <div className="relative w-10 h-10 rounded-full border-2 border-white/50 overflow-hidden bg-white/10">
+                      <div className="relative w-10 h-10">
                         {renderAvatarContent(avatar, getLevel(xp), true)}
                       </div>
                       <div className="flex-1 min-w-0 text-right">
@@ -4669,7 +4669,7 @@ export default function App() {
                           {index + 1}
                         </div>
                         
-                        <div className="relative w-10 h-10 rounded-full border border-gray-100 overflow-hidden bg-gray-50">
+                        <div className="relative w-10 h-10">
                           {renderAvatarContent(player.avatar, player.level, true)}
                         </div>
 
