@@ -811,10 +811,14 @@ export default function App() {
     return localStorage.getItem('khamin_seen_level_info') === 'true';
   });
   const [lastSeenPowerUpLevel, setLastSeenPowerUpLevel] = useState(() => {
-    return parseInt(localStorage.getItem('khamin_last_seen_powerup_level') || '1');
+    const saved = localStorage.getItem('khamin_last_seen_powerup_level');
+    if (saved) return parseInt(saved);
+    return 1;
   });
   const [lastSeenAvatarLevel, setLastSeenAvatarLevel] = useState(() => {
-    return parseInt(localStorage.getItem('khamin_last_seen_avatar_level') || '1');
+    const saved = localStorage.getItem('khamin_last_seen_avatar_level');
+    if (saved) return parseInt(saved);
+    return 1;
   });
   const [showLevelInfo, setShowLevelInfo] = useState(false);
   const [showInstallModal, setShowInstallModal] = useState(false);
@@ -1422,6 +1426,9 @@ export default function App() {
           if (newLevel > oldLevel) {
             setShowLevelUp(newLevel);
             playSound('win');
+            
+            // If it's a milestone level, ensure notifications show up immediately
+            // by not updating lastSeen levels yet (they should already be lower)
           }
           localStorage.setItem('khamin_xp', newXp.toString());
           return newXp;
