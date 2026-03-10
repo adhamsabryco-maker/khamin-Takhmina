@@ -5541,16 +5541,16 @@ export default function App() {
                   <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-bounce">
                     <Trophy className="w-8 h-8 text-white" />
                   </div>
-                  <h2 className="text-3xl font-black text-green-400 mb-1 tracking-widest" style={{ WebkitTextStroke: '2px black' }}>مبروك! فزت</h2>
-                  <p className="text-brown-muted font-bold text-xs">أداء أسطوري يا بطل! 🏆</p>
+                  <h2 className="text-4xl font-black text-green-500 mb-2 drop-shadow-sm">مبروك! فزت</h2>
+                  <p className="text-brown-muted font-bold text-sm">أداء أسطوري يا بطل! 🏆</p>
                 </div>
               ) : (
                 <div className="mb-4">
                   <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                     <span className="text-3xl">😢</span>
                   </div>
-                  <h2 className="text-3xl font-black text-red-500 mb-1 tracking-widest" style={{ WebkitTextStroke: '2px black' }}>للأسف! خسرت</h2>
-                  <p className="text-brown-muted font-bold text-xs">حظ أوفر في المرة القادمة</p>
+                  <h2 className="text-4xl font-black text-red-500 mb-2 drop-shadow-sm">للأسف! خسرت</h2>
+                  <p className="text-brown-muted font-bold text-sm">حظ أوفر في المرة القادمة</p>
                 </div>
               )}
               
