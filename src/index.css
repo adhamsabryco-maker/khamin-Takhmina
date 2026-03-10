@@ -282,7 +282,7 @@ body {
 
 /* 2. The "Game Card" Container */
 .card-game {
-  @apply rounded-[32px] border-[4px] shadow-[0_8px_0_rgba(0,0,0,0.05)];
+  @apply rounded-[0px] border-[4px] shadow-[0_8px_0_rgba(0,0,0,0.05)];
   background-color: var(--bg-card);
   border-color: var(--border-game);
 }
