@@ -2609,7 +2609,7 @@ export default function App() {
                           step="0.1" 
                           value={sfxVolume} 
                           onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 bg-[#F6E6CD] rounded-lg appearance-none cursor-pointer accent-orange-500"
+                          className="flex-1 h-1.5 bg-[#666666] rounded-lg appearance-none cursor-pointer accent-orange-500"
                         />
                       </div>
                     </div>
@@ -2634,7 +2634,7 @@ export default function App() {
                           step="0.1" 
                           value={musicVolume} 
                           onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 bg-[#F6E6CD] rounded-lg appearance-none cursor-pointer accent-purple-500"
+                          className="flex-1 h-1.5 bg-[#666666] rounded-lg appearance-none cursor-pointer accent-purple-500"
                           disabled
                         />
                       </div>
@@ -5053,11 +5053,11 @@ export default function App() {
                       ) : (
                         chatHistory.map((msg, index) => (
                           <div key={`waiting-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
-                            <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
+                            <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative break-words ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
                               <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-accent-green text-right' : 'text-accent-blue text-left'}`}>
                                 {msg.playerName}
                               </div>
-                              <div className={`leading-tight ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
+                              <div className={`leading-tight whitespace-pre-wrap ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
                             </div>
                           </div>
                         ))
@@ -5240,11 +5240,11 @@ export default function App() {
                     ) : (
                       chatHistory.map((msg, index) => (
                         <div key={`game-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
-                          <div className={`max-w-[85%] p-1.5 px-2.5 rounded-xl text-xs font-bold shadow-sm relative ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
+                          <div className={`max-w-[85%] p-1.5 px-2.5 rounded-xl text-xs font-bold shadow-sm relative break-words ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
                             <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
                               {msg.playerName}
                             </div>
-                            <div className={`leading-tight ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
+                            <div className={`leading-tight whitespace-pre-wrap ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
                           </div>
                         </div>
                       ))
