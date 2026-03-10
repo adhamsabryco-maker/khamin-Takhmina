@@ -848,8 +848,8 @@ export default function App() {
   };
   
   const toggleSettings = () => {
-    if (showSettingsModal) {
-      // Closing
+    if (!showSettingsModal) {
+      // Opening
       const currentLevel = getLevel(xp);
       setLastSeenAvatarLevel(currentLevel);
       localStorage.setItem('khamin_last_seen_avatar_level', currentLevel.toString());
@@ -870,8 +870,8 @@ export default function App() {
   };
 
   const toggleLevelInfo = () => {
-    if (showLevelInfo) {
-      // Closing
+    if (!showLevelInfo) {
+      // Opening
       const currentLevel = getLevel(xp);
       setLastSeenPowerUpLevel(currentLevel);
       localStorage.setItem('khamin_last_seen_powerup_level', currentLevel.toString());
@@ -5035,7 +5035,7 @@ export default function App() {
                         <span className="font-black text-lg text-center px-4">تم حظر الدردشة من قبل المنافس</span>
                       </div>
                     )}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat font-cairo">
                       {chatHistory.length === 0 ? (
                         <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic">
                           ابدأ الدردشة مع منافسك...
@@ -5054,7 +5054,7 @@ export default function App() {
                       )}
                       <div ref={chatEndRef} />
                     </div>
-                    <form onSubmit={handleSendChat} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative">
+                    <form onSubmit={handleSendChat} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative font-cairo">
                       <button type="submit" disabled={isMutedByOpponent} className="bg-[#128C7E] text-white p-3 rounded-full shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
                         <Send className="w-5 h-5" />
                       </button>
@@ -5222,7 +5222,7 @@ export default function App() {
                       <span className="font-black text-lg text-center px-4">تم حظر الدردشة من قبل المنافس</span>
                     </div>
                   )}
-                  <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+                  <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat font-cairo">
                     {chatHistory.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic">
                         اسأل المنافس وخمن الاجابة...
@@ -5241,7 +5241,7 @@ export default function App() {
                     )}
                     <div ref={chatEndRef} />
                   </div>
-                  <form onSubmit={handleSendChat} className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative">
+                  <form onSubmit={handleSendChat} className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative font-cairo">
                     <button type="submit" disabled={isMutedByOpponent} className="bg-[#128C7E] text-white p-3 rounded-full shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
                       <Send className="w-5 h-5" />
                     </button>
@@ -5584,10 +5584,6 @@ export default function App() {
             avatar={avatar} 
             customConfig={customConfig} 
             onClose={() => {
-              setLastSeenPowerUpLevel(showLevelUp);
-              localStorage.setItem('khamin_last_seen_powerup_level', showLevelUp.toString());
-              setLastSeenAvatarLevel(showLevelUp);
-              localStorage.setItem('khamin_last_seen_avatar_level', showLevelUp.toString());
               setShowLevelUp(null);
             }} 
           />

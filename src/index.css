@@ -3,6 +3,7 @@
 
 @theme {
   --font-sans: "Lalezar", "Cairo", system-ui, sans-serif;
+  --font-cairo: "Cairo", system-ui, sans-serif;
   
   --color-brown-dark: #000000;
   --color-brown-muted: #333333;
