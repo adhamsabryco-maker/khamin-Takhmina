@@ -289,7 +289,7 @@ body {
 
 /* 2.1. The "Player Data Card" Container */
 .player-card {
-  @apply rounded-[32px] border-2 shadow-md backdrop-blur-sm;
+  @apply rounded-[0px] border-2 shadow-md backdrop-blur-sm;
   background-color: var(--bg-card);
   border-color: var(--border-game);
 }
