@@ -140,73 +140,73 @@ interface ThemeConfig {
 }
 
 const DEFAULT_THEME: ThemeConfig = {
-  bgBodyStart: '#7C4737',
-  bgBodyEnd: '#433431',
-  textMain: '#533933',
-  textLight: '#FBF4E1',
-  borderGame: '#E1CCAB',
-  bgBox: '#F6E6CD',
-  bgCard: '#fbf4e1',
+  bgBodyStart: '#FFD700',
+  bgBodyEnd: '#FF8C00',
+  textMain: '#000000',
+  textLight: '#FFFFFF',
+  borderGame: '#000000',
+  bgBox: '#FFFFFF',
+  bgCard: '#FFFFFF',
   
-  btnPrimaryBgStart: '#FF6B6B',
-  btnPrimaryBgEnd: '#FF8787',
-  btnPrimaryBorder: '#EE5253',
-  btnPrimaryHover: '#FF5252',
+  btnPrimaryBgStart: '#FF3366',
+  btnPrimaryBgEnd: '#FF0033',
+  btnPrimaryBorder: '#000000',
+  btnPrimaryHover: '#FF3366',
   
-  btnSecondaryBgStart: '#5ab72e',
-  btnSecondaryBgEnd: '#ade03e',
-  btnSecondaryBorder: '#348d20',
-  btnSecondaryHover: '#92CB79',
+  btnSecondaryBgStart: '#00FFFF',
+  btnSecondaryBgEnd: '#00CCCC',
+  btnSecondaryBorder: '#000000',
+  btnSecondaryHover: '#00FFFF',
 
-  btnSuccessBgStart: '#1DD1A1',
-  btnSuccessBgEnd: '#10AC84',
-  btnSuccessBorder: '#10AC84',
-  btnSuccessHover: '#3DE1B1',
+  btnSuccessBgStart: '#00FF00',
+  btnSuccessBgEnd: '#00CC00',
+  btnSuccessBorder: '#000000',
+  btnSuccessHover: '#00FF00',
 
-  btnDangerBgStart: '#FF9F43',
-  btnDangerBgEnd: '#FFB66D',
-  btnDangerBorder: '#EE5A24',
-  btnDangerHover: '#FFB66D',
+  btnDangerBgStart: '#FFFF00',
+  btnDangerBgEnd: '#CCCC00',
+  btnDangerBorder: '#000000',
+  btnDangerHover: '#FFFF00',
 
-  accentOrange: '#F97316',
-  accentPurple: '#9333EA',
-  accentBlue: '#3B82F6',
-  accentGreen: '#16A34A',
+  accentOrange: '#FF3300',
+  accentPurple: '#9900FF',
+  accentBlue: '#0066FF',
+  accentGreen: '#00AA00',
 
-  shopHeaderStart: '#a855f7',
-  shopHeaderEnd: '#4f46e5',
-  shopTokenText: '#4338ca',
-  shopInfoTitle: '#1d4ed8',
-  shopWarningTitle: '#c2410c',
-  shopModalBg: '#ffffff',
+  shopHeaderStart: '#9900FF',
+  shopHeaderEnd: '#6600CC',
+  shopTokenText: '#000000',
+  shopInfoTitle: '#000000',
+  shopWarningTitle: '#FF0000',
+  shopModalBg: '#FFFFFF',
 
-  textMuted: '#8B736B',
-  textLightAccent: '#A68B7C',
-  textSoft: '#D2B48C',
+  textMuted: '#333333',
+  textLightAccent: '#666666',
+  textSoft: '#999999',
 
-  rank1BgStart: '#FDE047', // yellow-300
-  rank1BgEnd: '#F6E6CD',
-  rank1Border: '#FACC15', // yellow-400
+  rank1BgStart: '#FFD700',
+  rank1BgEnd: '#FFD700',
+  rank1Border: '#000000',
 
-  rank2BgStart: '#D1D5DB', // gray-300
-  rank2BgEnd: '#F6E6CD',
-  rank2Border: '#9CA3AF', // gray-400
+  rank2BgStart: '#C0C0C0',
+  rank2BgEnd: '#C0C0C0',
+  rank2Border: '#000000',
 
-  rank3BgStart: '#FB923C', // orange-400
-  rank3BgEnd: '#F6E6CD',
-  rank3Border: '#F97316', // orange-500
+  rank3BgStart: '#CD7F32',
+  rank3BgEnd: '#CD7F32',
+  rank3Border: '#000000',
   
-  modalBg: '#ffffff',
-  levelBarBg: '#f6e6cd',
-  levelBarFill: '#3b82f6',
-  xpBarBg: '#f6e6cd',
-  xpBarFill: '#fb923c',
-  xpBarText: '#7c2d12',
-  xpBarTextActive: '#ffffff',
-  reportBarBg: '#f6e6cd',
-  reportBarLow: '#10b981',
-  reportBarMedium: '#f97316',
-  reportBarHigh: '#ef4444',
+  modalBg: '#FFFFFF',
+  levelBarBg: '#FFFFFF',
+  levelBarFill: '#0066FF',
+  xpBarBg: '#FFFFFF',
+  xpBarFill: '#FF6600',
+  xpBarText: '#000000',
+  xpBarTextActive: '#FFFFFF',
+  reportBarBg: '#FFFFFF',
+  reportBarLow: '#00FF00',
+  reportBarMedium: '#FF6600',
+  reportBarHigh: '#FF0000',
 };
 
 // Types
@@ -2404,7 +2404,7 @@ export default function App() {
 
               <div className="space-y-4">
                 {/* Stats Section */}
-                <div className="bg-[#FBF4E1] p-3 rounded-2xl border-2 border-[#E1CCAB] space-y-4">
+                <div className="bg-white p-3 rounded-2xl border-4 border-black space-y-4">
                   <div className="flex items-center gap-4 flex-row-reverse">
                     <div className="relative w-16 h-16">
                       {renderAvatarContent(avatar, getLevel(xp))}
@@ -2425,7 +2425,7 @@ export default function App() {
                           style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
                         ></div>
                       </div>
-                      <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 shadow-inner overflow-hidden relative border border-[#E1CCAB]" dir="ltr">
+                      <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 shadow-inner overflow-hidden relative border-2 border-black" dir="ltr">
                         <div 
                           className="h-full transition-all duration-500" 
                           style={{ width: `${getXpProgress(xp)}%`, backgroundColor: 'var(--xp-bar-fill)' }}
@@ -2545,7 +2545,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <label className={`relative flex-1 flex flex-col items-center justify-center p-2 rounded-xl border-2 border-dashed transition-all cursor-pointer ${getLevel(xp) >= 50 ? 'border-purple-400 bg-purple-100 hover:bg-purple-200' : 'border-[#E1CCAB] bg-[#FBF4E1] cursor-not-allowed'}`}>
+                      <label className={`relative flex-1 flex flex-col items-center justify-center p-2 rounded-xl border-2 border-dashed transition-all cursor-pointer ${getLevel(xp) >= 50 ? 'border-purple-400 bg-purple-100 hover:bg-purple-200' : 'border-black bg-white cursor-not-allowed'}`}>
                         <input 
                           type="file"  
                           accept="image/*" 
@@ -2568,7 +2568,7 @@ export default function App() {
                       {customAvatar && (
                         <button
                           onClick={() => setAvatar(customAvatar)}
-                          className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 ${avatar === customAvatar ? 'border-purple-500' : 'border-[#E1CCAB]'}`}
+                          className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 ${avatar === customAvatar ? 'border-purple-500' : 'border-black'}`}
                         >
                           <img src={customAvatar} className="w-full h-full object-cover" alt="Custom" />
                         </button>
@@ -2873,7 +2873,7 @@ export default function App() {
                 className="bg-white rounded-[40px] w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl border-4 border-purple-100"
               >
                 {/* Header */}
-                <div className="p-6 border-b border-game flex items-center justify-between bg-[#FBF4E1]/90 backdrop-blur-sm">
+                <div className="p-6 border-b-4 border-black flex items-center justify-between bg-white/90 backdrop-blur-sm">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-200">
                       <Shield className="w-6 h-6 text-white" />
@@ -3447,7 +3447,11 @@ export default function App() {
 
                           <div className="mt-8 pt-6 border-t border-game flex justify-end gap-4">
                             <button 
-                              onClick={() => setThemeConfig(DEFAULT_THEME)}
+                              onClick={() => {
+                                setThemeConfig(DEFAULT_THEME);
+                                socket?.emit('admin_save_theme', DEFAULT_THEME);
+                                alert('تم إعادة تعيين الألوان وحفظها بنجاح!');
+                              }}
                               className="px-6 py-3 rounded-xl font-black text-brown-muted hover:bg-gray-100 transition-colors"
                             >
                               إعادة تعيين للافتراضي
@@ -4079,10 +4083,12 @@ export default function App() {
       <>
       <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
           {/* Fixed Header */}
-          <header className="fixed top-0 left-0 right-0 bg-[#FBF4E1]/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-game h-14 md:h-16">
+          <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
             <div className="flex-1 flex items-center gap-2 md:gap-3">
-              <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
-              <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-accent-yellow rounded-xl flex items-center justify-center overflow-hidden">
+                <img src="/icon-3.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 object-contain" />
+              </div>
+              <div className="font-black text-lg md:text-xl text-accent-blue tracking-tight hidden sm:block">خمن تخمينة</div>
             </div>
             
             <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
@@ -4096,7 +4102,7 @@ export default function App() {
                   setHasResponded(false); 
                   socket?.emit('leave_matchmaking');
                 }}
-                className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-brown-muted rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-brown-dark transition-colors"
+                className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-gray-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                 title="الرئيسية"
               >
                 <Home className="w-4 h-4 md:w-5 md:h-5" />
@@ -4105,7 +4111,7 @@ export default function App() {
               {/* Info Button */}
               <button 
                 onClick={toggleLevelInfo}
-                className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors relative"
+                className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                 title="معلومات المستوى"
               >
                 <Info className="w-4 h-4 md:w-5 md:h-5" />
@@ -4120,7 +4126,7 @@ export default function App() {
               {/* Shop Button */}
               <button 
                 onClick={toggleShop}
-                className="w-9 h-9 md:w-10 md:h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center hover:bg-orange-100 hover:text-orange-600 transition-colors"
+                className="w-9 h-9 md:w-10 md:h-10 bg-orange-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-orange-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                 title="المتجر"
               >
                 <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
@@ -4129,7 +4135,7 @@ export default function App() {
               {/* Settings Button */}
               <button 
                 onClick={toggleSettings}
-                className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors relative"
+                className="w-9 h-9 md:w-10 md:h-10 bg-purple-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-purple-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                 title="الإعدادات"
               >
                 <Settings className="w-4 h-4 md:w-5 md:h-5" />
@@ -4255,17 +4261,19 @@ export default function App() {
     return (
       <>
         {/* Fixed Header */}
-        <header className="fixed top-0 left-0 right-0 bg-[#FBF4E1]/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-game h-14 md:h-16">
+        <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
           <div className="flex-1 flex items-center gap-2 md:gap-3">
-            <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
-            <div className="font-black text-lg md:text-xl text-[#FF6B6B] tracking-tight drop-shadow-sm block">خمن تخمينة</div>
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-accent-yellow rounded-xl flex items-center justify-center overflow-hidden">
+              <img src="/icon-3.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 object-contain" />
+            </div>
+            <div className="font-black text-lg md:text-xl text-accent-blue tracking-tight block">خمن تخمينة</div>
           </div>
           
           <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
             {/* Info Button */}
             <button 
               onClick={toggleLevelInfo}
-              className="w-9 h-9 md:w-10 md:h-10 bg-blue-50 text-accent-blue rounded-xl flex items-center justify-center hover:bg-blue-100 hover:text-accent-blue transition-colors relative"
+              className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               title="معلومات المستوى"
             >
               <Info className="w-4 h-4 md:w-5 md:h-5" />
@@ -4280,7 +4288,7 @@ export default function App() {
             {/* Shop Button */}
             <button 
               onClick={toggleShop}
-              className="w-9 h-9 md:w-10 md:h-10 bg-accent-orange-light text-accent-orange rounded-xl flex items-center justify-center hover:bg-accent-orange-soft hover:text-accent-orange transition-colors"
+              className="w-9 h-9 md:w-10 md:h-10 bg-orange-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-orange-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               title="المتجر"
             >
               <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
@@ -4289,7 +4297,7 @@ export default function App() {
             {/* Settings Button */}
             <button 
               onClick={toggleSettings}
-              className="w-9 h-9 md:w-10 md:h-10 bg-purple-50 text-accent-purple rounded-xl flex items-center justify-center hover:bg-purple-100 hover:text-accent-purple transition-colors relative"
+              className="w-9 h-9 md:w-10 md:h-10 bg-purple-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-purple-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               title="الإعدادات"
             >
               <Settings className="w-4 h-4 md:w-5 md:h-5" />
@@ -4332,7 +4340,7 @@ export default function App() {
                 </div>
                 
                 {/* XP Bar */}
-                <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border border-[#E1CCAB] mb-2" dir="ltr">
+                <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border-2 border-black mb-2" dir="ltr">
                   <div 
                     className="h-full transition-all duration-500" 
                     style={{ width: `${getXpProgress(xp)}%`, backgroundColor: 'var(--xp-bar-fill)' }}
@@ -4463,7 +4471,7 @@ export default function App() {
                     return (
                       <button 
                         onClick={() => setShowLeaderboardModal(true)}
-                        className="mt-3 w-full group relative overflow-hidden bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl p-0.5 shadow-lg shadow-orange-200 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                        className="mt-3 w-full group relative overflow-hidden bg-orange-500 rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all"
                       >
                         <div className="bg-white/10 backdrop-blur-sm rounded-[14px] py-3 px-4 flex items-center justify-between">
                           <div className="flex items-center gap-2 text-white">
@@ -4592,7 +4600,7 @@ export default function App() {
               exit={{ scale: 0.9, y: 20 }}
               className="bg-modal-theme rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative flex flex-col max-h-[85vh]"
             >
-              <div className="bg-gradient-to-r from-orange-500 to-red-600 p-6 text-center relative shrink-0">
+              <div className="bg-orange-500 p-6 text-center relative shrink-0 border-b-4 border-black">
                 <button 
                   onClick={() => setShowLeaderboardModal(false)}
                   className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
@@ -4610,7 +4618,7 @@ export default function App() {
                 {/* Current User Rank (Sticky at top if exists) */}
                 {topPlayers.findIndex(p => p.serial === playerSerial) !== -1 && (
                   <div className="sticky top-0 z-[100] px-4 pb-3 pt-0 bg-gray-50/95 backdrop-blur-sm shadow-sm border-b border-gray-100">
-                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 rounded-b-xl flex items-center gap-3 border-x-2 border-b-2 border-purple-400 shadow-lg">
+                     <div className="bg-purple-600 text-white p-3 rounded-none flex items-center gap-3 border-x-4 border-b-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                       <div className="font-black text-xl w-8 text-center bg-white/20 rounded-lg py-1">
                         #{topPlayers.findIndex(p => p.serial === playerSerial) + 1}
                       </div>
@@ -4794,10 +4802,12 @@ export default function App() {
       )}
 
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 bg-[#FBF4E1]/90 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] shadow-sm border-b-4 border-game h-14 md:h-16">
+      <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
         <div className="flex-1 flex items-center gap-2 md:gap-3">
-          <img src="/icon-3.png" alt="Logo" className="w-9 h-9 md:w-10 md:h-10 object-contain" />
-          <div className="font-black text-lg md:text-xl text-accent-orange tracking-tight drop-shadow-sm hidden sm:block">خمن تخمينة</div>
+          <div className="w-9 h-9 md:w-10 md:h-10 bg-accent-yellow rounded-xl flex items-center justify-center overflow-hidden">
+            <img src="/icon-3.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 object-contain" />
+          </div>
+          <div className="font-black text-lg md:text-xl text-accent-blue tracking-tight hidden sm:block">خمن تخمينة</div>
         </div>
         
         {/* Game Info (Center) */}
@@ -4822,7 +4832,7 @@ export default function App() {
           {/* Home Button (Leave Game) */}
           <button 
             onClick={handleLeaveGame}
-            className="w-12 h-12 md:w-10 md:h-10 bg-gray-100 text-brown-muted rounded-xl flex items-center justify-center hover:bg-gray-200 hover:text-brown-dark transition-colors cursor-pointer touch-manipulation"
+            className="w-12 h-12 md:w-10 md:h-10 bg-gray-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer touch-manipulation shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
             title="الرئيسية"
           >
             <Home className="w-6 h-6 md:w-5 md:h-5" />
@@ -4831,7 +4841,7 @@ export default function App() {
           {/* Info Button */}
           <button 
             onClick={toggleLevelInfo}
-            className="w-9 h-9 md:w-10 md:h-10 bg-accent-blue-light text-accent-blue rounded-xl flex items-center justify-center hover:bg-accent-blue-soft hover:text-accent-blue transition-colors relative"
+            className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
             title="معلومات المستوى"
           >
             <Info className="w-4 h-4 md:w-5 md:h-5" />
@@ -4846,7 +4856,7 @@ export default function App() {
           {/* Shop Button */}
           <button 
             onClick={toggleShop}
-            className="w-9 h-9 md:w-10 md:h-10 bg-accent-orange-light text-accent-orange rounded-xl flex items-center justify-center hover:bg-accent-orange-soft hover:text-accent-orange transition-colors"
+            className="w-9 h-9 md:w-10 md:h-10 bg-orange-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-orange-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
             title="المتجر"
           >
             <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
@@ -4855,7 +4865,7 @@ export default function App() {
           {/* Settings Button */}
           <button 
             onClick={toggleSettings}
-            className="w-9 h-9 md:w-10 md:h-10 bg-accent-purple-light text-accent-purple rounded-xl flex items-center justify-center hover:bg-accent-purple-soft hover:text-accent-purple transition-colors relative"
+            className="w-9 h-9 md:w-10 md:h-10 bg-purple-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-purple-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
             title="الإعدادات"
           >
             <Settings className="w-4 h-4 md:w-5 md:h-5" />
@@ -4877,7 +4887,7 @@ export default function App() {
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
                 {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false)}
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-[#E1CCAB] shadow-sm z-20 whitespace-nowrap">
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-black shadow-sm z-20 whitespace-nowrap">
                   Lvl {opponent.level || getLevel(opponent.xp || 0)}
                 </div>
                 {showHammer === opponent.id && (
@@ -5275,7 +5285,7 @@ export default function App() {
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
                 {renderAvatarContent(me.avatar, getLevel(xp), false)}
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-[#E1CCAB] shadow-sm z-20 whitespace-nowrap">
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-black shadow-sm z-20 whitespace-nowrap">
                   Lvl {getLevel(xp)}
                 </div>
                 {showHammer === me.id && (
@@ -5443,7 +5453,7 @@ export default function App() {
                 )}
                 
                 {/* Tooltip */}
-                <div className={`absolute left-full ml-3 px-3 py-2 ${isLocked ? 'w-48' : 'bg-gray-800 text-white'} text-xs font-bold rounded-xl ${activeTooltip === card.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity pointer-events-none z-50 shadow-lg text-right`} style={isLocked ? { backgroundColor: '#F6E6CD', borderColor: '#E1CCAB', borderWidth: '2px', color: '#533933' } : {}}>
+                <div className={`absolute left-full ml-3 px-3 py-2 ${isLocked ? 'w-48' : 'bg-gray-800 text-white'} text-xs font-bold rounded-xl ${activeTooltip === card.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity pointer-events-none z-50 shadow-lg text-right`} style={isLocked ? { backgroundColor: '#fff', borderColor: '#000', borderWidth: '2px', color: '#000' } : {}}>
                   {isLocked && card.description ? (
                     <div className="flex flex-col gap-1.5 whitespace-normal">
                       <div className="flex items-center gap-1.5">
@@ -5512,24 +5522,24 @@ export default function App() {
             >
               {room.winnerId === me?.id ? (
                 <div className="mb-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-2 border-4 border-white shadow-xl animate-bounce">
+                  <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-bounce">
                     <Trophy className="w-8 h-8 text-white" />
                   </div>
-                  <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-500 to-emerald-600 mb-1">مبروك! فزت</h2>
+                  <h2 className="text-3xl font-black text-green-400 mb-1 tracking-widest" style={{ WebkitTextStroke: '2px black' }}>مبروك! فزت</h2>
                   <p className="text-brown-muted font-bold text-xs">أداء أسطوري يا بطل! 🏆</p>
                 </div>
               ) : (
                 <div className="mb-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-2 border-4 border-white shadow-xl">
+                  <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                     <span className="text-3xl">😢</span>
                   </div>
-                  <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-600 mb-1">للأسف! خسرت</h2>
+                  <h2 className="text-3xl font-black text-red-500 mb-1 tracking-widest" style={{ WebkitTextStroke: '2px black' }}>للأسف! خسرت</h2>
                   <p className="text-brown-muted font-bold text-xs">حظ أوفر في المرة القادمة</p>
                 </div>
               )}
               
               <div className="flex flex-col items-center mb-4 box-game p-1">
-                <div className="w-32 h-32 rounded-2xl overflow-hidden bg-white shadow-inner border-4 border-[#E1CCAB]">
+                <div className="w-32 h-32 rounded-2xl overflow-hidden bg-white shadow-inner border-4 border-black">
                   <img src={me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
                 </div>
                 <div className="font-black text-lg text-brown-dark mt-1">{me?.targetImage?.name}</div>
