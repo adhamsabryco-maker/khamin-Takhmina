@@ -1021,7 +1021,7 @@ export default function App() {
         parent.scrollTop = parent.scrollHeight;
       }
     }
-  }, [chatHistory]);
+  }, [chatHistory, isOpponentTyping]);
   const [spyLensImage, setSpyLensImage] = useState<string | null>(null);
   const [showHammer, setShowHammer] = useState<string | null>(null);
   const [funnyFilter, setFunnyFilter] = useState<string | null>(null);
