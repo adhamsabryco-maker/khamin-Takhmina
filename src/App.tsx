@@ -823,6 +823,7 @@ export default function App() {
   const [roomId, setRoomId] = useState('');
   const [room, setRoom] = useState<Room | null>(null);
   const roomRef = useRef<Room | null>(null);
+  const isIntentionalLeaveRef = useRef(false);
   useEffect(() => { roomRef.current = room; }, [room]);
 
   const [joined, setJoined] = useState(false);
@@ -846,6 +847,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [customAlert, setCustomAlert] = useState<{ show: boolean, message: string, title?: string }>({ show: false, message: '' });
   const [customConfirm, setCustomConfirm] = useState<{ show: boolean, message: string, title?: string, onConfirm: () => void }>({ show: false, message: '', onConfirm: () => {} });
+  const [customPrompt, setCustomPrompt] = useState<{ show: boolean, message: string, defaultValue?: string, title?: string, onConfirm: (value: string) => void }>({ show: false, message: '', onConfirm: () => {} });
   const [hasSeenLevelInfo, setHasSeenLevelInfo] = useState(() => {
     return localStorage.getItem('khamin_seen_level_info') === 'true';
   });
@@ -955,10 +957,16 @@ export default function App() {
     playSound('clickOpen');
   };
 
+  const showPrompt = (message: string, defaultValue: string = '', onConfirm: (value: string) => void, title: string = 'إدخال') => {
+    setCustomPrompt({ show: true, message, defaultValue, title, onConfirm });
+    playSound('clickOpen');
+  };
+
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isIntentionalLeaveRef.current) return;
       if (room?.gameState === 'discussion' || room?.gameState === 'guessing') {
         socket?.emit('intentional_leave', { roomId });
         e.preventDefault();
@@ -1818,6 +1826,7 @@ export default function App() {
     const newSocket = connectSocket();
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isIntentionalLeaveRef.current) return;
       if (roomRef.current && (roomRef.current.gameState === 'guessing' || roomRef.current.gameState === 'discussion')) {
         e.preventDefault();
         e.returnValue = ''; // Required for Chrome
@@ -2112,6 +2121,7 @@ export default function App() {
       }
       
       showConfirm(message, () => {
+        isIntentionalLeaveRef.current = true;
         socket?.emit('intentional_leave', { roomId });
         socket?.emit('leave_room', { roomId });
         window.location.reload();
@@ -2119,6 +2129,7 @@ export default function App() {
       return;
     }
     
+    isIntentionalLeaveRef.current = true;
     socket?.emit('leave_room', { roomId });
     window.location.reload();
   };
@@ -2226,6 +2237,63 @@ export default function App() {
                 </button>
                 <button 
                   onClick={() => setCustomConfirm({ ...customConfirm, show: false })}
+                  className="flex-1 btn-game btn-primary py-3 text-lg"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Prompt Modal */}
+      <AnimatePresence>
+        {customPrompt.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="card-game p-6 w-full max-w-sm space-y-4 text-center"
+            >
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <Info className="w-8 h-8 text-blue-500" />
+              </div>
+              <h2 className="text-2xl font-black text-main">{customPrompt.title}</h2>
+              <p className="text-brown-muted font-bold text-lg whitespace-pre-wrap">{customPrompt.message}</p>
+              <input
+                type="text"
+                autoFocus
+                defaultValue={customPrompt.defaultValue}
+                className="input-game w-full text-center"
+                id="customPromptInput"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const val = (document.getElementById('customPromptInput') as HTMLInputElement).value;
+                    customPrompt.onConfirm(val);
+                    setCustomPrompt({ ...customPrompt, show: false });
+                  }
+                }}
+              />
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => {
+                    const val = (document.getElementById('customPromptInput') as HTMLInputElement).value;
+                    customPrompt.onConfirm(val);
+                    setCustomPrompt({ ...customPrompt, show: false });
+                  }}
+                  className="flex-1 btn-game btn-success py-3 text-lg"
+                >
+                  تأكيد
+                </button>
+                <button 
+                  onClick={() => setCustomPrompt({ ...customPrompt, show: false })}
                   className="flex-1 btn-game btn-primary py-3 text-lg"
                 >
                   إلغاء
@@ -3918,12 +3986,13 @@ export default function App() {
                                   <div className="mt-4 flex gap-2">
                                     <button 
                                       onClick={() => {
-                                        const newXP = prompt('ادخل الـ XP الجديد:', p.xp.toString());
-                                        if (newXP !== null) {
-                                          socket?.emit('admin_update_player', { serial: p.serial, updates: { xp: parseInt(newXP) } }, (res: any) => {
-                                            if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
-                                          });
-                                        }
+                                        showPrompt('ادخل الـ XP الجديد:', p.xp.toString(), (newXP) => {
+                                          if (newXP !== null && newXP.trim() !== '') {
+                                            socket?.emit('admin_update_player', { serial: p.serial, updates: { xp: parseInt(newXP) } }, (res: any) => {
+                                              if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
+                                            });
+                                          }
+                                        }, 'تعديل XP');
                                       }}
                                       className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-xl text-[10px] font-black hover:bg-purple-600 hover:text-white transition-all"
                                     >
@@ -3931,13 +4000,14 @@ export default function App() {
                                     </button>
                                     <button 
                                       onClick={() => {
-                                        const tokensToAdd = prompt('كم عدد الـ Tokens التي تريد إضافتها؟', '1');
-                                        if (tokensToAdd !== null && !isNaN(parseInt(tokensToAdd))) {
-                                          const currentTokens = p.tokens || 0;
-                                          socket?.emit('admin_update_player', { serial: p.serial, updates: { tokens: currentTokens + parseInt(tokensToAdd) } }, (res: any) => {
-                                            if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
-                                          });
-                                        }
+                                        showPrompt('كم عدد الـ Tokens التي تريد إضافتها؟', '1', (tokensToAdd) => {
+                                          if (tokensToAdd !== null && tokensToAdd.trim() !== '' && !isNaN(parseInt(tokensToAdd))) {
+                                            const currentTokens = p.tokens || 0;
+                                            socket?.emit('admin_update_player', { serial: p.serial, updates: { tokens: currentTokens + parseInt(tokensToAdd) } }, (res: any) => {
+                                              if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
+                                            });
+                                          }
+                                        }, 'إعطاء Tokens');
                                       }}
                                       className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black hover:bg-blue-600 hover:text-white transition-all"
                                     >
