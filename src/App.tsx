@@ -64,7 +64,8 @@ const SOUNDS = {
   countdown: '/sounds/countdown.mp3',
   correct: '/sounds/correct.mp3',
   message: '/sounds/message.mp3',
-  click: '/sounds/click-open.mp3',
+  clickOpen: '/sounds/click-open.mp3',
+  clickClose: '/sounds/click-close.mp3',
   tick: '/sounds/tick.mp3',
   background: '/sounds/background-music.mp3',
 };
@@ -380,7 +381,11 @@ export default function App() {
   const toggleTokenInfo = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    playSound('click');
+    if (showTokenInfoModal) {
+      playSound('clickClose');
+    } else {
+      playSound('clickOpen');
+    }
     setShowTokenInfoModal(!showTokenInfoModal);
   };
 
@@ -898,30 +903,33 @@ export default function App() {
   };
 
   const toggleSettings = () => {
-    playSound('click');
     if (showSettingsModal) {
+      playSound('clickClose');
       closeAllModals();
     } else {
+      playSound('clickOpen');
       closeAllModals();
       setShowSettingsModal(true);
     }
   };
 
   const toggleShop = () => {
-    playSound('click');
     if (showShopModal) {
+      playSound('clickClose');
       closeAllModals();
     } else {
+      playSound('clickOpen');
       closeAllModals();
       setShowShopModal(true);
     }
   };
 
   const toggleLevelInfo = () => {
-    playSound('click');
     if (showLevelInfo) {
+      playSound('clickClose');
       closeAllModals();
     } else {
+      playSound('clickOpen');
       closeAllModals();
       if (!hasSeenLevelInfo) {
         setHasSeenLevelInfo(true);
@@ -1806,7 +1814,7 @@ export default function App() {
   }, []);
 
   const handleJoin = () => {
-    playSound('click');
+    playSound('clickOpen');
     if (!playerSerial) {
       setShowWelcomeModal(true);
       return;
@@ -1833,7 +1841,7 @@ export default function App() {
   };
 
   const handleRandomMatch = () => {
-    playSound('click');
+    playSound('clickOpen');
     if (!playerSerial) {
       setShowWelcomeModal(true);
       return;
@@ -1856,7 +1864,7 @@ export default function App() {
   };
 
   const handleRegister = () => {
-    playSound('click');
+    playSound('clickOpen');
     if (!playerName.trim() || !playerAge) {
       setError('يرجى إدخال اسمك وعمرك أولاً');
       return;
@@ -1872,6 +1880,7 @@ export default function App() {
         localStorage.setItem('khamin_player_avatar', avatar);
         localStorage.setItem('khamin_wins', '0');
         setShowWelcomeModal(false);
+        playSound('clickClose');
         setError('');
       } else {
         setError('فشل التسجيل. يرجى المحاولة مرة أخرى.');
@@ -1882,7 +1891,7 @@ export default function App() {
   const handleGuess = (e: React.FormEvent) => {
     e.preventDefault();
     if (!guess.trim()) return;
-    playSound('click');
+    playSound('clickOpen');
     socket?.emit('submit_guess', { roomId, guess });
     setGuess('');
   };
@@ -1890,7 +1899,7 @@ export default function App() {
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    playSound('click');
+    playSound('clickOpen');
     socket?.emit('send_chat', { roomId, text: chatInput });
     setChatInput('');
   };
@@ -2001,12 +2010,12 @@ export default function App() {
   };
 
   const handleStartGame = () => {
-    playSound('click');
+    playSound('clickOpen');
     socket?.emit('start_game_request', { roomId });
   };
 
   const handleLeaveGame = () => {
-    playSound('click');
+    playSound('clickOpen');
     const isGameActive = room?.gameState === 'guessing' || room?.gameState === 'discussion';
     const me = room?.players.find(p => p.id === socket?.id);
     
@@ -2029,7 +2038,7 @@ export default function App() {
 
   const useCard = (type: 'quick_guess' | 'hint' | 'word_length' | 'word_count' | 'time_freeze' | 'spy_lens') => {
     if (cooldowns[type] > 0) return;
-    playSound('click');
+    playSound('clickOpen');
     
     // Quick guess doesn't require an ad
     if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage) {
@@ -2186,7 +2195,7 @@ export default function App() {
             >
               <div className="p-6 text-center relative shrink-0" style={{ background: `linear-gradient(to right, var(--shop-header-start), var(--shop-header-end))` }}>
                 <button 
-                  onClick={() => setShowShopModal(false)}
+                  onClick={() => { playSound('clickClose'); setShowShopModal(false); }}
                   className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -4105,7 +4114,7 @@ export default function App() {
                   </button>
                 </div>
                 <button 
-                  onClick={() => setShowReportModal(false)}
+                  onClick={() => { playSound('clickClose'); setShowReportModal(false); }}
                   className="text-lg font-black text-brown-light hover:text-brown-muted transition-colors"
                 >
                   إلغاء
@@ -4336,7 +4345,7 @@ export default function App() {
                   <div className="flex gap-3 md:gap-4">
                     <button 
                       onClick={() => {
-                        playSound('click');
+                        playSound('clickOpen');
                         setHasResponded(true);
                         socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'accept' });
                       }}
@@ -4346,7 +4355,7 @@ export default function App() {
                     </button>
                     <button 
                       onClick={() => {
-                        playSound('click');
+                        playSound('clickOpen');
                         setHasResponded(true);
                         socket?.emit('respond_to_match', { matchId: proposedMatch.matchId, response: 'reject' });
                         setProposedMatch(null);
@@ -4775,7 +4784,7 @@ export default function App() {
             >
               <div className="bg-orange-500 p-6 text-center relative shrink-0 border-b-4 border-black">
                 <button 
-                  onClick={() => setShowLeaderboardModal(false)}
+                  onClick={() => { playSound('clickClose'); setShowLeaderboardModal(false); }}
                   className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -4882,7 +4891,7 @@ export default function App() {
             >
               <div className="p-6 text-center relative shrink-0" style={{ background: `linear-gradient(to right, var(--shop-header-start), var(--shop-header-end))` }}>
                 <button 
-                  onClick={() => setShowTokenInfoModal(false)}
+                  onClick={() => { playSound('clickClose'); setShowTokenInfoModal(false); }}
                   className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -5242,7 +5251,7 @@ export default function App() {
                       <button 
                         type="button" 
                         onClick={() => {
-                          playSound('click');
+                          playSound('clickOpen');
                           setShowEmotes(!showEmotes);
                         }}
                         className="bg-white text-brown-muted p-3 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
@@ -5256,7 +5265,7 @@ export default function App() {
                               key={emote}
                               type="button"
                               onClick={() => {
-                                playSound('click');
+                                playSound('clickOpen');
                                 socket?.emit('send_emote', { roomId: room!.id, emote });
                                 setShowEmotes(false);
                               }}
@@ -5438,7 +5447,7 @@ export default function App() {
                     <button 
                       type="button" 
                       onClick={() => {
-                        playSound('click');
+                        playSound('clickOpen');
                         setShowEmotes(!showEmotes);
                       }}
                       className="bg-white text-brown-muted p-2 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all w-10 h-10 flex items-center justify-center"
@@ -5452,7 +5461,7 @@ export default function App() {
                             key={emote}
                             type="button"
                             onClick={() => {
-                              playSound('click');
+                              playSound('clickOpen');
                               socket?.emit('send_emote', { roomId: room!.id, emote });
                               setShowEmotes(false);
                             }}
