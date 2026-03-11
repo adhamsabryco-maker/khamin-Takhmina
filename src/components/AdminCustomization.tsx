@@ -186,7 +186,7 @@ export const AdminCustomization = () => {
 
         {/* App Version Settings */}
         <div className="box-game p-6 shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🔄 إصدار التطبيق (لتحديث الأيقونة)</h3>
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🔄 إصدار اللعبة (تحديث إجباري)</h3>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <input 
@@ -206,7 +206,7 @@ export const AdminCustomization = () => {
                       body: JSON.stringify(newConfig),
                     });
                     refreshConfig();
-                    alert('تم تحديث إصدار التطبيق بنجاح! سيتم تحديث الأيقونة عند المستخدمين تلقائياً.');
+                    alert('تم تحديث إصدار اللعبة بنجاح! سيتم إجبار جميع اللاعبين على التحديث عند فتح اللعبة.');
                   } catch (error) {
                     alert('حدث خطأ أثناء تحديث الإصدار');
                   }
@@ -217,7 +217,7 @@ export const AdminCustomization = () => {
               </button>
             </div>
             <p className="text-xs text-brown-muted">
-              تغيير هذا الرقم يجبر المتصفح على تحميل الأيقونة الجديدة (`icon.svg`) حتى لو كانت مخزنة في الذاكرة المؤقتة.
+              تغيير هذا الرقم يجبر المتصفح على تحميل كافة ملفات اللعبة الجديدة والتحديثات فوراً عند فتح شاشة التحميل.
             </p>
           </div>
         </div>
