@@ -909,7 +909,10 @@ const app = express();
                  // Add to skipped list
                  if (!match.p1.skipped) match.p1.skipped = new Map();
                  match.p1.skipped.set(match.p2.playerId, Date.now() + 10000);
-                 matchmakingQueue.push(match.p1);
+                 setTimeout(() => {
+                   matchmakingQueue.push(match.p1);
+                   processQueue();
+                 }, 3000);
               } else {
                  match.p1.socket.emit("match_rejected");
                  matchmakingQueue.unshift(match.p1);
@@ -920,7 +923,10 @@ const app = express();
                  // Add to skipped list
                  if (!match.p2.skipped) match.p2.skipped = new Map();
                  match.p2.skipped.set(match.p1.playerId, Date.now() + 10000);
-                 matchmakingQueue.push(match.p2);
+                 setTimeout(() => {
+                   matchmakingQueue.push(match.p2);
+                   processQueue();
+                 }, 3000);
               } else {
                  match.p2.socket.emit("match_rejected");
                  matchmakingQueue.unshift(match.p2);
