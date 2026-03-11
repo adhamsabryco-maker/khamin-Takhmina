@@ -62,6 +62,7 @@ const SOUNDS = {
   correct: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
   message: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3',
   click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
+  tick: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
 };
 
 interface ThemeConfig {
@@ -967,6 +968,7 @@ export default function App() {
     if (proposedMatch && matchResponseTimeLeft !== null && matchResponseTimeLeft > 0) {
       interval = setInterval(() => {
         setMatchResponseTimeLeft(prev => prev !== null ? prev - 1 : null);
+        playSound('tick', 0.3);
       }, 1000);
     } else if (matchResponseTimeLeft === 0 && !hasResponded) {
       setHasResponded(true);
@@ -1047,10 +1049,10 @@ export default function App() {
     });
   }, []);
 
-  const playSound = useCallback((key: keyof typeof SOUNDS) => {
+  const playSound = useCallback((key: keyof typeof SOUNDS, volumeOverride?: number) => {
     const sound = audioRef.current[key];
     if (sound) {
-      sound.volume = sfxVolume;
+      sound.volume = volumeOverride !== undefined ? volumeOverride * sfxVolume : sfxVolume;
       sound.currentTime = 0;
       sound.play().catch(() => {});
     }
@@ -1695,10 +1697,25 @@ export default function App() {
 
   // Separate effect for countdown sound to avoid re-binding socket listeners
   useEffect(() => {
-    if (room?.timer && room.timer <= 10 && room.timer > 0 && room.gameState === 'guessing') {
-      playSound('countdown');
+    if (!room) return;
+
+    // Final Guess (Last 10 seconds of guessing)
+    if (room.gameState === 'guessing' && room.timer <= 10 && room.timer > 0) {
+      playSound('tick', 0.4);
+    }
+    
+    // Category Selection
+    if (room.gameState === 'waiting' && room.timer > 0) {
+      playSound('tick', 0.3);
     }
   }, [room?.timer, room?.gameState, playSound]);
+
+  // Quick Guess timer sound
+  useEffect(() => {
+    if (room?.quickGuessTimer && room.quickGuessTimer > 0) {
+      playSound('tick', 0.4);
+    }
+  }, [room?.quickGuessTimer, playSound]);
 
   // Cooldown timer
   useEffect(() => {
