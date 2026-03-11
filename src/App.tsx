@@ -829,7 +829,7 @@ export default function App() {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStatus, setLoadingStatus] = useState('جاري التحقق من التحديثات...');
-  const [gameVersion, setGameVersion] = useState('1.0.0');
+  const [gameVersion, setGameVersion] = useState(localStorage.getItem('khamin_game_version') || '1.0.0');
   const [isSearching, setIsSearching] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [copied, setCopied] = useState(false);
