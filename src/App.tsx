@@ -1058,6 +1058,14 @@ export default function App() {
     }
   }, [sfxVolume]);
 
+  const stopSound = useCallback((key: keyof typeof SOUNDS) => {
+    const sound = audioRef.current[key];
+    if (sound) {
+      sound.pause();
+      sound.currentTime = 0;
+    }
+  }, []);
+
   const clearPlayerData = () => {
     localStorage.removeItem('khamin_player_serial');
     localStorage.removeItem('khamin_player_name');
@@ -1699,34 +1707,47 @@ export default function App() {
 
   // Separate effect for countdown sound to avoid re-binding socket listeners
   useEffect(() => {
-    if (!room) return;
+    if (!room) {
+      stopSound('tick');
+      return;
+    }
 
-    // Final Guess (Last 10 seconds of guessing)
-    if (room.gameState === 'guessing' && room.timer <= 10 && room.timer > 0) {
+    const isTickActive = (room.gameState === 'guessing' && room.timer <= 10 && room.timer > 0) ||
+                         (room.gameState === 'waiting' && room.timer > 0);
+    
+    if (isTickActive) {
       if (lastTickTimeRef.current.gameTimer !== room.timer) {
-        playSound('tick', 0.4);
+        playSound('tick', 0.3);
         lastTickTimeRef.current.gameTimer = room.timer;
       }
+    } else {
+      stopSound('tick');
     }
-    
-    // Category Selection
-    if (room.gameState === 'waiting' && room.timer > 0) {
-      if (lastTickTimeRef.current.waitingTimer !== room.timer) {
-        playSound('tick', 0.3);
-        lastTickTimeRef.current.waitingTimer = room.timer;
-      }
-    }
-  }, [room?.timer, room?.gameState, playSound]);
+  }, [room?.timer, room?.gameState, playSound, stopSound]);
 
   // Quick Guess timer sound
   useEffect(() => {
     if (room?.quickGuessTimer && room.quickGuessTimer > 0) {
       if (lastTickTimeRef.current.quickGuessTimer !== room.quickGuessTimer) {
-        playSound('tick', 0.4);
+        playSound('tick', 0.3);
         lastTickTimeRef.current.quickGuessTimer = room.quickGuessTimer;
       }
+    } else {
+      stopSound('tick');
     }
-  }, [room?.quickGuessTimer, playSound]);
+  }, [room?.quickGuessTimer, playSound, stopSound]);
+
+  // Match response timer sound
+  useEffect(() => {
+    if (matchResponseTimeLeft !== null && matchResponseTimeLeft > 0) {
+      if (lastTickTimeRef.current.matchResponseTimer !== matchResponseTimeLeft) {
+        playSound('tick', 0.3);
+        lastTickTimeRef.current.matchResponseTimer = matchResponseTimeLeft;
+      }
+    } else {
+      stopSound('tick');
+    }
+  }, [matchResponseTimeLeft, playSound, stopSound]);
 
   // Cooldown timer
   useEffect(() => {
