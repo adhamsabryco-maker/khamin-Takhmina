@@ -62,7 +62,7 @@ const SOUNDS = {
   correct: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
   message: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3',
   click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
-  tick: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
+  tick: 'https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3',
 };
 
 interface ThemeConfig {
@@ -1695,25 +1695,36 @@ export default function App() {
     };
   }, [connectSocket]);
 
+  const lastTickTimeRef = useRef<{ [key: string]: number }>({});
+
   // Separate effect for countdown sound to avoid re-binding socket listeners
   useEffect(() => {
     if (!room) return;
 
     // Final Guess (Last 10 seconds of guessing)
     if (room.gameState === 'guessing' && room.timer <= 10 && room.timer > 0) {
-      playSound('tick', 0.4);
+      if (lastTickTimeRef.current.gameTimer !== room.timer) {
+        playSound('tick', 0.4);
+        lastTickTimeRef.current.gameTimer = room.timer;
+      }
     }
     
     // Category Selection
     if (room.gameState === 'waiting' && room.timer > 0) {
-      playSound('tick', 0.3);
+      if (lastTickTimeRef.current.waitingTimer !== room.timer) {
+        playSound('tick', 0.3);
+        lastTickTimeRef.current.waitingTimer = room.timer;
+      }
     }
   }, [room?.timer, room?.gameState, playSound]);
 
   // Quick Guess timer sound
   useEffect(() => {
     if (room?.quickGuessTimer && room.quickGuessTimer > 0) {
-      playSound('tick', 0.4);
+      if (lastTickTimeRef.current.quickGuessTimer !== room.quickGuessTimer) {
+        playSound('tick', 0.4);
+        lastTickTimeRef.current.quickGuessTimer = room.quickGuessTimer;
+      }
     }
   }, [room?.quickGuessTimer, playSound]);
 
