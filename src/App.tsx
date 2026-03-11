@@ -410,12 +410,12 @@ export default function App() {
         setAdStatus(prev => ({ ...prev, adsWatched: data.adsWatched, canWatch: data.adsWatched < data.maxAds }));
         setShowAdModal(false);
         playSound('win');
-        alert('تمت إضافة الـ Token بنجاح! 🎉');
+        showAlert('تمت إضافة الـ Token بنجاح! 🎉', 'نجاح');
       });
 
       socket.on('ad_error', (msg) => {
         setShowAdModal(false);
-        alert(msg);
+        showAlert(msg, 'تنبيه');
       });
 
       return () => {
@@ -844,6 +844,8 @@ export default function App() {
   const [matchResponseTimeLeft, setMatchResponseTimeLeft] = useState<number | null>(null);
   const [searchTimeLeft, setSearchTimeLeft] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [customAlert, setCustomAlert] = useState<{ show: boolean, message: string, title?: string }>({ show: false, message: '' });
+  const [customConfirm, setCustomConfirm] = useState<{ show: boolean, message: string, title?: string, onConfirm: () => void }>({ show: false, message: '', onConfirm: () => {} });
   const [hasSeenLevelInfo, setHasSeenLevelInfo] = useState(() => {
     return localStorage.getItem('khamin_seen_level_info') === 'true';
   });
@@ -941,6 +943,16 @@ export default function App() {
       }
       setShowLevelInfo(true);
     }
+  };
+
+  const showAlert = (message: string, title: string = 'تنبيه') => {
+    setCustomAlert({ show: true, message, title });
+    playSound('notification');
+  };
+
+  const showConfirm = (message: string, onConfirm: () => void, title: string = 'تأكيد') => {
+    setCustomConfirm({ show: true, message, title, onConfirm });
+    playSound('clickOpen');
   };
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1261,32 +1273,33 @@ export default function App() {
       if (response.ok) {
         setNewCategory({ id: '', name: '', icon: '' });
         fetchCategories();
-        alert('تم إضافة الفئة بنجاح');
+        showAlert('تم إضافة الفئة بنجاح', 'نجاح');
       } else {
-        alert('فشل إضافة الفئة');
+        showAlert('فشل إضافة الفئة', 'خطأ');
       }
     } catch (error) {
       console.error("Add category failed", error);
-      alert('حدث خطأ أثناء الإضافة');
+      showAlert('حدث خطأ أثناء الإضافة', 'خطأ');
     } finally {
       setIsAddingCategory(false);
     }
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذه الفئة وجميع الصور المرتبطة بها؟')) return;
-    try {
-      const response = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        fetchCategories();
-        fetchAdminImages();
-      } else {
-        alert('فشل حذف الفئة');
+    showConfirm('هل أنت متأكد من حذف هذه الفئة وجميع الصور المرتبطة بها؟', async () => {
+      try {
+        const response = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+          fetchCategories();
+          fetchAdminImages();
+        } else {
+          showAlert('فشل حذف الفئة', 'خطأ');
+        }
+      } catch (error) {
+        console.error("Delete category failed", error);
+        showAlert('حدث خطأ أثناء الحذف', 'خطأ');
       }
-    } catch (error) {
-      console.error("Delete category failed", error);
-      alert('حدث خطأ أثناء الحذف');
-    }
+    }, 'حذف الفئة');
   };
 
   const handleImageUpload = async () => {
@@ -1301,30 +1314,31 @@ export default function App() {
       if (response.ok) {
         setNewImage({ ...newImage, name: '', data: '' });
         fetchAdminImages();
-        alert('تم رفع الصورة بنجاح');
+        showAlert('تم رفع الصورة بنجاح', 'نجاح');
       } else {
-        alert('فشل رفع الصورة');
+        showAlert('فشل رفع الصورة', 'خطأ');
       }
     } catch (error) {
       console.error("Upload failed", error);
-      alert('حدث خطأ أثناء الرفع');
+      showAlert('حدث خطأ أثناء الرفع', 'خطأ');
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleDeleteImage = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذه الصورة؟')) return;
-    try {
-      const response = await fetch(`/api/admin/images/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        fetchAdminImages();
-      } else {
-        alert('فشل حذف الصورة');
+    showConfirm('هل أنت متأكد من حذف هذه الصورة؟', async () => {
+      try {
+        const response = await fetch(`/api/admin/images/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+          fetchAdminImages();
+        } else {
+          showAlert('فشل حذف الصورة', 'خطأ');
+        }
+      } catch (error) {
+        console.error("Delete failed", error);
       }
-    } catch (error) {
-      console.error("Delete failed", error);
-    }
+    }, 'حذف الصورة');
   };
 
   const connectSocket = useCallback(() => {
@@ -1985,12 +1999,12 @@ export default function App() {
   const handleWatchAd = () => {
     console.log('handleWatchAd called. Current adStatus:', adStatus);
     if (getLevel(xp) < 50) {
-      alert('يجب أن تصل للمستوى 50 لتتمكن من مشاهدة الإعلانات!');
+      showAlert('يجب أن تصل للمستوى 50 لتتمكن من مشاهدة الإعلانات!', 'تنبيه');
       return;
     }
     if (!adStatus.canWatch) {
       console.log('Cannot watch ad: limit reached or level too low');
-      alert('انتهت المحاولات لهذا اليوم!');
+      showAlert('انتهت المحاولات لهذا اليوم!', 'تنبيه');
       return;
     }
     
@@ -2097,10 +2111,12 @@ export default function App() {
         message += '\n\nتحذير: إذا انسحبت الآن، ستخسر الـ Token المستخدمة!';
       }
       
-      if (!window.confirm(message)) {
-        return;
-      }
-      socket?.emit('intentional_leave', { roomId });
+      showConfirm(message, () => {
+        socket?.emit('intentional_leave', { roomId });
+        socket?.emit('leave_room', { roomId });
+        window.location.reload();
+      }, 'تأكيد الخروج');
+      return;
     }
     
     socket?.emit('leave_room', { roomId });
@@ -2147,6 +2163,79 @@ export default function App() {
 
   const renderModals = () => (
     <>
+      {/* Custom Alert Modal */}
+      <AnimatePresence>
+        {customAlert.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="card-game p-6 w-full max-w-sm space-y-4 text-center"
+            >
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <Info className="w-8 h-8 text-orange-500" />
+              </div>
+              <h2 className="text-2xl font-black text-main">{customAlert.title}</h2>
+              <p className="text-brown-muted font-bold text-lg whitespace-pre-wrap">{customAlert.message}</p>
+              <button 
+                onClick={() => setCustomAlert({ ...customAlert, show: false })}
+                className="w-full btn-game btn-primary py-3 text-lg"
+              >
+                حسناً
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Confirm Modal */}
+      <AnimatePresence>
+        {customConfirm.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="card-game p-6 w-full max-w-sm space-y-4 text-center"
+            >
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <HelpCircle className="w-8 h-8 text-red-500" />
+              </div>
+              <h2 className="text-2xl font-black text-main">{customConfirm.title}</h2>
+              <p className="text-brown-muted font-bold text-lg whitespace-pre-wrap">{customConfirm.message}</p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => {
+                    customConfirm.onConfirm();
+                    setCustomConfirm({ ...customConfirm, show: false });
+                  }}
+                  className="flex-1 btn-game btn-danger py-3 text-lg"
+                >
+                  نعم
+                </button>
+                <button 
+                  onClick={() => setCustomConfirm({ ...customConfirm, show: false })}
+                  className="flex-1 btn-game btn-primary py-3 text-lg"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Ad Confirmation Modal */}
       <AnimatePresence>
         {showAdConfirmation && (
@@ -2312,7 +2401,7 @@ export default function App() {
                         </div>
                       </div>
                       <button 
-                        onClick={() => alert('سيتم تفعيل الإعلانات قريباً!')}
+                        onClick={() => showAlert('سيتم تفعيل الإعلانات قريباً!', 'المتجر')}
                         className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 bg-gray-300 text-brown-muted cursor-not-allowed`}
                       >
                         قريباً
@@ -2332,7 +2421,7 @@ export default function App() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
+                      onClick={() => showAlert('سيتم تفعيل الدفع قريباً!', 'المتجر')}
                       className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
                     >
                       10 ج.م
@@ -2354,7 +2443,7 @@ export default function App() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
+                      onClick={() => showAlert('سيتم تفعيل الدفع قريباً!', 'المتجر')}
                       className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
                     >
                       40 ج.م
@@ -2373,7 +2462,7 @@ export default function App() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
+                      onClick={() => showAlert('سيتم تفعيل الدفع قريباً!', 'المتجر')}
                       className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
                     >
                       70 ج.م
@@ -2398,7 +2487,7 @@ export default function App() {
                             const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
                             setProPackageExpiry(expiry);
                             localStorage.setItem('khamin_pro_package_expiry', expiry.toString());
-                            alert('تم تفعيل باقة المحترفين للتجربة (30 يوم)!');
+                            showAlert('تم تفعيل باقة المحترفين للتجربة (30 يوم)!', 'المتجر');
                           }}
                           className="px-3 py-2 rounded-xl font-black text-xs transition-all shadow-md bg-yellow-400 hover:bg-yellow-500 text-yellow-900"
                         >
@@ -2406,7 +2495,7 @@ export default function App() {
                         </button>
                       )}
                       <button 
-                        onClick={() => alert('سيتم تفعيل الدفع قريباً!')}
+                        onClick={() => showAlert('سيتم تفعيل الدفع قريباً!', 'المتجر')}
                         className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md bg-gray-300 text-brown-muted cursor-not-allowed`}
                       >
                         {hasProPackage ? 'تم الشراء' : 'قريباً'}
@@ -3225,7 +3314,7 @@ export default function App() {
                                   />
                                 </div>
                                 <button 
-                                  onClick={() => alert('سيتم تفعيل هذه الخاصية قريباً')}
+                                  onClick={() => showAlert('سيتم تفعيل هذه الخاصية قريباً', 'قريباً')}
                                   className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-2 rounded-lg transition-colors"
                                 >
                                   إرسال
@@ -3250,7 +3339,7 @@ export default function App() {
                                   <div className="text-orange-600 font-black">70 ج.م</div>
                                 </div>
                                 <button 
-                                  onClick={() => alert('سيتم تفعيل تعديل الباقات قريباً')}
+                                  onClick={() => showAlert('سيتم تفعيل تعديل الباقات قريباً', 'قريباً')}
                                   className="w-full text-sm text-brown-muted hover:text-orange-600 font-bold py-2 border border-dashed border-gray-300 rounded-lg mt-2 transition-colors"
                                 >
                                   + إضافة / تعديل باقة
@@ -3694,7 +3783,7 @@ export default function App() {
                               onClick={() => {
                                 setThemeConfig(DEFAULT_THEME);
                                 socket?.emit('admin_save_theme', DEFAULT_THEME);
-                                alert('تم إعادة تعيين الألوان وحفظها بنجاح!');
+                                showAlert('تم إعادة تعيين الألوان وحفظها بنجاح!', 'نجاح');
                               }}
                               className="px-6 py-3 rounded-xl font-black text-brown-muted hover:bg-gray-100 transition-colors"
                             >
@@ -3703,7 +3792,7 @@ export default function App() {
                             <button 
                               onClick={() => {
                                 socket?.emit('admin_save_theme', themeConfig);
-                                alert('تم حفظ الألوان بنجاح! (على السيرفر)');
+                                showAlert('تم حفظ الألوان بنجاح! (على السيرفر)', 'نجاح');
                               }}
                               className="px-8 py-3 bg-accent-blue hover:brightness-110 text-white rounded-xl font-black shadow-lg transition-all transform hover:-translate-y-1"
                             >
@@ -3714,7 +3803,7 @@ export default function App() {
                       </div>
                     </div>
                   ) : adminTab === 'customization' ? (
-                    <AdminCustomization />
+                    <AdminCustomization showAlert={showAlert} />
                   ) : adminTab === 'players' ? (
                     <>
                       {/* Sidebar - Reports */}
@@ -3748,13 +3837,13 @@ export default function App() {
                                   </button>
                                   <button 
                                     onClick={() => {
-                                      if (window.confirm('هل أنت متأكد من حذف هذا البلاغ؟')) {
+                                      showConfirm('هل أنت متأكد من حذف هذا البلاغ؟', () => {
                                         socket?.emit('admin_delete_report', report.id, (res: any) => {
                                           if (res.success) {
                                             setAdminReports(prev => prev.filter(r => r.id !== report.id));
                                           }
                                         });
-                                      }
+                                      }, 'حذف البلاغ');
                                     }}
                                     className="py-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[10px] font-black transition-colors"
                                   >
@@ -3856,12 +3945,12 @@ export default function App() {
                                     </button>
                                     <button 
                                       onClick={() => {
-                                        if (window.confirm('هل أنت متأكد من حظر هذا اللاعب لمدة 24 ساعة؟')) {
+                                        showConfirm('هل أنت متأكد من حظر هذا اللاعب لمدة 24 ساعة؟', () => {
                                           const banUntil = Date.now() + (24 * 60 * 60 * 1000);
                                           socket?.emit('admin_update_player', { serial: p.serial, updates: { banUntil, reports: 0 } }, (res: any) => {
                                             if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                           });
-                                        }
+                                        }, 'حظر مؤقت');
                                       }}
                                       className="flex-1 py-2 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black hover:bg-orange-600 hover:text-white transition-all"
                                     >
@@ -3870,11 +3959,11 @@ export default function App() {
                                     {p.banUntil > Date.now() && (
                                       <button 
                                         onClick={() => {
-                                          if (window.confirm('هل أنت متأكد من إلغاء حظر هذا اللاعب؟')) {
+                                          showConfirm('هل أنت متأكد من إلغاء حظر هذا اللاعب؟', () => {
                                             socket?.emit('admin_update_player', { serial: p.serial, updates: { banUntil: 0 } }, (res: any) => {
                                               if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                             });
-                                          }
+                                          }, 'إلغاء الحظر');
                                         }}
                                         className="flex-1 py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-black hover:bg-green-600 hover:text-white transition-all"
                                       >
@@ -3883,11 +3972,11 @@ export default function App() {
                                     )}
                                     <button 
                                       onClick={() => {
-                                        if (window.confirm('هل أنت متأكد من حظر هذا اللاعب نهائياً؟')) {
+                                        showConfirm('هل أنت متأكد من حظر هذا اللاعب نهائياً؟', () => {
                                           socket?.emit('admin_update_player', { serial: p.serial, updates: { isPermanentBan: 1, reports: 0 } }, (res: any) => {
                                             if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                           });
-                                        }
+                                        }, 'حظر نهائي');
                                       }}
                                       className="flex-1 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black hover:bg-red-600 hover:text-white transition-all"
                                     >
@@ -3895,11 +3984,11 @@ export default function App() {
                                     </button>
                                     <button 
                                       onClick={() => {
-                                        if (window.confirm('هل أنت متأكد من حذف هذا الحساب نهائياً؟')) {
+                                        showConfirm('هل أنت متأكد من حذف هذا الحساب نهائياً؟', () => {
                                           socket?.emit('admin_delete_player', p.serial, (res: any) => {
                                             if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                           });
-                                        }
+                                        }, 'حذف الحساب');
                                       }}
                                       className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all"
                                     >
