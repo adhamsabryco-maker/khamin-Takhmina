@@ -288,6 +288,9 @@ const app = express();
   const rooms = new Map<string, any>();
   const intervals = new Map<string, NodeJS.Timeout>();
   const matchmakingQueue: any[] = [];
+  const matchmakingInterval = setInterval(() => {
+    processQueue();
+  }, 2000); // Run every 2 seconds
   const reportsList: any[] = [];
   const blocks = new Map<string, { blockedId: string, expiresAt: number }[]>();
   const pendingMatches = new Map<string, any>();
@@ -865,99 +868,105 @@ const app = express();
   }
 
   function processQueue() {
-    let matchFound = true;
-    while (matchFound && matchmakingQueue.length >= 2) {
-      matchFound = false;
-      const now = Date.now();
+    const now = Date.now();
+    
+    // Filter out players who are no longer searching or disconnected
+    const availablePlayers = matchmakingQueue.filter(p => 
+      p.status === 'searching' && 
+      p.socket.connected
+    );
 
-      for (let i = 0; i < matchmakingQueue.length; i++) {
-        for (let j = i + 1; j < matchmakingQueue.length; j++) {
-          const p1 = matchmakingQueue[i];
-          const p2 = matchmakingQueue[j];
-          
-          // Check if blocked
-          if (isBlocked(p1.playerId, p2.playerId)) continue;
+    if (availablePlayers.length < 2) return;
 
-          // Check token constraints
-          const p1Level = getLevel(p1.xp);
-          const p2Level = getLevel(p2.xp);
-          if (p1.useToken && p2Level < 40) continue;
-          if (p2.useToken && p1Level < 40) continue;
+    // Sort by joinedAt to be fair
+    availablePlayers.sort((a, b) => a.joinedAt - b.joinedAt);
 
-          // Check if temporarily skipped (10 seconds cooldown)
-          const p1SkippedP2 = p1.skipped?.get(p2.playerId);
-          const p2SkippedP1 = p2.skipped?.get(p1.playerId);
+    const matchedIndices = new Set<number>();
 
-          if (p1SkippedP2 && now < p1SkippedP2 + 10000) continue;
-          if (p2SkippedP1 && now < p2SkippedP1 + 10000) continue;
+    for (let i = 0; i < availablePlayers.length; i++) {
+      if (matchedIndices.has(i)) continue;
+      
+      for (let j = i + 1; j < availablePlayers.length; j++) {
+        if (matchedIndices.has(j)) continue;
+
+        const p1 = availablePlayers[i];
+        const p2 = availablePlayers[j];
+
+        // Check if blocked
+        if (isBlocked(p1.playerId, p2.playerId)) continue;
+
+        // Check token constraints
+        const p1Level = getLevel(p1.xp);
+        const p2Level = getLevel(p2.xp);
+        if (p1.useToken && p2Level < 40) continue;
+        if (p2.useToken && p1Level < 40) continue;
+
+        // Check if temporarily skipped (10 seconds cooldown)
+        const p1SkippedP2 = p1.skipped?.get(p2.playerId);
+        const p2SkippedP1 = p2.skipped?.get(p1.playerId);
+
+        if (p1SkippedP2 && now < p1SkippedP2) continue;
+        if (p2SkippedP1 && now < p2SkippedP1) continue;
+
+        // Match found!
+        matchedIndices.add(i);
+        matchedIndices.add(j);
+
+        p1.status = 'proposing';
+        p2.status = 'proposing';
+
+        const matchId = `match_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const timeoutId = setTimeout(() => {
+          const match = pendingMatches.get(matchId);
+          if (match) {
+            pendingMatches.delete(matchId);
             
-          // Match found
-          matchFound = true;
-          // Remove from highest index first to avoid shifting issues
-          matchmakingQueue.splice(j, 1);
-          matchmakingQueue.splice(i, 1);
-          
-          const matchId = `match_${Math.random().toString(36).substr(2, 9)}`;
-          
-          const timeoutId = setTimeout(() => {
-            const match = pendingMatches.get(matchId);
-            if (match) {
-              pendingMatches.delete(matchId);
+            // Handle timeout
+            [match.p1, match.p2].forEach(p => {
+              if (p.isBot) return;
+              p.status = 'searching';
+              p.socket.emit("match_rejected", { reason: 'timeout' });
               
-              if (match.p1Response !== 'accept') {
-                 match.p1.socket.emit("match_rejected");
-                 // Add to skipped list
-                 if (!match.p1.skipped) match.p1.skipped = new Map();
-                 match.p1.skipped.set(match.p2.playerId, Date.now() + 10000);
-                 setTimeout(() => {
-                   matchmakingQueue.push(match.p1);
-                   processQueue();
-                 }, 3000);
-              } else {
-                 match.p1.socket.emit("match_rejected");
-                 matchmakingQueue.unshift(match.p1);
-              }
-              
-              if (match.p2Response !== 'accept') {
-                 match.p2.socket.emit("match_rejected");
-                 // Add to skipped list
-                 if (!match.p2.skipped) match.p2.skipped = new Map();
-                 match.p2.skipped.set(match.p1.playerId, Date.now() + 10000);
-                 setTimeout(() => {
-                   matchmakingQueue.push(match.p2);
-                   processQueue();
-                 }, 3000);
-              } else {
-                 match.p2.socket.emit("match_rejected");
-                 matchmakingQueue.unshift(match.p2);
-              }
-              
-              setImmediate(() => processQueue());
-            }
-          }, 10000);
+              // Add to skipped list against the other
+              const other = p === match.p1 ? match.p2 : match.p1;
+              if (!p.skipped) p.skipped = new Map();
+              p.skipped.set(other.playerId, Date.now() + 10000);
 
-          pendingMatches.set(matchId, {
-            id: matchId,
-            p1,
-            p2,
-            p1Response: null,
-            p2Response: null,
-            timeoutId
-          });
+              // Put back in queue
+              matchmakingQueue.push(p);
+            });
+            processQueue();
+          }
+        }, 12000); // 12 seconds total (10 for client + 2 buffer)
 
-          p1.socket.emit("match_proposed", {
-            matchId,
-            opponent: { name: p2.playerName, avatar: p2.avatar, age: p2.age, level: getLevel(p2.xp || 0) }
-          });
-          p2.socket.emit("match_proposed", {
-            matchId,
-            opponent: { name: p1.playerName, avatar: p1.avatar, age: p1.age, level: getLevel(p1.xp || 0) }
-          });
-          
-          // Break inner and outer loops to restart with the new queue state
-          break;
-        }
-        if (matchFound) break;
+        pendingMatches.set(matchId, {
+          id: matchId,
+          p1,
+          p2,
+          p1Response: null,
+          p2Response: null,
+          timeoutId,
+          createdAt: now
+        });
+
+        p1.socket.emit("match_proposed", {
+          matchId,
+          opponent: { name: p2.playerName, avatar: p2.avatar, age: p2.age, level: getLevel(p2.xp || 0) }
+        });
+        p2.socket.emit("match_proposed", {
+          matchId,
+          opponent: { name: p1.playerName, avatar: p1.avatar, age: p1.age, level: getLevel(p1.xp || 0) }
+        });
+
+        break; // Found a match for p1, move to next available player
+      }
+    }
+
+    // Remove matched players from the main queue
+    for (let i = matchmakingQueue.length - 1; i >= 0; i--) {
+      if (matchmakingQueue[i].status === 'proposing') {
+        matchmakingQueue.splice(i, 1);
       }
     }
   }
@@ -977,9 +986,12 @@ const app = express();
     const now = Date.now();
     for (let i = 0; i < matchmakingQueue.length; i++) {
       const p = matchmakingQueue[i];
+      if (p.status !== 'searching') continue;
+      
       // If player has been waiting for more than 10 seconds and is not using a token
       if (p.joinedAt && now - p.joinedAt > 10000 && !p.useToken) {
         // Create a bot match
+        p.status = 'proposing';
         matchmakingQueue.splice(i, 1);
         
         const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
@@ -1014,11 +1026,11 @@ const app = express();
             const match = pendingMatches.get(matchId);
             if (match && match.p1Response !== 'accept') {
               pendingMatches.delete(matchId);
-              match.p1.socket.emit("match_rejected");
+              match.p1.status = 'searching';
+              match.p1.socket.emit("match_rejected", { reason: 'timeout' });
               matchmakingQueue.push(match.p1);
-              setImmediate(() => processQueue());
             }
-          }, 10000)
+          }, 12000)
         });
 
         p.socket.emit("match_proposed", {
@@ -1530,14 +1542,15 @@ const app = express();
         }
 
       // Remove from queue if already there (re-join)
-      const existingIndex = matchmakingQueue.findIndex(p => p.id === socket.id);
+      const existingIndex = matchmakingQueue.findIndex(p => p.playerId === playerId || p.id === socket.id);
       if (existingIndex !== -1) matchmakingQueue.splice(existingIndex, 1);
 
       for (const [matchId, match] of pendingMatches.entries()) {
         if (match.p1.socket.id === socket.id || match.p2.socket.id === socket.id) {
           const oppData = match.p1.socket.id === socket.id ? match.p2 : match.p1;
           pendingMatches.delete(matchId);
-          oppData.socket.emit("match_rejected");
+          oppData.status = 'searching';
+          oppData.socket.emit("match_rejected", { reason: 'opponent_left' });
           matchmakingQueue.unshift(oppData);
           break;
         }
@@ -1561,7 +1574,8 @@ const app = express();
         wins: actualWins,
         useToken: !!useToken,
         skipped: new Map(), // Initialize skipped map (playerId -> timestamp)
-        joinedAt: Date.now()
+        joinedAt: Date.now(),
+        status: 'searching'
       });
       socket.emit("waiting_for_match");
       processQueue();
@@ -1597,17 +1611,27 @@ const app = express();
         pendingMatches.delete(matchId);
         
         // Notify both players
-        oppData.socket.emit("match_rejected");
-        myData.socket.emit("match_rejected");
+        oppData.socket.emit("match_rejected", { reason: response === 'block' ? 'blocked' : 'rejected' });
+        myData.socket.emit("match_rejected", { reason: 'you_rejected' });
         
-        matchmakingQueue.unshift(oppData); // Put innocent back at front
-        processQueue(); // Allow innocent player to find a new match immediately
-        
-        // Delay putting rejector back into the queue for 3 seconds
-        setTimeout(() => {
-          matchmakingQueue.push(myData); // Put rejector back at end
+        // Put innocent back in queue immediately
+        if (!oppData.isBot) {
+          oppData.status = 'searching';
+          matchmakingQueue.unshift(oppData);
           processQueue();
-        }, 3000);
+        }
+        
+        // Delay putting rejector back into the queue for 5 seconds to prevent spam
+        if (!myData.isBot) {
+          myData.status = 'searching';
+          setTimeout(() => {
+            // Only add back if they haven't started another search or joined a room
+            const stillInQueue = matchmakingQueue.some(p => p.id === myData.id);
+            if (!stillInQueue && myData.socket.connected) {
+              matchmakingQueue.push(myData);
+            }
+          }, 5000);
+        }
         
         return;
       }
@@ -2078,8 +2102,10 @@ const app = express();
       for (const [matchId, match] of pendingMatches.entries()) {
         if (match.p1.socket.id === socket.id || match.p2.socket.id === socket.id) {
           const oppData = match.p1.socket.id === socket.id ? match.p2 : match.p1;
+          clearTimeout(match.timeoutId);
           pendingMatches.delete(matchId);
-          oppData.socket.emit("match_rejected");
+          oppData.status = 'searching';
+          oppData.socket.emit("match_rejected", { reason: 'opponent_left' });
           matchmakingQueue.unshift(oppData);
           processQueue();
           break;
@@ -2391,7 +2417,8 @@ const app = express();
           const oppData = match.p1.socket.id === socket.id ? match.p2 : match.p1;
           clearTimeout(match.timeoutId);
           pendingMatches.delete(matchId);
-          oppData.socket.emit("match_rejected");
+          oppData.status = 'searching';
+          oppData.socket.emit("match_rejected", { reason: 'opponent_disconnected' });
           matchmakingQueue.unshift(oppData);
           processQueue();
           break;
