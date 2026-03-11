@@ -1590,11 +1590,22 @@ export default function App() {
       setOpponentAccepted(true);
     });
 
-    newSocket.on('match_rejected', () => {
+    newSocket.on('match_rejected', ({ reason }: { reason?: string } = {}) => {
       setProposedMatch(null);
       setHasResponded(false);
       setOpponentAccepted(false);
       setMatchResponseTimeLeft(null);
+      
+      let message = 'تم إلغاء التحدي';
+      if (reason === 'rejected') message = 'المنافس رفض التحدي ❌';
+      if (reason === 'timeout') message = 'انتهى وقت قبول التحدي ⏰';
+      if (reason === 'blocked') message = 'المنافس قام بحظرك 🚫';
+      if (reason === 'opponent_left') message = 'المنافس غادر البحث 🏃';
+      if (reason === 'opponent_disconnected') message = 'انقطع اتصال المنافس 🔌';
+      if (reason === 'you_rejected') return; // No message if user rejected themselves
+
+      setError(message);
+      setTimeout(() => setError(''), 3000);
     });
 
     newSocket.on('random_match_found', ({ roomId }) => {
