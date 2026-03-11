@@ -1818,7 +1818,7 @@ export default function App() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       newSocket.disconnect();
     };
-  }, [connectSocket]);
+  }, [isAppLoading, connectSocket]);
 
   const lastTickTimeRef = useRef<{ [key: string]: number }>({});
 
