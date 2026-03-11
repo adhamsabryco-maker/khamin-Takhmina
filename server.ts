@@ -1590,17 +1590,6 @@ const app = express();
         clearTimeout(match.timeoutId);
         pendingMatches.delete(matchId);
         
-        // Add to skipped list so they don't match again immediately (10s cooldown)
-        if (response === 'reject') {
-          if (!myData.skipped) myData.skipped = new Map();
-          myData.skipped.set(oppData.playerId, Date.now());
-          
-          // Re-process queue after cooldown expires
-          setTimeout(() => {
-            processQueue();
-          }, 10000);
-        }
-
         // Notify both players
         oppData.socket.emit("match_rejected");
         myData.socket.emit("match_rejected");
