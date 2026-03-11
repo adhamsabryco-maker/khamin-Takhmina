@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { useAvatarConfig } from '../contexts/AvatarContext';
 
-export const AdminCustomization = () => {
+export const AdminCustomization = ({ showAlert }: { showAlert: (msg: string, title?: string) => void }) => {
   const [uploading, setUploading] = useState(false);
   const { customConfig: config, refreshConfig } = useAvatarConfig();
   const [versionInput, setVersionInput] = useState(config.version || '1.0.0');
@@ -46,10 +46,10 @@ export const AdminCustomization = () => {
         body: JSON.stringify(finalConfig),
       });
       refreshConfig();
-      alert('تم رفع الصورة وحفظ الإعدادات بنجاح!');
+      showAlert('تم رفع الصورة وحفظ الإعدادات بنجاح!', 'نجاح');
     } catch (error) {
       console.error('Upload error:', error);
-      alert('حدث خطأ أثناء رفع الصورة');
+      showAlert('حدث خطأ أثناء رفع الصورة', 'خطأ');
     } finally {
       setUploading(false);
     }
@@ -73,10 +73,10 @@ export const AdminCustomization = () => {
         body: JSON.stringify(finalConfig),
       });
       refreshConfig();
-      alert('تم حذف الصورة بنجاح!');
+      showAlert('تم حذف الصورة بنجاح!', 'نجاح');
     } catch (error) {
       console.error('Delete error:', error);
-      alert('حدث خطأ أثناء حذف الصورة');
+      showAlert('حدث خطأ أثناء حذف الصورة', 'خطأ');
     }
   };
 
@@ -172,7 +172,7 @@ export const AdminCustomization = () => {
                   });
                   refreshConfig();
                 } catch (error) {
-                  alert('حدث خطأ أثناء تحديث الإعدادات');
+                  showAlert('حدث خطأ أثناء تحديث الإعدادات', 'خطأ');
                 }
               }}
               className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none ${config.aiBotEnabled ? 'bg-purple-600' : 'bg-gray-300'}`}
@@ -206,9 +206,9 @@ export const AdminCustomization = () => {
                       body: JSON.stringify(newConfig),
                     });
                     refreshConfig();
-                    alert('تم تحديث إصدار اللعبة بنجاح! سيتم إجبار جميع اللاعبين على التحديث عند فتح اللعبة.');
+                    showAlert('تم تحديث إصدار اللعبة بنجاح! سيتم إجبار جميع اللاعبين على التحديث عند فتح اللعبة.', 'نجاح');
                   } catch (error) {
-                    alert('حدث خطأ أثناء تحديث الإصدار');
+                    showAlert('حدث خطأ أثناء تحديث الإصدار', 'خطأ');
                   }
                 }}
                 className="btn-game btn-primary py-2 px-6"
