@@ -2070,14 +2070,24 @@ const app = express();
       }
     });
 
-    socket.on("leave_room", ({ roomId }) => {
+    socket.on("leave_room", ({ roomId }, callback) => {
       const room = rooms.get(roomId);
       if (room) {
         const player = room.players.find((p: any) => p.id === socket.id);
         if (player) {
+          const opponent = room.players.find((p: any) => p.id !== socket.id);
+          
+          if (room.gameState === "guessing" || room.gameState === "discussion") {
+            // Player intentionally left during an active game
+            endGame(roomId, opponent ? opponent.name : "المنافس");
+          } else if (room.gameState === "waiting") {
+            socket.to(roomId).emit("opponent_left_lobby");
+          } else if (room.gameState !== "finished") {
+            socket.to(roomId).emit("game_stopped", { reason: `غادر ${player.name} الغرفة` });
+          }
+
           // Remove player from room
           room.players = room.players.filter((p: any) => p.id !== socket.id);
-          socket.leave(roomId);
 
           // Stop the game for everyone and delete room to ensure fresh start
           if (intervals.has(roomId)) {
@@ -2085,14 +2095,16 @@ const app = express();
             intervals.delete(roomId);
           }
           
-          if (room.gameState === "waiting") {
-            socket.to(roomId).emit("opponent_left_lobby");
+          if (room.gameState !== "finished") {
+            rooms.delete(roomId);
           } else {
-            socket.to(roomId).emit("game_stopped", { reason: `غادر ${player.name} الغرفة` });
+            // Emit room update so the remaining player knows the opponent left
+            socket.to(roomId).emit("room_update", room);
           }
-          rooms.delete(roomId);
         }
       }
+      socket.leave(roomId);
+      if (callback) callback();
     });
 
     socket.on("leave_matchmaking", () => {
@@ -2311,6 +2323,7 @@ const app = express();
         if (player) {
           Object.assign(player, updates);
           if (updates.xp !== undefined) player.level = getLevel(updates.xp);
+          if (updates.tokens !== undefined) player.tokens = updates.tokens;
           savePlayerData(serial);
           io.emit("top_players_update", getTopPlayers(true));
           
@@ -2432,19 +2445,17 @@ const app = express();
           const opponent = room.players.find((p: any) => p.id !== socket.id);
           
           // Logic for Token deduction:
-          // 1. Game must have started (startTime exists)
-          // 2. More than 60 seconds passed
-          // 3. Disconnect is intentional (client namespace disconnect OR intentionallyLeft flag)
-          const elapsedSeconds = room.startTime ? (Date.now() - room.startTime) / 1000 : 0;
+          // 1. Game must have started (gameState is not waiting or finished)
+          // 2. Disconnect is intentional (client namespace disconnect OR intentionallyLeft flag)
           const isIntentional = reason === 'client namespace disconnect' || leavingPlayer.intentionallyLeft;
           
           if (room.gameState !== "finished" && room.gameState !== "waiting") {
-            if (elapsedSeconds > 60 && isIntentional) {
+            if (isIntentional) {
               // Deduct token by ending game with opponent as winner
               // We do this BEFORE removing the player so endGame can process them as the loser
-              endGame(roomId, opponent ? opponent.name : null);
+              endGame(roomId, opponent ? opponent.name : "المنافس");
             } else {
-              // Just stop game without deducting tokens if it's network issue or < 60s
+              // Just stop game without deducting tokens if it's network issue
               socket.to(roomId).emit("game_stopped", { reason: `انقطع اتصال ${leavingPlayer.name}` });
             }
           }
@@ -2461,7 +2472,12 @@ const app = express();
             socket.to(roomId).emit("opponent_left_lobby");
           }
           
-          rooms.delete(roomId);
+          if (room.gameState !== "finished") {
+            rooms.delete(roomId);
+          } else {
+            // Emit room update so the remaining player knows the opponent left
+            socket.to(roomId).emit("room_update", room);
+          }
         }
       });
     });
@@ -2646,39 +2662,54 @@ const app = express();
 
       // Calculate updates
       const updates: any = {};
-      if (winner) {
-        let winnerXP = 100 + (winner.streak || 0) * 10;
-        
-        // Level 50+ Logic:
-        // If level >= 50 and NO token used -> NO XP gain
-        // If level >= 50 and token used -> Normal XP + 400 Bonus
-        // If level < 50 -> Normal XP (and bonus if token used)
-        
-        if (winner.level >= 50 && !winner.useToken) {
-           winnerXP = 0; // Cap progress if no token used at level 50+
-        } else if (winner.useToken) {
-           winnerXP += 1000; // Bonus XP for using token
-        }
+      
+      if (winnerName === null) {
+        // Draw
+        room.players.forEach((p: any) => {
+          let drawXP = 20;
+          if (p.level >= 50 && !p.useToken) {
+            drawXP = 0;
+          }
+          p.xp = (p.xp || 0) + drawXP;
+          p.level = getLevel(p.xp);
+          p.streak = 0;
+          updates[p.id] = { xp: drawXP, streak: 0, wins: p.wins || 0, won: false, level: p.level };
+        });
+      } else {
+        if (winner) {
+          let winnerXP = 100 + (winner.streak || 0) * 10;
+          
+          // Level 50+ Logic:
+          // If level >= 50 and NO token used -> NO XP gain
+          // If level >= 50 and token used -> Normal XP + 400 Bonus
+          // If level < 50 -> Normal XP (and bonus if token used)
+          
+          if (winner.level >= 50 && !winner.useToken) {
+             winnerXP = 0; // Cap progress if no token used at level 50+
+          } else if (winner.useToken) {
+             winnerXP += 1000; // Bonus XP for using token
+          }
 
-        winner.xp = (winner.xp || 0) + winnerXP;
-        winner.level = getLevel(winner.xp);
-        winner.streak = (winner.streak || 0) + 1;
-        winner.wins = (winner.wins || 0) + 1;
-        updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true, level: winner.level };
-      }
-      if (loser) {
-        let loserXP = 20;
-        
-        // Level 50+ Logic for loser:
-        // If level >= 50 and NO token used -> NO XP gain (even the small loser XP)
-        if (loser.level >= 50 && !loser.useToken) {
-            loserXP = 0;
+          winner.xp = (winner.xp || 0) + winnerXP;
+          winner.level = getLevel(winner.xp);
+          winner.streak = (winner.streak || 0) + 1;
+          winner.wins = (winner.wins || 0) + 1;
+          updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true, level: winner.level };
         }
+        if (loser) {
+          let loserXP = 20;
+          
+          // Level 50+ Logic for loser:
+          // If level >= 50 and NO token used -> NO XP gain (even the small loser XP)
+          if (loser.level >= 50 && !loser.useToken) {
+              loserXP = 0;
+          }
 
-        loser.xp = (loser.xp || 0) + loserXP;
-        loser.level = getLevel(loser.xp);
-        loser.streak = 0;
-        updates[loser.id] = { xp: loserXP, streak: 0, wins: loser.wins || 0, won: false, level: loser.level };
+          loser.xp = (loser.xp || 0) + loserXP;
+          loser.level = getLevel(loser.xp);
+          loser.streak = 0;
+          updates[loser.id] = { xp: loserXP, streak: 0, wins: loser.wins || 0, won: false, level: loser.level };
+        }
       }
 
       // Update allPlayers leaderboard
@@ -2697,6 +2728,10 @@ const app = express();
             p.useToken = false; // Prevent deducting again
           }
           
+          if (updates[p.id]) {
+            updates[p.id].tokens = player.tokens || 0;
+          }
+          
           savePlayerData(player.serial);
         } else {
           // Fallback to name search
@@ -2709,6 +2744,10 @@ const app = express();
               if (p.useToken && (data.tokens || 0) > 0) {
                 data.tokens = (data.tokens || 0) - 1;
                 p.useToken = false;
+              }
+              
+              if (updates[p.id]) {
+                updates[p.id].tokens = data.tokens || 0;
               }
               
               savePlayerData(serial);
