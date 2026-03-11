@@ -1470,6 +1470,11 @@ export default function App() {
         }
       }
 
+      if (roomRef.current?.players.length === 2 && updatedRoom.players.length === 1) {
+        setError('غادر المنافس الغرفة!');
+        setTimeout(() => setError(''), 3000);
+      }
+
       setRoom(updatedRoom);
       setJoined(true);
     });
@@ -1569,6 +1574,10 @@ export default function App() {
         if (myUpdate.wins !== undefined) {
           setWins(myUpdate.wins);
           localStorage.setItem('khamin_wins', myUpdate.wins.toString());
+        }
+        if (myUpdate.tokens !== undefined) {
+          setTokens(myUpdate.tokens);
+          localStorage.setItem('khamin_tokens', myUpdate.tokens.toString());
         }
       }
     });
@@ -1707,40 +1716,13 @@ export default function App() {
 
     newSocket.on('game_stopped', ({ reason }) => {
       setError(reason);
-      setRoom(null);
-      setJoined(false);
-      setIsPrivate(false);
-      setGuess('');
-      setHint(null);
-      setChatHistory([]);
-      setRoomId(prev => prev.startsWith('random_') ? '' : prev);
-      setIsOpponentBlocked(false);
-      setCooldowns({});
-      setReadyPowerUps([]);
-      setActivePowerUp(null);
-      setShowAdConfirmation(false);
-      setShowAdModal(false);
-      setAdTimer(0);
-      setTimeout(() => setError(''), 5000);
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     });
 
     newSocket.on('opponent_left_lobby', () => {
-      setRoom(null);
-      setJoined(false);
-      setIsPrivate(false);
-      setGuess('');
-      setHint(null);
-      setChatHistory([]);
-      setRoomId(prev => prev.startsWith('random_') ? '' : prev);
-      setIsOpponentBlocked(false);
-      setCooldowns({});
-      setReadyPowerUps([]);
-      setActivePowerUp(null);
-      setShowAdConfirmation(false);
-      setShowAdModal(false);
-      setAdTimer(0);
-      setError('غادر المنافس الغرفة');
-      setTimeout(() => setError(''), 3000);
+      window.location.reload();
     });
 
     newSocket.on('error', (msg) => setError(msg));
@@ -1765,6 +1747,8 @@ export default function App() {
 
     return newSocket;
   }, []);
+
+  // Removed the automatic page reload useEffect that was causing infinite reload loops
 
   useEffect(() => {
     // Real update check and loading process
@@ -1812,9 +1796,8 @@ export default function App() {
         setIsAppLoading(false);
       } catch (error) {
         console.error("Loading failed:", error);
-        setLoadingStatus('فشل الاتصال بالسيرفر. جاري المحاولة مرة أخرى...');
-        await new Promise(r => setTimeout(r, 3000));
-        window.location.reload();
+        setLoadingStatus('فشل الاتصال بالسيرفر. يرجى التحقق من اتصالك.');
+        // Don't reload automatically to prevent infinite loops
       }
     };
 
@@ -2123,15 +2106,17 @@ export default function App() {
       showConfirm(message, () => {
         isIntentionalLeaveRef.current = true;
         socket?.emit('intentional_leave', { roomId });
-        socket?.emit('leave_room', { roomId });
-        window.location.reload();
+        socket?.emit('leave_room', { roomId }, () => {
+          window.location.reload();
+        });
       }, 'تأكيد الخروج');
       return;
     }
     
     isIntentionalLeaveRef.current = true;
-    socket?.emit('leave_room', { roomId });
-    window.location.reload();
+    socket?.emit('leave_room', { roomId }, () => {
+      window.location.reload();
+    });
   };
 
   const useCard = (type: 'quick_guess' | 'hint' | 'word_length' | 'word_count' | 'time_freeze' | 'spy_lens') => {
@@ -6053,9 +6038,10 @@ export default function App() {
               <div className="flex flex-col gap-2">
                 <button 
                   onClick={() => socket?.emit('play_again', { roomId })}
-                  className="w-full btn-game btn-success py-3 text-base"
+                  disabled={room.players.length < 2}
+                  className={`w-full btn-game py-3 text-base ${room.players.length < 2 ? 'bg-gray-400 border-gray-500 cursor-not-allowed text-white' : 'btn-success'}`}
                 >
-                  العب تاني مع المنافس
+                  {room.players.length < 2 ? 'المنافس غادر' : 'العب تاني مع المنافس'}
                 </button>
                 <button 
                   onClick={() => {
