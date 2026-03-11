@@ -21,3 +21,16 @@ export const STATIC_ASSETS = {
     50: 'star-lvl-50.png',
   }
 };
+
+export const SOUNDS = {
+  HAMMER: '/sounds/hammer.mp3',
+  CLICK_OPEN: '/sounds/click-open.mp3',
+  CLICK_CLOSE: '/sounds/click-close.mp3',
+  CORRECT: '/sounds/correct.mp3',
+  WIN: '/sounds/win.mp3',
+  LOSE: '/sounds/lose.mp3',
+  MESSAGE: '/sounds/message.mp3',
+  COUNTDOWN: '/sounds/countdown.mp3',
+  TICK: '/sounds/tick.mp3',
+  BACKGROUND_MUSIC: '/sounds/background-music.mp3',
+};

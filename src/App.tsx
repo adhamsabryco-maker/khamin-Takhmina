@@ -43,7 +43,10 @@ import {
   Plus,
   ShoppingCart,
   Hash,
-  Copy
+  Copy,
+  Volume2,
+  VolumeX,
+  Music
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AdminCustomization } from './components/AdminCustomization';
@@ -55,14 +58,15 @@ import Cropper from 'react-easy-crop';
 
 // Audio URLs
 const SOUNDS = {
-  hammer: 'https://assets.mixkit.co/active_storage/sfx/212/212-preview.mp3',
-  win: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
-  lose: 'https://assets.mixkit.co/active_storage/sfx/1433/1433-preview.mp3',
-  countdown: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3',
-  correct: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
-  message: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3',
-  click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
-  tick: 'https://assets.mixkit.co/active_storage/sfx/3124/3124-preview.mp3',
+  hammer: '/sounds/hammer.mp3',
+  win: '/sounds/win.mp3',
+  lose: '/sounds/lose.mp3',
+  countdown: '/sounds/countdown.mp3',
+  correct: '/sounds/correct.mp3',
+  message: '/sounds/message.mp3',
+  click: '/sounds/click-open.mp3',
+  tick: '/sounds/tick.mp3',
+  background: '/sounds/background-music.mp3',
 };
 
 interface ThemeConfig {
@@ -590,7 +594,8 @@ export default function App() {
   // Sound Settings
   const [sfxVolume, setSfxVolume] = useState(() => parseFloat(localStorage.getItem('khamin_sfx_volume') || '1'));
   const [musicVolume, setMusicVolume] = useState(() => parseFloat(localStorage.getItem('khamin_music_volume') || '0.5'));
-
+  const [isSfxMuted, setIsSfxMuted] = useState(() => localStorage.getItem('khamin_sfx_muted') === 'true');
+  const [isMusicMuted, setIsMusicMuted] = useState(() => localStorage.getItem('khamin_music_muted') === 'true');
 
   useEffect(() => {
     localStorage.setItem('khamin_sfx_volume', sfxVolume.toString());
@@ -599,6 +604,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('khamin_music_volume', musicVolume.toString());
   }, [musicVolume]);
+
+  useEffect(() => {
+    localStorage.setItem('khamin_sfx_muted', isSfxMuted.toString());
+  }, [isSfxMuted]);
+
+  useEffect(() => {
+    localStorage.setItem('khamin_music_muted', isMusicMuted.toString());
+  }, [isMusicMuted]);
 
   const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -1042,21 +1055,46 @@ export default function App() {
   useEffect(() => { isOpponentBlockedRef.current = isOpponentBlocked; }, [isOpponentBlocked]);
   
   const audioRef = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const musicRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     Object.entries(SOUNDS).forEach(([key, url]) => {
-      audioRef.current[key] = new Audio(url);
+      if (key === 'background') {
+        musicRef.current = new Audio(url);
+        musicRef.current.loop = true;
+      } else {
+        audioRef.current[key] = new Audio(url);
+      }
     });
   }, []);
 
+  useEffect(() => {
+    if (musicRef.current) {
+      musicRef.current.volume = isMusicMuted ? 0 : musicVolume;
+      if (!isMusicMuted && musicVolume > 0) {
+        musicRef.current.play().catch(() => {
+          // Auto-play might be blocked, we'll try again on first interaction
+          const playOnInteraction = () => {
+            musicRef.current?.play().catch(() => {});
+            window.removeEventListener('click', playOnInteraction);
+          };
+          window.addEventListener('click', playOnInteraction);
+        });
+      } else {
+        musicRef.current.pause();
+      }
+    }
+  }, [musicVolume, isMusicMuted]);
+
   const playSound = useCallback((key: keyof typeof SOUNDS, volumeOverride?: number) => {
+    if (isSfxMuted) return;
     const sound = audioRef.current[key];
     if (sound) {
       sound.volume = volumeOverride !== undefined ? volumeOverride * sfxVolume : sfxVolume;
       sound.currentTime = 0;
       sound.play().catch(() => {});
     }
-  }, [sfxVolume]);
+  }, [sfxVolume, isSfxMuted]);
 
   const stopSound = useCallback((key: keyof typeof SOUNDS) => {
     const sound = audioRef.current[key];
@@ -2154,7 +2192,7 @@ export default function App() {
                   <X className="w-5 h-5" />
                 </button>
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
-                  <ShoppingCart className="w-8 h-8 text-white" />
+                  <ShoppingCart className="w-8 h-8 text-brown-dark" />
                 </div>
                 <h2 className="text-2xl font-black text-light mb-1">المتجر</h2>
                 <p className="text-purple-100 text-sm font-bold">احصل على Tokens للعب مع المحترفين!</p>
@@ -2698,61 +2736,65 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Sound Settings */}
-                  <div className="space-y-2 pt-2 border-t border-game">
-                    <h3 className="text-sm font-black text-brown-muted text-right mb-2">الصوت</h3>
+                  {/* Audio Settings */}
+                  <div className="pt-4 border-t border-game space-y-4">
+                    <div className="flex items-center justify-between flex-row-reverse">
+                      <span className="text-sm font-black text-brown-muted">إعدادات الصوت</span>
+                    </div>
                     
                     {/* SFX Volume */}
                     <div className="space-y-2">
                       <div className="flex justify-between items-center flex-row-reverse">
-                        <label className="text-xs font-bold text-brown-muted flex items-center gap-2">
-                          <Zap className="w-3 h-3 text-orange-500" />
-                          المؤثرات
-                        </label>
-                        <span className="text-[10px] font-bold text-brown-light">{Math.round(sfxVolume * 100)}%</span>
+                        <div className="flex items-center gap-2 flex-row-reverse">
+                          <button 
+                            onClick={() => setIsSfxMuted(!isSfxMuted)}
+                            className={`p-2 rounded-xl border-2 border-black transition-all ${isSfxMuted ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}
+                          >
+                            {isSfxMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                          </button>
+                          <span className="text-xs font-black text-main">المؤثرات الصوتية</span>
+                        </div>
+                        <span className="text-[10px] font-black text-brown-muted">{Math.round(sfxVolume * 100)}%</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => setSfxVolume(0)} className="text-brown-light hover:text-brown-muted">
-                          {sfxVolume === 0 ? <div className="w-4 h-4 relative"><div className="absolute w-full h-0.5 bg-current rotate-45 top-1/2"></div><div className="w-3 h-3 border-2 border-current rounded-full"></div></div> : <div className="w-4 h-4 border-2 border-current rounded-full"></div>}
-                        </button>
-                        <input 
-                          type="range" 
-                          min="0" 
-                          max="1" 
-                          step="0.1" 
-                          value={sfxVolume} 
-                          onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 bg-[#666666] rounded-lg appearance-none cursor-pointer accent-orange-500"
-                        />
-                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="1" 
+                        step="0.01" 
+                        value={sfxVolume}
+                        onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+                        className="w-full h-2 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                        dir="ltr"
+                      />
                     </div>
 
                     {/* Music Volume */}
-                    <div className="space-y-2 opacity-60">
+                    <div className="space-y-2">
                       <div className="flex justify-between items-center flex-row-reverse">
-                        <label className="text-xs font-bold text-brown-muted flex items-center gap-2">
-                          <span className="text-purple-500">🎵</span>
-                          الموسيقى
-                        </label>
-                        <span className="text-[10px] font-bold text-brown-light">{Math.round(musicVolume * 100)}%</span>
+                        <div className="flex items-center gap-2 flex-row-reverse">
+                          <button 
+                            onClick={() => setIsMusicMuted(!isMusicMuted)}
+                            className={`p-2 rounded-xl border-2 border-black transition-all ${isMusicMuted ? 'bg-red-100 text-red-600' : 'bg-purple-100 text-purple-600'}`}
+                          >
+                            {isMusicMuted ? <VolumeX className="w-4 h-4" /> : <Music className="w-4 h-4" />}
+                          </button>
+                          <span className="text-xs font-black text-main">الموسيقى الخلفية</span>
+                        </div>
+                        <span className="text-[10px] font-black text-brown-muted">{Math.round(musicVolume * 100)}%</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => setMusicVolume(0)} className="text-brown-light hover:text-brown-muted">
-                           {musicVolume === 0 ? <div className="w-4 h-4 relative"><div className="absolute w-full h-0.5 bg-current rotate-45 top-1/2"></div><div className="w-3 h-3 border-2 border-current rounded-full"></div></div> : <div className="w-4 h-4 border-2 border-current rounded-full"></div>}
-                        </button>
-                        <input 
-                          type="range" 
-                          min="0" 
-                          max="1" 
-                          step="0.1" 
-                          value={musicVolume} 
-                          onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 bg-[#666666] rounded-lg appearance-none cursor-pointer accent-purple-500"
-                          disabled
-                        />
-                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="1" 
+                        step="0.01" 
+                        value={musicVolume}
+                        onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                        className="w-full h-2 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                        dir="ltr"
+                      />
                     </div>
                   </div>
+
                 </div>
 
                 <div className="space-y-2">
