@@ -826,6 +826,10 @@ export default function App() {
   useEffect(() => { roomRef.current = room; }, [room]);
 
   const [joined, setJoined] = useState(false);
+  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStatus, setLoadingStatus] = useState('جاري التحقق من التحديثات...');
+  const [gameVersion, setGameVersion] = useState('1.0.0');
   const [isSearching, setIsSearching] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1741,6 +1745,62 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // Real update check and loading process
+    const startLoading = async () => {
+      try {
+        setLoadingStatus('جاري الاتصال بالسيرفر...');
+        setLoadingProgress(10);
+
+        // Fetch real config from server
+        const response = await fetch('/api/config');
+        if (!response.ok) throw new Error('Failed to fetch config');
+        const config = await response.json();
+        
+        const serverVersion = config.version || '1.0.0';
+        setGameVersion(serverVersion);
+        setLoadingProgress(30);
+        
+        // Check if we need to force update (reload)
+        const localVersion = localStorage.getItem('khamin_game_version');
+        if (localVersion && localVersion !== serverVersion) {
+          setLoadingStatus('تم اكتشاف تحديث جديد! جاري إعادة التحميل...');
+          setLoadingProgress(50);
+          localStorage.setItem('khamin_game_version', serverVersion);
+          await new Promise(r => setTimeout(r, 1000));
+          window.location.reload();
+          return;
+        }
+        localStorage.setItem('khamin_game_version', serverVersion);
+
+        setLoadingStatus('جاري التحقق من سلامة الملفات...');
+        for (let i = 35; i <= 60; i += 5) {
+          setLoadingProgress(i);
+          await new Promise(r => setTimeout(r, 100));
+        }
+
+        setLoadingStatus('جاري مزامنة البيانات...');
+        for (let i = 65; i <= 90; i += 5) {
+          setLoadingProgress(i);
+          await new Promise(r => setTimeout(r, 80));
+        }
+
+        setLoadingProgress(100);
+        setLoadingStatus('تم التحديث بنجاح!');
+        await new Promise(r => setTimeout(r, 800));
+        setIsAppLoading(false);
+      } catch (error) {
+        console.error("Loading failed:", error);
+        setLoadingStatus('فشل الاتصال بالسيرفر. جاري المحاولة مرة أخرى...');
+        await new Promise(r => setTimeout(r, 3000));
+        window.location.reload();
+      }
+    };
+
+    startLoading();
+  }, []);
+
+  useEffect(() => {
+    if (isAppLoading) return;
     const newSocket = connectSocket();
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -4193,6 +4253,81 @@ export default function App() {
       </AnimatePresence>
     </>
   );
+
+  if (isAppLoading) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center p-6 overflow-hidden">
+        {/* Background Accents */}
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent-blue/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent-yellow/10 rounded-full blur-3xl animate-pulse"></div>
+        
+        <div className="relative z-10 flex flex-col items-center max-w-md w-full">
+          {/* Logo Container */}
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, type: 'spring' }}
+            className="w-32 h-32 md:w-40 md:h-40 bg-white border-8 border-black rounded-[2rem] flex items-center justify-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-8 relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-accent-yellow/20 animate-pulse"></div>
+            <img src="/icon-3.png" alt="Logo" className="w-20 h-20 md:w-24 md:h-24 object-contain relative z-10" />
+          </motion.div>
+
+          {/* Game Name */}
+          <motion.h1 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-4xl md:text-5xl font-black text-main mb-12 uppercase tracking-tighter text-center"
+            style={{ textShadow: '4px 4px 0px #FFF, -1px -1px 0 #FFF, 1px -1px 0 #FFF, -1px 1px 0 #FFF, 1px 1px 0 #FFF' }}
+          >
+            خمن تخمينة
+          </motion.h1>
+
+          {/* Progress Section */}
+          <div className="w-full space-y-4">
+            <div className="flex justify-between items-end mb-1">
+              <span className="text-sm font-black text-black bg-white border-2 border-black px-3 py-1 rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                {loadingStatus}
+              </span>
+              <span className="text-2xl font-black text-accent-blue">
+                {loadingProgress}%
+              </span>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="h-8 w-full bg-gray-100 border-4 border-black rounded-2xl overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
+              <motion.div 
+                className="h-full bg-accent-blue relative"
+                initial={{ width: 0 }}
+                animate={{ width: `${loadingProgress}%` }}
+                transition={{ duration: 0.1 }}
+              >
+                {/* Shine effect */}
+                <div className="absolute inset-0 bg-white/20 skew-x-[-20deg] translate-x-[-100%] animate-[shimmer_2s_infinite]"></div>
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Footer Info */}
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12 text-xs font-bold text-gray-400 uppercase tracking-widest"
+          >
+            v{gameVersion} • All Systems Operational
+          </motion.p>
+        </div>
+
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes shimmer {
+            100% { transform: translateX(200%) skewX(-20deg); }
+          }
+        `}} />
+      </div>
+    );
+  }
 
   if (isPermanentBan || (banUntil && banUntil > Date.now())) {
     const isPermanent = isPermanentBan;
