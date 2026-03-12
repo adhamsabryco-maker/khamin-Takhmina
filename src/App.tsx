@@ -1368,16 +1368,33 @@ export default function App() {
   }, []);
 
   const clearPlayerData = () => {
-    localStorage.removeItem('khamin_player_serial');
-    localStorage.removeItem('khamin_player_name');
-    localStorage.removeItem('khamin_player_age');
-    localStorage.removeItem('khamin_player_avatar');
-    localStorage.removeItem('khamin_custom_avatar');
-    localStorage.removeItem('khamin_xp');
-    localStorage.removeItem('khamin_wins');
-    localStorage.removeItem('khamin_streak');
-    localStorage.removeItem('khamin_is_admin');
-    localStorage.removeItem('khamin_admin_email');
+    // Clear all localStorage items related to the game
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('khamin_')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    // Clear caches if any exist
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        for (let name of names) {
+          caches.delete(name);
+        }
+      });
+    }
+
+    // Clear all cookies
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+
+    // Reset all state variables
     setPlayerSerial('');
     setPlayerName('');
     setPlayerAge('');
@@ -1386,8 +1403,17 @@ export default function App() {
     setWins(0);
     setStreak(0);
     setReports(0);
+    setTokens(0);
+    setOwnedHelpers({});
+    setProPackageExpiry(null);
+    setDailyQuestStreak(1);
+    setLastDailyClaim(0);
+    setTokensEarnedThisWeek(0);
+    setLastTokenEarnedDay(0);
     setIsPermanentBan(false);
     setBanUntil(0);
+    setIsAdmin(false);
+    setAdminEmail('');
   };
 
   useEffect(() => {
