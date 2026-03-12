@@ -5469,8 +5469,13 @@ export default function App() {
                   onClick={handleRandomMatch}
                   className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-pointer touch-manipulation"
                 >
-                  <Users className="w-5 h-5 md:w-6 md:h-6" />
-                  بحث عشوائي
+                  <div className="flex items-center gap-1.5" dir="ltr">
+                    <Users className="w-5 h-5 md:w-6 md:h-6 text-[#00FF00] animate-pulse" />
+                    <span className="text-[#00FF00] text-lg md:text-xl font-black">
+                      {onlineCount > 100 ? '100+' : onlineCount}
+                    </span>
+                  </div>
+                  <span>بحث عشوائي</span>
                 </button>
 
                 <div className="flex flex-col box-game p-2 h-16">
