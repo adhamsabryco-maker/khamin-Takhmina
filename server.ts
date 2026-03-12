@@ -1455,6 +1455,7 @@ const app = express();
 
       if (!rooms.has(roomId)) {
         rooms.set(roomId, {
+          startTime: Date.now(),
           id: roomId,
           players: [],
           gameState: "waiting",
@@ -1463,6 +1464,7 @@ const app = express();
           isPaused: false,
           pausingPlayerId: null,
           quickGuessTimer: 0,
+          lastUpdates: null,
         });
       }
 
@@ -1500,7 +1502,8 @@ const app = express();
           streak: streak || 0,
           wins: actualWins,
           reports: actualReports,
-          reportedBy: actualReportedBy
+          reportedBy: actualReportedBy,
+          usedToken: false
         };
         room.players.push(player);
         
@@ -2453,7 +2456,10 @@ const app = express();
             if (isIntentional) {
               // Deduct token by ending game with opponent as winner
               // We do this BEFORE removing the player so endGame can process them as the loser
-              endGame(roomId, opponent ? opponent.name : "المنافس");
+              if (leavingPlayer.useToken && (Date.now() - room.startTime < 120000)) {
+                socket.to(roomId).emit("game_stopped", { reason: `تم معاقبة ${leavingPlayer.name} لانسحابه المبكر!` });
+              }
+              endGame(roomId, opponent ? opponent.name : "المنافس", true);
             } else {
               // Just stop game without deducting tokens if it's network issue
               socket.to(roomId).emit("game_stopped", { reason: `انقطع اتصال ${leavingPlayer.name}` });
@@ -2564,6 +2570,7 @@ const app = express();
     room.timer = 600; // 10 minutes
     room.startTime = Date.now();
     room.isPaused = false;
+    room.lastUpdates = null;
 
     io.to(roomId).emit("room_update", room);
     io.to(roomId).emit("game_started"); // Signal client to start initial cooldowns
@@ -2624,6 +2631,7 @@ const app = express();
       if (room.timer <= 0) {
         if (room.gameState === "discussion") {
           room.gameState = "guessing";
+          room.startTime = Date.now();
           room.timer = 60;
           io.to(roomId).emit("room_update", room);
           
@@ -2647,9 +2655,10 @@ const app = express();
     intervals.set(roomId, interval);
   }
 
-  function endGame(roomId: string, winnerName: string | null) {
+  function endGame(roomId: string, winnerName: string | null, isForced: boolean = false) {
     const room = rooms.get(roomId);
     if (room) {
+      if (room.gameState === "finished") return;
       if (intervals.has(roomId)) {
         clearInterval(intervals.get(roomId));
         intervals.delete(roomId);
@@ -2662,11 +2671,14 @@ const app = express();
 
       // Calculate updates
       const updates: any = {};
+      const duration = room.startTime ? Date.now() - room.startTime : 600000;
+      const scale = Math.min(1, duration / 600000);
+      const shouldScale = isForced || winnerName === null;
       
       if (winnerName === null) {
         // Draw
         room.players.forEach((p: any) => {
-          let drawXP = 20;
+          let drawXP = (p.useToken || !shouldScale) ? 20 : Math.floor(20 * scale);
           if (p.level >= 50 && !p.useToken) {
             drawXP = 0;
           }
@@ -2677,7 +2689,7 @@ const app = express();
         });
       } else {
         if (winner) {
-          let winnerXP = 100 + (winner.streak || 0) * 10;
+          let winnerXP = (winner.useToken || !shouldScale) ? (100 + (winner.streak || 0) * 10) : Math.floor((100 + (winner.streak || 0) * 10) * scale);
           
           // Level 50+ Logic:
           // If level >= 50 and NO token used -> NO XP gain
@@ -2694,10 +2706,10 @@ const app = express();
           winner.level = getLevel(winner.xp);
           winner.streak = (winner.streak || 0) + 1;
           winner.wins = (winner.wins || 0) + 1;
-          updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true, level: winner.level };
+          updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true, level: winner.level, useToken: winner.useToken };
         }
         if (loser) {
-          let loserXP = 20;
+          let loserXP = (loser.useToken || !shouldScale) ? 20 : Math.floor(20 * scale);
           
           // Level 50+ Logic for loser:
           // If level >= 50 and NO token used -> NO XP gain (even the small loser XP)
@@ -2708,9 +2720,12 @@ const app = express();
           loser.xp = (loser.xp || 0) + loserXP;
           loser.level = getLevel(loser.xp);
           loser.streak = 0;
-          updates[loser.id] = { xp: loserXP, streak: 0, wins: loser.wins || 0, won: false, level: loser.level };
+          updates[loser.id] = { xp: loserXP, streak: 0, wins: loser.wins || 0, won: false, level: loser.level, useToken: loser.useToken };
         }
       }
+
+      room.lastUpdates = updates;
+      io.to(roomId).emit("room_update", room);
 
       // Update allPlayers leaderboard
       room.players.forEach((p: any) => {
@@ -2725,7 +2740,6 @@ const app = express();
           // Always deduct if useToken was true, regardless of win/loss/level
           if (p.useToken && (player.tokens || 0) > 0) {
             player.tokens = (player.tokens || 0) - 1;
-            p.useToken = false; // Prevent deducting again
           }
           
           if (updates[p.id]) {
@@ -2743,7 +2757,6 @@ const app = express();
               
               if (p.useToken && (data.tokens || 0) > 0) {
                 data.tokens = (data.tokens || 0) - 1;
-                p.useToken = false;
               }
               
               if (updates[p.id]) {
