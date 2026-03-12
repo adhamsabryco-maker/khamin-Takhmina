@@ -258,6 +258,7 @@ interface Player {
   reportedBy?: any[];
   banCount?: number;
   isPermanentBan?: number;
+  ownedHelpers?: { [key: string]: number };
 }
 
 interface Room {
@@ -303,6 +304,15 @@ const EMOTES = ['😂', '😡', '👍', '👎', '🤔', '🤯', '🎉', '💔'];
 const POWER_UP_UNLOCKS = [10, 20, 30, 40, 50];
 const AVATAR_UNLOCKS = [10, 20, 30, 40, 50];
 
+const DAILY_QUEST_REWARDS = [50, 100, 150, 250, 300, 400, 500];
+const HELPER_ITEMS = [
+  { id: 'hint', name: 'تلميح', icon: '💡' },
+  { id: 'letter_reveal', name: 'كشف حرف', icon: '🔍' },
+  { id: 'time_freeze', name: 'تجميد الوقت', icon: '❄️' },
+  { id: 'word_count', name: 'عدد الكلمات', icon: '🔢' },
+  { id: 'spy_lens', name: 'عدسة التجسس', icon: '👁️' }
+];
+
 const enterFullscreen = () => {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(err => {
@@ -321,6 +331,14 @@ const TypingIndicator = () => (
     </div>
   </div>
 );
+
+const isSameDay = (d1: number, d2: number) => {
+  const date1 = new Date(d1);
+  const date2 = new Date(d2);
+  return date1.getFullYear() === date2.getFullYear() &&
+         date1.getMonth() === date2.getMonth() &&
+         date1.getDate() === date2.getDate();
+};
 
 export default function App() {
   const { customConfig, refreshConfig } = useAvatarConfig();
@@ -878,6 +896,28 @@ export default function App() {
     return 1;
   });
   const [showLevelInfo, setShowLevelInfo] = useState(false);
+  const [showDailyQuestModal, setShowDailyQuestModal] = useState(false);
+  const [dailyQuestStreak, setDailyQuestStreak] = useState(() => {
+    const saved = localStorage.getItem('khamin_daily_streak');
+    return saved ? parseInt(saved) : 1;
+  });
+  const [lastDailyClaim, setLastDailyClaim] = useState(() => {
+    const saved = localStorage.getItem('khamin_last_daily_claim');
+    return saved ? parseInt(saved) : 0;
+  });
+  const [hasSeenDailyToday, setHasSeenDailyToday] = useState(false);
+  const [ownedHelpers, setOwnedHelpers] = useState<{ [key: string]: number }>(() => {
+    const saved = localStorage.getItem('khamin_owned_helpers');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [usedHelpersInGame, setUsedHelpersInGame] = useState<string[]>([]);
+  const [dailyQuestRewardInfo, setDailyQuestRewardInfo] = useState<{ xp: number, helper?: string, tokens?: number } | null>(null);
+  const [isChestOpening, setIsChestOpening] = useState(false);
+  const [isCycling, setIsCycling] = useState(false);
+  const [cyclingReward, setCyclingReward] = useState<any>(null);
+  const [chestReward, setChestReward] = useState<any>(null);
+  const [isNewDayNotification, setIsNewDayNotification] = useState(false);
+  const [appOpenDate] = useState(Date.now());
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
@@ -906,6 +946,173 @@ export default function App() {
   const handleCloseInstallModal = () => {
     setShowInstallModal(false);
     localStorage.setItem('khamin_install_dismissed', 'true');
+  };
+
+  useEffect(() => {
+    localStorage.setItem('khamin_owned_helpers', JSON.stringify(ownedHelpers));
+  }, [ownedHelpers]);
+
+  useEffect(() => {
+    const checkDay = () => {
+      const now = Date.now();
+      if (lastDailyClaim !== 0 && !isSameDay(now, lastDailyClaim) && !isSameDay(now, appOpenDate)) {
+         setIsNewDayNotification(true);
+      }
+    };
+    const interval = setInterval(checkDay, 60000);
+    return () => clearInterval(interval);
+  }, [lastDailyClaim, appOpenDate]);
+
+  useEffect(() => {
+    if (!joined && !hasSeenDailyToday && playerSerial) {
+      const now = Date.now();
+      const lastClaim = lastDailyClaim;
+      
+      const isSameDay = (d1: number, d2: number) => {
+        const date1 = new Date(d1);
+        const date2 = new Date(d2);
+        return date1.getFullYear() === date2.getFullYear() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getDate() === date2.getDate();
+      };
+
+      if (lastClaim === 0) {
+        setShowDailyQuestModal(true);
+        setHasSeenDailyToday(true);
+      } else if (!isSameDay(now, lastClaim)) {
+        const lastDate = new Date(lastClaim);
+        const todayDate = new Date(now);
+        
+        // Normalize to start of day for comparison
+        const lastDayStart = new Date(lastDate.getFullYear(), lastDate.getMonth(), lastDate.getDate()).getTime();
+        const todayStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate()).getTime();
+        const oneDay = 24 * 60 * 60 * 1000;
+
+        if (todayStart - lastDayStart > oneDay) {
+          // Missed a day, reset streak
+          setDailyQuestStreak(1);
+          localStorage.setItem('khamin_daily_streak', '1');
+        }
+        setShowDailyQuestModal(true);
+        setHasSeenDailyToday(true);
+      }
+    }
+  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial]);
+
+  const handleClaimDailyQuest = () => {
+    setIsChestOpening(true);
+    playSound('clickOpen');
+  };
+
+  const startCycling = () => {
+    setIsCycling(true);
+    
+    const now = Date.now();
+    const currentDayIndex = dailyQuestStreak - 1;
+    const xpReward = DAILY_QUEST_REWARDS[currentDayIndex];
+    
+    // Determine rewards
+    let helperReward = null;
+    let tokenReward = 0;
+
+    // Helper items for everyone
+    const randomHelper = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
+    helperReward = randomHelper.id;
+
+    // Tokens for level 50+
+    if (getLevel(xp) >= 50) {
+      if (Math.random() > 0.5) {
+        tokenReward = Math.floor(Math.random() * 10) + 5; // 5-15 tokens
+      }
+    }
+
+    // Cycle animation
+    let cycleCount = 0;
+    const interval = setInterval(() => {
+      const randomItem = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
+      setCyclingReward(randomItem);
+      cycleCount++;
+      if (cycleCount > 10) {
+        clearInterval(interval);
+        setCyclingReward(randomHelper);
+        setChestReward({ xp: xpReward, helper: randomHelper, tokens: tokenReward });
+        setIsCycling(false);
+        
+        // Apply rewards
+        setXp(prev => prev + xpReward);
+        if (tokenReward > 0) {
+          setTokens(prev => prev + tokenReward);
+        }
+        setOwnedHelpers(prev => ({
+          ...prev,
+          [randomHelper.id]: (prev[randomHelper.id] || 0) + 1
+        }));
+
+        // Update streak and last claim
+        const nextStreak = dailyQuestStreak >= 7 ? 1 : dailyQuestStreak + 1;
+        setDailyQuestStreak(nextStreak);
+        setLastDailyClaim(now);
+        localStorage.setItem('khamin_daily_streak', nextStreak.toString());
+        localStorage.setItem('khamin_last_daily_claim', now.toString());
+
+        // Sync with server
+        if (socket) {
+          const newOwned = {
+            ...ownedHelpers,
+            [randomHelper.id]: (ownedHelpers[randomHelper.id] || 0) + 1
+          };
+          socket.emit('update_player_data', { 
+            serial: playerSerial, 
+            xp: xp + xpReward, 
+            tokens: tokens + tokenReward,
+            ownedHelpers: newOwned
+          });
+        }
+      }
+    }, 200);
+  };
+
+  const useHelper = (helperId: string) => {
+    if (!room || room.gameState === 'finished') return;
+    if (usedHelpersInGame.includes(helperId)) return;
+    
+    const count = ownedHelpers[helperId] || 0;
+    if (count <= 0) {
+      setError('لا تملك هذا العنصر! 🎁');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
+    playSound('clickOpen');
+    
+    // Optimistically update UI
+    setUsedHelpersInGame(prev => [...prev, helperId]);
+    setOwnedHelpers(prev => {
+      const newOwned = { ...prev, [helperId]: Math.max(0, (prev[helperId] || 0) - 1) };
+      localStorage.setItem('khamin_owned_helpers', JSON.stringify(newOwned));
+      
+      // Sync with server
+      socket?.emit('update_player_data', {
+        ownedHelpers: newOwned
+      });
+      
+      return newOwned;
+    });
+
+    // Emit to server for effect
+    socket?.emit('use_helper', { roomId: room.id, helperId });
+  };
+
+  const toggleDailyQuests = () => {
+    if (showDailyQuestModal) {
+      playSound('clickClose');
+      setShowDailyQuestModal(false);
+    } else {
+      playSound('clickOpen');
+      closeAllModals();
+      setShowDailyQuestModal(true);
+      setIsNewDayNotification(false);
+    }
   };
   
   const closeAllModals = () => {
@@ -1473,9 +1680,29 @@ export default function App() {
       setIsMutedByOpponent(isMuted);
     });
 
+    newSocket.on('helper_used', ({ playerId, helperId }) => {
+      const player = roomRef.current?.players.find((p: any) => p.id === playerId);
+      if (player) {
+        const helper = HELPER_ITEMS.find(h => h.id === helperId);
+        setError(`استخدم ${player.name} مساعدة: ${helper?.name || helperId} 🎁`);
+        setTimeout(() => setError(''), 3000);
+      }
+    });
+
+    newSocket.on('helper_effect', ({ helperId, data }) => {
+      if (data.message) {
+        showAlert(data.message, 'مساعدة المهام');
+      }
+      
+      if (helperId === 'reveal_letter' && data.letter) {
+        setHint(`المساعدة: الحرف التالي هو "${data.letter}"`);
+      }
+    });
+
     newSocket.on('room_update', (updatedRoom: Room) => {
-      if (updatedRoom.gameState === 'waiting' && roomRef.current?.gameState === 'finished') {
+      if (updatedRoom.gameState === 'discussion' && roomRef.current?.gameState === 'waiting') {
         setChatHistory([]);
+        setUsedHelpersInGame([]);
       }
       
       if (roomRef.current?.players.length === 1 && updatedRoom.players.length === 2) {
@@ -1493,6 +1720,13 @@ export default function App() {
 
       setRoom(updatedRoom);
       setJoined(true);
+
+      // Sync my data from server
+      const me = updatedRoom.players.find(p => p.id === newSocket.id);
+      if (me && me.ownedHelpers) {
+        setOwnedHelpers(me.ownedHelpers);
+        localStorage.setItem('khamin_owned_helpers', JSON.stringify(me.ownedHelpers));
+      }
     });
 
     newSocket.on('theme_updated', (newTheme: ThemeConfig) => {
@@ -2178,8 +2412,171 @@ export default function App() {
                           room.players[0].selectedCategory === room.players[1].selectedCategory &&
                           room.players[0].selectedCategory !== null;
 
+  const isSameDay = (d1: number, d2: number) => {
+    const date1 = new Date(d1);
+    const date2 = new Date(d2);
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
+  };
+
+  const renderDailyQuestModal = () => (
+    <AnimatePresence>
+      {showDailyQuestModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-md z-[6000] flex items-center justify-center p-4"
+          onClick={() => setShowDailyQuestModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh] border-4 border-black"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 text-center relative shrink-0 bg-accent-yellow border-b-4 border-black">
+              <button 
+                onClick={() => { playSound('clickClose'); setShowDailyQuestModal(false); }}
+                className="absolute top-4 right-4 w-8 h-8 bg-black/10 hover:bg-black/20 rounded-full flex items-center justify-center text-black transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <Sparkles className="w-8 h-8 text-accent-blue" />
+              </div>
+              <h2 className="text-2xl font-black text-black mb-1">المهام اليومية</h2>
+              <p className="text-black/60 text-sm font-bold">ادخل كل يوم واستلم هداياك!</p>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="grid grid-cols-4 gap-3 mb-6">
+                {DAILY_QUEST_REWARDS.map((reward, index) => {
+                  const day = index + 1;
+                  const isClaimed = day < dailyQuestStreak && lastDailyClaim !== 0;
+                  const isCurrent = day === dailyQuestStreak;
+                  const canClaim = isCurrent && (lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim));
+                  
+                  return (
+                    <div 
+                      key={day}
+                      className={`relative flex flex-col items-center p-2 rounded-2xl border-4 transition-all ${
+                        isClaimed ? 'bg-gray-100 border-gray-300 opacity-50' :
+                        isCurrent ? 'bg-accent-yellow-light border-accent-yellow scale-105 shadow-lg' :
+                        'bg-white border-black'
+                      } ${index === 6 ? 'col-span-2' : ''}`}
+                    >
+                      <div className="text-xs font-black mb-1">اليوم {day}</div>
+                      <div className="text-lg mb-1">🎁</div>
+                      <div className="text-[10px] font-bold text-accent-blue">{reward} XP</div>
+                      {isClaimed && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 rounded-xl">
+                          <Check className="w-8 h-8 text-accent-green drop-shadow-md" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {dailyQuestStreak <= 7 && (
+                <button
+                  disabled={isChestOpening || (lastDailyClaim !== 0 && isSameDay(Date.now(), lastDailyClaim))}
+                  onClick={handleClaimDailyQuest}
+                  className={`w-full py-4 rounded-2xl font-black text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all border-4 border-black ${
+                    (lastDailyClaim !== 0 && isSameDay(Date.now(), lastDailyClaim))
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-accent-green text-white hover:-translate-y-1 active:translate-y-0'
+                  }`}
+                >
+                  {isChestOpening ? 'جاري الفتح...' : 
+                   (lastDailyClaim !== 0 && isSameDay(Date.now(), lastDailyClaim)) ? 'تم الاستلام اليوم' : 'استلم جائزة اليوم! 🎁'}
+                </button>
+              )}
+            </div>
+
+            {/* Chest Opening Animation Overlay */}
+            <AnimatePresence>
+              {isChestOpening && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-black/60 backdrop-blur-md z-[7000] flex flex-col items-center justify-center p-6 text-center"
+                >
+                  {!chestReward ? (
+                    <div className="space-y-6">
+                      {!isCycling ? (
+                        <motion.div
+                          animate={{ 
+                            rotate: [0, -10, 10, -10, 10, 0],
+                            scale: [1, 1.1, 1]
+                          }}
+                          transition={{ repeat: Infinity, duration: 0.5 }}
+                          className="text-8xl cursor-pointer"
+                          onClick={startCycling}
+                        >
+                          📦
+                        </motion.div>
+                      ) : (
+                        <div className="text-8xl">
+                          {cyclingReward ? cyclingReward.icon : '❓'}
+                        </div>
+                      )}
+                      <h3 className="text-2xl font-black text-white">
+                        {isCycling ? 'جاري اختيار الجائزة...' : 'اضغط على الصندوق لفتحه!'}
+                      </h3>
+                    </div>
+                  ) : (
+                    <motion.div
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="space-y-6"
+                    >
+                      <div className="text-8xl mb-4 animate-bounce">✨</div>
+                      <h3 className="text-3xl font-black text-white mb-2">مبروك!</h3>
+                      <div className="space-y-3">
+                        <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white">
+                          <div className="text-xl font-black">+{chestReward.xp} XP</div>
+                        </div>
+                        {chestReward.helper && (
+                          <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white flex items-center justify-center gap-3">
+                            <span className="text-2xl">{chestReward.helper.icon}</span>
+                            <div className="text-xl font-black">{chestReward.helper.name}</div>
+                          </div>
+                        )}
+                        {chestReward.tokens > 0 && (
+                          <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white">
+                            <div className="text-xl font-black">+{chestReward.tokens} Tokens</div>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsChestOpening(false);
+                          setChestReward(null);
+                          setShowDailyQuestModal(false);
+                        }}
+                        className="mt-6 px-8 py-3 bg-white text-accent-blue rounded-xl font-black text-lg shadow-lg hover:bg-gray-100 transition-colors"
+                      >
+                        رائع!
+                      </button>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   const renderModals = () => (
     <>
+      {renderDailyQuestModal()}
       {/* Custom Alert Modal */}
       <AnimatePresence>
         {customAlert.show && (
@@ -4763,6 +5160,21 @@ export default function App() {
           </div>
           
           <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
+            {/* Daily Quests Button */}
+            <button 
+              onClick={toggleDailyQuests}
+              className="w-9 h-9 md:w-10 md:h-10 bg-yellow-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-yellow-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              title="المهام اليومية"
+            >
+              <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
+              {isNewDayNotification && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+                </span>
+              )}
+            </button>
+
             {/* Info Button */}
             <button 
               onClick={toggleLevelInfo}
@@ -5985,6 +6397,45 @@ export default function App() {
               </button>
             );
           })}
+          
+          {/* Daily Quest Helpers */}
+          {Object.entries(ownedHelpers as { [key: string]: number }).some(([_, count]) => count > 0) && (
+            <div className="flex flex-col gap-3 mt-4 pt-4 border-t-2 border-black/10">
+              <div className="text-[10px] font-black text-black/40 text-center uppercase tracking-wider">مساعدات المهام</div>
+              <div className="flex flex-col gap-3">
+                {HELPER_ITEMS.map((helper) => {
+                  const count = ownedHelpers[helper.id] || 0;
+                  if (count <= 0) return null;
+                  const isUsed = usedHelpersInGame.includes(helper.id);
+                  
+                  return (
+                    <button
+                      key={helper.id}
+                      onClick={() => useHelper(helper.id)}
+                      disabled={isUsed || room.gameState === 'finished'}
+                      className={`relative w-10 h-10 md:w-16 md:h-16 rounded-2xl bg-white flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-4 border-black active:translate-y-1 transition-all disabled:opacity-50 disabled:grayscale group`}
+                      title={helper.name}
+                    >
+                      <span className="text-xl md:text-3xl">{helper.icon}</span>
+                      <div className="absolute -top-2 -right-2 bg-accent-blue text-white text-[10px] font-black px-1.5 py-0.5 rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        {count}
+                      </div>
+                      {isUsed && (
+                        <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center">
+                          <Check className="w-6 h-6 text-accent-green drop-shadow-md" />
+                        </div>
+                      )}
+                      
+                      {/* Tooltip */}
+                      <div className="absolute left-full ml-3 px-3 py-2 bg-gray-800 text-white text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg text-right whitespace-nowrap">
+                        {helper.name}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
