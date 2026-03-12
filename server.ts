@@ -1492,12 +1492,22 @@ const app = express();
     });
     
     socket.on("delete_account", ({ playerSerial }, callback) => {
-      // Always try to delete from DB
       try {
+        // Delete related reports
+        db.prepare('DELETE FROM reports WHERE reporterSerial = ? OR reportedSerial = ?').run(playerSerial, playerSerial);
+        
+        // Delete player
         db.prepare('DELETE FROM players WHERE serial = ?').run(playerSerial);
         allPlayers.delete(playerSerial);
+        
         io.emit("top_players_update", getTopPlayers(true));
         if (callback) callback({ success: true });
+        
+        // Disconnect socket to trigger cleanup (remove from queues, rooms, etc.)
+        // Use a small timeout to ensure the callback reaches the client first
+        setTimeout(() => {
+          socket.disconnect(true);
+        }, 500);
       } catch (err) {
         console.error("Failed to delete player from DB:", err);
         if (callback) callback({ success: false, error: "Database error" });
