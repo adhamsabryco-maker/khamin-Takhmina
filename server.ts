@@ -332,7 +332,8 @@ const app = express();
     isAdmin?: boolean,
     tokens?: number,
     adsWatchedToday?: number,
-    lastAdWatchDate?: string
+    lastAdWatchDate?: string,
+    ownedHelpers?: { [key: string]: number }
   }>();
 
   let dbPath = process.env.DB_PATH || path.join(__dirname, 'players.db');
@@ -415,6 +416,7 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN tokens INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN adsWatchedToday INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -491,8 +493,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers)
   `);
 
   function savePlayerData(serial: string) {
@@ -508,7 +510,8 @@ const app = express();
         isAdmin: player.isAdmin ? 1 : 0,
         tokens: player.tokens || 0,
         adsWatchedToday: player.adsWatchedToday || 0,
-        lastAdWatchDate: player.lastAdWatchDate || null
+        lastAdWatchDate: player.lastAdWatchDate || null,
+        ownedHelpers: JSON.stringify(player.ownedHelpers || {})
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -526,7 +529,8 @@ const app = express();
         isAdmin: player.isAdmin ? 1 : 0,
         tokens: player.tokens || 0,
         adsWatchedToday: player.adsWatchedToday || 0,
-        lastAdWatchDate: player.lastAdWatchDate || null
+        lastAdWatchDate: player.lastAdWatchDate || null,
+        ownedHelpers: JSON.stringify(player.ownedHelpers || {})
       });
     }
   });
@@ -569,7 +573,8 @@ const app = express();
           isAdmin: row.isAdmin === 1,
           tokens: row.tokens || 0,
           adsWatchedToday: row.adsWatchedToday || 0,
-          lastAdWatchDate: row.lastAdWatchDate || null
+          lastAdWatchDate: row.lastAdWatchDate || null,
+          ownedHelpers: JSON.parse(row.ownedHelpers || '{}')
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -1399,6 +1404,63 @@ const app = express();
       });
     });
 
+    socket.on("update_player_data", ({ serial, ...updates }) => {
+      const player = allPlayers.get(serial);
+      if (player) {
+        Object.assign(player, updates);
+        savePlayerData(serial);
+        socket.emit("player_data_update", player);
+        
+        // Update in active rooms
+        for (const room of rooms.values()) {
+          const roomPlayer = room.players.find((p: any) => p.serial === serial);
+          if (roomPlayer) {
+            Object.assign(roomPlayer, updates);
+            // Don't emit room_update here to avoid spam, 
+            // but the data is updated for next room_update
+          }
+        }
+      }
+    });
+
+    socket.on("use_helper", ({ roomId, helperId }) => {
+      const room = rooms.get(roomId);
+      if (!room || room.gameState === 'finished') return;
+
+      const player = room.players.find((p: any) => p.id === socket.id);
+      if (!player) return;
+
+      // Broadcast to room that a helper was used
+      io.to(roomId).emit("helper_used", { playerId: socket.id, helperId });
+
+      // Specific logic for helpers
+      if (helperId === 'reveal_letter') {
+        const targetName = player.targetImage.name;
+        // Reveal a random letter that hasn't been revealed by hints yet
+        const revealedCount = player.hintCount || 0;
+        const letterToReveal = targetName[revealedCount] || targetName[0];
+        socket.emit("helper_effect", { 
+          helperId, 
+          data: { 
+            message: `المساعدة: الحرف التالي هو "${letterToReveal}"`,
+            letter: letterToReveal
+          } 
+        });
+      } else if (helperId === 'extra_time') {
+        room.timer = (room.timer || 0) + 30;
+        io.to(roomId).emit("timer_update", room.timer);
+        socket.emit("helper_effect", { 
+          helperId, 
+          data: { message: "تم إضافة 30 ثانية للوقت!" } 
+        });
+      } else if (helperId === 'remove_wrong') {
+        socket.emit("helper_effect", { 
+          helperId, 
+          data: { message: "تم تسهيل التخمين لك!" } 
+        });
+      }
+    });
+
     socket.on("update_profile", ({ playerSerial, playerName, avatar, gender }, callback) => {
       const player = allPlayers.get(playerSerial);
       if (player) {
@@ -1524,7 +1586,8 @@ const app = express();
           wins: actualWins,
           reports: actualReports,
           reportedBy: actualReportedBy,
-          usedToken: false
+          usedToken: false,
+          ownedHelpers: serverPlayer.ownedHelpers || {}
         };
         room.players.push(player);
         
@@ -1597,6 +1660,7 @@ const app = express();
         serial: serial,
         wins: actualWins,
         useToken: !!useToken,
+        ownedHelpers: bannedPlayer.ownedHelpers || {},
         skipped: new Map(), // Initialize skipped map (playerId -> timestamp)
         joinedAt: Date.now(),
         status: 'searching'
@@ -1701,7 +1765,8 @@ const app = express();
               wins: match.p1.wins || 0,
               reports: p1ServerPlayer ? p1ServerPlayer.reports : 0,
               reportedBy: p1ServerPlayer ? p1ServerPlayer.reportedBy : [],
-              useToken: match.p1.useToken
+              useToken: match.p1.useToken,
+              ownedHelpers: match.p1.ownedHelpers || {}
             },
             {
               id: match.p2.socket.id,
@@ -1730,7 +1795,8 @@ const app = express();
               reportedBy: p2ServerPlayer ? p2ServerPlayer.reportedBy : [],
               isBot: match.p2.isBot,
               persona: match.p2.persona,
-              useToken: match.p2.useToken
+              useToken: match.p2.useToken,
+              ownedHelpers: match.p2.ownedHelpers || {}
             }
           ],
           gameState: "waiting",
