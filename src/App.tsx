@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, animate } from 'motion/react';
 import { 
   Upload,
   Trash2,
@@ -48,6 +48,20 @@ import {
   VolumeX,
   Music
 } from 'lucide-react';
+
+const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
+  const [displayXP, setDisplayXP] = useState(0);
+
+  useEffect(() => {
+    const controls = animate(0, finalXP, {
+      duration: 2,
+      onUpdate: (value) => setDisplayXP(Math.round(value))
+    });
+    return () => controls.stop();
+  }, [finalXP]);
+
+  return <span>XP: {displayXP}</span>;
+};
 import confetti from 'canvas-confetti';
 import { AdminCustomization } from './components/AdminCustomization';
 import { AvatarDisplay } from './components/AvatarDisplay';
@@ -1716,13 +1730,10 @@ export default function App() {
 
     newSocket.on('game_stopped', ({ reason }) => {
       setError(reason);
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
     });
 
     newSocket.on('opponent_left_lobby', () => {
-      window.location.reload();
+      // Do nothing, let the user decide to leave
     });
 
     newSocket.on('error', (msg) => setError(msg));
@@ -6005,44 +6016,118 @@ export default function App() {
             className="fixed inset-0 bg-black/80 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
           >
             <motion.div 
-              initial={{ scale: 0.8, y: 50, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              transition={{ type: 'spring', damping: 15 }}
-              className="relative max-w-xs w-full bg-modal-theme rounded-[32px] shadow-2xl p-4 text-center border-4 border-white"
+              className="relative max-w-sm w-full h-full flex flex-col items-center justify-center p-4"
             >
               {room.winnerId === me?.id ? (
-                <div className="mb-4">
-                  <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-bounce">
-                    <Trophy className="w-8 h-8 text-white" />
-                  </div>
-                  <h2 className="text-4xl font-black text-green-500 mb-2 drop-shadow-sm">مبروك! فزت</h2>
-                  <p className="text-brown-muted font-bold text-sm">أداء أسطوري يا بطل! 🏆</p>
+                <div className="flex flex-col items-center mb-6">
+                  <motion.div 
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", damping: 12, stiffness: 100 }}
+                    className="mb-4"
+                  >
+                    <Trophy className="w-24 h-24 text-yellow-400" />
+                  </motion.div>
+                  <motion.h2 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-4xl font-black text-yellow-400 mb-1"
+                  >
+                    You Win!
+                  </motion.h2>
+                  <motion.p 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-white font-bold text-lg mb-4"
+                  >
+                    أداء أسطوري يا بطل! 💪
+                  </motion.p>
+                  {me && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.4 }}
+                      className="text-3xl font-black text-white"
+                    >
+                      {me.level >= 50 && !room.lastUpdates?.[me.id]?.useToken ? (
+                        <span>XP: 0 <span className="text-xs block">تحتاج Tokens لزيادة الـ XP</span></span>
+                      ) : (
+                        <XPAnimatedCounter finalXP={room.lastUpdates?.[me.id]?.xp || 0} />
+                      )}
+                    </motion.div>
+                  )}
                 </div>
               ) : (
-                <div className="mb-4">
-                  <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    <span className="text-3xl">😢</span>
-                  </div>
-                  <h2 className="text-4xl font-black text-red-500 mb-2 drop-shadow-sm">للأسف! خسرت</h2>
-                  <p className="text-brown-muted font-bold text-sm">حظ أوفر في المرة القادمة</p>
+                <div className="flex flex-col items-center mb-6">
+                  <motion.div 
+                    initial={{ scale: 0, rotate: 180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", damping: 12, stiffness: 100 }}
+                    className="mb-4 text-7xl"
+                  >
+                    😢
+                  </motion.div>
+                  <motion.h2 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-4xl font-black text-red-500 mb-1"
+                  >
+                    You Lose!
+                  </motion.h2>
+                  <motion.p 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-white font-bold text-lg mb-4"
+                  >
+                    حظ أوفر في المرة القادمة
+                  </motion.p>
+                  {me && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.4 }}
+                      className="text-3xl font-black text-white"
+                    >
+                      {me.level >= 50 && !room.lastUpdates?.[me.id]?.useToken ? (
+                        <span>XP: 0 <span className="text-xs block">تحتاج Tokens لزيادة الـ XP</span></span>
+                      ) : (
+                        <XPAnimatedCounter finalXP={room.lastUpdates?.[me.id]?.xp || 0} />
+                      )}
+                    </motion.div>
+                  )}
                 </div>
               )}
               
-              <div className="flex flex-col items-center mb-4 box-game p-1">
-                <div className="w-32 h-32 rounded-2xl overflow-hidden bg-white shadow-inner border-4 border-black">
+              <motion.div 
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                className="flex flex-col items-center mb-6"
+              >
+                <div className="w-28 h-28 rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
                   <img src={me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
                 </div>
-                <div className="font-black text-lg text-brown-dark mt-1">{me?.targetImage?.name}</div>
-              </div>
+                <div className="font-black text-xl text-white mt-2">{me?.targetImage?.name}</div>
+              </motion.div>
 
-              <div className="flex flex-col gap-2">
-                <button 
-                  onClick={() => socket?.emit('play_again', { roomId })}
-                  disabled={room.players.length < 2}
-                  className={`w-full btn-game py-3 text-base ${room.players.length < 2 ? 'bg-gray-400 border-gray-500 cursor-not-allowed text-white' : 'btn-success'}`}
-                >
-                  {room.players.length < 2 ? 'المنافس غادر' : 'العب تاني مع المنافس'}
-                </button>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="w-full px-4 flex flex-col gap-2"
+              >
+                {room.players.length >= 2 && (
+                  <button 
+                    onClick={() => socket?.emit('play_again', { roomId })}
+                    className="w-full btn-game py-3 text-base btn-success"
+                  >
+                    العب تاني مع المنافس
+                  </button>
+                )}
                 <button 
                   onClick={() => {
                     handleLeaveGame();
@@ -6055,7 +6140,7 @@ export default function App() {
                 >
                   الرئيسية
                 </button>
-              </div>
+              </motion.div>
             </motion.div>
           </motion.div>
         )}
