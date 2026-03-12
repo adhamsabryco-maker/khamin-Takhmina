@@ -46,7 +46,8 @@ import {
   Copy,
   Volume2,
   VolumeX,
-  Music
+  Music,
+  Tv
 } from 'lucide-react';
 
 const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
@@ -6397,8 +6398,14 @@ export default function App() {
                 )}
                 
                 {isReady && !isLocked && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-accent-green rounded-full border-2 border-white flex items-center justify-center">
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-accent-green rounded-full border-2 border-white flex items-center justify-center z-10">
                     <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
+                  </div>
+                )}
+                
+                {!isLocked && !hasProPackage && card.id !== 'quick_guess' && !isReady && (
+                  <div className="absolute -top-1.5 -left-1.5 z-10 text-lg md:text-xl drop-shadow-md" title="مشاهدة إعلان">
+                    📺
                   </div>
                 )}
                 
