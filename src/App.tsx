@@ -5377,7 +5377,8 @@ export default function App() {
                     <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1 z-20 -mt-8 md:-mt-12">
                       <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
                         <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-[60]" />
-                        <div className="w-16 h-16 md:w-20 md:h-20">
+                        <div className="fire-glow-effect"></div>
+                        <div className="w-16 h-16 md:w-20 md:h-20 relative z-10">
                           {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level || getLevel(topPlayers[0].xp || 0))}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-[60] animate-bounce">1</div>
