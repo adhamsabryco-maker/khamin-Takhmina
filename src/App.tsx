@@ -307,10 +307,10 @@ const AVATAR_UNLOCKS = [10, 20, 30, 40, 50];
 
 const DAILY_QUEST_REWARDS = [50, 100, 150, 250, 300, 400, 500];
 const HELPER_ITEMS = [
-  { id: 'hint', name: 'تلميح', icon: '💡' },
-  { id: 'letter_reveal', name: 'كاشف الحروف', icon: '🔍' },
-  { id: 'time_freeze', name: 'تجميد الوقت', icon: '❄️' },
+  { id: 'word_length', name: 'كاشف الحروف', icon: '📝' },
   { id: 'word_count', name: 'عدد الكلمات', icon: '🔢' },
+  { id: 'time_freeze', name: 'تجميد الوقت', icon: '❄️' },
+  { id: 'hint', name: 'تلميح', icon: '💡' },
   { id: 'spy_lens', name: 'الجاسوس', icon: '👁️' }
 ];
 
@@ -921,7 +921,6 @@ export default function App() {
     const saved = localStorage.getItem('khamin_owned_helpers');
     return saved ? JSON.parse(saved) : {};
   });
-  const [usedHelpersInGame, setUsedHelpersInGame] = useState<string[]>([]);
   const [dailyQuestRewardInfo, setDailyQuestRewardInfo] = useState<{ xp: number, helper?: string, tokens?: number } | null>(null);
   const [isChestOpening, setIsChestOpening] = useState(false);
   const [isCycling, setIsCycling] = useState(false);
@@ -1104,37 +1103,6 @@ export default function App() {
         }
       }
     }, 100);
-  };
-
-  const useHelper = (helperId: string) => {
-    if (!room || room.gameState === 'finished') return;
-    if (usedHelpersInGame.includes(helperId)) return;
-    
-    const count = ownedHelpers[helperId] || 0;
-    if (count <= 0) {
-      setError('لا تملك هذا العنصر! 🎁');
-      setTimeout(() => setError(''), 3000);
-      return;
-    }
-
-    playSound('clickOpen');
-    
-    // Optimistically update UI
-    setUsedHelpersInGame(prev => [...prev, helperId]);
-    setOwnedHelpers(prev => {
-      const newOwned = { ...prev, [helperId]: Math.max(0, (prev[helperId] || 0) - 1) };
-      localStorage.setItem('khamin_owned_helpers', JSON.stringify(newOwned));
-      
-      // Sync with server
-      socket?.emit('update_player_data', {
-        ownedHelpers: newOwned
-      });
-      
-      return newOwned;
-    });
-
-    // Emit to server for effect
-    socket?.emit('use_helper', { roomId: room.id, helperId });
   };
 
   const toggleDailyQuests = () => {
@@ -1736,7 +1704,6 @@ export default function App() {
     newSocket.on('room_update', (updatedRoom: Room) => {
       if (updatedRoom.gameState === 'discussion' && roomRef.current?.gameState === 'waiting') {
         setChatHistory([]);
-        setUsedHelpersInGame([]);
       }
       
       if (roomRef.current?.players.length === 1 && updatedRoom.players.length === 2) {
@@ -2412,14 +2379,26 @@ export default function App() {
     if (cooldowns[type] > 0) return;
     playSound('clickOpen');
     
+    const hasFreeUse = (ownedHelpers[type] || 0) > 0;
+
     // Quick guess doesn't require an ad
-    if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage) {
+    if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage || hasFreeUse) {
       // Actually use the card
       socket?.emit('use_card', { roomId, cardType: type });
       
       // Remove from ready
-      if (type !== 'quick_guess') {
+      if (type !== 'quick_guess' && readyPowerUps.includes(type)) {
         setReadyPowerUps(prev => prev.filter(p => p !== type));
+      }
+      
+      // Decrement free use if they used it
+      if (hasFreeUse) {
+        setOwnedHelpers(prev => {
+          const newOwned = { ...prev, [type]: Math.max(0, (prev[type] || 0) - 1) };
+          localStorage.setItem('khamin_owned_helpers', JSON.stringify(newOwned));
+          socket?.emit('update_player_data', { ownedHelpers: newOwned });
+          return newOwned;
+        });
       }
       
       // Hint has 150s cooldown (2.5m)
@@ -6360,7 +6339,9 @@ export default function App() {
               level: 50
             }
           ].filter(card => !card.hide).map((card) => {
-            const isLocked = getLevel(me?.xp || xp) < card.level;
+            const isLevelLocked = getLevel(me?.xp || xp) < card.level;
+            const hasFreeUse = (ownedHelpers[card.id] || 0) > 0;
+            const isLocked = isLevelLocked && !hasFreeUse;
             
             // Calculate dynamic cooldown for quick_guess based on room.timer
             let cardCooldown = cooldowns[card.id] || 0;
@@ -6385,7 +6366,7 @@ export default function App() {
                   }
                 }}
                 disabled={isCardDisabled && !isLocked}
-                className={`relative w-10 h-10 md:w-16 md:h-16 rounded-full ${card.bg} flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-80 disabled:grayscale disabled:cursor-not-allowed group ${isReady ? 'ring-4 ring-accent-green ring-offset-2 animate-pulse' : ''}`}
+                className={`relative w-10 h-10 md:w-16 md:h-16 rounded-full ${card.bg} flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-80 disabled:grayscale disabled:cursor-not-allowed group ${isReady ? 'ring-4 ring-accent-green ring-offset-2 animate-pulse' : ''} ${hasFreeUse && isLevelLocked ? 'ring-4 ring-yellow-400 animate-pulse' : ''}`}
                 title={card.name}
               >
                 {isLocked ? (
@@ -6402,8 +6383,14 @@ export default function App() {
                     <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
                   </div>
                 )}
+
+                {hasFreeUse && !isLocked && (
+                  <div className="absolute -top-2 -right-2 bg-accent-blue text-white text-[10px] font-black px-1.5 py-0.5 rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] z-10">
+                    {ownedHelpers[card.id]}
+                  </div>
+                )}
                 
-                {!isLocked && !hasProPackage && card.id !== 'quick_guess' && !isReady && (
+                {!isLocked && !hasProPackage && card.id !== 'quick_guess' && !isReady && !hasFreeUse && (
                   <div className="absolute -top-1.5 -left-1.5 z-10 text-lg md:text-xl drop-shadow-md" title="مشاهدة إعلان">
                     📺
                   </div>
