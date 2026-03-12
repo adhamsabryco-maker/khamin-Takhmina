@@ -142,12 +142,23 @@ const app = express();
     }
   });
 
-  let configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false, version: '1.0.0' };
+  const APP_VERSION_FILE = path.join(__dirname, 'version.json');
+  let currentVersion = '1.1.1';
+  if (fs.existsSync(APP_VERSION_FILE)) {
+    try {
+      const vData = JSON.parse(fs.readFileSync(APP_VERSION_FILE, 'utf-8'));
+      currentVersion = vData.version || '1.1.1';
+    } catch (e) {
+      console.error("Error reading version.json:", e);
+    }
+  }
+
+  let configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false, version: currentVersion };
   const configPath = path.join(__dirname, 'public/uploads/config.json');
   if (fs.existsSync(configPath)) {
     try {
       configCache = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (!configCache.version) configCache.version = '1.0.0';
+      if (!configCache.version) configCache.version = currentVersion;
     } catch (e) {
       console.error("Error reading config:", e);
     }
@@ -155,7 +166,7 @@ const app = express();
 
   // Dynamic manifest.json to support versioning
   app.get("/manifest.json", (req, res) => {
-    const version = configCache.version || '1.0.0';
+    const version = configCache.version || '1.1.1';
     res.json({
       "name": "خمن تخمينة",
       "short_name": "خمن تخمينة",
@@ -190,6 +201,16 @@ const app = express();
     console.log('[API] Received config update:', req.body);
     configCache = req.body;
     fs.writeFileSync(configPath, JSON.stringify(req.body));
+    
+    // Also update version.json if version is provided
+    if (req.body.version) {
+      try {
+        fs.writeFileSync(APP_VERSION_FILE, JSON.stringify({ version: req.body.version }, null, 2));
+      } catch (e) {
+        console.error("Error updating version.json:", e);
+      }
+    }
+    
     io.emit('config_updated', req.body);
     res.json({ success: true });
   });
@@ -199,7 +220,7 @@ const app = express();
   });
 
   app.get("/api/version", (req, res) => {
-    res.json({ version: configCache.version || '1.0.0' });
+    res.json({ version: configCache.version || '1.1.1' });
   });
 
   app.get("/api/auth/google/url", (req, res) => {
