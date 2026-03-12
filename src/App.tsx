@@ -54,13 +54,14 @@ const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
 
   useEffect(() => {
     const controls = animate(0, finalXP, {
-      duration: 2,
+      duration: 1,
+      ease: "easeOut",
       onUpdate: (value) => setDisplayXP(Math.round(value))
     });
     return () => controls.stop();
   }, [finalXP]);
 
-  return <span>XP: {displayXP}</span>;
+  return <span className="flex items-center justify-center gap-2" dir="ltr">XP: <span className="text-yellow-400">{displayXP}</span></span>;
 };
 import confetti from 'canvas-confetti';
 import { AdminCustomization } from './components/AdminCustomization';
@@ -323,16 +324,16 @@ const TypingIndicator = () => (
 
 export default function App() {
   const { customConfig, refreshConfig } = useAvatarConfig();
-  const appVersion = customConfig.version || '1.0.0';
+  const appVersion = customConfig.version || '1.1.1';
 
   useEffect(() => {
     const checkVersion = async () => {
       try {
         const response = await fetch('/api/version');
         const data = await response.json();
-        if (data.version && appVersion !== '1.0.0' && data.version !== appVersion) {
-          console.log('New version detected, reloading...');
-          window.location.reload();
+        if (data.version && appVersion !== '1.1.1' && data.version !== appVersion) {
+          console.log('New version detected, will update on next navigation');
+          setNeedsUpdate(true);
         }
       } catch (e) {
         console.error('Failed to check version', e);
@@ -482,6 +483,7 @@ export default function App() {
   const hasProPackage = proPackageExpiry !== null && proPackageExpiry > Date.now();
   const proPackageDaysLeft = hasProPackage ? Math.ceil((proPackageExpiry! - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
+  const [needsUpdate, setNeedsUpdate] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [topPlayers, setTopPlayers] = useState<any[]>(() => {
@@ -844,7 +846,7 @@ export default function App() {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStatus, setLoadingStatus] = useState('جاري التحقق من التحديثات...');
-  const [gameVersion, setGameVersion] = useState(localStorage.getItem('khamin_game_version') || '1.0.0');
+  const [gameVersion, setGameVersion] = useState(localStorage.getItem('khamin_game_version') || '1.1.1');
   const [isSearching, setIsSearching] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1547,6 +1549,7 @@ export default function App() {
     });
 
     newSocket.on('game_finished', ({ room, winnerId, updates }) => {
+      if (isIntentionalLeaveRef.current) return;
       setRoom(room);
       setCooldowns({});
       setReadyPowerUps([]);
@@ -1773,7 +1776,7 @@ export default function App() {
         if (!response.ok) throw new Error('Failed to fetch config');
         const config = await response.json();
         
-        const serverVersion = config.version || '1.0.0';
+        const serverVersion = config.version || '1.1.1';
         setGameVersion(serverVersion);
         setLoadingProgress(30);
         
@@ -1825,7 +1828,12 @@ export default function App() {
         e.preventDefault();
         e.returnValue = ''; // Required for Chrome
         newSocket.emit('intentional_leave', { roomId: roomRef.current.id });
-        return 'هل تريد حقاً مغادرة اللعبة؟ ستخسر الـ Token المستخدمة!';
+        
+        const me = roomRef.current?.players.find((p: any) => p.id === newSocket.id);
+        if (me?.useToken) {
+          return 'تحذير: إذا انسحبت الآن، ستخسر الـ Token المستخدمة! وتعتبر خاسر. هل تريد حقاً مغادرة اللعبة؟';
+        }
+        return 'انسحابك من المبارة تعتبر خاسر. هل تريد حقاً مغادرة اللعبة؟';
       }
     };
 
@@ -2111,7 +2119,9 @@ export default function App() {
     if (isGameActive) {
       let message = 'هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟';
       if (me?.useToken) {
-        message += '\n\nتحذير: إذا انسحبت الآن، ستخسر الـ Token المستخدمة!';
+        message = 'تحذير: إذا انسحبت الآن، ستخسر الـ Token المستخدمة! وتعتبر خاسر. هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟';
+      } else {
+        message = 'انسحابك من المبارة تعتبر خاسر. هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟';
       }
       
       showConfirm(message, () => {
@@ -6016,23 +6026,23 @@ export default function App() {
             className="fixed inset-0 bg-black/95 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
           >
             <motion.div 
-              className="relative max-w-sm w-full h-full flex flex-col items-center justify-center p-4"
+              className="relative max-w-sm w-full bg-gray-900/80 border-4 border-white/10 rounded-[2.5rem] flex flex-col items-center p-6 shadow-2xl backdrop-blur-xl"
             >
               {room.winnerId === me?.id ? (
-                <div className="flex flex-col items-center mb-6">
+                <div className="flex flex-col items-center mb-4 w-full">
                   <motion.div 
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: "spring", damping: 12, stiffness: 100 }}
+                    transition={{ type: "spring", damping: 10, stiffness: 100 }}
                     className="mb-4"
                   >
-                    <Trophy className="w-24 h-24 text-yellow-400" />
+                    <Trophy className="w-20 h-20 text-yellow-400" />
                   </motion.div>
                   <motion.h2 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-4xl font-black text-yellow-400 mb-1"
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring" }}
+                    className="text-3xl font-black text-yellow-400 mb-1"
                   >
                     You Win!
                   </motion.h2>
@@ -6040,40 +6050,53 @@ export default function App() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="text-white font-bold text-lg mb-4"
+                    className="text-white font-black text-base mb-4 bg-white/10 px-4 py-1.5 rounded-full backdrop-blur-sm"
                   >
                     أداء أسطوري يا بطل! 💪
                   </motion.p>
                   {me && (
                     <motion.div 
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.4 }}
-                      className="text-3xl font-black text-white"
+                      className="text-2xl font-black text-white w-full text-center"
                     >
                       {me.level >= 50 && !room.lastUpdates?.[me.id]?.useToken ? (
-                        <span>XP: 0 <span className="text-xs block">تحتاج Tokens لزيادة الـ XP</span></span>
+                        <div className="flex flex-col items-center">
+                          <span>XP: 0</span>
+                          <span className="text-[10px] text-gray-400 mt-0.5">تحتاج Tokens لزيادة الـ XP</span>
+                        </div>
                       ) : (
-                        <XPAnimatedCounter finalXP={room.lastUpdates?.[me.id]?.xp || 0} />
+                        <div className="flex justify-center">
+                          <XPAnimatedCounter finalXP={room.lastUpdates?.[me.id]?.xp || 0} />
+                        </div>
                       )}
                     </motion.div>
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center mb-6">
+                <div className="flex flex-col items-center mb-4 w-full">
                   <motion.div 
-                    initial={{ scale: 0, rotate: 180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: "spring", damping: 12, stiffness: 100 }}
-                    className="mb-4 text-7xl"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", damping: 10, stiffness: 100 }}
+                    className="mb-4 text-6xl"
                   >
-                    😢
+                    <motion.div
+                      animate={{ 
+                        y: [0, -5, 0],
+                        rotate: [-3, 3, -3]
+                      }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                    >
+                      😢
+                    </motion.div>
                   </motion.div>
                   <motion.h2 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-4xl font-black text-red-500 mb-1"
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring" }}
+                    className="text-3xl font-black text-red-500 mb-1"
                   >
                     You Lose!
                   </motion.h2>
@@ -6081,21 +6104,26 @@ export default function App() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="text-white font-bold text-lg mb-4"
+                    className="text-white font-black text-base mb-4 bg-white/10 px-4 py-1.5 rounded-full backdrop-blur-sm"
                   >
                     حظ أوفر في المرة القادمة
                   </motion.p>
                   {me && (
                     <motion.div 
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.4 }}
-                      className="text-3xl font-black text-white"
+                      className="text-2xl font-black text-white w-full text-center"
                     >
                       {me.level >= 50 && !room.lastUpdates?.[me.id]?.useToken ? (
-                        <span>XP: 0 <span className="text-xs block">تحتاج Tokens لزيادة الـ XP</span></span>
+                        <div className="flex flex-col items-center">
+                          <span>XP: 0</span>
+                          <span className="text-[10px] text-gray-400 mt-0.5">تحتاج Tokens لزيادة الـ XP</span>
+                        </div>
                       ) : (
-                        <XPAnimatedCounter finalXP={room.lastUpdates?.[me.id]?.xp || 0} />
+                        <div className="flex justify-center">
+                          <XPAnimatedCounter finalXP={room.lastUpdates?.[me.id]?.xp || 0} />
+                        </div>
                       )}
                     </motion.div>
                   )}
@@ -6103,15 +6131,15 @@ export default function App() {
               )}
               
               <motion.div 
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.5 }}
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, duration: 0.5, type: "spring" }}
                 className="flex flex-col items-center mb-6"
               >
-                <div className="w-28 h-28 rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg">
                   <img src={me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
                 </div>
-                <div className="font-black text-xl text-white mt-2">{me?.targetImage?.name}</div>
+                <div className="font-black text-lg text-white mt-2 bg-black/40 px-3 py-0.5 rounded-lg backdrop-blur-sm">{me?.targetImage?.name}</div>
               </motion.div>
 
               <motion.div 
@@ -6130,6 +6158,10 @@ export default function App() {
                 )}
                 <button 
                   onClick={() => {
+                    if (needsUpdate) {
+                      window.location.reload();
+                      return;
+                    }
                     handleLeaveGame();
                     setIsSearching(false);
                     setProposedMatch(null);
