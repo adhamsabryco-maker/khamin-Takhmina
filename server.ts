@@ -1957,8 +1957,10 @@ const app = express();
       if (!player || !opponent) return;
 
       if (cardType === "hint") {
-        if (!player.hintCount) player.hintCount = 0;
-        if (player.hintCount < 2) {
+        const playerLevel = getLevel(player.xp || 0);
+        const hasFreeUse = player.ownedHelpers && player.ownedHelpers[cardType] > 0;
+        if ((playerLevel >= 40 || hasFreeUse) && (!player.hintCount || player.hintCount < 2)) {
+          if (!player.hintCount) player.hintCount = 0;
           player.hintCount++;
           const targetName = player.targetImage.name;
           const hintChar = targetName[player.hintCount - 1] || "?";
@@ -1981,7 +1983,8 @@ const app = express();
         }
       } else if (cardType === "word_length") {
         const playerLevel = getLevel(player.xp || 0);
-        if (playerLevel >= 20 && !player.wordLengthUsed) {
+        const hasFreeUse = player.ownedHelpers && player.ownedHelpers[cardType] > 0;
+        if ((playerLevel >= 10 || hasFreeUse) && !player.wordLengthUsed) {
           player.wordLengthUsed = true;
           const targetName = player.targetImage.name;
           socket.emit("word_length_result", { length: targetName.length });
@@ -1989,7 +1992,8 @@ const app = express();
         }
       } else if (cardType === "word_count") {
         const playerLevel = getLevel(player.xp || 0);
-        if (playerLevel >= 40 && !player.wordCountUsed) {
+        const hasFreeUse = player.ownedHelpers && player.ownedHelpers[cardType] > 0;
+        if ((playerLevel >= 20 || hasFreeUse) && !player.wordCountUsed) {
           player.wordCountUsed = true;
           const targetName = player.targetImage.name;
           const wordCount = targetName.trim().split(/\s+/).length;
@@ -1998,7 +2002,8 @@ const app = express();
         }
       } else if (cardType === "time_freeze") {
         const playerLevel = getLevel(player.xp || 0);
-        if (playerLevel >= 30 && !player.timeFreezeUsed && !room.isFrozen) {
+        const hasFreeUse = player.ownedHelpers && player.ownedHelpers[cardType] > 0;
+        if ((playerLevel >= 30 || hasFreeUse) && !player.timeFreezeUsed && !room.isFrozen) {
           player.timeFreezeUsed = true;
           room.isFrozen = true;
           room.freezeTimer = 60;
@@ -2007,7 +2012,8 @@ const app = express();
         }
       } else if (cardType === "spy_lens") {
         const playerLevel = getLevel(player.xp || 0);
-        if (playerLevel >= 50 && !player.spyLensUsed) {
+        const hasFreeUse = player.ownedHelpers && player.ownedHelpers[cardType] > 0;
+        if ((playerLevel >= 50 || hasFreeUse) && !player.spyLensUsed) {
           player.spyLensUsed = true;
           // The player wants to see their own target image (which is what the opponent sees)
           socket.emit("spy_lens_active", { image: player.targetImage.image });
