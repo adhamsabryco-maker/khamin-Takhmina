@@ -1028,14 +1028,22 @@ export default function App() {
     
     const now = Date.now();
     const currentDayIndex = dailyQuestStreak - 1;
-    const xpReward = DAILY_QUEST_REWARDS[currentDayIndex];
+    let xpReward = DAILY_QUEST_REWARDS[currentDayIndex];
     
     // Determine rewards
     let helperReward = null;
     let tokenReward = 0;
 
-    // Helper items for everyone
-    const randomHelper = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
+    const isProAndLevel50 = getLevel(xp) >= 50 && hasProPackage;
+
+    // Helper items for everyone (or bonus XP for Pro Level 50+)
+    let randomHelper: any;
+    if (isProAndLevel50) {
+      xpReward += 100;
+      randomHelper = { id: 'bonus_xp', name: 'خبرة إضافية (Pro)', icon: '⭐' };
+    } else {
+      randomHelper = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
+    }
     helperReward = randomHelper.id;
 
     // Tokens for level 50+
@@ -1076,10 +1084,12 @@ export default function App() {
         if (tokenReward > 0) {
           setTokens(prev => prev + tokenReward);
         }
-        setOwnedHelpers(prev => ({
-          ...prev,
-          [randomHelper.id]: (prev[randomHelper.id] || 0) + 1
-        }));
+        
+        let newOwned = { ...ownedHelpers };
+        if (!isProAndLevel50) {
+          newOwned[randomHelper.id] = (newOwned[randomHelper.id] || 0) + 1;
+          setOwnedHelpers(newOwned);
+        }
 
         // Update streak and last claim
         const nextStreak = dailyQuestStreak >= 7 ? 1 : dailyQuestStreak + 1;
@@ -1090,10 +1100,6 @@ export default function App() {
 
         // Sync with server
         if (socket) {
-          const newOwned = {
-            ...ownedHelpers,
-            [randomHelper.id]: (ownedHelpers[randomHelper.id] || 0) + 1
-          };
           socket.emit('update_player_data', { 
             serial: playerSerial, 
             xp: xp + xpReward, 
@@ -1102,7 +1108,7 @@ export default function App() {
           });
         }
       }
-    }, 100);
+    }, 50);
   };
 
   const toggleDailyQuests = () => {
@@ -2554,10 +2560,16 @@ export default function App() {
                         <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white">
                           <div className="text-xl font-black">+{chestReward.xp} XP</div>
                         </div>
-                        {chestReward.helper && (
+                        {chestReward.helper && chestReward.helper.id !== 'bonus_xp' && (
                           <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white flex items-center justify-center gap-3">
                             <span className="text-2xl">{chestReward.helper.icon}</span>
                             <div className="text-xl font-black">{chestReward.helper.name}</div>
+                          </div>
+                        )}
+                        {chestReward.helper && chestReward.helper.id === 'bonus_xp' && (
+                          <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white flex items-center justify-center gap-3">
+                            <span className="text-2xl">⭐</span>
+                            <div className="text-xl font-black">تم تحويل الوسيلة إلى 100 XP (Pro)</div>
                           </div>
                         )}
                         {chestReward.tokens > 0 && (
