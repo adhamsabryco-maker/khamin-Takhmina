@@ -2307,7 +2307,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 text-white"
+            className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center p-4 text-white"
           >
             <div className="bg-modal-theme p-8 rounded-[2rem] text-center max-w-sm w-full space-y-6">
               <h2 className="text-2xl font-black text-accent-orange">وسيلة مساعدة</h2>
@@ -3262,7 +3262,7 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[6000] flex items-center justify-center p-4 overflow-hidden"
+              className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[6000] flex items-center justify-center p-4 overflow-hidden"
             >
               <motion.div
                 initial={{ scale: 0.9, y: 50 }}
@@ -6013,7 +6013,7 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/95 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
           >
             <motion.div 
               className="relative max-w-sm w-full h-full flex flex-col items-center justify-center p-4"
