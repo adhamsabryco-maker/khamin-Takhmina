@@ -307,10 +307,10 @@ const AVATAR_UNLOCKS = [10, 20, 30, 40, 50];
 const DAILY_QUEST_REWARDS = [50, 100, 150, 250, 300, 400, 500];
 const HELPER_ITEMS = [
   { id: 'hint', name: 'تلميح', icon: '💡' },
-  { id: 'letter_reveal', name: 'كشف حرف', icon: '🔍' },
+  { id: 'letter_reveal', name: 'كاشف الحروف', icon: '🔍' },
   { id: 'time_freeze', name: 'تجميد الوقت', icon: '❄️' },
   { id: 'word_count', name: 'عدد الكلمات', icon: '🔢' },
-  { id: 'spy_lens', name: 'عدسة التجسس', icon: '👁️' }
+  { id: 'spy_lens', name: 'الجاسوس', icon: '👁️' }
 ];
 
 const enterFullscreen = () => {
@@ -338,6 +338,16 @@ const isSameDay = (d1: number, d2: number) => {
   return date1.getFullYear() === date2.getFullYear() &&
          date1.getMonth() === date2.getMonth() &&
          date1.getDate() === date2.getDate();
+};
+
+const isSameWeek = (d1: number, d2: number) => {
+  const date1 = new Date(d1);
+  const date2 = new Date(d2);
+  const firstDayOfWeek = new Date(date1.setDate(date1.getDate() - date1.getDay()));
+  const firstDayOfWeek2 = new Date(date2.setDate(date2.getDate() - date2.getDay()));
+  return firstDayOfWeek.getFullYear() === firstDayOfWeek2.getFullYear() &&
+         firstDayOfWeek.getMonth() === firstDayOfWeek2.getMonth() &&
+         firstDayOfWeek.getDate() === firstDayOfWeek2.getDate();
 };
 
 export default function App() {
@@ -918,6 +928,8 @@ export default function App() {
   const [chestReward, setChestReward] = useState<any>(null);
   const [isNewDayNotification, setIsNewDayNotification] = useState(false);
   const [appOpenDate] = useState(Date.now());
+  const [tokensEarnedThisWeek, setTokensEarnedThisWeek] = useState(0);
+  const [lastTokenEarnedDay, setLastTokenEarnedDay] = useState(0);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
@@ -951,6 +963,13 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('khamin_owned_helpers', JSON.stringify(ownedHelpers));
   }, [ownedHelpers]);
+
+  useEffect(() => {
+    const savedTokensEarned = localStorage.getItem('khamin_tokens_earned_this_week');
+    if (savedTokensEarned) setTokensEarnedThisWeek(parseInt(savedTokensEarned));
+    const savedLastTokenDay = localStorage.getItem('khamin_last_token_earned_day');
+    if (savedLastTokenDay) setLastTokenEarnedDay(parseInt(savedLastTokenDay));
+  }, []);
 
   useEffect(() => {
     const checkDay = () => {
@@ -1021,8 +1040,22 @@ export default function App() {
 
     // Tokens for level 50+
     if (getLevel(xp) >= 50) {
-      if (Math.random() > 0.5) {
-        tokenReward = Math.floor(Math.random() * 10) + 5; // 5-15 tokens
+      const now = Date.now();
+      let currentTokensEarned = tokensEarnedThisWeek;
+      let currentLastTokenDay = lastTokenEarnedDay;
+
+      if (!isSameWeek(now, currentLastTokenDay)) {
+        currentTokensEarned = 0;
+      }
+
+      if (currentTokensEarned < 2 && !isSameDay(now, currentLastTokenDay)) {
+        if (Math.random() > 0.5) {
+          tokenReward = 1;
+          setTokensEarnedThisWeek(currentTokensEarned + 1);
+          setLastTokenEarnedDay(now);
+          localStorage.setItem('khamin_tokens_earned_this_week', (currentTokensEarned + 1).toString());
+          localStorage.setItem('khamin_last_token_earned_day', now.toString());
+        }
       }
     }
 
@@ -1032,7 +1065,7 @@ export default function App() {
       const randomItem = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
       setCyclingReward(randomItem);
       cycleCount++;
-      if (cycleCount > 10) {
+      if (cycleCount >= 40) {
         clearInterval(interval);
         setCyclingReward(randomHelper);
         setChestReward({ xp: xpReward, helper: randomHelper, tokens: tokenReward });
@@ -1069,7 +1102,7 @@ export default function App() {
           });
         }
       }
-    }, 200);
+    }, 100);
   };
 
   const useHelper = (helperId: string) => {
@@ -6397,45 +6430,6 @@ export default function App() {
               </button>
             );
           })}
-          
-          {/* Daily Quest Helpers */}
-          {Object.entries(ownedHelpers as { [key: string]: number }).some(([_, count]) => count > 0) && (
-            <div className="flex flex-col gap-3 mt-4 pt-4 border-t-2 border-black/10">
-              <div className="text-[10px] font-black text-black/40 text-center uppercase tracking-wider">مساعدات المهام</div>
-              <div className="flex flex-col gap-3">
-                {HELPER_ITEMS.map((helper) => {
-                  const count = ownedHelpers[helper.id] || 0;
-                  if (count <= 0) return null;
-                  const isUsed = usedHelpersInGame.includes(helper.id);
-                  
-                  return (
-                    <button
-                      key={helper.id}
-                      onClick={() => useHelper(helper.id)}
-                      disabled={isUsed || room.gameState === 'finished'}
-                      className={`relative w-10 h-10 md:w-16 md:h-16 rounded-2xl bg-white flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-4 border-black active:translate-y-1 transition-all disabled:opacity-50 disabled:grayscale group`}
-                      title={helper.name}
-                    >
-                      <span className="text-xl md:text-3xl">{helper.icon}</span>
-                      <div className="absolute -top-2 -right-2 bg-accent-blue text-white text-[10px] font-black px-1.5 py-0.5 rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                        {count}
-                      </div>
-                      {isUsed && (
-                        <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center">
-                          <Check className="w-6 h-6 text-accent-green drop-shadow-md" />
-                        </div>
-                      )}
-                      
-                      {/* Tooltip */}
-                      <div className="absolute left-full ml-3 px-3 py-2 bg-gray-800 text-white text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg text-right whitespace-nowrap">
-                        {helper.name}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
