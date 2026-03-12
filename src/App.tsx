@@ -2961,7 +2961,7 @@ export default function App() {
                       {customAvatar && (
                         <button
                           onClick={() => setAvatar(customAvatar)}
-                          className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 ${avatar === customAvatar ? 'border-purple-500' : 'border-black'}`}
+                          className={`relative w-14 h-14 rounded-xl overflow-hidden border-2 ${avatar === customAvatar ? 'border-purple-500' : 'border-black'}`}
                         >
                           <img src={customAvatar} className="w-full h-full object-cover" alt="Custom" />
                         </button>
@@ -4374,7 +4374,7 @@ export default function App() {
 
             <div className="w-full max-w-md space-y-6">
               <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-sm">
-                <label className="block text-white text-center text-sm font-black mb-3">تكبير / تصغير</label>
+                <label className="block text-black text-center text-sm font-black mb-3">تكبير / تصغير</label>
                 <input
                   type="range"
                   value={zoom}
@@ -4383,7 +4383,7 @@ export default function App() {
                   step={0.1}
                   aria-labelledby="Zoom"
                   onChange={(e) => setZoom(Number(e.target.value))}
-                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  className="w-full h-2 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-purple-500"
                 />
               </div>
 
