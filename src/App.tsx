@@ -6464,8 +6464,8 @@ export default function App() {
                 )}
 
                 {hasFreeUse && !isLocked && (
-                  <div className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 bg-accent-yellow rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center z-10 animate-bounce">
-                    <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-accent-blue" />
+                  <div className="absolute -top-2 -right-2 text-lg md:text-xl z-10 animate-bounce" title="استخدام مجاني">
+                    ✨
                   </div>
                 )}
                 
