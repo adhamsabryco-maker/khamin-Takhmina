@@ -2045,40 +2045,31 @@ export default function App() {
         
         const serverVersion = config.version || '1.1.1';
         setGameVersion(serverVersion);
-        setLoadingProgress(30);
+        setLoadingProgress(50);
         
         // Check if we need to force update (reload)
         const localVersion = localStorage.getItem('khamin_game_version');
         if (localVersion && localVersion !== serverVersion) {
           setLoadingStatus('تم اكتشاف تحديث جديد! جاري إعادة التحميل...');
-          setLoadingProgress(50);
+          setLoadingProgress(100);
           localStorage.setItem('khamin_game_version', serverVersion);
-          await new Promise(r => setTimeout(r, 1000));
-          window.location.reload();
+          // Add cache busting query parameter to force browser to fetch new files
+          window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
           return;
         }
         localStorage.setItem('khamin_game_version', serverVersion);
 
-        setLoadingStatus('جاري التحقق من سلامة الملفات...');
-        for (let i = 35; i <= 60; i += 5) {
-          setLoadingProgress(i);
-          await new Promise(r => setTimeout(r, 100));
-        }
-
-        setLoadingStatus('جاري مزامنة البيانات...');
-        for (let i = 65; i <= 90; i += 5) {
-          setLoadingProgress(i);
-          await new Promise(r => setTimeout(r, 80));
-        }
-
         setLoadingProgress(100);
         setLoadingStatus('تم التحديث بنجاح!');
-        await new Promise(r => setTimeout(r, 800));
+        // Minimal delay just to show 100% briefly
+        await new Promise(r => setTimeout(r, 200));
         setIsAppLoading(false);
       } catch (error) {
         console.error("Loading failed:", error);
         setLoadingStatus('فشل الاتصال بالسيرفر. يرجى التحقق من اتصالك.');
-        // Don't reload automatically to prevent infinite loops
+        // Fallback: let them in anyway after a short delay so they aren't stuck
+        await new Promise(r => setTimeout(r, 1000));
+        setIsAppLoading(false);
       }
     };
 
