@@ -451,6 +451,15 @@ const app = express();
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS used_prizes (
+      serial TEXT,
+      prize_id TEXT,
+      date TEXT,
+      PRIMARY KEY (serial, prize_id, date)
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY,
       name TEXT,
@@ -1338,6 +1347,24 @@ const app = express();
       savePlayerData(serial);
       callback({ serial, name: filteredName });
       io.emit("top_players_update", getTopPlayers(true));
+    });
+
+    socket.on("claim_serial_prize", ({ serial, helperId }, callback) => {
+      if (!serial || !helperId) {
+        callback({ success: false, error: 'بيانات غير مكتملة' });
+        return;
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      const check = db.prepare('SELECT * FROM used_prizes WHERE serial = ? AND prize_id = ? AND date = ?').get(serial, helperId, today);
+      
+      if (check) {
+        callback({ success: false, error: 'تم استخدام هذه الجائزة اليوم بالفعل' });
+        return;
+      }
+      
+      db.prepare('INSERT INTO used_prizes (serial, prize_id, date) VALUES (?, ?, ?)').run(serial, helperId, today);
+      callback({ success: true, helperId });
     });
 
     socket.on("watch_ad_request", ({ serial }) => {
