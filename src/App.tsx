@@ -1461,10 +1461,12 @@ export default function App() {
       }
     };
 
-    // Check URL parameters for direct redirect auth
+    // Check URL parameters for direct redirect auth and prizes
     const checkUrlParams = () => {
       if (!socket) return;
       const params = new URLSearchParams(window.location.search);
+      
+      // Handle Admin Auth
       if (params.get('admin_auth') === 'success') {
         const user = {
           email: params.get('email'),
@@ -1475,12 +1477,55 @@ export default function App() {
         
         if (socket.connected) {
           processAuthSuccess(user);
-          window.history.replaceState({}, document.title, window.location.pathname);
+          // Clean URL but keep other params for now
+          const url = new URL(window.location.href);
+          url.searchParams.delete('admin_auth');
+          url.searchParams.delete('email');
+          url.searchParams.delete('adminToken');
+          url.searchParams.delete('isAdmin');
+          window.history.replaceState({}, document.title, url.toString());
         } else {
           socket.once('connect', () => {
             processAuthSuccess(user);
-            window.history.replaceState({}, document.title, window.location.pathname);
+            const url = new URL(window.location.href);
+            url.searchParams.delete('admin_auth');
+            url.searchParams.delete('email');
+            url.searchParams.delete('adminToken');
+            url.searchParams.delete('isAdmin');
+            window.history.replaceState({}, document.title, url.toString());
           });
+        }
+      }
+
+      // Handle Prize Serial
+      const serialParam = params.get('serial');
+      const helperParam = params.get('helper');
+      if (serialParam && helperParam) {
+        console.log('Found prize serial in URL:', serialParam, helperParam);
+        
+        // If we don't have a serial yet, use this one
+        if (!playerSerial) {
+          setPlayerSerial(serialParam);
+          localStorage.setItem('khamin_player_serial', serialParam);
+        }
+
+        const claimPrize = () => {
+          socket.emit('claim_serial_prize', { serial: serialParam, helperId: helperParam }, (res: any) => {
+            if (res.success) {
+              console.log('Prize claimed successfully:', helperParam);
+              setReadyPowerUps(prev => [...prev, helperParam]);
+              showAlert(`مبروك! حصلت على مساعدة "${HELPER_ITEMS.find(h => h.id === helperParam)?.name || helperParam}" مجانية لهذه المباراة! 🎁`, 'هدية');
+            } else {
+              console.log('Prize claim failed:', res.error);
+              if (res.error) setError(res.error);
+            }
+          });
+        };
+
+        if (socket.connected) {
+          claimPrize();
+        } else {
+          socket.once('connect', claimPrize);
         }
       }
     };
@@ -2108,7 +2153,9 @@ export default function App() {
           }
 
           // Add cache busting query parameter to force browser to fetch new files
-          window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
+          const url = new URL(window.location.href);
+          url.searchParams.set('v', Date.now().toString());
+          window.location.href = url.toString();
           return;
         }
         localStorage.setItem('khamin_game_version', serverVersion);
@@ -2177,11 +2224,23 @@ export default function App() {
 
   // Separate effect for countdown sound to avoid re-binding socket listeners
   useEffect(() => {
-    // Remove the version parameter from the URL after the match ends OR when returning to home
+    // Remove the version and prize parameters from the URL after the match ends OR when returning to home
     if (room?.gameState === 'finished' || !room) {
       const url = new URL(window.location.href);
+      let changed = false;
       if (url.searchParams.has('v')) {
         url.searchParams.delete('v');
+        changed = true;
+      }
+      if (url.searchParams.has('helper')) {
+        url.searchParams.delete('helper');
+        changed = true;
+      }
+      if (url.searchParams.has('serial')) {
+        url.searchParams.delete('serial');
+        changed = true;
+      }
+      if (changed) {
         window.history.replaceState({}, '', url.toString());
       }
     }
