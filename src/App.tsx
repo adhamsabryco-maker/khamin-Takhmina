@@ -2450,6 +2450,9 @@ export default function App() {
 
     // Quick guess doesn't require an ad
     if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage || hasFreeUse) {
+      // Actually use the card FIRST so the server sees we still have the free use
+      socket?.emit('use_card', { roomId, cardType: type });
+
       // Decrement free use if they used it
       if (hasFreeUse) {
         const newOwned = { ...ownedHelpers, [type]: Math.max(0, (ownedHelpers[type] || 0) - 1) };
@@ -2457,9 +2460,6 @@ export default function App() {
         localStorage.setItem('khamin_owned_helpers', JSON.stringify(newOwned));
         socket?.emit('update_player_data', { serial: playerSerial, ownedHelpers: newOwned });
       }
-
-      // Actually use the card
-      socket?.emit('use_card', { roomId, cardType: type });
       
       // Remove from ready
       if (type !== 'quick_guess' && readyPowerUps.includes(type)) {
