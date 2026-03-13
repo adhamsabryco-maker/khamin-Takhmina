@@ -1655,7 +1655,7 @@ export default function App() {
             
             const shouldClearHelpers = localStorage.getItem('khamin_clear_helpers_on_connect');
             if (shouldClearHelpers === 'true') {
-              newSocket.emit('update_player_data', { ownedHelpers: {} });
+              newSocket.emit('update_player_data', { serial, ownedHelpers: {} });
               setOwnedHelpers({});
               localStorage.setItem('khamin_owned_helpers', '{}');
               localStorage.removeItem('khamin_clear_helpers_on_connect');
@@ -2450,22 +2450,20 @@ export default function App() {
 
     // Quick guess doesn't require an ad
     if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage || hasFreeUse) {
+      // Decrement free use if they used it
+      if (hasFreeUse) {
+        const newOwned = { ...ownedHelpers, [type]: Math.max(0, (ownedHelpers[type] || 0) - 1) };
+        setOwnedHelpers(newOwned);
+        localStorage.setItem('khamin_owned_helpers', JSON.stringify(newOwned));
+        socket?.emit('update_player_data', { serial: playerSerial, ownedHelpers: newOwned });
+      }
+
       // Actually use the card
       socket?.emit('use_card', { roomId, cardType: type });
       
       // Remove from ready
       if (type !== 'quick_guess' && readyPowerUps.includes(type)) {
         setReadyPowerUps(prev => prev.filter(p => p !== type));
-      }
-      
-      // Decrement free use if they used it
-      if (hasFreeUse) {
-        setOwnedHelpers(prev => {
-          const newOwned = { ...prev, [type]: Math.max(0, (prev[type] || 0) - 1) };
-          localStorage.setItem('khamin_owned_helpers', JSON.stringify(newOwned));
-          socket?.emit('update_player_data', { ownedHelpers: newOwned });
-          return newOwned;
-        });
       }
       
       // Hint has 150s cooldown (2.5m)
