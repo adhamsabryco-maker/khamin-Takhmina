@@ -13,6 +13,11 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
+        workbox: {
+          cleanupOutdatedCaches: true,
+          skipWaiting: true,
+          clientsClaim: true,
+        },
         manifest: {
           name: 'خمن تخمينة',
           short_name: 'خمن تخمينة',
@@ -22,13 +27,13 @@ export default defineConfig(({mode}) => {
           display: 'fullscreen',
           icons: [
             {
-              src: 'icon.svg?v=1.0.1',
+              src: 'icon.svg',
               sizes: '192x192',
               type: 'image/svg+xml',
               purpose: 'any maskable'
             },
             {
-              src: 'icon.svg?v=1.0.1',
+              src: 'icon.svg',
               sizes: '512x512',
               type: 'image/svg+xml',
               purpose: 'any maskable'
