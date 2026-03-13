@@ -5283,7 +5283,7 @@ export default function App() {
                     </button>
                   </div>
                   {opponentAccepted && (
-                    <div className="text-black font-black bg-accent-green p-3 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] animate-pulse">
+                    <div className="text-black font-black bg-accent-blue p-3 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] animate-pulse">
                       المنافس وافق على التحدي! بانتظارك...
                     </div>
                   )}
