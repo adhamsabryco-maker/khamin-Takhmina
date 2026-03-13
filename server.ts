@@ -1318,6 +1318,10 @@ const app = express();
       }
     });
 
+    socket.on('request_match_intro', ({ roomId }) => {
+      io.to(roomId).emit('match_intro_triggered');
+    });
+
     socket.on("register_player", ({ name, avatar, xp, gender }, callback) => {
       // Generate a unique non-sequential ID
       const serial = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -1879,6 +1883,18 @@ const app = express();
             handleBotEvent(roomId, 'room_update', room);
           }
         }
+      }
+    });
+
+    socket.on("force_start_game", ({ roomId }) => {
+      console.log(`[MatchIntro] Force start game requested for room: ${roomId}`);
+      const room = rooms.get(roomId);
+      if (room && room.players.length === 2) {
+        console.log(`[MatchIntro] Starting game for room: ${roomId}`);
+        room.gameState = 'waiting'; // Ensure it's in a state that can start
+        startGame(roomId);
+      } else {
+        console.log(`[MatchIntro] Failed to start game for room: ${roomId}. Room exists: ${!!room}, Players: ${room?.players?.length}`);
       }
     });
 
