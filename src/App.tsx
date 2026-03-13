@@ -3064,16 +3064,16 @@ export default function App() {
             >
               <button 
                 onClick={toggleLevelInfo}
-                className="absolute top-4 left-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-brown-muted hover:bg-gray-200 transition-colors"
+                className="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-brown-muted hover:bg-gray-200 transition-colors z-10"
               >
                 <X className="w-5 h-5" />
               </button>
               
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <Star className="w-6 h-6 text-accent-orange fill-accent-orange" />
+              <div className="flex items-center justify-center gap-2 mb-4 mt-6">
+                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <Star className="w-5 h-5 text-accent-orange fill-accent-orange" />
                 </div>
-                <h2 className="text-2xl font-black text-main">نظام المستويات (Levels)</h2>
+                <h2 className="text-xl font-black text-main">نظام المستويات (Levels)</h2>
               </div>
               
               <div className="space-y-2 text-brown-muted font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
