@@ -68,6 +68,7 @@ import confetti from 'canvas-confetti';
 import { AdminCustomization } from './components/AdminCustomization';
 import { AvatarDisplay } from './components/AvatarDisplay';
 import { LevelUpModal } from './components/LevelUpModal';
+import { MatchIntro } from './components/MatchIntro';
 import { useAvatarConfig } from './contexts/AvatarContext';
 import { STATIC_ASSETS } from './constants';
 import Cropper from 'react-easy-crop';
@@ -512,6 +513,7 @@ export default function App() {
   const hasProPackage = proPackageExpiry !== null && proPackageExpiry > Date.now();
   const proPackageDaysLeft = hasProPackage ? Math.ceil((proPackageExpiry! - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
+  const [showMatchIntro, setShowMatchIntro] = useState(false);
   const [needsUpdate, setNeedsUpdate] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1956,6 +1958,10 @@ export default function App() {
       }]);
     });
 
+    newSocket.on('match_intro_triggered', () => {
+      setShowMatchIntro(true);
+    });
+
     newSocket.on('waiting_for_match', () => {
       setIsPrivate(false);
       setIsSearching(true);
@@ -2509,8 +2515,13 @@ export default function App() {
 
   const handleStartGame = () => {
     playSound('clickOpen');
-    socket?.emit('start_game_request', { roomId });
+    socket?.emit('request_match_intro', { roomId });
   };
+
+  const handleMatchIntroComplete = useCallback(() => {
+    setShowMatchIntro(false);
+    socket?.emit('force_start_game', { roomId });
+  }, [roomId, socket]);
 
   const handleLeaveGame = () => {
     playSound('clickOpen');
@@ -6858,6 +6869,15 @@ export default function App() {
         )}
       </AnimatePresence>
       {renderModals()}
+      <AnimatePresence>
+        {showMatchIntro && room && room.players.length >= 2 && (
+          <MatchIntro 
+            player1={{ id: room.players[0].id, name: room.players[0].name, level: room.players[0].level, avatar: room.players[0].avatar }}
+            player2={{ id: room.players[1].id, name: room.players[1].name, level: room.players[1].level, avatar: room.players[1].avatar }}
+            onComplete={handleMatchIntroComplete}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
