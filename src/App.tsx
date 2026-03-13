@@ -2376,16 +2376,20 @@ export default function App() {
     socket?.emit('delete_account', { playerSerial }, (response: any) => {
       if (response.success) {
         clearPlayerData();
-        setJoined(false);
-        setIsSearching(false);
-        setRoom(null);
-        closeAllModals();
-        setShowDeleteConfirm(false);
+        setIsAppLoading(true);
+        setLoadingStatus('جاري مسح الحساب وإعادة التهيئة...');
+        setLoadingProgress(0);
         
-        // Ensure state is cleared before showing welcome modal
-        setTimeout(() => {
-          setShowWelcomeModal(true);
-        }, 100);
+        // Animate progress
+        let progress = 0;
+        const interval = setInterval(() => {
+          progress += 20;
+          setLoadingProgress(progress);
+          if (progress >= 100) {
+            clearInterval(interval);
+            window.location.reload();
+          }
+        }, 300);
       } else {
         setError('فشل مسح الحساب. حاول مرة أخرى.');
         setShowDeleteConfirm(false);
@@ -5018,14 +5022,28 @@ export default function App() {
                 onClick={() => {
                   const serial = localStorage.getItem('khamin_player_serial');
                   if (serial) {
+                    const handleReload = () => {
+                      clearPlayerData();
+                      setIsAppLoading(true);
+                      setLoadingStatus('جاري مسح الحساب وإعادة التهيئة...');
+                      setLoadingProgress(0);
+                      let progress = 0;
+                      const interval = setInterval(() => {
+                        progress += 20;
+                        setLoadingProgress(progress);
+                        if (progress >= 100) {
+                          clearInterval(interval);
+                          window.location.reload();
+                        }
+                      }, 300);
+                    };
+
                     if (socket && socket.connected) {
                       socket.emit('delete_account', { playerSerial: serial }, (res: any) => {
-                        localStorage.clear();
-                        window.location.reload();
+                        handleReload();
                       });
                     } else {
-                      localStorage.clear();
-                      window.location.reload();
+                      handleReload();
                     }
                   }
                 }}
