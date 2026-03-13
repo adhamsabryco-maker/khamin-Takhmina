@@ -6780,7 +6780,10 @@ export default function App() {
               >
                 {room.players.length >= 2 && (
                   <button 
-                    onClick={() => socket?.emit('play_again', { roomId })}
+                    onClick={() => {
+                      socket?.emit('play_again', { roomId });
+                      setChatHistory([]);
+                    }}
                     className="w-full btn-game py-3 text-base btn-success"
                   >
                     العب تاني مع المنافس
