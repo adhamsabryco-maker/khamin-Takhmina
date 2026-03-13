@@ -996,6 +996,9 @@ export default function App() {
       };
 
       if (lastClaim === 0) {
+        setOwnedHelpers({});
+        localStorage.setItem('khamin_owned_helpers', '{}');
+        localStorage.setItem('khamin_clear_helpers_on_connect', 'true');
         setShowDailyQuestModal(true);
         setHasSeenDailyToday(true);
       } else if (!isSameDay(now, lastClaim)) {
@@ -1012,6 +1015,12 @@ export default function App() {
           setDailyQuestStreak(1);
           localStorage.setItem('khamin_daily_streak', '1');
         }
+        
+        // Clear ownedHelpers because it's a new day
+        setOwnedHelpers({});
+        localStorage.setItem('khamin_owned_helpers', '{}');
+        localStorage.setItem('khamin_clear_helpers_on_connect', 'true');
+
         setShowDailyQuestModal(true);
         setHasSeenDailyToday(true);
       }
@@ -1643,6 +1652,18 @@ export default function App() {
             setReports(data.reports || 0);
             setTokens(data.tokens || 0);
             localStorage.setItem('khamin_tokens', (data.tokens || 0).toString());
+            
+            const shouldClearHelpers = localStorage.getItem('khamin_clear_helpers_on_connect');
+            if (shouldClearHelpers === 'true') {
+              newSocket.emit('update_player_data', { ownedHelpers: {} });
+              setOwnedHelpers({});
+              localStorage.setItem('khamin_owned_helpers', '{}');
+              localStorage.removeItem('khamin_clear_helpers_on_connect');
+            } else if (data.ownedHelpers) {
+              setOwnedHelpers(data.ownedHelpers);
+              localStorage.setItem('khamin_owned_helpers', JSON.stringify(data.ownedHelpers));
+            }
+
             if (data.isPermanentBan) {
               setIsPermanentBan(true);
               newSocket.disconnect();
@@ -6443,8 +6464,8 @@ export default function App() {
                 )}
 
                 {hasFreeUse && !isLocked && (
-                  <div className="absolute -top-2 -right-2 bg-accent-blue text-white text-[10px] font-black px-1.5 py-0.5 rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] z-10">
-                    {ownedHelpers[card.id]}
+                  <div className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 bg-accent-yellow rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center z-10 animate-bounce">
+                    <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-accent-blue" />
                   </div>
                 )}
                 
