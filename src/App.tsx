@@ -5579,7 +5579,7 @@ export default function App() {
                       >
                         <div className="bg-white rounded-[14px] py-3 px-4 flex items-center justify-between">
                           <div className="flex items-center gap-2 text-black">
-                            <span className="font-bold text-sm md:text-base">ترتيبك في أبطال التخمين:</span>
+                            <span className="font-bold text-xs md:text-sm">ترتيبك في أبطال التخمين:</span>
                             <span className="font-black text-lg md:text-xl bg-orange-100 text-orange-600 px-2 rounded-lg">#{myRankIndex + 1}</span>
                             <span className="text-lg">💪</span>
                           </div>
