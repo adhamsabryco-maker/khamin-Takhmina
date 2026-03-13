@@ -2052,7 +2052,11 @@ export default function App() {
 
   // Removed the automatic page reload useEffect that was causing infinite reload loops
 
+  const loadingStarted = useRef(false);
   useEffect(() => {
+    if (loadingStarted.current) return;
+    loadingStarted.current = true;
+
     // Real update check and loading process
     const startLoading = async () => {
       try {
@@ -2070,15 +2074,16 @@ export default function App() {
         
         // Check if we need to force update (reload)
         const localVersion = localStorage.getItem('khamin_game_version');
-        const urlParams = new URLSearchParams(window.location.search);
-        const hasVersionParam = urlParams.has('v');
+        const sessionRefreshed = sessionStorage.getItem('khamin_session_refreshed');
         
-        // Always force a hard refresh if the version param is missing OR if version mismatch
-        // This ensures the Loading Screen always does a Hard Refresh as requested
-        if (!hasVersionParam || (localVersion && localVersion !== serverVersion)) {
+        // Force a hard refresh if:
+        // 1. Version mismatch (always reload to get new version)
+        // 2. OR: We haven't refreshed in this session yet
+        if (!sessionRefreshed || (localVersion && localVersion !== serverVersion)) {
           setLoadingStatus('جاري تهيئة الملفات وضمان أحدث نسخة...');
           setLoadingProgress(100);
           localStorage.setItem('khamin_game_version', serverVersion);
+          sessionStorage.setItem('khamin_session_refreshed', 'true');
           
           // Unregister all service workers to force fetching new files
           if ('serviceWorker' in navigator) {
@@ -2112,12 +2117,28 @@ export default function App() {
         setLoadingStatus('تم التحديث بنجاح!');
         // Minimal delay just to show 100% briefly
         await new Promise(r => setTimeout(r, 200));
+        
+        // Remove the version parameter from the URL after loading is complete
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('v')) {
+          url.searchParams.delete('v');
+          window.history.replaceState({}, '', url.toString());
+        }
+        
         setIsAppLoading(false);
       } catch (error) {
         console.error("Loading failed:", error);
         setLoadingStatus('فشل الاتصال بالسيرفر. يرجى التحقق من اتصالك.');
         // Fallback: let them in anyway after a short delay so they aren't stuck
         await new Promise(r => setTimeout(r, 1000));
+        
+        // Also cleanup URL in fallback
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('v')) {
+          url.searchParams.delete('v');
+          window.history.replaceState({}, '', url.toString());
+        }
+        
         setIsAppLoading(false);
       }
     };
@@ -2156,15 +2177,15 @@ export default function App() {
 
   // Separate effect for countdown sound to avoid re-binding socket listeners
   useEffect(() => {
-    if (room?.gameState === 'finished') {
-      // Remove the version parameter from the URL after the match ends
+    // Remove the version parameter from the URL after the match ends OR when returning to home
+    if (room?.gameState === 'finished' || !room) {
       const url = new URL(window.location.href);
       if (url.searchParams.has('v')) {
         url.searchParams.delete('v');
         window.history.replaceState({}, '', url.toString());
       }
     }
-  }, [room?.gameState]);
+  }, [room?.gameState, room]);
 
   useEffect(() => {
     if (!room) {
