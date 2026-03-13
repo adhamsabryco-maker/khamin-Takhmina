@@ -2053,6 +2053,29 @@ export default function App() {
           setLoadingStatus('تم اكتشاف تحديث جديد! جاري إعادة التحميل...');
           setLoadingProgress(100);
           localStorage.setItem('khamin_game_version', serverVersion);
+          
+          // Unregister all service workers to force fetching new files
+          if ('serviceWorker' in navigator) {
+            try {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              for (let registration of registrations) {
+                await registration.unregister();
+              }
+            } catch (err) {
+              console.error('Error unregistering service worker:', err);
+            }
+          }
+          
+          // Clear all caches
+          if ('caches' in window) {
+            try {
+              const keys = await caches.keys();
+              await Promise.all(keys.map(key => caches.delete(key)));
+            } catch (err) {
+              console.error('Error clearing caches:', err);
+            }
+          }
+
           // Add cache busting query parameter to force browser to fetch new files
           window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
           return;
