@@ -2070,8 +2070,13 @@ export default function App() {
         
         // Check if we need to force update (reload)
         const localVersion = localStorage.getItem('khamin_game_version');
-        if (localVersion && localVersion !== serverVersion) {
-          setLoadingStatus('تم اكتشاف تحديث جديد! جاري إعادة التحميل...');
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasVersionParam = urlParams.has('v');
+        
+        // Always force a hard refresh if the version param is missing OR if version mismatch
+        // This ensures the Loading Screen always does a Hard Refresh as requested
+        if (!hasVersionParam || (localVersion && localVersion !== serverVersion)) {
+          setLoadingStatus('جاري تهيئة الملفات وضمان أحدث نسخة...');
           setLoadingProgress(100);
           localStorage.setItem('khamin_game_version', serverVersion);
           
@@ -2150,6 +2155,17 @@ export default function App() {
   const lastTickTimeRef = useRef<{ [key: string]: number }>({});
 
   // Separate effect for countdown sound to avoid re-binding socket listeners
+  useEffect(() => {
+    if (room?.gameState === 'finished') {
+      // Remove the version parameter from the URL after the match ends
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('v')) {
+        url.searchParams.delete('v');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [room?.gameState]);
+
   useEffect(() => {
     if (!room) {
       stopSound('tick');
