@@ -702,6 +702,7 @@ const app = express();
           avatar: p.avatar,
           gender: p.gender,
           isAdmin: p.isAdmin,
+          serial: p.serial,
           rank: i + 1 
         }));
       topPlayersCacheTime = now;
@@ -1335,6 +1336,7 @@ io.on("connection", (socket) => {
 
     // Send current theme to new user
     socket.emit('theme_updated', themeConfig);
+    socket.emit('top_players_update', getTopPlayers());
 
     socket.on('admin_save_theme', (newTheme) => {
       console.log("[Theme] Admin updated theme");
