@@ -557,6 +557,15 @@ export default function App() {
         isAdmin: true, 
         email: adminEmail, 
         adminToken 
+      }, (res: any) => {
+        if (res?.success) {
+          socket.emit('admin_get_players', (players: any) => {
+            if (Array.isArray(players)) setAdminPlayers(players);
+          });
+          socket.emit('admin_get_reports', (reports: any) => {
+            if (Array.isArray(reports)) setAdminReports(reports);
+          });
+        }
       });
     }
   }, [socket, isConnected, isAdmin, playerSerial]);
