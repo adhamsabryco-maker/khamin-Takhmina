@@ -5582,26 +5582,31 @@ export default function App() {
                 {/* Player Rank Info */}
                 {(() => {
                   const myRankIndex = topPlayers.findIndex(p => p.serial === playerSerial);
-                  if (myRankIndex > 2) {
+                  if (myRankIndex >= 0) {
+                    const isTop3 = myRankIndex <= 2;
                     return (
                       <button 
                         onClick={() => setShowLeaderboardModal(true)}
-                        className="mt-3 w-full group relative overflow-hidden bg-orange-500 rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all"
+                        className={`mt-3 w-full group relative overflow-hidden ${isTop3 ? 'bg-yellow-500' : 'bg-orange-500'} rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all`}
                       >
                         <div className="bg-white rounded-[14px] py-3 px-4 flex items-center justify-between">
                           <div className="flex items-center gap-2 text-black">
-                            <span className="font-bold text-xs md:text-sm">ترتيبك في أبطال التخمين:</span>
-                            <span className="font-black text-lg md:text-xl bg-orange-100 text-orange-600 px-2 rounded-lg">#{myRankIndex + 1}</span>
-                            <span className="text-lg">💪</span>
+                            <span className="font-bold text-xs md:text-sm">
+                              {isTop3 ? 'أنت من أبطال الصدارة!' : 'ترتيبك في أبطال التخمين:'}
+                            </span>
+                            <span className={`font-black text-lg md:text-xl ${isTop3 ? 'bg-yellow-100 text-yellow-600' : 'bg-orange-100 text-orange-600'} px-2 rounded-lg`}>
+                              #{myRankIndex + 1}
+                            </span>
+                            <span className="text-lg">{isTop3 ? '👑' : '💪'}</span>
                           </div>
-                          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center animate-pulse group-hover:bg-orange-200 transition-colors shrink-0 relative">
-                            <div className="absolute inset-0 rounded-full border-2 border-orange-500/50 animate-ping opacity-50"></div>
-                            <ChevronLeft className="w-6 h-6 text-orange-600" />
+                          <div className={`w-10 h-10 ${isTop3 ? 'bg-yellow-100' : 'bg-orange-100'} rounded-full flex items-center justify-center animate-pulse group-hover:bg-opacity-80 transition-colors shrink-0 relative`}>
+                            <div className={`absolute inset-0 rounded-full border-2 ${isTop3 ? 'border-yellow-500/50' : 'border-orange-500/50'} animate-ping opacity-50`}></div>
+                            <ChevronLeft className={`w-6 h-6 ${isTop3 ? 'text-yellow-600' : 'text-orange-600'}`} />
                           </div>
                         </div>
                       </button>
                     );
-                  } else if (myRankIndex === -1) {
+                  } else if (myRankIndex === -1 && topPlayers.length > 0) {
                     return (
                       <button 
                         onClick={() => setShowLeaderboardModal(true)}
