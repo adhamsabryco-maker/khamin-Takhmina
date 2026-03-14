@@ -1001,7 +1001,6 @@ export default function App() {
       if (lastClaim === 0) {
         setOwnedHelpers({});
         localStorage.setItem('khamin_owned_helpers', '{}');
-        localStorage.setItem('khamin_clear_helpers_on_connect', 'true');
         setShowDailyQuestModal(true);
         setHasSeenDailyToday(true);
       } else if (!isSameDay(now, lastClaim)) {
@@ -1022,7 +1021,6 @@ export default function App() {
         // Clear ownedHelpers because it's a new day
         setOwnedHelpers({});
         localStorage.setItem('khamin_owned_helpers', '{}');
-        localStorage.setItem('khamin_clear_helpers_on_connect', 'true');
 
         setShowDailyQuestModal(true);
         setHasSeenDailyToday(true);
@@ -1033,52 +1031,14 @@ export default function App() {
   const handleClaimDailyQuest = () => {
     setIsChestOpening(true);
     playSound('clickOpen');
+    if (socket) {
+      socket.emit('claim_daily_quest', { serial: playerSerial });
+    }
   };
 
-  const startCycling = () => {
+  const startCycling = (serverReward: any) => {
     setIsCycling(true);
     
-    const now = Date.now();
-    const currentDayIndex = dailyQuestStreak - 1;
-    let xpReward = DAILY_QUEST_REWARDS[currentDayIndex];
-    
-    // Determine rewards
-    let helperReward = null;
-    let tokenReward = 0;
-
-    const isProAndLevel50 = getLevel(xp) >= 50 && hasProPackage;
-
-    // Helper items for everyone (or bonus XP for Pro Level 50+)
-    let randomHelper: any;
-    if (isProAndLevel50) {
-      xpReward += 100;
-      randomHelper = { id: 'bonus_xp', name: 'خبرة إضافية (Pro)', icon: '⭐' };
-    } else {
-      randomHelper = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
-    }
-    helperReward = randomHelper.id;
-
-    // Tokens for level 50+
-    if (getLevel(xp) >= 50) {
-      const now = Date.now();
-      let currentTokensEarned = tokensEarnedThisWeek;
-      let currentLastTokenDay = lastTokenEarnedDay;
-
-      if (!isSameWeek(now, currentLastTokenDay)) {
-        currentTokensEarned = 0;
-      }
-
-      if (currentTokensEarned < 2 && !isSameDay(now, currentLastTokenDay)) {
-        if (Math.random() > 0.5) {
-          tokenReward = 1;
-          setTokensEarnedThisWeek(currentTokensEarned + 1);
-          setLastTokenEarnedDay(now);
-          localStorage.setItem('khamin_tokens_earned_this_week', (currentTokensEarned + 1).toString());
-          localStorage.setItem('khamin_last_token_earned_day', now.toString());
-        }
-      }
-    }
-
     // Cycle animation
     let cycleCount = 0;
     const interval = setInterval(() => {
@@ -1087,38 +1047,25 @@ export default function App() {
       cycleCount++;
       if (cycleCount >= 40) {
         clearInterval(interval);
-        setCyclingReward(randomHelper);
-        setChestReward({ xp: xpReward, helper: randomHelper, tokens: tokenReward });
+        setCyclingReward(serverReward.helperReward);
+        setChestReward({ 
+          xp: serverReward.xpReward, 
+          helper: serverReward.helperReward, 
+          tokens: serverReward.tokenReward 
+        });
         setIsCycling(false);
         
-        // Apply rewards
-        setXp(prev => prev + xpReward);
-        if (tokenReward > 0) {
-          setTokens(prev => prev + tokenReward);
-        }
+        // Apply rewards locally for immediate UI update
+        setXp(serverReward.newXp);
+        setTokens(serverReward.newTokens);
+        setOwnedHelpers(serverReward.newOwnedHelpers);
+        setDailyQuestStreak(serverReward.newStreak);
+        setLastDailyClaim(serverReward.newLastClaim);
         
-        let newOwned = { ...ownedHelpers };
-        if (!isProAndLevel50) {
-          newOwned[randomHelper.id] = (newOwned[randomHelper.id] || 0) + 1;
-          setOwnedHelpers(newOwned);
-        }
-
-        // Update streak and last claim
-        const nextStreak = dailyQuestStreak >= 7 ? 1 : dailyQuestStreak + 1;
-        setDailyQuestStreak(nextStreak);
-        setLastDailyClaim(now);
-        localStorage.setItem('khamin_daily_streak', nextStreak.toString());
-        localStorage.setItem('khamin_last_daily_claim', now.toString());
-
-        // Sync with server
-        if (socket) {
-          socket.emit('update_player_data', { 
-            serial: playerSerial, 
-            xp: xp + xpReward, 
-            tokens: tokens + tokenReward,
-            ownedHelpers: newOwned
-          });
-        }
+        // Sync local storage
+        localStorage.setItem('khamin_daily_streak', serverReward.newStreak.toString());
+        localStorage.setItem('khamin_last_daily_claim', serverReward.newLastClaim.toString());
+        localStorage.setItem('khamin_owned_helpers', JSON.stringify(serverReward.newOwnedHelpers));
       }
     }, 50);
   };
@@ -1713,15 +1660,19 @@ export default function App() {
             setTokens(data.tokens || 0);
             localStorage.setItem('khamin_tokens', (data.tokens || 0).toString());
             
-            const shouldClearHelpers = localStorage.getItem('khamin_clear_helpers_on_connect');
-            if (shouldClearHelpers === 'true') {
-              newSocket.emit('update_player_data', { serial, ownedHelpers: {} });
-              setOwnedHelpers({});
-              localStorage.setItem('khamin_owned_helpers', '{}');
-              localStorage.removeItem('khamin_clear_helpers_on_connect');
-            } else if (data.ownedHelpers) {
+            if (data.ownedHelpers) {
               setOwnedHelpers(data.ownedHelpers);
               localStorage.setItem('khamin_owned_helpers', JSON.stringify(data.ownedHelpers));
+            }
+
+            if (data.dailyQuestStreak) {
+              setDailyQuestStreak(data.dailyQuestStreak);
+              localStorage.setItem('khamin_daily_streak', data.dailyQuestStreak.toString());
+            }
+
+            if (data.lastDailyClaim) {
+              setLastDailyClaim(data.lastDailyClaim);
+              localStorage.setItem('khamin_last_daily_claim', data.lastDailyClaim.toString());
             }
 
             if (data.isPermanentBan) {
@@ -1784,6 +1735,27 @@ export default function App() {
       }
       if (data.banUntil !== undefined) setBanUntil(data.banUntil);
       if (data.isPermanentBan !== undefined) setIsPermanentBan(data.isPermanentBan);
+      if (data.ownedHelpers !== undefined) {
+        setOwnedHelpers(data.ownedHelpers);
+        localStorage.setItem('khamin_owned_helpers', JSON.stringify(data.ownedHelpers));
+      }
+      if (data.dailyQuestStreak !== undefined) {
+        setDailyQuestStreak(data.dailyQuestStreak);
+        localStorage.setItem('khamin_daily_streak', data.dailyQuestStreak.toString());
+      }
+      if (data.lastDailyClaim !== undefined) {
+        setLastDailyClaim(data.lastDailyClaim);
+        localStorage.setItem('khamin_last_daily_claim', data.lastDailyClaim.toString());
+      }
+    });
+
+    newSocket.on('daily_quest_success', (data: any) => {
+      startCycling(data);
+    });
+
+    newSocket.on('daily_quest_error', (msg: string) => {
+      setError(msg);
+      setIsChestOpening(false);
     });
 
     newSocket.on('top_players_update', (players: any[]) => {
@@ -2447,6 +2419,7 @@ export default function App() {
     if (roomId) {
       socket?.emit('ad_started', { roomId });
     }
+    socket?.emit('start_ad_watch', { serial: playerSerial });
     setAdTimer(15);
 
     const timer = setInterval(() => {
@@ -2584,16 +2557,8 @@ export default function App() {
     // Quick guess doesn't require an ad
     if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage || hasFreeUse) {
       // Actually use the card FIRST so the server sees we still have the free use
-      socket?.emit('use_card', { roomId, cardType: type });
+      socket?.emit('use_card', { roomId, cardType: type, serial: playerSerial });
 
-      // Decrement free use if they used it
-      if (hasFreeUse) {
-        const newOwned = { ...ownedHelpers, [type]: Math.max(0, (ownedHelpers[type] || 0) - 1) };
-        setOwnedHelpers(newOwned);
-        localStorage.setItem('khamin_owned_helpers', JSON.stringify(newOwned));
-        socket?.emit('update_player_data', { serial: playerSerial, ownedHelpers: newOwned });
-      }
-      
       // Remove from ready
       if (type !== 'quick_guess' && readyPowerUps.includes(type)) {
         setReadyPowerUps(prev => prev.filter(p => p !== type));
@@ -2941,6 +2906,7 @@ export default function App() {
                   onClick={() => {
                     setShowAdConfirmation(false);
                     setShowAdModal(true);
+                    socket?.emit('start_ad_watch', { serial: playerSerial });
                     setAdTimer(5);
                     
                     // Send message to opponent immediately
