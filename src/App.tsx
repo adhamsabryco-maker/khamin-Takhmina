@@ -66,6 +66,7 @@ const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
 };
 import confetti from 'canvas-confetti';
 import { AdminCustomization } from './components/AdminCustomization';
+import { AdminLogin } from './components/AdminLogin';
 import { AvatarDisplay } from './components/AvatarDisplay';
 import { LevelUpModal } from './components/LevelUpModal';
 import { MatchIntro } from './components/MatchIntro';
@@ -530,6 +531,21 @@ export default function App() {
   const [customAvatar, setCustomAvatar] = useState(() => localStorage.getItem('khamin_custom_avatar') || '');
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('khamin_is_admin') === 'true');
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin_auth') === 'success') {
+      const isAdminParam = params.get('isAdmin') === 'true';
+      setIsAdmin(isAdminParam);
+      localStorage.setItem('khamin_is_admin', isAdminParam.toString());
+      if (isAdminParam) {
+        localStorage.setItem('khamin_admin_email', params.get('email') || '');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
   const [adminPlayers, setAdminPlayers] = useState<any[]>([]);
   const [adminReports, setAdminReports] = useState<any[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
@@ -547,6 +563,30 @@ export default function App() {
     }
     return DEFAULT_THEME;
   });
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, []);
+
+  useEffect(() => {
+    if (currentPath === '/admin') {
+      if (isAdmin) {
+        setShowAdminDashboard(true);
+        setShowAdminLogin(false);
+      } else {
+        setShowAdminDashboard(false);
+        setShowAdminLogin(true);
+      }
+    } else {
+      setShowAdminDashboard(false);
+      setShowAdminLogin(false);
+    }
+  }, [currentPath, isAdmin]);
 
   useEffect(() => {
     localStorage.setItem('khamin_theme_config', JSON.stringify(themeConfig));
@@ -3854,6 +3894,26 @@ export default function App() {
                   </button>
                 </div>
               </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Admin Login */}
+        <AnimatePresence>
+          {showAdminLogin && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[6000]"
+            >
+              <AdminLogin onLogin={() => {
+                fetch('/api/auth/google/url')
+                  .then(res => res.json())
+                  .then(data => {
+                    window.location.href = data.url;
+                  });
+              }} />
             </motion.div>
           )}
         </AnimatePresence>
