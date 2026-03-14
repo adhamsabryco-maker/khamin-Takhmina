@@ -5920,7 +5920,7 @@ export default function App() {
                   <X className="w-5 h-5" />
                 </button>
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
-                  <Zap className="w-8 h-8 text-white" />
+                  <Zap className="w-8 h-8 text-accent-purple" />
                 </div>
                 <h2 className="text-2xl font-black text-light mb-1">ما هو الـ Token؟</h2>
               </div>
