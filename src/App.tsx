@@ -1255,7 +1255,6 @@ export default function App() {
     if (proposedMatch && matchResponseTimeLeft !== null && matchResponseTimeLeft > 0) {
       interval = setInterval(() => {
         setMatchResponseTimeLeft(prev => prev !== null ? prev - 1 : null);
-        playSound('tick', 0.3);
       }, 1000);
     } else if (matchResponseTimeLeft === 0 && !hasResponded) {
       setHasResponded(true);
@@ -2072,10 +2071,24 @@ export default function App() {
 
     newSocket.on('game_stopped', ({ reason }) => {
       setError(reason);
+      setTimeout(() => setError(''), 5000);
+      setJoined(false);
+      setRoom(null);
+      setRoomId('');
+      setShowMatchIntro(false);
+      setIsSearching(false);
+      setProposedMatch(null);
     });
 
     newSocket.on('opponent_left_lobby', () => {
-      // Do nothing, let the user decide to leave
+      setError('غادر المنافس الغرفة');
+      setTimeout(() => setError(''), 5000);
+      setJoined(false);
+      setRoom(null);
+      setRoomId('');
+      setShowMatchIntro(false);
+      setIsSearching(false);
+      setProposedMatch(null);
     });
 
     newSocket.on('error', (msg) => setError(msg));
@@ -2258,8 +2271,7 @@ export default function App() {
       return;
     }
 
-    const isTickActive = (room.gameState === 'guessing' && room.timer <= 10 && room.timer > 0) ||
-                         (room.gameState === 'waiting' && room.timer > 0);
+    const isTickActive = (room.gameState === 'guessing' && room.timer <= 10 && room.timer > 0);
     
     if (isTickActive) {
       if (lastTickTimeRef.current.gameTimer !== room.timer) {
@@ -2282,18 +2294,6 @@ export default function App() {
       stopSound('tick');
     }
   }, [room?.quickGuessTimer, playSound, stopSound]);
-
-  // Match response timer sound
-  useEffect(() => {
-    if (matchResponseTimeLeft !== null && matchResponseTimeLeft > 0) {
-      if (lastTickTimeRef.current.matchResponseTimer !== matchResponseTimeLeft) {
-        playSound('tick', 0.3);
-        lastTickTimeRef.current.matchResponseTimer = matchResponseTimeLeft;
-      }
-    } else {
-      stopSound('tick');
-    }
-  }, [matchResponseTimeLeft, playSound, stopSound]);
 
   // Cooldown timer
   useEffect(() => {
