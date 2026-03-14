@@ -417,6 +417,8 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN adsWatchedToday INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN dailyQuestStreak INTEGER DEFAULT 1`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastDailyClaim INTEGER DEFAULT 0`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -502,8 +504,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim)
   `);
 
   function savePlayerData(serial: string) {
@@ -520,7 +522,9 @@ const app = express();
         tokens: player.tokens || 0,
         adsWatchedToday: player.adsWatchedToday || 0,
         lastAdWatchDate: player.lastAdWatchDate || null,
-        ownedHelpers: JSON.stringify(player.ownedHelpers || {})
+        ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
+        dailyQuestStreak: player.dailyQuestStreak || 1,
+        lastDailyClaim: player.lastDailyClaim || 0
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -539,7 +543,9 @@ const app = express();
         tokens: player.tokens || 0,
         adsWatchedToday: player.adsWatchedToday || 0,
         lastAdWatchDate: player.lastAdWatchDate || null,
-        ownedHelpers: JSON.stringify(player.ownedHelpers || {})
+        ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
+        dailyQuestStreak: player.dailyQuestStreak || 1,
+        lastDailyClaim: player.lastDailyClaim || 0
       });
     }
   });
@@ -583,7 +589,9 @@ const app = express();
           tokens: row.tokens || 0,
           adsWatchedToday: row.adsWatchedToday || 0,
           lastAdWatchDate: row.lastAdWatchDate || null,
-          ownedHelpers: JSON.parse(row.ownedHelpers || '{}')
+          ownedHelpers: JSON.parse(row.ownedHelpers || '{}'),
+          dailyQuestStreak: row.dailyQuestStreak || 1,
+          lastDailyClaim: row.lastDailyClaim || 0
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -683,7 +691,16 @@ const app = express();
           return (b.wins || 0) - (a.wins || 0);
         })
         .slice(0, 100)
-        .map((p, i) => ({ ...p, rank: i + 1 }));
+        .map((p, i) => ({ 
+          name: p.name,
+          xp: p.xp,
+          level: p.level,
+          wins: p.wins,
+          avatar: p.avatar,
+          gender: p.gender,
+          isAdmin: p.isAdmin,
+          rank: i + 1 
+        }));
       topPlayersCacheTime = now;
     }
     return cachedTopPlayers;
@@ -1371,9 +1388,22 @@ const app = express();
       callback({ success: true, helperId });
     });
 
+    socket.on("start_ad_watch", ({ serial }) => {
+      const player = allPlayers.get(serial);
+      if (!player) return;
+      player.adWatchStartTime = Date.now();
+    });
+
     socket.on("watch_ad_request", ({ serial }) => {
       const player = allPlayers.get(serial);
       if (!player) return;
+
+      // SECURITY: Check if they actually waited
+      if (!player.adWatchStartTime || Date.now() - player.adWatchStartTime < 4000) {
+        socket.emit("ad_error", "يجب مشاهدة الإعلان بالكامل!");
+        return;
+      }
+      player.adWatchStartTime = 0; // Reset
 
       // 1. Check Level (Changed to 1 for testing)
       const level = getLevel(player.xp);
@@ -1435,31 +1465,145 @@ const app = express();
       });
     });
 
+    socket.on("claim_daily_quest", ({ serial }) => {
+      const player = allPlayers.get(serial);
+      if (!player) return;
+
+      const now = Date.now();
+      const lastClaim = player.lastDailyClaim || 0;
+      
+      // Check if already claimed today
+      const isSameDay = (d1: number, d2: number) => {
+        const date1 = new Date(d1);
+        const date2 = new Date(d2);
+        return date1.getFullYear() === date2.getFullYear() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getDate() === date2.getDate();
+      };
+
+      if (lastClaim !== 0 && isSameDay(now, lastClaim)) {
+        socket.emit("daily_quest_error", "لقد حصلت على جائزتك اليوم بالفعل!");
+        return;
+      }
+
+      // Calculate streak
+      let streak = player.dailyQuestStreak || 1;
+      const isConsecutiveDay = (d1: number, d2: number) => {
+        const date1 = new Date(d1);
+        const date2 = new Date(d2);
+        date2.setDate(date2.getDate() + 1);
+        return date1.getFullYear() === date2.getFullYear() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getDate() === date2.getDate();
+      };
+
+      if (lastClaim !== 0 && !isConsecutiveDay(now, lastClaim)) {
+        streak = 1; // Reset streak if missed a day
+      }
+
+      // Calculate rewards based on streak
+      const dayIndex = streak - 1;
+      const xpRewards = [50, 100, 150, 200, 250, 300, 500];
+      const tokenRewards = [0, 0, 1, 0, 2, 0, 5];
+      
+      const xpReward = xpRewards[dayIndex % 7];
+      const tokenReward = tokenRewards[dayIndex % 7];
+      
+      // Random helper
+      const HELPER_ITEMS = [
+        { id: 'reveal_letter', name: 'كشف حرف', icon: '🔍' },
+        { id: 'extra_time', name: 'وقت إضافي', icon: '⏳' },
+        { id: 'remove_wrong', name: 'تسهيل التخمين', icon: '🔨' },
+        { id: 'funny_filter', name: 'فلتر مضحك', icon: '🤡' }
+      ];
+      const randomHelper = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
+
+      // Apply rewards
+      player.xp = (player.xp || 0) + xpReward;
+      player.level = getLevel(player.xp);
+      if (tokenReward > 0) {
+        player.tokens = (player.tokens || 0) + tokenReward;
+      }
+      
+      // Clear old helpers and add the new one
+      player.ownedHelpers = {};
+      player.ownedHelpers[randomHelper.id] = 1;
+
+      // Update streak
+      player.dailyQuestStreak = streak >= 7 ? 1 : streak + 1;
+      player.lastDailyClaim = now;
+
+      savePlayerData(serial);
+
+      socket.emit("daily_quest_success", {
+        xpReward,
+        tokenReward,
+        helperReward: randomHelper,
+        newXp: player.xp,
+        newTokens: player.tokens,
+        newOwnedHelpers: player.ownedHelpers,
+        newStreak: player.dailyQuestStreak,
+        newLastClaim: player.lastDailyClaim
+      });
+      
+      socket.emit("player_stats_update", {
+        xp: player.xp,
+        level: player.level,
+        streak: 0,
+        wins: player.wins || 0,
+        tokens: player.tokens
+      });
+    });
+
     socket.on("update_player_data", ({ serial, ...updates }) => {
       const player = allPlayers.get(serial);
       if (player) {
-        Object.assign(player, updates);
-        savePlayerData(serial);
-        socket.emit("player_data_update", player);
+        // SECURITY: Only allow updating specific non-sensitive fields
+        const allowedFields = ['name', 'avatar', 'gender', 'age'];
+        const safeUpdates: any = {};
+        for (const key of allowedFields) {
+          if (updates[key] !== undefined) {
+            safeUpdates[key] = updates[key];
+          }
+        }
         
-        // Update in active rooms
-        for (const room of rooms.values()) {
-          const roomPlayer = room.players.find((p: any) => p.serial === serial);
-          if (roomPlayer) {
-            Object.assign(roomPlayer, updates);
-            // Don't emit room_update here to avoid spam, 
-            // but the data is updated for next room_update
+        if (Object.keys(safeUpdates).length > 0) {
+          Object.assign(player, safeUpdates);
+          savePlayerData(serial);
+          socket.emit("player_data_update", player);
+          
+          // Update in active rooms
+          for (const room of rooms.values()) {
+            const roomPlayer = room.players.find((p: any) => p.serial === serial);
+            if (roomPlayer) {
+              Object.assign(roomPlayer, safeUpdates);
+            }
           }
         }
       }
     });
 
-    socket.on("use_helper", ({ roomId, helperId }) => {
+    socket.on("use_helper", ({ roomId, helperId, serial }) => {
       const room = rooms.get(roomId);
       if (!room || room.gameState === 'finished') return;
 
       const player = room.players.find((p: any) => p.id === socket.id);
       if (!player) return;
+
+      // SECURITY: Deduct helper from player data
+      const dbPlayer = allPlayers.get(serial);
+      if (!dbPlayer || !dbPlayer.ownedHelpers || !dbPlayer.ownedHelpers[helperId] || dbPlayer.ownedHelpers[helperId] <= 0) {
+        socket.emit("error", "لا تملك هذه المساعدة!");
+        return;
+      }
+
+      // Deduct
+      dbPlayer.ownedHelpers[helperId] -= 1;
+      if (dbPlayer.ownedHelpers[helperId] === 0) {
+        delete dbPlayer.ownedHelpers[helperId];
+      }
+      savePlayerData(serial);
+      socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers });
 
       // Broadcast to room that a helper was used
       io.to(roomId).emit("helper_used", { playerId: socket.id, helperId });
@@ -1516,6 +1660,21 @@ const app = express();
     socket.on("get_player_data", (serial, callback) => {
       const player = allPlayers.get(serial);
       if (player && callback) {
+        const now = Date.now();
+        const lastClaim = player.lastDailyClaim || 0;
+        const isSameDay = (d1: number, d2: number) => {
+          const date1 = new Date(d1);
+          const date2 = new Date(d2);
+          return date1.getFullYear() === date2.getFullYear() &&
+                 date1.getMonth() === date2.getMonth() &&
+                 date1.getDate() === date2.getDate();
+        };
+
+        if (lastClaim !== 0 && !isSameDay(now, lastClaim)) {
+          player.ownedHelpers = {};
+          savePlayerData(serial);
+        }
+
         callback(player);
       } else if (callback) {
         callback(null);
@@ -2001,7 +2160,7 @@ const app = express();
       }
     });
 
-    socket.on("use_card", ({ roomId, cardType }) => {
+    socket.on("use_card", ({ roomId, cardType, serial }) => {
       const room = rooms.get(roomId);
       if (!room || room.isPaused) return;
 
@@ -2009,10 +2168,28 @@ const app = express();
       const opponent = room.players.find((p: any) => p.id !== socket.id);
       if (!player || !opponent) return;
 
+      const dbPlayer = allPlayers.get(serial);
+      const hasFreeUse = dbPlayer && dbPlayer.ownedHelpers && dbPlayer.ownedHelpers[cardType] > 0;
+
+      // Helper function to deduct free use
+      const deductFreeUse = () => {
+        if (hasFreeUse) {
+          dbPlayer.ownedHelpers[cardType] -= 1;
+          if (dbPlayer.ownedHelpers[cardType] === 0) {
+            delete dbPlayer.ownedHelpers[cardType];
+          }
+          savePlayerData(serial);
+          socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers });
+          
+          // Update room player
+          player.ownedHelpers = dbPlayer.ownedHelpers;
+        }
+      };
+
       if (cardType === "hint") {
         const playerLevel = getLevel(player.xp || 0);
-        const hasFreeUse = player.ownedHelpers && player.ownedHelpers[cardType] > 0;
         if ((playerLevel >= 40 || hasFreeUse) && (!player.hintCount || player.hintCount < 2)) {
+          deductFreeUse();
           if (!player.hintCount) player.hintCount = 0;
           player.hintCount++;
           const targetName = player.targetImage.name;
@@ -2036,8 +2213,8 @@ const app = express();
         }
       } else if (cardType === "word_length") {
         const playerLevel = getLevel(player.xp || 0);
-        const hasFreeUse = player.ownedHelpers && player.ownedHelpers[cardType] > 0;
         if ((playerLevel >= 10 || hasFreeUse) && !player.wordLengthUsed) {
+          deductFreeUse();
           player.wordLengthUsed = true;
           const targetName = player.targetImage.name;
           socket.emit("word_length_result", { length: targetName.length });
@@ -2045,8 +2222,8 @@ const app = express();
         }
       } else if (cardType === "word_count") {
         const playerLevel = getLevel(player.xp || 0);
-        const hasFreeUse = player.ownedHelpers && player.ownedHelpers[cardType] > 0;
         if ((playerLevel >= 20 || hasFreeUse) && !player.wordCountUsed) {
+          deductFreeUse();
           player.wordCountUsed = true;
           const targetName = player.targetImage.name;
           const wordCount = targetName.trim().split(/\s+/).length;
@@ -2055,8 +2232,8 @@ const app = express();
         }
       } else if (cardType === "time_freeze") {
         const playerLevel = getLevel(player.xp || 0);
-        const hasFreeUse = player.ownedHelpers && player.ownedHelpers[cardType] > 0;
         if ((playerLevel >= 30 || hasFreeUse) && !player.timeFreezeUsed && !room.isFrozen) {
+          deductFreeUse();
           player.timeFreezeUsed = true;
           room.isFrozen = true;
           room.freezeTimer = 60;
@@ -2065,8 +2242,8 @@ const app = express();
         }
       } else if (cardType === "spy_lens") {
         const playerLevel = getLevel(player.xp || 0);
-        const hasFreeUse = player.ownedHelpers && player.ownedHelpers[cardType] > 0;
         if ((playerLevel >= 50 || hasFreeUse) && !player.spyLensUsed) {
+          deductFreeUse();
           player.spyLensUsed = true;
           // The player wants to see their own target image (which is what the opponent sees)
           socket.emit("spy_lens_active", { image: player.targetImage.image });
