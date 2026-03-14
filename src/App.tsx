@@ -5594,7 +5594,7 @@ export default function App() {
                         <div className="w-14 h-14 md:w-16 md:h-16">
                           {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0))}
                         </div>
-                        <div className="absolute -top-2 -right-2 bg-gray-200 text-brown-muted w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
+                        <div className="absolute -top-2 -right-2 bg-gray-300 text-brown-muted w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[1].name)}</div>
                       <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
