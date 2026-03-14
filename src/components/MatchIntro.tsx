@@ -50,7 +50,7 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
           if (isExiting) onComplete();
         }}
         transition={doorTransition}
-        className="hidden md:block absolute inset-y-0 left-0 w-1/2 z-10"
+        className="hidden md:block absolute inset-y-0 left-0 w-1/2 z-10 comic-bg-door"
         style={{
           background: 'radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%) fixed',
         }}
@@ -59,7 +59,7 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
         initial={{ x: '100%' }}
         animate={{ x: isExiting ? '100%' : 0 }}
         transition={doorTransition}
-        className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-10"
+        className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-10 comic-bg-door"
         style={{
           background: 'radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%) fixed',
         }}
@@ -70,7 +70,7 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
         initial={{ y: '-100%' }}
         animate={{ y: isExiting ? '-100%' : 0 }}
         transition={doorTransition}
-        className="md:hidden absolute inset-x-0 top-0 h-1/2 z-10"
+        className="md:hidden absolute inset-x-0 top-0 h-1/2 z-10 comic-bg-door"
         style={{
           background: 'radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%) fixed',
         }}
@@ -79,7 +79,7 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
         initial={{ y: '100%' }}
         animate={{ y: isExiting ? '100%' : 0 }}
         transition={doorTransition}
-        className="md:hidden absolute inset-x-0 bottom-0 h-1/2 z-10"
+        className="md:hidden absolute inset-x-0 bottom-0 h-1/2 z-10 comic-bg-door"
         style={{
           background: 'radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%) fixed',
         }}
