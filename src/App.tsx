@@ -541,11 +541,25 @@ export default function App() {
       localStorage.setItem('khamin_is_admin', isAdminParam.toString());
       if (isAdminParam) {
         localStorage.setItem('khamin_admin_email', params.get('email') || '');
+        localStorage.setItem('khamin_admin_token', params.get('adminToken') || '');
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (socket && isConnected && isAdmin) {
+      const adminToken = localStorage.getItem('khamin_admin_token');
+      const adminEmail = localStorage.getItem('khamin_admin_email');
+      socket.emit('admin_set_admin_status', { 
+        serial: playerSerial, 
+        isAdmin: true, 
+        email: adminEmail, 
+        adminToken 
+      });
+    }
+  }, [socket, isConnected, isAdmin, playerSerial]);
   const [adminPlayers, setAdminPlayers] = useState<any[]>([]);
   const [adminReports, setAdminReports] = useState<any[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
