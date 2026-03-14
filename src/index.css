@@ -154,6 +154,49 @@ body::after {
   -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 50%);
 }
 
+.comic-bg-door {
+  overflow: hidden;
+}
+
+.comic-bg-door::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: 
+    repeating-conic-gradient(
+      from 0deg at center,
+      rgba(180, 40, 0, 0.22) 0deg 0.5deg,
+      transparent 0.5deg 8deg
+    ),
+    repeating-conic-gradient(
+      from 15deg at center,
+      rgba(180, 40, 0, 0.18) 0deg 1.5deg,
+      transparent 1.5deg 22deg
+    ),
+    repeating-conic-gradient(
+      from 45deg at center,
+      rgba(180, 40, 0, 0.14) 0deg 1deg,
+      transparent 1deg 16deg
+    );
+  mask-image: radial-gradient(circle at center, transparent 5%, black 85%);
+  -webkit-mask-image: radial-gradient(circle at center, transparent 5%, black 85%);
+  pointer-events: none;
+}
+
+.comic-bg-door::after {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 140, 0, 0.842) 30%, transparent 30%);
+  background-size: 20px 20px;
+  transform: rotate(45deg);
+  mask-image: radial-gradient(circle at center, black 0%, transparent 50%);
+  -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 50%);
+}
+
 #root {
   position: relative;
   z-index: 1;
