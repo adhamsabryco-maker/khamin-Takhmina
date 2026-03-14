@@ -3434,10 +3434,9 @@ export default function App() {
                       value={playerName}
                       onChange={(e) => {
                         const name = e.target.value;
-                        const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
-                        if (!emojiRegex.test(name)) {
-                          setPlayerName(name.slice(0, 15));
-                        }
+                        const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+                        const cleanName = name.replace(emojiRegex, '');
+                        setPlayerName(cleanName.slice(0, 15));
                       }}
                       className="input-game"
                       maxLength={15}
@@ -3729,7 +3728,12 @@ export default function App() {
                     <input 
                       type="text" 
                       value={playerName}
-                      onChange={(e) => setPlayerName(e.target.value.slice(0, 15))}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+                        const cleanName = name.replace(emojiRegex, '');
+                        setPlayerName(cleanName.slice(0, 15));
+                      }}
                       placeholder="ادخل اسمك..."
                       className="input-game"
                       maxLength={15}
@@ -6168,7 +6172,12 @@ export default function App() {
                       <input 
                         type="text" 
                         value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+                          const cleanVal = val.replace(emojiRegex, '');
+                          setChatInput(cleanVal);
+                        }}
                         placeholder="اسأل المنافس وخمن الاجابة..."
                         className="flex-1 bg-white border-none rounded-full px-4 py-2 text-base outline-none shadow-sm font-bold disabled:bg-gray-200 disabled:cursor-not-allowed"
                         maxLength={250}
@@ -6364,7 +6373,12 @@ export default function App() {
                     <input 
                       type="text" 
                       value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+                        const cleanVal = val.replace(emojiRegex, '');
+                        setChatInput(cleanVal);
+                      }}
                       placeholder="دردشة..."
                       className="flex-1 bg-white border-none rounded-full px-3 py-1.5 text-base outline-none shadow-sm font-bold disabled:bg-gray-200 disabled:cursor-not-allowed"
                       maxLength={250}
