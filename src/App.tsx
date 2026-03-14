@@ -1801,8 +1801,9 @@ export default function App() {
     });
 
     newSocket.on('room_update', (updatedRoom: Room) => {
-      if (updatedRoom.gameState === 'discussion' && roomRef.current?.gameState === 'waiting') {
+      if (updatedRoom.gameState !== roomRef.current?.gameState) {
         setChatHistory([]);
+        setChatInput('');
       }
       
       if (roomRef.current?.players.length === 1 && updatedRoom.players.length === 2) {
@@ -2078,6 +2079,8 @@ export default function App() {
       setShowMatchIntro(false);
       setIsSearching(false);
       setProposedMatch(null);
+      setChatHistory([]);
+      setChatInput('');
     });
 
     newSocket.on('opponent_left_lobby', () => {
@@ -2089,6 +2092,8 @@ export default function App() {
       setShowMatchIntro(false);
       setIsSearching(false);
       setProposedMatch(null);
+      setChatHistory([]);
+      setChatInput('');
     });
 
     newSocket.on('error', (msg) => setError(msg));
