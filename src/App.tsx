@@ -84,7 +84,8 @@ const SOUNDS = {
   clickOpen: '/sounds/click-open.mp3',
   clickClose: '/sounds/click-close.mp3',
   tick: '/sounds/tick.mp3',
-  background: '/sounds/background-music.mp3',
+  lobbyBackground: '/sounds/lobby-background-music.mp3',
+  gameBackground: '/sounds/start-game-background-music.mp3',
 };
 
 interface ThemeConfig {
@@ -1328,13 +1329,17 @@ export default function App() {
   useEffect(() => { isOpponentBlockedRef.current = isOpponentBlocked; }, [isOpponentBlocked]);
   
   const audioRef = useRef<{ [key: string]: HTMLAudioElement }>({});
-  const musicRef = useRef<HTMLAudioElement | null>(null);
+  const lobbyMusicRef = useRef<HTMLAudioElement | null>(null);
+  const gameMusicRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     Object.entries(SOUNDS).forEach(([key, url]) => {
-      if (key === 'background') {
-        musicRef.current = new Audio(url);
-        musicRef.current.loop = true;
+      if (key === 'lobbyBackground') {
+        lobbyMusicRef.current = new Audio(url);
+        lobbyMusicRef.current.loop = true;
+      } else if (key === 'gameBackground') {
+        gameMusicRef.current = new Audio(url);
+        gameMusicRef.current.loop = true;
       } else {
         audioRef.current[key] = new Audio(url);
       }
@@ -1342,22 +1347,31 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (musicRef.current) {
-      musicRef.current.volume = isMusicMuted ? 0 : musicVolume;
+    const isGameActive = room?.gameState === 'guessing' || room?.gameState === 'discussion';
+    
+    const activeMusic = isGameActive ? gameMusicRef.current : lobbyMusicRef.current;
+    const inactiveMusic = isGameActive ? lobbyMusicRef.current : gameMusicRef.current;
+
+    if (inactiveMusic) {
+      inactiveMusic.pause();
+    }
+
+    if (activeMusic) {
+      activeMusic.volume = isMusicMuted ? 0 : musicVolume;
       if (!isMusicMuted && musicVolume > 0) {
-        musicRef.current.play().catch(() => {
+        activeMusic.play().catch(() => {
           // Auto-play might be blocked, we'll try again on first interaction
           const playOnInteraction = () => {
-            musicRef.current?.play().catch(() => {});
+            activeMusic?.play().catch(() => {});
             window.removeEventListener('click', playOnInteraction);
           };
           window.addEventListener('click', playOnInteraction);
         });
       } else {
-        musicRef.current.pause();
+        activeMusic.pause();
       }
     }
-  }, [musicVolume, isMusicMuted]);
+  }, [musicVolume, isMusicMuted, room?.gameState]);
 
   const playSound = useCallback((key: keyof typeof SOUNDS, volumeOverride?: number) => {
     if (isSfxMuted) return;
