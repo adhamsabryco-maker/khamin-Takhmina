@@ -336,6 +336,8 @@ const app = express();
     adWatchStartTime?: number,
     dailyQuestStreak?: number,
     lastDailyClaim?: number,
+    weeklyTokensClaimed?: number,
+    lastWeeklyTokenReset?: number,
     ownedHelpers?: { [key: string]: number }
   }>();
 
@@ -422,6 +424,8 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN dailyQuestStreak INTEGER DEFAULT 1`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastDailyClaim INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN weeklyTokensClaimed INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastWeeklyTokenReset INTEGER DEFAULT 0`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -507,8 +511,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, lastWeeklyTokenReset)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @lastWeeklyTokenReset)
   `);
 
   function savePlayerData(serial: string) {
@@ -527,7 +531,9 @@ const app = express();
         lastAdWatchDate: player.lastAdWatchDate || null,
         ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
         dailyQuestStreak: player.dailyQuestStreak || 1,
-        lastDailyClaim: player.lastDailyClaim || 0
+        lastDailyClaim: player.lastDailyClaim || 0,
+        weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
+        lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -548,7 +554,9 @@ const app = express();
         lastAdWatchDate: player.lastAdWatchDate || null,
         ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
         dailyQuestStreak: player.dailyQuestStreak || 1,
-        lastDailyClaim: player.lastDailyClaim || 0
+        lastDailyClaim: player.lastDailyClaim || 0,
+        weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
+        lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0
       });
     }
   });
@@ -594,7 +602,9 @@ const app = express();
           lastAdWatchDate: row.lastAdWatchDate || null,
           ownedHelpers: JSON.parse(row.ownedHelpers || '{}'),
           dailyQuestStreak: row.dailyQuestStreak || 1,
-          lastDailyClaim: row.lastDailyClaim || 0
+          lastDailyClaim: row.lastDailyClaim || 0,
+          weeklyTokensClaimed: row.weeklyTokensClaimed || 0,
+          lastWeeklyTokenReset: row.lastWeeklyTokenReset || 0
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -1478,7 +1488,7 @@ io.on("connection", (socket) => {
       });
     });
 
-    socket.on("claim_daily_quest", ({ serial }) => {
+    socket.on("claim_daily_quest", ({ serial, isPro }) => {
       const player = allPlayers.get(serial);
       if (!player) return;
 
@@ -1518,20 +1528,44 @@ io.on("connection", (socket) => {
 
       // Calculate rewards based on streak
       const dayIndex = (streak - 1) % 7;
-      const xpRewards = [50, 100, 150, 200, 250, 300, 500];
-      const tokenRewards = [0, 0, 1, 0, 2, 0, 5];
+      const xpRewards = [50, 100, 150, 250, 300, 400, 500];
       
-      const xpReward = xpRewards[dayIndex];
-      const tokenReward = tokenRewards[dayIndex];
+      let xpReward = xpRewards[dayIndex];
+      let tokenReward = 0;
       
-      // ... random helper logic ...
       const HELPER_ITEMS = [
-        { id: 'reveal_letter', name: 'كشف حرف', icon: '🔍' },
-        { id: 'extra_time', name: 'وقت إضافي', icon: '⏳' },
-        { id: 'remove_wrong', name: 'تسهيل التخمين', icon: '🔨' },
-        { id: 'funny_filter', name: 'فلتر مضحك', icon: '🤡' }
+        { id: 'word_length', name: 'كاشف الحروف', icon: '📝' },
+        { id: 'word_count', name: 'عدد الكلمات', icon: '🔢' },
+        { id: 'time_freeze', name: 'تجميد الوقت', icon: '❄️' },
+        { id: 'hint', name: 'تلميح', icon: '💡' },
+        { id: 'spy_lens', name: 'الجاسوس', icon: '👁️' }
       ];
       const randomHelper = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
+
+      const playerLevel = getLevel(player.xp);
+      let helperReward: any = randomHelper;
+
+      // Level 50+ Pro Logic: Helper turns into 100 XP
+      if (playerLevel >= 50 && isPro) {
+        helperReward = null;
+        xpReward += 100;
+      }
+
+      // Level 50+ and 50+ Pro: Random 1 Token (Max 2 per week)
+      if (playerLevel >= 50) {
+        const oneWeek = 7 * 24 * 60 * 60 * 1000;
+        if (!player.lastWeeklyTokenReset || (now - player.lastWeeklyTokenReset > oneWeek)) {
+          player.weeklyTokensClaimed = 0;
+          player.lastWeeklyTokenReset = now;
+        }
+
+        if ((player.weeklyTokensClaimed || 0) < 2) {
+          if (Math.random() < 0.2) { // 20% chance
+            tokenReward = 1;
+            player.weeklyTokensClaimed = (player.weeklyTokensClaimed || 0) + 1;
+          }
+        }
+      }
 
       // Apply rewards
       player.xp = (player.xp || 0) + xpReward;
@@ -1540,9 +1574,11 @@ io.on("connection", (socket) => {
         player.tokens = (player.tokens || 0) + tokenReward;
       }
       
-      // Clear old helpers and add the new one
-      player.ownedHelpers = {};
-      player.ownedHelpers[randomHelper.id] = 1;
+      // Add the new helper (if any)
+      if (!player.ownedHelpers) player.ownedHelpers = {};
+      if (helperReward) {
+        player.ownedHelpers[helperReward.id] = (player.ownedHelpers[helperReward.id] || 0) + 1;
+      }
 
       // Update streak
       player.dailyQuestStreak = streak + 1;
@@ -1553,7 +1589,7 @@ io.on("connection", (socket) => {
       socket.emit("daily_quest_success", {
         xpReward,
         tokenReward,
-        helperReward: randomHelper,
+        helperReward,
         newXp: player.xp,
         newTokens: player.tokens,
         newOwnedHelpers: player.ownedHelpers,
