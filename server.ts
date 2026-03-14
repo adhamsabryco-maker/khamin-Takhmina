@@ -2813,13 +2813,17 @@ io.on("connection", (socket) => {
             player.isAdmin = isAdmin;
             player.email = email;
             savePlayerData(serial);
-            callback({ success: true });
+            const players = Array.from(allPlayers.values());
+            const reports = db.prepare('SELECT * FROM reports ORDER BY timestamp DESC').all();
+            callback({ success: true, players, reports });
             return;
           }
         }
         
         if (isValidToken) {
-           callback({ success: true });
+           const players = Array.from(allPlayers.values());
+           const reports = db.prepare('SELECT * FROM reports ORDER BY timestamp DESC').all();
+           callback({ success: true, players, reports });
         } else {
            callback({ error: "Player not found" });
         }
