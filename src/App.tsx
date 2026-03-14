@@ -6229,7 +6229,7 @@ export default function App() {
                 {!consensusReached && room.players.length >= 2 && (
                   <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-48 mt-4 relative">
                     {isMutedByOpponent && (
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
+                      <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                         <Lock className="w-12 h-12 mb-2 text-red-400" />
                         <span className="font-black text-lg text-center px-4">تم حظر الدردشة من قبل المنافس</span>
                       </div>
