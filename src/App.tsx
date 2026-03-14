@@ -5777,7 +5777,7 @@ export default function App() {
                   </div>
                   <div className="border-t border-game mt-1 mb-0.5"></div>
                   <div className="w-full text-left" dir="ltr">
-                    <span className="text-xs text-main font-black">Level 50+</span>
+                    <span className="font-bold text-xs md:text-sm">Level 50+ | 1Kxp</span>
                   </div>
                 </div>
               </div>
