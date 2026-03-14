@@ -8,6 +8,20 @@ import { fileURLToPath } from "url";
 import fs from "fs";
 import Database from 'better-sqlite3';
 import multer from "multer";
+import admin from 'firebase-admin';
+
+// Initialize Firebase Admin
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("[Firebase Admin] Initialized successfully.");
+  } catch (e) {
+    console.error("[Firebase Admin] Failed to initialize:", e);
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -270,7 +284,8 @@ const app = express();
         isAdmin: isAdmin ? 'true' : 'false'
       });
       
-      res.redirect('/?' + params.toString());
+      const redirectPath = isAdmin ? '/admin' : '/';
+      res.redirect(redirectPath + '?' + params.toString());
     } catch (error: any) {
       console.error("Google Auth Error:", error.response?.data || error.message);
       
