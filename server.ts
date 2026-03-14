@@ -1317,7 +1317,10 @@ const app = express();
 
   const CATEGORIES = {};
 
-  io.on("connection", (socket) => {
+  const lastChatTimes = new Map<string, number>();
+const chatCounts = new Map<string, number>();
+
+io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
     broadcastOnlineCount();
 
@@ -2076,18 +2079,46 @@ const app = express();
     });
 
     socket.on("send_chat", ({ roomId, text }) => {
+      const now = Date.now();
+      const lastTime = lastChatTimes.get(socket.id) || 0;
+      const count = chatCounts.get(socket.id) || 0;
+
+      // Anti-spam: Max 1 message per 0.5 seconds
+      if (now - lastTime < 500) {
+        socket.emit("error", "أنت ترسل الرسائل بسرعة كبيرة جداً!");
+        return;
+      }
+
+      // Anti-spam: Max 10 messages per 10 seconds
+      if (now - lastTime < 10000) {
+        if (count >= 10) {
+          socket.emit("error", "لقد تجاوزت حد الرسائل المسموح به، انتظر قليلاً.");
+          return;
+        }
+        chatCounts.set(socket.id, count + 1);
+      } else {
+        chatCounts.set(socket.id, 1);
+      }
+
+      lastChatTimes.set(socket.id, now);
+
       console.log(`Chat request from ${socket.id} for room ${roomId}: ${text}`);
       const room = rooms.get(roomId);
       if (room) {
         const sender = room.players.find((p: any) => p.id === socket.id);
-        let messageToSend = filterProfanity(text);
+        
+        // Filter Emojis
+        const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+        let filteredText = text.replace(emojiRegex, '');
+        
+        let messageToSend = filterProfanity(filteredText);
 
         // Prevent cheating: Check if the message contains the answer for any player in the room
         let isCheating = false;
         room.players.forEach((p: any) => {
           if (p.targetImage && p.targetImage.name) {
             const normalizedAnswer = normalizeEgyptian(p.targetImage.name).toLowerCase();
-            const normalizedText = normalizeEgyptian(text).toLowerCase();
+            const normalizedText = normalizeEgyptian(filteredText).toLowerCase();
             
             // Block Arabic answer
             if (normalizedAnswer.length >= 2 && normalizedText.includes(normalizedAnswer)) {
@@ -2097,7 +2128,7 @@ const app = express();
             // Block English answer if translation is available
             if (p.targetImage.englishName) {
               const engAnswer = p.targetImage.englishName.toLowerCase();
-              const engText = text.toLowerCase();
+              const engText = filteredText.toLowerCase();
               if (engAnswer.length >= 3 && engText.includes(engAnswer)) {
                 isCheating = true;
               }
@@ -2110,8 +2141,14 @@ const app = express();
         }
 
         if (sender && sender.age < 13) {
-          console.log(`Child player ${sender.name} (${sender.id}) sent: "${text}". Message replaced.`);
+          console.log(`Child player ${sender.name} (${sender.id}) sent: "${filteredText}". Message replaced.`);
           messageToSend = "(رسالة طفل)"; // Generic message for children
+        }
+
+        if (messageToSend.trim().length === 0 && text.trim().length > 0) {
+          // If message was only emojis, don't send anything or send a warning
+          socket.emit("error", "الرموز التعبيرية غير مسموح بها في الدردشة.");
+          return;
         }
 
         console.log(`Broadcasting chat to room ${roomId}`);
@@ -2746,6 +2783,8 @@ const app = express();
     });
 
     socket.on("disconnect", (reason) => {
+      lastChatTimes.delete(socket.id);
+      chatCounts.delete(socket.id);
       broadcastOnlineCount();
       // Remove from matchmaking queue
       const qIndex = matchmakingQueue.findIndex(p => p.id === socket.id);
