@@ -1034,7 +1034,7 @@ export default function App() {
     setPendingDailyReward(null); // Reset pending reward
     playSound('clickOpen');
     if (socket) {
-      socket.emit('claim_daily_quest', { serial: playerSerial });
+      socket.emit('claim_daily_quest', { serial: playerSerial, isPro: hasProPackage });
     }
   };
 
