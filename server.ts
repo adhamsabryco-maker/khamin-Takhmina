@@ -338,6 +338,7 @@ const app = express();
     lastDailyClaim?: number,
     weeklyTokensClaimed?: number,
     lastWeeklyTokenReset?: number,
+    lastGuess?: string,
     ownedHelpers?: { [key: string]: number }
   }>();
 
@@ -2230,12 +2231,14 @@ io.on("connection", (socket) => {
           
           if (isCorrect) {
             player.hasGuessed = true;
+            player.lastGuess = guess;
             player.score += 500;
             io.to(roomId).emit("guess_result", { playerId: socket.id, correct: true });
             
             // Pass winner name to endGame
             endGame(roomId, player.name);
           } else {
+            player.lastGuess = guess;
             io.to(roomId).emit("guess_result", { playerId: socket.id, correct: false });
           }
         }
