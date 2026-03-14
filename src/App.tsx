@@ -252,6 +252,7 @@ interface Player {
   timeFreezeUsed?: boolean;
   spyLensUsed?: boolean;
   reported: boolean; // Added for player reporting feature
+  lastGuess?: string;
   xp: number;
   level?: number;
   streak: number;
@@ -6748,6 +6749,20 @@ export default function App() {
                       😢
                     </motion.div>
                   </motion.div>
+                  
+                  {me && (
+                    <div className="bg-white/10 p-4 rounded-2xl w-full text-center space-y-2 mb-4">
+                      <div className="flex items-center justify-center gap-2 text-red-400">
+                        <X className="w-5 h-5" />
+                        <span className="font-bold text-sm">إجابتك: {me.lastGuess || 'لم تخمن'}</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-2 text-green-400">
+                        <Check className="w-5 h-5" />
+                        <span className="font-bold text-sm">الإجابة الصحيحة: {me.targetImage?.name}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <motion.h2 
                     initial={{ opacity: 0, scale: 0.5 }}
                     animate={{ opacity: 1, scale: 1 }}
