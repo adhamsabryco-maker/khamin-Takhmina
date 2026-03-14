@@ -333,6 +333,9 @@ const app = express();
     tokens?: number,
     adsWatchedToday?: number,
     lastAdWatchDate?: string,
+    adWatchStartTime?: number,
+    dailyQuestStreak?: number,
+    lastDailyClaim?: number,
     ownedHelpers?: { [key: string]: number }
   }>();
 
@@ -1484,9 +1487,9 @@ io.on("connection", (socket) => {
       const isSameDay = (d1: number, d2: number) => {
         const date1 = new Date(d1);
         const date2 = new Date(d2);
-        return date1.getFullYear() === date2.getFullYear() &&
-               date1.getMonth() === date2.getMonth() &&
-               date1.getDate() === date2.getDate();
+        return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+               date1.getUTCMonth() === date2.getUTCMonth() &&
+               date1.getUTCDate() === date2.getUTCDate();
       };
 
       if (lastClaim !== 0 && isSameDay(now, lastClaim)) {
@@ -1496,13 +1499,15 @@ io.on("connection", (socket) => {
 
       // Calculate streak
       let streak = player.dailyQuestStreak || 1;
+      if (streak > 7) streak = 1; // Reset if we finished the week last time
+
       const isConsecutiveDay = (d1: number, d2: number) => {
         const date1 = new Date(d1);
         const date2 = new Date(d2);
-        date2.setDate(date2.getDate() + 1);
-        return date1.getFullYear() === date2.getFullYear() &&
-               date1.getMonth() === date2.getMonth() &&
-               date1.getDate() === date2.getDate();
+        date2.setUTCDate(date2.getUTCDate() + 1);
+        return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+               date1.getUTCMonth() === date2.getUTCMonth() &&
+               date1.getUTCDate() === date2.getUTCDate();
       };
 
       if (lastClaim !== 0 && !isConsecutiveDay(now, lastClaim)) {
@@ -1510,14 +1515,14 @@ io.on("connection", (socket) => {
       }
 
       // Calculate rewards based on streak
-      const dayIndex = streak - 1;
+      const dayIndex = (streak - 1) % 7;
       const xpRewards = [50, 100, 150, 200, 250, 300, 500];
       const tokenRewards = [0, 0, 1, 0, 2, 0, 5];
       
-      const xpReward = xpRewards[dayIndex % 7];
-      const tokenReward = tokenRewards[dayIndex % 7];
+      const xpReward = xpRewards[dayIndex];
+      const tokenReward = tokenRewards[dayIndex];
       
-      // Random helper
+      // ... random helper logic ...
       const HELPER_ITEMS = [
         { id: 'reveal_letter', name: 'كشف حرف', icon: '🔍' },
         { id: 'extra_time', name: 'وقت إضافي', icon: '⏳' },
@@ -1538,7 +1543,7 @@ io.on("connection", (socket) => {
       player.ownedHelpers[randomHelper.id] = 1;
 
       // Update streak
-      player.dailyQuestStreak = streak >= 7 ? 1 : streak + 1;
+      player.dailyQuestStreak = streak + 1;
       player.lastDailyClaim = now;
 
       savePlayerData(serial);
