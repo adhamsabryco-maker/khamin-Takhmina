@@ -338,9 +338,9 @@ const TypingIndicator = () => (
 const isSameDay = (d1: number, d2: number) => {
   const date1 = new Date(d1);
   const date2 = new Date(d2);
-  return date1.getFullYear() === date2.getFullYear() &&
-         date1.getMonth() === date2.getMonth() &&
-         date1.getDate() === date2.getDate();
+  return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+         date1.getUTCMonth() === date2.getUTCMonth() &&
+         date1.getUTCDate() === date2.getUTCDate();
 };
 
 const isSameWeek = (d1: number, d2: number) => {
@@ -929,6 +929,7 @@ export default function App() {
   const [isCycling, setIsCycling] = useState(false);
   const [cyclingReward, setCyclingReward] = useState<any>(null);
   const [chestReward, setChestReward] = useState<any>(null);
+  const [pendingDailyReward, setPendingDailyReward] = useState<any>(null);
   const [isNewDayNotification, setIsNewDayNotification] = useState(false);
   const [appOpenDate] = useState(Date.now());
   const [tokensEarnedThisWeek, setTokensEarnedThisWeek] = useState(0);
@@ -993,9 +994,9 @@ export default function App() {
       const isSameDay = (d1: number, d2: number) => {
         const date1 = new Date(d1);
         const date2 = new Date(d2);
-        return date1.getFullYear() === date2.getFullYear() &&
-               date1.getMonth() === date2.getMonth() &&
-               date1.getDate() === date2.getDate();
+        return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+               date1.getUTCMonth() === date2.getUTCMonth() &&
+               date1.getUTCDate() === date2.getUTCDate();
       };
 
       if (lastClaim === 0) {
@@ -1030,14 +1031,17 @@ export default function App() {
 
   const handleClaimDailyQuest = () => {
     setIsChestOpening(true);
+    setPendingDailyReward(null); // Reset pending reward
     playSound('clickOpen');
     if (socket) {
       socket.emit('claim_daily_quest', { serial: playerSerial });
     }
   };
 
-  const startCycling = (serverReward: any) => {
+  const startCycling = () => {
+    if (!pendingDailyReward || isCycling) return;
     setIsCycling(true);
+    playSound('chestOpen');
     
     // Cycle animation
     let cycleCount = 0;
@@ -1047,25 +1051,27 @@ export default function App() {
       cycleCount++;
       if (cycleCount >= 40) {
         clearInterval(interval);
-        setCyclingReward(serverReward.helperReward);
+        setCyclingReward(pendingDailyReward.helperReward);
         setChestReward({ 
-          xp: serverReward.xpReward, 
-          helper: serverReward.helperReward, 
-          tokens: serverReward.tokenReward 
+          xp: pendingDailyReward.xpReward, 
+          helper: pendingDailyReward.helperReward, 
+          tokens: pendingDailyReward.tokenReward 
         });
         setIsCycling(false);
         
         // Apply rewards locally for immediate UI update
-        setXp(serverReward.newXp);
-        setTokens(serverReward.newTokens);
-        setOwnedHelpers(serverReward.newOwnedHelpers);
-        setDailyQuestStreak(serverReward.newStreak);
-        setLastDailyClaim(serverReward.newLastClaim);
+        setXp(pendingDailyReward.newXp);
+        setTokens(pendingDailyReward.newTokens);
+        setOwnedHelpers(pendingDailyReward.newOwnedHelpers);
+        setDailyQuestStreak(pendingDailyReward.newStreak);
+        setLastDailyClaim(pendingDailyReward.newLastClaim);
         
         // Sync local storage
-        localStorage.setItem('khamin_daily_streak', serverReward.newStreak.toString());
-        localStorage.setItem('khamin_last_daily_claim', serverReward.newLastClaim.toString());
-        localStorage.setItem('khamin_owned_helpers', JSON.stringify(serverReward.newOwnedHelpers));
+        localStorage.setItem('khamin_daily_streak', pendingDailyReward.newStreak.toString());
+        localStorage.setItem('khamin_last_daily_claim', pendingDailyReward.newLastClaim.toString());
+        localStorage.setItem('khamin_owned_helpers', JSON.stringify(pendingDailyReward.newOwnedHelpers));
+        
+        setPendingDailyReward(null);
       }
     }, 50);
   };
@@ -1750,7 +1756,7 @@ export default function App() {
     });
 
     newSocket.on('daily_quest_success', (data: any) => {
-      startCycling(data);
+      setPendingDailyReward(data);
     });
 
     newSocket.on('daily_quest_error', (msg: string) => {
@@ -2593,9 +2599,9 @@ export default function App() {
   const isSameDay = (d1: number, d2: number) => {
     const date1 = new Date(d1);
     const date2 = new Date(d2);
-    return date1.getFullYear() === date2.getFullYear() &&
-           date1.getMonth() === date2.getMonth() &&
-           date1.getDate() === date2.getDate();
+    return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+           date1.getUTCMonth() === date2.getUTCMonth() &&
+           date1.getUTCDate() === date2.getUTCDate();
   };
 
   const renderDailyQuestModal = () => (
