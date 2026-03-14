@@ -706,6 +706,12 @@ const app = express();
     return cachedTopPlayers;
   }
 
+  // Optimized: Update leaderboard for all clients every 1 minute
+  setInterval(() => {
+    const topPlayers = getTopPlayers(true);
+    io.emit("top_players_update", topPlayers);
+  }, 60000);
+
   function invalidateTopPlayersCache() {
     topPlayersCacheTime = 0;
   }
@@ -1370,7 +1376,6 @@ io.on("connection", (socket) => {
       });
       savePlayerData(serial);
       callback({ serial, name: filteredName });
-      io.emit("top_players_update", getTopPlayers(true));
     });
 
     socket.on("claim_serial_prize", ({ serial, helperId }, callback) => {
@@ -1650,9 +1655,7 @@ io.on("connection", (socket) => {
         player.avatar = avatar;
         if (gender) player.gender = gender;
         savePlayerData(playerSerial);
-        const topPlayers = getTopPlayers(true);
-        io.emit("top_players_update", topPlayers);
-        if (callback) callback({ topPlayers, name: player.name });
+        if (callback) callback({ topPlayers: getTopPlayers(), name: player.name });
       }
     });
 
@@ -1693,7 +1696,6 @@ io.on("connection", (socket) => {
         db.prepare('DELETE FROM players WHERE serial = ?').run(playerSerial);
         allPlayers.delete(playerSerial);
         
-        io.emit("top_players_update", getTopPlayers(true));
         if (callback) callback({ success: true });
         
         // Disconnect socket to trigger cleanup (remove from queues, rooms, etc.)
@@ -2688,7 +2690,6 @@ io.on("connection", (socket) => {
           if (updates.xp !== undefined) player.level = getLevel(updates.xp);
           if (updates.tokens !== undefined) player.tokens = updates.tokens;
           savePlayerData(serial);
-          io.emit("top_players_update", getTopPlayers(true));
           
           // Find socket ID for this player serial to send direct update
           for (const [socketId, s] of io.sockets.sockets) {
@@ -2718,7 +2719,6 @@ io.on("connection", (socket) => {
         if (allPlayers.has(serial)) {
           allPlayers.delete(serial);
           db.prepare('DELETE FROM players WHERE serial = ?').run(serial);
-          io.emit("top_players_update", getTopPlayers());
           
           for (const [socketId, s] of io.sockets.sockets) {
             if (s.data?.serial === serial) {
@@ -3131,7 +3131,6 @@ io.on("connection", (socket) => {
           }
         }
       });
-      io.emit("top_players_update", getTopPlayers(true));
 
       io.to(roomId).emit("game_finished", { 
         room, 
