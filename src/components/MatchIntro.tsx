@@ -50,18 +50,20 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
           if (isExiting) onComplete();
         }}
         transition={doorTransition}
-        className="hidden md:block absolute inset-y-0 left-0 w-1/2 z-10 comic-bg-door"
+        className="hidden md:block absolute inset-y-0 left-0 w-[65vw] z-10 comic-bg-door"
         style={{
           background: 'radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%) fixed',
+          clipPath: 'polygon(0 0, 100% 0, calc(100% - 30vw) 100%, 0 100%)'
         }}
       />
       <motion.div 
         initial={{ x: '100%' }}
         animate={{ x: isExiting ? '100%' : 0 }}
         transition={doorTransition}
-        className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-10 comic-bg-door"
+        className="hidden md:block absolute inset-y-0 right-0 w-[65vw] z-10 comic-bg-door"
         style={{
           background: 'radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%) fixed',
+          clipPath: 'polygon(30vw 0, 100% 0, 100% 100%, 0 100%)'
         }}
       />
 
@@ -70,18 +72,20 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
         initial={{ y: '-100%' }}
         animate={{ y: isExiting ? '-100%' : 0 }}
         transition={doorTransition}
-        className="md:hidden absolute inset-x-0 top-0 h-1/2 z-10 comic-bg-door"
+        className="md:hidden absolute inset-x-0 top-0 h-[65vh] z-10 comic-bg-door"
         style={{
           background: 'radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%) fixed',
+          clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 30vh), 0 100%)'
         }}
       />
       <motion.div 
         initial={{ y: '100%' }}
         animate={{ y: isExiting ? '100%' : 0 }}
         transition={doorTransition}
-        className="md:hidden absolute inset-x-0 bottom-0 h-1/2 z-10 comic-bg-door"
+        className="md:hidden absolute inset-x-0 bottom-0 h-[65vh] z-10 comic-bg-door"
         style={{
           background: 'radial-gradient(circle at center, var(--bg-body-start) 0%, var(--bg-body-end) 100%) fixed',
+          clipPath: 'polygon(0 30vh, 100% 0, 100% 100%, 0 100%)'
         }}
       />
 
@@ -89,10 +93,10 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
       <div className="absolute inset-0 flex flex-col md:flex-row items-center justify-center z-20">
         {/* Left/Top Player (Player 2) */}
         <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isExiting ? 0 : 1 }}
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: isExiting ? 0 : 1, x: isExiting ? -50 : 0 }}
           transition={{ delay: isExiting ? 0 : 0.7, ...contentTransition }}
-          className="w-full md:w-1/2 h-1/2 md:h-full flex flex-col items-center justify-center"
+          className="w-full md:w-1/2 h-1/2 md:h-full flex flex-col items-center justify-center md:pr-12 pb-6 md:pb-0"
         >
           <div className="text-center space-y-2 md:space-y-4 bg-accent-orange/80 p-4 md:p-6 border-4 border-black">
             <img src={player2.avatar} alt={player2.name} className="w-20 h-20 md:w-32 md:h-32 rounded-none border-4 border-black shadow-lg mx-auto bg-white" />
@@ -103,10 +107,10 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
 
         {/* Right/Bottom Player (Player 1) */}
         <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isExiting ? 0 : 1 }}
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: isExiting ? 0 : 1, x: isExiting ? 50 : 0 }}
           transition={{ delay: isExiting ? 0 : 0.7, ...contentTransition }}
-          className="w-full md:w-1/2 h-1/2 md:h-full flex flex-col items-center justify-center"
+          className="w-full md:w-1/2 h-1/2 md:h-full flex flex-col items-center justify-center md:pl-12 pt-6 md:pt-0"
         >
           <div className="text-center space-y-2 md:space-y-4 bg-accent-blue/80 p-4 md:p-6 border-4 border-black">
             <img src={player1.avatar} alt={player1.name} className="w-20 h-20 md:w-32 md:h-32 rounded-none border-4 border-black shadow-lg mx-auto bg-white" />
@@ -116,21 +120,23 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
         </motion.div>
       </div>
 
-      {/* Straight Divider & VS */}
+      {/* Angled Divider & VS */}
       <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
         {/* Desktop Divider */}
         <motion.div
           initial={{ scaleY: 0 }}
           animate={{ scaleY: isExiting ? 0 : 1 }}
           transition={{ delay: isExiting ? 0.2 : 0.3, ...dividerTransition }}
-          className="hidden md:block w-4 h-full bg-black shadow-lg"
+          className="hidden md:block absolute inset-0 bg-black"
+          style={{ clipPath: 'polygon(calc(65vw - 8px) 0, calc(65vw + 8px) 0, calc(35vw + 8px) 100%, calc(35vw - 8px) 100%)' }}
         />
         {/* Mobile Divider */}
         <motion.div
           initial={{ scaleX: 0 }}
           animate={{ scaleX: isExiting ? 0 : 1 }}
           transition={{ delay: isExiting ? 0.2 : 0.3, ...dividerTransition }}
-          className="md:hidden w-full h-4 bg-black shadow-lg"
+          className="md:hidden absolute inset-0 bg-black"
+          style={{ clipPath: 'polygon(0 calc(65vh - 8px), 100% calc(35vh - 8px), 100% calc(35vh + 8px), 0 calc(65vh + 8px))' }}
         />
         
         <motion.div
