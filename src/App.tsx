@@ -2518,10 +2518,13 @@ export default function App() {
     socket?.emit('request_match_intro', { roomId });
   };
 
-  const handleMatchIntroComplete = useCallback(() => {
-    setShowMatchIntro(false);
+  const handleMatchIntroStart = useCallback(() => {
     socket?.emit('force_start_game', { roomId });
   }, [roomId, socket]);
+
+  const handleMatchIntroComplete = useCallback(() => {
+    setShowMatchIntro(false);
+  }, []);
 
   const handleLeaveGame = () => {
     playSound('clickOpen');
@@ -6874,6 +6877,7 @@ export default function App() {
           <MatchIntro 
             player1={{ id: room.players[0].id, name: room.players[0].name, level: room.players[0].level, avatar: room.players[0].avatar }}
             player2={{ id: room.players[1].id, name: room.players[1].name, level: room.players[1].level, avatar: room.players[1].avatar }}
+            onStartGame={handleMatchIntroStart}
             onComplete={handleMatchIntroComplete}
           />
         )}
