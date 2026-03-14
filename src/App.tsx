@@ -2129,16 +2129,18 @@ export default function App() {
         
         // Check if we need to force update (reload)
         const localVersion = localStorage.getItem('khamin_game_version');
-        const sessionRefreshed = sessionStorage.getItem('khamin_session_refreshed');
+        const lastRefreshDate = localStorage.getItem('khamin_last_refresh_date');
+        const today = new Date().toDateString();
+        const needsDailyRefresh = lastRefreshDate !== today;
         
         // Force a hard refresh if:
         // 1. Version mismatch (always reload to get new version)
-        // 2. OR: We haven't refreshed in this session yet
-        if (!sessionRefreshed || (localVersion && localVersion !== serverVersion)) {
+        // 2. OR: It's a new day (once a day refresh for freshness)
+        if (needsDailyRefresh || (localVersion && localVersion !== serverVersion)) {
           setLoadingStatus('جاري تهيئة الملفات وضمان أحدث نسخة...');
           setLoadingProgress(100);
           localStorage.setItem('khamin_game_version', serverVersion);
-          sessionStorage.setItem('khamin_session_refreshed', 'true');
+          localStorage.setItem('khamin_last_refresh_date', today);
           
           // Unregister all service workers to force fetching new files
           if ('serviceWorker' in navigator) {
