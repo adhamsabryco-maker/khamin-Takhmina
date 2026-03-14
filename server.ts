@@ -1574,10 +1574,10 @@ io.on("connection", (socket) => {
         player.tokens = (player.tokens || 0) + tokenReward;
       }
       
-      // Add the new helper (if any)
-      if (!player.ownedHelpers) player.ownedHelpers = {};
+      // Clear old helpers and add the new one (if any)
+      player.ownedHelpers = {};
       if (helperReward) {
-        player.ownedHelpers[helperReward.id] = (player.ownedHelpers[helperReward.id] || 0) + 1;
+        player.ownedHelpers[helperReward.id] = 1;
       }
 
       // Update streak
