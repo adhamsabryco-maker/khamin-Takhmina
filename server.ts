@@ -442,6 +442,7 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN lastDailyClaim INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN weeklyTokensClaimed INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastWeeklyTokenReset INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN proPackageExpiry INTEGER DEFAULT 0`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -527,8 +528,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, lastWeeklyTokenReset)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @lastWeeklyTokenReset)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, lastWeeklyTokenReset, proPackageExpiry)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @lastWeeklyTokenReset, @proPackageExpiry)
   `);
 
   function savePlayerData(serial: string) {
@@ -549,7 +550,8 @@ const app = express();
         dailyQuestStreak: player.dailyQuestStreak || 1,
         lastDailyClaim: player.lastDailyClaim || 0,
         weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
-        lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0
+        lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0,
+        proPackageExpiry: player.proPackageExpiry || 0
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -572,7 +574,8 @@ const app = express();
         dailyQuestStreak: player.dailyQuestStreak || 1,
         lastDailyClaim: player.lastDailyClaim || 0,
         weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
-        lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0
+        lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0,
+        proPackageExpiry: player.proPackageExpiry || 0
       });
     }
   });
@@ -620,7 +623,8 @@ const app = express();
           dailyQuestStreak: row.dailyQuestStreak || 1,
           lastDailyClaim: row.lastDailyClaim || 0,
           weeklyTokensClaimed: row.weeklyTokensClaimed || 0,
-          lastWeeklyTokenReset: row.lastWeeklyTokenReset || 0
+          lastWeeklyTokenReset: row.lastWeeklyTokenReset || 0,
+          proPackageExpiry: row.proPackageExpiry || 0
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -745,6 +749,7 @@ const app = express();
 
   function invalidateTopPlayersCache() {
     topPlayersCacheTime = 0;
+    io.emit("top_players_update", getTopPlayers(true));
   }
 
   function broadcastOnlineCount() {
@@ -769,13 +774,14 @@ const app = express();
       const item = db.prepare('SELECT * FROM shop_items WHERE id = ? AND active = 1').get(itemId) as any;
       if (!item) return res.status(404).json({ error: "Item not found" });
 
+      // Fetch settings directly from DB to ensure we get the latest values
       const settingsRows = db.prepare('SELECT * FROM settings').all();
       const settings = settingsRows.reduce((acc: any, row: any) => {
         acc[row.key] = row.value;
         return acc;
       }, {});
 
-      if (!settings.paymob_api_key || !settings.paymob_integration_id || !settings.paymob_iframe_id) {
+      if (!settings.paymob_api_key || !settings.paymob_integration_id) {
         return res.status(500).json({ error: "Paymob settings not configured" });
       }
 
@@ -833,8 +839,9 @@ const app = express();
       // Save order info to verify later
       db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(`order_${orderId}`, JSON.stringify({ playerSerial, itemId }));
 
-      const iframeUrl = `https://accept.paymob.com/api/acceptance/iframes/${settings.paymob_iframe_id}?payment_token=${paymentToken}`;
-      res.json({ url: iframeUrl });
+      // For wallets, we use the payment token directly in the redirect URL
+      const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/${settings.paymob_iframe_id || 'iframe_id_not_set'}?payment_token=${paymentToken}`;
+      res.json({ paymentUrl });
     } catch (err) {
       console.error("Paymob initiate error:", err);
       res.status(500).json({ error: "Payment initiation failed" });
@@ -854,11 +861,28 @@ const app = express();
           const item = db.prepare('SELECT * FROM shop_items WHERE id = ?').get(orderInfo.itemId) as any;
 
           if (player && item) {
-            if (item.type === 'token') {
+            if (item.type.startsWith('token_pack')) {
               player.tokens = (player.tokens || 0) + (item.amount || 1);
               savePlayerData(player.serial);
+              
+              // Notify the player
+              const socketId = playerSockets.get(player.serial);
+              if (socketId) {
+                io.to(socketId).emit('player_update', player);
+                io.to(socketId).emit('show_alert', { message: `تم إضافة ${item.amount} Tokens بنجاح!`, title: 'عملية ناجحة' });
+              }
+            } else if (item.id === 'pro_pack') {
+              const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+              player.proPackageExpiry = Date.now() + thirtyDaysInMs;
+              savePlayerData(player.serial);
+
+              // Notify the player
+              const socketId = playerSockets.get(player.serial);
+              if (socketId) {
+                io.to(socketId).emit('player_update', player);
+                io.to(socketId).emit('show_alert', { message: 'تم تفعيل باقة المحترفين بنجاح!', title: 'عملية ناجحة' });
+              }
             }
-            // If it's avatar or frame, we'd need a purchased_items array, but for now tokens are the main thing
           }
         }
       }
@@ -2098,6 +2122,7 @@ io.on("connection", (socket) => {
           
           if (allSelected) {
             room.category = category;
+            io.to(roomId).emit('match_intro_triggered');
           }
           
           io.to(roomId).emit("room_update", room);
