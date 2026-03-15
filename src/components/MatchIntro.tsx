@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 
+import { AvatarDisplay } from './AvatarDisplay';
+
 interface Player {
   id: string;
   name: string;
@@ -11,11 +13,12 @@ interface Player {
 interface MatchIntroProps {
   player1: Player;
   player2: Player;
+  customConfig: any;
   onStartGame?: () => void;
   onComplete: () => void;
 }
 
-export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStartGame, onComplete }) => {
+export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, customConfig, onStartGame, onComplete }) => {
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
@@ -99,7 +102,9 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
           className="w-full md:w-1/2 h-1/2 md:h-full flex flex-col items-center justify-center md:pr-12 pb-6 md:pb-0"
         >
           <div className="text-center space-y-2 md:space-y-4 bg-accent-orange/80 p-4 md:p-6 border-4 border-black">
-            <img src={player2.avatar} alt={player2.name} className="w-20 h-20 md:w-32 md:h-32 rounded-none border-4 border-black shadow-lg mx-auto bg-white" />
+            <div className="w-20 h-20 md:w-32 md:h-32 mx-auto">
+              <AvatarDisplay avatar={player2.avatar} level={player2.level} customConfig={customConfig} hideExtras={true} />
+            </div>
             <h2 className="text-xl md:text-3xl font-black text-white drop-shadow-md">{player2.name}</h2>
             <p className="text-lg md:text-xl font-bold text-white/90 drop-shadow-sm">Level {player2.level}</p>
           </div>
@@ -113,7 +118,9 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, onStar
           className="w-full md:w-1/2 h-1/2 md:h-full flex flex-col items-center justify-center md:pl-12 pt-6 md:pt-0"
         >
           <div className="text-center space-y-2 md:space-y-4 bg-accent-blue/80 p-4 md:p-6 border-4 border-black">
-            <img src={player1.avatar} alt={player1.name} className="w-20 h-20 md:w-32 md:h-32 rounded-none border-4 border-black shadow-lg mx-auto bg-white" />
+            <div className="w-20 h-20 md:w-32 md:h-32 mx-auto">
+              <AvatarDisplay avatar={player1.avatar} level={player1.level} customConfig={customConfig} hideExtras={true} />
+            </div>
             <h2 className="text-xl md:text-3xl font-black text-white drop-shadow-md">{player1.name}</h2>
             <p className="text-lg md:text-xl font-bold text-white/90 drop-shadow-sm">Level {player1.level}</p>
           </div>
