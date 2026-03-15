@@ -387,6 +387,37 @@ const app = express();
     db.pragma('journal_mode = WAL');
     db.pragma('synchronous = NORMAL');
     console.log("[DB] Database connected successfully.");
+
+    // Initialize shop items if needed
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS shop_items (
+          id TEXT PRIMARY KEY,
+          name TEXT,
+          description TEXT,
+          price REAL,
+          type TEXT,
+          image TEXT,
+          amount INTEGER,
+          active INTEGER DEFAULT 1,
+          timestamp INTEGER
+        )
+      `);
+
+      const count = db.prepare('SELECT COUNT(*) as count FROM shop_items').get() as any;
+      if (count.count === 0) {
+        console.log("[DB] Seeding shop items...");
+        const insert = db.prepare('INSERT OR REPLACE INTO shop_items (id, name, description, price, type, image, amount, active, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        const now = Date.now();
+        insert.run('token_pack_1', '1 Token', 'مباراة واحدة مع مستوى 40+', 10, 'token_pack_1', '', 1, 1, now);
+        insert.run('token_pack_5', '5 Tokens', '5 مباريات + 1 مجاناً', 40, 'token_pack_5', '', 5, 1, now);
+        insert.run('token_pack_10', '10 Tokens', '10 مباريات + 3 مجاناً', 70, 'token_pack_10', '', 10, 1, now);
+        insert.run('pro_pack', 'باقة المحترفين', 'استخدم وسائل المساعدة بدون إعلانات لمدة 30 يوم', 150, 'pro_pack', '', 0, 1, now);
+        console.log("[DB] Successfully seeded shop items.");
+      }
+    } catch (err) {
+      console.error("[DB] Failed to seed shop items:", err);
+    }
   } catch (err) {
     console.error(`[DB] Failed to open database at ${dbPath}:`, err);
     // Final fallback to a guaranteed writable location
