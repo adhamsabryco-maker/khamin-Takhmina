@@ -572,6 +572,8 @@ export default function App() {
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
   const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors'>('players');
   const [adminImages, setAdminImages] = useState<any[]>([]);
+  const [shopItems, setShopItems] = useState<any[]>([]);
+  const [paymobSettings, setPaymobSettings] = useState({ paymob_api_key: '', paymob_integration_id: '', paymob_iframe_id: '' });
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => {
     const saved = localStorage.getItem('khamin_theme_config');
     if (saved) {
@@ -1192,6 +1194,31 @@ export default function App() {
     }
   };
 
+  const handleBuyItem = async (itemId: string) => {
+    playSound('clickOpen');
+    try {
+      const response = await fetch('/api/paymob/initiate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          itemId,
+          playerSerial,
+        }),
+      });
+      const data = await response.json();
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        showAlert(data.error || 'حدث خطأ أثناء بدء عملية الدفع', 'خطأ');
+      }
+    } catch (error) {
+      console.error('Payment initiation error:', error);
+      showAlert('حدث خطأ في الاتصال بالخادم', 'خطأ');
+    }
+  };
+
   const toggleShop = () => {
     if (showShopModal) {
       playSound('clickClose');
@@ -1361,34 +1388,7 @@ export default function App() {
   const gameMusicRef = useRef<Howl | null>(null);
 
   useEffect(() => {
-    // Robust iOS and mobile audio unlocker
-    const unlockAudio = () => {
-      if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume();
-      }
-      
-      // Create and play a silent buffer to force audio context initialization on iOS
-      if (Howler.ctx) {
-        const buffer = Howler.ctx.createBuffer(1, 1, 22050);
-        const source = Howler.ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(Howler.ctx.destination);
-        if (source.start) {
-          source.start(0);
-        } else {
-          (source as any).noteOn(0);
-        }
-      }
-
-      window.removeEventListener('touchstart', unlockAudio);
-      window.removeEventListener('touchend', unlockAudio);
-      window.removeEventListener('click', unlockAudio);
-    };
-
-    window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
-    window.addEventListener('touchend', unlockAudio, { once: true, passive: true });
-    window.addEventListener('click', unlockAudio, { once: true, passive: true });
-
+    // Initialize sounds without html5: true to ensure Web Audio API is used consistently
     Object.entries(SOUNDS).forEach(([key, url]) => {
       if (key === 'lobbyBackground') {
         lobbyMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume });
@@ -1399,9 +1399,30 @@ export default function App() {
       }
     });
 
+    // Simple audio unlocker for mobile
+    const unlockAudio = () => {
+      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+        Howler.ctx.resume();
+      }
+      
+      // Play a silent sound to unlock audio context
+      const silentSound = new Howl({
+        src: ['data:audio/mp3;base64,//MkxAAQAA...'], // A tiny valid mp3 or just rely on resume
+        volume: 0,
+        onload: () => {
+          silentSound.play();
+        }
+      });
+      
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('click', unlockAudio);
+    };
+
+    window.addEventListener('touchstart', unlockAudio, { once: true });
+    window.addEventListener('click', unlockAudio, { once: true });
+
     return () => {
       window.removeEventListener('touchstart', unlockAudio);
-      window.removeEventListener('touchend', unlockAudio);
       window.removeEventListener('click', unlockAudio);
     };
   }, []);
@@ -1758,6 +1779,14 @@ export default function App() {
       setIsConnecting(false);
       setConnectionError(null);
       
+      newSocket.emit('get_shop_items', (items: any[]) => {
+        if (items) setShopItems(items);
+      });
+      
+      newSocket.on('show_alert', (data: { message: string, title?: string }) => {
+        showAlert(data.message, data.title);
+      });
+      
       const serial = localStorage.getItem('khamin_player_serial');
       if (serial) {
         newSocket.emit('set_player_serial_for_socket', serial);
@@ -1848,6 +1877,10 @@ export default function App() {
       if (data.tokens !== undefined) {
         setTokens(data.tokens);
         localStorage.setItem('khamin_tokens', data.tokens.toString());
+      }
+      if (data.proPackageExpiry !== undefined) {
+        setProPackageExpiry(data.proPackageExpiry);
+        localStorage.setItem('khamin_pro_package_expiry', data.proPackageExpiry.toString());
       }
       if (data.name !== undefined) {
         setPlayerName(data.name);
@@ -2492,6 +2525,13 @@ export default function App() {
         localStorage.setItem('khamin_player_gender', gender);
         localStorage.setItem('khamin_player_avatar', avatar);
         localStorage.setItem('khamin_wins', '0');
+        
+        const isAdmin = localStorage.getItem('khamin_is_admin') === 'true';
+        const adminEmail = localStorage.getItem('khamin_admin_email');
+        if (isAdmin) {
+          socket?.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail });
+        }
+        
         setShowWelcomeModal(false);
         playSound('clickClose');
         setError('');
@@ -3185,65 +3225,37 @@ export default function App() {
                     </div>
                   )}
                   
-                  {/* Package 1 */}
-                  <div className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-accent-purple transition-colors box-game">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-accent-purple-soft rounded-xl flex items-center justify-center text-2xl font-black text-accent-purple">
-                        1
+                  {/* Dynamic Packages */}
+                  {shopItems.length > 0 ? (
+                    shopItems.filter(item => item.id !== 'pro_pack').map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-accent-purple transition-colors box-game relative">
+                        {item.type === 'token_pack_5' && (
+                          <div className="absolute -top-3 left-4 bg-accent-orange text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm">
+                            الأكثر مبيعاً
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-accent-purple-soft rounded-xl flex items-center justify-center text-2xl font-black text-accent-purple">
+                            {item.amount}
+                          </div>
+                          <div>
+                            <div className="font-black text-brown-dark">{item.name}</div>
+                            <div className="text-xs font-bold text-brown-muted">{item.description}</div>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleBuyItem(item.id)}
+                          className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
+                        >
+                          {item.price} ج.م
+                        </button>
                       </div>
-                      <div>
-                        <div className="font-black text-brown-dark">1 Token</div>
-                        <div className="text-xs font-bold text-brown-muted">مباراة واحدة مع مستوى 40+</div>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center p-4 text-brown-muted font-bold">
+                      لا توجد باقات متاحة حالياً
                     </div>
-                    <button 
-                      onClick={() => showAlert('سيتم تفعيل الدفع قريباً!', 'المتجر')}
-                      className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
-                    >
-                      10 ج.م
-                    </button>
-                  </div>
-
-                  {/* Package 2 */}
-                  <div className="flex items-center justify-between box-game p-4 relative">
-                    <div className="absolute -top-3 left-4 bg-accent-orange text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm">
-                      الأكثر مبيعاً
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-accent-purple-soft rounded-xl flex items-center justify-center text-2xl font-black text-accent-purple">
-                        5
-                      </div>
-                      <div>
-                        <div className="font-black text-brown-dark">5 Tokens</div>
-                        <div className="text-xs font-bold text-brown-muted">5 مباريات + 1 مجاناً</div>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => showAlert('سيتم تفعيل الدفع قريباً!', 'المتجر')}
-                      className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
-                    >
-                      40 ج.م
-                    </button>
-                  </div>
-
-                  {/* Package 3 */}
-                  <div className="flex items-center justify-between p-4 box-game hover:border-accent-purple transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-accent-purple-soft rounded-xl flex items-center justify-center text-2xl font-black text-accent-purple">
-                        10
-                      </div>
-                      <div>
-                        <div className="font-black text-brown-dark">10 Tokens</div>
-                        <div className="text-xs font-bold text-brown-muted">10 مباريات + 3 مجاناً</div>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => showAlert('سيتم تفعيل الدفع قريباً!', 'المتجر')}
-                      className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
-                    >
-                      70 ج.م
-                    </button>
-                  </div>
+                  )}
 
                   {/* Ad-free Power-ups Package (Visible to all, locked for 50+) */}
                   <div className="flex items-center justify-between p-4 border-2 border-accent-orange rounded-2xl bg-orange-50 mt-4">
@@ -3271,10 +3283,11 @@ export default function App() {
                         </button>
                       )}
                       <button 
-                        onClick={() => showAlert('سيتم تفعيل الدفع قريباً!', 'المتجر')}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md bg-gray-300 text-brown-muted cursor-not-allowed`}
+                        onClick={() => handleBuyItem('pro_pack')}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md ${hasProPackage ? 'bg-gray-300 text-brown-muted cursor-not-allowed' : 'bg-accent-orange hover:bg-accent-orange-dark text-white'}`}
+                        disabled={hasProPackage}
                       >
-                        {hasProPackage ? 'تم الشراء' : 'قريباً'}
+                        {hasProPackage ? 'تم الشراء' : '150 ج.م'}
                       </button>
                     </div>
                   </div>
@@ -4118,18 +4131,12 @@ export default function App() {
                             <div className="box-game p-5">
                               <h4 className="font-black text-brown-dark mb-4">الباقات الحالية</h4>
                               <div className="space-y-3">
-                                <div className="flex items-center justify-between p-3 box-game">
-                                  <div className="font-bold text-sm">باقة 1 Token</div>
-                                  <div className="text-orange-600 font-black">10 ج.م</div>
-                                </div>
-                                <div className="flex items-center justify-between p-3 box-game bg-orange-50">
-                                  <div className="font-bold text-sm">باقة 5 Tokens</div>
-                                  <div className="text-orange-600 font-black">40 ج.م</div>
-                                </div>
-                                <div className="flex items-center justify-between p-3 box-game">
-                                  <div className="font-bold text-sm">باقة 10 Tokens</div>
-                                  <div className="text-orange-600 font-black">70 ج.م</div>
-                                </div>
+                                {shopItems.map(item => (
+                                  <div key={item.id} className="flex items-center justify-between p-3 box-game">
+                                    <div className="font-bold text-sm">{item.name}</div>
+                                    <div className="text-orange-600 font-black">{item.price} ج.م</div>
+                                  </div>
+                                ))}
                                 <button 
                                   onClick={() => showAlert('سيتم تفعيل تعديل الباقات قريباً', 'قريباً')}
                                   className="w-full text-sm text-brown-muted hover:text-orange-600 font-bold py-2 border border-dashed border-gray-300 rounded-lg mt-2 transition-colors"
@@ -4137,6 +4144,56 @@ export default function App() {
                                   + إضافة / تعديل باقة
                                 </button>
                               </div>
+                            </div>
+                          </div>
+
+                          {/* Paymob Settings */}
+                          <div className="box-game p-6 shadow-sm mt-6">
+                            <h3 className="text-xl font-black text-brown-dark mb-4 flex items-center gap-2">
+                              <ShoppingCart className="w-6 h-6 text-purple-500" />
+                              إعدادات Paymob
+                            </h3>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-bold text-brown-dark mb-1">API Key</label>
+                                <input 
+                                  type="text" 
+                                  value={paymobSettings.paymob_api_key}
+                                  onChange={(e) => setPaymobSettings({...paymobSettings, paymob_api_key: e.target.value})}
+                                  className="w-full p-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-purple-500 font-mono text-xs"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-bold text-brown-dark mb-1">Integration ID</label>
+                                  <input 
+                                    type="text" 
+                                    value={paymobSettings.paymob_integration_id}
+                                    onChange={(e) => setPaymobSettings({...paymobSettings, paymob_integration_id: e.target.value})}
+                                    className="w-full p-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-purple-500 font-mono"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-bold text-brown-dark mb-1">Iframe ID</label>
+                                  <input 
+                                    type="text" 
+                                    value={paymobSettings.paymob_iframe_id}
+                                    onChange={(e) => setPaymobSettings({...paymobSettings, paymob_iframe_id: e.target.value})}
+                                    className="w-full p-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-purple-500 font-mono"
+                                  />
+                                </div>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  socket?.emit('admin_update_settings', paymobSettings, (res: any) => {
+                                    if (res.success) showAlert('تم حفظ إعدادات Paymob بنجاح', 'نجاح');
+                                    else showAlert('حدث خطأ أثناء الحفظ', 'خطأ');
+                                  });
+                                }}
+                                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-3 rounded-xl transition-colors shadow-md"
+                              >
+                                حفظ إعدادات الدفع
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -6356,17 +6413,6 @@ export default function App() {
                   </div>
                 )}
               </div>
-
-              {consensusReached && (
-                <motion.button 
-                  initial={{ scale: 0.9 }}
-                  animate={{ scale: 1 }}
-                  onClick={handleStartGame}
-                  className="w-full btn-game btn-success py-4 text-xl"
-                >
-                  ابدأ اللعبة الآن! 🚀
-                </motion.button>
-              )}
             </div>
           ) : (
             <div className="relative w-full flex flex-col items-center">
