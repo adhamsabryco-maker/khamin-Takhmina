@@ -73,7 +73,7 @@ import { MatchIntro } from './components/MatchIntro';
 import { useAvatarConfig } from './contexts/AvatarContext';
 import { STATIC_ASSETS } from './constants';
 import Cropper from 'react-easy-crop';
-import { Howl } from 'howler';
+import { Howl, Howler } from 'howler';
 
 // Audio URLs
 const SOUNDS = {
@@ -1361,15 +1361,31 @@ export default function App() {
   const gameMusicRef = useRef<Howl | null>(null);
 
   useEffect(() => {
+    // Ensure Howler unlocks on mobile devices
+    const unlockAudio = () => {
+      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+        Howler.ctx.resume();
+      }
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('click', unlockAudio);
+    };
+    window.addEventListener('touchstart', unlockAudio, { once: true });
+    window.addEventListener('click', unlockAudio, { once: true });
+
     Object.entries(SOUNDS).forEach(([key, url]) => {
       if (key === 'lobbyBackground') {
-        lobbyMusicRef.current = new Howl({ src: [url], loop: true });
+        lobbyMusicRef.current = new Howl({ src: [url], loop: true, html5: true, preload: true });
       } else if (key === 'gameBackground') {
-        gameMusicRef.current = new Howl({ src: [url], loop: true });
+        gameMusicRef.current = new Howl({ src: [url], loop: true, html5: true, preload: true });
       } else {
-        audioRef.current[key] = new Howl({ src: [url] });
+        audioRef.current[key] = new Howl({ src: [url], preload: true });
       }
     });
+
+    return () => {
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('click', unlockAudio);
+    };
   }, []);
 
   useEffect(() => {
