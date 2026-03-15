@@ -1361,6 +1361,34 @@ export default function App() {
   const gameMusicRef = useRef<Howl | null>(null);
 
   useEffect(() => {
+    // Robust iOS and mobile audio unlocker
+    const unlockAudio = () => {
+      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+        Howler.ctx.resume();
+      }
+      
+      // Create and play a silent buffer to force audio context initialization on iOS
+      if (Howler.ctx) {
+        const buffer = Howler.ctx.createBuffer(1, 1, 22050);
+        const source = Howler.ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(Howler.ctx.destination);
+        if (source.start) {
+          source.start(0);
+        } else {
+          (source as any).noteOn(0);
+        }
+      }
+
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('touchend', unlockAudio);
+      window.removeEventListener('click', unlockAudio);
+    };
+
+    window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+    window.addEventListener('touchend', unlockAudio, { once: true, passive: true });
+    window.addEventListener('click', unlockAudio, { once: true, passive: true });
+
     Object.entries(SOUNDS).forEach(([key, url]) => {
       if (key === 'lobbyBackground') {
         lobbyMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume });
@@ -1372,7 +1400,9 @@ export default function App() {
     });
 
     return () => {
-      // Cleanup if needed
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('touchend', unlockAudio);
+      window.removeEventListener('click', unlockAudio);
     };
   }, []);
 
@@ -1390,6 +1420,9 @@ export default function App() {
       activeMusic.volume(isMusicMuted ? 0 : musicVolume);
       if (!isMusicMuted && musicVolume > 0) {
         if (!activeMusic.playing()) {
+          if (Howler.ctx && Howler.ctx.state === 'suspended') {
+            Howler.ctx.resume();
+          }
           activeMusic.play();
         }
       } else {
@@ -1402,6 +1435,9 @@ export default function App() {
 
   const playSound = useCallback((key: keyof typeof SOUNDS, volumeOverride?: number) => {
     if (isSfxMuted) return;
+    if (Howler.ctx && Howler.ctx.state === 'suspended') {
+      Howler.ctx.resume();
+    }
     const sound = audioRef.current[key];
     if (sound) {
       sound.volume(volumeOverride !== undefined ? volumeOverride * sfxVolume : sfxVolume);
