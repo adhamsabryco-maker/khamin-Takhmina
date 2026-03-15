@@ -6428,7 +6428,7 @@ export default function App() {
 
               {/* Gameplay Chat Box - Moved to Center */}
               {room.gameState !== 'waiting' && room.gameState !== 'finished' && room.gameState !== 'guessing' && (
-                <div className="w-[80%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-48 md:h-64 mt-4 z-20 relative">
+                <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-48 md:h-64 mt-4 z-20 relative">
                   {isMutedByOpponent && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                       <Lock className="w-12 h-12 mb-2 text-red-400" />
