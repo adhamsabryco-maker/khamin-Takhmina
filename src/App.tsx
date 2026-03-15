@@ -3453,7 +3453,7 @@ export default function App() {
                 <button onClick={toggleSettings} className="text-brown-light hover:text-red-500"><X className="w-6 h-6" /></button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-x-hidden">
                 {/* Stats Section */}
                 <div className="bg-white p-3 rounded-2xl border-4 border-black space-y-4">
                   <div className="flex items-center gap-4 flex-row-reverse">
