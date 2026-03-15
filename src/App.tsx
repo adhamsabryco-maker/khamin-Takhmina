@@ -1125,6 +1125,10 @@ export default function App() {
         setOwnedHelpers(pendingDailyReward.newOwnedHelpers);
         setDailyQuestStreak(pendingDailyReward.newStreak);
         setLastDailyClaim(pendingDailyReward.newLastClaim);
+        if (pendingDailyReward.weeklyTokensClaimed !== undefined) {
+          setTokensEarnedThisWeek(pendingDailyReward.weeklyTokensClaimed);
+          localStorage.setItem('khamin_tokens_earned_this_week', pendingDailyReward.weeklyTokensClaimed.toString());
+        }
         
         // Sync local storage
         localStorage.setItem('khamin_daily_streak', pendingDailyReward.newStreak.toString());
@@ -1739,6 +1743,11 @@ export default function App() {
             if (data.lastDailyClaim) {
               setLastDailyClaim(data.lastDailyClaim);
               localStorage.setItem('khamin_last_daily_claim', data.lastDailyClaim.toString());
+            }
+
+            if (data.weeklyTokensClaimed !== undefined) {
+              setTokensEarnedThisWeek(data.weeklyTokensClaimed);
+              localStorage.setItem('khamin_tokens_earned_this_week', data.weeklyTokensClaimed.toString());
             }
 
             if (data.isPermanentBan) {
@@ -3756,16 +3765,6 @@ export default function App() {
 
 
 
-              {/* Admin Access Button */}
-              <div className="pt-2 border-t border-game">
-                <button 
-                  onClick={isAdmin ? () => { closeAllModals(); setShowAdminDashboard(true); } : handleAdminLogin}
-                  className={`w-full py-2 rounded-xl flex items-center justify-center gap-2 text-sm font-black transition-all ${isAdmin ? 'bg-purple-100 text-purple-600 border-2 border-purple-200' : 'bg-gray-50 text-brown-light border-2 border-gray-100 hover:bg-gray-100'}`}
-                >
-                  <Shield className="w-4 h-4" />
-                  {isAdmin ? 'فتح لوحة الإدارة' : 'دخول الإدارة (للمديرين فقط)'}
-                </button>
-              </div>
             </motion.div>
           </motion.div>
         )}
@@ -6970,6 +6969,7 @@ export default function App() {
           <MatchIntro 
             player1={{ id: room.players[0].id, name: room.players[0].name, level: room.players[0].level, avatar: room.players[0].avatar }}
             player2={{ id: room.players[1].id, name: room.players[1].name, level: room.players[1].level, avatar: room.players[1].avatar }}
+            customConfig={customConfig}
             onStartGame={handleMatchIntroStart}
             onComplete={handleMatchIntroComplete}
           />
