@@ -1361,20 +1361,9 @@ export default function App() {
   const gameMusicRef = useRef<Howl | null>(null);
 
   useEffect(() => {
-    // Ensure Howler unlocks on mobile devices
-    const unlockAudio = () => {
-      if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume();
-      }
-      window.removeEventListener('touchstart', unlockAudio);
-      window.removeEventListener('click', unlockAudio);
-    };
-    window.addEventListener('touchstart', unlockAudio, { once: true });
-    window.addEventListener('click', unlockAudio, { once: true });
-
     Object.entries(SOUNDS).forEach(([key, url]) => {
       if (key === 'lobbyBackground') {
-        lobbyMusicRef.current = new Howl({ src: [url], loop: true, preload: true, autoplay: true, volume: musicVolume });
+        lobbyMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume });
       } else if (key === 'gameBackground') {
         gameMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume });
       } else {
@@ -1383,8 +1372,7 @@ export default function App() {
     });
 
     return () => {
-      window.removeEventListener('touchstart', unlockAudio);
-      window.removeEventListener('click', unlockAudio);
+      // Cleanup if needed
     };
   }, []);
 
