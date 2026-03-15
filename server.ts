@@ -715,6 +715,7 @@ const app = express();
     const now = Date.now();
     if (force || now - topPlayersCacheTime > 60000) { // Cache for 1 minute unless forced
       cachedTopPlayers = Array.from(allPlayers.values())
+        .filter(p => !p.isAdmin) // Exclude admins from leaderboard
         .sort((a, b) => {
           if (b.xp !== a.xp) return b.xp - a.xp;
           return (b.wins || 0) - (a.wins || 0);
