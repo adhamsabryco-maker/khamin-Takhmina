@@ -73,6 +73,7 @@ import { MatchIntro } from './components/MatchIntro';
 import { useAvatarConfig } from './contexts/AvatarContext';
 import { STATIC_ASSETS } from './constants';
 import Cropper from 'react-easy-crop';
+import { Howl } from 'howler';
 
 // Audio URLs
 const SOUNDS = {
@@ -1355,20 +1356,18 @@ export default function App() {
   const isOpponentBlockedRef = useRef(isOpponentBlocked);
   useEffect(() => { isOpponentBlockedRef.current = isOpponentBlocked; }, [isOpponentBlocked]);
   
-  const audioRef = useRef<{ [key: string]: HTMLAudioElement }>({});
-  const lobbyMusicRef = useRef<HTMLAudioElement | null>(null);
-  const gameMusicRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<{ [key: string]: Howl }>({});
+  const lobbyMusicRef = useRef<Howl | null>(null);
+  const gameMusicRef = useRef<Howl | null>(null);
 
   useEffect(() => {
     Object.entries(SOUNDS).forEach(([key, url]) => {
       if (key === 'lobbyBackground') {
-        lobbyMusicRef.current = new Audio(url);
-        lobbyMusicRef.current.loop = true;
+        lobbyMusicRef.current = new Howl({ src: [url], loop: true });
       } else if (key === 'gameBackground') {
-        gameMusicRef.current = new Audio(url);
-        gameMusicRef.current.loop = true;
+        gameMusicRef.current = new Howl({ src: [url], loop: true });
       } else {
-        audioRef.current[key] = new Audio(url);
+        audioRef.current[key] = new Howl({ src: [url] });
       }
     });
   }, []);
@@ -1379,23 +1378,20 @@ export default function App() {
     const activeMusic = isGameActive ? gameMusicRef.current : lobbyMusicRef.current;
     const inactiveMusic = isGameActive ? lobbyMusicRef.current : gameMusicRef.current;
 
-    if (inactiveMusic) {
+    if (inactiveMusic && inactiveMusic.playing()) {
       inactiveMusic.pause();
     }
 
     if (activeMusic) {
-      activeMusic.volume = isMusicMuted ? 0 : musicVolume;
+      activeMusic.volume(isMusicMuted ? 0 : musicVolume);
       if (!isMusicMuted && musicVolume > 0) {
-        activeMusic.play().catch(() => {
-          // Auto-play might be blocked, we'll try again on first interaction
-          const playOnInteraction = () => {
-            activeMusic?.play().catch(() => {});
-            window.removeEventListener('click', playOnInteraction);
-          };
-          window.addEventListener('click', playOnInteraction);
-        });
+        if (!activeMusic.playing()) {
+          activeMusic.play();
+        }
       } else {
-        activeMusic.pause();
+        if (activeMusic.playing()) {
+          activeMusic.pause();
+        }
       }
     }
   }, [musicVolume, isMusicMuted, room?.gameState]);
@@ -1404,17 +1400,16 @@ export default function App() {
     if (isSfxMuted) return;
     const sound = audioRef.current[key];
     if (sound) {
-      sound.volume = volumeOverride !== undefined ? volumeOverride * sfxVolume : sfxVolume;
-      sound.currentTime = 0;
-      sound.play().catch(() => {});
+      sound.volume(volumeOverride !== undefined ? volumeOverride * sfxVolume : sfxVolume);
+      sound.stop(); // Stop any currently playing instance of this sound
+      sound.play();
     }
   }, [sfxVolume, isSfxMuted]);
 
   const stopSound = useCallback((key: keyof typeof SOUNDS) => {
     const sound = audioRef.current[key];
     if (sound) {
-      sound.pause();
-      sound.currentTime = 0;
+      sound.stop();
     }
   }, []);
 
