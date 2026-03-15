@@ -138,6 +138,35 @@ const app = express();
     return `${finalProtocol}://${host}/api/auth/google/callback`;
   };
 
+  app.post("/api/paymob/pay-wallet", async (req, res) => {
+    try {
+      const { mobileNumber, paymentToken } = req.body;
+
+      const response = await fetch('https://accept.paymob.com/api/acceptance/payments/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: {
+            identifier: mobileNumber,
+            subtype: "WALLET"
+          },
+          payment_token: paymentToken
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.redirect_url) {
+        return res.json({ url: data.redirect_url });
+      } else {
+        return res.status(400).json({ message: "فشل الحصول على رابط التحويل", details: data });
+      }
+    } catch (error) {
+      console.error("Paymob wallet error:", error);
+      res.status(500).json({ message: "خطأ في الاتصال بـ Paymob" });
+    }
+  });
+
   app.post("/api/upload", upload.single("image"), (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
@@ -870,9 +899,8 @@ const app = express();
       // Save order info to verify later
       db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(`order_${orderId}`, JSON.stringify({ playerSerial, itemId }));
 
-      // For wallets, we use the payment token directly in the redirect URL
-      const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/${settings.paymob_iframe_id || 'iframe_id_not_set'}?payment_token=${paymentToken}`;
-      res.json({ paymentUrl });
+      // Return payment token and flag for wallet payment
+      res.json({ paymentToken, isWallet: true });
     } catch (err) {
       console.error("Paymob initiate error:", err);
       res.status(500).json({ error: "Payment initiation failed" });
