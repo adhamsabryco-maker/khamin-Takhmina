@@ -1173,7 +1173,7 @@ export default function App() {
   const toggleSettings = () => {
     if (showSettingsModal) {
       playSound('clickClose');
-      closeAllModals();
+      handleProfileUpdate();
     } else {
       playSound('clickOpen');
       closeAllModals();
@@ -3662,7 +3662,8 @@ export default function App() {
                         step="0.01" 
                         value={sfxVolume}
                         onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
-                        className="w-full h-2 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                        onTouchStart={(e) => e.stopPropagation()}
+                        className="w-full h-2 bg-gray-400 rounded-lg cursor-pointer accent-orange-500"
                         dir="ltr"
                       />
                     </div>
@@ -3688,7 +3689,8 @@ export default function App() {
                         step="0.01" 
                         value={musicVolume}
                         onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
-                        className="w-full h-2 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                        onTouchStart={(e) => e.stopPropagation()}
+                        className="w-full h-2 bg-gray-400 rounded-lg cursor-pointer accent-purple-600"
                         dir="ltr"
                       />
                     </div>
@@ -5064,7 +5066,8 @@ export default function App() {
                   step={0.1}
                   aria-labelledby="Zoom"
                   onChange={(e) => setZoom(Number(e.target.value))}
-                  className="w-full h-2 bg-gray-400 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  onTouchStart={(e) => e.stopPropagation()}
+                  className="w-full h-2 bg-gray-400 rounded-lg cursor-pointer accent-purple-500"
                 />
               </div>
 
