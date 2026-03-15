@@ -3340,7 +3340,7 @@ export default function App() {
                       </div>
                       <div>
                         <div className="font-black text-brown-dark">باقة المحترفين</div>
-                        <div className="text-xs font-bold text-brown-muted">استخدم وسائل المساعدة بدون إعلانات</div>
+                        <div className="text-xs font-bold text-brown-muted">استخدم وسائل المساعدة بدون إعلانات لمدة 30 يوم</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
