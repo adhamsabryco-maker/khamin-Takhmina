@@ -88,7 +88,7 @@ export const AdminCustomization = ({ showAlert }: { showAlert: (msg: string, tit
         {/* Avatars */}
         <div className="box-game p-6 shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ImageIcon className="w-5 h-5" /> الأفاتار (4 مجانية + 4 حسب المستوى)</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             {['free-boy-1', 'free-boy-2', 'free-boy-3', 'free-boy-4', 'free-girl-1', 'free-girl-2', 'free-girl-3', 'free-girl-4', 'boy-10', 'girl-10', 'boy-20', 'girl-20', 'boy-30', 'girl-30', 'boy-40', 'girl-40'].map((level) => (
               <div key={level} className="space-y-2">
                 <span className="font-bold text-sm">{level.replace('-', ' ')}</span>
