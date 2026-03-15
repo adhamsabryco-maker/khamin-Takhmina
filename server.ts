@@ -1563,7 +1563,7 @@ io.on("connection", (socket) => {
 
       // Level 50+ Pro Logic: Helper turns into 100 XP
       if (playerLevel >= 50 && isPro) {
-        helperReward = null;
+        helperReward = { id: 'bonus_xp', name: '100 XP إضافية (Pro)', icon: '⭐' };
         xpReward += 100;
       }
 
@@ -1590,9 +1590,9 @@ io.on("connection", (socket) => {
         player.tokens = (player.tokens || 0) + tokenReward;
       }
       
-      // Clear old helpers and add the new one (if any)
+      // Clear old helpers and add the new one (if any and not virtual)
       player.ownedHelpers = {};
-      if (helperReward) {
+      if (helperReward && helperReward.id !== 'bonus_xp') {
         player.ownedHelpers[helperReward.id] = 1;
       }
 
@@ -1610,7 +1610,8 @@ io.on("connection", (socket) => {
         newTokens: player.tokens,
         newOwnedHelpers: player.ownedHelpers,
         newStreak: player.dailyQuestStreak,
-        newLastClaim: player.lastDailyClaim
+        newLastClaim: player.lastDailyClaim,
+        weeklyTokensClaimed: player.weeklyTokensClaimed || 0
       });
       
       socket.emit("player_stats_update", {
