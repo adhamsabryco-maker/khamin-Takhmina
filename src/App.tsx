@@ -423,6 +423,9 @@ export default function App() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [walletMobileNumber, setWalletMobileNumber] = useState('');
+  const [selectedWalletItem, setSelectedWalletItem] = useState<string | null>(null);
   const [showTokenInfoModal, setShowTokenInfoModal] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [activePowerUp, setActivePowerUp] = useState<string | null>(null);
@@ -1208,7 +1211,12 @@ export default function App() {
         }),
       });
       const data = await response.json();
-      if (data.paymentUrl) {
+      
+      if (data.isWallet) {
+        setSelectedWalletItem(itemId);
+        setPaymentToken(data.paymentToken);
+        setShowWalletModal(true);
+      } else if (data.paymentUrl) {
         window.location.href = data.paymentUrl;
       } else {
         showAlert(data.error || 'حدث خطأ أثناء بدء عملية الدفع', 'خطأ');
@@ -1216,6 +1224,31 @@ export default function App() {
     } catch (error) {
       console.error('Payment initiation error:', error);
       showAlert('حدث خطأ في الاتصال بالخادم', 'خطأ');
+    }
+  };
+
+  const [paymentToken, setPaymentToken] = useState<string | null>(null);
+
+  const handleWalletPayment = async () => {
+    if (!walletMobileNumber || !paymentToken) return;
+    
+    try {
+      const walletRes = await fetch('/api/paymob/pay-wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobileNumber: walletMobileNumber, paymentToken })
+      });
+      const walletData = await walletRes.json();
+      if (walletData.url) {
+        window.location.href = walletData.url;
+      } else {
+        showAlert(walletData.message || 'حدث خطأ أثناء الدفع بالمحفظة', 'خطأ');
+      }
+    } catch (error) {
+      console.error('Wallet payment error:', error);
+      showAlert('حدث خطأ في الاتصال بالخادم', 'خطأ');
+    } finally {
+      setShowWalletModal(false);
     }
   };
 
@@ -2918,8 +2951,50 @@ export default function App() {
     </AnimatePresence>
   );
 
+  const renderWalletModal = () => (
+    <AnimatePresence>
+      {showWalletModal && (
+        <motion.div 
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 z-[10001] flex items-center justify-center p-4"
+          onClick={() => setShowWalletModal(false)}
+        >
+          <motion.div 
+            initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+            className="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold mb-4">أدخل رقم المحفظة</h2>
+            <input 
+              type="text" 
+              value={walletMobileNumber} 
+              onChange={(e) => setWalletMobileNumber(e.target.value)}
+              placeholder="مثلاً: 010xxxxxxx"
+              className="w-full p-3 border rounded-xl mb-4"
+            />
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setShowWalletModal(false)}
+                className="flex-1 p-3 rounded-xl bg-gray-200"
+              >
+                إلغاء
+              </button>
+              <button 
+                onClick={handleWalletPayment}
+                className="flex-1 p-3 rounded-xl bg-accent-blue text-white"
+              >
+                دفع
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   const renderModals = () => (
     <>
+      {renderWalletModal()}
       {renderDailyQuestModal()}
       {/* Custom Alert Modal */}
       <AnimatePresence>
