@@ -5000,7 +5000,11 @@ export default function App() {
                                 </div>
                                 <div className="flex gap-2">
                                   <button 
-                                    onClick={() => setAdminSearchQuery(report.reportedSerial)}
+                                    onClick={() => {
+                                      const serialToSearch = report.reportedSerial || report.reporterSerial;
+                                      setAdminSearchQuery(serialToSearch);
+                                      setAdminTab('players');
+                                    }}
                                     className="flex-1 py-1.5 bg-gray-100 hover:bg-purple-100 hover:text-purple-600 rounded-lg text-[10px] font-black transition-colors"
                                   >
                                     فحص اللاعب
