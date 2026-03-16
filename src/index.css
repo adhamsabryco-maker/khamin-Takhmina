@@ -421,6 +421,13 @@ body::after {
   box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
   background: var(--btn-danger-hover);
 }
+.btn-disabled {
+  background: #CCCCCC;
+  border-color: #999999;
+  color: #666666;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
 .btn-danger:active {
   @apply translate-y-[4px];
   box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);

@@ -76,6 +76,7 @@ import { useAvatarConfig } from './contexts/AvatarContext';
 import { STATIC_ASSETS } from './constants';
 import Cropper from 'react-easy-crop';
 import { Howl, Howler } from 'howler';
+import { filterProfanity } from './profanityFilter';
 
 // Audio URLs
 const SOUNDS = {
@@ -425,6 +426,9 @@ export default function App() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [pendingWelcomeModal, setPendingWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [complaintText, setComplaintText] = useState("");
+  const [canSendComplaint, setCanSendComplaint] = useState(true);
   const [showShopModal, setShowShopModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
@@ -3025,10 +3029,64 @@ export default function App() {
     </AnimatePresence>
   );
 
+  const renderComplaintModal = () => (
+    <AnimatePresence>
+      {showComplaintModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            className="card-game p-6 w-full max-w-sm space-y-4"
+          >
+            <h2 className="text-2xl font-black text-main text-center">الشكاوي والمقترحات</h2>
+            <textarea
+              value={complaintText}
+              onChange={(e) => setComplaintText(e.target.value)}
+              className="w-full p-4 rounded-2xl border-2 border-game bg-gray-50 focus:border-accent-purple outline-none min-h-[150px] resize-none"
+              placeholder="اكتب شكواك أو مقترحك هنا..."
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  const filtered = filterProfanity(complaintText);
+                  socket?.emit('send_complaint', { text: filtered }, (res: any) => {
+                    if (res.success) {
+                      setComplaintText("");
+                      setShowComplaintModal(false);
+                    } else {
+                      alert(res.error);
+                    }
+                  });
+                }}
+                disabled={!canSendComplaint}
+                className={`flex-1 btn-game ${canSendComplaint ? 'btn-success' : 'btn-disabled'} py-3 text-lg`}
+              >
+                {canSendComplaint ? 'إرسال' : 'تم الإرسال اليوم'}
+              </button>
+              <button
+                onClick={() => setShowComplaintModal(false)}
+                className="flex-1 btn-game btn-primary py-3 text-lg"
+              >
+                إلغاء
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   const renderModals = () => (
     <>
       {renderWalletModal()}
       {renderDailyQuestModal()}
+      {renderComplaintModal()}
       {/* Custom Alert Modal */}
       <AnimatePresence>
         {customAlert.show && (
@@ -3928,10 +3986,24 @@ export default function App() {
               <div className="pt-2 border-t border-game">
                 <button 
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full text-sm font-black text-red-400 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+                  className="w-full btn-game btn-danger py-2 text-sm mb-2"
                 >
                   <Trash2 className="w-4 h-4" />
                   مسح الحساب نهائياً
+                </button>
+                <button 
+                  onClick={() => {
+                    socket?.emit('check_complaint_status', {}, (res: any) => {
+                      if (res.success) {
+                        setCanSendComplaint(res.canSend);
+                        setShowComplaintModal(true);
+                      }
+                    });
+                  }}
+                  className="w-full btn-game btn-primary py-2 text-sm"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  الشكاوي والمقترحات
                 </button>
               </div>
 
