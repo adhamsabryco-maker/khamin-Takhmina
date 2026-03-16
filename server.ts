@@ -1966,6 +1966,11 @@ io.on("connection", (socket) => {
         socket.emit("error", "لا تملك Tokens كافية");
         return;
       }
+
+      if (useToken && getLevel(bannedPlayer.xp || 0) < 50) {
+        socket.emit("error", "يجب أن تصل للمستوى 50 لاستخدام الـ Tokens");
+        return;
+      }
       
       let validAge = age;
       if (typeof age === 'number' && age > 80) {
