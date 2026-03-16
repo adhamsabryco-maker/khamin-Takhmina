@@ -1441,9 +1441,9 @@ export default function App() {
     // Initialize sounds
     Object.entries(SOUNDS).forEach(([key, url]) => {
       if (key === 'lobbyBackground') {
-        lobbyMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume, html5: true });
+        lobbyMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume });
       } else if (key === 'gameBackground') {
-        gameMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume, html5: true });
+        gameMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume });
       } else {
         audioRef.current[key] = new Howl({ src: [url], preload: true });
       }
