@@ -3410,11 +3410,19 @@ export default function App() {
                           </div>
                         </div>
                         <button 
+                        onClick={() => showAlert('سيتم تفعيل الشراء قريباً!', 'المتجر')}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 bg-gray-300 text-brown-muted cursor-not-allowed`}
+                        >
+                        قريباً
+                        </button>
+                        {/*
+                        <button 
                           onClick={() => handleBuyItem(item.id)}
                           className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
                         >
                           {item.price} ج.م
                         </button>
+                        */}
                       </div>
                     ))
                   ) : (
@@ -3451,12 +3459,20 @@ export default function App() {
                           </button>
                         )}
                         <button 
+                        onClick={() => showAlert('سيتم تفعيل الشراء قريباً!', 'المتجر')}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 bg-gray-300 text-brown-muted cursor-not-allowed`}
+                        >
+                        قريباً
+                        </button>
+                        {/*
+                        <button 
                           onClick={() => handleBuyItem(shopItems.find(item => item.type === 'pro_pack')?.id || 'pro_pack')}
                           className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md ${hasProPackage ? 'bg-gray-300 text-brown-muted cursor-not-allowed' : 'bg-accent-orange hover:bg-accent-orange-dark text-white'}`}
                           disabled={hasProPackage}
                         >
                           {hasProPackage ? 'تم الشراء' : `${shopItems.find(item => item.type === 'pro_pack')?.price} ج.م`}
                         </button>
+                        */}
                       </div>
                     </div>
                   )}
