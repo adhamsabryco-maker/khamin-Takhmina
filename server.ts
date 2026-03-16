@@ -1464,7 +1464,10 @@ io.on("connection", (socket) => {
     });
 
     socket.on('request_match_intro', ({ roomId }) => {
-      io.to(roomId).emit('match_intro_triggered');
+      const room = rooms.get(roomId);
+      if (room && room.gameState === 'waiting') {
+        io.to(roomId).emit('match_intro_triggered');
+      }
     });
 
     socket.on("register_player", ({ name, avatar, xp, gender }, callback) => {
@@ -2190,7 +2193,7 @@ io.on("connection", (socket) => {
           
           if (allSelected) {
             room.category = category;
-            io.to(roomId).emit('match_intro_triggered');
+            // io.to(roomId).emit('match_intro_triggered'); // Removed automatic trigger
           }
           
           io.to(roomId).emit("room_update", room);
@@ -2365,10 +2368,11 @@ io.on("connection", (socket) => {
 
       const dbPlayer = allPlayers.get(serial);
       const hasFreeUse = dbPlayer && dbPlayer.ownedHelpers && dbPlayer.ownedHelpers[cardType] > 0;
+      const hasPro = dbPlayer && dbPlayer.proPackageExpiry && dbPlayer.proPackageExpiry > Date.now();
 
       // Helper function to deduct free use
       const deductFreeUse = () => {
-        if (hasFreeUse) {
+        if (hasFreeUse && !hasPro) { // Don't deduct if they have Pro Pack
           dbPlayer.ownedHelpers[cardType] -= 1;
           if (dbPlayer.ownedHelpers[cardType] === 0) {
             delete dbPlayer.ownedHelpers[cardType];
@@ -2383,7 +2387,7 @@ io.on("connection", (socket) => {
 
       if (cardType === "hint") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 40 || hasFreeUse) && (!player.hintCount || player.hintCount < 2)) {
+        if ((playerLevel >= 40 || hasFreeUse || hasPro) && (!player.hintCount || player.hintCount < 2)) {
           deductFreeUse();
           if (!player.hintCount) player.hintCount = 0;
           player.hintCount++;
@@ -2408,7 +2412,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "word_length") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 10 || hasFreeUse) && !player.wordLengthUsed) {
+        if ((playerLevel >= 10 || hasFreeUse || hasPro) && !player.wordLengthUsed) {
           deductFreeUse();
           player.wordLengthUsed = true;
           const targetName = player.targetImage.name;
@@ -2417,7 +2421,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "word_count") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 20 || hasFreeUse) && !player.wordCountUsed) {
+        if ((playerLevel >= 20 || hasFreeUse || hasPro) && !player.wordCountUsed) {
           deductFreeUse();
           player.wordCountUsed = true;
           const targetName = player.targetImage.name;
@@ -2427,7 +2431,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "time_freeze") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 30 || hasFreeUse) && !player.timeFreezeUsed && !room.isFrozen) {
+        if ((playerLevel >= 30 || hasFreeUse || hasPro) && !player.timeFreezeUsed && !room.isFrozen) {
           deductFreeUse();
           player.timeFreezeUsed = true;
           room.isFrozen = true;
@@ -2437,7 +2441,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "spy_lens") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 50 || hasFreeUse) && !player.spyLensUsed) {
+        if ((playerLevel >= 50 || hasFreeUse || hasPro) && !player.spyLensUsed) {
           deductFreeUse();
           player.spyLensUsed = true;
           // The player wants to see their own target image (which is what the opponent sees)
@@ -3062,7 +3066,7 @@ io.on("connection", (socket) => {
 
   function startGame(roomId: string) {
     const room = rooms.get(roomId);
-    if (!room) return;
+    if (!room || room.gameState !== 'waiting') return;
 
     const categoryImages = getCategoryImages(room.category);
     const shuffled = [...categoryImages].sort(() => 0.5 - Math.random());
