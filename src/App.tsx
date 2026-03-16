@@ -3655,7 +3655,8 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-black text-brown-muted mb-1 text-right">العمر</label>
                     <input 
-                      type="number" 
+                      type="text" 
+                      inputMode="numeric"
                       value={playerAge}
                       onChange={(e) => {
                         const convertArabicNumbers = (str: string) => {
@@ -3671,7 +3672,7 @@ export default function App() {
                         }
                       }}
                       className="input-game"
-                      max={80}
+                      maxLength={2}
                     />
                   </div>
 
@@ -3945,6 +3946,7 @@ export default function App() {
                     <label className="block text-sm font-black text-brown-muted mb-1 text-right">عمر اللاعب</label>
                     <input 
                       type="text" 
+                      inputMode="numeric"
                       value={playerAge}
                       onChange={(e) => {
                         const convertArabicNumbers = (str: string) => {
