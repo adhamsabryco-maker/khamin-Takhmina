@@ -2530,7 +2530,7 @@ export default function App() {
     localStorage.setItem('khamin_player_name', playerName);
     localStorage.setItem('khamin_player_age', playerAge.toString());
     setIsPrivate(false);
-    socket?.emit('find_random_match', { playerId, playerName, avatar, age: playerAge, xp, streak, wins, serial: playerSerial, useToken });
+    socket?.emit('find_random_match', { playerId, playerName, avatar, age: playerAge, xp, streak, wins, serial: playerSerial, useToken: (getLevel(xp) >= 50 && useToken) });
     setIsOpponentBlocked(false);
   };
 
@@ -6088,17 +6088,23 @@ export default function App() {
                   <span>بحث عشوائي</span>
                 </button>
 
-                <div className="flex flex-col box-game p-2 h-16">
+                <div className="flex flex-col box-game p-2 h-16 relative overflow-hidden">
+                  {getLevel(xp) < 50 && (
+                    <div className="absolute inset-0 bg-gray-200/80 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center">
+                      <Lock className="w-4 h-4 text-gray-600 mb-0.5" />
+                      <span className="text-[10px] font-black text-gray-700">Lvl 50+</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 flex-1">
                     <input 
                       type="checkbox" 
                       id="useToken" 
-                      checked={useToken} 
-                      onChange={(e) => setUseToken(e.target.checked)}
-                      disabled={tokens <= 0}
+                      checked={useToken && getLevel(xp) >= 50} 
+                      onChange={(e) => getLevel(xp) >= 50 && setUseToken(e.target.checked)}
+                      disabled={tokens <= 0 || getLevel(xp) < 50}
                       className="checkbox-game disabled:opacity-50"
                     />
-                    <label htmlFor="useToken" className="cursor-pointer select-none flex items-center gap-1">
+                    <label htmlFor="useToken" className={`cursor-pointer select-none flex items-center gap-1 ${getLevel(xp) < 50 ? 'pointer-events-none' : ''}`}>
                       <button onClick={toggleTokenInfo} className="font-black text-accent-purple hover:underline text-sm truncate">Token</button>
                       <span className="font-black text-main text-sm">({tokens})</span>
                     </label>
