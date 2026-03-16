@@ -423,6 +423,7 @@ export default function App() {
   const [tokens, setTokens] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [pendingWelcomeModal, setPendingWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -1017,6 +1018,13 @@ export default function App() {
   const [lastTokenEarnedDay, setLastTokenEarnedDay] = useState(0);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    if (pendingWelcomeModal && !showInstallModal) {
+      setShowWelcomeModal(true);
+      setPendingWelcomeModal(false);
+    }
+  }, [pendingWelcomeModal, showInstallModal]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -1878,11 +1886,11 @@ export default function App() {
             localStorage.setItem('khamin_wins', (data.wins || 0).toString());
           } else {
             clearPlayerData();
-            setShowWelcomeModal(true);
+            setPendingWelcomeModal(true);
           }
         });
       } else {
-        setShowWelcomeModal(true);
+        setPendingWelcomeModal(true);
       }
 
       newSocket.emit('get_top_players', (players: any[]) => {
@@ -2282,7 +2290,7 @@ export default function App() {
 
     newSocket.on('auth_error', () => {
       clearPlayerData();
-      setShowWelcomeModal(true);
+      setPendingWelcomeModal(true);
       setError('انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.');
     });
 
@@ -2505,7 +2513,7 @@ export default function App() {
   const handleJoin = () => {
     playSound('clickOpen');
     if (!playerSerial) {
-      setShowWelcomeModal(true);
+      setPendingWelcomeModal(true);
       return;
     }
     if (!playerName.trim() || !playerAge || playerAge < 0) {
@@ -2532,7 +2540,7 @@ export default function App() {
   const handleRandomMatch = () => {
     playSound('clickOpen');
     if (!playerSerial) {
-      setShowWelcomeModal(true);
+      setPendingWelcomeModal(true);
       return;
     }
     if (!playerName.trim() || !playerAge || playerAge < 0) {
