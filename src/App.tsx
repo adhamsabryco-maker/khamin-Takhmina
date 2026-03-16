@@ -1431,33 +1431,6 @@ export default function App() {
         audioRef.current[key] = new Howl({ src: [url], preload: true });
       }
     });
-
-    // Simple audio unlocker for mobile
-    const unlockAudio = () => {
-      if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume();
-      }
-      
-      // Play a silent sound to unlock audio context
-      const silentSound = new Howl({
-        src: ['data:audio/mp3;base64,//MkxAAQAA...'], // A tiny valid mp3 or just rely on resume
-        volume: 0,
-        onload: () => {
-          silentSound.play();
-        }
-      });
-      
-      window.removeEventListener('touchstart', unlockAudio);
-      window.removeEventListener('click', unlockAudio);
-    };
-
-    window.addEventListener('touchstart', unlockAudio, { once: true });
-    window.addEventListener('click', unlockAudio, { once: true });
-
-    return () => {
-      window.removeEventListener('touchstart', unlockAudio);
-      window.removeEventListener('click', unlockAudio);
-    };
   }, []);
 
   useEffect(() => {
