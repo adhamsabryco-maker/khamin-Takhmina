@@ -1046,8 +1046,11 @@ export default function App() {
   };
 
   useEffect(() => {
-    localStorage.setItem('khamin_owned_helpers', JSON.stringify(ownedHelpers));
-  }, [ownedHelpers]);
+    if (loadingProgress === 100 && deferredPrompt && !localStorage.getItem('khamin_install_dismissed')) {
+      setShowInstallModal(true);
+    }
+  }, [loadingProgress, deferredPrompt]);
+
 
   useEffect(() => {
     const savedTokensEarned = localStorage.getItem('khamin_tokens_earned_this_week');
