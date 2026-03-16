@@ -41,6 +41,7 @@ import {
   Smile,
   Loader2,
   Plus,
+  Edit2,
   ShoppingCart,
   Hash,
   Copy,
@@ -424,6 +425,7 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
   const [walletMobileNumber, setWalletMobileNumber] = useState('');
   const [selectedWalletItem, setSelectedWalletItem] = useState<string | null>(null);
   const [showTokenInfoModal, setShowTokenInfoModal] = useState(false);
@@ -536,6 +538,8 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('khamin_is_admin') === 'true');
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<any>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1199,6 +1203,10 @@ export default function App() {
 
   const handleBuyItem = async (itemId: string) => {
     playSound('clickOpen');
+    setIsInitiatingPayment(true);
+    setShowWalletModal(true);
+    setSelectedWalletItem(itemId);
+    
     try {
       const response = await fetch('/api/paymob/initiate', {
         method: 'POST',
@@ -1213,16 +1221,21 @@ export default function App() {
       const data = await response.json();
       
       if (data.isWallet) {
-        setSelectedWalletItem(itemId);
         setPaymentToken(data.paymentToken);
-        setShowWalletModal(true);
+        setIsInitiatingPayment(false);
       } else if (data.paymentUrl) {
+        setShowWalletModal(false);
+        setIsInitiatingPayment(false);
         window.location.href = data.paymentUrl;
       } else {
+        setShowWalletModal(false);
+        setIsInitiatingPayment(false);
         showAlert(data.error || 'حدث خطأ أثناء بدء عملية الدفع', 'خطأ');
       }
     } catch (error) {
       console.error('Payment initiation error:', error);
+      setShowWalletModal(false);
+      setIsInitiatingPayment(false);
       showAlert('حدث خطأ في الاتصال بالخادم', 'خطأ');
     }
   };
@@ -1354,19 +1367,22 @@ export default function App() {
     return () => clearInterval(interval);
   }, [proposedMatch, matchResponseTimeLeft, hasResponded, socket]);
 
-  // Global Fullscreen trigger on first interaction
+  // Global Fullscreen and Audio trigger on first interaction
   useEffect(() => {
     const handleFirstInteraction = () => {
+      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+        Howler.ctx.resume().catch(() => {});
+      }
       window.removeEventListener('click', handleFirstInteraction);
-      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('touchend', handleFirstInteraction);
     };
     
     window.addEventListener('click', handleFirstInteraction);
-    window.addEventListener('touchstart', handleFirstInteraction);
+    window.addEventListener('touchend', handleFirstInteraction);
     
     return () => {
       window.removeEventListener('click', handleFirstInteraction);
-      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('touchend', handleFirstInteraction);
     };
   }, []);
 
@@ -1421,12 +1437,12 @@ export default function App() {
   const gameMusicRef = useRef<Howl | null>(null);
 
   useEffect(() => {
-    // Initialize sounds without html5: true to ensure Web Audio API is used consistently
+    // Initialize sounds
     Object.entries(SOUNDS).forEach(([key, url]) => {
       if (key === 'lobbyBackground') {
-        lobbyMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume });
+        lobbyMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume, html5: true });
       } else if (key === 'gameBackground') {
-        gameMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume });
+        gameMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume, html5: true });
       } else {
         audioRef.current[key] = new Howl({ src: [url], preload: true });
       }
@@ -1447,9 +1463,6 @@ export default function App() {
       activeMusic.volume(isMusicMuted ? 0 : musicVolume);
       if (!isMusicMuted && musicVolume > 0) {
         if (!activeMusic.playing()) {
-          if (Howler.ctx && Howler.ctx.state === 'suspended') {
-            Howler.ctx.resume();
-          }
           activeMusic.play();
         }
       } else {
@@ -1462,9 +1475,6 @@ export default function App() {
 
   const playSound = useCallback((key: keyof typeof SOUNDS, volumeOverride?: number) => {
     if (isSfxMuted) return;
-    if (Howler.ctx && Howler.ctx.state === 'suspended') {
-      Howler.ctx.resume();
-    }
     const sound = audioRef.current[key];
     if (sound) {
       sound.volume(volumeOverride !== undefined ? volumeOverride * sfxVolume : sfxVolume);
@@ -1668,6 +1678,15 @@ export default function App() {
       });
       socket.emit('admin_get_reports', (reports: any) => {
         if (Array.isArray(reports)) setAdminReports(reports);
+      });
+      socket.emit('admin_get_settings', (settings: any) => {
+        if (settings) {
+          setPaymobSettings({
+            paymob_api_key: settings.paymob_api_key || '',
+            paymob_integration_id: settings.paymob_integration_id || '',
+            paymob_iframe_id: settings.paymob_iframe_id || ''
+          });
+        }
       });
       fetchAdminImages();
     }
@@ -2929,36 +2948,51 @@ export default function App() {
       {showWalletModal && (
         <motion.div 
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 z-[10001] flex items-center justify-center p-4"
-          onClick={() => setShowWalletModal(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10001] flex items-center justify-center p-4"
+          onClick={() => !isInitiatingPayment && setShowWalletModal(false)}
         >
           <motion.div 
-            initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-            className="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full"
+            initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+            className="card-game p-6 w-full max-w-sm space-y-4 text-center"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-4">أدخل رقم المحفظة</h2>
-            <input 
-              type="text" 
-              value={walletMobileNumber} 
-              onChange={(e) => setWalletMobileNumber(e.target.value)}
-              placeholder="مثلاً: 010xxxxxxx"
-              className="w-full p-3 border rounded-xl mb-4"
-            />
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setShowWalletModal(false)}
-                className="flex-1 p-3 rounded-xl bg-gray-200"
-              >
-                إلغاء
-              </button>
-              <button 
-                onClick={handleWalletPayment}
-                className="flex-1 p-3 rounded-xl bg-accent-blue text-white"
-              >
-                دفع
-              </button>
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <ShoppingCart className="w-8 h-8 text-orange-500" />
             </div>
+            
+            <h2 className="text-2xl font-black text-main">الدفع بالمحفظة</h2>
+            
+            {isInitiatingPayment ? (
+              <div className="py-8 flex flex-col items-center gap-4">
+                <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
+                <p className="text-brown-muted font-bold">جاري تجهيز الطلب...</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-brown-muted font-bold">أدخل رقم الهاتف المسجل به المحفظة الإلكترونية (فودافون كاش، اتصالات كاش، إلخ)</p>
+                <input 
+                  type="text" 
+                  value={walletMobileNumber} 
+                  onChange={(e) => setWalletMobileNumber(e.target.value)}
+                  placeholder="مثلاً: 010xxxxxxx"
+                  className="input-game text-center font-black text-xl placeholder:text-gray-300"
+                />
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    onClick={() => setShowWalletModal(false)}
+                    className="flex-1 btn-game btn-primary py-3 text-lg"
+                  >
+                    إلغاء
+                  </button>
+                  <button 
+                    onClick={handleWalletPayment}
+                    className="flex-1 btn-game btn-success py-3 text-lg"
+                  >
+                    دفع الآن
+                  </button>
+                </div>
+              </>
+            )}
           </motion.div>
         </motion.div>
       )}
@@ -3275,7 +3309,7 @@ export default function App() {
                   
                   {/* Dynamic Packages */}
                   {shopItems.length > 0 ? (
-                    shopItems.filter(item => item.id !== 'pro_pack').map((item) => (
+                    shopItems.filter(item => item.type !== 'pro_pack').map((item) => (
                       <div key={item.id} className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-2xl hover:border-accent-purple transition-colors box-game relative">
                         {item.type === 'token_pack_5' && (
                           <div className="absolute -top-3 left-4 bg-accent-orange text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm">
@@ -3306,39 +3340,42 @@ export default function App() {
                   )}
 
                   {/* Ad-free Power-ups Package (Visible to all, locked for 50+) */}
-                  <div className="flex items-center justify-between p-4 border-2 border-accent-orange rounded-2xl bg-orange-50 mt-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-accent-orange-soft rounded-xl flex items-center justify-center text-2xl">
-                        ⚡
+                  {shopItems.find(item => item.type === 'pro_pack') && (
+                    <div className="flex items-center justify-between p-4 border-2 border-accent-orange rounded-2xl bg-orange-50 mt-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-accent-orange-soft rounded-xl flex items-center justify-center text-2xl">
+                          {shopItems.find(item => item.type === 'pro_pack')?.image || '⚡'}
+                        </div>
+                        <div>
+                          <div className="font-black text-brown-dark">{shopItems.find(item => item.type === 'pro_pack')?.name || 'باقة المحترفين'}</div>
+                          <div className="text-xs font-bold text-brown-muted">{shopItems.find(item => item.type === 'pro_pack')?.description || 'استخدم وسائل المساعدة بدون إعلانات لمدة 30 يوم'}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-black text-brown-dark">باقة المحترفين</div>
-                        <div className="text-xs font-bold text-brown-muted">استخدم وسائل المساعدة بدون إعلانات لمدة 30 يوم</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isAdmin && (
+                      <div className="flex items-center gap-2">
+                        {isAdmin && (
+                          <button 
+                            onClick={() => {
+                              const days = shopItems.find(item => item.type === 'pro_pack')?.amount || 30;
+                              const expiry = Date.now() + days * 24 * 60 * 60 * 1000;
+                              setProPackageExpiry(expiry);
+                              localStorage.setItem('khamin_pro_package_expiry', expiry.toString());
+                              showAlert(`تم تفعيل باقة المحترفين للتجربة (${days} يوم)!`, 'المتجر');
+                            }}
+                            className="px-3 py-2 rounded-xl font-black text-xs transition-all shadow-md bg-yellow-400 hover:bg-yellow-500 text-yellow-900"
+                          >
+                            تفعيل للتجربة
+                          </button>
+                        )}
                         <button 
-                          onClick={() => {
-                            const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
-                            setProPackageExpiry(expiry);
-                            localStorage.setItem('khamin_pro_package_expiry', expiry.toString());
-                            showAlert('تم تفعيل باقة المحترفين للتجربة (30 يوم)!', 'المتجر');
-                          }}
-                          className="px-3 py-2 rounded-xl font-black text-xs transition-all shadow-md bg-yellow-400 hover:bg-yellow-500 text-yellow-900"
+                          onClick={() => handleBuyItem(shopItems.find(item => item.type === 'pro_pack')?.id || 'pro_pack')}
+                          className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md ${hasProPackage ? 'bg-gray-300 text-brown-muted cursor-not-allowed' : 'bg-accent-orange hover:bg-accent-orange-dark text-white'}`}
+                          disabled={hasProPackage}
                         >
-                          تفعيل للتجربة
+                          {hasProPackage ? 'تم الشراء' : `${shopItems.find(item => item.type === 'pro_pack')?.price} ج.م`}
                         </button>
-                      )}
-                      <button 
-                        onClick={() => handleBuyItem('pro_pack')}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md ${hasProPackage ? 'bg-gray-300 text-brown-muted cursor-not-allowed' : 'bg-accent-orange hover:bg-accent-orange-dark text-white'}`}
-                        disabled={hasProPackage}
-                      >
-                        {hasProPackage ? 'تم الشراء' : '150 ج.م'}
-                      </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -4088,7 +4125,12 @@ export default function App() {
                           تخصيص اللعبة
                         </button>
                         <button 
-                          onClick={() => setAdminTab('shop')}
+                          onClick={() => {
+                            setAdminTab('shop');
+                            socket?.emit('admin_get_shop_items', (items: any) => {
+                              if (Array.isArray(items)) setShopItems(items);
+                            });
+                          }}
                           className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'shop' ? 'bg-accent-orange text-white' : 'bg-accent-orange-soft text-accent-orange hover:bg-accent-orange-soft'}`}
                         >
                           المتجر والـ Tokens
@@ -4111,6 +4153,10 @@ export default function App() {
                           });
                           socket?.emit('admin_get_reports', (reports: any) => {
                             if (Array.isArray(reports)) setAdminReports(reports);
+                          });
+                        } else if (adminTab === 'shop') {
+                          socket?.emit('admin_get_shop_items', (items: any) => {
+                            if (Array.isArray(items)) setShopItems(items);
                           });
                         } else {
                           fetchAdminImages();
@@ -4184,14 +4230,47 @@ export default function App() {
                                 {shopItems.map(item => (
                                   <div key={item.id} className="flex items-center justify-between p-3 box-game">
                                     <div className="font-bold text-sm">{item.name}</div>
-                                    <div className="text-orange-600 font-black">{item.price} ج.م</div>
+                                    <div className="flex items-center gap-3">
+                                      <div className="text-orange-600 font-black">{item.price} ج.م</div>
+                                      <button
+                                        onClick={() => {
+                                          setEditingPackage(item);
+                                          setShowPackageModal(true);
+                                        }}
+                                        className="text-blue-500 hover:text-blue-700"
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          showConfirm('هل أنت متأكد من حذف هذه الباقة؟', () => {
+                                            socket?.emit('admin_delete_shop_item', item.id, (res: any) => {
+                                              if (res.success) {
+                                                socket.emit('admin_get_shop_items', (items: any) => {
+                                                  if (Array.isArray(items)) setShopItems(items);
+                                                });
+                                                showAlert('تم حذف الباقة بنجاح', 'نجاح');
+                                              } else {
+                                                showAlert('حدث خطأ أثناء الحذف', 'خطأ');
+                                              }
+                                            });
+                                          });
+                                        }}
+                                        className="text-red-500 hover:text-red-700"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
                                   </div>
                                 ))}
                                 <button 
-                                  onClick={() => showAlert('سيتم تفعيل تعديل الباقات قريباً', 'قريباً')}
+                                  onClick={() => {
+                                    setEditingPackage(null);
+                                    setShowPackageModal(true);
+                                  }}
                                   className="w-full text-sm text-brown-muted hover:text-orange-600 font-bold py-2 border border-dashed border-gray-300 rounded-lg mt-2 transition-colors"
                                 >
-                                  + إضافة / تعديل باقة
+                                  + إضافة باقة جديدة
                                 </button>
                               </div>
                             </div>
@@ -4248,6 +4327,100 @@ export default function App() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Package Modal */}
+                      {showPackageModal && (
+                        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                          <div className="bg-white rounded-[32px] p-6 max-w-md w-full shadow-2xl border-4 border-orange-100 max-h-[90vh] overflow-y-auto">
+                            <h3 className="text-2xl font-black text-brown-dark mb-4 text-center">
+                              {editingPackage ? 'تعديل باقة' : 'إضافة باقة جديدة'}
+                            </h3>
+                            <form onSubmit={(e) => {
+                              e.preventDefault();
+                              const formData = new FormData(e.currentTarget);
+                              const pkg = {
+                                name: formData.get('name'),
+                                description: formData.get('description'),
+                                price: Number(formData.get('price')),
+                                amount: Number(formData.get('amount')),
+                                type: formData.get('type'),
+                                image: formData.get('image') || '💰',
+                                active: formData.get('active') === 'on'
+                              };
+                              
+                              if (editingPackage) {
+                                socket?.emit('admin_update_shop_item', { id: editingPackage.id, updates: pkg }, (res: any) => {
+                                  if (res.success) {
+                                    socket.emit('admin_get_shop_items', (items: any) => {
+                                      if (Array.isArray(items)) setShopItems(items);
+                                    });
+                                    setShowPackageModal(false);
+                                    showAlert('تم تعديل الباقة بنجاح', 'نجاح');
+                                  } else {
+                                    showAlert('حدث خطأ أثناء التعديل', 'خطأ');
+                                  }
+                                });
+                              } else {
+                                socket?.emit('admin_add_shop_item', pkg, (res: any) => {
+                                  if (res.success) {
+                                    socket.emit('admin_get_shop_items', (items: any) => {
+                                      if (Array.isArray(items)) setShopItems(items);
+                                    });
+                                    setShowPackageModal(false);
+                                    showAlert('تم إضافة الباقة بنجاح', 'نجاح');
+                                  } else {
+                                    showAlert('حدث خطأ أثناء الإضافة', 'خطأ');
+                                  }
+                                });
+                              }
+                            }} className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-bold text-brown-dark mb-1">اسم الباقة</label>
+                                <input name="name" defaultValue={editingPackage?.name} required className="w-full p-3 rounded-xl border-2 border-gray-200" />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-bold text-brown-dark mb-1">الوصف</label>
+                                <input name="description" defaultValue={editingPackage?.description} className="w-full p-3 rounded-xl border-2 border-gray-200" />
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-bold text-brown-dark mb-1">السعر (ج.م)</label>
+                                  <input name="price" type="number" step="0.01" defaultValue={editingPackage?.price} required className="w-full p-3 rounded-xl border-2 border-gray-200" />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-bold text-brown-dark mb-1">الكمية (توكنز/أيام)</label>
+                                  <input name="amount" type="number" defaultValue={editingPackage?.amount} required className="w-full p-3 rounded-xl border-2 border-gray-200" />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-bold text-brown-dark mb-1">النوع</label>
+                                  <select name="type" defaultValue={editingPackage?.type || 'tokens'} className="w-full p-3 rounded-xl border-2 border-gray-200">
+                                    <option value="tokens">توكنز</option>
+                                    <option value="pro_pack">باقة Pro</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-bold text-brown-dark mb-1">صورة/إيموجي</label>
+                                  <input name="image" defaultValue={editingPackage?.image || '💰'} className="w-full p-3 rounded-xl border-2 border-gray-200" />
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 mt-2">
+                                <input type="checkbox" name="active" id="active_pkg" defaultChecked={editingPackage ? editingPackage.active : true} className="w-5 h-5" />
+                                <label htmlFor="active_pkg" className="font-bold text-brown-dark">مفعلة (تظهر للاعبين)</label>
+                              </div>
+                              <div className="flex gap-3 pt-4">
+                                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-black py-3 rounded-xl">
+                                  حفظ
+                                </button>
+                                <button type="button" onClick={() => setShowPackageModal(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-brown-dark font-black py-3 rounded-xl">
+                                  إلغاء
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : adminTab === 'colors' ? (
                     <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
