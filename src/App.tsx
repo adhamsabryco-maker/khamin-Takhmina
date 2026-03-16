@@ -5848,7 +5848,7 @@ export default function App() {
                         onClick={() => setShowLeaderboardModal(true)}
                         className={`mt-3 w-full group relative overflow-hidden ${isTop3 ? 'bg-yellow-500' : 'bg-orange-500'} rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all`}
                       >
-                        <div className="bg-white rounded-[14px] py-3 px-4 flex items-center justify-between">
+                        <div className="bg-white h-10 rounded-[14px] py-3 px-4 flex items-center justify-between">
                           <div className="flex items-center gap-2 text-black">
                             <span className="font-bold text-xs md:text-sm">
                               {isTop3 ? 'أنت من أبطال الصدارة!' : 'ترتيبك في أبطال التخمين:'}
@@ -5869,7 +5869,7 @@ export default function App() {
                     return (
                       <button 
                         onClick={() => setShowLeaderboardModal(true)}
-                        className="mt-3 w-full group box-game hover:border-orange-200 py-3 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
+                        className="mt-3 w-full h-10 group box-game hover:border-orange-200 py-3 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-brown-muted font-bold text-xs md:text-sm">لست ضمن الـ Top 100..</span>
