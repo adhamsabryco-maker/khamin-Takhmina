@@ -6797,9 +6797,6 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     className="w-full mt-6 flex flex-col items-center gap-4"
                   >
-                    <div className="bg-green-50 border-2 border-green-200 p-4 rounded-2xl text-center w-full">
-                      <p className="text-accent-green font-black text-lg mb-1">تم الاتفاق على الفئة!</p>
-                    </div>
                     
                     <button 
                       onClick={handleStartGame}
