@@ -48,7 +48,8 @@ import {
   Volume2,
   VolumeX,
   Music,
-  Tv
+  Tv,
+  Play
 } from 'lucide-react';
 
 const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
@@ -4972,6 +4973,19 @@ export default function App() {
                                     </div>
                                   </div>
 
+                                  <div className="grid grid-cols-2 gap-2 mb-2">
+                                    <div className={`p-2 rounded-xl text-center border-2 ${p.proPackageExpiry > Date.now() ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100'}`}>
+                                      <div className={`text-[10px] font-bold ${p.proPackageExpiry > Date.now() ? 'text-green-500' : 'text-gray-400'}`}>باقة المحترفين</div>
+                                      <div className={`text-xs font-black ${p.proPackageExpiry > Date.now() ? 'text-green-600' : 'text-gray-500'}`}>
+                                        {p.proPackageExpiry > Date.now() ? new Date(p.proPackageExpiry).toLocaleDateString('ar-EG') : 'غير مفعلة'}
+                                      </div>
+                                    </div>
+                                    <div className="bg-red-50 p-2 rounded-xl text-center border-2 border-red-100">
+                                      <div className="text-[10px] font-bold text-red-400">البلاغات</div>
+                                      <div className="text-sm font-black text-red-600">{p.reports || 0}</div>
+                                    </div>
+                                  </div>
+
                                   <div className="grid grid-cols-3 gap-2">
                                     <div className="bg-gray-50 p-2 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-brown-light">الفوز</div>
@@ -4981,9 +4995,9 @@ export default function App() {
                                       <div className="text-[10px] font-bold text-purple-400">Tokens</div>
                                       <div className="text-sm font-black text-purple-600">{p.tokens || 0}</div>
                                     </div>
-                                    <div className="bg-red-50 p-2 rounded-xl text-center">
-                                      <div className="text-[10px] font-bold text-red-400">البلاغات</div>
-                                      <div className="text-sm font-black text-red-600">{p.reports || 0}</div>
+                                    <div className="bg-blue-50 p-2 rounded-xl text-center">
+                                      <div className="text-[10px] font-bold text-blue-400">المستوى</div>
+                                      <div className="text-sm font-black text-blue-600">{getLevel(p.xp)}</div>
                                     </div>
                                   </div>
 
@@ -5016,6 +5030,23 @@ export default function App() {
                                       className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black hover:bg-blue-600 hover:text-white transition-all"
                                     >
                                       إعطاء Tokens
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        showPrompt('كم عدد الأيام التي تريد إضافتها لباقة المحترفين؟', '30', (days) => {
+                                          if (days !== null && days.trim() !== '' && !isNaN(parseInt(days))) {
+                                            const durationMs = parseInt(days) * 24 * 60 * 60 * 1000;
+                                            const currentExpiry = Math.max(Date.now(), p.proPackageExpiry || 0);
+                                            const newExpiry = currentExpiry + durationMs;
+                                            socket?.emit('admin_update_player', { serial: p.serial, updates: { proPackageExpiry: newExpiry } }, (res: any) => {
+                                              if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
+                                            });
+                                          }
+                                        }, 'إضافة باقة المحترفين');
+                                      }}
+                                      className="flex-1 py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-black hover:bg-green-600 hover:text-white transition-all"
+                                    >
+                                      باقة المحترفين
                                     </button>
                                     <button 
                                       onClick={() => {
@@ -6640,6 +6671,28 @@ export default function App() {
                       )}
                     </form>
                   </div>
+                )}
+
+                {/* Start Game Button - Shown when consensus reached */}
+                {consensusReached && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full mt-6 flex flex-col items-center gap-4"
+                  >
+                    <div className="bg-green-50 border-2 border-green-200 p-4 rounded-2xl text-center w-full">
+                      <p className="text-accent-green font-black text-lg mb-1">تم الاتفاق على الفئة!</p>
+                      <p className="text-brown-muted text-sm font-bold">اضغط على الزر أدناه لبدء التحدي</p>
+                    </div>
+                    
+                    <button 
+                      onClick={handleStartGame}
+                      className="w-full py-5 bg-accent-green hover:bg-green-600 text-white rounded-2xl font-black text-2xl shadow-[0_6px_0_0_#15803d] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-3 group"
+                    >
+                      <Play className="w-8 h-8 fill-current group-hover:scale-110 transition-transform" />
+                      بدأ اللعب
+                    </button>
+                  </motion.div>
                 )}
               </div>
             </div>
