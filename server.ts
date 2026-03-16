@@ -74,6 +74,14 @@ function normalizeEgyptian(text: string): string {
     .replace(/[ضظط]/g, "ظ");
 }
 
+function isSameDay(d1: number, d2: number) {
+  const date1 = new Date(d1);
+  const date2 = new Date(d2);
+  return date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate();
+}
+
 import axios from "axios";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -2592,6 +2600,35 @@ io.on("connection", (socket) => {
           console.log(`Player ${reportedPlayer.name} (${reportedPlayer.id}) reported for: ${reason} in room ${roomId}`);
           io.to(roomId).emit("room_update", room); // Update clients to reflect reported status if needed
         }
+      }
+    });
+
+    socket.on("send_complaint", ({ text }, callback) => {
+      const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (player) {
+        // Check if already sent today
+        const lastReport = db.prepare('SELECT timestamp FROM reports WHERE reporterSerial = ? ORDER BY timestamp DESC LIMIT 1').get(player.serial);
+        if (lastReport && isSameDay(lastReport.timestamp, Date.now())) {
+          callback({ success: false, error: "لقد قمت بإرسال شكوى اليوم بالفعل." });
+          return;
+        }
+        const reportId = Math.random().toString(36).substr(2, 9);
+        db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reason) VALUES (?, ?, ?, ?, ?)')
+          .run(reportId, Date.now(), player.serial, player.name, text);
+        callback({ success: true });
+      } else {
+        callback({ success: false, error: "Player not found" });
+      }
+    });
+
+    socket.on("check_complaint_status", (_, callback) => {
+      const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (player) {
+        const lastReport = db.prepare('SELECT timestamp FROM reports WHERE reporterSerial = ? ORDER BY timestamp DESC LIMIT 1').get(player.serial);
+        const canSend = !lastReport || !isSameDay(lastReport.timestamp, Date.now());
+        callback({ success: true, canSend });
+      } else {
+        callback({ success: false, error: "Player not found" });
       }
     });
 
