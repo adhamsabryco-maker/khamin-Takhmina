@@ -1441,9 +1441,9 @@ export default function App() {
     // Initialize sounds
     Object.entries(SOUNDS).forEach(([key, url]) => {
       if (key === 'lobbyBackground') {
-        lobbyMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume });
+        lobbyMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume, html5: true });
       } else if (key === 'gameBackground') {
-        gameMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume });
+        gameMusicRef.current = new Howl({ src: [url], loop: true, preload: true, volume: musicVolume, html5: true });
       } else {
         audioRef.current[key] = new Howl({ src: [url], preload: true });
       }
@@ -1461,7 +1461,17 @@ export default function App() {
     }
 
     if (activeMusic) {
-      activeMusic.volume(isMusicMuted ? 0 : musicVolume);
+      // Ensure volume is set correctly even if the sound is still loading
+      if (activeMusic.state() === 'loaded') {
+        activeMusic.volume(isMusicMuted ? 0 : musicVolume);
+      } else {
+        activeMusic.once('load', () => {
+          activeMusic.volume(isMusicMuted ? 0 : musicVolume);
+        });
+        // Also set it immediately just in case
+        activeMusic.volume(isMusicMuted ? 0 : musicVolume);
+      }
+      
       if (!isMusicMuted && musicVolume > 0) {
         if (!activeMusic.playing()) {
           activeMusic.play();
