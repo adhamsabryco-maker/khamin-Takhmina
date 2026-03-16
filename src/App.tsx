@@ -5763,7 +5763,7 @@ export default function App() {
                   <h2 className="text-sm md:text-base font-black text-main flex items-center gap-2">
                     أبطال التخمين
                   </h2>
-                  <span className="text-[10px] md:text-xs font-bold text-accent-orange box-game px-2 py-1 rounded-full">المتصدرون حالياً</span>
+                  <span className="text-[10px] md:text-xs font-bold text-accent-orange px-2 py-1 rounded-full">المتصدرون حالياً</span>
                 </div>
                 <div className="flex items-end justify-center gap-2 md:gap-4">
                   {/* Rank 2 */}
