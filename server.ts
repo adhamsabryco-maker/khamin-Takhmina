@@ -383,8 +383,11 @@ const app = express();
     weeklyTokensClaimed?: number,
     lastWeeklyTokenReset?: number,
     lastGuess?: string,
-    ownedHelpers?: { [key: string]: number }
+    ownedHelpers?: { [key: string]: number },
+    proPackageExpiry?: number
   }>();
+
+  const playerSockets = new Map<string, string>();
 
   let dbPath = process.env.DB_PATH || path.join(__dirname, 'players.db');
   console.log(`[DB] Using database at: ${dbPath}`);
@@ -920,7 +923,7 @@ const app = express();
           const item = db.prepare('SELECT * FROM shop_items WHERE id = ?').get(orderInfo.itemId) as any;
 
           if (player && item) {
-            if (item.type.startsWith('token_pack')) {
+            if (item.type === 'tokens' || item.type.startsWith('token_pack')) {
               player.tokens = (player.tokens || 0) + (item.amount || 1);
               savePlayerData(player.serial);
               
@@ -930,16 +933,17 @@ const app = express();
                 io.to(socketId).emit('player_update', player);
                 io.to(socketId).emit('show_alert', { message: `تم إضافة ${item.amount} Tokens بنجاح!`, title: 'عملية ناجحة' });
               }
-            } else if (item.id === 'pro_pack') {
-              const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
-              player.proPackageExpiry = Date.now() + thirtyDaysInMs;
+            } else if (item.type === 'pro_pack') {
+              const days = item.amount > 0 ? item.amount : 30;
+              const ms = days * 24 * 60 * 60 * 1000;
+              player.proPackageExpiry = Date.now() + ms;
               savePlayerData(player.serial);
 
               // Notify the player
               const socketId = playerSockets.get(player.serial);
               if (socketId) {
                 io.to(socketId).emit('player_update', player);
-                io.to(socketId).emit('show_alert', { message: 'تم تفعيل باقة المحترفين بنجاح!', title: 'عملية ناجحة' });
+                io.to(socketId).emit('show_alert', { message: `تم تفعيل باقة المحترفين (${days} يوم) بنجاح!`, title: 'عملية ناجحة' });
               }
             }
           }
@@ -2920,6 +2924,9 @@ io.on("connection", (socket) => {
 
     socket.on("set_player_serial_for_socket", (serial) => {
       socket.data = { serial };
+      if (serial) {
+        playerSockets.set(serial, socket.id);
+      }
     });
 
     socket.on("intentional_leave", ({ roomId }) => {
@@ -2934,6 +2941,9 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", (reason) => {
+      if (socket.data?.serial) {
+        playerSockets.delete(socket.data.serial);
+      }
       lastChatTimes.delete(socket.id);
       chatCounts.delete(socket.id);
       broadcastOnlineCount();
