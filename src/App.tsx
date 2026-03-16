@@ -1368,12 +1368,15 @@ export default function App() {
     return () => clearInterval(interval);
   }, [proposedMatch, matchResponseTimeLeft, hasResponded, socket]);
 
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+
   // Global Fullscreen and Audio trigger on first interaction
   useEffect(() => {
     const handleFirstInteraction = () => {
       if (Howler.ctx && Howler.ctx.state === 'suspended') {
         Howler.ctx.resume().catch(() => {});
       }
+      setAudioUnlocked(true);
       window.removeEventListener('click', handleFirstInteraction);
       window.removeEventListener('touchend', handleFirstInteraction);
     };
@@ -1461,20 +1464,21 @@ export default function App() {
     }
 
     if (activeMusic) {
-      // Ensure volume is set correctly even if the sound is still loading
-      if (activeMusic.state() === 'loaded') {
-        activeMusic.volume(isMusicMuted ? 0 : musicVolume);
-      } else {
-        activeMusic.once('load', () => {
-          activeMusic.volume(isMusicMuted ? 0 : musicVolume);
-        });
-        // Also set it immediately just in case
-        activeMusic.volume(isMusicMuted ? 0 : musicVolume);
-      }
-      
-      if (!isMusicMuted && musicVolume > 0) {
+      // Set volume
+      const vol = isMusicMuted ? 0 : musicVolume;
+      activeMusic.volume(vol);
+
+      if (!isMusicMuted && musicVolume > 0 && audioUnlocked) {
         if (!activeMusic.playing()) {
-          activeMusic.play();
+          if (activeMusic.state() === 'loaded') {
+            activeMusic.play();
+          } else {
+            activeMusic.once('load', () => {
+              if (!isMusicMuted && musicVolume > 0 && audioUnlocked) {
+                activeMusic.play();
+              }
+            });
+          }
         }
       } else {
         if (activeMusic.playing()) {
@@ -1482,7 +1486,7 @@ export default function App() {
         }
       }
     }
-  }, [musicVolume, isMusicMuted, room?.gameState]);
+  }, [musicVolume, isMusicMuted, room?.gameState, audioUnlocked]);
 
   const playSound = useCallback((key: keyof typeof SOUNDS, volumeOverride?: number) => {
     if (isSfxMuted) return;
