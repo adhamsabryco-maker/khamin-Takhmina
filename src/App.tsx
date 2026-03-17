@@ -5726,7 +5726,7 @@ export default function App() {
   if (isSearching) {
     return (
       <>
-      <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
+      <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-32">
           {/* Fixed Header */}
           <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
             <div className="flex-1 flex items-center gap-2 md:gap-3">
@@ -5789,6 +5789,10 @@ export default function App() {
               </button>
             </div>
           </header>
+
+          <div className="fixed top-14 md:top-16 left-0 right-0 bg-red-500 text-white text-center py-1.5 font-black text-xs md:text-sm z-[1999] shadow-md border-b-2 border-red-700">
+            ⚠️ اللعبة ستتوقف لمدة 24 ساعة للتحديث ⚠️
+          </div>
 
         <div className="w-full max-w-md card-game p-3 md:p-4 text-center space-y-2 md:space-y-4 relative overflow-hidden">
           {proposedMatch ? (
@@ -5980,7 +5984,11 @@ export default function App() {
           </div>
         </header>
 
-        <div className="min-h-screen w-full flex items-center overflow-x-hidden justify-center p-4 pt-20">
+        <div className="fixed top-14 md:top-16 left-0 right-0 bg-red-500 text-white text-center py-1.5 font-black text-xs md:text-sm z-[1999] shadow-md border-b-2 border-red-700">
+          ⚠️ اللعبة ستتوقف لمدة 24 ساعة للتحديث ⚠️
+        </div>
+
+        <div className="min-h-screen w-full flex items-center overflow-x-hidden justify-center p-4 pt-28">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -6460,7 +6468,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-16 md:pt-20">
+    <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-24 md:pt-28">
       {/* Install Modal */}
       {showInstallModal && deferredPrompt && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -6565,6 +6573,10 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <div className="fixed top-14 md:top-16 left-0 right-0 bg-red-500 text-white text-center py-1.5 font-black text-xs md:text-sm z-[1999] shadow-md border-b-2 border-red-700">
+        ⚠️ اللعبة ستتوقف لمدة 24 ساعة للتحديث ⚠️
+      </div>
 
 
       <main className="flex-1 relative flex flex-col items-center justify-between py-2 px-2 max-w-md mx-auto w-full">
