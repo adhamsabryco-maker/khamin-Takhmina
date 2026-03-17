@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://khamin-takhmina-guess-game.online
