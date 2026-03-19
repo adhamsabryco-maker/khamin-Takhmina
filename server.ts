@@ -77,9 +77,9 @@ function normalizeEgyptian(text: string): string {
 function isSameDay(d1: number, d2: number) {
   const date1 = new Date(d1);
   const date2 = new Date(d2);
-  return date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate();
+  return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+    date1.getUTCMonth() === date2.getUTCMonth() &&
+    date1.getUTCDate() === date2.getUTCDate();
 }
 
 import axios from "axios";
@@ -205,6 +205,13 @@ const app = express();
   }
 
   let configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false, version: currentVersion };
+  let activeGlobalReward: any = null;
+  let gamePolicies = {
+    termsAr: "الشروط والأحكام الافتراضية للعبة خمن تخمينة.\n\n1. يجب احترام جميع اللاعبين.\n2. يمنع استخدام أي برامج مساعدة أو غش.\n3. الإدارة غير مسؤولة عن أي خسارة للبيانات.",
+    termsEn: "Default Terms and Conditions for Guess Guess game.\n\n1. All players must be respected.\n2. Use of any helper programs or cheating is prohibited.\n3. The administration is not responsible for any data loss.",
+    privacyAr: "سياسة الخصوصية للعبة خمن تخمينة.\n\n1. نحن نقوم بجمع بياناتك الأساسية مثل الاسم والصورة الرمزية.\n2. لا نقوم بمشاركة بياناتك مع أي طرف ثالث.\n3. يتم استخدام البيانات لتحسين تجربة اللعب فقط.",
+    privacyEn: "Privacy Policy for Guess Guess game.\n\n1. We collect your basic data such as name and avatar.\n2. We do not share your data with any third party.\n3. Data is used only to improve the gaming experience."
+  };
   const configPath = path.join(__dirname, 'public/uploads/config.json');
   if (fs.existsSync(configPath)) {
     try {
@@ -272,6 +279,10 @@ const app = express();
 
   app.get("/api/version", (req, res) => {
     res.json({ version: configCache.version || '1.1.1' });
+  });
+
+  app.get("/api/maintenance", (req, res) => {
+    res.json({ maintenance: process.env.MAINTENANCE_MODE === 'true' });
   });
 
   app.get("/api/auth/google/url", (req, res) => {
@@ -392,7 +403,14 @@ const app = express();
     lastWeeklyTokenReset?: number,
     lastGuess?: string,
     ownedHelpers?: { [key: string]: number },
-    proPackageExpiry?: number
+    proPackageExpiry?: number,
+    unlockedHelpersExpiry?: number,
+    claimedRewards?: string[],
+    lastRenameAt?: number,
+    pendingAvatar?: string,
+    avatarStatus?: 'approved' | 'pending' | 'rejected',
+    lastComplaintAt?: number,
+    lastContactAt?: number
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -514,6 +532,13 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN weeklyTokensClaimed INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastWeeklyTokenReset INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN proPackageExpiry INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN unlockedHelpersExpiry INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN claimedRewards TEXT DEFAULT '[]'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastRenameAt INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN pendingAvatar TEXT`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN avatarStatus TEXT DEFAULT 'approved'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastComplaintAt INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastContactAt INTEGER DEFAULT 0`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -598,9 +623,20 @@ const app = express();
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS contacts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      playerSerial TEXT,
+      name TEXT,
+      subject TEXT,
+      message TEXT,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, lastWeeklyTokenReset, proPackageExpiry)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @lastWeeklyTokenReset, @proPackageExpiry)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt)
   `);
 
   function savePlayerData(serial: string) {
@@ -622,7 +658,14 @@ const app = express();
         lastDailyClaim: player.lastDailyClaim || 0,
         weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
         lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0,
-        proPackageExpiry: player.proPackageExpiry || 0
+        proPackageExpiry: player.proPackageExpiry || 0,
+        unlockedHelpersExpiry: player.unlockedHelpersExpiry || 0,
+        claimedRewards: JSON.stringify(player.claimedRewards || []),
+        lastRenameAt: player.lastRenameAt || 0,
+        pendingAvatar: player.pendingAvatar || null,
+        avatarStatus: player.avatarStatus || 'approved',
+        lastComplaintAt: player.lastComplaintAt || 0,
+        lastContactAt: player.lastContactAt || 0
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -646,7 +689,12 @@ const app = express();
         lastDailyClaim: player.lastDailyClaim || 0,
         weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
         lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0,
-        proPackageExpiry: player.proPackageExpiry || 0
+        proPackageExpiry: player.proPackageExpiry || 0,
+        unlockedHelpersExpiry: player.unlockedHelpersExpiry || 0,
+        claimedRewards: JSON.stringify(player.claimedRewards || []),
+        lastRenameAt: player.lastRenameAt || 0,
+        pendingAvatar: player.pendingAvatar || null,
+        avatarStatus: player.avatarStatus || 'approved'
       });
     }
   });
@@ -695,7 +743,12 @@ const app = express();
           lastDailyClaim: row.lastDailyClaim || 0,
           weeklyTokensClaimed: row.weeklyTokensClaimed || 0,
           lastWeeklyTokenReset: row.lastWeeklyTokenReset || 0,
-          proPackageExpiry: row.proPackageExpiry || 0
+          proPackageExpiry: row.proPackageExpiry || 0,
+          unlockedHelpersExpiry: row.unlockedHelpersExpiry || 0,
+          claimedRewards: JSON.parse(row.claimedRewards || '[]'),
+          lastRenameAt: row.lastRenameAt || 0,
+          pendingAvatar: row.pendingAvatar,
+          avatarStatus: row.avatarStatus || 'approved'
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -705,6 +758,38 @@ const app = express();
   }
 
   loadPlayersData();
+
+  // Load Global Reward
+  try {
+    const rewardRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('global_reward') as any;
+    if (rewardRow && rewardRow.value) {
+      activeGlobalReward = JSON.parse(rewardRow.value);
+      // Check if expired
+      if (activeGlobalReward.expiresAt < Date.now()) {
+        activeGlobalReward = null;
+        db.prepare('DELETE FROM settings WHERE key = ?').run('global_reward');
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load global reward:", err);
+  }
+
+  // Load Game Policies
+  try {
+    const termsArRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('terms_policy_ar') as any;
+    if (termsArRow && termsArRow.value) gamePolicies.termsAr = termsArRow.value;
+    
+    const termsEnRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('terms_policy_en') as any;
+    if (termsEnRow && termsEnRow.value) gamePolicies.termsEn = termsEnRow.value;
+    
+    const privacyArRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('privacy_policy_ar') as any;
+    if (privacyArRow && privacyArRow.value) gamePolicies.privacyAr = privacyArRow.value;
+    
+    const privacyEnRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('privacy_policy_en') as any;
+    if (privacyEnRow && privacyEnRow.value) gamePolicies.privacyEn = privacyEnRow.value;
+  } catch (err) {
+    console.error("Failed to load game policies:", err);
+  }
 
   // Load Theme Config
   let themeConfig = {
@@ -805,6 +890,7 @@ const app = express();
           gender: p.gender,
           isAdmin: p.isAdmin,
           serial: p.serial,
+          isOnline: playerSockets.has(p.serial),
           rank: i + 1 
         }));
       topPlayersCacheTime = now;
@@ -964,9 +1050,51 @@ const app = express();
     }
   });
 
+  const contactIps = new Map<string, number>();
+
+  app.post("/api/contact", (req, res) => {
+    try {
+      const { playerSerial, name, subject, message } = req.body;
+      const ip = req.ip || req.socket.remoteAddress || 'unknown';
+
+      if (!name || !subject || !message) {
+        return res.status(400).json({ error: "Missing fields" });
+      }
+
+      if (playerSerial) {
+        const player = allPlayers.get(playerSerial);
+        if (player) {
+          if (player.lastContactAt && isSameDay(player.lastContactAt, Date.now())) {
+            return res.status(429).json({ error: "لقد قمت بإرسال رسالة اليوم بالفعل." });
+          }
+          player.lastContactAt = Date.now();
+          savePlayerData(playerSerial);
+        }
+      } else {
+        const lastContact = contactIps.get(ip);
+        if (lastContact && isSameDay(lastContact, Date.now())) {
+          return res.status(429).json({ error: "لقد قمت بإرسال رسالة اليوم بالفعل." });
+        }
+        contactIps.set(ip, Date.now());
+      }
+
+      db.prepare('INSERT INTO contacts (playerSerial, name, subject, message) VALUES (?, ?, ?, ?)').run(playerSerial || null, name, subject, message);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error saving contact message:", error);
+      res.status(500).json({ error: "Failed to save message" });
+    }
+  });
+
   app.get("/api/categories", (req, res) => {
     try {
-      const categories = db.prepare('SELECT id, name, icon, timestamp FROM categories ORDER BY timestamp ASC').all();
+      const categories = db.prepare(`
+        SELECT c.id, c.name, c.icon, c.timestamp, MAX(i.timestamp) as latestImageTimestamp
+        FROM categories c
+        LEFT JOIN custom_images i ON c.id = i.category
+        GROUP BY c.id
+        ORDER BY c.timestamp ASC
+      `).all();
       res.json(categories);
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -1020,6 +1148,7 @@ const app = express();
       }
       const id = Math.random().toString(36).substring(2, 15);
       db.prepare('INSERT INTO custom_images (id, category, name, data, addedBy, timestamp) VALUES (?, ?, ?, ?, ?, ?)').run(id, category, name, data, addedBy || 'admin', Date.now());
+      io.emit('categories_updated');
       res.json({ success: true, id });
     } catch (error) {
       console.error("Error adding image:", error);
@@ -1031,6 +1160,7 @@ const app = express();
     try {
       const { id } = req.params;
       db.prepare('DELETE FROM custom_images WHERE id = ?').run(id);
+      io.emit('categories_updated');
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting image:", error);
@@ -1459,6 +1589,7 @@ io.on("connection", (socket) => {
     // Send current theme to new user
     socket.emit('theme_updated', themeConfig);
     socket.emit('top_players_update', getTopPlayers());
+    socket.emit('policies_update', gamePolicies);
 
     socket.on('admin_save_theme', (newTheme) => {
       console.log("[Theme] Admin updated theme");
@@ -1803,6 +1934,70 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("request_custom_avatar", ({ playerSerial, avatar, status }, callback) => {
+      const player = allPlayers.get(playerSerial);
+      if (player) {
+        if (getLevel(player.xp) < 50) {
+          if (callback) callback({ success: false, message: "يجب أن يكون مستواك 50+ لرفع صورة مخصصة" });
+          return;
+        }
+
+        if (status === 'approved') {
+          player.avatar = avatar;
+          player.avatarStatus = 'approved';
+          player.pendingAvatar = undefined;
+          if (callback) callback({ success: true, message: "تمت الموافقة على صورتك تلقائياً بواسطة الذكاء الاصطناعي!" });
+        } else {
+          player.pendingAvatar = avatar;
+          player.avatarStatus = 'pending';
+          if (callback) callback({ success: true, message: "تم إرسال الصورة للمراجعة اليدوية." });
+        }
+        savePlayerData(playerSerial);
+      }
+    });
+
+    socket.on("admin_get_pending_avatars", (callback) => {
+      const pending = Array.from(allPlayers.values())
+        .filter(p => p.avatarStatus === 'pending' && p.pendingAvatar)
+        .map(p => ({
+          serial: p.serial,
+          name: p.name,
+          level: getLevel(p.xp),
+          pendingAvatar: p.pendingAvatar
+        }));
+      callback(pending);
+    });
+
+    socket.on("admin_review_avatar", ({ playerSerial, status }, callback) => {
+      const player = allPlayers.get(playerSerial);
+      if (player) {
+        if (status === 'approved' && player.pendingAvatar) {
+          player.avatar = player.pendingAvatar;
+          player.avatarStatus = 'approved';
+          player.pendingAvatar = undefined;
+        } else if (status === 'rejected') {
+          player.avatarStatus = 'rejected';
+          player.pendingAvatar = undefined;
+          // We don't reset player.avatar here anymore, so they keep their previous avatar
+        }
+        savePlayerData(playerSerial);
+        if (callback) callback({ success: true });
+        
+        // Notify player if online
+        const socketId = playerSockets.get(playerSerial);
+        if (socketId) {
+          io.to(socketId).emit('avatar_review_result', { 
+            success: true, 
+            status: player.avatarStatus,
+            avatar: player.avatar,
+            message: status === 'approved' ? 'تمت الموافقة على صورتك الشخصية!' : 'تم رفض صورتك الشخصية لمخالفتها السياسات.'
+          });
+        }
+      } else {
+        if (callback) callback({ success: false, error: "اللاعب غير موجود" });
+      }
+    });
+
     socket.on("update_profile", ({ playerSerial, playerName, avatar, gender }, callback) => {
       const player = allPlayers.get(playerSerial);
       if (player) {
@@ -1810,11 +2005,33 @@ io.on("connection", (socket) => {
         if (filteredName.length > 15) {
           filteredName = filteredName.substring(0, 15);
         }
-        player.name = filteredName;
-        player.avatar = avatar;
+        
+        // Check if name is changing
+        if (player.name !== filteredName) {
+          player.name = filteredName;
+          player.lastRenameAt = Date.now();
+        }
+        
+        // Avatar validation:
+        // If it's a custom avatar (base64/data URL), it must be the currently approved one.
+        // Otherwise, it must be one of the default avatars.
+        const isCustom = avatar && avatar.startsWith('data:image/');
+        if (isCustom) {
+          // If player tries to set a custom avatar, it must match their approved one
+          if (player.avatarStatus !== 'approved' || player.avatar !== avatar) {
+            // If not approved or doesn't match, we don't update the avatar field to this new one
+            console.log(`Player ${player.name} tried to set unapproved custom avatar.`);
+          } else {
+            player.avatar = avatar;
+          }
+        } else {
+          // Default avatars are always allowed
+          player.avatar = avatar;
+        }
+
         if (gender) player.gender = gender;
         savePlayerData(playerSerial);
-        if (callback) callback({ topPlayers: getTopPlayers(), name: player.name });
+        if (callback) callback({ topPlayers: getTopPlayers(), name: player.name, lastRenameAt: player.lastRenameAt });
       }
     });
 
@@ -1830,14 +2047,22 @@ io.on("connection", (socket) => {
         const isSameDay = (d1: number, d2: number) => {
           const date1 = new Date(d1);
           const date2 = new Date(d2);
-          return date1.getFullYear() === date2.getFullYear() &&
-                 date1.getMonth() === date2.getMonth() &&
-                 date1.getDate() === date2.getDate();
+          return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+                 date1.getUTCMonth() === date2.getUTCMonth() &&
+                 date1.getUTCDate() === date2.getUTCDate();
         };
 
         if (lastClaim !== 0 && !isSameDay(now, lastClaim)) {
           player.ownedHelpers = {};
           savePlayerData(serial);
+        }
+
+        // Check if there's an active global reward
+        if (activeGlobalReward && activeGlobalReward.expiresAt > Date.now()) {
+          if (!player.claimedRewards) player.claimedRewards = [];
+          if (!player.claimedRewards.includes(activeGlobalReward.id)) {
+            socket.emit("global_reward_available", activeGlobalReward);
+          }
         }
 
         callback(player);
@@ -1869,6 +2094,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("join_room", ({ roomId, playerName, avatar, age, xp, streak, serial, wins }) => {
+      socket.data.isSearching = false;
       // Check if player is banned
       const serverPlayer = allPlayers.get(serial);
       if (!serverPlayer) {
@@ -2000,6 +2226,8 @@ io.on("connection", (socket) => {
       // Remove from queue if already there (re-join)
       const existingIndex = matchmakingQueue.findIndex(p => p.playerId === playerId || p.id === socket.id);
       if (existingIndex !== -1) matchmakingQueue.splice(existingIndex, 1);
+      
+      socket.data.isSearching = true;
 
       for (const [matchId, match] of pendingMatches.entries()) {
         if (match.p1.socket.id === socket.id || match.p2.socket.id === socket.id) {
@@ -2084,7 +2312,7 @@ io.on("connection", (socket) => {
           setTimeout(() => {
             // Only add back if they haven't started another search or joined a room
             const stillInQueue = matchmakingQueue.some(p => p.id === myData.id);
-            if (!stillInQueue && myData.socket.connected) {
+            if (!stillInQueue && myData.socket.connected && myData.socket.data?.isSearching) {
               matchmakingQueue.push(myData);
             }
           }, 5000);
@@ -2099,8 +2327,10 @@ io.on("connection", (socket) => {
         
         const roomId = `random_${Math.random().toString(36).substr(2, 9)}`;
         match.p1.socket.join(roomId);
+        if (match.p1.socket.data) match.p1.socket.data.isSearching = false;
         if (!match.p2.isBot) {
           match.p2.socket.join(roomId);
+          if (match.p2.socket.data) match.p2.socket.data.isSearching = false;
         }
 
         const p1ServerPlayer = allPlayers.get(match.p1.serial);
@@ -2305,6 +2535,20 @@ io.on("connection", (socket) => {
 
         if (isCheating) {
           messageToSend = "(ممنوع تسريب الإجابة!)";
+          
+          // Disqualify cheater
+          const opponent = room.players.find((p: any) => p.id !== socket.id);
+          if (opponent && sender) {
+            // Inform everyone
+            io.to(roomId).emit("chat_bubble", { senderId: "system", text: `تم استبعاد ${sender.name} لمحاولة تسريب الإجابة! 🚫` });
+            
+            // End game and make opponent winner
+            // Small delay to ensure the message is seen
+            setTimeout(() => {
+              endGame(roomId, opponent.name, true);
+            }, 1000);
+            return; // Stop processing this message
+          }
         }
 
         if (sender && sender.age < 13) {
@@ -2377,12 +2621,13 @@ io.on("connection", (socket) => {
       const dbPlayer = allPlayers.get(serial);
       const hasFreeUse = dbPlayer && dbPlayer.ownedHelpers && dbPlayer.ownedHelpers[cardType] > 0;
       const hasPro = dbPlayer && dbPlayer.proPackageExpiry && dbPlayer.proPackageExpiry > Date.now();
+      const hasUnlockedHelpers = dbPlayer && dbPlayer.unlockedHelpersExpiry && dbPlayer.unlockedHelpersExpiry > Date.now();
 
       // Helper function to deduct free use
       const deductFreeUse = () => {
-        if (hasFreeUse && !hasPro) { // Don't deduct if they have Pro Pack
+        if (hasFreeUse && !hasPro && !hasUnlockedHelpers) { // Don't deduct if they have Pro Pack or Unlocked Helpers
           dbPlayer.ownedHelpers[cardType] -= 1;
-          if (dbPlayer.ownedHelpers[cardType] === 0) {
+          if (dbPlayer.ownedHelpers[cardType] <= 0) {
             delete dbPlayer.ownedHelpers[cardType];
           }
           savePlayerData(serial);
@@ -2395,7 +2640,7 @@ io.on("connection", (socket) => {
 
       if (cardType === "hint") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 40 || hasFreeUse || hasPro) && (!player.hintCount || player.hintCount < 2)) {
+        if ((playerLevel >= 40 || hasFreeUse || hasPro || hasUnlockedHelpers) && (!player.hintCount || player.hintCount < 2)) {
           deductFreeUse();
           if (!player.hintCount) player.hintCount = 0;
           player.hintCount++;
@@ -2420,7 +2665,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "word_length") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 10 || hasFreeUse || hasPro) && !player.wordLengthUsed) {
+        if ((playerLevel >= 10 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.wordLengthUsed) {
           deductFreeUse();
           player.wordLengthUsed = true;
           const targetName = player.targetImage.name;
@@ -2429,7 +2674,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "word_count") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 20 || hasFreeUse || hasPro) && !player.wordCountUsed) {
+        if ((playerLevel >= 20 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.wordCountUsed) {
           deductFreeUse();
           player.wordCountUsed = true;
           const targetName = player.targetImage.name;
@@ -2439,7 +2684,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "time_freeze") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 30 || hasFreeUse || hasPro) && !player.timeFreezeUsed && !room.isFrozen) {
+        if ((playerLevel >= 30 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.timeFreezeUsed && !room.isFrozen) {
           deductFreeUse();
           player.timeFreezeUsed = true;
           room.isFrozen = true;
@@ -2449,7 +2694,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "spy_lens") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 50 || hasFreeUse || hasPro) && !player.spyLensUsed) {
+        if ((playerLevel >= 50 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.spyLensUsed) {
           deductFreeUse();
           player.spyLensUsed = true;
           // The player wants to see their own target image (which is what the opponent sees)
@@ -2607,11 +2852,14 @@ io.on("connection", (socket) => {
       const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
       if (player) {
         // Check if already sent today
-        const lastReport = db.prepare('SELECT timestamp FROM reports WHERE reporterSerial = ? ORDER BY timestamp DESC LIMIT 1').get(player.serial);
-        if (lastReport && isSameDay(lastReport.timestamp, Date.now())) {
+        if (player.lastComplaintAt && isSameDay(player.lastComplaintAt, Date.now())) {
           callback({ success: false, error: "لقد قمت بإرسال شكوى اليوم بالفعل." });
           return;
         }
+        
+        player.lastComplaintAt = Date.now();
+        savePlayerData(player.serial);
+
         const reportId = Math.random().toString(36).substr(2, 9);
         db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reason) VALUES (?, ?, ?, ?, ?)')
           .run(reportId, Date.now(), player.serial, player.name, text);
@@ -2624,8 +2872,7 @@ io.on("connection", (socket) => {
     socket.on("check_complaint_status", (_, callback) => {
       const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
       if (player) {
-        const lastReport = db.prepare('SELECT timestamp FROM reports WHERE reporterSerial = ? ORDER BY timestamp DESC LIMIT 1').get(player.serial);
-        const canSend = !lastReport || !isSameDay(lastReport.timestamp, Date.now());
+        const canSend = !player.lastComplaintAt || !isSameDay(player.lastComplaintAt, Date.now());
         callback({ success: true, canSend });
       } else {
         callback({ success: false, error: "Player not found" });
@@ -2670,6 +2917,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("leave_matchmaking", () => {
+      socket.data.isSearching = false;
       const qIndex = matchmakingQueue.findIndex(p => p.id === socket.id);
       if (qIndex !== -1) matchmakingQueue.splice(qIndex, 1);
 
@@ -2737,7 +2985,11 @@ io.on("connection", (socket) => {
     socket.on("admin_get_players", (callback) => {
       const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
       if (player?.isAdmin || socket.data?.isAdmin) {
-        callback(Array.from(allPlayers.values()));
+        const playersWithOnlineStatus = Array.from(allPlayers.values()).map(p => ({
+          ...p,
+          isOnline: playerSockets.has(p.serial)
+        }));
+        callback(playersWithOnlineStatus);
       } else {
         callback({ error: "Unauthorized" });
       }
@@ -2841,12 +3093,182 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("admin_send_announcement", (message, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        io.emit("system_announcement", message);
+        callback({ success: true });
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_update_policies", (data, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          gamePolicies.termsAr = data.termsAr;
+          gamePolicies.termsEn = data.termsEn;
+          gamePolicies.privacyAr = data.privacyAr;
+          gamePolicies.privacyEn = data.privacyEn;
+          
+          db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('terms_policy_ar', data.termsAr);
+          db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('terms_policy_en', data.termsEn);
+          db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('privacy_policy_ar', data.privacyAr);
+          db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('privacy_policy_en', data.privacyEn);
+          
+          io.emit('policies_update', gamePolicies);
+          callback({ success: true });
+        } catch (err) {
+          console.error("Failed to update policies:", err);
+          callback({ error: "Failed to update policies" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_send_tokens_50_plus", (data, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          const amount = parseInt(data.amount) || 0;
+          if (amount <= 0) return callback({ error: "Invalid amount" });
+
+          let count = 0;
+          
+          for (const [serial, player] of allPlayers.entries()) {
+            const level = Math.floor(Math.sqrt(player.xp / 50)) + 1;
+            if (level >= 50) {
+              player.tokens = (player.tokens || 0) + amount;
+              savePlayerData(serial);
+              count++;
+              
+              const socketId = playerSockets.get(serial);
+              if (socketId) {
+                io.to(socketId).emit('player_update', player);
+                io.to(socketId).emit('show_alert', { 
+                  message: data.message || `مبروك! لقد حصلت على ${amount} Tokens كهدية خاصة للاعبين مستوى 50+ 🎁`, 
+                  title: 'هدية خاصة!' 
+                });
+              }
+            }
+          }
+          
+          callback({ success: true, count });
+        } catch (err) {
+          console.error("Failed to send tokens:", err);
+          callback({ error: "Failed to send tokens" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_set_global_reward", (rewardData, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          const newReward = {
+            id: 'reward_' + Date.now(),
+            type: rewardData.type, // 'pro_package' or 'unlock_helpers'
+            durationHours: rewardData.durationHours,
+            message: rewardData.message,
+            expiresAt: Date.now() + (rewardData.expiresInDays || 7) * 24 * 60 * 60 * 1000 // Reward claimable for 7 days
+          };
+          activeGlobalReward = newReward;
+          db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('global_reward', JSON.stringify(newReward));
+          io.emit("global_reward_available", newReward);
+          callback({ success: true, reward: newReward });
+        } catch (err) {
+          console.error("Failed to set global reward:", err);
+          callback({ error: "Failed to set reward" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_cancel_global_reward", (callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          activeGlobalReward = null;
+          db.prepare('DELETE FROM settings WHERE key = ?').run('global_reward');
+          io.emit("global_reward_available", null); // Tell clients to remove active reward
+          callback({ success: true });
+        } catch (err) {
+          console.error("Failed to cancel global reward:", err);
+          callback({ error: "Failed to cancel reward" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("claim_global_reward", (callback) => {
+      const serial = socket.data?.serial;
+      if (!serial) return callback({ error: "Not logged in" });
+      
+      const player = allPlayers.get(serial);
+      if (!player) return callback({ error: "Player not found" });
+
+      if (!activeGlobalReward) return callback({ error: "No active reward" });
+      if (activeGlobalReward.expiresAt < Date.now()) return callback({ error: "Reward expired" });
+
+      if (!player.claimedRewards) player.claimedRewards = [];
+      if (player.claimedRewards.includes(activeGlobalReward.id)) {
+        return callback({ error: "Already claimed" });
+      }
+
+      // Apply reward
+      const durationMs = activeGlobalReward.durationHours * 60 * 60 * 1000;
+      if (activeGlobalReward.type === 'pro_package') {
+        player.proPackageExpiry = Math.max(player.proPackageExpiry || 0, Date.now()) + durationMs;
+      } else if (activeGlobalReward.type === 'unlock_helpers') {
+        player.unlockedHelpersExpiry = Math.max(player.unlockedHelpersExpiry || 0, Date.now()) + durationMs;
+      }
+
+      player.claimedRewards.push(activeGlobalReward.id);
+      savePlayerData(serial);
+
+      callback({ success: true, player });
+    });
+
     socket.on("get_shop_items", (callback) => {
       try {
         const items = db.prepare('SELECT * FROM shop_items WHERE active = 1 ORDER BY timestamp DESC').all();
         callback(items);
       } catch (err) {
         callback([]);
+      }
+    });
+
+    socket.on("admin_get_contacts", (callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          const contacts = db.prepare('SELECT * FROM contacts ORDER BY timestamp DESC').all();
+          callback(contacts);
+        } catch (err) {
+          callback({ error: "Failed to fetch contacts" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_delete_contact", (id, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          db.prepare('DELETE FROM contacts WHERE id = ?').run(id);
+          callback({ success: true });
+        } catch (err) {
+          callback({ error: "Failed to delete contact" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
       }
     });
 
@@ -2949,7 +3371,10 @@ io.on("connection", (socket) => {
             player.isAdmin = isAdmin;
             player.email = email;
             savePlayerData(serial);
-            const players = Array.from(allPlayers.values());
+            const players = Array.from(allPlayers.values()).map(p => ({
+              ...p,
+              isOnline: playerSockets.has(p.serial)
+            }));
             const reports = db.prepare('SELECT * FROM reports ORDER BY timestamp DESC').all();
             callback({ success: true, players, reports });
             return;
@@ -2957,7 +3382,10 @@ io.on("connection", (socket) => {
         }
         
         if (isValidToken) {
-           const players = Array.from(allPlayers.values());
+           const players = Array.from(allPlayers.values()).map(p => ({
+             ...p,
+             isOnline: playerSockets.has(p.serial)
+           }));
            const reports = db.prepare('SELECT * FROM reports ORDER BY timestamp DESC').all();
            callback({ success: true, players, reports });
         } else {
@@ -2987,6 +3415,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", (reason) => {
+      socket.data.isSearching = false;
       if (socket.data?.serial) {
         playerSockets.delete(socket.data.serial);
       }
