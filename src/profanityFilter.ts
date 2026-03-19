@@ -9,6 +9,7 @@ const arabicWords = [
   'شرموط',
   'عرص',
   'متناك',
+  'انيك',
   'خول',
   'لبوة',
   'منيوك',
@@ -21,6 +22,7 @@ const arabicWords = [
   'كسمك',
   'كسم',
   'كس امك',
+  'امك',
   'ابن المتناكة',
   'بنت المتناكة',
   'ابن العرص',
@@ -48,10 +50,32 @@ const arabicWords = [
   'شواذ',
   'علق',
   'علوق',
+  'نتعرف',
+  'بحبك',
+  'حب',
+  'قلبي',
+  'بتاعي',
+  'زوبري',
+  'زبري',
+  'ذبري',
+  'ذبر',
+  'ذب',
+  'زب',
+  'كس',
+  'كسك',
+  'بتاعك',
+  'لبسه ايه',
+  'بياكلني',
+  'حيحان',
+  'تعبان',
+  'شرقان',
+  'مكنه',
+  'منيوكه',
   // Game hints and cheating prevention (Arabic)
   'النصيحة', 'نصيحة', 'نصيحه', 'النصيحه',
   'التلميح', 'تلميح',
   'هينت',
+  'هنت',
   'معلومة', 'معلومه',
   'اول', 'أول',
   'ثاني', 'تاني',
@@ -68,6 +92,7 @@ const arabicWords = [
   'كام',
   'كلمة', 'كلمه',
   'الجاسوس', 'جاسوس',
+  'كاشف',
   'عدد الحروف', 'عدد الكلمات',
   'اول حرف', 'تاني حرف', 'تالت حرف', 'رابع حرف', 'خامس حرف', 'سادس حرف', 'سابع حرف', 'تامن حرف', 'تاسع حرف', 'اخر حرف',
   'اول كلمة', 'تاني كلمة',
@@ -127,27 +152,32 @@ function normalizeArabic(text: string): string {
 
 function filterArabic(text: string): string {
   let filteredText = text;
-  const normalizedInput = normalizeArabic(text);
   
-  arabicWords.forEach(word => {
-    const normalizedWord = normalizeArabic(word);
-    // Use a regex that matches the normalized word in the normalized text
-    // but applies the replacement to the original text.
-    // This is tricky because indices might shift if normalization changes length.
-    // However, for these simple replacements, length usually stays the same or we can just use the original word if it exists.
+  // Sort words by length descending to match longer phrases first
+  const sortedWords = [...arabicWords].sort((a, b) => b.length - a.length);
+  
+  sortedWords.forEach(word => {
+    // Escape special characters in the word
+    const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     
-    // Simple approach: if the normalized word is in the normalized input, 
-    // we try to find where it is and mask it in the original.
-    // But for now, let's just use the existing regex approach with the normalized word as well.
+    // Use word boundaries (\b) for English/Franco words.
+    // For Arabic words, \b doesn't always work perfectly because of how Unicode word boundaries are defined in JS.
+    // Instead, we can use a lookaround to ensure the word isn't part of a larger Arabic word.
+    // (?<![\u0600-\u06FF]) means "not preceded by an Arabic letter"
+    // (?![\u0600-\u06FF]) means "not followed by an Arabic letter"
     
-    const regex = new RegExp(word, 'gi');
-    filteredText = filteredText.replace(regex, '*'.repeat(word.length));
+    const isArabic = /[\u0600-\u06FF]/.test(word);
     
-    if (normalizedWord !== word) {
-      const normRegex = new RegExp(normalizedWord, 'gi');
-      filteredText = filteredText.replace(normRegex, '*'.repeat(normalizedWord.length));
+    let regex;
+    if (isArabic) {
+      regex = new RegExp(`(?<![\\u0600-\\u06FF])${escapedWord}(?![\\u0600-\\u06FF])`, 'gi');
+    } else {
+      regex = new RegExp(`\\b${escapedWord}\\b`, 'gi');
     }
+    
+    filteredText = filteredText.replace(regex, '*'.repeat(word.length));
   });
+  
   return filteredText;
 }
 

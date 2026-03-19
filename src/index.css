@@ -9,6 +9,23 @@
   --color-brown-light: #666666;
   --color-brown-soft: #999999;
 
+  --color-accent-yellow: #FFD700;
+  --color-accent-yellow-light: #FFE44D;
+  
+  --color-accent-orange: #FF3300;
+  --color-accent-orange-light: #FF6633;
+  --color-accent-orange-dark: #CC2900;
+  --color-accent-orange-soft: #FF9980;
+  
+  --color-accent-purple: #9900FF;
+  --color-accent-purple-soft: #CC80FF;
+  
+  --color-accent-blue: #0066FF;
+  --color-accent-blue-soft: #80B3FF;
+  
+  --color-accent-green: #00AA00;
+  --color-accent-green-soft: #80D580;
+
   --radius-sm: 0px;
   --radius-md: 0px;
   --radius-lg: 0px;
@@ -49,12 +66,6 @@
   --btn-danger-bg-end: #CCCC00;
   --btn-danger-border: #000000;
   --btn-danger-hover: #FFFF00;
-
-  /* Accent Colors */
-  --color-accent-orange: #FF3300;
-  --color-accent-purple: #9900FF;
-  --color-accent-blue: #0066FF;
-  --color-accent-green: #00AA00;
 
   /* Text Shades */
   --text-muted: #333333;

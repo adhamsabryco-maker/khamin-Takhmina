@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { GoogleGenAI } from "@google/genai";
 import { io, Socket } from 'socket.io-client';
 import { motion, AnimatePresence, animate } from 'motion/react';
 import { 
   Upload,
   Trash2,
+  Mail,
+  User,
   Image as ImageIcon,
   Users, 
   Trophy, 
@@ -49,7 +52,11 @@ import {
   VolumeX,
   Music,
   Tv,
-  Play
+  Play,
+  Gift,
+  Unlock,
+  Coins,
+  FileText
 } from 'lucide-react';
 
 const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
@@ -268,6 +275,7 @@ interface Player {
   banCount?: number;
   isPermanentBan?: number;
   ownedHelpers?: { [key: string]: number };
+  lastRenameAt?: number;
 }
 
 interface Room {
@@ -284,6 +292,7 @@ interface Room {
 }
 
 const AVATARS = [
+  { id: '/assets/avatar.png', level: 1, gender: 'all' },
   // Boys
   { id: 'avatar-free-boy-01.png', level: 1, gender: 'boy' },
   { id: 'avatar-free-boy-02.png', level: 1, gender: 'boy' },
@@ -363,13 +372,14 @@ export default function App() {
   const { customConfig, refreshConfig } = useAvatarConfig();
   const appVersion = customConfig.version || '1.1.1';
 
+  // Re-enabled version check but without forcing reloads
   useEffect(() => {
     const checkVersion = async () => {
       try {
         const response = await fetch('/api/version');
         const data = await response.json();
         if (data.version && appVersion !== '1.1.1' && data.version !== appVersion) {
-          console.log('New version detected, will update on next navigation');
+          console.log('New version detected:', data.version);
           setNeedsUpdate(true);
         }
       } catch (e) {
@@ -401,6 +411,7 @@ export default function App() {
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('khamin_player_name') || '');
+  const [lastRenameAt, setLastRenameAt] = useState(() => parseInt(localStorage.getItem('khamin_last_rename_at') || '0'));
   const playerNameRef = useRef(playerName);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
 
@@ -424,6 +435,9 @@ export default function App() {
   const [tokens, setTokens] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const [loginSerial, setLoginSerial] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [pendingWelcomeModal, setPendingWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
@@ -437,6 +451,17 @@ export default function App() {
   const [showTokenInfoModal, setShowTokenInfoModal] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [activePowerUp, setActivePowerUp] = useState<string | null>(null);
+  const [isDocumentHidden, setIsDocumentHidden] = useState(document.hidden);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsDocumentHidden(document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const toggleTokenInfo = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -525,7 +550,13 @@ export default function App() {
     }
     return null;
   });
+  const [unlockedHelpersExpiry, setUnlockedHelpersExpiry] = useState<number | null>(() => {
+    const saved = localStorage.getItem('khamin_unlocked_helpers_expiry');
+    if (saved) return parseInt(saved);
+    return null;
+  });
   const hasProPackage = proPackageExpiry !== null && proPackageExpiry > Date.now();
+  const hasUnlockedHelpers = unlockedHelpersExpiry !== null && unlockedHelpersExpiry > Date.now();
   const proPackageDaysLeft = hasProPackage ? Math.ceil((proPackageExpiry! - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
   const [showMatchIntro, setShowMatchIntro] = useState(false);
@@ -579,11 +610,94 @@ export default function App() {
       });
     }
   }, [socket, isConnected, isAdmin, playerSerial]);
-  const [adminPlayers, setAdminPlayers] = useState<any[]>([]);
-  const [adminReports, setAdminReports] = useState<any[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  const [adminReports, setAdminReports] = useState<any[]>([]);
+  const [adminPlayers, setAdminPlayers] = useState<any[]>([]);
+  const [adminPlayerFilter, setAdminPlayerFilter] = useState<'all' | 'reports' | 'level' | 'wins' | 'streak' | 'online'>('all');
+  const [adminVisiblePlayersCount, setAdminVisiblePlayersCount] = useState(10);
+  const adminPlayersListRef = useRef<HTMLDivElement>(null);
+  const filteredAdminPlayers = useMemo(() => {
+    let players = [...adminPlayers];
+    
+    // Apply search
+    if (adminSearchQuery) {
+      players = players.filter(p => 
+        (p.name && p.name.includes(adminSearchQuery)) || 
+        (p.serial && p.serial.includes(adminSearchQuery))
+      );
+    }
+    
+    // Apply sorting/filtering
+    switch (adminPlayerFilter) {
+      case 'reports':
+        players.sort((a, b) => (b.reports || 0) - (a.reports || 0));
+        break;
+      case 'level':
+        players.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+        break;
+      case 'wins':
+        players.sort((a, b) => (b.wins || 0) - (a.wins || 0));
+        break;
+      case 'streak':
+        players.sort((a, b) => (b.streak || 0) - (a.streak || 0));
+        break;
+      case 'online':
+        players = players.filter(p => p.isOnline);
+        players.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+        break;
+      default:
+        // Default sort by XP or something
+        players.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+        break;
+    }
+    
+    return players;
+  }, [adminPlayers, adminSearchQuery, adminPlayerFilter]);
+
+  const handleAdminPlayersScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 100) {
+      if (adminVisiblePlayersCount < filteredAdminPlayers.length) {
+        setAdminVisiblePlayersCount(prev => prev + 10);
+      }
+    }
+  }, [adminVisiblePlayersCount, filteredAdminPlayers.length]);
+
+  useEffect(() => {
+    setAdminVisiblePlayersCount(10);
+  }, [adminSearchQuery, adminPlayerFilter]);
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
-  const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors'>('players');
+  const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors' | 'announcements' | 'rewards' | 'policies' | 'avatar_review' | 'contacts'>('players');
+  const [adminContacts, setAdminContacts] = useState<any[]>([]);
+  const [pendingAvatars, setPendingAvatars] = useState<{ serial: string, name: string, level: number, pendingAvatar: string }[]>([]);
+  const [avatarStatus, setAvatarStatus] = useState<'approved' | 'pending' | 'rejected'>('approved');
+  const [adminAnnouncementMessage, setAdminAnnouncementMessage] = useState('تنبيه: سيتم تحديث اللعبة خلال 10 دقائق، نرجو إنهاء الجولات الحالية!\nوعدم دخول جولات جديدة الان.');
+  const [adminRewardType, setAdminRewardType] = useState<'pro_package' | 'unlock_helpers'>('pro_package');
+  const [adminRewardDuration, setAdminRewardDuration] = useState<number>(24);
+  const [adminRewardMessage, setAdminRewardMessage] = useState('هدية مجانية لجميع اللاعبين! استمتع بباقة المحترفين مجاناً.');
+  const [adminTokenRewardAmount, setAdminTokenRewardAmount] = useState<number>(100);
+  const [adminTokenRewardMessage, setAdminTokenRewardMessage] = useState('هدية خاصة للاعبين المميزين (مستوى 50+) 🎁');
+  const [confirmTokenSend, setConfirmTokenSend] = useState(false);
+  const [gamePolicies, setGamePolicies] = useState({ termsAr: '', termsEn: '', privacyAr: '', privacyEn: '' });
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactForm, setContactForm] = useState({ name: '', subject: '', message: '' });
+  const [isSendingContact, setIsSendingContact] = useState(false);
+  const [currentRoute, setCurrentRoute] = useState(() => window.location.pathname);
+
+  useEffect(() => {
+    const handlePopState = () => setCurrentRoute(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentRoute(path);
+  };
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [adminImages, setAdminImages] = useState<any[]>([]);
   const [shopItems, setShopItems] = useState<any[]>([]);
   const [paymobSettings, setPaymobSettings] = useState({ paymob_api_key: '', paymob_integration_id: '', paymob_iframe_id: '' });
@@ -809,16 +923,99 @@ export default function App() {
     }
   };
 
+  const checkImageSafety = async (base64Image: string): Promise<'safe' | 'unsafe' | 'suspicious'> => {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+        console.warn('GEMINI_API_KEY is missing or invalid. Falling back to manual review.');
+        return 'suspicious';
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const imagePart = {
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: base64Image.split(',')[1]
+        }
+      };
+      
+      const prompt = "Analyze this image for a children's game. Is it safe for kids? \n" +
+                     "- 'safe': Clearly safe objects (e.g., animals like horses, cats, giraffes, nature, toys, cartoons, friendly faces). Animals are ALWAYS safe.\n" +
+                     "- 'unsafe': Clearly inappropriate (e.g., nudity, gore, violence, drugs, hate symbols).\n" +
+                     "- 'suspicious': Borderline, contains text, or is unclear.\n" +
+                     "Respond with ONLY one word: 'safe', 'unsafe', or 'suspicious'.";
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-preview',
+        contents: [{ parts: [imagePart, { text: prompt }] }]
+      });
+      
+      const result = response.text?.toLowerCase().trim();
+      console.log('AI Safety Result:', result);
+      if (result === 'safe' || result === 'unsafe' || result === 'suspicious') return result as any;
+      return 'suspicious';
+    } catch (error) {
+      console.error('AI Safety Check failed:', error);
+      // If it's a specific API error (like invalid key), log it clearly
+      if (error instanceof Error && error.message.includes('API_KEY_INVALID')) {
+        console.error('The provided Gemini API key is invalid. Please check your Secrets settings.');
+      }
+      return 'suspicious'; // Fallback to manual review if AI fails
+    }
+  };
+
+  useEffect(() => {
+    if (adminTab === 'avatar_review' && socket) {
+      socket.emit('admin_get_pending_avatars', (pending: any) => {
+        if (Array.isArray(pending)) setPendingAvatars(pending);
+      });
+    } else if (adminTab === 'contacts' && socket) {
+      socket.emit('admin_get_contacts', (contacts: any) => {
+        if (Array.isArray(contacts)) setAdminContacts(contacts);
+      });
+    }
+  }, [adminTab, socket]);
+
   const handleCropSave = async () => {
     try {
       if (imageSrc && croppedAreaPixels) {
         const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels);
         if (croppedImage) {
-          setCustomAvatar(croppedImage);
-          setAvatar(croppedImage);
-          localStorage.setItem('khamin_custom_avatar', croppedImage);
+          setIsUploading(true);
+          const safetyResult = await checkImageSafety(croppedImage);
+          setIsUploading(false);
+          
+          if (safetyResult === 'unsafe') {
+            setError('الصورة تحتوي على محتوى غير لائق. يرجى اختيار صورة أخرى.');
+            return;
+          }
+          
+          socket?.emit('request_custom_avatar', { 
+            playerSerial, 
+            avatar: croppedImage, 
+            status: safetyResult === 'safe' ? 'approved' : 'pending' 
+          }, (res: any) => {
+            if (res.success) {
+              const newStatus = safetyResult === 'safe' ? 'approved' : 'pending';
+              setAvatarStatus(newStatus);
+              if (newStatus === 'approved') {
+                setAvatar(croppedImage);
+                setCustomAvatar(croppedImage);
+                localStorage.setItem('khamin_custom_avatar', croppedImage);
+              } else {
+                // If pending, we don't save to localStorage yet
+                // We just show it in the UI if needed, but don't "apply" it
+                setCustomAvatar(croppedImage);
+              }
+              showAlert(res.message, 'نجاح');
+            } else {
+              setError(res.message || 'فشل إرسال الصورة');
+            }
+          });
+          
           setShowCropper(false);
-          setImageSrc(null); // Clear image source after save
+          setImageSrc(null);
         } else {
           setError('حدث خطأ أثناء معالجة الصورة');
         }
@@ -826,11 +1023,13 @@ export default function App() {
     } catch (e) {
       console.error(e);
       setError('حدث خطأ غير متوقع');
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const renderAvatarContent = (avatarStr: string, level: number = 1, hideExtras: boolean = false) => {
-    return <AvatarDisplay avatar={avatarStr} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={hideExtras} />;
+  const renderAvatarContent = (avatarStr: string, level: number = 1, hideExtras: boolean = false, isOnline: boolean = false) => {
+    return <AvatarDisplay avatar={avatarStr} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={hideExtras} isOnline={isOnline} />;
   };
 
   const truncateName = (name: string, limit: number = 12) => {
@@ -892,7 +1091,7 @@ export default function App() {
   };
 
   const renderStars = (level: number) => {
-    const starsCount = Math.floor(level / 10);
+    const starsCount = Math.min(5, Math.floor(level / 10));
     if (starsCount === 0) return null;
     
     const getMilestoneLevel = (lvl: number) => {
@@ -928,6 +1127,7 @@ export default function App() {
   }, [xp, streak]);
 
   const [avatar, setAvatar] = useState(() => localStorage.getItem('khamin_player_avatar') || AVATARS[0].id);
+  const [hasSelectedAvatar, setHasSelectedAvatar] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('khamin_player_avatar', avatar);
@@ -952,10 +1152,14 @@ export default function App() {
 
   const [joined, setJoined] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  const [announcementMessage, setAnnouncementMessage] = useState<string | null>(null);
+  const [activeGlobalReward, setActiveGlobalReward] = useState<any | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStatus, setLoadingStatus] = useState('جاري التحقق من التحديثات...');
   const [gameVersion, setGameVersion] = useState(localStorage.getItem('khamin_game_version') || '1.1.1');
   const [isSearching, setIsSearching] = useState(false);
+  const isSearchingRef = useRef(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [copied, setCopied] = useState(false);
   const [banUntil, setBanUntil] = useState<number | null>(null);
@@ -969,6 +1173,7 @@ export default function App() {
   const [matchResponseTimeLeft, setMatchResponseTimeLeft] = useState<number | null>(null);
   const [searchTimeLeft, setSearchTimeLeft] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [registerError, setRegisterError] = useState('');
   const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1029,6 +1234,10 @@ export default function App() {
       setPendingWelcomeModal(false);
     }
   }, [pendingWelcomeModal, showInstallModal]);
+
+  useEffect(() => {
+    isSearchingRef.current = isSearching;
+  }, [isSearching]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -1342,11 +1551,22 @@ export default function App() {
   }, [room?.gameState, roomId, socket]);
 
   useEffect(() => {
-    fetch('/api/categories')
-      .then(res => res.json())
-      .then(data => setCategories(data))
-      .catch(err => console.error('Failed to fetch categories:', err));
-  }, []);
+    const fetchCats = () => {
+      fetch('/api/categories')
+        .then(res => res.json())
+        .then(data => setCategories(data))
+        .catch(err => console.error('Failed to fetch categories:', err));
+    };
+    
+    fetchCats();
+
+    if (socket) {
+      socket.on('categories_updated', fetchCats);
+      return () => {
+        socket.off('categories_updated', fetchCats);
+      };
+    }
+  }, [socket]);
 
   // Matchmaking timeout
   useEffect(() => {
@@ -1483,13 +1703,13 @@ export default function App() {
       const vol = isMusicMuted ? 0 : musicVolume;
       activeMusic.volume(vol);
 
-      if (!isMusicMuted && musicVolume > 0 && audioUnlocked) {
+      if (!isMusicMuted && musicVolume > 0 && audioUnlocked && !isDocumentHidden) {
         if (!activeMusic.playing()) {
           if (activeMusic.state() === 'loaded') {
             activeMusic.play();
           } else {
             activeMusic.once('load', () => {
-              if (!isMusicMuted && musicVolume > 0 && audioUnlocked) {
+              if (!isMusicMuted && musicVolume > 0 && audioUnlocked && !isDocumentHidden) {
                 activeMusic.play();
               }
             });
@@ -1501,7 +1721,7 @@ export default function App() {
         }
       }
     }
-  }, [musicVolume, isMusicMuted, room?.gameState, audioUnlocked]);
+  }, [musicVolume, isMusicMuted, room?.gameState, audioUnlocked, isDocumentHidden]);
 
   const playSound = useCallback((key: keyof typeof SOUNDS, volumeOverride?: number) => {
     if (isSfxMuted) return;
@@ -1567,6 +1787,27 @@ export default function App() {
     setBanUntil(0);
     setIsAdmin(false);
     setAdminEmail('');
+  };
+
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    if (room && (room.gameState === 'guessing' || room.gameState === 'discussion')) {
+      const hasSeenRules = localStorage.getItem('khamin_rules_seen');
+      if (!hasSeenRules) {
+        timeoutId = setTimeout(() => {
+          setShowRulesModal(true);
+        }, 3000); // تأخير الظهور لمدة 3 ثواني
+      }
+    }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [room?.gameState]);
+
+  const handleAcceptRules = () => {
+    localStorage.setItem('khamin_rules_seen', 'true');
+    setShowRulesModal(false);
+    playSound('clickClose');
   };
 
   useEffect(() => {
@@ -1816,7 +2057,7 @@ export default function App() {
   const connectSocket = useCallback(() => {
     console.log('Initializing socket connection to:', window.location.origin);
     const newSocket = io(window.location.origin, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 20000
@@ -1826,6 +2067,14 @@ export default function App() {
 
     newSocket.on('config_updated', () => {
       refreshConfig();
+    });
+
+    newSocket.on('system_announcement', (message: string) => {
+      setAnnouncementMessage(message);
+    });
+
+    newSocket.on('global_reward_available', (reward: any) => {
+      setActiveGlobalReward(reward);
     });
 
     newSocket.on('connect', () => {
@@ -1886,6 +2135,44 @@ export default function App() {
               setBanUntil(data.banUntil);
               newSocket.disconnect();
             }
+
+            if (data.proPackageExpiry) {
+              setProPackageExpiry(data.proPackageExpiry);
+              localStorage.setItem('khamin_pro_package_expiry', data.proPackageExpiry.toString());
+            }
+            if (data.unlockedHelpersExpiry) {
+              setUnlockedHelpersExpiry(data.unlockedHelpersExpiry);
+              localStorage.setItem('khamin_unlocked_helpers_expiry', data.unlockedHelpersExpiry.toString());
+            }
+
+            // Sync Avatar State from Server
+            if (data.avatar) {
+              setAvatar(data.avatar);
+              localStorage.setItem('khamin_player_avatar', data.avatar);
+              if (data.avatar.startsWith('data:image/')) {
+                setCustomAvatar(data.avatar);
+                localStorage.setItem('khamin_custom_avatar', data.avatar);
+              } else if (data.avatarStatus !== 'pending') {
+                // If the current avatar is NOT a custom one, and we don't have a pending one,
+                // we should probably clear the customAvatar state unless it's actually pending
+                if (!data.pendingAvatar) {
+                  setCustomAvatar('');
+                  localStorage.removeItem('khamin_custom_avatar');
+                }
+              }
+            }
+            if (data.avatarStatus) {
+              setAvatarStatus(data.avatarStatus);
+              if (data.avatarStatus === 'rejected') {
+                setCustomAvatar('');
+                localStorage.removeItem('khamin_custom_avatar');
+              }
+            }
+            if (data.pendingAvatar) {
+              setCustomAvatar(data.pendingAvatar);
+              // We don't save pending to localStorage to avoid it persisting if rejected
+            }
+
             localStorage.setItem('khamin_xp', data.xp.toString());
             localStorage.setItem('khamin_wins', (data.wins || 0).toString());
           } else {
@@ -1937,9 +2224,17 @@ export default function App() {
         setProPackageExpiry(data.proPackageExpiry);
         localStorage.setItem('khamin_pro_package_expiry', data.proPackageExpiry.toString());
       }
+      if (data.unlockedHelpersExpiry !== undefined) {
+        setUnlockedHelpersExpiry(data.unlockedHelpersExpiry);
+        localStorage.setItem('khamin_unlocked_helpers_expiry', data.unlockedHelpersExpiry.toString());
+      }
       if (data.name !== undefined) {
         setPlayerName(data.name);
         localStorage.setItem('khamin_player_name', data.name);
+      }
+      if (data.lastRenameAt !== undefined) {
+        setLastRenameAt(data.lastRenameAt);
+        localStorage.setItem('khamin_last_rename_at', data.lastRenameAt.toString());
       }
       if (data.banUntil !== undefined) setBanUntil(data.banUntil);
       if (data.isPermanentBan !== undefined) setIsPermanentBan(data.isPermanentBan);
@@ -2027,6 +2322,41 @@ export default function App() {
     newSocket.on('theme_updated', (newTheme: ThemeConfig) => {
       console.log('Theme updated from server:', newTheme);
       setThemeConfig(newTheme);
+    });
+
+    newSocket.on('policies_update', (policies: any) => {
+      setGamePolicies(policies);
+    });
+
+    newSocket.on('avatar_review_result', ({ success, message, status, avatar: newAvatar }) => {
+      if (success) {
+        setAvatarStatus(status);
+        if (status === 'approved') {
+          // If approved, we can now use the custom avatar
+          if (newAvatar) {
+            setAvatar(newAvatar);
+            setCustomAvatar(newAvatar);
+            localStorage.setItem('khamin_player_avatar', newAvatar);
+            localStorage.setItem('khamin_custom_avatar', newAvatar);
+          }
+        } else if (status === 'rejected') {
+          // If rejected, revert to what the server says is our current avatar
+          if (newAvatar) {
+            setAvatar(newAvatar);
+            localStorage.setItem('khamin_player_avatar', newAvatar);
+            if (newAvatar.startsWith('data:image/')) {
+              setCustomAvatar(newAvatar);
+              localStorage.setItem('khamin_custom_avatar', newAvatar);
+            } else {
+              setCustomAvatar(null);
+              localStorage.removeItem('khamin_custom_avatar');
+            }
+          }
+        }
+        showAlert(message, 'مراجعة الصورة');
+      } else {
+        showAlert(message, 'خطأ');
+      }
     });
 
     newSocket.on('timer_update', (timer: number) => {
@@ -2176,21 +2506,25 @@ export default function App() {
     });
 
     newSocket.on('match_rejected', ({ reason }: { reason?: string } = {}) => {
-      setProposedMatch(null);
+      setProposedMatch(prev => {
+        if (prev && isSearchingRef.current) {
+          let message = 'تم إلغاء التحدي';
+          if (reason === 'rejected') message = 'المنافس رفض التحدي ❌';
+          if (reason === 'timeout') message = 'انتهى وقت قبول التحدي ⏰';
+          if (reason === 'blocked') message = 'المنافس قام بحظرك 🚫';
+          if (reason === 'opponent_left') message = 'المنافس غادر البحث 🏃';
+          if (reason === 'opponent_disconnected') message = 'انقطع اتصال المنافس 🔌';
+          
+          if (reason !== 'you_rejected') {
+            setError(message);
+            setTimeout(() => setError(''), 3000);
+          }
+        }
+        return null;
+      });
       setHasResponded(false);
       setOpponentAccepted(false);
       setMatchResponseTimeLeft(null);
-      
-      let message = 'تم إلغاء التحدي';
-      if (reason === 'rejected') message = 'المنافس رفض التحدي ❌';
-      if (reason === 'timeout') message = 'انتهى وقت قبول التحدي ⏰';
-      if (reason === 'blocked') message = 'المنافس قام بحظرك 🚫';
-      if (reason === 'opponent_left') message = 'المنافس غادر البحث 🏃';
-      if (reason === 'opponent_disconnected') message = 'انقطع اتصال المنافس 🔌';
-      if (reason === 'you_rejected') return; // No message if user rejected themselves
-
-      setError(message);
-      setTimeout(() => setError(''), 3000);
     });
 
     newSocket.on('random_match_found', ({ roomId }) => {
@@ -2335,16 +2669,34 @@ export default function App() {
         setGameVersion(serverVersion);
         setLoadingProgress(50);
         
+        // Check maintenance mode
+        try {
+          const maintenanceResponse = await fetch('/api/maintenance');
+          if (maintenanceResponse.ok) {
+            const maintenanceData = await maintenanceResponse.json();
+            if (maintenanceData.maintenance) {
+              setIsMaintenanceMode(true);
+              setIsAppLoading(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Failed to check maintenance mode:', err);
+        }
+        
         // Check if we need to force update (reload)
         const localVersion = localStorage.getItem('khamin_game_version');
         const lastRefreshDate = localStorage.getItem('khamin_last_refresh_date');
         const today = new Date().toDateString();
         const needsDailyRefresh = lastRefreshDate !== today;
         
+        console.log('[DEBUG] Version Check:', { localVersion, serverVersion, needsDailyRefresh });
+
         // Force a hard refresh if:
         // 1. Version mismatch (always reload to get new version)
         // 2. OR: It's a new day (once a day refresh for freshness)
         if (needsDailyRefresh || (localVersion && localVersion !== serverVersion)) {
+          console.log('[DEBUG] Needs refresh. Daily:', needsDailyRefresh, 'Version mismatch:', localVersion !== serverVersion);
           setLoadingStatus('جاري تهيئة الملفات وضمان أحدث نسخة...');
           setLoadingProgress(100);
           localStorage.setItem('khamin_game_version', serverVersion);
@@ -2355,6 +2707,7 @@ export default function App() {
             try {
               const registrations = await navigator.serviceWorker.getRegistrations();
               for (let registration of registrations) {
+                console.log('[DEBUG] Unregistering SW:', registration.scope);
                 await registration.unregister();
               }
             } catch (err) {
@@ -2366,6 +2719,7 @@ export default function App() {
           if ('caches' in window) {
             try {
               const keys = await caches.keys();
+              console.log('[DEBUG] Clearing caches:', keys);
               await Promise.all(keys.map(key => caches.delete(key)));
             } catch (err) {
               console.error('Error clearing caches:', err);
@@ -2375,8 +2729,9 @@ export default function App() {
           // Add cache busting query parameter to force browser to fetch new files
           const url = new URL(window.location.href);
           url.searchParams.set('v', Date.now().toString());
-          window.location.href = url.toString();
-          return;
+          console.log('[DEBUG] Reloading to:', url.toString());
+          // window.location.href = url.toString(); // Temporarily disabled to stop loop
+          // return;
         }
         localStorage.setItem('khamin_game_version', serverVersion);
 
@@ -2566,10 +2921,22 @@ export default function App() {
 
   const handleRegister = () => {
     playSound('clickOpen');
+    setRegisterError('');
     if (!playerName.trim() || !playerAge) {
-      setError('يرجى إدخال اسمك وعمرك أولاً');
+      setRegisterError('يرجى إدخال اسمك وعمرك أولاً');
       return;
     }
+    
+    if (!hasSelectedAvatar) {
+      setRegisterError('يرجى اختيار افاتار البداية الخاص بك');
+      return;
+    }
+
+    if (!acceptedTerms || !acceptedPrivacy) {
+      setRegisterError('يجب الموافقة على الشروط والأحكام وسياسة الخصوصية لإنشاء حساب');
+      return;
+    }
+
     socket?.emit('register_player', { name: playerName, avatar, xp, gender }, ({ serial, name }: { serial: string, name: string }) => {
       if (serial) {
         setPlayerSerial(serial);
@@ -2592,6 +2959,48 @@ export default function App() {
         setError('');
       } else {
         setError('فشل التسجيل. يرجى المحاولة مرة أخرى.');
+      }
+    });
+  };
+
+  const handleLogin = () => {
+    playSound('clickOpen');
+    setLoginError('');
+    if (!loginSerial.trim()) {
+      setLoginError('يرجى إدخال رقم ID اللاعب');
+      return;
+    }
+    
+    socket?.emit('get_player_data', loginSerial.trim(), (player: any) => {
+      if (player) {
+        setPlayerSerial(player.serial);
+        setPlayerName(player.name);
+        setPlayerAge(player.age || 18);
+        setGender(player.gender || 'male');
+        setAvatar(player.avatar);
+        setXp(player.xp || 0);
+        setWins(player.wins || 0);
+        setTokens(player.tokens || 0);
+        setStreak(player.streak || 0);
+        setOwnedHelpers(player.ownedHelpers || {});
+        
+        localStorage.setItem('khamin_player_serial', player.serial);
+        localStorage.setItem('khamin_player_name', player.name);
+        localStorage.setItem('khamin_player_age', (player.age || 18).toString());
+        localStorage.setItem('khamin_player_gender', player.gender || 'male');
+        localStorage.setItem('khamin_player_avatar', player.avatar);
+        localStorage.setItem('khamin_wins', (player.wins || 0).toString());
+        localStorage.setItem('khamin_xp', (player.xp || 0).toString());
+        localStorage.setItem('khamin_tokens', (player.tokens || 0).toString());
+        localStorage.setItem('khamin_streak', (player.streak || 0).toString());
+        
+        socket?.emit('set_player_serial_for_socket', player.serial);
+        
+        setShowWelcomeModal(false);
+        playSound('clickClose');
+        setError('');
+      } else {
+        setLoginError('رقم ID غير صحيح أو الحساب غير موجود');
       }
     });
   };
@@ -2662,7 +3071,7 @@ export default function App() {
         avatar: avatar,
         gender: gender
       }, 
-      ({ topPlayers, name }: { topPlayers: any[], name: string }) => {
+      ({ topPlayers, name, lastRenameAt: updatedLastRenameAt }: { topPlayers: any[], name: string, lastRenameAt?: number }) => {
         // 2. In the callback, update with the authoritative list from the server
         if (topPlayers) {
           setTopPlayers(sortPlayers(topPlayers));
@@ -2670,6 +3079,10 @@ export default function App() {
         if (name) {
           setPlayerName(name);
           localStorage.setItem('khamin_player_name', name);
+        }
+        if (updatedLastRenameAt !== undefined) {
+          setLastRenameAt(updatedLastRenameAt);
+          localStorage.setItem('khamin_last_rename_at', updatedLastRenameAt.toString());
         }
       }
     );
@@ -2880,12 +3293,12 @@ export default function App() {
                   onClick={handleClaimDailyQuest}
                   className={`w-full py-4 rounded-2xl font-black text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all border-4 border-black ${
                     (lastDailyClaim !== 0 && isSameDay(Date.now(), lastDailyClaim))
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    ? 'btn-primary cursor-not-allowed'
                     : 'bg-accent-green text-white hover:-translate-y-1 active:translate-y-0'
                   }`}
                 >
                   {isChestOpening ? 'جاري الفتح...' : 
-                   (lastDailyClaim !== 0 && isSameDay(Date.now(), lastDailyClaim)) ? 'تم الاستلام اليوم' : 'استلم جائزة اليوم! 🎁'}
+                   (lastDailyClaim !== 0 && isSameDay(Date.now(), lastDailyClaim)) ? 'تم الاستلام اليوم ✅' : 'استلم جائزة اليوم! 🎁'}
                 </button>
               )}
             </div>
@@ -3082,11 +3495,222 @@ export default function App() {
     </AnimatePresence>
   );
 
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactForm.name || !contactForm.subject || !contactForm.message) {
+      showAlert('يرجى ملء جميع الحقول', 'تنبيه');
+      return;
+    }
+    setIsSendingContact(true);
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: filterProfanity(contactForm.name),
+          subject: filterProfanity(contactForm.subject),
+          message: filterProfanity(contactForm.message),
+          playerSerial 
+        })
+      });
+      if (response.ok) {
+        showAlert('تم إرسال رسالتك بنجاح! سنقوم بالرد عليك في أقرب وقت.', 'نجاح');
+        setShowContactModal(false);
+        setContactForm({ name: '', subject: '', message: '' });
+      } else {
+        const data = await response.json();
+        showAlert(data.error || 'فشل إرسال الرسالة. يرجى المحاولة مرة أخرى لاحقاً.', 'خطأ');
+      }
+    } catch (err) {
+      console.error('Contact error:', err);
+      showAlert('حدث خطأ في الاتصال بالسيرفر', 'خطأ');
+    } finally {
+      setIsSendingContact(false);
+    }
+  };
+
+  const renderContactModal = () => (
+    <AnimatePresence>
+      {showContactModal && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowContactModal(false)}
+        >
+          <motion.div 
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="bg-accent-blue p-6 text-white flex justify-between items-center">
+              <h2 className="text-2xl font-black">اتصل بنا</h2>
+              <button onClick={() => setShowContactModal(false)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleContactSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">الاسم</label>
+                <input 
+                  type="text" 
+                  value={contactForm.name}
+                  onChange={e => setContactForm({...contactForm, name: e.target.value})}
+                  className="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-accent-blue outline-none transition-all"
+                  placeholder="اسمك الكامل"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">الموضوع</label>
+                <input 
+                  type="text" 
+                  value={contactForm.subject}
+                  onChange={e => setContactForm({...contactForm, subject: e.target.value})}
+                  className="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-accent-blue outline-none transition-all"
+                  placeholder="موضوع الرسالة"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">الرسالة</label>
+                <textarea 
+                  value={contactForm.message}
+                  onChange={e => setContactForm({...contactForm, message: e.target.value})}
+                  className="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-accent-blue outline-none transition-all h-32 resize-none"
+                  placeholder="اكتب رسالتك هنا..."
+                  required
+                />
+              </div>
+              
+              <button 
+                type="submit"
+                disabled={isSendingContact}
+                className={`w-full py-4 rounded-2xl font-black text-xl shadow-lg transform active:scale-95 transition-all ${
+                  isSendingContact ? 'bg-gray-400 cursor-not-allowed' : 'bg-accent-blue hover:bg-blue-600 text-white'
+                }`}
+              >
+                {isSendingContact ? 'جاري الإرسال...' : 'إرسال الرسالة'}
+              </button>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   const renderModals = () => (
     <>
+      {/* Global Reward Modal */}
+      <AnimatePresence>
+        {activeGlobalReward && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="card-game p-6 w-full max-w-sm space-y-4 text-center border-4 border-accent-orange"
+            >
+              <div className="w-20 h-20 bg-accent-orange-soft rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce">
+                <Gift className="w-10 h-10 text-accent-orange" />
+              </div>
+              <h2 className="text-3xl font-black text-accent-orange">هدية مجانية!</h2>
+              <p className="text-brown-muted font-bold text-lg whitespace-pre-wrap">{activeGlobalReward.message}</p>
+              
+              <div className="bg-gray-50 rounded-xl p-4 border-2 border-gray-100 my-4">
+                <div className="flex items-center justify-center gap-2 text-main font-bold">
+                  {activeGlobalReward.type === 'pro_package' ? (
+                    <>
+                      <Crown className="w-5 h-5 text-accent-yellow" />
+                      <span>باقة المحترفين (بدون إعلانات)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Unlock className="w-5 h-5 text-accent-blue" />
+                      <span>فتح كل وسائل المساعدة</span>
+                    </>
+                  )}
+                </div>
+                <div className="text-sm text-brown-light mt-2">
+                  لمدة {activeGlobalReward.durationHours} ساعة
+                </div>
+              </div>
+
+              <button 
+                onClick={() => {
+                  socket?.emit('claim_global_reward', (res: any) => {
+                    if (res.success) {
+                      setActiveGlobalReward(null);
+                      showAlert('تم استلام الهدية بنجاح! استمتع 🎉', 'نجاح');
+                      if (res.player) {
+                        if (res.player.proPackageExpiry) {
+                          setProPackageExpiry(res.player.proPackageExpiry);
+                          localStorage.setItem('khamin_pro_package_expiry', res.player.proPackageExpiry.toString());
+                        }
+                        if (res.player.unlockedHelpersExpiry) {
+                          setUnlockedHelpersExpiry(res.player.unlockedHelpersExpiry);
+                          localStorage.setItem('khamin_unlocked_helpers_expiry', res.player.unlockedHelpersExpiry.toString());
+                        }
+                      }
+                    } else {
+                      showAlert(res.error || 'حدث خطأ أثناء استلام الهدية', 'خطأ');
+                      setActiveGlobalReward(null);
+                    }
+                  });
+                }}
+                className="w-full btn-game btn-primary py-3 text-xl animate-pulse"
+              >
+                استلام الهدية 🎁
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Announcement Modal */}
+      <AnimatePresence>
+        {announcementMessage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="card-game p-6 w-full max-w-sm space-y-4 text-center border-4 border-red-500"
+            >
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <AlertTriangle className="w-8 h-8 text-red-500" />
+              </div>
+              <h2 className="text-2xl font-black text-red-600">تنبيه هام</h2>
+              <p className="text-brown-muted font-bold text-lg whitespace-pre-wrap">{announcementMessage}</p>
+              <button 
+                onClick={() => setAnnouncementMessage(null)}
+                className="w-full btn-game bg-red-500 text-white hover:bg-red-600 border-b-4 border-red-700 py-3 text-lg"
+              >
+                فهمت
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {renderWalletModal()}
       {renderDailyQuestModal()}
       {renderComplaintModal()}
+      {renderContactModal()}
       {/* Custom Alert Modal */}
       <AnimatePresence>
         {customAlert.show && (
@@ -3710,10 +4334,22 @@ export default function App() {
                 <div className="bg-white p-3 rounded-2xl border-4 border-black space-y-4">
                   <div className="flex items-center gap-4 flex-row-reverse">
                     <div className="relative w-16 h-16">
-                      {renderAvatarContent(avatar, getLevel(xp))}
+                      {renderAvatarContent(avatar, getLevel(xp), false, true)}
                     </div>
                     <div className="text-right flex-1">
                       <div className="font-black text-lg text-main">{playerName}</div>
+                      <div 
+                        className="text-[10px] font-mono text-brown-muted mt-1 cursor-pointer hover:text-accent-blue flex items-center justify-end gap-1" dir="ltr"
+                        onClick={() => {
+                          navigator.clipboard.writeText(playerSerial);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                        title="نسخ رقم اللاعب"
+                      >
+                        {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                        ID: {playerSerial}
+                      </div>
                     </div>
                   </div>
 
@@ -3749,18 +4385,31 @@ export default function App() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-black text-brown-muted mb-1 text-right">الاسم</label>
-                    <input 
-                      type="text" 
-                      value={playerName}
-                      onChange={(e) => {
-                        const name = e.target.value;
-                        const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
-                        const cleanName = name.replace(emojiRegex, '');
-                        setPlayerName(cleanName.slice(0, 15));
-                      }}
-                      className="input-game"
-                      maxLength={15}
-                    />
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        value={playerName}
+                        onChange={(e) => {
+                          const name = e.target.value;
+                          const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+                          const cleanName = name.replace(emojiRegex, '');
+                          setPlayerName(filterProfanity(cleanName.slice(0, 15)));
+                        }}
+                        className={`input-game ${(!lastRenameAt || (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) >= 30) ? '' : 'opacity-60 cursor-not-allowed pl-10'}`}
+                        maxLength={15}
+                        disabled={lastRenameAt > 0 && (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) < 30}
+                      />
+                      {lastRenameAt > 0 && (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) < 30 && (
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                          <Lock className="w-5 h-5" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-red-500 mt-1 font-bold text-right">
+                      {lastRenameAt > 0 && (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) < 30 
+                        ? `متبقي ${Math.ceil(30 - (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24))} يوم لتتمكن من تغيير الاسم`
+                        : 'يتم تعديل الاسم كل 30 يوم'}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-black text-brown-muted mb-1 text-right">العمر</label>
@@ -3814,7 +4463,7 @@ export default function App() {
                             key={`settings-avatar-${av.id}-${index}`}
                             onClick={() => !isLocked && setAvatar(av.id)}
                             disabled={isLocked}
-                            className={`relative aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${avatar === av.id ? 'bg-orange-100 border-orange-400 scale-105' : 'hover:bg-gray-200'} ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
+                            className={`relative aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${avatar === av.id ? '!bg-orange-100 !border-orange-400 scale-105' : 'hover:bg-gray-200'} ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
                           >
                             <div className="w-full h-full p-1">
                               {renderAvatarContent(av.id, 1)}
@@ -3978,7 +4627,7 @@ export default function App() {
                         متبقي {Math.max(0, 10 - reports)} للحظر
                       </span>
                     </div>
-                    <div className="h-2 bg-[var(--report-bar-bg)] rounded-full overflow-hidden">
+                    <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(100, (reports / 10) * 100)}%` }}
@@ -4002,7 +4651,7 @@ export default function App() {
               <div className="pt-2 border-t border-game">
                 <button 
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full btn-game btn-danger py-2 text-sm mb-2"
+                  className="w-full btn-game btn-danger gap-2 py-2 text-sm mb-2"
                 >
                   <Trash2 className="w-4 h-4" />
                   مسح الحساب نهائياً
@@ -4016,10 +4665,33 @@ export default function App() {
                       }
                     });
                   }}
-                  className="w-full btn-game btn-primary py-2 text-sm"
+                  className="w-full btn-game btn-primary gap-2 py-2 text-sm mb-4"
                 >
                   <MessageSquare className="w-4 h-4" />
                   الشكاوي والمقترحات
+                </button>
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-3 text-[10px] font-black text-brown-muted border-t border-game pt-4">
+                <button 
+                  onClick={() => setShowPrivacyModal(true)}
+                  className="hover:text-accent-blue transition-colors"
+                >
+                  سياسة الخصوصية
+                </button>
+                <span className="text-gray-300">|</span>
+                <button 
+                  onClick={() => setShowTermsModal(true)}
+                  className="hover:text-accent-blue transition-colors"
+                >
+                  الشروط والأحكام
+                </button>
+                <span className="text-gray-300">|</span>
+                <button 
+                  onClick={() => setShowContactModal(true)}
+                  className="hover:text-accent-blue transition-colors"
+                >
+                  اتصل بنا
                 </button>
               </div>
 
@@ -4059,12 +4731,13 @@ export default function App() {
                         const name = e.target.value;
                         const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
                         const cleanName = name.replace(emojiRegex, '');
-                        setPlayerName(cleanName.slice(0, 15));
+                        setPlayerName(filterProfanity(cleanName.slice(0, 15)));
                       }}
                       placeholder="ادخل اسمك..."
                       className="input-game"
                       maxLength={15}
                     />
+                    <p className="text-[10px] text-red-500 mt-1 font-bold text-right">تنبيه: لن يتم تعديل الاسم مره آخري الا بعد 30 يوم</p>
                   </div>
                   <div>
                     <label className="block text-sm font-black text-brown-muted mb-1 text-right">عمر اللاعب</label>
@@ -4093,13 +4766,13 @@ export default function App() {
                     <label className="block text-sm font-black text-brown-muted mb-1 text-right">الجنس</label>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setGender('boy')}
+                        onClick={() => { setGender('boy'); setHasSelectedAvatar(false); }}
                         className={`flex-1 py-3 box-game font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'text-brown-light opacity-60'}`}
                       >
                         ولد 👦
                       </button>
                       <button
-                        onClick={() => setGender('girl')}
+                        onClick={() => { setGender('girl'); setHasSelectedAvatar(false); }}
                         className={`flex-1 py-3 box-game font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-pink-200' : 'text-brown-light opacity-60'}`}
                       >
                         بنت 👧
@@ -4112,8 +4785,8 @@ export default function App() {
                       {AVATARS.filter(av => av.gender === gender).slice(0, 4).map((av, index) => (
                         <button
                           key={`welcome-avatar-${av.id}-${index}`}
-                          onClick={() => setAvatar(av.id)}
-                          className={`w-full aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${avatar === av.id ? 'bg-orange-100 border-orange-400 scale-105' : ''}`}
+                          onClick={() => { setAvatar(av.id); setHasSelectedAvatar(true); }}
+                          className={`w-full aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${hasSelectedAvatar && avatar === av.id ? '!bg-orange-100 !border-orange-400 scale-105' : ''}`}
                         >
                           <div className="w-full h-full p-1">
                             {renderAvatarContent(av.id, 1)}
@@ -4121,14 +4794,216 @@ export default function App() {
                         </button>
                       ))}
                     </div>
+                    <p className="text-[11px] text-accent-blue font-black text-center mt-2 bg-blue-50 p-1.5 rounded-lg border border-blue-100">
+                      * يجب اختيار افاتار البداية الخاص بك
+                    </p>
                   </div>
                 </div>
+
+                <div className="space-y-3 bg-gray-50 p-4 rounded-xl border-2 border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="checkbox" 
+                      id="terms" 
+                      checked={acceptedTerms} 
+                      onChange={e => setAcceptedTerms(e.target.checked)} 
+                      className="w-5 h-5 accent-accent-blue rounded cursor-pointer" 
+                    />
+                    <label htmlFor="terms" className="text-sm font-bold text-brown-dark cursor-pointer select-none">
+                      أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-accent-blue hover:text-blue-600 underline">الشروط والأحكام</button>
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="checkbox" 
+                      id="privacy" 
+                      checked={acceptedPrivacy} 
+                      onChange={e => setAcceptedPrivacy(e.target.checked)} 
+                      className="w-5 h-5 accent-accent-blue rounded cursor-pointer" 
+                    />
+                    <label htmlFor="privacy" className="text-sm font-bold text-brown-dark cursor-pointer select-none">
+                      أوافق على <button type="button" onClick={() => setShowPrivacyModal(true)} className="text-accent-blue hover:text-blue-600 underline">سياسة الخصوصية</button>
+                    </label>
+                  </div>
+                </div>
+
+                <AnimatePresence>
+                  {registerError && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-red-100 border-2 border-red-200 p-3 text-red-600 text-sm font-black rounded-xl text-center"
+                    >
+                      {registerError}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <button 
                   onClick={handleRegister}
                   className="w-full btn-game btn-primary py-4 text-xl"
                 >
                   حفظ البيانات والبدء
+                </button>
+
+                <div className="pt-6 mt-6 border-t-2 border-gray-100">
+                  <h3 className="text-center font-black text-brown-dark mb-4">لديك حساب بالفعل؟</h3>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={loginSerial}
+                      onChange={(e) => setLoginSerial(e.target.value)}
+                      placeholder="أدخل رقم ID اللاعب الخاص بك"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold font-mono"
+                      dir="rtl"
+                    />
+                    <AnimatePresence>
+                      {loginError && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="bg-red-100 border-2 border-red-200 p-3 text-red-600 text-sm font-black rounded-xl text-center"
+                        >
+                          {loginError}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    <button 
+                      onClick={handleLogin}
+                      className="w-full btn-game btn-primary py-3 text-lg"
+                    >
+                      تسجيل الدخول
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Rules Modal */}
+        <AnimatePresence>
+          {showRulesModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[6000] flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                className="card-game p-5 w-full max-w-sm space-y-4"
+              >
+                <h2 className="text-xl font-black text-main text-center border-b-2 border-gray-100 pb-3">
+                  * قوانين لعبة - خمن تخمينة:
+                </h2>
+                <ul className="text-sm text-right space-y-2 text-brown-dark font-bold dir-rtl" dir="rtl">
+                  <li>1- ممنوع الشتائم او اى الفاظ خارجة.</li>
+                  <li>2- ممنوع تسريب الاجابة.</li>
+                  <li>3- ممنوع الغش من الطرفين.</li>
+                  <li>4- ممنوع كتابة اي ارقام تليفونات.</li>
+                  <li>5- ممنوع كتابة اي بيانات شخصية.</li>
+                  <li>6- تخمين الاجابة فقط فى نوافذ التخمين.</li>
+                  <li>7- عدم تكرار الاسئلة من اللاعبين.</li>
+                  <li>8- عدم تخيير اللاعب بين سؤالين.</li>
+                  <li>9- ممنوع الكذب وتضليل الاجابة.</li>
+                  <li>10- الاسئلة تكون واضحة ومحددة.</li>
+                  <li>11- استخدام (كتم الشات 💬) عند الحاجة.</li>
+                  <li>12- الابلاغ 🚩 عن اي لاعب يخالف القوانين.</li>
+                </ul>
+                <p className="text-xs text-red-600 font-black text-center mt-4 bg-red-50 p-2 rounded-lg border border-red-200">
+                  لكل من يخالف ذلك سيتم حظره نهائيا من اللعبة.
+                </p>
+                <button 
+                  onClick={handleAcceptRules}
+                  className="w-full btn-game btn-primary py-3 text-lg mt-2"
+                >
+                  حسنا
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Terms Modal */}
+        <AnimatePresence>
+          {showTermsModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowTermsModal(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-white rounded-[32px] p-6 max-w-lg w-full shadow-2xl border-4 border-accent-blue max-h-[80vh] flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-2xl font-black text-brown-dark flex items-center gap-2">
+                    <FileText className="w-6 h-6 text-accent-blue" />
+                    الشروط والأحكام
+                  </h3>
+                  <button onClick={() => setShowTermsModal(false)} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors">
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar whitespace-pre-wrap text-brown-muted font-bold text-sm leading-relaxed space-y-4">
+                  <div dir="rtl" className="text-right">{gamePolicies.termsAr || 'جاري التحميل...'}</div>
+                  <div dir="ltr" className="text-left">{gamePolicies.termsEn || 'Loading...'}</div>
+                </div>
+                <button 
+                  onClick={() => setShowTermsModal(false)}
+                  className="w-full mt-6 py-3 bg-accent-blue hover:bg-blue-600 text-white rounded-xl font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1"
+                >
+                  إغلاق
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Privacy Modal */}
+        <AnimatePresence>
+          {showPrivacyModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowPrivacyModal(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-white rounded-[32px] p-6 max-w-lg w-full shadow-2xl border-4 border-accent-purple max-h-[80vh] flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-2xl font-black text-brown-dark flex items-center gap-2">
+                    <Shield className="w-6 h-6 text-accent-purple" />
+                    سياسة الخصوصية
+                  </h3>
+                  <button onClick={() => setShowPrivacyModal(false)} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors">
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar whitespace-pre-wrap text-brown-muted font-bold text-sm leading-relaxed space-y-4">
+                  <div dir="rtl" className="text-right">{gamePolicies.privacyAr || 'جاري التحميل...'}</div>
+                  <div dir="ltr" className="text-left">{gamePolicies.privacyEn || 'Loading...'}</div>
+                </div>
+                <button 
+                  onClick={() => setShowPrivacyModal(false)}
+                  className="w-full mt-6 py-3 bg-accent-purple hover:bg-purple-600 text-white rounded-xl font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1"
+                >
+                  إغلاق
                 </button>
               </motion.div>
             </motion.div>
@@ -4255,6 +5130,36 @@ export default function App() {
                         >
                           ألوان اللعبة
                         </button>
+                        <button 
+                          onClick={() => setAdminTab('announcements')}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'announcements' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-500 hover:bg-red-200'}`}
+                        >
+                          الإشعارات
+                        </button>
+                        <button 
+                          onClick={() => setAdminTab('rewards')}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'rewards' ? 'bg-accent-green text-white' : 'bg-accent-green-soft text-accent-green hover:bg-accent-green-soft'}`}
+                        >
+                          المكافآت
+                        </button>
+                        <button 
+                          onClick={() => setAdminTab('policies')}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'policies' ? 'bg-brown-dark text-white' : 'bg-gray-300 text-brown-dark hover:bg-gray-300'}`}
+                        >
+                          سياسات اللعبة
+                        </button>
+                        <button 
+                          onClick={() => setAdminTab('avatar_review')}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'avatar_review' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
+                        >
+                          مراجعة الصور
+                        </button>
+                        <button 
+                          onClick={() => setAdminTab('contacts')}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'contacts' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
+                        >
+                          الرسائل
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -4267,6 +5172,10 @@ export default function App() {
                           });
                           socket?.emit('admin_get_reports', (reports: any) => {
                             if (Array.isArray(reports)) setAdminReports(reports);
+                          });
+                        } else if (adminTab === 'avatar_review') {
+                          socket?.emit('admin_get_pending_avatars', (pending: any) => {
+                            if (Array.isArray(pending)) setPendingAvatars(pending);
                           });
                         } else if (adminTab === 'shop') {
                           socket?.emit('admin_get_shop_items', (items: any) => {
@@ -4988,6 +5897,427 @@ export default function App() {
                         </div>
                       </div>
                     </div>
+                  ) : adminTab === 'rewards' ? (
+                    <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+                      <div className="max-w-2xl mx-auto space-y-6">
+                        <div className="box-game p-6 shadow-sm border-4 border-accent-yellow">
+                          <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+                            <Gift className="w-6 h-6" />
+                            إرسال مكافأة لجميع اللاعبين
+                          </h3>
+                          <p className="text-brown-muted font-bold mb-6">
+                            هذه المكافأة ستكون متاحة لجميع اللاعبين الحاليين والجدد خلال فترة الصلاحية.
+                          </p>
+                          
+                          <div className="space-y-4 mb-6">
+                            <div>
+                              <label className="block text-brown-dark font-bold mb-2">نوع المكافأة</label>
+                              <select 
+                                value={adminRewardType}
+                                onChange={(e) => setAdminRewardType(e.target.value as any)}
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-yellow outline-none"
+                                dir="rtl"
+                              >
+                                <option value="pro_package">باقة المحترفين (بدون إعلانات)</option>
+                                <option value="unlock_helpers">فتح كل وسائل المساعدة</option>
+                              </select>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-brown-dark font-bold mb-2">مدة الصلاحية (بالساعات)</label>
+                              <input 
+                                type="number" 
+                                min="1"
+                                value={adminRewardDuration}
+                                onChange={(e) => setAdminRewardDuration(parseInt(e.target.value) || 1)}
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-yellow outline-none"
+                                dir="rtl"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-brown-dark font-bold mb-2">رسالة الهدية</label>
+                              <textarea
+                                value={adminRewardMessage}
+                                onChange={(e) => setAdminRewardMessage(e.target.value)}
+                                className="w-full h-24 p-3 border-2 border-gray-200 rounded-xl font-bold resize-none focus:border-accent-yellow outline-none"
+                                placeholder="اكتب رسالة الهدية هنا..."
+                                dir="rtl"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              if (!adminRewardMessage.trim() || adminRewardDuration <= 0) return;
+                              socket?.emit('admin_set_global_reward', {
+                                type: adminRewardType,
+                                durationHours: adminRewardDuration,
+                                message: adminRewardMessage
+                              }, (res: any) => {
+                                if (res.success) {
+                                  showAlert('تم تعيين المكافأة بنجاح!', 'نجاح');
+                                } else {
+                                  showAlert(res.error || 'فشل تعيين المكافأة', 'خطأ');
+                                }
+                              });
+                            }}
+                             className="w-full py-4 bg-accent-green hover:bg-green-500 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1"
+                          >
+                            تفعيل المكافأة الآن 🎁
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              socket?.emit('admin_cancel_global_reward', (res: any) => {
+                                if (res.success) {
+                                  showAlert('تم إلغاء المكافأة الحالية بنجاح', 'نجاح');
+                                } else {
+                                  showAlert(res.error || 'فشل إلغاء المكافأة', 'خطأ');
+                                }
+                              });
+                            }}
+                            className="w-full py-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1 mt-4"
+                          >
+                            إلغاء المكافأة الحالية ❌
+                          </button>
+                        </div>
+
+                        <div className="box-game p-6 shadow-sm border-4 border-accent-blue">
+                          <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+                            <Coins className="w-6 h-6 text-accent-yellow" />
+                            إرسال Tokens للاعبين (مستوى 50+)
+                          </h3>
+                          <p className="text-brown-muted font-bold mb-6">
+                            هذه المكافأة سيتم إرسالها فوراً لجميع اللاعبين الذين وصلوا للمستوى 50 أو أعلى.
+                          </p>
+                          
+                          <div className="space-y-4 mb-6">
+                            <div>
+                              <label className="block text-brown-dark font-bold mb-2">عدد الـ Tokens</label>
+                              <input 
+                                type="number" 
+                                min="1"
+                                value={adminTokenRewardAmount}
+                                onChange={(e) => setAdminTokenRewardAmount(parseInt(e.target.value) || 0)}
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-blue outline-none"
+                                dir="rtl"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-brown-dark font-bold mb-2">رسالة التهنئة</label>
+                              <textarea
+                                value={adminTokenRewardMessage}
+                                onChange={(e) => setAdminTokenRewardMessage(e.target.value)}
+                                className="w-full h-24 p-3 border-2 border-gray-200 rounded-xl font-bold resize-none focus:border-accent-blue outline-none"
+                                placeholder="اكتب رسالة التهنئة هنا..."
+                                dir="rtl"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              if (!adminTokenRewardMessage.trim() || adminTokenRewardAmount <= 0) return;
+                              
+                              if (!confirmTokenSend) {
+                                setConfirmTokenSend(true);
+                                setTimeout(() => setConfirmTokenSend(false), 3000);
+                                return;
+                              }
+
+                              socket?.emit('admin_send_tokens_50_plus', {
+                                amount: adminTokenRewardAmount,
+                                message: adminTokenRewardMessage
+                              }, (res: any) => {
+                                setConfirmTokenSend(false);
+                                if (res.success) {
+                                  showAlert(`تم إرسال المكافأة بنجاح لـ ${res.count} لاعب!`, 'نجاح');
+                                } else {
+                                  showAlert(res.error || 'فشل إرسال المكافأة', 'خطأ');
+                                }
+                              });
+                            }}
+                            className={`w-full py-4 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1 ${confirmTokenSend ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-accent-blue hover:bg-blue-600'}`}
+                          >
+                            {confirmTokenSend ? `تأكيد إرسال ${adminTokenRewardAmount} Tokens؟` : 'إرسال الـ Tokens الآن 🪙'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : adminTab === 'policies' ? (
+                    <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+                      <div className="max-w-3xl mx-auto space-y-6">
+                        <div className="box-game p-6 shadow-sm border-4 border-brown-dark">
+                          <h3 className="text-xl font-black text-brown-dark mb-4 flex items-center gap-2">
+                            <FileText className="w-6 h-6" />
+                            سياسات اللعبة
+                          </h3>
+                          <p className="text-brown-muted font-bold mb-6">
+                            قم بتعديل الشروط والأحكام وسياسة الخصوصية. ستظهر هذه النصوص للاعبين الجدد عند التسجيل.
+                          </p>
+                          
+                          <div className="space-y-6">
+                            <div>
+                              <label className="block text-brown-dark font-black mb-2 flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-accent-blue" />
+                                الشروط والأحكام (عربي)
+                              </label>
+                              <textarea
+                                value={gamePolicies.termsAr}
+                                onChange={(e) => setGamePolicies(prev => ({ ...prev, termsAr: e.target.value }))}
+                                className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl font-bold text-sm resize-none focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                                placeholder="اكتب الشروط والأحكام (عربي) هنا..."
+                                dir="rtl"
+                              />
+                              <label className="block text-brown-dark font-black mb-2 flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-accent-blue" />
+                                الشروط والأحكام (إنجليزي)
+                              </label>
+                              <textarea
+                                value={gamePolicies.termsEn}
+                                onChange={(e) => setGamePolicies(prev => ({ ...prev, termsEn: e.target.value }))}
+                                className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl font-bold text-sm resize-none focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                                placeholder="Write Terms and Conditions (English) here..."
+                                dir="ltr"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-brown-dark font-black mb-2 flex items-center gap-2">
+                                <Shield className="w-5 h-5 text-accent-purple" />
+                                سياسة الخصوصية (عربي)
+                              </label>
+                              <textarea
+                                value={gamePolicies.privacyAr}
+                                onChange={(e) => setGamePolicies(prev => ({ ...prev, privacyAr: e.target.value }))}
+                                className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl font-bold text-sm resize-none focus:border-accent-purple focus:ring-2 focus:ring-purple-200 outline-none transition-all"
+                                placeholder="اكتب سياسة الخصوصية (عربي) هنا..."
+                                dir="rtl"
+                              />
+                              <label className="block text-brown-dark font-black mb-2 flex items-center gap-2">
+                                <Shield className="w-5 h-5 text-accent-purple" />
+                                سياسة الخصوصية (إنجليزي)
+                              </label>
+                              <textarea
+                                value={gamePolicies.privacyEn}
+                                onChange={(e) => setGamePolicies(prev => ({ ...prev, privacyEn: e.target.value }))}
+                                className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl font-bold text-sm resize-none focus:border-accent-purple focus:ring-2 focus:ring-purple-200 outline-none transition-all"
+                                placeholder="Write Privacy Policy (English) here..."
+                                dir="ltr"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              socket?.emit('admin_update_policies', gamePolicies, (res: any) => {
+                                if (res.success) {
+                                  showAlert('تم حفظ السياسات بنجاح!', 'نجاح');
+                                } else {
+                                  showAlert('فشل حفظ السياسات', 'خطأ');
+                                }
+                              });
+                            }}
+                            className="w-full mt-6 py-4 bg-brown-dark hover:bg-brown-900 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1"
+                          >
+                            حفظ السياسات
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : adminTab === 'contacts' ? (
+                    <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+                      <div className="max-w-4xl mx-auto">
+                        <div className="flex justify-between items-center mb-8">
+                          <div>
+                            <h2 className="text-3xl font-black text-brown-dark mb-2">رسائل اللاعبين</h2>
+                            <p className="text-brown-muted font-bold">تواصل مع اللاعبين وراجع استفساراتهم</p>
+                          </div>
+                          <div className="bg-blue-100 text-blue-600 px-4 py-2 rounded-xl font-black">
+                            {adminContacts.length} رسالة
+                          </div>
+                        </div>
+
+                        {adminContacts.length === 0 ? (
+                          <div className="bg-white rounded-3xl p-12 text-center border-4 border-dashed border-gray-100">
+                            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Mail className="w-10 h-10 text-gray-300" />
+                            </div>
+                            <h3 className="text-xl font-black text-brown-dark mb-2">لا توجد رسائل حالياً</h3>
+                            <p className="text-brown-muted font-bold">عندما يرسل اللاعبون رسائل عبر "اتصل بنا" ستظهر هنا</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-6">
+                            {adminContacts.map((contact) => (
+                              <div key={contact.id} className="bg-white rounded-3xl p-6 shadow-sm border-2 border-gray-100 hover:border-blue-200 transition-all group">
+                                <div className="flex justify-between items-start mb-4">
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                                      <User className="w-6 h-6 text-blue-500" />
+                                    </div>
+                                    <div>
+                                      <h3 className="font-black text-brown-dark text-lg">{contact.name}</h3>
+                                      <div className="flex items-center gap-2 text-xs font-bold text-brown-muted">
+                                        <span>سيريال: {contact.playerSerial}</span>
+                                        <span>•</span>
+                                        <span>{new Date(contact.timestamp).toLocaleString('ar-EG')}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <button 
+                                    onClick={() => {
+                                      if (window.confirm('هل أنت متأكد من حذف هذه الرسالة؟')) {
+                                        socket?.emit('admin_delete_contact', contact.id, (res: any) => {
+                                          if (res.success) {
+                                            setAdminContacts(prev => prev.filter(c => c.id !== contact.id));
+                                            showAlert('تم حذف الرسالة بنجاح', 'نجاح');
+                                          } else {
+                                            showAlert('فشل حذف الرسالة', 'خطأ');
+                                          }
+                                        });
+                                      }
+                                    }}
+                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                    title="حذف الرسالة"
+                                  >
+                                    <Trash2 className="w-5 h-5" />
+                                  </button>
+                                </div>
+                                <div className="bg-gray-50 rounded-2xl p-4">
+                                  <div className="text-blue-600 font-black text-sm mb-2">الموضوع: {contact.subject}</div>
+                                  <p className="text-brown-dark font-bold whitespace-pre-wrap leading-relaxed">
+                                    {contact.message}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : adminTab === 'avatar_review' ? (
+                    <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+                      <div className="max-w-3xl mx-auto space-y-4">
+                        <div className="box-game p-4 shadow-sm border-4 border-purple-600">
+                          <h3 className="text-lg font-black text-purple-600 mb-2 flex items-center gap-2">
+                            <Camera className="w-5 h-5" />
+                            مراجعة صور الأفاتار
+                          </h3>
+                          <p className="text-gray-600 font-bold mb-4 text-xs">
+                            الصور التي لم يستطع الذكاء الاصطناعي تأكيد سلامتها بنسبة 100%.
+                          </p>
+
+                          {pendingAvatars.length === 0 ? (
+                            <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-gray-300">
+                              <p className="text-gray-400 font-bold">لا توجد صور بانتظار المراجعة حالياً.</p>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {pendingAvatars.map((player) => (
+                                <div key={player.serial} className="bg-white p-3 rounded-xl border-2 border-gray-100 shadow-sm flex flex-col gap-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-purple-200">
+                                      <img 
+                                        src="/assets/avatar.png" 
+                                        alt={player.name}
+                                        className="w-full h-full object-cover"
+                                        referrerPolicy="no-referrer"
+                                      />
+                                    </div>
+                                    <div className="overflow-hidden">
+                                      <p className="font-black text-brown-dark text-sm truncate">{player.name}</p>
+                                      <p className="text-[10px] font-bold text-gray-400">Level: {player.level}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="aspect-square w-full rounded-lg overflow-hidden border-2 border-purple-100 bg-gray-50 flex items-center justify-center">
+                                    <img 
+                                      src={player.pendingAvatar} 
+                                      alt="Pending Avatar"
+                                      className="max-w-full max-h-full object-contain"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  </div>
+
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => {
+                                        socket?.emit('admin_review_avatar', { playerSerial: player.serial, status: 'approved' }, (res: any) => {
+                                          if (res.success) {
+                                            setPendingAvatars(prev => prev.filter(p => p.serial !== player.serial));
+                                            showAlert('تمت الموافقة على الصورة بنجاح!', 'نجاح');
+                                          } else {
+                                            showAlert(res.error || 'فشل تحديث الحالة', 'خطأ');
+                                          }
+                                        });
+                                      }}
+                                      className="flex-1 py-2 bg-accent-green hover:bg-green-600 text-white rounded-lg font-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-1"
+                                    >
+                                      <Check className="w-4 h-4" />
+                                      موافقة
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        socket?.emit('admin_review_avatar', { playerSerial: player.serial, status: 'rejected' }, (res: any) => {
+                                          if (res.success) {
+                                            setPendingAvatars(prev => prev.filter(p => p.serial !== player.serial));
+                                            showAlert('تم رفض الصورة.', 'تم الرفض');
+                                          } else {
+                                            showAlert(res.error || 'فشل تحديث الحالة', 'خطأ');
+                                          }
+                                        });
+                                      }}
+                                      className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-1"
+                                    >
+                                      <X className="w-4 h-4" />
+                                      رفض
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : adminTab === 'announcements' ? (
+                    <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+                      <div className="max-w-2xl mx-auto space-y-6">
+                        <div className="box-game p-6 shadow-sm border-4 border-red-500">
+                          <h3 className="text-xl font-black text-red-600 mb-4 flex items-center gap-2">
+                            <AlertTriangle className="w-6 h-6" />
+                            إرسال إشعار لجميع اللاعبين
+                          </h3>
+                          <p className="text-brown-muted font-bold mb-6">
+                            هذه الرسالة ستظهر فوراً كإشعار منبثق (Modal) لجميع اللاعبين المتصلين حالياً.
+                          </p>
+                          <textarea
+                            value={adminAnnouncementMessage}
+                            onChange={(e) => setAdminAnnouncementMessage(e.target.value)}
+                            className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl font-bold text-lg mb-4 resize-none focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all"
+                            placeholder="اكتب رسالة التنبيه هنا..."
+                            dir="rtl"
+                          />
+                          <button
+                            onClick={() => {
+                              if (!adminAnnouncementMessage.trim()) return;
+                              socket?.emit('admin_send_announcement', adminAnnouncementMessage, (res: any) => {
+                                if (res.success) {
+                                  showAlert('تم إرسال الإشعار لجميع اللاعبين بنجاح!', 'نجاح');
+                                } else {
+                                  showAlert('فشل إرسال الإشعار', 'خطأ');
+                                }
+                              });
+                            }}
+                            className="w-full py-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1"
+                          >
+                            إرسال الإشعار الآن
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   ) : adminTab === 'customization' ? (
                     <AdminCustomization showAlert={showAlert} />
                   ) : adminTab === 'players' ? (
@@ -5060,22 +6390,49 @@ export default function App() {
                               className="w-full pr-12 pl-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-purple-400 focus:bg-white transition-all font-bold"
                             />
                           </div>
-                          <div className="mt-3 text-sm font-bold text-brown-muted flex items-center gap-2">
-                            <Users className="w-4 h-4" />
-                            إجمالي عدد اللاعبين المسجلين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{adminPlayers.length}</span>
+                          <div className="mt-3 text-sm font-bold text-brown-muted flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              إجمالي عدد اللاعبين المسجلين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{adminPlayers.length}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] uppercase tracking-wider text-brown-light">تصنيف:</span>
+                              <select 
+                                value={adminPlayerFilter}
+                                onChange={(e) => setAdminPlayerFilter(e.target.value as any)}
+                                className="bg-gray-100 border-2 rounded-lg px-3 py-1.5 text-xs font-black text-brown-dark focus:ring-2 focus:ring-purple-400 outline-none cursor-pointer"
+                              >
+                                <option value="all">الكل (حسب المستوى)</option>
+                                <option value="reports">الأكثر بلاغات</option>
+                                <option value="level">الأعلى مستوى</option>
+                                <option value="wins">الأكثر فوزاً</option>
+                                <option value="streak">الأكثر فوز متتالي</option>
+                                <option value="online">المتصلون الآن</option>
+                              </select>
+                            </div>
                           </div>
                         </div>
 
                         {/* Players List */}
-                        <div className="flex-1 overflow-y-auto p-6">
+                        <div 
+                          ref={adminPlayersListRef}
+                          onScroll={handleAdminPlayersScroll}
+                          className="flex-1 overflow-y-auto p-6"
+                        >
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {adminPlayers
-                              .filter(p => p.name.includes(adminSearchQuery) || p.serial.includes(adminSearchQuery))
-                              .map((p, index) => (
-                                <div key={`admin-player-${p.serial}-${index}`} className="box-game p-5 hover:border-purple-200 transition-all group">
+                            {filteredAdminPlayers.length === 0 ? (
+                              <div className="col-span-full text-center py-12 text-brown-light font-bold">
+                                لا يوجد لاعبين يطابقون هذا البحث أو التصنيف
+                              </div>
+                            ) : (
+                              filteredAdminPlayers
+                                .slice(0, adminVisiblePlayersCount)
+                                .map((p, index) => (
+                                <div key={`admin-player-${p.serial}-${index}`} className="box-game p-5 hover:border-purple-200 transition-all group relative">
                                   <div className="flex items-center gap-4 mb-4">
                                     <div className="w-14 h-14">
-                                      {renderAvatarContent(p.avatar, getLevel(p.xp))}
+                                      {renderAvatarContent(p.avatar, getLevel(p.xp), false, p.isOnline)}
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
@@ -5218,8 +6575,15 @@ export default function App() {
                                     </button>
                                   </div>
                                 </div>
-                              ))}
+                              ))
+                            )}
                           </div>
+                          
+                          {adminVisiblePlayersCount < filteredAdminPlayers.length && (
+                            <div className="text-center py-6 text-xs font-bold text-brown-light animate-pulse">
+                              جاري تحميل المزيد من اللاعبين...
+                            </div>
+                          )}
                         </div>
                       </div>
                     </>
@@ -5544,6 +6908,8 @@ export default function App() {
                 />
               </div>
 
+              <div class="mt-1 text-white text-[13px] text-center bg-red-500 px-2 py-1 shadow-sm backdrop-blur-sm items-center gap-2">يجب أن تلتزم صور الأفاتار المرفوعة بقوانين اللعبة ومعايير المجتمع. ⚠️</div>
+
               <div className="flex gap-4">
                 <button
                   onClick={handleCropSave}
@@ -5566,6 +6932,49 @@ export default function App() {
     </>
   );
 
+  if (isMaintenanceMode) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center p-6 overflow-hidden">
+        {/* Background Accents */}
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent-blue/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent-yellow/10 rounded-full blur-3xl animate-pulse"></div>
+        
+        <div className="relative z-10 flex flex-col items-center max-w-md w-full">
+          {/* Logo Container */}
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, type: 'spring' }}
+            className="w-32 h-32 md:w-40 md:h-40 bg-white border-8 border-black rounded-[2rem] flex items-center justify-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-8 relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-accent-white/20 animate-pulse"></div>
+            <img src="/icon-3.png" alt="Logo" className="w-20 h-20 md:w-24 md:h-24 object-contain relative z-10" />
+          </motion.div>
+
+          {/* Game Name */}
+          <motion.h1 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-4xl md:text-5xl font-black text-main mb-6 uppercase tracking-tighter text-center"
+            style={{ textShadow: '4px 4px 0px #FFF, -1px -1px 0 #FFF, 1px -1px 0 #FFF, -1px 1px 0 #FFF, 1px 1px 0 #FFF' }}
+          >
+            خمن تخمينة
+          </motion.h1>
+
+          <motion.p
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-xl md:text-2xl font-black text-brown-muted text-center leading-relaxed"
+          >
+            احنا اسفين, دقايق بس بنضيف حاجات جديدة يا ابطال التخمين.
+          </motion.p>
+        </div>
+      </div>
+    );
+  }
+
   if (isAppLoading) {
     return (
       <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center p-6 overflow-hidden">
@@ -5581,7 +6990,7 @@ export default function App() {
             transition={{ duration: 0.5, type: 'spring' }}
             className="w-32 h-32 md:w-40 md:h-40 bg-white border-8 border-black rounded-[2rem] flex items-center justify-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-8 relative overflow-hidden"
           >
-            <div className="absolute inset-0 bg-accent-yellow/20 animate-pulse"></div>
+            <div className="absolute inset-0 bg-accent-white/20 animate-pulse"></div>
             <img src="/icon-3.png" alt="Logo" className="w-20 h-20 md:w-24 md:h-24 object-contain relative z-10" />
           </motion.div>
 
@@ -5726,11 +7135,11 @@ export default function App() {
   if (isSearching) {
     return (
       <>
-      <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-32">
+      <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
           {/* Fixed Header */}
           <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
             <div className="flex-1 flex items-center gap-2 md:gap-3">
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-accent-yellow rounded-xl flex items-center justify-center overflow-hidden">
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center overflow-hidden">
                 <img src="/icon-3.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 object-contain" />
               </div>
               <div className="font-black text-lg md:text-xl text-accent-blue tracking-tight hidden sm:block">خمن تخمينة</div>
@@ -5790,10 +7199,6 @@ export default function App() {
             </div>
           </header>
 
-          <div className="fixed top-14 md:top-16 left-0 right-0 bg-red-500 text-white text-center py-1.5 font-black text-xs md:text-sm z-[1999] shadow-md border-b-2 border-red-700">
-            ⚠️ اللعبة ستتوقف لمدة 24 ساعة للتحديث ⚠️
-          </div>
-
         <div className="w-full max-w-md card-game p-3 md:p-4 text-center space-y-2 md:space-y-4 relative overflow-hidden">
           {proposedMatch ? (
             <motion.div 
@@ -5804,7 +7209,7 @@ export default function App() {
               <h2 className="text-2xl md:text-3xl font-black text-main uppercase tracking-tight" style={{ textShadow: '2px 2px 0px #FFF, -1px -1px 0 #FFF, 1px -1px 0 #FFF, -1px 1px 0 #FFF, 1px 1px 0 #FFF' }}>تم العثور على منافس!</h2>
               <div className="flex flex-col items-center p-3 md:p-4 bg-white rounded-3xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
                 <div className="relative mb-1 md:mb-2 w-20 h-20 md:w-24 md:h-24">
-                  {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0))}
+                  {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0), false, true)}
                 </div>
                 <div className="text-xl md:text-2xl font-black text-main mb-1">{proposedMatch.opponent.name}</div>
                 <div className="text-sm md:text-base font-bold text-black bg-gray-100 border-2 border-black px-3 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Level {proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0)}</div>
@@ -5915,13 +7320,52 @@ export default function App() {
     );
   }
 
+  if (currentRoute === '/privacy' || currentRoute === '/terms') {
+    const isPrivacy = currentRoute === '/privacy';
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 font-cairo" dir="rtl">
+        <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden border-4 border-black">
+          <div className="bg-accent-blue p-8 text-white flex justify-between items-center">
+            <h1 className="text-3xl font-black">{isPrivacy ? 'سياسة الخصوصية' : 'الشروط والأحكام'}</h1>
+            <button onClick={() => navigate('/')} className="bg-white/20 hover:bg-white/30 p-2 rounded-full transition-colors">
+              <Home size={24} />
+            </button>
+          </div>
+          <div className="p-8 prose prose-lg max-w-none">
+            <div className="whitespace-pre-wrap leading-relaxed text-gray-700 font-bold">
+              {isPrivacy ? (
+                <div className="space-y-4">
+                  <div dir="rtl" className="text-right">{gamePolicies.privacyAr}</div>
+                  <div dir="ltr" className="text-left">{gamePolicies.privacyEn}</div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div dir="rtl" className="text-right">{gamePolicies.termsAr}</div>
+                  <div dir="ltr" className="text-left">{gamePolicies.termsEn}</div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="p-6 bg-gray-50 border-t-2 border-gray-100 text-center">
+            <button 
+              onClick={() => navigate('/')}
+              className="px-8 py-3 bg-accent-blue text-white rounded-2xl font-black text-xl shadow-lg hover:bg-blue-600 transition-all"
+            >
+              العودة للعبة
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!joined) {
     return (
       <>
         {/* Fixed Header */}
         <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
           <div className="flex-1 flex items-center gap-2 md:gap-3">
-            <div className="w-9 h-9 md:w-10 md:h-10 bg-accent-yellow rounded-xl flex items-center justify-center overflow-hidden">
+            <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center overflow-hidden">
               <img src="/icon-3.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 object-contain" />
             </div>
             <div className="font-black text-lg md:text-xl text-accent-blue tracking-tight block">خمن تخمينة</div>
@@ -5984,11 +7428,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="fixed top-14 md:top-16 left-0 right-0 bg-red-500 text-white text-center py-1.5 font-black text-xs md:text-sm z-[1999] shadow-md border-b-2 border-red-700">
-          ⚠️ اللعبة ستتوقف لمدة 24 ساعة للتحديث ⚠️
-        </div>
-
-        <div className="min-h-screen w-full flex items-center overflow-x-hidden justify-center p-4 pt-28">
+        <div className="min-h-screen w-full flex items-center overflow-x-hidden justify-center p-4 pt-20">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -5998,7 +7438,7 @@ export default function App() {
           {/* Profile Card */}
           <div className="player-card flex items-center gap-3 md:gap-4 p-3 md:p-4 flex-row-reverse mb-6 md:mb-10 w-full">
               <div className="relative shrink-0 w-16 h-16 md:w-20 md:h-20">
-                {renderAvatarContent(avatar, getLevel(xp))}
+                {renderAvatarContent(avatar, getLevel(xp), false, true)}
               </div>
               <div className="flex flex-col justify-center flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-1 flex-row-reverse">
@@ -6075,7 +7515,7 @@ export default function App() {
                     <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1 z-10">
                       <div className="relative mb-2 flex flex-col items-center">
                         <div className="w-14 h-14 md:w-16 md:h-16">
-                          {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0))}
+                          {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0), false, topPlayers[1].isOnline)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-gray-300 text-brown-muted w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
                       </div>
@@ -6100,7 +7540,7 @@ export default function App() {
                         <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-[60]" />
                         <div className="fire-glow-effect"></div>
                         <div className="w-16 h-16 md:w-20 md:h-20 relative z-10">
-                          {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level || getLevel(topPlayers[0].xp || 0))}
+                          {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level || getLevel(topPlayers[0].xp || 0), false, topPlayers[0].isOnline)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-[60] animate-bounce">1</div>
                       </div>
@@ -6123,7 +7563,7 @@ export default function App() {
                     <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1 z-10">
                       <div className="relative mb-2 flex flex-col items-center">
                         <div className="w-14 h-14 md:w-16 md:h-16">
-                          {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level || getLevel(topPlayers[2].xp || 0))}
+                          {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level || getLevel(topPlayers[2].xp || 0), false, topPlayers[2].isOnline)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
@@ -6248,10 +7688,10 @@ export default function App() {
                   {getLevel(xp) < 50 && (
                     <div className="absolute inset-0 bg-gray-200/80 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center">
                       <Lock className="w-4 h-4 text-gray-600 mb-0.5" />
-                      <span className="text-[10px] font-black text-gray-700">Lvl 50+</span>
+                      <span className="text-[11px] font-black text-gray-700" dir="ltr">Lvl 50+</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 flex-1">
+                  <div className="flex items-center gap-6 flex-1">
                     <input 
                       type="checkbox" 
                       id="useToken" 
@@ -6266,8 +7706,10 @@ export default function App() {
                     </label>
                   </div>
                   <div className="border-t border-game mt-1 mb-0.5"></div>
-                  <div className="w-full text-left" dir="ltr">
-                    <span className="font-bold text-xs md:text-sm">Lvl 50+ | 1Kxp</span>
+                  <div className="w-full flex text-left" dir="ltr">
+                    <span className="font-bold text-xs md:text-sm">Lvl 50+</span>
+                    <span class="flex text-xs md:text-sm text-gray-400 px-1">|</span>
+                    <span className="font-bold text-xs md:text-sm">1000xp</span>
                   </div>
                 </div>
               </div>
@@ -6318,7 +7760,7 @@ export default function App() {
                         #{topPlayers.findIndex(p => p.serial === playerSerial) + 1}
                       </div>
                       <div className="relative w-10 h-10">
-                        {renderAvatarContent(avatar, getLevel(xp), true)}
+                        {renderAvatarContent(avatar, getLevel(xp), true, true)}
                       </div>
                       <div className="flex-1 min-w-0 text-right">
                         <div className="font-black truncate">أنت ({playerName})</div>
@@ -6326,6 +7768,8 @@ export default function App() {
                           <span dir="ltr">Lvl {getLevel(xp)}</span>
                           <span>•</span>
                           <span>{wins} فوز</span>
+                          <span>•</span>
+                          <span>{streak} 🔥</span>
                         </div>
                       </div>
                     </div>
@@ -6354,7 +7798,7 @@ export default function App() {
                         </div>
                         
                         <div className="relative w-10 h-10">
-                          {renderAvatarContent(player.avatar, player.level, true)}
+                          {renderAvatarContent(player.avatar, player.level, true, player.isOnline)}
                         </div>
 
                         <div className="flex-1 min-w-0 text-right">
@@ -6365,6 +7809,8 @@ export default function App() {
                             <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="ltr">Lvl {player.level}</span>
                             <span className="text-brown-light">•</span>
                             <span className="text-green-600">{player.wins} فوز</span>
+                            <span className="text-brown-light">•</span>
+                            <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="rtl">{streak} 🔥</span>
                           </div>
                         </div>
 
@@ -6456,6 +7902,35 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Footer Links */}
+      <footer className="mt-auto py-4 text-center border-t border-gray-200 bg-white/50 backdrop-blur-sm">
+        <div className="flex flex-wrap justify-center items-center gap-3 md:gap-4 text-[11px] md:text-xs font-light text-black">
+          <button 
+            onClick={() => navigate('/privacy')}
+            className="hover:text-accent-blue transition-colors"
+          >
+            سياسة الخصوصية
+          </button>
+          <span className="text-gray-300">|</span>
+          <button 
+            onClick={() => navigate('/terms')}
+            className="hover:text-accent-blue transition-colors"
+          >
+            الشروط والأحكام
+          </button>
+          <span className="text-gray-300">|</span>
+          <button 
+            onClick={() => setShowContactModal(true)}
+            className="hover:text-accent-blue transition-colors"
+          >
+            اتصل بنا
+          </button>
+        </div>
+        <p className="mt-2 text-[11px] font-light text-black">
+          جميع الحقوق محفوظة &copy; {new Date().getFullYear()} خمن تخمينة
+        </p>
+      </footer>
+
       {renderModals()}
       </>
     );
@@ -6468,7 +7943,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-24 md:pt-28">
+    <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-16 md:pt-20">
       {/* Install Modal */}
       {showInstallModal && deferredPrompt && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -6499,7 +7974,7 @@ export default function App() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
         <div className="flex-1 flex items-center gap-2 md:gap-3">
-          <div className="w-9 h-9 md:w-10 md:h-10 bg-accent-yellow rounded-xl flex items-center justify-center overflow-hidden">
+          <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center overflow-hidden">
             <img src="/icon-3.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 object-contain" />
           </div>
           <div className="font-black text-lg md:text-xl text-accent-blue tracking-tight hidden sm:block">خمن تخمينة</div>
@@ -6574,10 +8049,6 @@ export default function App() {
         </div>
       </header>
 
-      <div className="fixed top-14 md:top-16 left-0 right-0 bg-red-500 text-white text-center py-1.5 font-black text-xs md:text-sm z-[1999] shadow-md border-b-2 border-red-700">
-        ⚠️ اللعبة ستتوقف لمدة 24 ساعة للتحديث ⚠️
-      </div>
-
 
       <main className="flex-1 relative flex flex-col items-center justify-between py-2 px-2 max-w-md mx-auto w-full">
         {/* Opponent (Top) */}
@@ -6585,7 +8056,7 @@ export default function App() {
           {opponent && (
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
-                {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false)}
+                {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false, true)}
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-black shadow-sm z-20 whitespace-nowrap">
                   Lvl {opponent.level || getLevel(opponent.xp || 0)}
                 </div>
@@ -6692,18 +8163,24 @@ export default function App() {
                     const isMyChoice = me?.selectedCategory === cat.id;
                     const isOpponentChoice = opponent?.selectedCategory === cat.id;
                     const isAgreed = isMyChoice && isOpponentChoice;
+                    const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
                     
                     return (
                       <button
                         key={cat.id}
                         onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
                         className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
-                          ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
+                          ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
                           ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
                         `}
                       >
                         <span className="text-2xl md:text-3xl">{cat.icon}</span>
                         <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
+                        {isNew && (
+                          <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
+                            جديد
+                          </div>
+                        )}
                         {isOpponentChoice && !isMyChoice && (
                           <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
                             اقتراح!
@@ -6721,7 +8198,7 @@ export default function App() {
 
                 {/* WhatsApp Style Chat Box - Hidden when consensus reached or waiting for opponent */}
                 {!consensusReached && room.players.length >= 2 && (
-                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-48 mt-4 relative">
+                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-54 mt-4 relative">
                     {isMutedByOpponent && (
                       <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                         <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -6929,7 +8406,7 @@ export default function App() {
 
               {/* Gameplay Chat Box - Moved to Center */}
               {room.gameState !== 'waiting' && room.gameState !== 'finished' && room.gameState !== 'guessing' && (
-                <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-48 md:h-64 mt-4 z-20 relative">
+                <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-54 md:h-70 mt-4 z-20 relative">
                   {isMutedByOpponent && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                       <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -7018,7 +8495,7 @@ export default function App() {
           {me && (
             <>
               <div className="relative w-16 h-16 md:w-24 md:h-24">
-                {renderAvatarContent(me.avatar, getLevel(xp), false)}
+                {renderAvatarContent(me.avatar, getLevel(xp), false, true)}
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-black shadow-sm z-20 whitespace-nowrap">
                   Lvl {getLevel(xp)}
                 </div>
@@ -7139,7 +8616,7 @@ export default function App() {
           ].filter(card => !card.hide).map((card) => {
             const isLevelLocked = getLevel(me?.xp || xp) < card.level;
             const hasFreeUse = (ownedHelpers[card.id] || 0) > 0;
-            const isLocked = isLevelLocked && !hasFreeUse;
+            const isLocked = !hasUnlockedHelpers && isLevelLocked && !hasFreeUse;
             
             // Calculate dynamic cooldown for quick_guess based on room.timer
             let cardCooldown = cooldowns[card.id] || 0;
