@@ -2,7 +2,7 @@ import React from 'react';
 import { Star } from 'lucide-react';
 import { STATIC_ASSETS } from '../constants';
 
-export const AvatarDisplay = React.memo(({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean }) => {
+export const AvatarDisplay = React.memo(({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false, isOnline = false }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean, isOnline?: boolean }) => {
   const getMilestoneLevel = (lvl: number) => {
     if (lvl >= 50) return 50;
     if (lvl >= 40) return 40;
@@ -61,7 +61,7 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
 
   const renderStarsFallback = (lvl: number) => {
     if (hideExtras) return null;
-    const starsCount = Math.floor(lvl / 10);
+    const starsCount = Math.min(5, Math.floor(lvl / 10));
     if (starsCount === 0) return null;
     return (
       <div className="absolute inset-0 z-30 pointer-events-none animate-[spin_15s_linear_infinite]">
@@ -124,6 +124,11 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] h-[115%] max-w-none object-contain pointer-events-none z-20" 
           alt="Frame" 
         />
+      )}
+
+      {/* Online Indicator - Bottom Right */}
+      {isOnline && (
+        <div className="absolute bottom-[5%] right-[5%] w-[11%] h-[11%] bg-green-500 rounded-full z-40" />
       )}
     </div>
   );

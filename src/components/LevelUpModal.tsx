@@ -202,7 +202,7 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
                   className="absolute -right-6 top-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black z-20"
                 >
                   <div className="flex flex-col items-center">
-                    <span className="text-sm font-black text-yellow-600">{Math.floor(level / 10)}</span>
+                    <span className="text-sm font-black text-yellow-600">{Math.min(5, Math.floor(level / 10))}</span>
                     <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                   </div>
                 </motion.div>
