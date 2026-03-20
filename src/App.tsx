@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { io, Socket } from 'socket.io-client';
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import { motion, AnimatePresence, animate } from 'motion/react';
 import { 
   Upload,
@@ -428,6 +429,17 @@ export default function App() {
     }
     return id;
   });
+
+  const [fingerprint, setFingerprint] = useState<string | null>(null);
+  useEffect(() => {
+    const setFp = async () => {
+      const fpPromise = FingerprintJS.load();
+      const fp = await fpPromise;
+      const result = await fp.get();
+      setFingerprint(result.visitorId);
+    };
+    setFp();
+  }, []);
 
   const [xp, setXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0'));
   const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0'));
@@ -2937,7 +2949,7 @@ export default function App() {
       return;
     }
 
-    socket?.emit('register_player', { name: playerName, avatar, xp, gender }, ({ serial, name }: { serial: string, name: string }) => {
+    socket?.emit('register_player', { name: playerName, avatar, xp, gender, fingerprint }, ({ serial, name }: { serial: string, name: string }) => {
       if (serial) {
         setPlayerSerial(serial);
         setPlayerName(name); // Update with filtered name
