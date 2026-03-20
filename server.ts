@@ -383,6 +383,8 @@ const app = express();
     level: number, 
     avatar: string,
     gender?: string, 
+    fingerprint?: string,
+    ip?: string,
     xp: number, 
     serial: string, 
     wins: number, 
@@ -503,6 +505,15 @@ const app = express();
   process.on('SIGTERM', shutdown);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS banned_identities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fingerprint TEXT,
+      ip TEXT,
+      timestamp INTEGER
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS players (
       serial TEXT PRIMARY KEY,
       name TEXT,
@@ -516,6 +527,8 @@ const app = express();
 
   // Add new columns for reporting system if they don't exist
   try { db.exec(`ALTER TABLE players ADD COLUMN gender TEXT DEFAULT 'boy'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN fingerprint TEXT`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN ip TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN reports INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN banUntil INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN banCount INTEGER DEFAULT 0`); } catch (e) {}
@@ -635,8 +648,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt)
   `);
 
   function savePlayerData(serial: string) {
@@ -647,6 +660,8 @@ const app = express();
       insertPlayer.run({
         ...player,
         gender: player.gender || 'boy',
+        fingerprint: player.fingerprint || null,
+        ip: player.ip || null,
         reportedBy: JSON.stringify(player.reportedBy || []),
         email: player.email || null,
         isAdmin: player.isAdmin ? 1 : 0,
@@ -678,6 +693,8 @@ const app = express();
       insertPlayer.run({
         ...player,
         gender: player.gender || 'boy',
+        fingerprint: player.fingerprint || null,
+        ip: player.ip || null,
         reportedBy: JSON.stringify(player.reportedBy || []),
         email: player.email || null,
         isAdmin: player.isAdmin ? 1 : 0,
@@ -728,6 +745,8 @@ const app = express();
         allPlayers.set(row.serial, {
           ...row,
           gender: row.gender || 'boy',
+          fingerprint: row.fingerprint || null,
+          ip: row.ip || null,
           reports: row.reports || 0,
           banUntil: row.banUntil || 0,
           banCount: row.banCount || 0,
@@ -1609,7 +1628,18 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("register_player", ({ name, avatar, xp, gender }, callback) => {
+    socket.on("register_player", ({ name, avatar, xp, gender, fingerprint }, callback) => {
+      const ip = socket.handshake.address;
+      
+      // Check if banned
+      if (fingerprint) {
+        const banned = db.prepare('SELECT * FROM banned_identities WHERE fingerprint = ? OR ip = ?').get(fingerprint, ip);
+        if (banned) {
+          callback({ error: 'تم حظرك نهائياً من اللعبة' });
+          return;
+        }
+      }
+
       // Generate a unique non-sequential ID
       const serial = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const level = getLevel(xp || 0);
@@ -1623,6 +1653,8 @@ io.on("connection", (socket) => {
         level, 
         avatar, 
         gender: gender || 'boy',
+        fingerprint: fingerprint || null,
+        ip: ip,
         xp: xp || 0, 
         serial, 
         wins: 0, 
@@ -3308,6 +3340,11 @@ io.on("connection", (socket) => {
           Object.assign(player, updates);
           if (updates.xp !== undefined) player.level = getLevel(updates.xp);
           if (updates.tokens !== undefined) player.tokens = updates.tokens;
+          
+          if (updates.isPermanentBan === 1) {
+            db.prepare('INSERT INTO banned_identities (fingerprint, ip, timestamp) VALUES (?, ?, ?)').run(player.fingerprint || null, player.ip || null, Date.now());
+          }
+          
           savePlayerData(serial);
           
           // Find socket ID for this player serial to send direct update
