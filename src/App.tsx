@@ -7684,16 +7684,20 @@ export default function App() {
 
               <div className="flex items-center gap-2">
                 <button 
-                  onClick={handleRandomMatch}
-                  className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-pointer touch-manipulation"
+                  className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-not-allowed touch-manipulation relative overflow-hidden"
+                  disabled
                 >
-                  <div className="flex items-center gap-1.5" dir="ltr">
+                  <div className="absolute inset-0 bg-gray-200/80 backdrop-blur-sm flex items-center justify-center gap-2 z-10">
+                    <Lock className="w-6 h-6 text-black" />
+                    <span className="text-black font-black text-xl">قريباً</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 opacity-50" dir="ltr">
                     <Users className="w-5 h-5 md:w-6 md:h-6 text-[#00FF00] animate-pulse" />
                     <span className="text-[#00FF00] text-lg md:text-xl font-black">
                       {onlineCount > 100 ? '100+' : onlineCount}
                     </span>
                   </div>
-                  <span>بحث عشوائي</span>
+                  <span className="opacity-50">بحث عشوائي</span>
                 </button>
 
                 <div className="flex flex-col box-game p-2 h-16 relative overflow-hidden">
