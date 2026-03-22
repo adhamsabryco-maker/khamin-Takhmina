@@ -610,6 +610,18 @@ const app = express();
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS reward_history (
+      id TEXT PRIMARY KEY,
+      type TEXT,
+      durationHours INTEGER,
+      expiresInDays INTEGER,
+      message TEXT,
+      sentAt INTEGER,
+      expiresAt INTEGER
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS custom_images (
       id TEXT PRIMARY KEY,
       category TEXT,
@@ -3469,6 +3481,15 @@ io.on("connection", (socket) => {
           };
           activeGlobalReward = newReward;
           db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('global_reward', JSON.stringify(newReward));
+          
+          // Add to history
+          try {
+            db.prepare('INSERT INTO reward_history (id, type, durationHours, expiresInDays, message, sentAt, expiresAt) VALUES (?, ?, ?, ?, ?, ?, ?)')
+              .run(newReward.id, newReward.type, newReward.durationHours, rewardData.expiresInDays || 7, newReward.message, Date.now(), newReward.expiresAt);
+          } catch (historyErr) {
+            console.error("Failed to save reward history:", historyErr);
+          }
+
           io.emit("global_reward_available", newReward);
           callback({ success: true, reward: newReward });
         } catch (err) {
@@ -3477,6 +3498,21 @@ io.on("connection", (socket) => {
         }
       } else {
         callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_get_reward_history", (callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          const history = db.prepare('SELECT * FROM reward_history ORDER BY sentAt DESC LIMIT 20').all();
+          callback(history);
+        } catch (err) {
+          console.error("Failed to get reward history:", err);
+          callback([]);
+        }
+      } else {
+        callback([]);
       }
     });
 
