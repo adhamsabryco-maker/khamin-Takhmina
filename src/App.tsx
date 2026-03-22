@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import { GoogleGenAI } from "@google/genai";
 import { io, Socket } from 'socket.io-client';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
@@ -380,23 +382,57 @@ const isSameWeek = (d1: number, d2: number) => {
 export default function App() {
   const { customConfig, refreshConfig } = useAvatarConfig();
   const appVersion = customConfig.version || '1.1.1';
+  const [initialVersion, setInitialVersion] = useState<string | null>(null);
+  const [needsUpdate, setNeedsUpdate] = useState(false);
+  const {
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r) {
+      console.log('SW Registered: ' + r);
+    },
+    onRegisterError(error) {
+      console.log('SW registration error', error);
+    },
+  });
+
+  useEffect(() => {
+    if (customConfig.version && !initialVersion) {
+      setInitialVersion(customConfig.version);
+    }
+  }, [customConfig.version, initialVersion]);
 
   // Re-enabled version check but without forcing reloads
   useEffect(() => {
+    if (initialVersion && appVersion !== '1.1.1' && appVersion !== initialVersion) {
+      console.log('New version detected from config:', appVersion);
+      setNeedsUpdate(true);
+      setNeedRefresh(true);
+    }
+  }, [appVersion, initialVersion, setNeedRefresh]);
+
+  useEffect(() => {
     const checkVersion = async () => {
       try {
-        const response = await fetch('/api/version');
+        const response = await fetch('/api/version?t=' + Date.now());
         const data = await response.json();
-        if (data.version && appVersion !== '1.1.1' && data.version !== appVersion) {
-          console.log('New version detected:', data.version);
+        if (data.version && initialVersion && data.version !== initialVersion) {
+          console.log('New version detected from API:', data.version);
           setNeedsUpdate(true);
+          setNeedRefresh(true);
         }
       } catch (e) {
         console.error('Failed to check version', e);
       }
     };
-    checkVersion();
-  }, [appVersion]);
+    
+    if (initialVersion) {
+      checkVersion();
+      // Periodically check version every 5 minutes
+      const interval = setInterval(checkVersion, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [initialVersion, setNeedRefresh]);
 
   useEffect(() => {
     if (customConfig.version) {
@@ -582,7 +618,18 @@ export default function App() {
   const proPackageDaysLeft = hasProPackage ? Math.ceil((proPackageExpiry! - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
   const [showMatchIntro, setShowMatchIntro] = useState(false);
-  const [needsUpdate, setNeedsUpdate] = useState(false);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('force_refresh', () => {
+        setNeedRefresh(true);
+        setNeedsUpdate(true);
+      });
+      return () => {
+        socket.off('force_refresh');
+      };
+    }
+  }, [socket, setNeedRefresh]);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [topPlayers, setTopPlayers] = useState<any[]>(() => {
@@ -2105,6 +2152,8 @@ export default function App() {
       setIsConnecting(false);
       setConnectionError(null);
       
+      refreshConfig();
+      
       newSocket.emit('get_shop_items', (items: any[]) => {
         if (items) setShopItems(items);
       });
@@ -3050,8 +3099,12 @@ export default function App() {
     setGuess('');
   };
 
+  const adTriggeredRef = useRef(false);
+
   const handleWatchAd = () => {
     console.log('handleWatchAd called. Current adStatus:', adStatus);
+    
+    if (adTriggeredRef.current) return;
     
     const isPowerUp = !!activePowerUp;
 
@@ -3071,11 +3124,11 @@ export default function App() {
     // Close confirmation modal immediately to prevent "fixed window" issue
     setShowAdConfirmation(false);
 
-    let adTriggered = false;
+    adTriggeredRef.current = false;
 
     const startAdProcess = () => {
-      if (adTriggered) return;
-      adTriggered = true;
+      if (adTriggeredRef.current) return;
+      adTriggeredRef.current = true;
       
       if (roomId && isPowerUp) {
         const powerUpName = {
@@ -3099,7 +3152,11 @@ export default function App() {
       socket?.emit('start_ad_watch', { serial: playerSerial });
     };
 
+    let adSafetyTimeout: NodeJS.Timeout;
+
     const onAdComplete = () => {
+      clearTimeout(adSafetyTimeout);
+      adTriggeredRef.current = false;
       if (isPowerUp) {
         if (!readyPowerUps.includes(activePowerUp!)) {
           setReadyPowerUps(prev => [...prev, activePowerUp!]);
@@ -3118,7 +3175,7 @@ export default function App() {
     };
 
     const startMockAd = () => {
-      if (adTriggered) return;
+      if (adTriggeredRef.current) return;
       console.log('Falling back to mock ad');
       startAdProcess();
       setShowAdModal(true);
@@ -3128,6 +3185,7 @@ export default function App() {
         setAdTimer((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
+            adTriggeredRef.current = false;
             return 0;
           }
           return prev - 1;
@@ -3141,43 +3199,68 @@ export default function App() {
       
       // Set a safety timeout: if AdSense doesn't trigger beforeAd within 2 seconds, use mock ad
       const adTimeout = setTimeout(() => {
-        if (!adTriggered) {
+        if (!adTriggeredRef.current) {
           console.warn('AdSense adBreak timed out, using mock fallback');
           startMockAd();
         }
       }, 2000);
 
-      window.adBreak({
-        type: 'reward',
-        name: isPowerUp ? `use_${activePowerUp}` : 'get_token',
-        beforeAd: () => {
-          console.log('AdSense: beforeAd');
-          clearTimeout(adTimeout);
-          startAdProcess();
-        },
-        afterAd: () => {
-          console.log('AdSense: afterAd');
-        },
-        beforeReward: (showAdFn: any) => {
-          console.log('AdSense: beforeReward');
-          showAdFn();
-        },
-        adDismissed: () => {
-          console.log('AdSense: adDismissed');
-          showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
-          if (roomId) {
-            socket?.emit('ad_ended', { roomId });
+      try {
+        window.adBreak({
+          type: 'reward',
+          name: isPowerUp ? `use_${activePowerUp}` : 'get_token',
+          beforeAd: () => {
+            console.log('AdSense: beforeAd');
+            clearTimeout(adTimeout);
+            startAdProcess();
+            
+            // Safety timeout: if ad doesn't finish or dismiss within 60 seconds, resume game
+            adSafetyTimeout = setTimeout(() => {
+              console.warn('AdSense ad stuck, resuming game');
+              if (roomId) {
+                socket?.emit('ad_ended', { roomId });
+              }
+              setActivePowerUp(null);
+              adTriggeredRef.current = false;
+              showAlert('حدث خطأ أثناء تحميل الإعلان.', 'خطأ');
+            }, 60000);
+          },
+          afterAd: () => {
+            console.log('AdSense: afterAd');
+          },
+          beforeReward: (showAdFn: any) => {
+            console.log('AdSense: beforeReward');
+            showAdFn();
+          },
+          adDismissed: () => {
+            console.log('AdSense: adDismissed');
+            clearTimeout(adSafetyTimeout);
+            adTriggeredRef.current = false;
+            showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
+            if (roomId) {
+              socket?.emit('ad_ended', { roomId });
+            }
+            setActivePowerUp(null);
+          },
+          adViewed: () => {
+            console.log('AdSense: adViewed');
+            onAdComplete();
+          },
+          adBreakDone: (placementInfo: any) => {
+            console.log('AdSense: adBreakDone', placementInfo);
+            // If adBreakDone is called but ad was never triggered, it means no ad was available
+            if (!adTriggeredRef.current) {
+              clearTimeout(adTimeout);
+              console.warn('AdSense adBreakDone called without triggering ad, using mock fallback');
+              startMockAd();
+            }
           }
-          setActivePowerUp(null);
-        },
-        adViewed: () => {
-          console.log('AdSense: adViewed');
-          onAdComplete();
-        },
-        adBreakDone: (placementInfo: any) => {
-          console.log('AdSense: adBreakDone', placementInfo);
-        }
-      });
+        });
+      } catch (error) {
+        console.error('Error calling window.adBreak:', error);
+        clearTimeout(adTimeout);
+        startMockAd();
+      }
     } else {
       // Fallback to mock ad if AdSense is blocked or not loaded
       startMockAd();
@@ -6485,10 +6568,36 @@ export default function App() {
                                 }
                               });
                             }}
-                            className="w-full py-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1"
+                            className="w-full py-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1 mb-8"
                           >
                             إرسال الإشعار الآن
                           </button>
+
+                          <div className="border-t-2 border-dashed border-gray-200 pt-8 mt-8">
+                            <h3 className="text-2xl font-black text-brown-dark mb-2 flex items-center gap-2">
+                              <RefreshCw className="text-accent-blue" />
+                              تحديث إجباري لجميع اللاعبين
+                            </h3>
+                            <p className="text-brown-muted font-bold mb-6">
+                              سيتم إظهار رسالة لجميع اللاعبين تطلب منهم تحديث اللعبة (Refresh) للحصول على آخر التحديثات.
+                            </p>
+                            <button
+                              onClick={() => {
+                                if (window.confirm('هل أنت متأكد من إرسال طلب التحديث لجميع اللاعبين؟')) {
+                                  socket?.emit('admin_force_refresh', (res: any) => {
+                                    if (res.success) {
+                                      showAlert('تم إرسال طلب التحديث لجميع اللاعبين!', 'نجاح');
+                                    } else {
+                                      showAlert('فشل إرسال طلب التحديث', 'خطأ');
+                                    }
+                                  });
+                                }
+                              }}
+                              className="w-full py-4 bg-accent-blue hover:bg-blue-600 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1"
+                            >
+                              إرسال طلب التحديث الآن
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -7118,6 +7227,57 @@ export default function App() {
     </>
   );
 
+  const renderUpdateBanner = () => {
+    if (!needRefresh && !needsUpdate) return null;
+    return createPortal(
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[999999] bg-accent-blue text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-4 border-2 border-white/20 w-[90%] max-w-md"
+          dir="rtl"
+        >
+          <div className="flex flex-col flex-1">
+            <span className="font-black text-sm">تمت اضافة بعض المميزات الجديدة!</span>
+            <span className="text-xs font-bold opacity-90">يرجى التحديث للحصول على أفضل تجربة.</span>
+          </div>
+          <button
+            onClick={() => {
+              if (needRefresh && updateServiceWorker) {
+                updateServiceWorker(true);
+              } else {
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistrations().then((registrations) => {
+                    for (let registration of registrations) {
+                      registration.unregister();
+                    }
+                    window.location.reload();
+                  });
+                } else {
+                  window.location.reload();
+                }
+              }
+            }}
+            className="bg-white text-accent-blue px-4 py-2 rounded-xl font-black text-sm hover:bg-gray-100 transition-colors whitespace-nowrap shadow-sm"
+          >
+            تحديث
+          </button>
+          <button
+            onClick={() => {
+              setNeedRefresh(false);
+              setNeedsUpdate(false);
+            }}
+            className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </motion.div>
+      </AnimatePresence>,
+      document.body
+    );
+  };
+
   if (isMaintenanceMode) {
     return (
       <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center p-6 overflow-hidden">
@@ -7321,6 +7481,7 @@ export default function App() {
   if (isSearching) {
     return (
       <>
+      {renderUpdateBanner()}
       <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
           {/* Fixed Header */}
           <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
@@ -7548,6 +7709,7 @@ export default function App() {
   if (!joined) {
     return (
       <>
+        {renderUpdateBanner()}
         {/* Fixed Header */}
         <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
           <div className="flex-1 flex items-center gap-2 md:gap-3">
@@ -8135,6 +8297,8 @@ export default function App() {
   }
 
   return (
+    <>
+    {renderUpdateBanner()}
     <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-16 md:pt-20">
       {/* Install Modal */}
       {showInstallModal && deferredPrompt && (
@@ -9069,7 +9233,16 @@ export default function App() {
                 <button 
                   onClick={() => {
                     if (needsUpdate) {
-                      window.location.reload();
+                      if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.getRegistrations().then((registrations) => {
+                          for (let registration of registrations) {
+                            registration.unregister();
+                          }
+                          window.location.reload();
+                        });
+                      } else {
+                        window.location.reload();
+                      }
                       return;
                     }
                     handleLeaveGame();
@@ -9147,5 +9320,6 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }
