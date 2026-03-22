@@ -42,7 +42,7 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
   
   let displayAvatar = isDataUrl ? avatar :
                      (avatarReplacement ? `/uploads/${avatarReplacement}` :
-                     (isFilename ? `/assets/${avatar}` : 
+                     (isFilename ? (avatar.startsWith('/') ? avatar : `/assets/${avatar}`) : 
                      (customAvatar ? `/uploads/${customAvatar}` :
                      (staticAvatar ? `/assets/${Array.isArray(staticAvatar) ? staticAvatar[0] : staticAvatar}` : 
                      avatar))));
