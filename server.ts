@@ -3477,7 +3477,7 @@ io.on("connection", (socket) => {
             type: rewardData.type, // 'pro_package' or 'unlock_helpers'
             durationHours: rewardData.durationHours,
             message: rewardData.message,
-            expiresAt: Date.now() + (rewardData.expiresInDays || 7) * 24 * 60 * 60 * 1000 // Reward claimable for 7 days
+            expiresAt: Date.now() + (rewardData.durationHours || 24) * 60 * 60 * 1000 // Reward claimable for the same duration as the reward itself by default
           };
           activeGlobalReward = newReward;
           db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('global_reward', JSON.stringify(newReward));
@@ -3485,7 +3485,7 @@ io.on("connection", (socket) => {
           // Add to history
           try {
             db.prepare('INSERT INTO reward_history (id, type, durationHours, expiresInDays, message, sentAt, expiresAt) VALUES (?, ?, ?, ?, ?, ?, ?)')
-              .run(newReward.id, newReward.type, newReward.durationHours, rewardData.expiresInDays || 7, newReward.message, Date.now(), newReward.expiresAt);
+              .run(newReward.id, newReward.type, newReward.durationHours, Math.ceil(newReward.durationHours / 24), newReward.message, Date.now(), newReward.expiresAt);
           } catch (historyErr) {
             console.error("Failed to save reward history:", historyErr);
           }
