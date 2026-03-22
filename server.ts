@@ -3690,7 +3690,7 @@ io.on("connection", (socket) => {
 
   function getCategoryImages(category: string) {
     try {
-      const customImages = db.prepare('SELECT name, data as image FROM custom_images WHERE category = ?').all(category);
+      const customImages = db.prepare('SELECT name, data as image, timestamp FROM custom_images WHERE category = ?').all(category);
       return customImages;
     } catch (err) {
       console.error("Error fetching custom images:", err);
@@ -3703,10 +3703,36 @@ io.on("connection", (socket) => {
     if (!room || room.gameState !== 'waiting') return;
 
     const categoryImages = getCategoryImages(room.category);
-    const shuffled = [...categoryImages].sort(() => 0.5 - Math.random());
     
+    // Priority logic: images from last 3 days get 3x probability
+    const pool: any[] = [];
+    const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000);
+    
+    categoryImages.forEach((img: any) => {
+      pool.push(img);
+      if (img.timestamp && img.timestamp > threeDaysAgo) {
+        pool.push(img); // Extra chance 1
+        pool.push(img); // Extra chance 2
+      }
+    });
+
+    const shuffled = pool.length > 0 ? [...pool].sort(() => 0.5 - Math.random()) : [];
+    
+    if (shuffled.length === 0) {
+      io.to(roomId).emit("game_stopped", { reason: "لا توجد صور في هذه الفئة حالياً." });
+      rooms.delete(roomId);
+      return;
+    }
+
     room.players[0].targetImage = shuffled[0];
-    room.players[1].targetImage = shuffled[1 % shuffled.length];
+    // Ensure different image if possible
+    let secondIdx = 1 % shuffled.length;
+    if (shuffled.length > 1) {
+      while (shuffled[secondIdx].name === shuffled[0].name && secondIdx < shuffled.length - 1) {
+        secondIdx++;
+      }
+    }
+    room.players[1].targetImage = shuffled[secondIdx];
 
     // Get English translations for cheating prevention (background)
     room.players.forEach(async (p: any) => {
