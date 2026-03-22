@@ -35,7 +35,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-import { filterProfanity } from "./src/profanityFilter";
+import { filterProfanity, filterGameTerms } from "./src/profanityFilter";
 import { GoogleGenAI } from "@google/genai";
 
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy_key_to_prevent_crash" });
@@ -2234,6 +2234,13 @@ io.on("connection", (socket) => {
         return;
       }
       
+      // Safety: Unban admin if they were accidentally banned
+      if (serverPlayer.email === 'adhamsabry.co@gmail.com' && (serverPlayer.banUntil > 0 || serverPlayer.isPermanentBan)) {
+        serverPlayer.banUntil = 0;
+        serverPlayer.isPermanentBan = 0;
+        savePlayerData(serial);
+      }
+      
       let validAge = age;
       if (typeof age === 'number' && age > 80) {
         validAge = 80;
@@ -2330,6 +2337,13 @@ io.on("connection", (socket) => {
       if (!bannedPlayer) {
         socket.emit("auth_error");
         return;
+      }
+
+      // Safety: Unban admin if they were accidentally banned
+      if (bannedPlayer.email === 'adhamsabry.co@gmail.com' && (bannedPlayer.banUntil > 0 || bannedPlayer.isPermanentBan)) {
+        bannedPlayer.banUntil = 0;
+        bannedPlayer.isPermanentBan = 0;
+        savePlayerData(serial);
       }
 
       if (useToken && (bannedPlayer.tokens || 0) <= 0) {
@@ -2643,6 +2657,10 @@ io.on("connection", (socket) => {
         const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
         let filteredText = text.replace(emojiRegex, '');
         
+        // 1. Filter Game Terms (No ban for these)
+        filteredText = filterGameTerms(filteredText);
+        
+        // 2. Filter Profanity (Ban for these)
         let messageToSend = filterProfanity(filteredText);
 
         // Prevent cheating: Check if the message contains the answer for any player in the room
@@ -2936,11 +2954,21 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("ad_started", ({ roomId }) => {
+    socket.on("ad_started", ({ roomId, powerUpName }) => {
       const room = rooms.get(roomId);
       if (room) {
         if (!room.adPausedPlayers) room.adPausedPlayers = new Set();
         room.adPausedPlayers.add(socket.id);
+        
+        if (powerUpName) {
+          const sender = room.players.find((p: any) => p.id === socket.id);
+          if (sender) {
+            io.to(roomId).emit("chat_bubble", { 
+              senderId: "system", 
+              text: `يقوم ${sender.name} بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"، انتظر قليلاً.` 
+            });
+          }
+        }
       }
     });
 
