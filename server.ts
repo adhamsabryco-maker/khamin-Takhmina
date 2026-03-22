@@ -614,6 +614,7 @@ const app = express();
       id TEXT PRIMARY KEY,
       type TEXT,
       durationHours INTEGER,
+      tokenAmount INTEGER,
       expiresInDays INTEGER,
       message TEXT,
       sentAt INTEGER,
@@ -3431,42 +3432,6 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("admin_send_tokens_50_plus", (data, callback) => {
-      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
-      if (admin?.isAdmin || socket.data?.isAdmin) {
-        try {
-          const amount = parseInt(data.amount) || 0;
-          if (amount <= 0) return callback({ error: "Invalid amount" });
-
-          let count = 0;
-          
-          for (const [serial, player] of allPlayers.entries()) {
-            const level = Math.floor(Math.sqrt(player.xp / 50)) + 1;
-            if (level >= 50) {
-              player.tokens = (player.tokens || 0) + amount;
-              savePlayerData(serial);
-              count++;
-              
-              const socketId = playerSockets.get(serial);
-              if (socketId) {
-                io.to(socketId).emit('player_update', player);
-                io.to(socketId).emit('show_alert', { 
-                  message: data.message || `مبروك! لقد حصلت على ${amount} Tokens كهدية خاصة للاعبين مستوى 50+ 🎁`, 
-                  title: 'هدية خاصة!' 
-                });
-              }
-            }
-          }
-          
-          callback({ success: true, count });
-        } catch (err) {
-          console.error("Failed to send tokens:", err);
-          callback({ error: "Failed to send tokens" });
-        }
-      } else {
-        callback({ error: "Unauthorized" });
-      }
-    });
 
     socket.on("admin_set_global_reward", (rewardData, callback) => {
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
@@ -3485,8 +3450,8 @@ io.on("connection", (socket) => {
           
           // Add to history
           try {
-            db.prepare('INSERT INTO reward_history (id, type, durationHours, expiresInDays, message, sentAt, expiresAt) VALUES (?, ?, ?, ?, ?, ?, ?)')
-              .run(newReward.id, newReward.type, newReward.durationHours, Math.ceil(newReward.durationHours / 24), newReward.message, Date.now(), newReward.expiresAt);
+            db.prepare('INSERT INTO reward_history (id, type, durationHours, tokenAmount, expiresInDays, message, sentAt, expiresAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+              .run(newReward.id, newReward.type, newReward.durationHours, newReward.tokenAmount, Math.ceil(newReward.durationHours / 24), newReward.message, Date.now(), newReward.expiresAt);
           } catch (historyErr) {
             console.error("Failed to save reward history:", historyErr);
           }
@@ -3553,8 +3518,14 @@ io.on("connection", (socket) => {
       const now = Date.now();
       const remainingMs = Math.max(0, activeGlobalReward.expiresAt - now);
       
-      if (remainingMs <= 0 && activeGlobalReward.type !== 'tokens') {
+      if (remainingMs <= 0) {
         return callback({ error: "Reward expired" });
+      }
+
+      // Check level restriction for tokens
+      const level = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+      if (activeGlobalReward.type === 'tokens' && level < 50) {
+        return callback({ error: "هذه المكافأة مخصصة للاعبين مستوى 50 فما فوق فقط" });
       }
 
       // Apply reward
