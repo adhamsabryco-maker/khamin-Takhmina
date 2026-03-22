@@ -2170,7 +2170,11 @@ io.on("connection", (socket) => {
         if (activeGlobalReward && activeGlobalReward.expiresAt > Date.now()) {
           if (!player.claimedRewards) player.claimedRewards = [];
           if (!player.claimedRewards.includes(activeGlobalReward.id)) {
-            socket.emit("global_reward_available", activeGlobalReward);
+            // Only send token rewards to level 50+
+            const level = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+            if (activeGlobalReward.type !== 'tokens' || level >= 50) {
+              socket.emit("global_reward_available", activeGlobalReward);
+            }
           }
         }
 
@@ -3456,7 +3460,23 @@ io.on("connection", (socket) => {
             console.error("Failed to save reward history:", historyErr);
           }
 
-          io.emit("global_reward_available", newReward);
+          if (newReward.type === 'tokens') {
+            // Only emit to level 50+ players
+            io.sockets.sockets.forEach((s) => {
+              const serial = s.data?.serial;
+              if (serial) {
+                const player = allPlayers.get(serial);
+                if (player) {
+                  const level = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+                  if (level >= 50) {
+                    s.emit("global_reward_available", newReward);
+                  }
+                }
+              }
+            });
+          } else {
+            io.emit("global_reward_available", newReward);
+          }
           callback({ success: true, reward: newReward });
         } catch (err) {
           console.error("Failed to set global reward:", err);
