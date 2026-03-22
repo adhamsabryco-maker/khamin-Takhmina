@@ -223,7 +223,10 @@ const app = express();
   }
 
   // Dynamic manifest.json to support versioning
-  app.get("/manifest.json", (req, res) => {
+  const manifestHandler = (req: express.Request, res: express.Response) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     const version = configCache.version || '1.1.1';
     res.json({
       "name": "خمن تخمينة",
@@ -253,7 +256,10 @@ const app = express();
         }
       ]
     });
-  });
+  };
+
+  app.get("/manifest.json", manifestHandler);
+  app.get("/manifest.webmanifest", manifestHandler);
 
   app.post("/api/config", (req, res) => {
     console.log('[API] Received config update:', req.body);
@@ -4092,7 +4098,7 @@ io.on("connection", (socket) => {
   } else {
     app.use(express.static(path.join(__dirname, "dist"), {
       setHeaders: (res, path) => {
-        if (path.endsWith('.html') || path.endsWith('sw.js') || path.endsWith('manifest.webmanifest') || path.endsWith('icon.svg')) {
+        if (path.endsWith('.html') || path.endsWith('sw.js') || path.endsWith('manifest.webmanifest') || path.endsWith('manifest.json') || path.endsWith('icon.svg')) {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
           res.setHeader('Pragma', 'no-cache');
           res.setHeader('Expires', '0');
@@ -4101,7 +4107,16 @@ io.on("connection", (socket) => {
     }));
     app.get("*", (req, res) => {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+      const indexPath = path.join(__dirname, "dist", "index.html");
+      if (fs.existsSync(indexPath)) {
+        let content = fs.readFileSync(indexPath, 'utf-8');
+        const version = configCache.version || '1.1.1';
+        content = content.replace(/\{\{VERSION\}\}/g, version);
+        res.send(content);
+      } else {
+        // Fallback for development if dist doesn't exist yet
+        res.status(404).send("Application not built yet. Please wait.");
+      }
     });
   }
 
