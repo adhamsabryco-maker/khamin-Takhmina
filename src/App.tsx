@@ -7628,14 +7628,14 @@ export default function App() {
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[1].name)}</div>
                       <div className="w-full rank-2-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
-                        <div className="text-[8px] md:text-[9px] font-black text-black/60 bg-white/30 px-2 py-0.5 rounded-full border border-black/5">
+                        <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5">
                           Lvl {topPlayers[1].level || getLevel(topPlayers[1].xp || 0)}
                         </div>
-                        <div className="text-[8px] md:text-[9px] font-black text-black/60 bg-white/30 px-2 py-0.5 rounded-full border border-black/5 flex items-center gap-1">
+                        <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5 flex items-center gap-1">
                           <Trophy className="w-2 h-2" />
                           {topPlayers[1].wins || 0} فوز
                         </div>
-                        <div className="text-[8px] md:text-[9px] font-black text-black/60 bg-white/30 px-2 py-0.5 rounded-full border border-black/5">
+                        <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5">
                           {topPlayers[1].streak || 0} 🔥
                         </div>
                       </div>
@@ -7655,14 +7655,14 @@ export default function App() {
                       </div>
                       <div className="text-xs md:text-sm font-black text-main truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{truncateName(topPlayers[0].name)}</div>
                       <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-2">
-                        <div className="text-[9px] md:text-xs font-black text-black/70 bg-white/40 px-3 py-1 rounded-full border border-black/10">
+                        <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1 ">
                           Lvl {topPlayers[0].level || getLevel(topPlayers[0].xp || 0)}
                         </div>
-                        <div className="text-[9px] md:text-xs font-black text-black/70 bg-white/40 px-3 py-1 rounded-full border border-black/10 flex items-center gap-1">
+                        <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1 flex items-center gap-1">
                           <Trophy className="w-3 h-3" />
                           {topPlayers[0].wins || 0} فوز
                         </div>
-                        <div className="text-[9px] md:text-xs font-black text-black/70 bg-white/40 px-3 py-1 rounded-full border border-black/10">
+                        <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1">
                           {topPlayers[0].streak || 0} 🔥
                         </div>
                       </div>
@@ -7679,15 +7679,15 @@ export default function App() {
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[2].name)}</div>
-                      <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5">
-                        <div className="text-[8px] md:text-[9px] font-black text-white/80 bg-black/20 px-2 py-0.5 rounded-full border border-white/10">
+                      <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.2">
+                        <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                           Lvl {topPlayers[2].level || getLevel(topPlayers[2].xp || 0)}
                         </div>
-                        <div className="text-[8px] md:text-[9px] font-black text-white/80 bg-black/20 px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1">
+                        <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center gap-1">
                           <Trophy className="w-2 h-2" />
                           {topPlayers[2].wins || 0} فوز
                         </div>
-                        <div className="text-[8px] md:text-[9px] font-black text-white/80 bg-black/20 px-2 py-0.5 rounded-full border border-white/10">
+                        <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                           {topPlayers[2].streak || 0} 🔥
                         </div>
                       </div>
