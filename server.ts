@@ -2614,26 +2614,46 @@ io.on("connection", (socket) => {
 
         // Prevent cheating: Check if the message contains the answer for any player in the room
         let isCheating = false;
-        room.players.forEach((p: any) => {
-          if (p.targetImage && p.targetImage.name) {
-            const normalizedAnswer = normalizeEgyptian(p.targetImage.name).toLowerCase();
-            const normalizedText = normalizeEgyptian(filteredText).toLowerCase();
-            
-            // Block Arabic answer
-            if (normalizedAnswer.length >= 2 && normalizedText.includes(normalizedAnswer)) {
-              isCheating = true;
-            }
+        
+        if (sender) {
+          if (!sender.chatBuffer) sender.chatBuffer = "";
+          if (!sender.engChatBuffer) sender.engChatBuffer = "";
+          
+          const normalizedText = normalizeEgyptian(filteredText).toLowerCase();
+          const textNoSpaces = normalizedText.replace(/\s+/g, '');
+          const engTextNoSpaces = filteredText.toLowerCase().replace(/\s+/g, '');
+          
+          sender.chatBuffer += textNoSpaces;
+          if (sender.chatBuffer.length > 50) sender.chatBuffer = sender.chatBuffer.slice(-50);
+          
+          sender.engChatBuffer += engTextNoSpaces;
+          if (sender.engChatBuffer.length > 50) sender.engChatBuffer = sender.engChatBuffer.slice(-50);
+          
+          room.players.forEach((p: any) => {
+            if (p.targetImage && p.targetImage.name) {
+              const normalizedAnswer = normalizeEgyptian(p.targetImage.name).toLowerCase();
+              const answerNoSpaces = normalizedAnswer.replace(/\s+/g, '');
+              
+              // Block Arabic answer
+              if (answerNoSpaces.length >= 2) {
+                if (textNoSpaces.includes(answerNoSpaces) || sender.chatBuffer.includes(answerNoSpaces)) {
+                  isCheating = true;
+                }
+              }
 
-            // Block English answer if translation is available
-            if (p.targetImage.englishName) {
-              const engAnswer = p.targetImage.englishName.toLowerCase();
-              const engText = filteredText.toLowerCase();
-              if (engAnswer.length >= 3 && engText.includes(engAnswer)) {
-                isCheating = true;
+              // Block English answer if translation is available
+              if (p.targetImage.englishName) {
+                const engAnswer = p.targetImage.englishName.toLowerCase();
+                const engAnswerNoSpaces = engAnswer.replace(/\s+/g, '');
+                if (engAnswerNoSpaces.length >= 3) {
+                  if (engTextNoSpaces.includes(engAnswerNoSpaces) || sender.engChatBuffer.includes(engAnswerNoSpaces)) {
+                    isCheating = true;
+                  }
+                }
               }
             }
-          }
-        });
+          });
+        }
 
         if (isCheating) {
           messageToSend = "(ممنوع تسريب الإجابة!)";
@@ -2748,7 +2768,7 @@ io.on("connection", (socket) => {
 
       // Helper function to deduct free use
       const deductFreeUse = () => {
-        if (hasFreeUse && !hasPro && !hasUnlockedHelpers) { // Don't deduct if they have Pro Pack or Unlocked Helpers
+        if (hasFreeUse) { // Always deduct free use if available, even for Pro users, to clear the quest icon
           dbPlayer.ownedHelpers[cardType] -= 1;
           if (dbPlayer.ownedHelpers[cardType] <= 0) {
             delete dbPlayer.ownedHelpers[cardType];
@@ -3130,6 +3150,8 @@ io.on("connection", (socket) => {
           p.timeFreezeUsed = false;
           p.wordCountUsed = false;
           p.spyLensUsed = false;
+          p.chatBuffer = "";
+          p.engChatBuffer = "";
         });
         
         // Clear any existing intervals for this room
@@ -3260,6 +3282,16 @@ io.on("connection", (socket) => {
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
       if (admin?.isAdmin || socket.data?.isAdmin) {
         io.emit("system_announcement", message);
+        callback({ success: true });
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_force_refresh", (callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        io.emit("force_refresh");
         callback({ success: true });
       } else {
         callback({ error: "Unauthorized" });
@@ -3757,6 +3789,10 @@ io.on("connection", (socket) => {
     room.players[1].hintCount = 0;
     room.players[0].quickGuessUsed = false;
     room.players[1].quickGuessUsed = false;
+    room.players[0].chatBuffer = "";
+    room.players[1].chatBuffer = "";
+    room.players[0].engChatBuffer = "";
+    room.players[1].engChatBuffer = "";
     
     room.gameState = "discussion";
     room.timer = 600; // 10 minutes
@@ -3921,12 +3957,17 @@ io.on("connection", (socket) => {
 
       // Update allPlayers leaderboard
       room.players.forEach((p: any) => {
+        if (p.isBot) return; // Skip bots
+        
         // Find player by serial if we had it
         const player = allPlayers.get(p.serial || "");
         if (player) {
           player.xp = p.xp;
           player.level = getLevel(p.xp);
           player.wins = p.wins || 0;
+          
+          // Clear ownedHelpers after the match ends (single use per match)
+          player.ownedHelpers = {};
           
           // Deduct token logic:
           // Always deduct if useToken was true, regardless of win/loss/level
@@ -3939,6 +3980,21 @@ io.on("connection", (socket) => {
           }
           
           savePlayerData(player.serial);
+          
+          // Emit updated data to the player
+          for (const [socketId, s] of io.sockets.sockets) {
+            if (s.data?.serial === player.serial) {
+              io.to(socketId).emit("player_data_update", { 
+                serial: player.serial, 
+                ownedHelpers: player.ownedHelpers,
+                xp: player.xp,
+                level: player.level,
+                wins: player.wins,
+                tokens: player.tokens
+              });
+              break;
+            }
+          }
         } else {
           // Fallback to name search
           for (const [serial, data] of allPlayers.entries()) {
@@ -3946,6 +4002,9 @@ io.on("connection", (socket) => {
               data.xp = p.xp;
               data.level = getLevel(p.xp);
               data.wins = p.wins || 0;
+              
+              // Clear ownedHelpers after the match ends (single use per match)
+              data.ownedHelpers = {};
               
               if (p.useToken && (data.tokens || 0) > 0) {
                 data.tokens = (data.tokens || 0) - 1;
@@ -3956,6 +4015,21 @@ io.on("connection", (socket) => {
               }
               
               savePlayerData(serial);
+              
+              // Emit updated data to the player
+              for (const [socketId, s] of io.sockets.sockets) {
+                if (s.data?.serial === serial) {
+                  io.to(socketId).emit("player_data_update", { 
+                    serial: serial, 
+                    ownedHelpers: data.ownedHelpers,
+                    xp: data.xp,
+                    level: data.level,
+                    wins: data.wins,
+                    tokens: data.tokens
+                  });
+                  break;
+                }
+              }
               break;
             }
           }
