@@ -2620,8 +2620,9 @@ io.on("connection", (socket) => {
           if (!sender.engChatBuffer) sender.engChatBuffer = "";
           
           const normalizedText = normalizeEgyptian(filteredText).toLowerCase();
-          const textNoSpaces = normalizedText.replace(/\s+/g, '');
-          const engTextNoSpaces = filteredText.toLowerCase().replace(/\s+/g, '');
+          // Aggressively remove all non-alphanumeric characters (including Tatweel/Kashida) to catch "ك#ش % ر . ي" or "كــــشــــري"
+          const textNoSpaces = normalizedText.replace(/[^\u0621-\u064Aa-zA-Z0-9]/g, '');
+          const engTextNoSpaces = filteredText.toLowerCase().replace(/[^a-z0-9]/g, '');
           
           sender.chatBuffer += textNoSpaces;
           if (sender.chatBuffer.length > 50) sender.chatBuffer = sender.chatBuffer.slice(-50);
@@ -2632,7 +2633,7 @@ io.on("connection", (socket) => {
           room.players.forEach((p: any) => {
             if (p.targetImage && p.targetImage.name) {
               const normalizedAnswer = normalizeEgyptian(p.targetImage.name).toLowerCase();
-              const answerNoSpaces = normalizedAnswer.replace(/\s+/g, '');
+              const answerNoSpaces = normalizedAnswer.replace(/[^\u0621-\u064Aa-zA-Z0-9]/g, '');
               
               // Block Arabic answer
               if (answerNoSpaces.length >= 2) {
@@ -2644,7 +2645,7 @@ io.on("connection", (socket) => {
               // Block English answer if translation is available
               if (p.targetImage.englishName) {
                 const engAnswer = p.targetImage.englishName.toLowerCase();
-                const engAnswerNoSpaces = engAnswer.replace(/\s+/g, '');
+                const engAnswerNoSpaces = engAnswer.replace(/[^a-z0-9]/g, '');
                 if (engAnswerNoSpaces.length >= 3) {
                   if (engTextNoSpaces.includes(engAnswerNoSpaces) || sender.engChatBuffer.includes(engAnswerNoSpaces)) {
                     isCheating = true;
