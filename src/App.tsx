@@ -7243,20 +7243,27 @@ export default function App() {
             <span className="text-xs font-bold opacity-90">يرجى التحديث للحصول على أفضل تجربة.</span>
           </div>
           <button
-            onClick={() => {
-              if (needRefresh && updateServiceWorker) {
-                updateServiceWorker(true);
-              } else {
+            onClick={async () => {
+              try {
+                // Unregister all Service Workers
                 if ('serviceWorker' in navigator) {
-                  navigator.serviceWorker.getRegistrations().then((registrations) => {
-                    for (let registration of registrations) {
-                      registration.unregister();
-                    }
-                    window.location.reload();
-                  });
-                } else {
-                  window.location.reload();
+                  const registrations = await navigator.serviceWorker.getRegistrations();
+                  for (const registration of registrations) {
+                    await registration.unregister();
+                  }
                 }
+                
+                // Clear all Caches
+                if ('caches' in window) {
+                  const cacheNames = await caches.keys();
+                  await Promise.all(cacheNames.map(name => caches.delete(name)));
+                }
+                
+                // Final Hard Reload
+                window.location.reload();
+              } catch (error) {
+                console.error('Update process failed:', error);
+                window.location.reload();
               }
             }}
             className="bg-white text-accent-blue px-4 py-2 rounded-xl font-black text-sm hover:bg-gray-100 transition-colors whitespace-nowrap shadow-sm"
@@ -9231,16 +9238,24 @@ export default function App() {
                   </button>
                 )}
                 <button 
-                  onClick={() => {
-                    if (needsUpdate) {
-                      if ('serviceWorker' in navigator) {
-                        navigator.serviceWorker.getRegistrations().then((registrations) => {
+                  onClick={async () => {
+                    if (needsUpdate || needRefresh) {
+                      try {
+                        if ('serviceWorker' in navigator) {
+                          const registrations = await navigator.serviceWorker.getRegistrations();
                           for (let registration of registrations) {
-                            registration.unregister();
+                            await registration.unregister();
                           }
-                          window.location.reload();
-                        });
-                      } else {
+                        }
+
+                        if ('caches' in window) {
+                          const cacheNames = await caches.keys();
+                          await Promise.all(cacheNames.map(name => caches.delete(name)));
+                        }
+
+                        window.location.reload();
+                      } catch (error) {
+                        console.error('Manual update failed:', error);
                         window.location.reload();
                       }
                       return;
