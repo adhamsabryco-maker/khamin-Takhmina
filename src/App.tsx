@@ -6189,24 +6189,9 @@ export default function App() {
                               >
                                 <option value="pro_package">باقة المحترفين (بدون إعلانات)</option>
                                 <option value="unlock_helpers">فتح كل وسائل المساعدة</option>
-                                <option value="tokens">توزيع Tokens مجانية</option>
                               </select>
                             </div>
 
-                            {adminRewardType === 'tokens' && (
-                              <div>
-                                <label className="block text-brown-dark font-bold mb-2">عدد الـ Tokens</label>
-                                <input 
-                                  type="number" 
-                                  min="1"
-                                  value={adminTokenRewardAmount}
-                                  onChange={(e) => setAdminTokenRewardAmount(parseInt(e.target.value) || 1)}
-                                  className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-yellow outline-none"
-                                  dir="rtl"
-                                />
-                              </div>
-                            )}
-                            
                             <div>
                               <label className="block text-brown-dark font-bold mb-2">مدة الصلاحية (بالساعات)</label>
                               <input 
@@ -6325,23 +6310,36 @@ export default function App() {
                         <div className="box-game p-6 shadow-sm border-4 border-accent-blue">
                           <h3 className="text-xl font-black mb-4 flex items-center gap-2">
                             <Coins className="w-6 h-6 text-accent-yellow" />
-                            إرسال Tokens للاعبين (مستوى 50+)
+                            توزيع Tokens للاعبين (مستوى 50+)
                           </h3>
                           <p className="text-brown-muted font-bold mb-6">
-                            هذه المكافأة سيتم إرسالها فوراً لجميع اللاعبين الذين وصلوا للمستوى 50 أو أعلى.
+                            هذه المكافأة مخصصة فقط للاعبين الذين وصلوا للمستوى 50 أو أعلى. ستكون متاحة للمطالبة بها خلال فترة زمنية محددة.
                           </p>
                           
                           <div className="space-y-4 mb-6">
-                            <div>
-                              <label className="block text-brown-dark font-bold mb-2">عدد الـ Tokens</label>
-                              <input 
-                                type="number" 
-                                min="1"
-                                value={adminTokenRewardAmount}
-                                onChange={(e) => setAdminTokenRewardAmount(parseInt(e.target.value) || 0)}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-blue outline-none"
-                                dir="rtl"
-                              />
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-brown-dark font-bold mb-2">عدد الـ Tokens</label>
+                                <input 
+                                  type="number" 
+                                  min="1"
+                                  value={adminTokenRewardAmount}
+                                  onChange={(e) => setAdminTokenRewardAmount(parseInt(e.target.value) || 0)}
+                                  className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-blue outline-none"
+                                  dir="rtl"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-brown-dark font-bold mb-2">مدة توافر العرض (ساعة)</label>
+                                <input 
+                                  type="number" 
+                                  min="1"
+                                  value={adminRewardDuration}
+                                  onChange={(e) => setAdminRewardDuration(parseInt(e.target.value) || 1)}
+                                  className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-blue outline-none"
+                                  dir="rtl"
+                                />
+                              </div>
                             </div>
 
                             <div>
@@ -6358,7 +6356,7 @@ export default function App() {
 
                           <button
                             onClick={() => {
-                              if (!adminTokenRewardMessage.trim() || adminTokenRewardAmount <= 0) return;
+                              if (!adminTokenRewardMessage.trim() || adminTokenRewardAmount <= 0 || adminRewardDuration <= 0) return;
                               
                               if (!confirmTokenSend) {
                                 setConfirmTokenSend(true);
@@ -6366,21 +6364,27 @@ export default function App() {
                                 return;
                               }
 
-                              socket?.emit('admin_send_tokens_50_plus', {
-                                amount: adminTokenRewardAmount,
+                              socket?.emit('admin_set_global_reward', {
+                                type: 'tokens',
+                                durationHours: adminRewardDuration,
+                                tokenAmount: adminTokenRewardAmount,
                                 message: adminTokenRewardMessage
                               }, (res: any) => {
                                 setConfirmTokenSend(false);
                                 if (res.success) {
-                                  showAlert(`تم إرسال المكافأة بنجاح لـ ${res.count} لاعب!`, 'نجاح');
+                                  showAlert(`تم تفعيل مكافأة الـ Tokens بنجاح!`, 'نجاح');
+                                  // Refresh history
+                                  socket?.emit('admin_get_reward_history', (history: any[]) => {
+                                    setRewardHistory(history);
+                                  });
                                 } else {
-                                  showAlert(res.error || 'فشل إرسال المكافأة', 'خطأ');
+                                  showAlert(res.error || 'فشل تفعيل المكافأة', 'خطأ');
                                 }
                               });
                             }}
                             className={`w-full py-4 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1 ${confirmTokenSend ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-accent-blue hover:bg-blue-600'}`}
                           >
-                            {confirmTokenSend ? `تأكيد إرسال ${adminTokenRewardAmount} Tokens؟` : 'إرسال الـ Tokens الآن 🪙'}
+                            {confirmTokenSend ? `تأكيد تفعيل ${adminTokenRewardAmount} Tokens لمدة ${adminRewardDuration} ساعة؟` : 'تفعيل مكافأة الـ Tokens الآن 🪙'}
                           </button>
                         </div>
                       </div>
