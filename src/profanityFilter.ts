@@ -156,17 +156,14 @@ const arabicWords = [
   'letter count', 'word count',
 ];
 
-function normalizeArabic(text: string): string {
-  if (!text) return "";
-  return text
-    .replace(/[أإآ]/g, "ا")
-    .replace(/ة/g, "ه")
-    .replace(/ى/g, "ي")
-    .replace(/ؤ/g, "و")
-    .replace(/ئ/g, "ي")
-    .replace(/لآ/g, "لا")
-    .replace(/[ضظط]/g, "ظ") // Normalize similar sounding letters for better matching
-    .replace(/[ًٌٍَُِّ]/g, ""); // Remove diacritics
+function getCharClass(char: string): string {
+  // Normalize common Arabic characters to catch variations
+  if (/[اأإآ]/.test(char)) return '[اأإآ]';
+  if (/[هة]/.test(char)) return '[هة]';
+  if (/[يىئ]/.test(char)) return '[يىئ]';
+  if (/[وؤ]/.test(char)) return '[وؤ]';
+  // Escape special regex characters
+  return char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function filterArabic(text: string): string {
@@ -176,25 +173,33 @@ function filterArabic(text: string): string {
   const sortedWords = [...arabicWords].sort((a, b) => b.length - a.length);
   
   sortedWords.forEach(word => {
-    // Escape special characters in the word
-    const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Remove spaces from the bad word itself to handle it as a continuous sequence
+    const cleanWord = word.replace(/\s+/g, '');
+    const chars = cleanWord.split('');
     
-    // Use word boundaries (\b) for English/Franco words.
-    // For Arabic words, \b doesn't always work perfectly because of how Unicode word boundaries are defined in JS.
-    // Instead, we can use a lookaround to ensure the word isn't part of a larger Arabic word.
-    // (?<![\u0600-\u06FF]) means "not preceded by an Arabic letter"
-    // (?![\u0600-\u06FF]) means "not followed by an Arabic letter"
+    // Allow spaces, punctuation, symbols, digits, and underscores between letters
+    // \p{P} = Punctuation, \p{S} = Symbols, \p{Z} = Separators (spaces)
+    const separator = '[\\s\\p{P}\\p{S}\\p{Z}\\d_]*';
     
-    const isArabic = /[\u0600-\u06FF]/.test(word);
+    const pattern = chars.map(char => {
+      return `${getCharClass(char)}+`;
+    }).join(separator);
+    
+    const isArabic = /[\u0600-\u06FF]/.test(cleanWord);
     
     let regex;
-    if (isArabic) {
-      regex = new RegExp(`(?<![\\u0600-\\u06FF])${escapedWord}(?![\\u0600-\\u06FF])`, 'gi');
-    } else {
-      regex = new RegExp(`\\b${escapedWord}\\b`, 'gi');
+    try {
+      if (isArabic) {
+        // (?<![\u0600-\u06FF]) means "not preceded by an Arabic letter"
+        // (?![\u0600-\u06FF]) means "not followed by an Arabic letter"
+        regex = new RegExp(`(?<![\\u0600-\\u06FF])${pattern}(?![\\u0600-\\u06FF])`, 'giu');
+      } else {
+        regex = new RegExp(`\\b${pattern}\\b`, 'giu');
+      }
+      filteredText = filteredText.replace(regex, '*'.repeat(word.length));
+    } catch (e) {
+      console.error("Regex error for word:", word, e);
     }
-    
-    filteredText = filteredText.replace(regex, '*'.repeat(word.length));
   });
   
   return filteredText;

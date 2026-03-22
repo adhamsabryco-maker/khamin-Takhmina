@@ -452,6 +452,8 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [pendingWelcomeModal, setPendingWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [blockedPlayers, setBlockedPlayers] = useState<{serial: string, name: string}[]>([]);
+  const [showBlockedPlayers, setShowBlockedPlayers] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [complaintText, setComplaintText] = useState("");
   const [canSendComplaint, setCanSendComplaint] = useState(true);
@@ -3147,6 +3149,21 @@ export default function App() {
     }
   };
 
+  const handleBlockPlayer = () => {
+    if (opponent && socket && room) {
+      socket.emit('block_player', { roomId: room.id, blockedPlayerId: opponent.id }, (res: any) => {
+        if (res && res.success) {
+          setError('تم حظر اللاعب بنجاح. لن تقابله مرة أخرى.');
+          // Optionally leave the room or just let the user know
+        } else {
+          setError('حدث خطأ أثناء حظر اللاعب.');
+        }
+        setTimeout(() => setError(''), 5000);
+      });
+      setShowReportModal(false);
+    }
+  };
+
   const handleStartGame = () => {
     playSound('clickOpen');
     socket?.emit('request_match_intro', { roomId });
@@ -4651,6 +4668,25 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* Blocked Players Status */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between flex-row-reverse">
+                    <label className="text-sm font-black text-brown-muted">قائمة الحظر</label>
+                  </div>
+                  <button
+                    onClick={() => {
+                      socket?.emit('get_blocked_players', { serial: playerSerial }, (list: any) => {
+                        setBlockedPlayers(list);
+                        setShowBlockedPlayers(true);
+                      });
+                    }}
+                    className="w-full btn-game bg-gray-200 border-gray-300 text-gray-700 hover:bg-gray-300 py-2 text-sm flex items-center justify-center gap-2"
+                  >
+                    <Ban className="w-4 h-4" />
+                    عرض اللاعبين المحظورين
+                  </button>
+                </div>
               </div>
 
               <button 
@@ -4709,6 +4745,53 @@ export default function App() {
 
 
 
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Blocked Players Modal */}
+        {showBlockedPlayers && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[6000] flex items-center justify-center p-4"
+            onClick={() => setShowBlockedPlayers(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="card-game p-4 w-full max-w-md space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center flex-row-reverse">
+                <h2 className="text-2xl font-black text-main">قائمة الحظر</h2>
+                <button onClick={() => setShowBlockedPlayers(false)} className="text-brown-light hover:text-red-500"><X className="w-6 h-6" /></button>
+              </div>
+
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                {blockedPlayers.length === 0 ? (
+                  <p className="text-center text-brown-muted font-black py-4">لا يوجد لاعبين محظورين</p>
+                ) : (
+                  blockedPlayers.map((bp) => (
+                    <div key={bp.serial} className="flex items-center justify-between bg-white p-3 rounded-xl border-2 border-gray-200 flex-row-reverse">
+                      <span className="font-black text-main">{bp.name}</span>
+                      <button
+                        onClick={() => {
+                          socket?.emit('unblock_player', { serial: playerSerial, blockedSerial: bp.serial }, (res: any) => {
+                            if (res.success) {
+                              setBlockedPlayers(prev => prev.filter(p => p.serial !== bp.serial));
+                            }
+                          });
+                        }}
+                        className="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-xs font-black transition-colors"
+                      >
+                        إلغاء الحظر
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -6871,6 +6954,18 @@ export default function App() {
                     استخدام الغش
                   </button>
                 </div>
+                
+                <div className="border-t border-gray-200 pt-4 mb-4">
+                  <p className="text-sm text-gray-500 mb-2">لن تتمكن من اللعب مع هذا اللاعب مرة أخرى</p>
+                  <button 
+                    onClick={() => handleBlockPlayer()}
+                    className="w-full btn-game btn-danger bg-red-500 border-red-600 text-white hover:bg-red-600 py-2 text-lg flex items-center justify-center gap-2"
+                  >
+                    <Ban className="w-5 h-5" />
+                    حظر اللاعب نهائياً
+                  </button>
+                </div>
+
                 <button 
                   onClick={() => { playSound('clickClose'); setShowReportModal(false); }}
                   className="text-lg font-black text-brown-light hover:text-brown-muted transition-colors"
@@ -7532,16 +7627,18 @@ export default function App() {
                         <div className="absolute -top-2 -right-2 bg-gray-300 text-brown-muted w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[1].name)}</div>
-                      <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
-                        <div className="text-[9px] font-bold text-brown-muted bg-gray-100 px-2 py-0.5 rounded-full">
+                      <div className="w-full rank-2-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
+                        <div className="text-[8px] md:text-[9px] font-black text-black/60 bg-white/30 px-2 py-0.5 rounded-full border border-black/5">
                           Lvl {topPlayers[1].level || getLevel(topPlayers[1].xp || 0)}
                         </div>
-                        <div className="text-[9px] font-bold text-accent-green bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Trophy className="w-2.5 h-2.5" />
+                        <div className="text-[8px] md:text-[9px] font-black text-black/60 bg-white/30 px-2 py-0.5 rounded-full border border-black/5 flex items-center gap-1">
+                          <Trophy className="w-2 h-2" />
                           {topPlayers[1].wins || 0} فوز
                         </div>
+                        <div className="text-[8px] md:text-[9px] font-black text-black/60 bg-white/30 px-2 py-0.5 rounded-full border border-black/5">
+                          {topPlayers[1].streak || 0} 🔥
+                        </div>
                       </div>
-                      <div className="w-full rank-2-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4"></div>
                     </div>
                   )}
 
@@ -7557,16 +7654,18 @@ export default function App() {
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-[60] animate-bounce">1</div>
                       </div>
                       <div className="text-xs md:text-sm font-black text-main truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{truncateName(topPlayers[0].name)}</div>
-                      <div className="flex flex-col items-center gap-1 mt-1 mb-1">
-                        <div className="text-[10px] font-bold text-brown-muted bg-yellow-100 px-3 py-1 rounded-full">
+                      <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-2">
+                        <div className="text-[9px] md:text-xs font-black text-black/70 bg-white/40 px-3 py-1 rounded-full border border-black/10">
                           Lvl {topPlayers[0].level || getLevel(topPlayers[0].xp || 0)}
                         </div>
-                        <div className="text-[10px] font-bold text-accent-green bg-green-50 px-3 py-1 rounded-full flex items-center gap-1">
+                        <div className="text-[9px] md:text-xs font-black text-black/70 bg-white/40 px-3 py-1 rounded-full border border-black/10 flex items-center gap-1">
                           <Trophy className="w-3 h-3" />
                           {topPlayers[0].wins || 0} فوز
                         </div>
+                        <div className="text-[9px] md:text-xs font-black text-black/70 bg-white/40 px-3 py-1 rounded-full border border-black/10">
+                          {topPlayers[0].streak || 0} 🔥
+                        </div>
                       </div>
-                      <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4"></div>
                     </div>
                   )}
 
@@ -7580,16 +7679,18 @@ export default function App() {
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[2].name)}</div>
-                      <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
-                        <div className="text-[9px] font-bold text-brown-muted bg-gray-100 px-2 py-0.5 rounded-full">
+                      <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5">
+                        <div className="text-[8px] md:text-[9px] font-black text-white/80 bg-black/20 px-2 py-0.5 rounded-full border border-white/10">
                           Lvl {topPlayers[2].level || getLevel(topPlayers[2].xp || 0)}
                         </div>
-                        <div className="text-[9px] font-bold text-accent-green bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Trophy className="w-2.5 h-2.5" />
+                        <div className="text-[8px] md:text-[9px] font-black text-white/80 bg-black/20 px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1">
+                          <Trophy className="w-2 h-2" />
                           {topPlayers[2].wins || 0} فوز
                         </div>
+                        <div className="text-[8px] md:text-[9px] font-black text-white/80 bg-black/20 px-2 py-0.5 rounded-full border border-white/10">
+                          {topPlayers[2].streak || 0} 🔥
+                        </div>
                       </div>
-                      <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4"></div>
                     </div>
                   )}
                 </div>
@@ -7684,20 +7785,16 @@ export default function App() {
 
               <div className="flex items-center gap-2">
                 <button 
-                  className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-not-allowed touch-manipulation relative overflow-hidden"
-                  disabled
+                  onClick={handleRandomMatch}
+                  className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-pointer touch-manipulation"
                 >
-                  <div className="absolute inset-0 bg-gray-200/80 backdrop-blur-sm flex items-center justify-center gap-2 z-10">
-                    <Lock className="w-6 h-6 text-black" />
-                    <span className="text-black font-black text-xl">قريباً</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 opacity-50" dir="ltr">
+                  <div className="flex items-center gap-1.5" dir="ltr">
                     <Users className="w-5 h-5 md:w-6 md:h-6 text-[#00FF00] animate-pulse" />
                     <span className="text-[#00FF00] text-lg md:text-xl font-black">
                       {onlineCount > 100 ? '100+' : onlineCount}
                     </span>
                   </div>
-                  <span className="opacity-50">بحث عشوائي</span>
+                  <span>بحث عشوائي</span>
                 </button>
 
                 <div className="flex flex-col box-game p-2 h-16 relative overflow-hidden">
@@ -7826,7 +7923,7 @@ export default function App() {
                             <span className="text-brown-light">•</span>
                             <span className="text-green-600">{player.wins} فوز</span>
                             <span className="text-brown-light">•</span>
-                            <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="rtl">{streak} 🔥</span>
+                            <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="rtl">{player.streak || 0} 🔥</span>
                           </div>
                         </div>
 
@@ -8214,7 +8311,7 @@ export default function App() {
 
                 {/* WhatsApp Style Chat Box - Hidden when consensus reached or waiting for opponent */}
                 {!consensusReached && room.players.length >= 2 && (
-                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-54 mt-4 relative">
+                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-44 mt-4 relative">
                     {isMutedByOpponent && (
                       <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                         <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -8378,7 +8475,7 @@ export default function App() {
                     exit={{ scale: 0.9, opacity: 0 }}
                     className="relative z-10 flex flex-col items-center w-full"
                   >
-                    <div className="relative w-full max-w-[13rem] md:max-w-[16rem] aspect-square bg-white p-1.5 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-2 border-white flex items-center justify-center mb-4 md:mb-0">
+                    <div className="relative w-full max-w-[11rem] md:max-w-[14rem] aspect-square bg-white p-1.5 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-2 border-white flex items-center justify-center mb-4 md:mb-0">
                       <img 
                         src={opponent?.targetImage?.image} 
                         className={`w-full h-full object-cover rounded-xl ${funnyFilter === opponent?.id ? 'invert sepia hue-rotate-90 scale-110' : ''}`}
@@ -8422,7 +8519,7 @@ export default function App() {
 
               {/* Gameplay Chat Box - Moved to Center */}
               {room.gameState !== 'waiting' && room.gameState !== 'finished' && room.gameState !== 'guessing' && (
-                <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-54 md:h-70 mt-4 z-20 relative">
+                <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-46 md:h-60 mt-4 z-20 relative">
                   {isMutedByOpponent && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                       <Lock className="w-12 h-12 mb-2 text-red-400" />
