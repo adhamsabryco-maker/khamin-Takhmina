@@ -3474,10 +3474,11 @@ io.on("connection", (socket) => {
         try {
           const newReward = {
             id: 'reward_' + Date.now(),
-            type: rewardData.type, // 'pro_package' or 'unlock_helpers'
+            type: rewardData.type, // 'pro_package', 'unlock_helpers', or 'tokens'
             durationHours: rewardData.durationHours,
+            tokenAmount: rewardData.tokenAmount || 0,
             message: rewardData.message,
-            expiresAt: Date.now() + (rewardData.durationHours || 24) * 60 * 60 * 1000 // Reward claimable for the same duration as the reward itself by default
+            expiresAt: Date.now() + (rewardData.durationHours || 24) * 60 * 60 * 1000
           };
           activeGlobalReward = newReward;
           db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('global_reward', JSON.stringify(newReward));
@@ -3548,12 +3549,21 @@ io.on("connection", (socket) => {
         return callback({ error: "Already claimed" });
       }
 
+      // Calculate remaining time
+      const now = Date.now();
+      const remainingMs = Math.max(0, activeGlobalReward.expiresAt - now);
+      
+      if (remainingMs <= 0 && activeGlobalReward.type !== 'tokens') {
+        return callback({ error: "Reward expired" });
+      }
+
       // Apply reward
-      const durationMs = activeGlobalReward.durationHours * 60 * 60 * 1000;
       if (activeGlobalReward.type === 'pro_package') {
-        player.proPackageExpiry = Math.max(player.proPackageExpiry || 0, Date.now()) + durationMs;
+        player.proPackageExpiry = Math.max(player.proPackageExpiry || 0, now) + remainingMs;
       } else if (activeGlobalReward.type === 'unlock_helpers') {
-        player.unlockedHelpersExpiry = Math.max(player.unlockedHelpersExpiry || 0, Date.now()) + durationMs;
+        player.unlockedHelpersExpiry = Math.max(player.unlockedHelpersExpiry || 0, now) + remainingMs;
+      } else if (activeGlobalReward.type === 'tokens') {
+        player.tokens = (player.tokens || 0) + (activeGlobalReward.tokenAmount || 0);
       }
 
       player.claimedRewards.push(activeGlobalReward.id);
