@@ -3068,8 +3068,14 @@ export default function App() {
       return;
     }
 
+    // Close confirmation modal immediately to prevent "fixed window" issue
+    setShowAdConfirmation(false);
+
+    let adTriggered = false;
+
     const startAdProcess = () => {
-      setShowAdConfirmation(false);
+      if (adTriggered) return;
+      adTriggered = true;
       
       if (roomId && isPowerUp) {
         const powerUpName = {
@@ -3111,14 +3117,42 @@ export default function App() {
       showAlert('تمت مشاهدة الإعلان بنجاح! 🎉', 'نجاح');
     };
 
+    const startMockAd = () => {
+      if (adTriggered) return;
+      console.log('Falling back to mock ad');
+      startAdProcess();
+      setShowAdModal(true);
+      setAdTimer(isPowerUp ? 5 : 15);
+
+      const timer = setInterval(() => {
+        setAdTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    };
+
     // Call real AdSense adBreak if available
     if (typeof window.adBreak === 'function') {
       console.log('Calling Google AdSense adBreak');
+      
+      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 2 seconds, use mock ad
+      const adTimeout = setTimeout(() => {
+        if (!adTriggered) {
+          console.warn('AdSense adBreak timed out, using mock fallback');
+          startMockAd();
+        }
+      }, 2000);
+
       window.adBreak({
         type: 'reward',
         name: isPowerUp ? `use_${activePowerUp}` : 'get_token',
         beforeAd: () => {
           console.log('AdSense: beforeAd');
+          clearTimeout(adTimeout);
           startAdProcess();
         },
         afterAd: () => {
@@ -3134,7 +3168,6 @@ export default function App() {
           if (roomId) {
             socket?.emit('ad_ended', { roomId });
           }
-          setShowAdConfirmation(false);
           setActivePowerUp(null);
         },
         adViewed: () => {
@@ -3147,20 +3180,7 @@ export default function App() {
       });
     } else {
       // Fallback to mock ad if AdSense is blocked or not loaded
-      console.log('AdSense not available, falling back to mock ad');
-      startAdProcess();
-      setShowAdModal(true);
-      setAdTimer(isPowerUp ? 5 : 15);
-
-      const timer = setInterval(() => {
-        setAdTimer((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      startMockAd();
     }
   };
 
