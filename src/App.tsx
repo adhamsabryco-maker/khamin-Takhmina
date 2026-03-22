@@ -59,7 +59,8 @@ import {
   Gift,
   Unlock,
   Coins,
-  FileText
+  FileText,
+  History
 } from 'lucide-react';
 
 const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
@@ -742,6 +743,7 @@ export default function App() {
   }, [adminSearchQuery, adminPlayerFilter]);
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
   const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors' | 'announcements' | 'rewards' | 'policies' | 'avatar_review' | 'contacts'>('players');
+  const [rewardHistory, setRewardHistory] = useState<any[]>([]);
   const [adminContacts, setAdminContacts] = useState<any[]>([]);
   const [pendingAvatars, setPendingAvatars] = useState<{ serial: string, name: string, level: number, pendingAvatar: string }[]>([]);
   const [avatarStatus, setAvatarStatus] = useState<'approved' | 'pending' | 'rejected'>('approved');
@@ -896,6 +898,14 @@ export default function App() {
     root.style.setProperty('--shop-warning-title', themeConfig.shopWarningTitle);
     root.style.setProperty('--shop-modal-bg', themeConfig.shopModalBg);
   }, [themeConfig]);
+
+  useEffect(() => {
+    if (adminTab === 'rewards' && isAdmin) {
+      socket?.emit('admin_get_reward_history', (history: any[]) => {
+        setRewardHistory(history);
+      });
+    }
+  }, [adminTab, isAdmin, socket]);
 
   const [newImage, setNewImage] = useState({ category: 'animals', name: '', data: '' });
   const [newCategory, setNewCategory] = useState({ id: '', name: '', icon: '' });
@@ -6216,6 +6226,10 @@ export default function App() {
                               }, (res: any) => {
                                 if (res.success) {
                                   showAlert('تم تعيين المكافأة بنجاح!', 'نجاح');
+                                  // Refresh history
+                                  socket?.emit('admin_get_reward_history', (history: any[]) => {
+                                    setRewardHistory(history);
+                                  });
                                 } else {
                                   showAlert(res.error || 'فشل تعيين المكافأة', 'خطأ');
                                 }
@@ -6240,6 +6254,47 @@ export default function App() {
                           >
                             إلغاء المكافأة الحالية ❌
                           </button>
+                        </div>
+
+                        <div className="box-game p-6 shadow-sm border-4 border-accent-purple">
+                          <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+                            <History className="w-6 h-6" />
+                            سجل المكافآت المرسلة
+                          </h3>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-right font-bold">
+                              <thead>
+                                <tr className="border-b-2 border-gray-100">
+                                  <th className="p-2">الرسالة</th>
+                                  <th className="p-2">النوع</th>
+                                  <th className="p-2">تاريخ الإرسال</th>
+                                  <th className="p-2">تاريخ الانتهاء</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {rewardHistory.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={4} className="p-4 text-center text-brown-muted">لا يوجد سجل مكافآت حتى الآن</td>
+                                  </tr>
+                                ) : (
+                                  rewardHistory.map((reward) => (
+                                    <tr key={reward.id} className="border-b border-gray-50 hover:bg-gray-50">
+                                      <td className="p-2 text-sm">{reward.message}</td>
+                                      <td className="p-2 text-sm">
+                                        {reward.type === 'pro_package' ? 'باقة المحترفين' : 'فتح المساعدات'}
+                                      </td>
+                                      <td className="p-2 text-xs text-brown-muted">
+                                        {new Date(reward.sentAt).toLocaleString('ar-EG')}
+                                      </td>
+                                      <td className="p-2 text-xs text-brown-muted">
+                                        {new Date(reward.expiresAt).toLocaleString('ar-EG')}
+                                      </td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
 
                         <div className="box-game p-6 shadow-sm border-4 border-accent-blue">
