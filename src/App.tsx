@@ -6202,6 +6202,9 @@ export default function App() {
                                 className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-yellow outline-none"
                                 dir="rtl"
                               />
+                              <p className="text-[10px] text-brown-muted mt-1 font-bold">
+                                * ملاحظة: هذه هي المدة التي سيحصل عليها اللاعب، وهي أيضاً المدة التي سيظل فيها العرض متاحاً للتحصيل.
+                              </p>
                             </div>
 
                             <div>
@@ -6267,14 +6270,15 @@ export default function App() {
                                 <tr className="border-b-2 border-gray-100">
                                   <th className="p-2">الرسالة</th>
                                   <th className="p-2">النوع</th>
+                                  <th className="p-2">مدة المكافأة</th>
                                   <th className="p-2">تاريخ الإرسال</th>
-                                  <th className="p-2">تاريخ الانتهاء</th>
+                                  <th className="p-2">نهاية توافر العرض</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {rewardHistory.length === 0 ? (
                                   <tr>
-                                    <td colSpan={4} className="p-4 text-center text-brown-muted">لا يوجد سجل مكافآت حتى الآن</td>
+                                    <td colSpan={5} className="p-4 text-center text-brown-muted">لا يوجد سجل مكافآت حتى الآن</td>
                                   </tr>
                                 ) : (
                                   rewardHistory.map((reward) => (
@@ -6282,6 +6286,9 @@ export default function App() {
                                       <td className="p-2 text-sm">{reward.message}</td>
                                       <td className="p-2 text-sm">
                                         {reward.type === 'pro_package' ? 'باقة المحترفين' : 'فتح المساعدات'}
+                                      </td>
+                                      <td className="p-2 text-sm text-accent-orange">
+                                        {reward.durationHours} ساعة
                                       </td>
                                       <td className="p-2 text-xs text-brown-muted">
                                         {new Date(reward.sentAt).toLocaleString('ar-EG')}
