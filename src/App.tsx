@@ -3145,13 +3145,10 @@ export default function App() {
           spy_lens: 'الجاسوس'
         }[activePowerUp || ''];
         
-        socket?.emit('send_chat', { 
-          roomId, 
-          text: `يقوم ${playerName} بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"، انتظر قليلاً.` 
-        });
-      }
-
-      if (roomId) {
+        if (roomId) {
+          socket?.emit('ad_started', { roomId, powerUpName });
+        }
+      } else if (roomId) {
         socket?.emit('ad_started', { roomId });
       }
       socket?.emit('start_ad_watch', { serial: playerSerial });
