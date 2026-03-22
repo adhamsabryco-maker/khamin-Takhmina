@@ -89,6 +89,10 @@ const arabicWords = [
   'تعبان',
   'شرقان',
   'مكنه',
+  'مزة',
+  'مز',
+  'مص',
+  'مصمصي',
   'منيوكه',
   // Game hints and cheating prevention (Arabic)
   'النصيحة', 'نصيحة', 'نصيحه', 'النصيحه',

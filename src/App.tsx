@@ -86,6 +86,14 @@ import Cropper from 'react-easy-crop';
 import { Howl, Howler } from 'howler';
 import { filterProfanity } from './profanityFilter';
 
+declare global {
+  interface Window {
+    adsbygoogle: any[];
+    adBreak: (o: any) => void;
+    adConfig: (o: any) => void;
+  }
+}
+
 // Audio URLs
 const SOUNDS = {
   hammer: '/sounds/hammer.mp3',
@@ -3044,33 +3052,116 @@ export default function App() {
 
   const handleWatchAd = () => {
     console.log('handleWatchAd called. Current adStatus:', adStatus);
-    if (getLevel(xp) < 50) {
+    
+    const isPowerUp = !!activePowerUp;
+
+    // Level check only for token rewards (from shop)
+    if (!isPowerUp && getLevel(xp) < 50) {
       showAlert('يجب أن تصل للمستوى 50 لتتمكن من مشاهدة الإعلانات!', 'تنبيه');
       return;
     }
-    if (!adStatus.canWatch) {
+    
+    // Daily limit check only for token rewards
+    if (!isPowerUp && !adStatus.canWatch) {
       console.log('Cannot watch ad: limit reached or level too low');
       showAlert('انتهت المحاولات لهذا اليوم!', 'تنبيه');
       return;
     }
-    
-    console.log('Setting showAdModal to true');
-    setShowAdModal(true);
-    if (roomId) {
-      socket?.emit('ad_started', { roomId });
-    }
-    socket?.emit('start_ad_watch', { serial: playerSerial });
-    setAdTimer(15);
 
-    const timer = setInterval(() => {
-      setAdTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
+    const startAdProcess = () => {
+      setShowAdConfirmation(false);
+      
+      if (roomId && isPowerUp) {
+        const powerUpName = {
+          quick_guess: 'تخمين سريع',
+          hint: 'نصيحة',
+          word_length: 'كاشف الحروف',
+          word_count: 'عدد الكلمات',
+          time_freeze: 'تجميد الوقت',
+          spy_lens: 'الجاسوس'
+        }[activePowerUp || ''];
+        
+        socket?.emit('send_chat', { 
+          roomId, 
+          text: `يقوم ${playerName} بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"، انتظر قليلاً.` 
+        });
+      }
+
+      if (roomId) {
+        socket?.emit('ad_started', { roomId });
+      }
+      socket?.emit('start_ad_watch', { serial: playerSerial });
+    };
+
+    const onAdComplete = () => {
+      if (isPowerUp) {
+        if (!readyPowerUps.includes(activePowerUp!)) {
+          setReadyPowerUps(prev => [...prev, activePowerUp!]);
         }
-        return prev - 1;
+        setActivePowerUp(null);
+      } else {
+        socket?.emit('watch_ad_request', { serial: playerSerial });
+      }
+      
+      if (roomId) {
+        socket?.emit('ad_ended', { roomId });
+      }
+      setShowAdModal(false);
+      playSound('win');
+      showAlert('تمت مشاهدة الإعلان بنجاح! 🎉', 'نجاح');
+    };
+
+    // Call real AdSense adBreak if available
+    if (typeof window.adBreak === 'function') {
+      console.log('Calling Google AdSense adBreak');
+      window.adBreak({
+        type: 'reward',
+        name: isPowerUp ? `use_${activePowerUp}` : 'get_token',
+        beforeAd: () => {
+          console.log('AdSense: beforeAd');
+          startAdProcess();
+        },
+        afterAd: () => {
+          console.log('AdSense: afterAd');
+        },
+        beforeReward: (showAdFn: any) => {
+          console.log('AdSense: beforeReward');
+          showAdFn();
+        },
+        adDismissed: () => {
+          console.log('AdSense: adDismissed');
+          showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
+          if (roomId) {
+            socket?.emit('ad_ended', { roomId });
+          }
+          setShowAdConfirmation(false);
+          setActivePowerUp(null);
+        },
+        adViewed: () => {
+          console.log('AdSense: adViewed');
+          onAdComplete();
+        },
+        adBreakDone: (placementInfo: any) => {
+          console.log('AdSense: adBreakDone', placementInfo);
+        }
       });
-    }, 1000);
+    } else {
+      // Fallback to mock ad if AdSense is blocked or not loaded
+      console.log('AdSense not available, falling back to mock ad');
+      startAdProcess();
+      setShowAdModal(true);
+      setAdTimer(isPowerUp ? 5 : 15);
+
+      const timer = setInterval(() => {
+        setAdTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
   };
 
   const handleProfileUpdate = () => {
@@ -3884,40 +3975,7 @@ export default function App() {
               <p className="text-brown-dark font-bold">هل تود مشاهدة إعلان لفتح واستخدام وسيلة المساعدة "{activePowerUp ? {quick_guess: 'تخمين سريع', hint: 'نصيحة', word_length: 'كاشف الحروف', word_count: 'عدد الكلمات', time_freeze: 'تجميد الوقت', spy_lens: 'الجاسوس'}[activePowerUp] : ''}"؟</p>
               <div className="flex gap-4">
                 <button 
-                  onClick={() => {
-                    setShowAdConfirmation(false);
-                    setShowAdModal(true);
-                    socket?.emit('start_ad_watch', { serial: playerSerial });
-                    setAdTimer(5);
-                    
-                    // Send message to opponent immediately
-                    const powerUpName = {
-                      quick_guess: 'تخمين سريع',
-                      hint: 'نصيحة',
-                      word_length: 'كاشف الحروف',
-                      word_count: 'عدد الكلمات',
-                      time_freeze: 'تجميد الوقت',
-                      spy_lens: 'الجاسوس'
-                    }[activePowerUp || ''];
-                    
-                    socket?.emit('send_chat', { 
-                      roomId, 
-                      text: `يقوم ${playerName} بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"، انتظر قليلاً.` 
-                    });
-                    
-                    socket?.emit('ad_started', { roomId });
-
-                    // Start timer
-                    const interval = setInterval(() => {
-                      setAdTimer(prev => {
-                        if (prev <= 1) {
-                          clearInterval(interval);
-                          return 0;
-                        }
-                        return prev - 1;
-                      });
-                    }, 1000);
-                  }}
+                  onClick={handleWatchAd}
                   className="flex-1 bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black"
                 >
                   نعم، شاهد الآن
@@ -4036,10 +4094,14 @@ export default function App() {
                         </div>
                       </div>
                       <button 
-                        onClick={() => showAlert('سيتم تفعيل الإعلانات قريباً!', 'المتجر')}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 bg-gray-300 text-brown-muted cursor-not-allowed`}
+                        onClick={handleWatchAd}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${
+                          adStatus.canWatch && getLevel(xp) >= 50
+                            ? 'bg-accent-green text-white hover:scale-105 active:scale-95'
+                            : 'bg-gray-300 text-brown-muted cursor-not-allowed'
+                        }`}
                       >
-                        قريباً
+                        {getLevel(xp) < 50 ? 'Level 50+' : adStatus.canWatch ? 'مشاهدة' : 'انتهى اليوم'}
                       </button>
                     </div>
                   )}
@@ -4681,9 +4743,9 @@ export default function App() {
                         setShowBlockedPlayers(true);
                       });
                     }}
-                    className="w-full btn-game bg-gray-200 border-gray-300 text-gray-700 hover:bg-gray-300 py-2 text-sm flex items-center justify-center gap-2"
+                    className="w-full btn-game bg-gray-300 border-gray-300 text-gray-700 hover:bg-gray-200 py-2 text-sm flex items-center justify-center gap-2 mb-1"
                   >
-                    <Ban className="w-4 h-4" />
+                    <Ban className="w-4 h-4 text-red-500" />
                     عرض اللاعبين المحظورين
                   </button>
                 </div>
@@ -4691,7 +4753,7 @@ export default function App() {
 
               <button 
                 onClick={handleProfileUpdate}
-                className="w-full btn-game btn-primary py-2 text-lg"
+                className="w-full btn-game btn-success py-2 text-lg"
               >
                 حفظ التعديلات
               </button>
@@ -4889,9 +4951,6 @@ export default function App() {
                         </button>
                       ))}
                     </div>
-                    <p className="text-[11px] text-accent-blue font-black text-center mt-2 bg-blue-50 p-1.5 rounded-lg border border-blue-100">
-                      * يجب اختيار افاتار البداية الخاص بك
-                    </p>
                   </div>
                 </div>
 
