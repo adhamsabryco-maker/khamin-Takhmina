@@ -412,7 +412,9 @@ const app = express();
     pendingAvatar?: string,
     avatarStatus?: 'approved' | 'pending' | 'rejected',
     lastComplaintAt?: number,
-    lastContactAt?: number
+    lastContactAt?: number,
+    blockedSerials?: string[],
+    blockedFingerprints?: string[]
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -552,6 +554,8 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN avatarStatus TEXT DEFAULT 'approved'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastComplaintAt INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastContactAt INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN blockedSerials TEXT DEFAULT '[]'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN blockedFingerprints TEXT DEFAULT '[]'`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -648,8 +652,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints)
   `);
 
   function savePlayerData(serial: string) {
@@ -680,7 +684,9 @@ const app = express();
         pendingAvatar: player.pendingAvatar || null,
         avatarStatus: player.avatarStatus || 'approved',
         lastComplaintAt: player.lastComplaintAt || 0,
-        lastContactAt: player.lastContactAt || 0
+        lastContactAt: player.lastContactAt || 0,
+        blockedSerials: JSON.stringify(player.blockedSerials || []),
+        blockedFingerprints: JSON.stringify(player.blockedFingerprints || [])
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -711,7 +717,11 @@ const app = express();
         claimedRewards: JSON.stringify(player.claimedRewards || []),
         lastRenameAt: player.lastRenameAt || 0,
         pendingAvatar: player.pendingAvatar || null,
-        avatarStatus: player.avatarStatus || 'approved'
+        avatarStatus: player.avatarStatus || 'approved',
+        lastComplaintAt: player.lastComplaintAt || 0,
+        lastContactAt: player.lastContactAt || 0,
+        blockedSerials: JSON.stringify(player.blockedSerials || []),
+        blockedFingerprints: JSON.stringify(player.blockedFingerprints || [])
       });
     }
   });
@@ -767,7 +777,9 @@ const app = express();
           claimedRewards: JSON.parse(row.claimedRewards || '[]'),
           lastRenameAt: row.lastRenameAt || 0,
           pendingAvatar: row.pendingAvatar,
-          avatarStatus: row.avatarStatus || 'approved'
+          avatarStatus: row.avatarStatus || 'approved',
+          blockedSerials: JSON.parse(row.blockedSerials || '[]'),
+          blockedFingerprints: JSON.parse(row.blockedFingerprints || '[]')
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -905,6 +917,7 @@ const app = express();
           xp: p.xp,
           level: p.level,
           wins: p.wins,
+          streak: p.streak || 0,
           avatar: p.avatar,
           gender: p.gender,
           isAdmin: p.isAdmin,
@@ -1187,17 +1200,35 @@ const app = express();
     }
   });
 
-  function isBlocked(id1: string, id2: string) {
+  function isBlocked(p1: any, p2: any) {
     const now = Date.now();
-    const b1 = blocks.get(id1) || [];
-    const b2 = blocks.get(id2) || [];
+    const b1 = blocks.get(p1.playerId) || [];
+    const b2 = blocks.get(p2.playerId) || [];
     
     // Clean up expired blocks
-    if (b1.length > 0) blocks.set(id1, b1.filter(b => b.expiresAt > now));
-    if (b2.length > 0) blocks.set(id2, b2.filter(b => b.expiresAt > now));
+    if (b1.length > 0) blocks.set(p1.playerId, b1.filter(b => b.expiresAt > now));
+    if (b2.length > 0) blocks.set(p2.playerId, b2.filter(b => b.expiresAt > now));
 
-    return b1.some(b => b.blockedId === id2 && b.expiresAt > now) ||
-           b2.some(b => b.blockedId === id1 && b.expiresAt > now);
+    const hasTemporaryBlock = b1.some(b => b.blockedId === p2.playerId && b.expiresAt > now) ||
+                              b2.some(b => b.blockedId === p1.playerId && b.expiresAt > now);
+                              
+    if (hasTemporaryBlock) return true;
+    
+    // Check persistent blocks
+    const serverP1 = allPlayers.get(p1.serial);
+    const serverP2 = allPlayers.get(p2.serial);
+    
+    if (serverP1) {
+      if (serverP1.blockedSerials?.includes(p2.serial)) return true;
+      if (serverP2?.fingerprint && serverP1.blockedFingerprints?.includes(serverP2.fingerprint)) return true;
+    }
+    
+    if (serverP2) {
+      if (serverP2.blockedSerials?.includes(p1.serial)) return true;
+      if (serverP1?.fingerprint && serverP2.blockedFingerprints?.includes(serverP1.fingerprint)) return true;
+    }
+
+    return false;
   }
 
   function processQueue() {
@@ -1226,7 +1257,7 @@ const app = express();
         const p2 = availablePlayers[j];
 
         // Check if blocked
-        if (isBlocked(p1.playerId, p2.playerId)) continue;
+        if (isBlocked(p1, p2)) continue;
 
         // Check token constraints
         const p1Level = getLevel(p1.xp);
@@ -2103,6 +2134,42 @@ io.on("connection", (socket) => {
       }
     });
     
+    socket.on("get_blocked_players", ({ serial }, callback) => {
+      const player = allPlayers.get(serial);
+      if (player && player.blockedSerials && callback) {
+        const blockedList = player.blockedSerials.map((blockedSerial: string) => {
+          const bPlayer = allPlayers.get(blockedSerial);
+          return {
+            serial: blockedSerial,
+            name: bPlayer ? bPlayer.name : 'لاعب غير معروف'
+          };
+        });
+        callback(blockedList);
+      } else if (callback) {
+        callback([]);
+      }
+    });
+
+    socket.on("unblock_player", ({ serial, blockedSerial }, callback) => {
+      const player = allPlayers.get(serial);
+      if (player) {
+        if (player.blockedSerials) {
+          player.blockedSerials = player.blockedSerials.filter((s: string) => s !== blockedSerial);
+        }
+        // We also need to remove the fingerprint if possible, but since we don't know which fingerprint belongs to which serial easily here, 
+        // we might just leave the fingerprint block or try to find it.
+        const blockedPlayer = allPlayers.get(blockedSerial);
+        if (blockedPlayer && blockedPlayer.fingerprint && player.blockedFingerprints) {
+          player.blockedFingerprints = player.blockedFingerprints.filter((f: string) => f !== blockedPlayer.fingerprint);
+        }
+        
+        savePlayerData(serial);
+        if (callback) callback({ success: true });
+      } else {
+        if (callback) callback({ success: false });
+      }
+    });
+
     socket.on("delete_account", ({ playerSerial }, callback) => {
       try {
         // Delete related reports
@@ -2594,6 +2661,27 @@ io.on("connection", (socket) => {
           return;
         }
 
+        const isChild = sender && sender.age < 13;
+        const hasProfanity = messageToSend !== filteredText && !isChild;
+
+        if (hasProfanity || isChild) {
+          console.log(`Shadow banning message from ${socket.id} in room ${roomId}: ${filteredText}`);
+          // Send the original message ONLY to the sender so they think it went through
+          socket.emit("chat_bubble", { senderId: socket.id, text: filteredText });
+          
+          // Clear typing status for the opponent
+          socket.to(roomId).emit("opponent_stop_typing");
+          
+          // Trigger bot response if applicable, so the sender still feels engaged
+          const bot = room.players.find((p: any) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, 'chat_message', { senderId: socket.id, text: messageToSend });
+          }
+          
+          // Do NOT broadcast to the human opponent
+          return;
+        }
+
         console.log(`Broadcasting chat to room ${roomId}`);
         io.to(roomId).emit("chat_bubble", { senderId: socket.id, text: messageToSend });
         
@@ -2877,6 +2965,46 @@ io.on("connection", (socket) => {
           console.log(`Player ${reportedPlayer.name} (${reportedPlayer.id}) reported for: ${reason} in room ${roomId}`);
           io.to(roomId).emit("room_update", room); // Update clients to reflect reported status if needed
         }
+      }
+    });
+
+    socket.on("block_player", ({ roomId, blockedPlayerId }, callback) => {
+      const room = rooms.get(roomId);
+      if (room) {
+        const blockedPlayer = room.players.find((p: any) => p.id === blockedPlayerId);
+        const blocker = room.players.find((p: any) => p.id === socket.id);
+        
+        if (blockedPlayer && blocker) {
+          const serverBlocker = allPlayers.get(blocker.serial);
+          const serverBlocked = allPlayers.get(blockedPlayer.serial);
+          
+          if (serverBlocker && serverBlocked) {
+            if (!serverBlocker.blockedSerials) serverBlocker.blockedSerials = [];
+            if (!serverBlocker.blockedFingerprints) serverBlocker.blockedFingerprints = [];
+            
+            if (!serverBlocker.blockedSerials.includes(serverBlocked.serial)) {
+              serverBlocker.blockedSerials.push(serverBlocked.serial);
+            }
+            if (serverBlocked.fingerprint && !serverBlocker.blockedFingerprints.includes(serverBlocked.fingerprint)) {
+              serverBlocker.blockedFingerprints.push(serverBlocked.fingerprint);
+            }
+            
+            // Mute the player immediately in the current room
+            blockedPlayer.isMuted = true;
+            io.to(blockedPlayer.id).emit("opponent_muted_you", true);
+            io.to(roomId).emit("room_update", room);
+            
+            savePlayerData(blocker.serial);
+            console.log(`Player ${blocker.name} blocked ${blockedPlayer.name}`);
+            if (callback) callback({ success: true });
+          } else {
+            if (callback) callback({ success: false, error: "Player not found" });
+          }
+        } else {
+          if (callback) callback({ success: false, error: "Player not in room" });
+        }
+      } else {
+        if (callback) callback({ success: false, error: "Room not found" });
       }
     });
 
