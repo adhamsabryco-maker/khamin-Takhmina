@@ -2279,6 +2279,7 @@ io.on("connection", (socket) => {
           reports: actualReports,
           reportedBy: actualReportedBy,
           usedToken: false,
+          profanityCount: 0,
           ownedHelpers: serverPlayer.ownedHelpers || {}
         };
         room.players.push(player);
@@ -2467,6 +2468,7 @@ io.on("connection", (socket) => {
               reports: p1ServerPlayer ? p1ServerPlayer.reports : 0,
               reportedBy: p1ServerPlayer ? p1ServerPlayer.reportedBy : [],
               useToken: match.p1.useToken,
+              profanityCount: 0,
               ownedHelpers: match.p1.ownedHelpers || {}
             },
             {
@@ -2497,6 +2499,7 @@ io.on("connection", (socket) => {
               isBot: match.p2.isBot,
               persona: match.p2.persona,
               useToken: match.p2.useToken,
+              profanityCount: 0,
               ownedHelpers: match.p2.ownedHelpers || {}
             }
           ],
@@ -2690,6 +2693,40 @@ io.on("connection", (socket) => {
 
         if (hasProfanity || isChild) {
           console.log(`Shadow banning message from ${socket.id} in room ${roomId}: ${filteredText}`);
+          
+          if (hasProfanity && sender) {
+            sender.profanityCount = (sender.profanityCount || 0) + 1;
+            console.log(`Player ${sender.name} profanity count: ${sender.profanityCount}`);
+            
+            if (sender.profanityCount >= 3) {
+              const oneDayInMs = 24 * 60 * 60 * 1000;
+              const banUntil = Date.now() + oneDayInMs;
+              
+              // Update server player data
+              const serverPlayer = allPlayers.get(sender.serial);
+              if (serverPlayer) {
+                serverPlayer.banUntil = banUntil;
+                serverPlayer.banCount = (serverPlayer.banCount || 0) + 1;
+                savePlayerData(sender.serial);
+              }
+              
+              // Inform everyone and disqualify
+              io.to(roomId).emit("chat_bubble", { 
+                senderId: "system", 
+                text: `تم حظر ${sender.name} لمدة 24 ساعة لتكرار استخدام كلمات مسيئة! 🚫` 
+              });
+              
+              socket.emit("banned_status", { banUntil, isPermanent: false });
+              
+              const opponent = room.players.find((p: any) => p.id !== socket.id);
+              setTimeout(() => {
+                endGame(roomId, opponent ? opponent.name : null, true);
+              }, 1500);
+              
+              return;
+            }
+          }
+
           // Send the original message ONLY to the sender so they think it went through
           socket.emit("chat_bubble", { senderId: socket.id, text: filteredText });
           
