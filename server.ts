@@ -228,6 +228,9 @@ const app = express();
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     const version = configCache.version || '1.1.1';
+    // Use a versioned path for the icon to force OS-level PWA icon updates
+    const iconPath = `/icon-v${version.replace(/\./g, '-')}.svg`;
+    
     res.json({
       "name": "خمن تخمينة",
       "short_name": "خمن تخمينة",
@@ -238,18 +241,18 @@ const app = express();
       "theme_color": "#ffffff",
       "icons": [
         {
-          "src": `/icon.svg?v=${version}`,
+          "src": iconPath,
           "sizes": "any",
           "type": "image/svg+xml"
         },
         {
-          "src": `/icon.svg?v=${version}`,
+          "src": iconPath,
           "sizes": "192x192",
           "type": "image/svg+xml",
           "purpose": "any maskable"
         },
         {
-          "src": `/icon.svg?v=${version}`,
+          "src": iconPath,
           "sizes": "512x512",
           "type": "image/svg+xml",
           "purpose": "any maskable"
@@ -260,6 +263,27 @@ const app = express();
 
   app.get("/manifest.json", manifestHandler);
   app.get("/manifest.webmanifest", manifestHandler);
+
+  // Route to serve the icon with a versioned filename
+  app.get("/icon-v:version.svg", (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
+    const iconFile = path.join(__dirname, "dist", "icon.svg");
+    const publicIconFile = path.join(__dirname, "public", "icon.svg");
+    const rootIconFile = path.join(__dirname, "icon.svg");
+
+    if (fs.existsSync(iconFile)) {
+      res.sendFile(iconFile);
+    } else if (fs.existsSync(publicIconFile)) {
+      res.sendFile(publicIconFile);
+    } else if (fs.existsSync(rootIconFile)) {
+      res.sendFile(rootIconFile);
+    } else {
+      res.status(404).send("Icon not found");
+    }
+  });
 
   app.post("/api/config", (req, res) => {
     console.log('[API] Received config update:', req.body);
@@ -4111,7 +4135,9 @@ io.on("connection", (socket) => {
       if (fs.existsSync(indexPath)) {
         let content = fs.readFileSync(indexPath, 'utf-8');
         const version = configCache.version || '1.1.1';
+        const versionDash = version.replace(/\./g, '-');
         content = content.replace(/\{\{VERSION\}\}/g, version);
+        content = content.replace(/\{\{VERSION_DASH\}\}/g, versionDash);
         res.send(content);
       } else {
         // Fallback for development if dist doesn't exist yet
