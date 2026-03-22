@@ -447,7 +447,11 @@ export default function App() {
       
       // Update manifest
       const manifestLink = document.querySelector("link[rel='manifest']") as HTMLLinkElement;
-      if (manifestLink) manifestLink.href = `/manifest.json?v=${version}`;
+      if (manifestLink) {
+        const currentHref = manifestLink.href || '';
+        const baseManifest = currentHref.includes('webmanifest') ? '/manifest.webmanifest' : '/manifest.json';
+        manifestLink.href = `${baseManifest}?v=${version}`;
+      }
     }
   }, [customConfig.version]);
 
