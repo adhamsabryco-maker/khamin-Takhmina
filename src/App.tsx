@@ -748,7 +748,7 @@ export default function App() {
   const [pendingAvatars, setPendingAvatars] = useState<{ serial: string, name: string, level: number, pendingAvatar: string }[]>([]);
   const [avatarStatus, setAvatarStatus] = useState<'approved' | 'pending' | 'rejected'>('approved');
   const [adminAnnouncementMessage, setAdminAnnouncementMessage] = useState('تنبيه: سيتم تحديث اللعبة خلال 10 دقائق، نرجو إنهاء الجولات الحالية!\nوعدم دخول جولات جديدة الان.');
-  const [adminRewardType, setAdminRewardType] = useState<'pro_package' | 'unlock_helpers'>('pro_package');
+  const [adminRewardType, setAdminRewardType] = useState<'pro_package' | 'unlock_helpers' | 'tokens'>('pro_package');
   const [adminRewardDuration, setAdminRewardDuration] = useState<number>(24);
   const [adminRewardMessage, setAdminRewardMessage] = useState('هدية مجانية لجميع اللاعبين! استمتع بباقة المحترفين مجاناً.');
   const [adminTokenRewardAmount, setAdminTokenRewardAmount] = useState<number>(100);
@@ -6189,8 +6189,23 @@ export default function App() {
                               >
                                 <option value="pro_package">باقة المحترفين (بدون إعلانات)</option>
                                 <option value="unlock_helpers">فتح كل وسائل المساعدة</option>
+                                <option value="tokens">توزيع Tokens مجانية</option>
                               </select>
                             </div>
+
+                            {adminRewardType === 'tokens' && (
+                              <div>
+                                <label className="block text-brown-dark font-bold mb-2">عدد الـ Tokens</label>
+                                <input 
+                                  type="number" 
+                                  min="1"
+                                  value={adminTokenRewardAmount}
+                                  onChange={(e) => setAdminTokenRewardAmount(parseInt(e.target.value) || 1)}
+                                  className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-yellow outline-none"
+                                  dir="rtl"
+                                />
+                              </div>
+                            )}
                             
                             <div>
                               <label className="block text-brown-dark font-bold mb-2">مدة الصلاحية (بالساعات)</label>
@@ -6225,6 +6240,7 @@ export default function App() {
                               socket?.emit('admin_set_global_reward', {
                                 type: adminRewardType,
                                 durationHours: adminRewardDuration,
+                                tokenAmount: adminRewardType === 'tokens' ? adminTokenRewardAmount : 0,
                                 message: adminRewardMessage
                               }, (res: any) => {
                                 if (res.success) {
@@ -6285,7 +6301,9 @@ export default function App() {
                                     <tr key={reward.id} className="border-b border-gray-50 hover:bg-gray-50">
                                       <td className="p-2 text-sm">{reward.message}</td>
                                       <td className="p-2 text-sm">
-                                        {reward.type === 'pro_package' ? 'باقة المحترفين' : 'فتح المساعدات'}
+                                        {reward.type === 'pro_package' ? 'باقة المحترفين' : 
+                                         reward.type === 'unlock_helpers' ? 'فتح المساعدات' : 
+                                         `توزيع ${reward.tokenAmount || 0} Tokens`}
                                       </td>
                                       <td className="p-2 text-sm text-accent-orange">
                                         {reward.durationHours} ساعة
