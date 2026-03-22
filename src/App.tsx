@@ -3842,7 +3842,7 @@ export default function App() {
     <>
       {/* Global Reward Modal */}
       <AnimatePresence>
-        {activeGlobalReward && (
+        {activeGlobalReward && (activeGlobalReward.type !== 'tokens' || getLevel(xp) >= 50) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -3868,15 +3868,20 @@ export default function App() {
                       <Crown className="w-5 h-5 text-accent-yellow" />
                       <span>باقة المحترفين (بدون إعلانات)</span>
                     </>
-                  ) : (
+                  ) : activeGlobalReward.type === 'unlock_helpers' ? (
                     <>
                       <Unlock className="w-5 h-5 text-accent-blue" />
                       <span>فتح كل وسائل المساعدة</span>
                     </>
+                  ) : (
+                    <>
+                      <Coins className="w-5 h-5 text-accent-yellow" />
+                      <span>{activeGlobalReward.tokenAmount} Tokens</span>
+                    </>
                   )}
                 </div>
                 <div className="text-sm text-brown-light mt-2">
-                  لمدة {activeGlobalReward.durationHours} ساعة
+                  {activeGlobalReward.type === 'tokens' ? 'مكافأة خاصة لمستوى 50+' : `لمدة ${activeGlobalReward.durationHours} ساعة`}
                 </div>
               </div>
 
@@ -3894,6 +3899,10 @@ export default function App() {
                         if (res.player.unlockedHelpersExpiry) {
                           setUnlockedHelpersExpiry(res.player.unlockedHelpersExpiry);
                           localStorage.setItem('khamin_unlocked_helpers_expiry', res.player.unlockedHelpersExpiry.toString());
+                        }
+                        if (res.player.tokens !== undefined) {
+                          setTokens(res.player.tokens);
+                          localStorage.setItem('khamin_tokens', res.player.tokens.toString());
                         }
                       }
                     } else {
