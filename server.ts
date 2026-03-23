@@ -2641,6 +2641,29 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("out_of_context_detected", ({ roomId, senderId, text }) => {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "guessing") {
+        const sender = room.players.find((p: any) => p.id === senderId);
+        const opponent = room.players.find((p: any) => p.id !== senderId);
+        
+        if (sender && opponent) {
+          console.log(`Out of context detected for ${sender.name} in room ${roomId}: "${text}"`);
+          
+          // Inform everyone
+          io.to(roomId).emit("chat_bubble", { 
+            senderId: "system", 
+            text: `تم استبعاد ${sender.name} للخروج عن سياق الدردشة الخاص باللعبة! 🚫` 
+          });
+          
+          // End game and make opponent winner
+          setTimeout(() => {
+            endGame(roomId, opponent.name, true);
+          }, 1500);
+        }
+      }
+    });
+
     socket.on("send_chat", ({ roomId, text }) => {
       const now = Date.now();
       const lastTime = lastChatTimes.get(socket.id) || 0;
