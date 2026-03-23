@@ -88,7 +88,7 @@ import { STATIC_ASSETS } from './constants';
 import Cropper from 'react-easy-crop';
 import { Howl, Howler } from 'howler';
 import { filterProfanity } from './profanityFilter';
-import { checkChatMessageContext } from './services/chatContextService';
+import { checkChatMessageContext } from './services/chatContextService.ts';
 
 declare global {
   interface Window {
@@ -8285,7 +8285,7 @@ export default function App() {
                             <span className="text-brown-light">•</span>
                             <span className="text-green-600">{player.wins} فوز</span>
                             <span className="text-brown-light">•</span>
-                            <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="rtl">{player.streak} 🔥</span>
+                            <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="rtl">{player.streak || 0} 🔥</span>
                           </div>
                         </div>
 
