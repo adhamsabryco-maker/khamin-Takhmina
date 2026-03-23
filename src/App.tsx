@@ -1010,7 +1010,7 @@ export default function App() {
 
   const checkImageSafety = async (base64Image: string): Promise<'safe' | 'unsafe' | 'suspicious'> => {
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || (process as any).env?.GOOGLE_API_KEY;
       if (!apiKey || apiKey === 'your_gemini_api_key_here') {
         console.warn('GEMINI_API_KEY is missing or invalid. Falling back to manual review.');
         return 'suspicious';
