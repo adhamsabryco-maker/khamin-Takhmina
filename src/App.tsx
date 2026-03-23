@@ -88,6 +88,7 @@ import { STATIC_ASSETS } from './constants';
 import Cropper from 'react-easy-crop';
 import { Howl, Howler } from 'howler';
 import { filterProfanity } from './profanityFilter';
+import { checkChatMessageContext } from './services/chatContextService';
 
 declare global {
   interface Window {
@@ -2449,7 +2450,7 @@ export default function App() {
       setRoom(prev => prev ? { ...prev, timer } : null);
     });
 
-    newSocket.on('chat_bubble', ({ senderId, text }) => {
+    newSocket.on('chat_bubble', async ({ senderId, text }) => {
       if (senderId !== newSocket.id && isOpponentBlockedRef.current) return;
       const sender = roomRef.current?.players.find((p: any) => p.id === senderId);
       const msgId = Math.random().toString(36).substr(2, 9);
@@ -2457,6 +2458,24 @@ export default function App() {
       // Play message sound for incoming messages
       if (senderId !== newSocket.id) {
         playSound('message');
+        
+        // Check context if in guessing phase
+        if (roomRef.current?.gameState === 'guessing' && sender && !sender.isBot) {
+          const targetWords = roomRef.current.players
+            .map(p => p.targetImage?.name)
+            .filter(Boolean) as string[];
+            
+          if (targetWords.length > 0) {
+            const isRelated = await checkChatMessageContext(text, targetWords.join(' أو '));
+            if (!isRelated) {
+              newSocket.emit('out_of_context_detected', { 
+                roomId: roomRef.current.id, 
+                senderId, 
+                text 
+              });
+            }
+          }
+        }
       }
 
       setChatHistory(prev => {
