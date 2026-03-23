@@ -315,6 +315,33 @@ const app = express();
     res.json({ maintenance: process.env.MAINTENANCE_MODE === 'true' });
   });
 
+  app.post("/api/claim-level-50-reward", (req, res) => {
+    const { serial } = req.body;
+    const player = allPlayers.get(serial);
+    if (!player) return res.status(404).json({ message: "Player not found" });
+    if (player.isAdmin) return res.status(403).json({ message: "Admins cannot claim this reward" });
+    if ((player.level || 0) < 50) return res.status(403).json({ message: "You must reach level 50" });
+    
+    const claimed = db.prepare('SELECT value FROM settings WHERE key = ?').get('level_50_reward_claimed');
+    if (claimed) return res.status(403).json({ message: "Reward already claimed" });
+    
+    // Award 10 tokens
+    player.tokens = (player.tokens || 0) + 10;
+    // Award 7-day Pro Package
+    player.proPackageExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    
+    savePlayerData(serial);
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('level_50_reward_claimed', 'true');
+    io.emit('reward_claimed', true);
+    
+    res.json({ success: true, tokens: player.tokens, proPackageExpiry: player.proPackageExpiry });
+  });
+
+  app.get("/api/check-level-50-reward", (req, res) => {
+    const claimed = db.prepare('SELECT value FROM settings WHERE key = ?').get('level_50_reward_claimed');
+    res.json({ claimed: !!claimed });
+  });
+
   app.get("/api/auth/google/url", (req, res) => {
     const redirectUri = getRedirectUri(req);
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email%20profile`;
