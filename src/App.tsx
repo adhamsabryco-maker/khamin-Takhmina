@@ -2050,6 +2050,12 @@ export default function App() {
       socket.emit('admin_get_reports', (reports: any) => {
         if (Array.isArray(reports)) setAdminReports(reports);
       });
+      socket.emit('admin_get_pending_avatars', (pending: any) => {
+        if (Array.isArray(pending)) setPendingAvatars(pending);
+      });
+      socket.emit('admin_get_contacts', (contacts: any) => {
+        if (Array.isArray(contacts)) setAdminContacts(contacts);
+      });
       socket.emit('admin_get_settings', (settings: any) => {
         if (settings) {
           setPaymobSettings({
@@ -5415,9 +5421,14 @@ export default function App() {
                       <div className="flex gap-2 mt-1">
                         <button 
                           onClick={() => setAdminTab('players')}
-                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'players' ? 'bg-accent-purple text-white' : 'bg-accent-purple-soft text-accent-purple hover:bg-accent-purple-soft'}`}
+                          className={`relative text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'players' ? 'bg-accent-purple text-white' : 'bg-accent-purple-soft text-accent-purple hover:bg-accent-purple-soft'}`}
                         >
                           اللاعبين والبلاغات
+                          {adminReports.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-sm">
+                              {adminReports.length}
+                            </span>
+                          )}
                         </button>
                         <button 
                           onClick={() => setAdminTab('images')}
@@ -5468,15 +5479,25 @@ export default function App() {
                         </button>
                         <button 
                           onClick={() => setAdminTab('avatar_review')}
-                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'avatar_review' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
+                          className={`relative text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'avatar_review' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
                         >
                           مراجعة الصور
+                          {pendingAvatars.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-sm">
+                              {pendingAvatars.length}
+                            </span>
+                          )}
                         </button>
                         <button 
                           onClick={() => setAdminTab('contacts')}
-                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'contacts' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
+                          className={`relative text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'contacts' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
                         >
                           الرسائل
+                          {adminContacts.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-sm">
+                              {adminContacts.length}
+                            </span>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -5484,22 +5505,25 @@ export default function App() {
                   <div className="flex items-center gap-3">
                     <button 
                       onClick={() => {
-                        if (adminTab === 'players') {
-                          socket?.emit('admin_get_players', (players: any) => {
-                            if (Array.isArray(players)) setAdminPlayers(players);
-                          });
-                          socket?.emit('admin_get_reports', (reports: any) => {
-                            if (Array.isArray(reports)) setAdminReports(reports);
-                          });
-                        } else if (adminTab === 'avatar_review') {
-                          socket?.emit('admin_get_pending_avatars', (pending: any) => {
-                            if (Array.isArray(pending)) setPendingAvatars(pending);
-                          });
-                        } else if (adminTab === 'shop') {
+                        // Always fetch data for badges and general stats
+                        socket?.emit('admin_get_players', (players: any) => {
+                          if (Array.isArray(players)) setAdminPlayers(players);
+                        });
+                        socket?.emit('admin_get_reports', (reports: any) => {
+                          if (Array.isArray(reports)) setAdminReports(reports);
+                        });
+                        socket?.emit('admin_get_pending_avatars', (pending: any) => {
+                          if (Array.isArray(pending)) setPendingAvatars(pending);
+                        });
+                        socket?.emit('admin_get_contacts', (contacts: any) => {
+                          if (Array.isArray(contacts)) setAdminContacts(contacts);
+                        });
+
+                        if (adminTab === 'shop') {
                           socket?.emit('admin_get_shop_items', (items: any) => {
                             if (Array.isArray(items)) setShopItems(items);
                           });
-                        } else {
+                        } else if (adminTab === 'images') {
                           fetchAdminImages();
                         }
                       }}
@@ -6812,6 +6836,9 @@ export default function App() {
                             <div className="flex items-center gap-2">
                               <Users className="w-4 h-4" />
                               إجمالي عدد اللاعبين المسجلين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{adminPlayers.length}</span>
+                              <span className="text-green-600 bg-green-100 px-2 py-0.5 rounded-full text-xs mr-2">
+                                متصل الآن: {adminPlayers.filter(p => p.isOnline).length}
+                              </span>
                             </div>
                             
                             <div className="flex items-center gap-2">
