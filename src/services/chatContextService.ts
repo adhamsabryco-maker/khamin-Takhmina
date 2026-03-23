@@ -1,6 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+// Use GEMINI_API_KEY as primary, fallback to GOOGLE_API_KEY if needed (for Railway)
+const apiKey = process.env.GEMINI_API_KEY || (process as any).env?.GOOGLE_API_KEY;
+const ai = new GoogleGenAI({ apiKey: apiKey as string });
 
 export async function checkChatMessageContext(message: string, targetWord: string): Promise<boolean> {
   try {
