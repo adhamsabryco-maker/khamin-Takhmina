@@ -404,6 +404,8 @@ export default function App() {
         window.adConfig({
           preloadAdBreaks: 'on',
           sound: 'on',
+          maxAdContentRating: 'PG',
+          tagForChildDirectedTreatment: 1,
           onReady: () => {
             console.log("H5 Games Ads ready");
           }
