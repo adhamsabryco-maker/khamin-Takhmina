@@ -556,6 +556,8 @@ export default function App() {
   };
 
   const [showAdConfirmation, setShowAdConfirmation] = useState(false);
+  const [showAdModal, setShowAdModal] = useState(false);
+  const [adTimer, setAdTimer] = useState(0);
   const [readyPowerUps, setReadyPowerUps] = useState<string[]>([]);
   const [adStatus, setAdStatus] = useState({ adsWatched: 0, maxAds: 5, canWatch: false, loading: true });
 
@@ -571,11 +573,13 @@ export default function App() {
         setTokens(data.tokens);
         localStorage.setItem('khamin_tokens', data.tokens.toString());
         setAdStatus(prev => ({ ...prev, adsWatched: data.adsWatched, canWatch: data.adsWatched < data.maxAds }));
+        setShowAdModal(false);
         playSound('win');
         showAlert('تمت إضافة الـ Token بنجاح! 🎉', 'نجاح');
       });
 
       socket.on('ad_error', (msg) => {
+        setShowAdModal(false);
         showAlert(msg, 'تنبيه');
       });
 
@@ -586,6 +590,34 @@ export default function App() {
       };
     }
   }, [socket, isConnected, playerSerial]);
+
+  const claimAdReward = () => {
+    if (adTimer > 0) return;
+    
+    if (activePowerUp) {
+      // Add to ready power-ups so the user can use it manually
+      if (!readyPowerUps.includes(activePowerUp)) {
+        setReadyPowerUps(prev => [...prev, activePowerUp]);
+      }
+      setActivePowerUp(null);
+    } else {
+      // Original token reward logic
+      socket?.emit('watch_ad_request', { serial: playerSerial });
+    }
+    
+    if (roomId) {
+      socket?.emit('ad_ended', { roomId });
+    }
+    
+    setShowAdModal(false);
+  };
+
+  useEffect(() => {
+    if (showAdModal && adTimer === 0) {
+      claimAdReward();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAdModal, adTimer]);
 
   const [proPackageExpiry, setProPackageExpiry] = useState<number | null>(() => {
     const saved = localStorage.getItem('khamin_pro_package_expiry');
@@ -3183,18 +3215,34 @@ export default function App() {
       if (roomId) {
         socket?.emit('ad_ended', { roomId });
       }
+      setShowAdModal(false);
       playSound('win');
       showAlert('تمت مشاهدة الإعلان بنجاح! 🎉', 'نجاح');
     };
 
+    const startMockAd = () => {
+      if (adTriggeredRef.current) return;
+      console.log('Falling back to mock ad');
+      startAdProcess();
+      setShowAdModal(true);
+      setAdTimer(isPowerUp ? 5 : 15);
+
+      const timer = setInterval(() => {
+        setAdTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            adTriggeredRef.current = false;
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    };
+
     const handleAdUnavailable = () => {
       if (adTriggeredRef.current) return;
-      console.log('No ad available');
-      showAlert('لا توجد إعلانات متاحة حالياً. يرجى المحاولة لاحقاً.', 'تنبيه');
-      if (roomId) {
-        socket?.emit('ad_ended', { roomId });
-      }
-      setActivePowerUp(null);
+      console.warn('Google Ads unavailable, falling back to mock ad temporarily');
+      startMockAd();
     };
 
     // Call real AdSense adBreak if available
@@ -4106,6 +4154,39 @@ export default function App() {
                   لا
                 </button>
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mock Ad Modal */}
+      <AnimatePresence>
+        {showAdModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-4 text-white"
+          >
+            <div className="absolute top-4 right-4 bg-gray-800 px-4 py-2 rounded-full font-black text-sm">
+              {adTimer > 0 ? `إغلاق بعد ${adTimer}s` : 'يمكنك الإغلاق الآن'}
+            </div>
+            
+            <div className="text-center space-y-6 max-w-md">
+              <div className="w-24 h-24 bg-gray-800 rounded-3xl flex items-center justify-center mx-auto animate-bounce">
+                <span className="text-6xl">📺</span>
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-3xl font-black text-accent-orange">إعلان تجريبي</h2>
+                <p className="text-brown-light font-bold">هذا مجرد محاكاة للإعلان. في النسخة النهائية سيظهر هنا إعلان حقيقي من Google.</p>
+              </div>
+
+              {adTimer === 0 && (
+                <div className="text-accent-green font-black text-xl animate-pulse">
+                  جاري استلام المكافأة...
+                </div>
+              )}
             </div>
           </motion.div>
         )}
