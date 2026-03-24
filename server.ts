@@ -6,6 +6,7 @@ import { createServer as createViteServer } from "vite";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import crypto from "crypto";
 import Database from 'better-sqlite3';
 import multer from "multer";
 import admin from 'firebase-admin';
@@ -1030,29 +1031,24 @@ const app = express();
   // Paymob Integration
   app.post("/api/paymob/initiate", async (req, res) => {
     try {
-      const { itemId, playerSerial } = req.body;
+      const { itemId, playerSerial, paymentMethod, customerInfo } = req.body;
       const player = allPlayers.get(playerSerial);
       if (!player) return res.status(404).json({ error: "Player not found" });
 
       const item = db.prepare('SELECT * FROM shop_items WHERE id = ? AND active = 1').get(itemId) as any;
       if (!item) return res.status(404).json({ error: "Item not found" });
 
-      // Fetch settings directly from DB to ensure we get the latest values
-      const settingsRows = db.prepare('SELECT * FROM settings').all();
-      const settings = settingsRows.reduce((acc: any, row: any) => {
-        acc[row.key] = row.value;
-        return acc;
-      }, {});
+      const PAYMOB_API_KEY = "ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRFek9EazBNU3dpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5ySGdYVGNEVmFpSkQ2bTktQ1lETzJzSEV1N3JqVjR1RkdpR2F2dHlZNEM4T0JicXFSYWF3NEFqVWdES1otQ25NOHd3aGtDZlVfVFk3UkRjNV9jZ3BUZw==";
+      const WALLET_INTEGRATION_ID = "5579190";
+      const CARD_INTEGRATION_ID = "5572379";
 
-      if (!settings.paymob_api_key || !settings.paymob_integration_id) {
-        return res.status(500).json({ error: "Paymob settings not configured" });
-      }
+      const integrationId = paymentMethod === 'wallet' ? WALLET_INTEGRATION_ID : CARD_INTEGRATION_ID;
 
       // 1. Authentication
       const authRes = await fetch("https://accept.paymob.com/api/auth/tokens", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_key: settings.paymob_api_key })
+        body: JSON.stringify({ api_key: PAYMOB_API_KEY })
       });
       const authData = await authRes.json();
       const authToken = authData.token;
@@ -1088,12 +1084,22 @@ const app = express();
           expiration: 3600,
           order_id: orderId,
           billing_data: {
-            apartment: "NA", email: player.email || "test@test.com", floor: "NA", first_name: player.name,
-            street: "NA", building: "NA", phone_number: "01000000000", shipping_method: "NA",
-            postal_code: "NA", city: "NA", country: "EG", last_name: player.serial, state: "NA"
+            apartment: "NA", 
+            email: customerInfo?.email || player.email || "test@test.com", 
+            floor: "NA", 
+            first_name: customerInfo?.name || player.name,
+            street: "NA", 
+            building: "NA", 
+            phone_number: customerInfo?.phone || "01000000000", 
+            shipping_method: "NA",
+            postal_code: "NA", 
+            city: "NA", 
+            country: "EG", 
+            last_name: player.serial, 
+            state: "NA"
           },
           currency: "EGP",
-          integration_id: settings.paymob_integration_id
+          integration_id: integrationId
         })
       });
       const paymentKeyData = await paymentKeyRes.json();
@@ -1102,8 +1108,30 @@ const app = express();
       // Save order info to verify later
       db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(`order_${orderId}`, JSON.stringify({ playerSerial, itemId }));
 
-      // Return payment token and flag for wallet payment
-      res.json({ paymentToken, isWallet: true });
+      if (paymentMethod === 'wallet') {
+        // 4. Pay with Wallet
+        const walletRes = await fetch('https://accept.paymob.com/api/acceptance/payments/pay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: {
+              identifier: customerInfo?.phone,
+              subtype: "WALLET"
+            },
+            payment_token: paymentToken
+          })
+        });
+        const walletData = await walletRes.json();
+        if (walletData.redirect_url) {
+          res.json({ redirectUrl: walletData.redirect_url });
+        } else {
+          res.status(500).json({ error: "فشل في إنشاء رابط الدفع للمحفظة" });
+        }
+      } else {
+        // 4. Pay with Card (Iframe redirect)
+        res.json({ redirectUrl: `https://accept.paymob.com/api/acceptance/iframes/884485?payment_token=${paymentToken}` });
+      }
+
     } catch (err) {
       console.error("Paymob initiate error:", err);
       res.status(500).json({ error: "Payment initiation failed" });
@@ -1112,7 +1140,44 @@ const app = express();
 
   app.post("/api/paymob/webhook", (req, res) => {
     try {
+      const hmac = req.query.hmac as string;
       const { obj } = req.body;
+      
+      const PAYMOB_HMAC = "A2DBAF7F92579F5B6CE8687D60BE29BA";
+
+      if (obj && hmac) {
+        // Calculate HMAC
+        const hmacString = [
+          obj.amount_cents,
+          obj.created_at,
+          obj.currency,
+          obj.error_occured,
+          obj.has_parent_transaction,
+          obj.id,
+          obj.integration_id,
+          obj.is_3d_secure,
+          obj.is_auth,
+          obj.is_capture,
+          obj.is_refunded,
+          obj.is_standalone_payment,
+          obj.is_voided,
+          obj.order.id,
+          obj.owner,
+          obj.pending,
+          obj.source_data.pan,
+          obj.source_data.sub_type,
+          obj.source_data.type,
+          obj.success
+        ].join('');
+
+        const calculatedHmac = crypto.createHmac('sha512', PAYMOB_HMAC).update(hmacString).digest('hex');
+
+        if (calculatedHmac !== hmac) {
+          console.error("Paymob Webhook: Invalid HMAC signature");
+          return res.status(401).send("Unauthorized");
+        }
+      }
+
       if (obj && obj.success === true) {
         const orderId = obj.order.id;
         const orderInfoRow = db.prepare('SELECT value FROM settings WHERE key = ?').get(`order_${orderId}`) as any;
