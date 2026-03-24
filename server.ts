@@ -2938,7 +2938,7 @@ io.on("connection", (socket) => {
 
       if (cardType === "hint") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 40 || hasFreeUse || hasPro || hasUnlockedHelpers) && (!player.hintCount || player.hintCount < 2)) {
+        if ((playerLevel >= 10 || hasFreeUse || hasPro || hasUnlockedHelpers) && (!player.hintCount || player.hintCount < 2)) {
           deductFreeUse();
           if (!player.hintCount) player.hintCount = 0;
           player.hintCount++;
@@ -2963,7 +2963,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "word_length") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 10 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.wordLengthUsed) {
+        if ((playerLevel >= 20 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.wordLengthUsed) {
           deductFreeUse();
           player.wordLengthUsed = true;
           const targetName = player.targetImage.name;
@@ -2972,7 +2972,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "word_count") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 20 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.wordCountUsed) {
+        if ((playerLevel >= 40 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.wordCountUsed) {
           deductFreeUse();
           player.wordCountUsed = true;
           const targetName = player.targetImage.name;
@@ -4084,14 +4084,14 @@ io.on("connection", (socket) => {
 
       // Calculate updates
       const updates: any = {};
-      const duration = room.startTime ? Date.now() - room.startTime : 600000;
+      const duration = room.startTime ? Date.now() - room.startTime : 0;
       const scale = Math.min(1, duration / 600000);
       const shouldScale = isForced || winnerName === null;
       
       if (winnerName === null) {
         // Draw
         room.players.forEach((p: any) => {
-          let drawXP = (p.useToken || !shouldScale) ? 20 : Math.floor(20 * scale);
+          let drawXP = (!shouldScale) ? 20 : Math.floor(20 * scale);
           if (p.level >= 50 && !p.useToken) {
             drawXP = 0;
           }
@@ -4102,17 +4102,19 @@ io.on("connection", (socket) => {
         });
       } else {
         if (winner) {
-          let winnerXP = (winner.useToken || !shouldScale) ? (100 + (winner.streak || 0) * 10) : Math.floor((100 + (winner.streak || 0) * 10) * scale);
+          let baseXP = 100 + (winner.streak || 0) * 10;
+          let winnerXP = (!shouldScale) ? baseXP : Math.floor(baseXP * scale);
           
           // Level 50+ Logic:
           // If level >= 50 and NO token used -> NO XP gain
-          // If level >= 50 and token used -> Normal XP + 400 Bonus
+          // If level >= 50 and token used -> Normal XP + 1000 Bonus
           // If level < 50 -> Normal XP (and bonus if token used)
           
           if (winner.level >= 50 && !winner.useToken) {
              winnerXP = 0; // Cap progress if no token used at level 50+
           } else if (winner.useToken) {
-             winnerXP += 1000; // Bonus XP for using token
+             let bonus = (!shouldScale) ? 1000 : Math.floor(1000 * scale);
+             winnerXP += bonus; // Bonus XP for using token
           }
 
           winner.xp = (winner.xp || 0) + winnerXP;
@@ -4122,7 +4124,7 @@ io.on("connection", (socket) => {
           updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true, level: winner.level, useToken: winner.useToken };
         }
         if (loser) {
-          let loserXP = (loser.useToken || !shouldScale) ? 20 : Math.floor(20 * scale);
+          let loserXP = (!shouldScale) ? 20 : Math.floor(20 * scale);
           
           // Level 50+ Logic for loser:
           // If level >= 50 and NO token used -> NO XP gain (even the small loser XP)
