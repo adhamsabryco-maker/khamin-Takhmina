@@ -1576,7 +1576,7 @@ const app = express();
       io.to(roomId).emit("guess_result", { playerId: bot.id, correct });
 
       if (correct) {
-        endGame(roomId, bot.name);
+        endGame(roomId, bot.name, false, true);
       } else {
         // If both guessed and wrong, end game
         if (room.players.every((p: any) => p.hasGuessed)) {
@@ -2899,7 +2899,7 @@ io.on("connection", (socket) => {
             io.to(roomId).emit("guess_result", { playerId: socket.id, correct: true });
             
             // Pass winner name to endGame
-            endGame(roomId, player.name);
+            endGame(roomId, player.name, false, true);
           } else {
             player.lastGuess = guess;
             io.to(roomId).emit("guess_result", { playerId: socket.id, correct: false });
@@ -3056,7 +3056,7 @@ io.on("connection", (socket) => {
         
         if (isCorrect) {
           io.to(roomId).emit("guess_result", { playerId: socket.id, correct: true });
-          endGame(roomId, player.name);
+          endGame(roomId, player.name, false, true);
         } else {
           // Wrong quick guess = instant lose
           io.to(roomId).emit("guess_result", { playerId: socket.id, correct: false });
@@ -3236,7 +3236,7 @@ io.on("connection", (socket) => {
           
           if (room.gameState === "guessing" || room.gameState === "discussion") {
             // Player intentionally left during an active game
-            endGame(roomId, opponent ? opponent.name : "المنافس");
+            endGame(roomId, opponent ? opponent.name : "المنافس", true);
           } else if (room.gameState === "waiting") {
             socket.to(roomId).emit("opponent_left_lobby");
           } else if (room.gameState !== "finished") {
@@ -4068,7 +4068,7 @@ io.on("connection", (socket) => {
     intervals.set(roomId, interval);
   }
 
-  function endGame(roomId: string, winnerName: string | null, isForced: boolean = false) {
+  function endGame(roomId: string, winnerName: string | null, isForced: boolean = false, isTrueWin: boolean = false) {
     const room = rooms.get(roomId);
     if (room) {
       if (room.gameState === "finished") return;
@@ -4119,8 +4119,12 @@ io.on("connection", (socket) => {
 
           winner.xp = (winner.xp || 0) + winnerXP;
           winner.level = getLevel(winner.xp);
-          winner.streak = (winner.streak || 0) + 1;
-          winner.wins = (winner.wins || 0) + 1;
+          
+          if (isTrueWin) {
+            winner.streak = (winner.streak || 0) + 1;
+            winner.wins = (winner.wins || 0) + 1;
+          }
+          
           updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true, level: winner.level, useToken: winner.useToken };
         }
         if (loser) {
