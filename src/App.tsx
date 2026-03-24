@@ -3198,6 +3198,8 @@ export default function App() {
 
     adTriggeredRef.current = false;
 
+    let localAdTriggered = false;
+
     const startAdProcess = () => {
       if (adTriggeredRef.current) return;
       adTriggeredRef.current = true;
@@ -3274,7 +3276,7 @@ export default function App() {
       
       // Set a safety timeout: if AdSense doesn't trigger beforeAd within 2 seconds, use fallback
       const adTimeout = setTimeout(() => {
-        if (!adTriggeredRef.current) {
+        if (!localAdTriggered) {
           console.warn('AdSense adBreak timed out, using fallback');
           handleAdUnavailable();
         }
@@ -3287,6 +3289,7 @@ export default function App() {
           beforeAd: () => {
             console.log('AdSense: beforeAd');
             clearTimeout(adTimeout);
+            localAdTriggered = true;
             startAdProcess();
             
             // Safety timeout: if ad doesn't finish or dismiss within 60 seconds, resume game
@@ -3324,10 +3327,12 @@ export default function App() {
           adBreakDone: (placementInfo: any) => {
             console.log('AdSense: adBreakDone', placementInfo);
             // If adBreakDone is called but ad was never triggered, it means no ad was available
-            if (!adTriggeredRef.current) {
+            if (!localAdTriggered) {
               clearTimeout(adTimeout);
               console.warn('AdSense adBreakDone called without triggering ad, using fallback');
               handleAdUnavailable();
+            } else {
+              adTriggeredRef.current = false;
             }
           }
         });
@@ -3494,7 +3499,10 @@ export default function App() {
       
       // Hint has 150s cooldown (2.5m)
       if (type === 'hint') {
-        setCooldowns(prev => ({ ...prev, [type]: 150 }));
+        const currentPlayer = room?.players.find(p => p.id === socket?.id);
+        if ((currentPlayer?.hintCount || 0) < 1) {
+          setCooldowns(prev => ({ ...prev, [type]: 150 }));
+        }
       }
     } else {
       // Set active power-up and show confirmation modal
