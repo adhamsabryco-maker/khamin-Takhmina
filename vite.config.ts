@@ -11,7 +11,7 @@ export default defineConfig(({mode}) => {
       react(), 
       tailwindcss(),
       VitePWA({
-        registerType: 'prompt',
+        registerType: 'autoUpdate',
         injectRegister: 'auto',
         workbox: {
           cleanupOutdatedCaches: true,
@@ -19,8 +19,9 @@ export default defineConfig(({mode}) => {
           clientsClaim: true,
         },
         manifest: {
+          id: '/',
           name: 'خمن تخمينة',
-          short_name: 'خمن تخمينة',
+          short_name:'/',
           description: 'لعبة تخمين كلمات وصور ممتعة',
           theme_color: '#ffffff',
           background_color: '#ffffff',
