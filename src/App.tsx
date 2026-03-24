@@ -381,6 +381,8 @@ const isSameWeek = (d1: number, d2: number) => {
          firstDayOfWeek.getDate() === firstDayOfWeek2.getDate();
 };
 
+import { CheckoutPage } from './components/CheckoutPage';
+
 export default function App() {
   const { customConfig, refreshConfig } = useAvatarConfig();
   const appVersion = customConfig.version || '1.1.1';
@@ -542,9 +544,8 @@ export default function App() {
   const [complaintText, setComplaintText] = useState("");
   const [canSendComplaint, setCanSendComplaint] = useState(true);
   const [showShopModal, setShowShopModal] = useState(false);
-  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [showCheckoutPage, setShowCheckoutPage] = useState(false);
   const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
-  const [walletMobileNumber, setWalletMobileNumber] = useState('');
   const [selectedWalletItem, setSelectedWalletItem] = useState<string | null>(null);
   const [showTokenInfoModal, setShowTokenInfoModal] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
@@ -1543,11 +1544,16 @@ export default function App() {
     }
   };
 
-  const handleBuyItem = async (itemId: string) => {
+  const handleBuyItem = (itemId: string) => {
     playSound('clickOpen');
-    setIsInitiatingPayment(true);
-    setShowWalletModal(true);
     setSelectedWalletItem(itemId);
+    setShowCheckoutPage(true);
+  };
+
+  const handleProcessPayment = async (paymentMethod: 'wallet' | 'card', details: any) => {
+    if (!selectedWalletItem) return;
+    
+    setIsInitiatingPayment(true);
     
     try {
       const response = await fetch('/api/paymob/initiate', {
@@ -1556,54 +1562,24 @@ export default function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          itemId,
+          itemId: selectedWalletItem,
           playerSerial,
+          paymentMethod,
+          customerInfo: details
         }),
       });
       const data = await response.json();
       
-      if (data.isWallet) {
-        setPaymentToken(data.paymentToken);
-        setIsInitiatingPayment(false);
-      } else if (data.paymentUrl) {
-        setShowWalletModal(false);
-        setIsInitiatingPayment(false);
-        window.location.href = data.paymentUrl;
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
       } else {
-        setShowWalletModal(false);
         setIsInitiatingPayment(false);
         showAlert(data.error || 'حدث خطأ أثناء بدء عملية الدفع', 'خطأ');
       }
     } catch (error) {
       console.error('Payment initiation error:', error);
-      setShowWalletModal(false);
       setIsInitiatingPayment(false);
-      showAlert('حدث خطأ في الاتصال بالخادم', 'خطأ');
-    }
-  };
-
-  const [paymentToken, setPaymentToken] = useState<string | null>(null);
-
-  const handleWalletPayment = async () => {
-    if (!walletMobileNumber || !paymentToken) return;
-    
-    try {
-      const walletRes = await fetch('/api/paymob/pay-wallet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobileNumber: walletMobileNumber, paymentToken })
-      });
-      const walletData = await walletRes.json();
-      if (walletData.url) {
-        window.location.href = walletData.url;
-      } else {
-        showAlert(walletData.message || 'حدث خطأ أثناء الدفع بالمحفظة', 'خطأ');
-      }
-    } catch (error) {
-      console.error('Wallet payment error:', error);
-      showAlert('حدث خطأ في الاتصال بالخادم', 'خطأ');
-    } finally {
-      setShowWalletModal(false);
+      showAlert('حدث خطأ أثناء الاتصال بخادم الدفع', 'خطأ');
     }
   };
 
@@ -3692,58 +3668,15 @@ export default function App() {
     </AnimatePresence>
   );
 
-  const renderWalletModal = () => (
+  const renderCheckoutPage = () => (
     <AnimatePresence>
-      {showWalletModal && (
-        <motion.div 
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10001] flex items-center justify-center p-4"
-          onClick={() => !isInitiatingPayment && setShowWalletModal(false)}
-        >
-          <motion.div 
-            initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-            className="card-game p-6 w-full max-w-sm space-y-4 text-center"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <ShoppingCart className="w-8 h-8 text-orange-500" />
-            </div>
-            
-            <h2 className="text-2xl font-black text-main">الدفع بالمحفظة</h2>
-            
-            {isInitiatingPayment ? (
-              <div className="py-8 flex flex-col items-center gap-4">
-                <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
-                <p className="text-brown-muted font-bold">جاري تجهيز الطلب...</p>
-              </div>
-            ) : (
-              <>
-                <p className="text-brown-muted font-bold">أدخل رقم الهاتف المسجل به المحفظة الإلكترونية (فودافون كاش، اتصالات كاش، إلخ)</p>
-                <input 
-                  type="text" 
-                  value={walletMobileNumber} 
-                  onChange={(e) => setWalletMobileNumber(e.target.value)}
-                  placeholder="مثلاً: 010xxxxxxx"
-                  className="input-game text-center font-black text-xl placeholder:text-gray-300"
-                />
-                <div className="flex gap-3 pt-2">
-                  <button 
-                    onClick={() => setShowWalletModal(false)}
-                    className="flex-1 btn-game btn-primary py-3 text-lg"
-                  >
-                    إلغاء
-                  </button>
-                  <button 
-                    onClick={handleWalletPayment}
-                    className="flex-1 btn-game btn-success py-3 text-lg"
-                  >
-                    دفع الآن
-                  </button>
-                </div>
-              </>
-            )}
-          </motion.div>
-        </motion.div>
+      {showCheckoutPage && selectedWalletItem && (
+        <CheckoutPage
+          item={shopItems.find(i => i.id === selectedWalletItem)}
+          onBack={() => setShowCheckoutPage(false)}
+          onPay={handleProcessPayment}
+          isProcessing={isInitiatingPayment}
+        />
       )}
     </AnimatePresence>
   );
@@ -4022,7 +3955,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {renderWalletModal()}
+      {renderCheckoutPage()}
       {renderDailyQuestModal()}
       {renderComplaintModal()}
       {renderContactModal()}
@@ -4319,20 +4252,21 @@ export default function App() {
                             <div className="text-xs font-bold text-brown-muted">{item.description}</div>
                           </div>
                         </div>
-                        <button 
-                        onClick={() => showAlert('سيتم تفعيل الشراء قريباً!', 'المتجر')}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 bg-gray-300 text-brown-muted cursor-not-allowed`}
-                        >
-                        قريباً
-                        </button>
-                        {/*
-                        <button 
-                          onClick={() => handleBuyItem(item.id)}
-                          className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
-                        >
-                          {item.price} ج.م
-                        </button>
-                        */}
+                        {isAdmin ? (
+                          <button 
+                            onClick={() => handleBuyItem(item.id)}
+                            className="bg-accent-purple hover:brightness-110 text-white px-4 py-2 rounded-xl font-black text-sm transition-colors shadow-md"
+                          >
+                            {item.price} ج.م
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => showAlert('سيتم تفعيل الشراء قريباً!', 'المتجر')}
+                            className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 bg-gray-300 text-brown-muted cursor-not-allowed`}
+                          >
+                            قريباً
+                          </button>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -4354,35 +4288,22 @@ export default function App() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {isAdmin && (
+                        {isAdmin ? (
                           <button 
-                            onClick={() => {
-                              const days = shopItems.find(item => item.type === 'pro_pack')?.amount || 30;
-                              const expiry = Date.now() + days * 24 * 60 * 60 * 1000;
-                              setProPackageExpiry(expiry);
-                              localStorage.setItem('khamin_pro_package_expiry', expiry.toString());
-                              showAlert(`تم تفعيل باقة المحترفين للتجربة (${days} يوم)!`, 'المتجر');
-                            }}
-                            className="px-3 py-2 rounded-xl font-black text-xs transition-all shadow-md bg-yellow-400 hover:bg-yellow-500 text-yellow-900"
+                            onClick={() => handleBuyItem(shopItems.find(item => item.type === 'pro_pack')?.id || 'pro_pack')}
+                            className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md ${hasProPackage ? 'bg-gray-300 text-brown-muted cursor-not-allowed' : 'bg-accent-orange hover:bg-accent-orange-dark text-white'}`}
+                            disabled={hasProPackage}
                           >
-                            تفعيل للتجربة
+                            {hasProPackage ? 'تم الشراء' : `${shopItems.find(item => item.type === 'pro_pack')?.price} ج.م`}
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => showAlert('سيتم تفعيل الشراء قريباً!', 'المتجر')}
+                            className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 bg-gray-300 text-brown-muted cursor-not-allowed`}
+                          >
+                            قريباً
                           </button>
                         )}
-                        <button 
-                        onClick={() => showAlert('سيتم تفعيل الشراء قريباً!', 'المتجر')}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 bg-gray-300 text-brown-muted cursor-not-allowed`}
-                        >
-                        قريباً
-                        </button>
-                        {/*
-                        <button 
-                          onClick={() => handleBuyItem(shopItems.find(item => item.type === 'pro_pack')?.id || 'pro_pack')}
-                          className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md ${hasProPackage ? 'bg-gray-300 text-brown-muted cursor-not-allowed' : 'bg-accent-orange hover:bg-accent-orange-dark text-white'}`}
-                          disabled={hasProPackage}
-                        >
-                          {hasProPackage ? 'تم الشراء' : `${shopItems.find(item => item.type === 'pro_pack')?.price} ج.م`}
-                        </button>
-                        */}
                       </div>
                     </div>
                   )}
@@ -7427,7 +7348,7 @@ export default function App() {
         >
           <div className="flex flex-col flex-1">
             <span className="font-black text-sm">تمت اضافة بعض المميزات الجديدة!</span>
-            <span className="text-xs font-bold opacity-90">يرجى التحديث للحصول على أفضل تجربة.</span>
+            <span className="text-xs font-bold opacity-90">يرجى انهاء الجولات قبل التحديث للحصول على أفضل تجربة.</span>
           </div>
           <button
             onClick={async () => {
@@ -7456,15 +7377,6 @@ export default function App() {
             className="bg-white text-accent-blue px-4 py-2 rounded-xl font-black text-sm hover:bg-gray-100 transition-colors whitespace-nowrap shadow-sm"
           >
             تحديث
-          </button>
-          <button
-            onClick={() => {
-              setNeedRefresh(false);
-              setNeedsUpdate(false);
-            }}
-            className="p-2 hover:bg-white/20 rounded-xl transition-colors"
-          >
-            <X size={16} />
           </button>
         </motion.div>
       </AnimatePresence>,
