@@ -11,7 +11,7 @@ export default defineConfig(({mode}) => {
       react(), 
       tailwindcss(),
       VitePWA({
-        registerType: 'prompt',
+        registerType: 'autoUpdate',
         injectRegister: 'auto',
         workbox: {
           cleanupOutdatedCaches: true,
@@ -21,22 +21,44 @@ export default defineConfig(({mode}) => {
         manifest: {
           name: 'خمن تخمينة',
           short_name: 'خمن تخمينة',
-          description: 'لعبة تخمين كلمات ممتعة',
+          description: 'لعبة تخمين كلمات وصور ممتعة',
           theme_color: '#ffffff',
           background_color: '#ffffff',
-          display: 'fullscreen',
+          display: 'standalone', // خليها standalone أحسن للتوافق
           icons: [
             {
               src: 'icon.svg',
-              sizes: '192x192',
+              sizes: 'any', // الـ SVG يفضل يكون any
               type: 'image/svg+xml',
-              purpose: 'any maskable'
+              purpose: 'any' 
             },
             {
-              src: 'icon.svg',
+              src: 'icon-192.png', // لازم تضيف نسخة PNG
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: 'icon-512.png', // لازم تضيف نسخة PNG
               sizes: '512x512',
-              type: 'image/svg+xml',
-              purpose: 'any maskable'
+              type: 'image/png',
+              purpose: 'maskable' // عشان تملأ الأيقونة في أندرويد
+            }
+          ],
+          screenshots: [
+            {
+              src: 'screenshot-mobile.png',
+              sizes: '1080x1920', // اتأكد من مقاس الصورة اللي صورتها
+              type: 'image/png',
+              form_factor: 'narrow',
+              label: 'شاشة اللعبة على الموبايل'
+            },
+            {
+              src: 'screenshot-desktop.png',
+              sizes: '1920x1080', // اتأكد من مقاس الصورة اللي صورتها
+              type: 'image/png',
+              form_factor: 'wide',
+              label: 'شاشة اللعبة على الكمبيوتر'
             }
           ]
         }
