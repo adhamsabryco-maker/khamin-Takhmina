@@ -21,7 +21,7 @@ export default defineConfig(({mode}) => {
         manifest: {
           id: '/',
           name: 'خمن تخمينة',
-          short_name:'/',
+          short_name:'خمن تخمينة',
           description: 'لعبة تخمين كلمات وصور ممتعة',
           theme_color: '#ffffff',
           background_color: '#ffffff',
