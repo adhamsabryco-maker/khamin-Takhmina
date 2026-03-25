@@ -574,8 +574,6 @@ export default function App() {
   };
 
   const [showAdConfirmation, setShowAdConfirmation] = useState(false);
-  const [showAdModal, setShowAdModal] = useState(false);
-  const [adTimer, setAdTimer] = useState(0);
   const [readyPowerUps, setReadyPowerUps] = useState<string[]>([]);
   const [adStatus, setAdStatus] = useState({ adsWatched: 0, maxAds: 5, canWatch: false, loading: true });
 
@@ -591,13 +589,11 @@ export default function App() {
         setTokens(data.tokens);
         localStorage.setItem('khamin_tokens', data.tokens.toString());
         setAdStatus(prev => ({ ...prev, adsWatched: data.adsWatched, canWatch: data.adsWatched < data.maxAds }));
-        setShowAdModal(false);
         playSound('win');
         showAlert('تمت إضافة الـ Token بنجاح! 🎉', 'نجاح');
       });
 
       socket.on('ad_error', (msg) => {
-        setShowAdModal(false);
         showAlert(msg, 'تنبيه');
       });
 
@@ -608,34 +604,6 @@ export default function App() {
       };
     }
   }, [socket, isConnected, playerSerial]);
-
-  const claimAdReward = () => {
-    if (adTimer > 0) return;
-    
-    if (activePowerUp) {
-      // Add to ready power-ups so the user can use it manually
-      if (!readyPowerUps.includes(activePowerUp)) {
-        setReadyPowerUps(prev => [...prev, activePowerUp]);
-      }
-      setActivePowerUp(null);
-    } else {
-      // Original token reward logic
-      socket?.emit('watch_ad_request', { serial: playerSerial });
-    }
-    
-    if (roomId) {
-      socket?.emit('ad_ended', { roomId });
-    }
-    
-    setShowAdModal(false);
-  };
-
-  useEffect(() => {
-    if (showAdModal && adTimer === 0) {
-      claimAdReward();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showAdModal, adTimer]);
 
   const [proPackageExpiry, setProPackageExpiry] = useState<number | null>(() => {
     const saved = localStorage.getItem('khamin_pro_package_expiry');
@@ -810,7 +778,13 @@ export default function App() {
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [adminImages, setAdminImages] = useState<any[]>([]);
   const [shopItems, setShopItems] = useState<any[]>([]);
-  const [paymobSettings, setPaymobSettings] = useState({ paymob_api_key: '', paymob_integration_id: '', paymob_iframe_id: '' });
+  const [paymobSettings, setPaymobSettings] = useState({ 
+    paymob_api_key: 'ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRFek9EazBNU3dpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5ySGdYVGNEVmFpSkQ2bTktQ1lETzJzSEV1N3JqVjR1RkdpR2F2dHlZNEM4T0JicXFSYWF3NEFqVWdES1otQ25NOHd3aGtDZlVfVFk3UkRjNV9jZ3BUZw==', 
+    paymob_wallet_integration_id: '5579190', 
+    paymob_card_integration_id: '5572379', 
+    paymob_iframe_id: '1013400',
+    paymob_hmac: 'A2DBAF7F92579F5B6CE8687D60BE29BA'
+  });
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => {
     const saved = localStorage.getItem('khamin_theme_config');
     if (saved) {
@@ -1550,7 +1524,7 @@ export default function App() {
     setShowCheckoutPage(true);
   };
 
-  const handleProcessPayment = async (paymentMethod: 'wallet' | 'card', details: any) => {
+  const handleProcessPayment = async (paymentMethod: 'wallet' | 'card', details: any, quantity: number = 1) => {
     if (!selectedWalletItem) return;
     
     setIsInitiatingPayment(true);
@@ -1565,7 +1539,8 @@ export default function App() {
           itemId: selectedWalletItem,
           playerSerial,
           paymentMethod,
-          customerInfo: details
+          customerInfo: details,
+          quantity
         }),
       });
       const data = await response.json();
@@ -2052,9 +2027,11 @@ export default function App() {
       socket.emit('admin_get_settings', (settings: any) => {
         if (settings) {
           setPaymobSettings({
-            paymob_api_key: settings.paymob_api_key || '',
-            paymob_integration_id: settings.paymob_integration_id || '',
-            paymob_iframe_id: settings.paymob_iframe_id || ''
+            paymob_api_key: settings.paymob_api_key || 'ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRFek9EazBNU3dpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5ySGdYVGNEVmFpSkQ2bTktQ1lETzJzSEV1N3JqVjR1RkdpR2F2dHlZNEM4T0JicXFSYWF3NEFqVWdES1otQ25NOHd3aGtDZlVfVFk3UkRjNV9jZ3BUZw==',
+            paymob_wallet_integration_id: settings.paymob_wallet_integration_id || '5579190',
+            paymob_card_integration_id: settings.paymob_card_integration_id || '5572379',
+            paymob_iframe_id: settings.paymob_iframe_id || '1013400',
+            paymob_hmac: settings.paymob_hmac || 'A2DBAF7F92579F5B6CE8687D60BE29BA'
           });
         }
       });
@@ -2533,8 +2510,6 @@ export default function App() {
       setReadyPowerUps([]);
       setActivePowerUp(null);
       setShowAdConfirmation(false);
-      setShowAdModal(false);
-      setAdTimer(0);
       const isWinner = winnerId === newSocket.id;
       if (isWinner) {
         playSound('win');
@@ -2664,8 +2639,6 @@ export default function App() {
       setReadyPowerUps([]);
       setActivePowerUp(null);
       setShowAdConfirmation(false);
-      setShowAdModal(false);
-      setAdTimer(0);
     });
 
     newSocket.on('quick_guess_started', ({ playerId }) => {
@@ -3216,7 +3189,6 @@ export default function App() {
       if (roomId) {
         socket?.emit('ad_ended', { roomId });
       }
-      setShowAdModal(false);
       playSound('win');
       showAlert('تمت مشاهدة الإعلان بنجاح! 🎉', 'نجاح');
     };
@@ -3225,19 +3197,7 @@ export default function App() {
       if (adTriggeredRef.current) return;
       console.log('Falling back to mock ad');
       startAdProcess();
-      setShowAdModal(true);
-      setAdTimer(isPowerUp ? 5 : 15);
-
-      const timer = setInterval(() => {
-        setAdTimer((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            adTriggeredRef.current = false;
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      onAdComplete();
     };
 
     const handleAdUnavailable = () => {
@@ -3673,6 +3633,7 @@ export default function App() {
       {showCheckoutPage && selectedWalletItem && (
         <CheckoutPage
           item={shopItems.find(i => i.id === selectedWalletItem)}
+          player={me}
           onBack={() => setShowCheckoutPage(false)}
           onPay={handleProcessPayment}
           isProcessing={isInitiatingPayment}
@@ -4118,39 +4079,6 @@ export default function App() {
                   لا
                 </button>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Mock Ad Modal */}
-      <AnimatePresence>
-        {showAdModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center p-4 text-white"
-          >
-            <div className="absolute top-4 right-4 bg-gray-800 px-4 py-2 rounded-full font-black text-sm">
-              {adTimer > 0 ? `إغلاق بعد ${adTimer}s` : 'يمكنك الإغلاق الآن'}
-            </div>
-            
-            <div className="text-center space-y-6 max-w-md">
-              <div className="w-24 h-24 bg-gray-800 rounded-3xl flex items-center justify-center mx-auto animate-bounce">
-                <span className="text-6xl">📺</span>
-              </div>
-              
-              <div className="space-y-2">
-                <h2 className="text-3xl font-black text-accent-orange">إعلان تجريبي</h2>
-                <p className="text-brown-light font-bold">هذا مجرد محاكاة للإعلان. في النسخة النهائية سيظهر هنا إعلان حقيقي من Google.</p>
-              </div>
-
-              {adTimer === 0 && (
-                <div className="text-accent-green font-black text-xl animate-pulse">
-                  جاري استلام المكافأة...
-                </div>
-              )}
             </div>
           </motion.div>
         )}
@@ -5603,13 +5531,31 @@ export default function App() {
                                   className="w-full p-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-purple-500 font-mono text-xs"
                                 />
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-bold text-brown-dark mb-1">HMAC</label>
+                                <input 
+                                  type="text" 
+                                  value={paymobSettings.paymob_hmac}
+                                  onChange={(e) => setPaymobSettings({...paymobSettings, paymob_hmac: e.target.value})}
+                                  className="w-full p-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-purple-500 font-mono text-xs"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                  <label className="block text-sm font-bold text-brown-dark mb-1">Integration ID</label>
+                                  <label className="block text-sm font-bold text-brown-dark mb-1">Wallet Integration ID</label>
                                   <input 
                                     type="text" 
-                                    value={paymobSettings.paymob_integration_id}
-                                    onChange={(e) => setPaymobSettings({...paymobSettings, paymob_integration_id: e.target.value})}
+                                    value={paymobSettings.paymob_wallet_integration_id}
+                                    onChange={(e) => setPaymobSettings({...paymobSettings, paymob_wallet_integration_id: e.target.value})}
+                                    className="w-full p-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-purple-500 font-mono"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-bold text-brown-dark mb-1">Card Integration ID</label>
+                                  <input 
+                                    type="text" 
+                                    value={paymobSettings.paymob_card_integration_id}
+                                    onChange={(e) => setPaymobSettings({...paymobSettings, paymob_card_integration_id: e.target.value})}
                                     className="w-full p-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-purple-500 font-mono"
                                   />
                                 </div>
@@ -9260,10 +9206,10 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[3000] flex items-center justify-center p-4"
           >
             <motion.div 
-              className="relative max-w-sm w-full bg-gray-900/80 border-4 border-white/10 rounded-[2.5rem] flex flex-col items-center p-6 shadow-2xl backdrop-blur-xl"
+              className="relative max-w-sm w-full flex flex-col items-center p-6 backdrop-blur-xl"
             >
               {room.winnerId === me?.id ? (
                 <div className="flex flex-col items-center mb-4 w-full">
@@ -9271,15 +9217,15 @@ export default function App() {
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: "spring", damping: 10, stiffness: 100 }}
-                    className="mb-4"
+                    className="mb-1"
                   >
-                    <Trophy className="w-20 h-20 text-yellow-400" />
+                    <img src="/trophy-01.gif" className="w-25 h-25 md:w-25 md:h-25 mx-auto mb-1 md:mb-1 object-contain" />
                   </motion.div>
                   <motion.h2 
                     initial={{ opacity: 0, scale: 0.5 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2, type: "spring" }}
-                    className="text-3xl font-black text-yellow-400 mb-1"
+                    className="text-3xl font-bowlby text-yellow-400 mb-1" dir="ltr"
                   >
                     You Win!
                   </motion.h2>
@@ -9287,7 +9233,7 @@ export default function App() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="text-white font-black text-base mb-4 bg-white/10 px-4 py-1.5 rounded-full backdrop-blur-sm"
+                    className="text-white font-black text-base mb-3 px-4 py-1.5 backdrop-blur-sm"
                   >
                     أداء أسطوري يا بطل! 💪
                   </motion.p>
@@ -9301,7 +9247,7 @@ export default function App() {
                       {me.level >= 50 && !room.lastUpdates?.[me.id]?.useToken ? (
                         <div className="flex flex-col items-center">
                           <span>XP: 0</span>
-                          <span className="text-[10px] text-gray-400 mt-0.5">تحتاج Tokens لزيادة الـ XP</span>
+                          <span className="text-[13px] text-yellow-400 mt-0.5">تحتاج Tokens لزيادة الـ XP</span>
                         </div>
                       ) : (
                         <div className="flex justify-center">
@@ -9312,29 +9258,21 @@ export default function App() {
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center mb-4 w-full">
+                <div className="flex flex-col items-center mb-2 w-full">
                   <motion.div 
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", damping: 10, stiffness: 100 }}
-                    className="mb-4 text-6xl"
+                    className="mb-1 text-6xl"
                   >
-                    <motion.div
-                      animate={{ 
-                        y: [0, -5, 0],
-                        rotate: [-3, 3, -3]
-                      }}
-                      transition={{ repeat: Infinity, duration: 2 }}
-                    >
-                      😢
-                    </motion.div>
+                      <img src="/oh-no.gif" className="w-25 h-25 md:w-25 md:h-25 mx-auto mb-1 md:mb-1 object-contain" />
                   </motion.div>
                   
                   <motion.h2 
                     initial={{ opacity: 0, scale: 0.5 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2, type: "spring" }}
-                    className="text-3xl font-black text-red-500 mb-1"
+                    className="text-3xl font-bowlby text-red-500 mb-1" dir="ltr"
                   >
                     You Lose!
                   </motion.h2>
@@ -9342,7 +9280,7 @@ export default function App() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="text-white font-black text-base mb-4 bg-white/10 px-4 py-1.5 rounded-full backdrop-blur-sm"
+                    className="text-white font-black text-base mb-4 px-4 py-1.5 backdrop-blur-sm"
                   >
                     حظ أوفر في المرة القادمة
                   </motion.p>
@@ -9356,7 +9294,7 @@ export default function App() {
                       {me.level >= 50 && !room.lastUpdates?.[me.id]?.useToken ? (
                         <div className="flex flex-col items-center">
                           <span>XP: 0</span>
-                          <span className="text-[10px] text-gray-400 mt-0.5">تحتاج Tokens لزيادة الـ XP</span>
+                          <span className="text-[13px] text-yellow-400 mt-0.5">تحتاج Tokens لزيادة الـ XP</span>
                         </div>
                       ) : (
                         <div className="flex justify-center">
@@ -9374,10 +9312,10 @@ export default function App() {
                 transition={{ delay: 0.5, duration: 0.5, type: "spring" }}
                 className="flex flex-col items-center mb-6"
               >
-                <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg">
+                <div className="w-21 h-21 rounded-2xl overflow-hidden shadow-lg">
                   <img src={me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
                 </div>
-                <div className="font-black text-lg text-white mt-2 bg-black/40 px-3 py-0.5 rounded-lg backdrop-blur-sm">{me?.targetImage?.name}</div>
+                <div className="font-black text-lg text-white mt-2 px-3 py-0.5 backdrop-blur-sm">{me?.targetImage?.name}</div>
               </motion.div>
 
               <motion.div 
