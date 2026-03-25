@@ -1754,6 +1754,13 @@ export default function App() {
         audioRef.current[key] = new Howl({ src: [url], preload: true });
       }
     });
+
+    return () => {
+      if (lobbyMusicRef.current) lobbyMusicRef.current.unload();
+      if (gameMusicRef.current) gameMusicRef.current.unload();
+      Object.values(audioRef.current).forEach(howl => howl.unload());
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
