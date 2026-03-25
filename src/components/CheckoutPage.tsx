@@ -1,24 +1,40 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, CreditCard, Smartphone, Loader2 } from 'lucide-react';
+import { ArrowRight, CreditCard, Smartphone, Loader2, Plus, Minus } from 'lucide-react';
 
 interface CheckoutPageProps {
   item: any;
+  player?: any;
   onBack: () => void;
-  onPay: (paymentMethod: 'wallet' | 'card', details: any) => void;
+  onPay: (paymentMethod: 'wallet' | 'card', details: any, quantity: number) => void;
   isProcessing: boolean;
 }
 
-export const CheckoutPage: React.FC<CheckoutPageProps> = ({ item, onBack, onPay, isProcessing }) => {
+export const CheckoutPage: React.FC<CheckoutPageProps> = ({ item, player, onBack, onPay, isProcessing }) => {
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card'>('wallet');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [quantity, setQuantity] = useState(1);
+
+  const isProPack = item?.type === 'pro_pack';
+  const hasActivePro = player?.proPackageExpiry && player.proPackageExpiry > Date.now();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onPay(paymentMethod, { name, email, phone });
+    if (isProPack && hasActivePro) return;
+    onPay(paymentMethod, { name, email, phone }, quantity);
   };
+
+  const incrementQuantity = () => {
+    if (!isProPack) setQuantity(prev => prev + 1);
+  };
+
+  const decrementQuantity = () => {
+    if (!isProPack && quantity > 1) setQuantity(prev => prev - 1);
+  };
+
+  const totalPrice = (item?.price || 0) * quantity;
 
   return (
     <motion.div 
@@ -48,12 +64,43 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ item, onBack, onPay,
               <span className="text-brown-muted font-bold">{item?.name}</span>
               <span className="font-black text-accent-orange">{item?.price} ج.م</span>
             </div>
+            
+            {!isProPack && (
+              <div className="flex justify-between items-center mb-2 mt-4">
+                <span className="text-brown-muted font-bold">الكمية</span>
+                <div className="flex items-center gap-3 bg-white rounded-xl p-1 border-2 border-orange-200">
+                  <button 
+                    type="button"
+                    onClick={decrementQuantity}
+                    disabled={quantity <= 1}
+                    className="w-8 h-8 rounded-lg bg-orange-100 text-accent-orange flex items-center justify-center disabled:opacity-50"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="font-black text-lg w-6 text-center">{quantity}</span>
+                  <button 
+                    type="button"
+                    onClick={incrementQuantity}
+                    className="w-8 h-8 rounded-lg bg-orange-100 text-accent-orange flex items-center justify-center"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="h-px bg-orange-200 my-3"></div>
             <div className="flex justify-between items-center">
               <span className="font-black text-main">الإجمالي</span>
-              <span className="font-black text-xl text-accent-orange">{item?.price} ج.م</span>
+              <span className="font-black text-xl text-accent-orange">{totalPrice} ج.م</span>
             </div>
           </div>
+
+          {isProPack && hasActivePro && (
+            <div className="bg-red-50 border-2 border-red-200 text-red-600 p-4 rounded-2xl font-bold text-sm text-center">
+              لديك باقة محترفين فعالة بالفعل. لا يمكنك شراء باقة أخرى حتى تنتهي الباقة الحالية.
+            </div>
+          )}
 
           {/* Payment Method Selection */}
           <div>
@@ -133,7 +180,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ item, onBack, onPay,
 
             <button 
               type="submit"
-              disabled={isProcessing}
+              disabled={isProcessing || (isProPack && hasActivePro)}
               className="w-full bg-accent-purple hover:bg-accent-purple-dark text-white font-black text-lg py-4 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 mt-6 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isProcessing ? (
@@ -143,7 +190,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ item, onBack, onPay,
                 </>
               ) : (
                 <>
-                  دفع {item?.price} ج.م
+                  دفع {totalPrice} ج.م
                 </>
               )}
             </button>
