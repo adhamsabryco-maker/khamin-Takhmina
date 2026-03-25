@@ -1031,16 +1031,22 @@ const app = express();
   // Paymob Integration
   app.post("/api/paymob/initiate", async (req, res) => {
     try {
-      const { itemId, playerSerial, paymentMethod, customerInfo } = req.body;
+      const { itemId, playerSerial, paymentMethod, customerInfo, quantity = 1 } = req.body;
       const player = allPlayers.get(playerSerial);
       if (!player) return res.status(404).json({ error: "Player not found" });
 
       const item = db.prepare('SELECT * FROM shop_items WHERE id = ? AND active = 1').get(itemId) as any;
       if (!item) return res.status(404).json({ error: "Item not found" });
 
-      const PAYMOB_API_KEY = "ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRFek9EazBNU3dpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5ySGdYVGNEVmFpSkQ2bTktQ1lETzJzSEV1N3JqVjR1RkdpR2F2dHlZNEM4T0JicXFSYWF3NEFqVWdES1otQ25NOHd3aGtDZlVfVFk3UkRjNV9jZ3BUZw==";
-      const WALLET_INTEGRATION_ID = "5579190";
-      const CARD_INTEGRATION_ID = "5572379";
+      const getSetting = (key: string, defaultValue: string) => {
+        const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as any;
+        return row ? row.value : defaultValue;
+      };
+
+      const PAYMOB_API_KEY = getSetting('paymob_api_key', "ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRFek9EazBNU3dpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5ySGdYVGNEVmFpSkQ2bTktQ1lETzJzSEV1N3JqVjR1RkdpR2F2dHlZNEM4T0JicXFSYWF3NEFqVWdES1otQ25NOHd3aGtDZlVfVFk3UkRjNV9jZ3BUZw==");
+      const WALLET_INTEGRATION_ID = getSetting('paymob_wallet_integration_id', "5579190");
+      const CARD_INTEGRATION_ID = getSetting('paymob_card_integration_id', "5572379");
+      const IFRAME_ID = getSetting('paymob_iframe_id', "1013400");
 
       const integrationId = paymentMethod === 'wallet' ? WALLET_INTEGRATION_ID : CARD_INTEGRATION_ID;
 
@@ -1054,7 +1060,7 @@ const app = express();
       const authToken = authData.token;
 
       // 2. Order Registration
-      const amountCents = Math.round(item.price * 100);
+      const amountCents = Math.round(item.price * 100) * quantity;
       const orderRes = await fetch("https://accept.paymob.com/api/ecommerce/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1065,9 +1071,9 @@ const app = express();
           currency: "EGP",
           items: [{
             name: item.name,
-            amount_cents: amountCents,
+            amount_cents: Math.round(item.price * 100),
             description: item.description,
-            quantity: "1"
+            quantity: quantity.toString()
           }]
         })
       });
@@ -1106,7 +1112,7 @@ const app = express();
       const paymentToken = paymentKeyData.token;
 
       // Save order info to verify later
-      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(`order_${orderId}`, JSON.stringify({ playerSerial, itemId }));
+      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(`order_${orderId}`, JSON.stringify({ playerSerial, itemId, quantity }));
 
       if (paymentMethod === 'wallet') {
         // 4. Pay with Wallet
@@ -1129,7 +1135,7 @@ const app = express();
         }
       } else {
         // 4. Pay with Card (Iframe redirect)
-        res.json({ redirectUrl: `https://accept.paymob.com/api/acceptance/iframes/884485?payment_token=${paymentToken}` });
+        res.json({ redirectUrl: `https://accept.paymob.com/api/acceptance/iframes/${IFRAME_ID}?payment_token=${paymentToken}` });
       }
 
     } catch (err) {
@@ -1143,7 +1149,11 @@ const app = express();
       const hmac = req.query.hmac as string;
       const { obj } = req.body;
       
-      const PAYMOB_HMAC = "A2DBAF7F92579F5B6CE8687D60BE29BA";
+      const getSetting = (key: string, defaultValue: string) => {
+        const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as any;
+        return row ? row.value : defaultValue;
+      };
+      const PAYMOB_HMAC = getSetting('paymob_hmac', "A2DBAF7F92579F5B6CE8687D60BE29BA");
 
       if (obj && hmac) {
         // Calculate HMAC
@@ -1189,14 +1199,16 @@ const app = express();
 
           if (player && item) {
             if (item.type === 'tokens' || item.type.startsWith('token_pack')) {
-              player.tokens = (player.tokens || 0) + (item.amount || 1);
+              const qty = orderInfo.quantity || 1;
+              const addedTokens = (item.amount || 1) * qty;
+              player.tokens = (player.tokens || 0) + addedTokens;
               savePlayerData(player.serial);
               
               // Notify the player
               const socketId = playerSockets.get(player.serial);
               if (socketId) {
                 io.to(socketId).emit('player_update', player);
-                io.to(socketId).emit('show_alert', { message: `تم إضافة ${item.amount} Tokens بنجاح!`, title: 'عملية ناجحة' });
+                io.to(socketId).emit('show_alert', { message: `تم إضافة ${addedTokens} Tokens بنجاح!`, title: 'عملية ناجحة' });
               }
             } else if (item.type === 'pro_pack') {
               const days = item.amount > 0 ? item.amount : 30;
@@ -3299,13 +3311,12 @@ io.on("connection", (socket) => {
         if (player) {
           const opponent = room.players.find((p: any) => p.id !== socket.id);
           
-          if (room.gameState === "guessing" || room.gameState === "discussion") {
+          if (room.gameState !== "finished" && room.gameState !== "waiting") {
             // Player intentionally left during an active game
+            io.to(roomId).emit("chat_bubble", { senderId: "system", text: `غادر ${player.name} الغرفة` });
             endGame(roomId, opponent ? opponent.name : "المنافس", true);
           } else if (room.gameState === "waiting") {
             socket.to(roomId).emit("opponent_left_lobby");
-          } else if (room.gameState !== "finished") {
-            socket.to(roomId).emit("game_stopped", { reason: `غادر ${player.name} الغرفة` });
           }
 
           // Remove player from room
@@ -3446,10 +3457,11 @@ io.on("connection", (socket) => {
       if (admin?.isAdmin || socket.data?.isAdmin) {
         try {
           const setClause = Object.keys(updates).map(k => `${k} = ?`).join(', ');
-          const values = Object.values(updates);
+          const values = Object.values(updates).map(v => typeof v === 'boolean' ? (v ? 1 : 0) : v);
           db.prepare(`UPDATE shop_items SET ${setClause} WHERE id = ?`).run(...values, id);
           callback({ success: true });
         } catch (err) {
+          console.error("Error updating shop item:", err);
           callback({ error: "Database error" });
         }
       } else {
@@ -3902,16 +3914,16 @@ io.on("connection", (socket) => {
           
           if (room.gameState !== "finished" && room.gameState !== "waiting") {
             if (isIntentional) {
-              // Deduct token by ending game with opponent as winner
-              // We do this BEFORE removing the player so endGame can process them as the loser
               if (leavingPlayer.useToken && (Date.now() - room.startTime < 120000)) {
-                socket.to(roomId).emit("game_stopped", { reason: `تم معاقبة ${leavingPlayer.name} لانسحابه المبكر!` });
+                io.to(roomId).emit("chat_bubble", { senderId: "system", text: `تم معاقبة ${leavingPlayer.name} لانسحابه المبكر!` });
+              } else {
+                io.to(roomId).emit("chat_bubble", { senderId: "system", text: `غادر ${leavingPlayer.name} الغرفة` });
               }
-              endGame(roomId, opponent ? opponent.name : "المنافس", true);
             } else {
-              // Just stop game without deducting tokens if it's network issue
-              socket.to(roomId).emit("game_stopped", { reason: `انقطع اتصال ${leavingPlayer.name}` });
+              io.to(roomId).emit("chat_bubble", { senderId: "system", text: `انقطع اتصال ${leavingPlayer.name}` });
             }
+            // Always end game with opponent as winner
+            endGame(roomId, opponent ? opponent.name : "المنافس", true);
           }
 
           // Now remove the player and cleanup
@@ -4109,7 +4121,6 @@ io.on("connection", (socket) => {
       if (room.timer <= 0) {
         if (room.gameState === "discussion") {
           room.gameState = "guessing";
-          room.startTime = Date.now();
           room.timer = 60;
           io.to(roomId).emit("room_update", room);
           
@@ -4151,7 +4162,9 @@ io.on("connection", (socket) => {
       const updates: any = {};
       const duration = room.startTime ? Date.now() - room.startTime : 0;
       const scale = Math.min(1, duration / 600000);
-      const shouldScale = isForced || winnerName === null;
+      const isEarlyForfeit = isForced && duration < 300000 && winnerName !== null;
+      const shouldScale = (isForced && duration < 300000) || winnerName === null;
+      let refundWinnerToken = false;
       
       if (winnerName === null) {
         // Draw
@@ -4175,7 +4188,12 @@ io.on("connection", (socket) => {
           // If level >= 50 and token used -> Normal XP + 1000 Bonus
           // If level < 50 -> Normal XP (and bonus if token used)
           
-          if (winner.level >= 50 && !winner.useToken) {
+          if (isEarlyForfeit && winner.level >= 50) {
+             winnerXP = 0; // No XP gained on early forfeit for 50+
+             if (winner.useToken) {
+                 refundWinnerToken = true; // Refund token for level 50+
+             }
+          } else if (winner.level >= 50 && !winner.useToken) {
              winnerXP = 0; // Cap progress if no token used at level 50+
           } else if (winner.useToken) {
              let bonus = (!shouldScale) ? 1000 : Math.floor(1000 * scale);
@@ -4230,7 +4248,10 @@ io.on("connection", (socket) => {
           // Deduct token logic:
           // Always deduct if useToken was true, regardless of win/loss/level
           if (p.useToken && (player.tokens || 0) > 0) {
-            player.tokens = (player.tokens || 0) - 1;
+            const isRefundedWinner = (p.id === winner?.id) && refundWinnerToken;
+            if (!isRefundedWinner) {
+              player.tokens = (player.tokens || 0) - 1;
+            }
           }
           
           if (updates[p.id]) {
