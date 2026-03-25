@@ -17,6 +17,7 @@ export default defineConfig(({mode}) => {
           cleanupOutdatedCaches: true,
           skipWaiting: true,
           clientsClaim: true,
+          navigateFallback: '/index.html',
         },
         manifest: {
           id: '/',
