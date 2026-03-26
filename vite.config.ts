@@ -29,7 +29,7 @@ export default defineConfig(({mode}) => {
           display: 'standalone', // خليها standalone أحسن للتوافق
           icons: [
             {
-              src: 'icon.svg',
+              src: 'icon-v2.svg',
               sizes: 'any', // الـ SVG يفضل يكون any
               type: 'image/svg+xml',
               purpose: 'any' 

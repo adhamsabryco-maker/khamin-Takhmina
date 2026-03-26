@@ -230,19 +230,20 @@ const app = express();
     res.setHeader('Expires', '0');
     const version = configCache.version || '1.1.1';
     // Use a versioned path for the icon to force OS-level PWA icon updates
-    const iconPath = `/icon.svg`;
+    const iconPath = `/icon-v2.svg`;
     
     res.json({
       "id": "/",
       "name": "خمن تخمينة",
       "short_name": "خمن تخمينة",
+      "description": "لعبة تخمين كلمات وصور ممتعة",
       "start_url": "/",
       "display": "standalone",
       "background_color": "#ffffff",
       "theme_color": "#ffffff",
       "icons": [
         {
-          "src": "/icon.svg",
+          "src": "/icon-v2.svg",
           "sizes": "any",
           "purpose": "any",
           "type": "image/svg+xml"
