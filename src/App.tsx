@@ -330,7 +330,7 @@ const APP_VERSION = '1.1.1'; // Version for cache clearing
 
 
 
-const EMOTES = ['😂', '😡', '👍', '👎', '🤔', '🤯', '🎉', '💔'];
+const EMOTES = ['😂', '🤪', '😡','🧐', '🤔', '🤯', '👀', '🕒', '👋', '✋', '👌', '👍', '👎', '🎉', '❌', '✔️', '💔'];
 
 const POWER_UP_UNLOCKS = [10, 20, 30, 40, 50];
 const AVATAR_UNLOCKS = [10, 20, 30, 40, 50];
@@ -1259,6 +1259,7 @@ export default function App() {
   const [reports, setReports] = useState(0);
   const [categories, setCategories] = useState<any[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
+  const [totalPlayersCount, setTotalPlayersCount] = useState(0);
   const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, age: number, level?: number } } | null>(null);
   const [hasResponded, setHasResponded] = useState(false);
   const [opponentAccepted, setOpponentAccepted] = useState(false);
@@ -2287,8 +2288,13 @@ export default function App() {
       setIsConnected(false);
     });
 
-    newSocket.on('online_count', (count) => {
-      setOnlineCount(count);
+    newSocket.on('online_count', (data) => {
+      if (typeof data === 'number') {
+        setOnlineCount(data);
+      } else if (data && typeof data === 'object') {
+        setOnlineCount(data.online);
+        setTotalPlayersCount(data.total);
+      }
     });
 
     newSocket.on('player_data_update', (data: any) => {
@@ -3196,8 +3202,6 @@ export default function App() {
       if (roomId) {
         socket?.emit('ad_ended', { roomId });
       }
-      playSound('win');
-      showAlert('تمت مشاهدة الإعلان بنجاح! 🎉', 'نجاح');
     };
 
     const startMockAd = () => {
@@ -4287,7 +4291,7 @@ export default function App() {
                   <h3 className="text-lg font-black text-accent-orange mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Zap className="w-5 h-5" />
-                      ميزة التخمين السريع
+                    التخمين السريع
                     </div>
                     <span className="text-xs bg-orange-200 text-accent-orange px-2 py-1 rounded-full">تفتح في المستوى 1</span>
                   </h3>
@@ -4306,7 +4310,7 @@ export default function App() {
                     </li>
                     <li className="flex justify-between items-center box-game p-2">
                       <span>المستوى 50</span>
-                      <span className="text-accent-orange font-black">بعد 0:03 ثوانٍ (تقريباً من البداية!)</span>
+                      <span className="text-accent-orange">بعد 0:03 ثوانٍ (من البداية!)</span>
                     </li>
                   </ul>
                 </div>
@@ -8104,8 +8108,15 @@ export default function App() {
               )}
             </AnimatePresence>
 
-            <div className="pt-4 md:pt-6 border-t-2 border-game space-y-3 md:space-y-4">
-              <div>
+            <div className="pt-3 md:pt-3 border-t-2 border-game space-y-3 md:space-y-4">
+                <div className="flex items-center font-black text-xs gap-1">
+                <Users className="w-4 h-4" />
+                 إجمالي عدد اللاعبين المسجلين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{totalPlayersCount}</span>
+                <span className="text-green-600 bg-green-100 px-2 py-0.5 rounded-full text-xs mr-2">
+                  متصل الآن: {onlineCount > 1000 ? '1000+' : onlineCount}
+                </span>
+                </div>            
+              <div class="pt-2 md:pt-3 border-t-2 border-game">
                 {error && (
                   <motion.div 
                     ref={errorRef}
@@ -8150,10 +8161,7 @@ export default function App() {
                   className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-pointer touch-manipulation"
                 >
                   <div className="flex items-center gap-1.5" dir="ltr">
-                    <Users className="w-5 h-5 md:w-6 md:h-6 text-[#00FF00] animate-pulse" />
-                    <span className="text-[#00FF00] text-lg md:text-xl font-black">
-                      {onlineCount > 100 ? '100+' : onlineCount}
-                    </span>
+                  <span className="large-emoji">🔍</span>
                   </div>
                   <span>بحث عشوائي</span>
                 </button>
@@ -8674,7 +8682,7 @@ export default function App() {
 
                 {/* WhatsApp Style Chat Box - Hidden when consensus reached or waiting for opponent */}
                 {!consensusReached && room.players.length >= 2 && (
-                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-44 mt-4 relative">
+                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner flex flex-col h-50 mt-4 relative">
                     {isMutedByOpponent && (
                       <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                         <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -8734,7 +8742,7 @@ export default function App() {
                         <Smile className="w-5 h-5" />
                       </button>
                       {showEmotes && (
-                        <div className="absolute bottom-full left-2 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-2 w-48 z-50">
+                        <div className="absolute bottom-full left-2 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-1 w-48 z-50">
                           {EMOTES.map(emote => (
                             <button
                               key={emote}
@@ -8744,7 +8752,7 @@ export default function App() {
                                 socket?.emit('send_emote', { roomId: room!.id, emote });
                                 setShowEmotes(false);
                               }}
-                              className="text-2xl hover:scale-125 transition-transform p-1"
+                              className="text-1xl hover:scale-125 transition-transform p-1"
                             >
                               {emote}
                             </button>
@@ -8882,7 +8890,7 @@ export default function App() {
 
               {/* Gameplay Chat Box - Moved to Center */}
               {room.gameState !== 'waiting' && room.gameState !== 'finished' && room.gameState !== 'guessing' && (
-                <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner overflow-hidden flex flex-col h-46 md:h-60 mt-4 z-20 relative">
+                <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner flex flex-col h-50 md:h-64 mt-4 z-20 relative">
                   {isMutedByOpponent && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                       <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -8942,7 +8950,7 @@ export default function App() {
                       <Smile className="w-5 h-5" />
                     </button>
                     {showEmotes && (
-                      <div className="absolute bottom-full left-2 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-2 w-48 z-50">
+                      <div className="absolute bottom-full left-2 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-1 w-48 z-50">
                         {EMOTES.map(emote => (
                           <button
                             key={emote}
@@ -8952,7 +8960,7 @@ export default function App() {
                               socket?.emit('send_emote', { roomId: room!.id, emote });
                               setShowEmotes(false);
                             }}
-                            className="text-2xl hover:scale-125 transition-transform p-1"
+                            className="text-1xl hover:scale-125 transition-transform p-1"
                           >
                             {emote}
                           </button>
@@ -9242,7 +9250,7 @@ export default function App() {
                     transition={{ delay: 0.3 }}
                     className="text-white font-black text-base mb-3 px-4 py-1.5 backdrop-blur-sm"
                   >
-                    أداء أسطوري يا بطل! 💪
+                   ⭐مبروووووووك!⭐
                   </motion.p>
                   {me && (
                     <motion.div 
@@ -9289,7 +9297,7 @@ export default function App() {
                     transition={{ delay: 0.3 }}
                     className="text-white font-black text-base mb-4 px-4 py-1.5 backdrop-blur-sm"
                   >
-                    حظ أوفر في المرة القادمة
+                   حظ أوفر في التخمينة القادمة
                   </motion.p>
                   {me && (
                     <motion.div 
