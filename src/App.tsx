@@ -7972,7 +7972,8 @@ export default function App() {
                   {topPlayers[0] && (
                     <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1 z-20 -mt-8 md:-mt-12">
                       <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
-                        <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-[60]" />
+                        <img src="/crown.gif" className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 drop-shadow-md z-[60]" />
+                        {/* <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-[60]" /> */}
                         <div className="fire-glow-effect"></div>
                         <div className="w-16 h-16 md:w-20 md:h-20 relative z-10">
                           {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level || getLevel(topPlayers[0].xp || 0), false, topPlayers[0].isOnline)}
@@ -8131,10 +8132,10 @@ export default function App() {
             </AnimatePresence>
 
             <div className="pt-3 md:pt-3 border-t-2 border-game space-y-3 md:space-y-4">
-                <div className="flex items-center font-black text-xs gap-1">
+                <div className="flex items-center font-bold text-sm gap-1">
                 <Users className="w-4 h-4" />
                  إجمالي عدد اللاعبين المسجلين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{totalPlayersCount}</span>
-                <span className="text-green-600 bg-green-100 px-2 py-0.5 rounded-full text-xs mr-2">
+                <span className="text-green-600 bg-green-100 px-2 py-0.5 rounded-full text-sm mr-2">
                   متصل الآن: {onlineCount > 1000 ? '1000+' : onlineCount}
                 </span>
                 </div>            
@@ -8408,7 +8409,7 @@ export default function App() {
 
       {/* Footer Links */}
       <footer className="mt-auto py-4 text-center border-t border-gray-200 bg-white/50 backdrop-blur-sm">
-        <div className="flex flex-wrap justify-center items-center gap-3 md:gap-4 text-[11px] md:text-xs font-light text-black">
+        <div className="flex flex-wrap justify-center items-center gap-3 md:gap-4 text-[11px] md:text-xs font-bold text-black">
           <button 
             onClick={() => navigate('/privacy')}
             className="hover:text-accent-blue transition-colors"
@@ -8430,7 +8431,7 @@ export default function App() {
             اتصل بنا
           </button>
         </div>
-        <p className="mt-2 text-[11px] font-light text-black">
+        <p className="mt-2 text-[11px] font-bold text-black">
           جميع الحقوق محفوظة &copy; {new Date().getFullYear()} خمن تخمينة
         </p>
       </footer>
