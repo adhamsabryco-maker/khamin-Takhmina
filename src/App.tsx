@@ -576,6 +576,20 @@ export default function App() {
   const [showAdConfirmation, setShowAdConfirmation] = useState(false);
   const [readyPowerUps, setReadyPowerUps] = useState<string[]>([]);
   const [adStatus, setAdStatus] = useState({ adsWatched: 0, maxAds: 5, canWatch: false, loading: true });
+  const [isCooldown, setIsCooldown] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(0);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isCooldown && cooldownTime > 0) {
+      timer = setInterval(() => {
+        setCooldownTime((prev) => prev - 1);
+      }, 1000);
+    } else if (cooldownTime === 0) {
+      setIsCooldown(false);
+    }
+    return () => clearInterval(timer);
+  }, [isCooldown, cooldownTime]);
 
   useEffect(() => {
     if (socket && isConnected && playerSerial) {
@@ -3139,6 +3153,10 @@ export default function App() {
     console.log('handleWatchAd called. Current adStatus:', adStatus);
     
     if (adTriggeredRef.current) return;
+    if (isCooldown) {
+      showAlert('يرجى الانتظار 30 ثانية قبل مشاهدة الإعلان التالي!', 'تنبيه');
+      return;
+    }
     
     const isPowerUp = !!activePowerUp;
 
@@ -3154,6 +3172,11 @@ export default function App() {
       showAlert('انتهت المحاولات لهذا اليوم!', 'تنبيه');
       return;
     }
+
+    // Trigger cooldown
+    setIsCooldown(true);
+    setCooldownTime(30);
+    setTimeout(() => setIsCooldown(false), 30000);
 
     // Close confirmation modal immediately to prevent "fixed window" issue
     setShowAdConfirmation(false);
@@ -4184,13 +4207,14 @@ export default function App() {
                       </div>
                       <button 
                         onClick={handleWatchAd}
+                        disabled={isCooldown || !adStatus.canWatch || getLevel(xp) < 50}
                         className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${
-                          adStatus.canWatch && getLevel(xp) >= 50
+                          !isCooldown && adStatus.canWatch && getLevel(xp) >= 50
                             ? 'bg-accent-green text-white hover:scale-105 active:scale-95'
                             : 'bg-gray-300 text-brown-muted cursor-not-allowed'
                         }`}
                       >
-                        {getLevel(xp) < 50 ? 'Level 50+' : adStatus.canWatch ? 'مشاهدة' : 'انتهى اليوم'}
+                        {getLevel(xp) < 50 ? 'Level 50+' : isCooldown ? `${cooldownTime}s` : adStatus.canWatch ? 'مشاهدة' : 'انتهى اليوم'}
                       </button>
                     </div>
                   )}
