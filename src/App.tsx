@@ -1773,7 +1773,7 @@ export default function App() {
     return () => {
       if (lobbyMusicRef.current) lobbyMusicRef.current.unload();
       if (gameMusicRef.current) gameMusicRef.current.unload();
-      Object.values(audioRef.current).forEach(howl => howl.unload());
+      Object.values(audioRef.current).forEach((howl: any) => howl.unload());
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -3173,11 +3173,6 @@ export default function App() {
       return;
     }
 
-    // Trigger cooldown
-    setIsCooldown(true);
-    setCooldownTime(30);
-    setTimeout(() => setIsCooldown(false), 30000);
-
     // Close confirmation modal immediately to prevent "fixed window" issue
     setShowAdConfirmation(false);
 
@@ -3213,6 +3208,11 @@ export default function App() {
     const onAdComplete = () => {
       clearTimeout(adSafetyTimeout);
       adTriggeredRef.current = false;
+      
+      // Trigger cooldown after ad finishes
+      setIsCooldown(true);
+      setCooldownTime(30);
+      
       if (isPowerUp) {
         if (!readyPowerUps.includes(activePowerUp!)) {
           setReadyPowerUps(prev => [...prev, activePowerUp!]);
@@ -8096,8 +8096,8 @@ export default function App() {
                 {!isRewardClaimed && (
                   <div className="mt-2 p-2 justify-between items-center flex gap-8 md:gap-2 bg-gradient-to-br from-amber-50 to-yellow-100 border border-amber-300 rounded-lg shadow-sm">
                   <div className="items-center justify-between gap-2">
-                    <h3 className="font-black text-sm text-amber-900">هدية أول لاعب يصل Lvl 50 🎁</h3>
-                    <span className="font-bold text-[12px] text-amber-800">10 Tokens + باقة المحترفين 7 أيام</span>
+                    <h3 className="font-bold md:font-black md:text-sm text-xs text-amber-900">هدية أول لاعب يصل Lvl 50 🎁</h3>
+                    <span className="font-bold md:text-[12px] text-[10px] text-amber-800">10 Tokens + باقة المحترفين 7 أيام</span>
                   </div>  
                       <button 
                         onClick={async () => {
@@ -8158,7 +8158,7 @@ export default function App() {
             <div className="pt-3 md:pt-3 border-t-2 border-game space-y-3 md:space-y-4">
                 <div className="flex items-center font-bold md:text-sm text-xs gap-1">
                 <Users className="w-4 h-4" />
-                 إجمالي عدد اللاعبين المسجلين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{totalPlayersCount}</span>
+                 إجمالي عدد اللاعبين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{totalPlayersCount}</span>
                 <span className="text-green-600 bg-green-100 px-2 py-0.5 rounded-full md:text-sm text-xs mr-2">
                   متصل الآن: {onlineCount > 1000 ? '1000+' : onlineCount}
                 </span>
@@ -9156,9 +9156,12 @@ export default function App() {
               cardCooldown = Math.max(0, room.timer - threshold);
             }
 
-            // Only disable other cards during quick guess if they are specifically quick guess, or if game is finished
-            const isCardDisabled = isLocked || card.disabled || cardCooldown > 0 || room.gameState === 'finished' || (room.isPaused && card.id === 'quick_guess');
             const isReady = readyPowerUps.includes(card.id);
+            // A power-up requires an ad if it's not locked, not pro, not quick guess, not ready, no free use, AND it hasn't been used yet (not disabled)
+            const requiresAd = !isLocked && !hasProPackage && card.id !== 'quick_guess' && !isReady && !hasFreeUse && !card.disabled;
+
+            // Only disable other cards during quick guess if they are specifically quick guess, or if game is finished
+            const isCardDisabled = isLocked || card.disabled || cardCooldown > 0 || room.gameState === 'finished' || (room.isPaused && card.id === 'quick_guess') || (requiresAd && isCooldown);
             
             return (
               <button 
@@ -9202,9 +9205,9 @@ export default function App() {
                   </div>
                 )}
                 
-                {cardCooldown > 0 && !isLocked && (
+                {(cardCooldown > 0 || (requiresAd && isCooldown)) && !isLocked && (
                   <div className="absolute inset-0 bg-gray-900/80 rounded-full flex items-center justify-center text-white text-xs font-black backdrop-blur-[1px]">
-                    {cardCooldown}s
+                    {cardCooldown > 0 ? cardCooldown : cooldownTime}s
                   </div>
                 )}
                 
