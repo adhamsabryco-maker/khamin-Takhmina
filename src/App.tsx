@@ -3479,7 +3479,28 @@ export default function App() {
            date1.getUTCDate() === date2.getUTCDate();
   };
 
-  const renderDailyQuestModal = () => (
+  const renderDailyQuestModal = () => {
+    let effectiveStreak = dailyQuestStreak;
+    const now = Date.now();
+    
+    if (lastDailyClaim !== 0 && !isSameDay(now, lastDailyClaim)) {
+      const isConsecutiveDay = (d1: number, d2: number) => {
+        const date1 = new Date(d1);
+        const date2 = new Date(d2);
+        date2.setUTCDate(date2.getUTCDate() + 1);
+        return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+               date1.getUTCMonth() === date2.getUTCMonth() &&
+               date1.getUTCDate() === date2.getUTCDate();
+      };
+      
+      if (!isConsecutiveDay(now, lastDailyClaim) || effectiveStreak > 7) {
+        effectiveStreak = 1;
+      }
+    } else if (effectiveStreak > 7) {
+      effectiveStreak = 8; // For display purposes when day 7 is claimed today
+    }
+
+    return (
     <AnimatePresence>
       {showDailyQuestModal && (
         <motion.div
@@ -3514,9 +3535,9 @@ export default function App() {
               <div className="grid grid-cols-4 gap-3 mb-6">
                 {DAILY_QUEST_REWARDS.map((reward, index) => {
                   const day = index + 1;
-                  const isClaimed = day < dailyQuestStreak && lastDailyClaim !== 0;
-                  const isCurrent = day === dailyQuestStreak;
-                  const canClaim = isCurrent && (lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim));
+                  const isClaimed = day < effectiveStreak && lastDailyClaim !== 0;
+                  const isCurrent = day === effectiveStreak;
+                  const canClaim = isCurrent && (lastDailyClaim === 0 || !isSameDay(now, lastDailyClaim));
                   
                   return (
                     <div 
@@ -3540,18 +3561,18 @@ export default function App() {
                 })}
               </div>
 
-              {dailyQuestStreak <= 7 && (
+              {effectiveStreak <= 8 && (
                 <button
-                  disabled={isChestOpening || (lastDailyClaim !== 0 && isSameDay(Date.now(), lastDailyClaim))}
+                  disabled={isChestOpening || (lastDailyClaim !== 0 && isSameDay(now, lastDailyClaim))}
                   onClick={handleClaimDailyQuest}
                   className={`w-full py-4 rounded-2xl font-black text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all border-4 border-black ${
-                    (lastDailyClaim !== 0 && isSameDay(Date.now(), lastDailyClaim))
+                    (lastDailyClaim !== 0 && isSameDay(now, lastDailyClaim))
                     ? 'btn-primary cursor-not-allowed'
                     : 'bg-accent-green text-white hover:-translate-y-1 active:translate-y-0'
                   }`}
                 >
                   {isChestOpening ? 'جاري الفتح...' : 
-                   (lastDailyClaim !== 0 && isSameDay(Date.now(), lastDailyClaim)) ? 'تم الاستلام اليوم ✅' : 'استلم جائزة اليوم! 🎁'}
+                   (lastDailyClaim !== 0 && isSameDay(now, lastDailyClaim)) ? 'تم الاستلام اليوم ✅' : 'استلم جائزة اليوم! 🎁'}
                 </button>
               )}
             </div>
@@ -3638,6 +3659,7 @@ export default function App() {
       )}
     </AnimatePresence>
   );
+  };
 
   const renderCheckoutPage = () => (
     <AnimatePresence>
