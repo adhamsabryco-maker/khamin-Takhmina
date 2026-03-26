@@ -2417,6 +2417,7 @@ io.on("connection", (socket) => {
           isPaused: false,
           pausingPlayerId: null,
           quickGuessTimer: 0,
+          adCooldownTimer: 0,
           lastUpdates: null,
         });
       }
@@ -2694,6 +2695,7 @@ io.on("connection", (socket) => {
           isPaused: false,
           pausingPlayerId: null,
           quickGuessTimer: 0,
+          adCooldownTimer: 0,
         };
 
         rooms.set(roomId, room);
@@ -3125,6 +3127,9 @@ io.on("connection", (socket) => {
         room.adPausedPlayers.add(socket.id);
         
         if (powerUpName) {
+          if (!room.powerUpAdsInProgress) room.powerUpAdsInProgress = new Set();
+          room.powerUpAdsInProgress.add(socket.id);
+          
           const sender = room.players.find((p: any) => p.id === socket.id);
           if (sender) {
             io.to(roomId).emit("chat_bubble", { 
@@ -3140,6 +3145,11 @@ io.on("connection", (socket) => {
       const room = rooms.get(roomId);
       if (room && room.adPausedPlayers) {
         room.adPausedPlayers.delete(socket.id);
+        
+        if (room.powerUpAdsInProgress && room.powerUpAdsInProgress.has(socket.id)) {
+          room.powerUpAdsInProgress.delete(socket.id);
+          room.adCooldownTimer = 30; // Start 30s cooldown where game timer is paused
+        }
       }
     });
 
@@ -4095,6 +4105,17 @@ io.on("connection", (socket) => {
     }
     
     const interval = setInterval(() => {
+      // Handle Ad Pause (highest priority - pauses everything)
+      if (room.adPausedPlayers && room.adPausedPlayers.size > 0) {
+        return; // Skip all timer decrements
+      }
+
+      // Handle Ad Cooldown Pause (pauses everything)
+      if (room.adCooldownTimer > 0) {
+        room.adCooldownTimer--;
+        return; // Skip all timer decrements
+      }
+
       if (room.isPaused) {
         if (room.quickGuessTimer > 0) {
           room.quickGuessTimer--;
@@ -4124,11 +4145,6 @@ io.on("connection", (socket) => {
           room.freezeTimer = 0;
           io.to(roomId).emit("freeze_ended");
         }
-        return; // Skip main timer decrement
-      }
-
-      // Handle Ad Pause
-      if (room.adPausedPlayers && room.adPausedPlayers.size > 0) {
         return; // Skip main timer decrement
       }
 
