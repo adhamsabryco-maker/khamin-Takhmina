@@ -8132,10 +8132,10 @@ export default function App() {
             </AnimatePresence>
 
             <div className="pt-3 md:pt-3 border-t-2 border-game space-y-3 md:space-y-4">
-                <div className="flex items-center font-bold text-sm gap-1">
+                <div className="flex items-center font-bold md:text-sm text-xs gap-1">
                 <Users className="w-4 h-4" />
                  إجمالي عدد اللاعبين المسجلين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{totalPlayersCount}</span>
-                <span className="text-green-600 bg-green-100 px-2 py-0.5 rounded-full text-sm mr-2">
+                <span className="text-green-600 bg-green-100 px-2 py-0.5 rounded-full md:text-sm text-xs mr-2">
                   متصل الآن: {onlineCount > 1000 ? '1000+' : onlineCount}
                 </span>
                 </div>            
