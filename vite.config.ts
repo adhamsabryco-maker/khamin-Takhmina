@@ -53,14 +53,14 @@ export default defineConfig(({mode}) => {
               sizes: '1080x1920', // اتأكد من مقاس الصورة اللي صورتها
               type: 'image/png',
               form_factor: 'narrow',
-              label: 'شاشة اللعبة على الموبايل'
+              label: 'Game Play on Mobile'
             },
             {
               src: 'screenshot-desktop.png',
               sizes: '1920x1080', // اتأكد من مقاس الصورة اللي صورتها
               type: 'image/png',
               form_factor: 'wide',
-              label: 'شاشة اللعبة على الكمبيوتر'
+              label: 'Game Play on Desktop'
             }
           ]
         }

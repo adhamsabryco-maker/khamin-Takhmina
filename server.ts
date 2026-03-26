@@ -230,33 +230,50 @@ const app = express();
     res.setHeader('Expires', '0');
     const version = configCache.version || '1.1.1';
     // Use a versioned path for the icon to force OS-level PWA icon updates
-    const iconPath = `/icon-v${version.replace(/\./g, '-')}.svg`;
+    const iconPath = `/icon.svg`;
     
     res.json({
+      "id": "/",
       "name": "خمن تخمينة",
       "short_name": "خمن تخمينة",
-      "description": "لعبة تخمين كلمات ممتعة",
       "start_url": "/",
       "display": "standalone",
       "background_color": "#ffffff",
       "theme_color": "#ffffff",
       "icons": [
         {
-          "src": iconPath,
+          "src": "/icon.svg",
           "sizes": "any",
+          "purpose": "any",
           "type": "image/svg+xml"
         },
         {
-          "src": iconPath,
+          "src": "/icon-192.png", 
           "sizes": "192x192",
-          "type": "image/svg+xml",
-          "purpose": "any maskable"
+          "type": "image/png",
+          "purpose": "any"
         },
         {
-          "src": iconPath,
+          "src": "/icon-512.png",
           "sizes": "512x512",
-          "type": "image/svg+xml",
-          "purpose": "any maskable"
+          "type": "image/png",
+          "purpose": "any"
+        }
+      ],
+      "screenshots": [
+        {
+          "src": "/screenshot-mobile.png",
+          "sizes": "1080x1920",
+          "type": "image/png",
+          "form_factor": "narrow",
+          "label": "Game Play on Mobile"
+        },
+        {
+          "src": "/screenshot-desktop.png",
+          "sizes": "1920x1080",
+          "type": "image/png",
+          "form_factor": "wide",
+          "label": "Game Play on Desktop"
         }
       ]
     });
@@ -266,7 +283,7 @@ const app = express();
   app.get("/manifest.webmanifest", manifestHandler);
 
   // Route to serve the icon with a versioned filename
-  app.get("/icon-v:version.svg", (req, res) => {
+  app.get("/icon.svg", (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -1017,7 +1034,7 @@ const app = express();
   }
 
   function broadcastOnlineCount() {
-    io.emit('online_count', io.engine.clientsCount);
+    io.emit('online_count', { online: io.engine.clientsCount, total: allPlayers.size });
   }
 
   app.get("/api/reports", (req, res) => {
