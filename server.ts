@@ -1057,16 +1057,24 @@ const app = express();
 
   app.get("/api/admin/download-db", (req, res) => {
     const token = req.query.token as string;
+    console.log(`[DB Download] Request received with token: ${token}`);
+    console.log(`[DB Download] Current adminTokens:`, Array.from(adminTokens));
     if (!token || !adminTokens.has(token)) {
+      console.log(`[DB Download] Unauthorized. Token missing or invalid.`);
       return res.status(403).send("Unauthorized");
     }
     
+    console.log(`[DB Download] Token valid. Sending file: ${dbPath}`);
     res.download(dbPath, 'players.db', (err) => {
       if (err) {
         console.error("Error downloading database:", err);
         if (!res.headersSent) {
           res.status(500).send("Error downloading database");
         }
+      } else {
+        console.log(`[DB Download] File sent successfully.`);
+        // Remove token after use for security
+        adminTokens.delete(token);
       }
     });
   });
@@ -4091,6 +4099,21 @@ io.on("connection", (socket) => {
            callback({ error: "Player not found" });
         }
       } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_request_db_download", (callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        const downloadToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        adminTokens.add(downloadToken);
+        console.log(`[DB Download] Generated token ${downloadToken} for admin ${admin?.serial || socket.data?.serial}`);
+        // Token expires in 5 minutes
+        setTimeout(() => adminTokens.delete(downloadToken), 1000 * 60 * 5);
+        callback({ success: true, token: downloadToken });
+      } else {
+        console.log(`[DB Download] Unauthorized request from socket ${socket.id}`);
         callback({ error: "Unauthorized" });
       }
     });
