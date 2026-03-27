@@ -767,6 +767,12 @@ export default function App() {
   const [activeRooms, setActiveRooms] = useState<any[]>([]);
 
   const [spectatingRoomId, setSpectatingRoomId] = useState<string | null>(null);
+  const spectatingRoomIdRef = useRef<string | null>(null);
+  
+  const updateSpectatingRoomId = (id: string | null) => {
+    setSpectatingRoomId(id);
+    spectatingRoomIdRef.current = id;
+  };
 
   useEffect(() => {
     if (spectatingRoomId && activeRooms.length === 0 && socket) {
@@ -775,10 +781,6 @@ export default function App() {
       });
     }
   }, [spectatingRoomId, socket, activeRooms.length]);
-  const spectatingRoomIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    spectatingRoomIdRef.current = spectatingRoomId;
-  }, [spectatingRoomId]);
   const [spectatorRoomData, setSpectatorRoomData] = useState<any>(null);
   const [pendingAvatars, setPendingAvatars] = useState<{ serial: string, name: string, level: number, pendingAvatar: string }[]>([]);
   const [avatarStatus, setAvatarStatus] = useState<'approved' | 'pending' | 'rejected'>('approved');
@@ -6983,12 +6985,12 @@ export default function App() {
                               <button 
                                 onClick={() => {
                                   // Set spectating ID first to avoid race condition with room_update
-                                  setSpectatingRoomId(room.id);
+                                  updateSpectatingRoomId(room.id);
                                   socket?.emit('admin_join_spectator', room.id, (res: any) => {
                                     if (res.success) {
                                       setShowAdminDashboard(false);
                                     } else {
-                                      setSpectatingRoomId(null);
+                                      updateSpectatingRoomId(null);
                                       showAlert(res.error || 'فشل الانضمام للمشاهدة', 'خطأ');
                                     }
                                   });
@@ -7819,7 +7821,7 @@ export default function App() {
               <button 
                 onClick={() => {
                   socket?.emit('admin_leave_spectator', spectatingRoomId);
-                  setSpectatingRoomId(null);
+                  updateSpectatingRoomId(null);
                   setSpectatorRoomData(null);
                   setShowAdminDashboard(true);
                 }}
@@ -7858,11 +7860,13 @@ export default function App() {
                         key={room.id}
                         onClick={() => {
                           if (room.id === spectatingRoomId) return;
-                          socket?.emit('admin_leave_spectator', spectatingRoomId);
+                          if (spectatingRoomId) socket?.emit('admin_leave_spectator', spectatingRoomId);
+                          updateSpectatingRoomId(room.id);
+                          setSpectatorRoomData(null);
                           socket?.emit('admin_join_spectator', room.id, (res: any) => {
-                            if (res.success) {
-                              setSpectatingRoomId(room.id);
-                              setSpectatorRoomData(null);
+                            if (!res.success) {
+                              updateSpectatingRoomId(null);
+                              showAlert('حدث خطأ أثناء الانضمام للمشاهدة', 'خطأ');
                             }
                           });
                         }}
@@ -7934,7 +7938,7 @@ export default function App() {
                         <div className="relative w-full max-w-[200px] aspect-square rounded-xl overflow-hidden shadow-xl border-2 border-white/10 bg-black/20">
                           {p.targetImage ? (
                             <img 
-                              src={p.targetImage.url} 
+                              src={p.targetImage.image} 
                               alt={`Target for ${p.name}`} 
                               className="w-full h-full object-cover"
                               referrerPolicy="no-referrer"
