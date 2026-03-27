@@ -6954,11 +6954,13 @@ export default function App() {
 
                               <button 
                                 onClick={() => {
+                                  // Set spectating ID first to avoid race condition with room_update
+                                  setSpectatingRoomId(room.id);
                                   socket?.emit('admin_join_spectator', room.id, (res: any) => {
                                     if (res.success) {
-                                      setSpectatingRoomId(room.id);
                                       setShowAdminDashboard(false);
                                     } else {
+                                      setSpectatingRoomId(null);
                                       showAlert(res.error || 'فشل الانضمام للمشاهدة', 'خطأ');
                                     }
                                   });
