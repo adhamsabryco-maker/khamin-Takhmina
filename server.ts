@@ -1634,7 +1634,10 @@ const app = express();
         history.push({ role: 'model', parts: [{ text: botQuestion }] });
         botConversations.set(roomId, history);
 
-        io.to(roomId).emit("chat_bubble", { senderId: bot.id, text: botQuestion });
+        const messageObj = { senderId: bot.id, text: botQuestion };
+        if (!room.chatHistory) room.chatHistory = [];
+        room.chatHistory.push({ ...messageObj, senderName: bot.name, timestamp: Date.now() });
+        io.to(roomId).emit("chat_bubble", messageObj);
       } catch (error) {
         console.error("Bot Questioning Error:", error);
       }
@@ -1796,7 +1799,10 @@ const app = express();
         const typingDelay = Math.min(5000, Math.max(1000, botReply.length * 50));
         
         setTimeout(() => {
-          io.to(roomId).emit("chat_bubble", { senderId: bot.id, text: botReply });
+          const messageObj = { senderId: bot.id, text: botReply };
+          if (!room.chatHistory) room.chatHistory = [];
+          room.chatHistory.push({ ...messageObj, senderName: bot.name, timestamp: Date.now() });
+          io.to(roomId).emit("chat_bubble", messageObj);
         }, typingDelay);
 
       } catch (error) {
@@ -2428,6 +2434,7 @@ io.on("connection", (socket) => {
           quickGuessTimer: 0,
           adCooldownTimer: 0,
           lastUpdates: null,
+          chatHistory: [],
         });
       }
 
@@ -2786,10 +2793,13 @@ io.on("connection", (socket) => {
           console.log(`Out of context detected for ${sender.name} in room ${roomId}: "${text}"`);
           
           // Inform everyone
-          io.to(roomId).emit("chat_bubble", { 
+          const messageObj = { 
             senderId: "system", 
             text: `تم استبعاد ${sender.name} للخروج عن سياق الدردشة الخاص باللعبة! 🚫` 
-          });
+          };
+          if (!room.chatHistory) room.chatHistory = [];
+          room.chatHistory.push({ ...messageObj, senderName: "النظام", timestamp: Date.now() });
+          io.to(roomId).emit("chat_bubble", messageObj);
           
           // End game and make opponent winner
           setTimeout(() => {
@@ -2889,7 +2899,10 @@ io.on("connection", (socket) => {
           const opponent = room.players.find((p: any) => p.id !== socket.id);
           if (opponent && sender) {
             // Inform everyone
-            io.to(roomId).emit("chat_bubble", { senderId: "system", text: `تم استبعاد ${sender.name} لمحاولة تسريب الإجابة! 🚫` });
+            const messageObj = { senderId: "system", text: `تم استبعاد ${sender.name} لمحاولة تسريب الإجابة! 🚫` };
+            if (!room.chatHistory) room.chatHistory = [];
+            room.chatHistory.push({ ...messageObj, senderName: "النظام", timestamp: Date.now() });
+            io.to(roomId).emit("chat_bubble", messageObj);
             
             // End game and make opponent winner
             // Small delay to ensure the message is seen
@@ -2967,6 +2980,17 @@ io.on("connection", (socket) => {
         }
 
         console.log(`Broadcasting chat to room ${roomId}`);
+        
+        // Save to room chat history
+        if (!room.chatHistory) room.chatHistory = [];
+        room.chatHistory.push({
+          senderId: socket.id,
+          senderName: sender.name,
+          text: messageToSend,
+          timestamp: Date.now()
+        });
+        if (room.chatHistory.length > 50) room.chatHistory.shift();
+
         io.to(roomId).emit("chat_bubble", { senderId: socket.id, text: messageToSend });
         
         // Clear typing status when message is sent
@@ -3463,7 +3487,10 @@ io.on("connection", (socket) => {
           
           if (room.gameState !== "finished" && room.gameState !== "waiting") {
             // Player intentionally left during an active game
-            io.to(roomId).emit("chat_bubble", { senderId: "system", text: `غادر ${player.name} الغرفة` });
+            const messageObj = { senderId: "system", text: `غادر ${player.name} الغرفة` };
+            if (!room.chatHistory) room.chatHistory = [];
+            room.chatHistory.push({ ...messageObj, senderName: "النظام", timestamp: Date.now() });
+            io.to(roomId).emit("chat_bubble", messageObj);
             endGame(roomId, opponent ? opponent.name : "المنافس", true);
           } else if (room.gameState === "waiting") {
             socket.to(roomId).emit("opponent_left_lobby");
