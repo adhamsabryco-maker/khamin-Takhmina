@@ -1941,6 +1941,9 @@ export default function App() {
         setAdminEmail(userData.email);
         localStorage.setItem('khamin_is_admin', 'true');
         localStorage.setItem('khamin_admin_email', userData.email);
+        if (userData.adminToken) {
+          localStorage.setItem('khamin_admin_token', userData.adminToken);
+        }
         socket.emit('admin_set_admin_status', { 
           serial: playerSerial, 
           isAdmin: true, 
