@@ -221,6 +221,32 @@ export const AdminCustomization = ({ showAlert }: { showAlert: (msg: string, tit
             </p>
           </div>
         </div>
+
+        {/* Database Backup */}
+        <div className="box-game p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">💾 نسخة احتياطية لقاعدة البيانات</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-2xl border border-blue-100">
+              <div>
+                <p className="font-bold text-blue-900">تحميل ملف players.db</p>
+                <p className="text-xs text-blue-700 mt-1">يحتوي على بيانات اللاعبين، المتجر، الإعدادات، والمزيد.</p>
+              </div>
+              <button 
+                onClick={() => {
+                  const token = localStorage.getItem('khamin_admin_token');
+                  if (!token) {
+                    showAlert('عذراً، لا تملك صلاحية لتحميل قاعدة البيانات.', 'خطأ');
+                    return;
+                  }
+                  window.open(`/api/admin/download-db?token=${token}`, '_blank');
+                }}
+                className="btn-game bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 shadow-[0_4px_0_0_#2563eb] active:shadow-none active:translate-y-1"
+              >
+                تحميل الآن
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
