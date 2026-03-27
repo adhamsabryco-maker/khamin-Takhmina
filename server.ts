@@ -1055,6 +1055,22 @@ const app = express();
     res.json(Array.from(allPlayers.values()));
   });
 
+  app.get("/api/admin/download-db", (req, res) => {
+    const token = req.query.token as string;
+    if (!token || !adminTokens.has(token)) {
+      return res.status(403).send("Unauthorized");
+    }
+    
+    res.download(dbPath, 'players.db', (err) => {
+      if (err) {
+        console.error("Error downloading database:", err);
+        if (!res.headersSent) {
+          res.status(500).send("Error downloading database");
+        }
+      }
+    });
+  });
+
   // Paymob Integration
   app.post("/api/paymob/initiate", async (req, res) => {
     try {
