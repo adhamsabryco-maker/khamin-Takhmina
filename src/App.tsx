@@ -1074,7 +1074,7 @@ export default function App() {
                      "Respond with ONLY one word: 'safe', 'unsafe', or 'suspicious'.";
       
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview',
+        model: 'gemini-3-flash-preview',
         contents: [{ parts: [imagePart, { text: prompt }] }]
       });
       
@@ -2229,8 +2229,14 @@ export default function App() {
           newSocket.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail });
         }
         // Fetch actual server data
-        newSocket.emit('get_player_data', serial, (data: any) => {
-          if (data) {
+        newSocket.emit('get_player_data', { serial, fingerprint }, (data: any) => {
+          if (data && data.error) {
+            localStorage.removeItem('khamin_player_serial');
+            setPlayerSerial(null);
+            setPlayerName('');
+            setError(data.error);
+            setShowWelcomeModal(true);
+          } else if (data) {
             setXp(data.xp);
             setWins(data.wins || 0);
             setReports(data.reports || 0);
@@ -3128,7 +3134,13 @@ export default function App() {
       return;
     }
 
-    socket?.emit('register_player', { name: playerName, avatar, xp, gender, fingerprint }, ({ serial, name }: { serial: string, name: string }) => {
+    socket?.emit('register_player', { name: playerName, avatar, xp, gender, fingerprint }, (response: any) => {
+      if (response.error) {
+        setRegisterError(response.error);
+        return;
+      }
+      
+      const { serial, name } = response;
       if (serial) {
         setPlayerSerial(serial);
         setPlayerName(name); // Update with filtered name
@@ -3162,8 +3174,10 @@ export default function App() {
       return;
     }
     
-    socket?.emit('get_player_data', loginSerial.trim(), (player: any) => {
-      if (player) {
+    socket?.emit('get_player_data', { serial: loginSerial.trim(), fingerprint }, (player: any) => {
+      if (player && player.error) {
+        setLoginError(player.error);
+      } else if (player) {
         setPlayerSerial(player.serial);
         setPlayerName(player.name);
         setPlayerAge(player.age || 18);
