@@ -9,6 +9,7 @@ import fs from "fs";
 import crypto from "crypto";
 import Database from 'better-sqlite3';
 import multer from "multer";
+import os from "os";
 import admin from 'firebase-admin';
 
 // Initialize Firebase Admin
@@ -35,6 +36,7 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage: storage });
+const dbUpload = multer({ dest: os.tmpdir() });
 
 import { filterProfanity, filterGameTerms } from "./src/profanityFilter";
 import { GoogleGenAI } from "@google/genai";
@@ -1079,6 +1081,62 @@ const app = express();
     });
   });
 
+  app.post("/api/admin/upload-db", dbUpload.single('database'), (req, res) => {
+    const token = req.query.token as string;
+    console.log(`[DB Upload] Request received with token: ${token}`);
+    if (!token || !adminTokens.has(token)) {
+      console.log(`[DB Upload] Unauthorized. Token missing or invalid.`);
+      return res.status(403).send("Unauthorized");
+    }
+
+    if (!req.file) {
+      console.log(`[DB Upload] No file uploaded.`);
+      return res.status(400).send("No file uploaded");
+    }
+
+    console.log(`[DB Upload] Token valid. Processing file: ${req.file.path}`);
+    try {
+      // 1. Close current DB connection
+      console.log(`[DB Upload] Closing current database connection...`);
+      db.close();
+
+      // 2. Overwrite the actual DB file with the uploaded one
+      console.log(`[DB Upload] Overwriting database file at ${dbPath}...`);
+      fs.copyFileSync(req.file.path, dbPath);
+
+      // 2.5 Delete WAL and SHM files if they exist to prevent corruption
+      const walPath = `${dbPath}-wal`;
+      const shmPath = `${dbPath}-shm`;
+      if (fs.existsSync(walPath)) {
+        console.log(`[DB Upload] Deleting old WAL file...`);
+        fs.unlinkSync(walPath);
+      }
+      if (fs.existsSync(shmPath)) {
+        console.log(`[DB Upload] Deleting old SHM file...`);
+        fs.unlinkSync(shmPath);
+      }
+
+      // 3. Clean up temp file
+      console.log(`[DB Upload] Cleaning up temporary file...`);
+      fs.unlinkSync(req.file.path);
+
+      // 4. Send success response
+      console.log(`[DB Upload] Database replaced successfully. Restarting server...`);
+      res.json({ success: true, message: "Database uploaded successfully. Server will restart." });
+
+      // 5. Exit process to trigger restart
+      setTimeout(() => {
+        process.exit(0);
+      }, 1000);
+
+    } catch (err) {
+      console.error("[DB Upload] Error uploading database:", err);
+      if (!res.headersSent) {
+        res.status(500).send("Error uploading database");
+      }
+    }
+  });
+
   // Paymob Integration
   app.post("/api/paymob/initiate", async (req, res) => {
     try {
@@ -1868,15 +1926,14 @@ io.on("connection", (socket) => {
     });
 
     socket.on("register_player", ({ name, avatar, xp, gender, fingerprint }, callback) => {
-      const ip = socket.handshake.address;
+      const forwardedFor = socket.handshake.headers['x-forwarded-for'];
+      const ip = Array.isArray(forwardedFor) ? forwardedFor[0] : (forwardedFor ? forwardedFor.split(',')[0].trim() : socket.handshake.address);
       
       // Check if banned
-      if (fingerprint) {
-        const banned = db.prepare('SELECT * FROM banned_identities WHERE fingerprint = ? OR ip = ?').get(fingerprint, ip);
-        if (banned) {
-          callback({ error: 'تم حظرك نهائياً من اللعبة' });
-          return;
-        }
+      const banned = db.prepare('SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL) OR (ip = ? AND ip IS NOT NULL)').get(fingerprint || null, ip || null);
+      if (banned) {
+        callback({ error: 'تم حظرك نهائياً من اللعبة' });
+        return;
       }
 
       // Generate a unique non-sequential ID
@@ -2311,9 +2368,37 @@ io.on("connection", (socket) => {
       callback(getTopPlayers());
     });
     
-    socket.on("get_player_data", (serial, callback) => {
+    socket.on("get_player_data", (data, callback) => {
+      const serial = typeof data === 'string' ? data : data.serial;
+      const fingerprint = typeof data === 'object' ? data.fingerprint : null;
+      
       const player = allPlayers.get(serial);
       if (player && callback) {
+        // Update IP and fingerprint
+        const forwardedFor = socket.handshake.headers['x-forwarded-for'];
+        const ip = Array.isArray(forwardedFor) ? forwardedFor[0] : (forwardedFor ? forwardedFor.split(',')[0].trim() : socket.handshake.address);
+        
+        // Check if banned
+        const banned = db.prepare('SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL) OR (ip = ? AND ip IS NOT NULL)').get(fingerprint || null, ip || null);
+        if (banned || player.isPermanentBan) {
+          callback({ error: 'تم حظرك نهائياً من اللعبة' });
+          return;
+        }
+
+        let updated = false;
+        if (ip && player.ip !== ip) {
+          player.ip = ip;
+          updated = true;
+        }
+        if (fingerprint && player.fingerprint !== fingerprint) {
+          player.fingerprint = fingerprint;
+          updated = true;
+        }
+        
+        if (updated) {
+          savePlayerData(serial);
+        }
+
         const now = Date.now();
         const lastClaim = player.lastDailyClaim || 0;
         const isSameDay = (d1: number, d2: number) => {
@@ -4012,7 +4097,11 @@ io.on("connection", (socket) => {
           if (updates.tokens !== undefined) player.tokens = updates.tokens;
           
           if (updates.isPermanentBan === 1) {
-            db.prepare('INSERT INTO banned_identities (fingerprint, ip, timestamp) VALUES (?, ?, ?)').run(player.fingerprint || null, player.ip || null, Date.now());
+            if (player.fingerprint || player.ip) {
+              db.prepare('INSERT INTO banned_identities (fingerprint, ip, timestamp) VALUES (?, ?, ?)').run(player.fingerprint || null, player.ip || null, Date.now());
+            }
+          } else if (updates.isPermanentBan === 0) {
+            db.prepare('DELETE FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL) OR (ip = ? AND ip IS NOT NULL)').run(player.fingerprint || null, player.ip || null);
           }
           
           savePlayerData(serial);
