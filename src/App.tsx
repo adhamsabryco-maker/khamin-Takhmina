@@ -7780,6 +7780,142 @@ export default function App() {
     );
   }
 
+  if (spectatingRoomId) {
+    if (!spectatorRoomData) {
+      return (
+        <div className="min-h-screen w-full flex items-center justify-center bg-black text-white font-black text-2xl animate-pulse">
+          جاري تحميل بيانات المباراة... 🚀
+        </div>
+      );
+    }
+    return (
+      <>
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black z-[7000] flex flex-col"
+          >
+            {/* Header */}
+            <div className="bg-white/10 backdrop-blur-md p-4 flex items-center justify-between border-b border-white/10">
+              <div className="flex items-center gap-4">
+                <div className="px-3 py-1 bg-red-600 text-white rounded-full text-xs font-black flex items-center gap-2 animate-pulse">
+                  <Activity className="w-3 h-3" />
+                  وضع المشاهدة المباشرة
+                </div>
+                <div className="text-white/60 text-xs font-bold">غرفة: {spectatingRoomId}</div>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  socket?.emit('admin_leave_spectator', spectatingRoomId);
+                  setSpectatingRoomId(null);
+                  setSpectatorRoomData(null);
+                }}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-sm transition-all"
+              >
+                خروج من المشاهدة
+              </button>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+              {/* Game Info & Chat */}
+              <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                {/* Players Info */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  {spectatorRoomData.players.map((p: any) => (
+                    <div key={p.serial} className="bg-white/5 rounded-2xl p-4 border border-white/10 flex items-center gap-4">
+                      <div className="w-12 h-12">
+                        {renderAvatarContent(p.avatar, getLevel(p.xp), false, true)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-white font-black text-sm">{p.name}</div>
+                        <div className="text-white/40 text-[10px]">ID: {p.serial}</div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setReportTarget({ serial: p.serial, name: p.name });
+                          setShowReportModal(true);
+                        }}
+                        className="p-2 bg-red-500/20 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition-all"
+                        title="إبلاغ عن اللاعب"
+                      >
+                        <Flag className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Game State & Image */}
+                <div className="flex-1 bg-white/5 rounded-3xl border border-white/10 p-6 flex flex-col items-center justify-center relative overflow-hidden">
+                  <div className="absolute top-4 left-4 px-4 py-2 bg-white/10 rounded-full text-white font-black text-sm">
+                    الحالة: {spectatorRoomData.gameState === 'guessing' ? 'جاري التخمين' : spectatorRoomData.gameState === 'discussion' ? 'نقاش' : spectatorRoomData.gameState}
+                  </div>
+                  
+                  {spectatorRoomData.currentImage && (
+                    <div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10">
+                      <img 
+                        src={spectatorRoomData.currentImage.url} 
+                        alt="Game" 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      {spectatorRoomData.gameState === 'guessing' && (
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                          <p className="text-white font-black text-xl text-center px-6">اللاعبون يحاولون التخمين الآن...</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="mt-6 text-white/60 font-bold text-center">
+                    {spectatorRoomData.gameState === 'discussion' ? 'اللاعبون يتناقشون في الشات' : 'اللاعبون يحاولون تخمين الصورة'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Chat Sidebar */}
+              <div className="w-full md:w-96 bg-white/5 border-l border-white/10 flex flex-col overflow-hidden">
+                <div className="p-4 border-b border-white/10 bg-white/5">
+                  <h4 className="text-white font-black flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-purple-400" />
+                    الدردشة المباشرة
+                  </h4>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {(!spectatorRoomData.chatHistory || spectatorRoomData.chatHistory.length === 0) ? (
+                    <div className="text-center py-20 text-white/20 font-bold">لا توجد رسائل بعد</div>
+                  ) : (
+                    spectatorRoomData.chatHistory.map((msg: any, idx: number) => (
+                      <div key={idx} className={`flex flex-col ${msg.senderId === socket?.id ? 'items-end' : 'items-start'}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-black text-white/40">{msg.senderName}</span>
+                        </div>
+                        <div className="bg-white/10 text-white px-4 py-2 rounded-2xl text-sm font-bold max-w-[80%] break-words">
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                <div className="p-4 bg-red-500/10 border-t border-red-500/20">
+                  <p className="text-red-400 text-[10px] font-bold text-center">
+                    أنت في وضع المشاهدة. يمكنك مراقبة الشات والإبلاغ عن أي مخالفات.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+        {renderModals()}
+      </>
+    );
+  }
+
   if (isPermanentBan || (banUntil && banUntil > Date.now())) {
     const isPermanent = isPermanentBan;
     const remainingHours = banUntil ? Math.floor((banUntil - Date.now()) / (1000 * 60 * 60)) : 0;
@@ -8740,141 +8876,6 @@ export default function App() {
     );
   }
 
-  if (spectatingRoomId) {
-    if (!spectatorRoomData) {
-      return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-black text-white font-black text-2xl animate-pulse">
-          جاري تحميل بيانات المباراة... 🚀
-        </div>
-      );
-    }
-    return (
-      <>
-        <AnimatePresence>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black z-[7000] flex flex-col"
-          >
-            {/* Header */}
-            <div className="bg-white/10 backdrop-blur-md p-4 flex items-center justify-between border-b border-white/10">
-              <div className="flex items-center gap-4">
-                <div className="px-3 py-1 bg-red-600 text-white rounded-full text-xs font-black flex items-center gap-2 animate-pulse">
-                  <Activity className="w-3 h-3" />
-                  وضع المشاهدة المباشرة
-                </div>
-                <div className="text-white/60 text-xs font-bold">غرفة: {spectatingRoomId}</div>
-              </div>
-              
-              <button 
-                onClick={() => {
-                  socket?.emit('admin_leave_spectator', spectatingRoomId);
-                  setSpectatingRoomId(null);
-                  setSpectatorRoomData(null);
-                }}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-sm transition-all"
-              >
-                خروج من المشاهدة
-              </button>
-            </div>
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-              {/* Game Info & Chat */}
-              <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                {/* Players Info */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  {spectatorRoomData.players.map((p: any) => (
-                    <div key={p.serial} className="bg-white/5 rounded-2xl p-4 border border-white/10 flex items-center gap-4">
-                      <div className="w-12 h-12">
-                        {renderAvatarContent(p.avatar, getLevel(p.xp), false, true)}
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-white font-black text-sm">{p.name}</div>
-                        <div className="text-white/40 text-[10px]">ID: {p.serial}</div>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          setReportTarget({ serial: p.serial, name: p.name });
-                          setShowReportModal(true);
-                        }}
-                        className="p-2 bg-red-500/20 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition-all"
-                        title="إبلاغ عن اللاعب"
-                      >
-                        <Flag className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Game State & Image */}
-                <div className="flex-1 bg-white/5 rounded-3xl border border-white/10 p-6 flex flex-col items-center justify-center relative overflow-hidden">
-                  <div className="absolute top-4 left-4 px-4 py-2 bg-white/10 rounded-full text-white font-black text-sm">
-                    الحالة: {spectatorRoomData.gameState === 'guessing' ? 'جاري التخمين' : spectatorRoomData.gameState === 'discussion' ? 'نقاش' : spectatorRoomData.gameState}
-                  </div>
-                  
-                  {spectatorRoomData.currentImage && (
-                    <div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10">
-                      <img 
-                        src={spectatorRoomData.currentImage.url} 
-                        alt="Game" 
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                      {spectatorRoomData.gameState === 'guessing' && (
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                          <p className="text-white font-black text-xl text-center px-6">اللاعبون يحاولون التخمين الآن...</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="mt-6 text-white/60 font-bold text-center">
-                    {spectatorRoomData.gameState === 'discussion' ? 'اللاعبون يتناقشون في الشات' : 'اللاعبون يحاولون تخمين الصورة'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Live Chat Sidebar */}
-              <div className="w-full md:w-96 bg-white/5 border-l border-white/10 flex flex-col overflow-hidden">
-                <div className="p-4 border-b border-white/10 bg-white/5">
-                  <h4 className="text-white font-black flex items-center gap-2">
-                    <MessageCircle className="w-5 h-5 text-purple-400" />
-                    الدردشة المباشرة
-                  </h4>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {(!spectatorRoomData.chatHistory || spectatorRoomData.chatHistory.length === 0) ? (
-                    <div className="text-center py-20 text-white/20 font-bold">لا توجد رسائل بعد</div>
-                  ) : (
-                    spectatorRoomData.chatHistory.map((msg: any, idx: number) => (
-                      <div key={idx} className={`flex flex-col ${msg.senderId === socket?.id ? 'items-end' : 'items-start'}`}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-black text-white/40">{msg.senderName}</span>
-                        </div>
-                        <div className="bg-white/10 text-white px-4 py-2 rounded-2xl text-sm font-bold max-w-[80%] break-words">
-                          {msg.text}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-                
-                <div className="p-4 bg-red-500/10 border-t border-red-500/20">
-                  <p className="text-red-400 text-[10px] font-bold text-center">
-                    أنت في وضع المشاهدة. يمكنك مراقبة الشات والإبلاغ عن أي مخالفات.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-        {renderModals()}
-      </>
-    );
-  }
 
   if (!room) {
     if (isSearching) return null; // Handled by isSearching block
