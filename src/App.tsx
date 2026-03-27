@@ -765,7 +765,16 @@ export default function App() {
   const [rewardHistory, setRewardHistory] = useState<any[]>([]);
   const [adminContacts, setAdminContacts] = useState<any[]>([]);
   const [activeRooms, setActiveRooms] = useState<any[]>([]);
+
   const [spectatingRoomId, setSpectatingRoomId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (spectatingRoomId && activeRooms.length === 0 && socket) {
+      socket.emit('admin_get_active_rooms', (rooms: any) => {
+        if (Array.isArray(rooms)) setActiveRooms(rooms);
+      });
+    }
+  }, [spectatingRoomId, socket, activeRooms.length]);
   const spectatingRoomIdRef = useRef<string | null>(null);
   useEffect(() => {
     spectatingRoomIdRef.current = spectatingRoomId;
@@ -7812,6 +7821,7 @@ export default function App() {
                   socket?.emit('admin_leave_spectator', spectatingRoomId);
                   setSpectatingRoomId(null);
                   setSpectatorRoomData(null);
+                  setShowAdminDashboard(true);
                 }}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-sm transition-all"
               >
@@ -7821,63 +7831,138 @@ export default function App() {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+              {/* Active Matches Sidebar (Right side in RTL) */}
+              <div className="w-full md:w-64 bg-white/5 border-l border-white/10 flex flex-col overflow-hidden order-last md:order-first">
+                <div className="p-4 border-b border-white/10 bg-white/5 flex items-center justify-between">
+                  <h4 className="text-white font-black flex items-center gap-2 text-sm">
+                    <Activity className="w-4 h-4 text-green-400" />
+                    المباريات المباشرة
+                  </h4>
+                  <button 
+                    onClick={() => {
+                      socket?.emit('admin_get_active_rooms', (rooms: any) => {
+                        if (Array.isArray(rooms)) setActiveRooms(rooms);
+                      });
+                    }}
+                    className="p-1 hover:bg-white/10 rounded-lg text-white/60 transition-all"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  {activeRooms.length === 0 ? (
+                    <div className="text-center py-10 text-white/20 font-bold text-xs">لا توجد مباريات حالياً</div>
+                  ) : (
+                    activeRooms.map((room: any) => (
+                      <button
+                        key={room.id}
+                        onClick={() => {
+                          if (room.id === spectatingRoomId) return;
+                          socket?.emit('admin_leave_spectator', spectatingRoomId);
+                          socket?.emit('admin_join_spectator', room.id, (res: any) => {
+                            if (res.success) {
+                              setSpectatingRoomId(room.id);
+                              setSpectatorRoomData(null);
+                            }
+                          });
+                        }}
+                        className={`w-full p-3 rounded-xl border transition-all text-right flex flex-col gap-1 ${
+                          room.id === spectatingRoomId 
+                            ? 'bg-purple-600/20 border-purple-500/50' 
+                            : 'bg-white/5 border-white/5 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-white font-black text-xs">غرفة: {room.id}</span>
+                          <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold ${
+                            room.gameState === 'guessing' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            {room.gameState === 'guessing' ? 'تخمين' : 'نقاش'}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-white/40 font-bold">
+                          {room.playerCount} لاعبين
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
               {/* Game Info & Chat */}
               <div className="flex-1 flex flex-col p-4 overflow-hidden">
                 {/* Players Info */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-2 gap-4 mb-4">
                   {spectatorRoomData.players.map((p: any) => (
-                    <div key={p.serial} className="bg-white/5 rounded-2xl p-4 border border-white/10 flex items-center gap-4">
-                      <div className="w-12 h-12">
+                    <div key={p.serial} className="bg-white/5 rounded-2xl p-3 border border-white/10 flex items-center gap-3">
+                      <div className="w-10 h-10">
                         {renderAvatarContent(p.avatar, getLevel(p.xp), false, true)}
                       </div>
                       <div className="flex-1">
-                        <div className="text-white font-black text-sm">{p.name}</div>
-                        <div className="text-white/40 text-[10px]">ID: {p.serial}</div>
+                        <div className="text-white font-black text-xs">{p.name}</div>
+                        <div className="text-white/40 text-[8px]">ID: {p.serial}</div>
                       </div>
                       <button 
                         onClick={() => {
                           setReportTarget({ serial: p.serial, name: p.name });
                           setShowReportModal(true);
                         }}
-                        className="p-2 bg-red-500/20 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition-all"
+                        className="p-1.5 bg-red-500/20 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition-all"
                         title="إبلاغ عن اللاعب"
                       >
-                        <Flag className="w-4 h-4" />
+                        <Flag className="w-3 h-3" />
                       </button>
                     </div>
                   ))}
                 </div>
 
-                {/* Game State & Image */}
-                <div className="flex-1 bg-white/5 rounded-3xl border border-white/10 p-6 flex flex-col items-center justify-center relative overflow-hidden">
-                  <div className="absolute top-4 left-4 px-4 py-2 bg-white/10 rounded-full text-white font-black text-sm">
-                    الحالة: {spectatorRoomData.gameState === 'guessing' ? 'جاري التخمين' : spectatorRoomData.gameState === 'discussion' ? 'نقاش' : spectatorRoomData.gameState}
+                {/* Game State & Images */}
+                <div className="flex-1 bg-white/5 rounded-3xl border border-white/10 p-4 flex flex-col relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="px-3 py-1 bg-white/10 rounded-full text-white font-black text-xs">
+                      الحالة: {spectatorRoomData.gameState === 'guessing' ? 'جاري التخمين' : spectatorRoomData.gameState === 'discussion' ? 'نقاش' : spectatorRoomData.gameState}
+                    </div>
+                    <div className="text-white/40 text-[10px] font-bold">
+                      {spectatorRoomData.gameState === 'discussion' ? 'اللاعبون يتناقشون في الشات' : 'اللاعبون يحاولون تخمين الصور'}
+                    </div>
                   </div>
                   
-                  {spectatorRoomData.currentImage && (
-                    <div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10">
-                      <img 
-                        src={spectatorRoomData.currentImage.url} 
-                        alt="Game" 
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                      {spectatorRoomData.gameState === 'guessing' && (
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                          <p className="text-white font-black text-xl text-center px-6">اللاعبون يحاولون التخمين الآن...</p>
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 items-center justify-center">
+                    {spectatorRoomData.players.map((p: any, idx: number) => (
+                      <div key={p.serial} className="flex flex-col items-center gap-2">
+                        <div className="text-white/60 text-[10px] font-black">صورة اللاعب: {p.name}</div>
+                        <div className="relative w-full max-w-[200px] aspect-square rounded-xl overflow-hidden shadow-xl border-2 border-white/10 bg-black/20">
+                          {p.targetImage ? (
+                            <img 
+                              src={p.targetImage.url} 
+                              alt={`Target for ${p.name}`} 
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white/20 text-[10px] font-bold text-center p-4">
+                              لا توجد صورة حالياً
+                            </div>
+                          )}
+                          {spectatorRoomData.gameState === 'guessing' && !p.hasGuessed && (
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
+                              <p className="text-white font-black text-[10px] text-center px-2">يخمن الآن...</p>
+                            </div>
+                          )}
+                          {p.hasGuessed && (
+                            <div className="absolute inset-0 bg-green-500/40 backdrop-blur-[1px] flex items-center justify-center">
+                              <p className="text-white font-black text-[10px] text-center px-2">تم التخمين ✅</p>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="mt-6 text-white/60 font-bold text-center">
-                    {spectatorRoomData.gameState === 'discussion' ? 'اللاعبون يتناقشون في الشات' : 'اللاعبون يحاولون تخمين الصورة'}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
               {/* Live Chat Sidebar */}
-              <div className="w-full md:w-96 bg-white/5 border-l border-white/10 flex flex-col overflow-hidden">
+              <div className="w-full md:w-80 bg-white/5 border-r border-white/10 flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-white/10 bg-white/5">
                   <h4 className="text-white font-black flex items-center gap-2">
                     <MessageCircle className="w-5 h-5 text-purple-400" />
