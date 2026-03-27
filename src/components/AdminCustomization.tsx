@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { useAvatarConfig } from '../contexts/AvatarContext';
+import { Socket } from 'socket.io-client';
 
-export const AdminCustomization = ({ showAlert }: { showAlert: (msg: string, title?: string) => void }) => {
+export const AdminCustomization = ({ showAlert, socket }: { showAlert: (msg: string, title?: string) => void, socket: Socket | null }) => {
   const [uploading, setUploading] = useState(false);
   const { customConfig: config, refreshConfig } = useAvatarConfig();
   const [versionInput, setVersionInput] = useState(config.version || '1.0.0');
@@ -233,12 +234,18 @@ export const AdminCustomization = ({ showAlert }: { showAlert: (msg: string, tit
               </div>
               <button 
                 onClick={() => {
-                  const token = localStorage.getItem('khamin_admin_token');
-                  if (!token) {
-                    showAlert('عذراً، لا تملك صلاحية لتحميل قاعدة البيانات.', 'خطأ');
+                  if (!socket) {
+                    showAlert('غير متصل بالخادم.', 'خطأ');
                     return;
                   }
-                  window.open(`/api/admin/download-db?token=${token}`, '_blank');
+                  
+                  socket.emit('admin_request_db_download', (res: any) => {
+                    if (res.success && res.token) {
+                      window.open(`/api/admin/download-db?token=${res.token}`, '_blank');
+                    } else {
+                      showAlert('عذراً، لا تملك صلاحية لتحميل قاعدة البيانات.', 'خطأ');
+                    }
+                  });
                 }}
                 className="btn-game bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 shadow-[0_4px_0_0_#2563eb] active:shadow-none active:translate-y-1"
               >
