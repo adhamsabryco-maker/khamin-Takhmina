@@ -6921,7 +6921,7 @@ export default function App() {
                       </div>
                     </div>
                   ) : adminTab === 'customization' ? (
-                    <AdminCustomization showAlert={showAlert} />
+                    <AdminCustomization showAlert={showAlert} socket={socket} />
                   ) : adminTab === 'live_matches' ? (
                     <div className="flex-1 flex flex-col overflow-hidden bg-gray-50/50 p-6">
                       <div className="flex items-center justify-between mb-6">
