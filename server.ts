@@ -491,7 +491,9 @@ const app = express();
     lastComplaintAt?: number,
     lastContactAt?: number,
     blockedSerials?: string[],
-    blockedFingerprints?: string[]
+    blockedFingerprints?: string[],
+    recentOpponents?: { serial: string, name: string, avatar: string, timestamp: number, level?: number, xp?: number }[],
+    reportedSerials?: string[]
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -627,6 +629,7 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN proPackageExpiry INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN unlockedHelpersExpiry INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN claimedRewards TEXT DEFAULT '[]'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN reportedSerials TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastRenameAt INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN pendingAvatar TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN avatarStatus TEXT DEFAULT 'approved'`); } catch (e) {}
@@ -634,6 +637,7 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN lastContactAt INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN blockedSerials TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN blockedFingerprints TEXT DEFAULT '[]'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -778,7 +782,8 @@ const app = express();
         lastComplaintAt: player.lastComplaintAt || 0,
         lastContactAt: player.lastContactAt || 0,
         blockedSerials: JSON.stringify(player.blockedSerials || []),
-        blockedFingerprints: JSON.stringify(player.blockedFingerprints || [])
+        blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
+        recentOpponents: JSON.stringify(player.recentOpponents || [])
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -813,7 +818,9 @@ const app = express();
         lastComplaintAt: player.lastComplaintAt || 0,
         lastContactAt: player.lastContactAt || 0,
         blockedSerials: JSON.stringify(player.blockedSerials || []),
-        blockedFingerprints: JSON.stringify(player.blockedFingerprints || [])
+        blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
+        recentOpponents: JSON.stringify(player.recentOpponents || []),
+        reportedSerials: JSON.stringify(player.reportedSerials || [])
       });
     }
   });
@@ -872,7 +879,9 @@ const app = express();
           pendingAvatar: row.pendingAvatar,
           avatarStatus: row.avatarStatus || 'approved',
           blockedSerials: JSON.parse(row.blockedSerials || '[]'),
-          blockedFingerprints: JSON.parse(row.blockedFingerprints || '[]')
+          blockedFingerprints: JSON.parse(row.blockedFingerprints || '[]'),
+          recentOpponents: JSON.parse(row.recentOpponents || '[]'),
+          reportedSerials: JSON.parse(row.reportedSerials || '[]')
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -3171,6 +3180,91 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("report_player_by_serial", ({ reporterSerial, reportedSerial, reason }, callback) => {
+      const serverReportedPlayer = allPlayers.get(reportedSerial);
+      const serverReporter = allPlayers.get(reporterSerial);
+      
+      if (serverReportedPlayer && serverReporter) {
+        const now = Date.now();
+        const oneDayInMs = 24 * 60 * 60 * 1000;
+        
+        const lastReport = serverReportedPlayer.reportedBy.find(r => r.reporterSerial === serverReporter.serial);
+        
+        if (!lastReport || (now - lastReport.timestamp) >= oneDayInMs) {
+          if (lastReport) {
+            lastReport.timestamp = now;
+          } else {
+            serverReportedPlayer.reportedBy.push({ reporterSerial: serverReporter.serial, timestamp: now });
+          }
+          
+          serverReportedPlayer.reports += 1;
+          
+          if (!serverReporter.reportedSerials) serverReporter.reportedSerials = [];
+          if (!serverReporter.reportedSerials.includes(reportedSerial)) {
+            serverReporter.reportedSerials.push(reportedSerial);
+          }
+          
+          // Save report to DB
+          try {
+            const reportId = Math.random().toString(36).substr(2, 9);
+            db.prepare(`
+              INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason, roomId)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(reportId, now, serverReporter.serial, serverReporter.name, serverReportedPlayer.serial, serverReportedPlayer.name, reason, "profile");
+          } catch (err) {
+            console.error("Failed to save report to DB:", err);
+          }
+          
+          // Notify the reported player if online
+          for (const [socketId, s] of io.sockets.sockets) {
+            if (s.data?.serial === serverReportedPlayer.serial) {
+              io.to(socketId).emit("player_data_update", { reports: serverReportedPlayer.reports });
+              break;
+            }
+          }
+          
+          if (serverReportedPlayer.reports >= 10) {
+            serverReportedPlayer.reports = 0; // Reset reports after ban
+            serverReportedPlayer.banCount += 1;
+            
+            if (serverReportedPlayer.banCount >= 5) {
+              serverReportedPlayer.isPermanentBan = 1;
+              for (const [socketId, s] of io.sockets.sockets) {
+                if (s.data?.serial === serverReportedPlayer.serial) {
+                  io.to(socketId).emit("banned_status", { isPermanent: true });
+                  break;
+                }
+              }
+            } else {
+              serverReportedPlayer.banUntil = now + oneDayInMs;
+              for (const [socketId, s] of io.sockets.sockets) {
+                if (s.data?.serial === serverReportedPlayer.serial) {
+                  io.to(socketId).emit("banned_status", { banUntil: serverReportedPlayer.banUntil, isPermanent: false });
+                  break;
+                }
+              }
+            }
+          }
+          savePlayerData(serverReportedPlayer.serial);
+          savePlayerData(serverReporter.serial);
+          
+          // Notify the reporter to update their reportedSerials state
+          for (const [socketId, s] of io.sockets.sockets) {
+            if (s.data?.serial === serverReporter.serial) {
+              io.to(socketId).emit("update_reported_serials", serverReporter.reportedSerials);
+              break;
+            }
+          }
+          
+          if (callback) callback({ success: true });
+        } else {
+          if (callback) callback({ success: false, message: 'لقد قمت بالإبلاغ عن هذا اللاعب بالفعل.' });
+        }
+      } else {
+        if (callback) callback({ success: false, message: 'حدث خطأ أثناء معالجة الإبلاغ.' });
+      }
+    });
+
     socket.on("report_player", ({ roomId, reportedPlayerId, reason }, callback) => {
       const room = rooms.get(roomId);
       if (room) {
@@ -3261,6 +3355,31 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("block_player_by_serial", ({ blockerSerial, blockedSerial }, callback) => {
+      const serverBlocker = allPlayers.get(blockerSerial);
+      const serverBlocked = allPlayers.get(blockedSerial);
+      
+      if (serverBlocker && serverBlocked) {
+        if (!serverBlocker.blockedSerials) serverBlocker.blockedSerials = [];
+        if (!serverBlocker.blockedFingerprints) serverBlocker.blockedFingerprints = [];
+        
+        if (!serverBlocker.blockedSerials.includes(serverBlocked.serial)) {
+          serverBlocker.blockedSerials.push(serverBlocked.serial);
+        }
+        if (serverBlocker.recentOpponents) {
+          serverBlocker.recentOpponents = serverBlocker.recentOpponents.filter((op: any) => op.serial !== blockedSerial);
+        }
+        if (serverBlocked.fingerprint && !serverBlocker.blockedFingerprints.includes(serverBlocked.fingerprint)) {
+          serverBlocker.blockedFingerprints.push(serverBlocked.fingerprint);
+        }
+        
+        savePlayerData(serverBlocker.serial);
+        if (callback) callback({ success: true });
+      } else {
+        if (callback) callback({ success: false, error: 'حدث خطأ أثناء حظر اللاعب.' });
+      }
+    });
+
     socket.on("block_player", ({ roomId, blockedPlayerId }, callback) => {
       const room = rooms.get(roomId);
       if (room) {
@@ -3277,6 +3396,9 @@ io.on("connection", (socket) => {
             
             if (!serverBlocker.blockedSerials.includes(serverBlocked.serial)) {
               serverBlocker.blockedSerials.push(serverBlocked.serial);
+            }
+            if (serverBlocker.recentOpponents) {
+              serverBlocker.recentOpponents = serverBlocker.recentOpponents.filter((op: any) => op.serial !== serverBlocked.serial);
             }
             if (serverBlocked.fingerprint && !serverBlocker.blockedFingerprints.includes(serverBlocked.fingerprint)) {
               serverBlocker.blockedFingerprints.push(serverBlocked.fingerprint);
@@ -3785,6 +3907,50 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("admin_get_active_rooms", (callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        const activeRooms = Array.from(rooms.entries())
+          .filter(([id, room]) => room.gameState !== 'waiting' && room.gameState !== 'finished')
+          .map(([id, room]) => ({
+            id,
+            players: room.players.map(p => ({
+              name: p.name,
+              serial: p.serial,
+              avatar: p.avatar,
+              xp: p.xp
+            })),
+            gameState: room.gameState,
+            startTime: room.startTime
+          }));
+        callback(activeRooms);
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_join_spectator", (roomId, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        const room = rooms.get(roomId);
+        if (room) {
+          socket.join(roomId);
+          // Send initial room state to admin
+          socket.emit('room_update', room);
+          callback({ success: true });
+        } else {
+          callback({ error: "Room not found" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_leave_spectator", (roomId, callback) => {
+      socket.leave(roomId);
+      callback({ success: true });
+    });
+
     socket.on("admin_update_player", ({ serial, updates }, callback) => {
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
       if (admin?.isAdmin || socket.data?.isAdmin) {
@@ -4113,6 +4279,7 @@ io.on("connection", (socket) => {
       // Handle Ad Cooldown Pause (pauses everything)
       if (room.adCooldownTimer > 0) {
         room.adCooldownTimer--;
+        io.to(roomId).emit("ad_cooldown_update", room.adCooldownTimer);
         return; // Skip all timer decrements
       }
 
@@ -4267,6 +4434,8 @@ io.on("connection", (socket) => {
       room.players.forEach((p: any) => {
         if (p.isBot) return; // Skip bots
         
+        const opponent = room.players.find((op: any) => op.id !== p.id);
+        
         // Find player by serial if we had it
         const player = allPlayers.get(p.serial || "");
         if (player) {
@@ -4274,6 +4443,26 @@ io.on("connection", (socket) => {
           player.level = getLevel(p.xp);
           player.wins = p.wins || 0;
           player.streak = p.streak || 0;
+          
+          if (opponent && !opponent.isBot && opponent.serial) {
+            if (!player.recentOpponents) {
+              player.recentOpponents = [];
+            }
+            // Remove if already exists to move to top
+            player.recentOpponents = player.recentOpponents.filter(op => op.serial !== opponent.serial);
+            player.recentOpponents.unshift({
+              serial: opponent.serial,
+              name: opponent.name,
+              avatar: opponent.avatar,
+              timestamp: Date.now(),
+              level: opponent.level || getLevel(opponent.xp || 0),
+              xp: opponent.xp || 0
+            });
+            if (player.recentOpponents.length > 10) {
+              player.recentOpponents = player.recentOpponents.slice(0, 10);
+            }
+          }
+          
           savePlayerData(p.serial);
           
           // Clear ownedHelpers after the match ends (single use per match)
@@ -4303,7 +4492,8 @@ io.on("connection", (socket) => {
                 xp: player.xp,
                 level: player.level,
                 wins: player.wins,
-                tokens: player.tokens
+                tokens: player.tokens,
+                recentOpponents: player.recentOpponents
               });
               break;
             }
@@ -4315,6 +4505,24 @@ io.on("connection", (socket) => {
               data.xp = p.xp;
               data.level = getLevel(p.xp);
               data.wins = p.wins || 0;
+              
+              if (opponent && !opponent.isBot && opponent.serial) {
+                if (!data.recentOpponents) {
+                  data.recentOpponents = [];
+                }
+                data.recentOpponents = data.recentOpponents.filter(op => op.serial !== opponent.serial);
+                data.recentOpponents.unshift({
+                  serial: opponent.serial,
+                  name: opponent.name,
+                  avatar: opponent.avatar,
+                  timestamp: Date.now(),
+                  level: opponent.level || getLevel(opponent.xp || 0),
+                  xp: opponent.xp || 0
+                });
+                if (data.recentOpponents.length > 10) {
+                  data.recentOpponents = data.recentOpponents.slice(0, 10);
+                }
+              }
               
               // Clear ownedHelpers after the match ends (single use per match)
               data.ownedHelpers = {};
@@ -4338,7 +4546,8 @@ io.on("connection", (socket) => {
                     xp: data.xp,
                     level: data.level,
                     wins: data.wins,
-                    tokens: data.tokens
+                    tokens: data.tokens,
+                    recentOpponents: data.recentOpponents
                   });
                   break;
                 }
