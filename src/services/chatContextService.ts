@@ -9,13 +9,17 @@ export async function checkChatMessageContext(message: string, targetWord: strin
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `
-        Analyze the following chat message in a game where one player is trying to guess the word "${targetWord}" and the other is answering.
-        The message should be related to the game (asking questions about the object, its properties, colors, shapes, answering questions, or guessing the word).
+        Analyze the following chat message in an Arabic guessing game where one player is trying to guess the word "${targetWord}" and the other is answering.
+        
+        STRICT RULES:
+        1. The message MUST be directly related to guessing the word (asking about size, color, shape, type, location, usage, or giving hints).
+        2. Any social chatting, getting to know each other, asking personal questions (e.g., "منين", "مرتبطة", "اسمك ايه", "عندك كام سنة"), flirting, or discussing unrelated topics is STRICTLY FORBIDDEN and out of context.
+        3. Greetings like "سلام", "اهلا", "ازيك" are allowed ONLY at the very beginning but if mixed with personal questions, it's out of context.
         
         Message: "${message}"
         
-        Is this message related to the game context? 
-        Answer only with "YES" if it is related, or "NO" if it is completely out of context (e.g. social chatting, personal questions, unrelated topics).
+        Is this message strictly related to the game context? 
+        Answer ONLY with "YES" if it is related to the game, or "NO" if it contains ANY out-of-context social/personal chatter.
       `,
       config: {
         temperature: 0.1,
