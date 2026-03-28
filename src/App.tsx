@@ -2547,17 +2547,15 @@ export default function App() {
       const sender = roomRef.current?.players.find((p: any) => p.id === senderId);
       const msgId = Math.random().toString(36).substr(2, 9);
       
-      // Play message sound for incoming messages
-      if (senderId !== newSocket.id) {
-        playSound('message');
-        
-        // Check context if in guessing phase
-        if (roomRef.current?.gameState === 'guessing' && sender && !sender.isBot) {
-          const targetWords = roomRef.current.players
-            .map(p => p.targetImage?.name)
-            .filter(Boolean) as string[];
-            
-          if (targetWords.length > 0) {
+      // Check context if in guessing phase (for both sender and receiver)
+      if (roomRef.current?.gameState === 'guessing' && sender && !sender.isBot) {
+        const targetWords = roomRef.current.players
+          .map(p => p.targetImage?.name)
+          .filter(Boolean) as string[];
+          
+        if (targetWords.length > 0) {
+          // We only want the sender to trigger the out_of_context_detected event to avoid duplicate triggers
+          if (senderId === newSocket.id) {
             const isRelated = await checkChatMessageContext(text, targetWords.join(' أو '));
             if (!isRelated) {
               newSocket.emit('out_of_context_detected', { 
@@ -2568,6 +2566,11 @@ export default function App() {
             }
           }
         }
+      }
+
+      // Play message sound for incoming messages
+      if (senderId !== newSocket.id) {
+        playSound('message');
       }
 
       setChatHistory(prev => {
@@ -8547,7 +8550,7 @@ export default function App() {
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[2].name)}</div>
-                      <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.2">
+                      <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0 md:gap-0.2">
                         <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                           Lvl {topPlayers[2].level || getLevel(topPlayers[2].xp || 0)}
                         </div>
@@ -8611,7 +8614,7 @@ export default function App() {
 
                 {/* Level 50 Reward Section */}
                 {!isRewardClaimed && (
-                  <div className="mt-2 p-2 justify-between items-center flex gap-8 md:gap-2 bg-gradient-to-br from-amber-50 to-yellow-100 border border-amber-300 rounded-lg shadow-sm">
+                  <div className="mt-2 p-2 justify-between items-center flex gap-9 md:gap-2 bg-gradient-to-br from-amber-50 to-yellow-100 border border-amber-300 rounded-lg shadow-sm">
                   <div className="items-center justify-between gap-2">
                     <h3 className="font-bold md:font-black md:text-sm text-xs text-amber-900">هدية أول لاعب يصل Lvl 50 🎁</h3>
                     <span className="font-bold md:text-[12px] text-[10px] text-amber-800">10 Tokens + باقة المحترفين 7 أيام</span>
@@ -8722,7 +8725,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={handleRandomMatch}
-                  className="flex-1 btn-game btn-primary py-3 md:py-4 text-lg md:text-xl gap-2 md:gap-3 cursor-pointer touch-manipulation"
+                  className="flex-1 btn-game btn-primary py-3 md:py-4 text-sm md:text-xl gap-1 md:gap-3 cursor-pointer touch-manipulation"
                 >
                   <div className="flex items-center gap-1.5" dir="ltr">
                   <span className="large-emoji">🔍</span>
