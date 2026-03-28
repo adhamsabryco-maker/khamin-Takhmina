@@ -2275,7 +2275,7 @@ io.on("connection", (socket) => {
           player.avatar = avatar;
           player.avatarStatus = 'approved';
           player.pendingAvatar = undefined;
-          if (callback) callback({ success: true, message: "تمت الموافقة على صورتك تلقائياً بواسطة الذكاء الاصطناعي!" });
+          if (callback) callback({ success: true, message: "تمت رفع الصورة بنجاح!" });
         } else {
           player.pendingAvatar = avatar;
           player.avatarStatus = 'pending';
