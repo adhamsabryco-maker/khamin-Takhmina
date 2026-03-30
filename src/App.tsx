@@ -112,6 +112,7 @@ const SOUNDS = {
   clickOpen: '/sounds/click-open.mp3',
   clickClose: '/sounds/click-close.mp3',
   tick: '/sounds/tick.mp3',
+  luckyReels: '/sounds/lucky-reels-sound-effect.mp3',
   lobbyBackground: '/sounds/lobby-background-music.mp3',
   gameBackground: '/sounds/start-game-background-music.mp3',
 };
@@ -10077,7 +10078,7 @@ export default function App() {
                           disabled={isReelsSpinning}
                           onClick={() => {
                             if (isReelsSpinning) return;
-                            playSound('clickOpen');
+                            playSound('luckyReels');
                             setIsReelsSpinning(true);
                             
                             // Generate random items for the reels
