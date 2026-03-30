@@ -40,6 +40,7 @@ const dbUpload = multer({ dest: os.tmpdir() });
 
 import { filterProfanity, filterGameTerms } from "./src/profanityFilter";
 import { GoogleGenAI } from "@google/genai";
+import { COLLECTION_DATA } from "./collectionData";
 
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "dummy_key_to_prevent_crash" });
 if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
@@ -73,8 +74,7 @@ function normalizeEgyptian(text: string): string {
     .replace(/ة/g, "ه")
     .replace(/ى/g, "ي")
     .replace(/ؤ/g, "و")
-    .replace(/لآ/g, "لا")
-    .replace(/[ضظط]/g, "ظ");
+    .replace(/لآ/g, "لا");
 }
 
 function isSameDay(d1: number, d2: number) {
@@ -207,7 +207,7 @@ const app = express();
     }
   }
 
-  let configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false, version: currentVersion };
+  let configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false, quickChat: [], version: currentVersion };
   let activeGlobalReward: any = null;
   let gamePolicies = {
     termsAr: "الشروط والأحكام الافتراضية للعبة خمن تخمينة.\n\n1. يجب احترام جميع اللاعبين.\n2. يمنع استخدام أي برامج مساعدة أو غش.\n3. الإدارة غير مسؤولة عن أي خسارة للبيانات.",
@@ -745,6 +745,24 @@ const app = express();
       subject TEXT,
       message TEXT,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS player_collections (
+      player_serial TEXT,
+      image_name TEXT,
+      count INTEGER DEFAULT 0,
+      PRIMARY KEY (player_serial, image_name)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS claimed_collection_rewards (
+      player_serial TEXT,
+      category_id TEXT,
+      stage INTEGER,
+      PRIMARY KEY (player_serial, category_id, stage)
     )
   `);
 
@@ -1394,6 +1412,18 @@ const app = express();
     }
   });
 
+  app.get("/api/collection/:serial", (req, res) => {
+    try {
+      const { serial } = req.params;
+      const collection = db.prepare("SELECT * FROM player_collections WHERE player_serial = ?").all(serial);
+      const claimed = db.prepare("SELECT * FROM claimed_collection_rewards WHERE player_serial = ?").all(serial);
+      res.json({ collection, claimed });
+    } catch (error) {
+      console.error("Error fetching collection:", error);
+      res.status(500).json({ error: "Failed to fetch collection" });
+    }
+  });
+
   app.post("/api/admin/categories", (req, res) => {
     try {
       const { name, icon } = req.body;
@@ -1425,6 +1455,7 @@ const app = express();
   app.get("/api/admin/images", (req, res) => {
     try {
       const images = db.prepare('SELECT id, category, name, data, timestamp, addedBy FROM custom_images ORDER BY timestamp DESC').all();
+      console.log(`[API] Fetching images, found: ${images.length}`);
       res.json(images);
     } catch (error) {
       console.error("Error fetching images:", error);
@@ -1674,6 +1705,8 @@ const app = express();
   const playerBotHistory = new Map<string, number>();
 
   function startBotQuestioning(roomId: string) {
+    // Disabled for Quick Chat
+    /*
     const room = rooms.get(roomId);
     if (!room || room.gameState !== 'discussion') return;
 
@@ -1725,6 +1758,7 @@ const app = express();
       }
     }, 25000 + Math.random() * 10000);
     botIntervals.set(roomId, interval);
+    */
   }
 
   function startBotGuessing(roomId: string) {
@@ -1851,7 +1885,8 @@ const app = express();
       history.push({ role: 'user', parts: [{ text }] });
       botConversations.set(roomId, history);
 
-      // Call Gemini
+      // Call Gemini (Disabled for Quick Chat)
+      /*
       try {
         const systemInstruction = `أنت لاعب مصري حقيقي في لعبة تخمين صور. اسمك وشخصيتك هي: ${bot.persona}. 
         تحدث بالعامية المصرية العامية تماماً، كأنك شاب مصري بيلعب مع صحابه. 
@@ -1890,13 +1925,11 @@ const app = express();
       } catch (error) {
         console.error("Gemini Error:", error);
       }
+      */
     }
   }
 
   const CATEGORIES = {};
-
-  const lastChatTimes = new Map<string, number>();
-const chatCounts = new Map<string, number>();
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
@@ -2544,6 +2577,8 @@ io.on("connection", (socket) => {
           adCooldownTimer: 0,
           lastUpdates: null,
           chatHistory: [],
+          currentTurn: null,
+          waitingForAnswerFrom: null,
         });
       }
 
@@ -2892,203 +2927,31 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("out_of_context_detected", ({ roomId, senderId, text }) => {
-      const room = rooms.get(roomId);
-      if (room && room.gameState === "guessing") {
-        const sender = room.players.find((p: any) => p.id === senderId);
-        const opponent = room.players.find((p: any) => p.id !== senderId);
-        
-        if (sender && opponent) {
-          console.log(`Out of context detected for ${sender.name} in room ${roomId}: "${text}"`);
-          
-          // Inform everyone
-          const messageObj = { 
-            senderId: "system", 
-            text: `تم استبعاد ${sender.name} للخروج عن سياق الدردشة الخاص باللعبة! 🚫` 
-          };
-          if (!room.chatHistory) room.chatHistory = [];
-          room.chatHistory.push({ ...messageObj, senderName: "النظام", timestamp: Date.now() });
-          io.to(roomId).emit("chat_bubble", messageObj);
-          
-          // End game and make opponent winner
-          setTimeout(() => {
-            endGame(roomId, opponent.name, true);
-          }, 1500);
-        }
-      }
-    });
-
     socket.on("send_chat", ({ roomId, text }) => {
-      const now = Date.now();
-      const lastTime = lastChatTimes.get(socket.id) || 0;
-      const count = chatCounts.get(socket.id) || 0;
-
-      // Anti-spam: Max 1 message per 0.5 seconds
-      if (now - lastTime < 500) {
-        socket.emit("error", "أنت ترسل الرسائل بسرعة كبيرة جداً!");
-        return;
-      }
-
-      // Anti-spam: Max 10 messages per 10 seconds
-      if (now - lastTime < 10000) {
-        if (count >= 10) {
-          socket.emit("error", "لقد تجاوزت حد الرسائل المسموح به، انتظر قليلاً.");
-          return;
-        }
-        chatCounts.set(socket.id, count + 1);
-      } else {
-        chatCounts.set(socket.id, 1);
-      }
-
-      lastChatTimes.set(socket.id, now);
-
       console.log(`Chat request from ${socket.id} for room ${roomId}: ${text}`);
       const room = rooms.get(roomId);
       if (room) {
         const sender = room.players.find((p: any) => p.id === socket.id);
-        
-        // Filter Emojis
-        const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
-        let filteredText = text.replace(emojiRegex, '');
-        
-        // 1. Filter Game Terms (No ban for these)
-        filteredText = filterGameTerms(filteredText);
-        
-        // 2. Filter Profanity (Ban for these)
-        let messageToSend = filterProfanity(filteredText);
+        if (!sender) return;
 
-        // Prevent cheating: Check if the message contains the answer for any player in the room
-        let isCheating = false;
-        
-        if (sender) {
-          if (!sender.chatBuffer) sender.chatBuffer = "";
-          if (!sender.engChatBuffer) sender.engChatBuffer = "";
-          
-          const normalizedText = normalizeEgyptian(filteredText).toLowerCase();
-          // Aggressively remove all non-alphanumeric characters (including Tatweel/Kashida) to catch "ك#ش % ر . ي" or "كــــشــــري"
-          const textNoSpaces = normalizedText.replace(/[^\u0621-\u064Aa-zA-Z0-9]/g, '');
-          const engTextNoSpaces = filteredText.toLowerCase().replace(/[^a-z0-9]/g, '');
-          
-          sender.chatBuffer += textNoSpaces;
-          if (sender.chatBuffer.length > 50) sender.chatBuffer = sender.chatBuffer.slice(-50);
-          
-          sender.engChatBuffer += engTextNoSpaces;
-          if (sender.engChatBuffer.length > 50) sender.engChatBuffer = sender.engChatBuffer.slice(-50);
-          
-          room.players.forEach((p: any) => {
-            if (p.targetImage && p.targetImage.name) {
-              const normalizedAnswer = normalizeEgyptian(p.targetImage.name).toLowerCase();
-              const answerNoSpaces = normalizedAnswer.replace(/[^\u0621-\u064Aa-zA-Z0-9]/g, '');
-              
-              // Block Arabic answer
-              if (answerNoSpaces.length >= 2) {
-                if (textNoSpaces.includes(answerNoSpaces) || sender.chatBuffer.includes(answerNoSpaces)) {
-                  isCheating = true;
-                }
-              }
-
-              // Block English answer if translation is available
-              if (p.targetImage.englishName) {
-                const engAnswer = p.targetImage.englishName.toLowerCase();
-                const engAnswerNoSpaces = engAnswer.replace(/[^a-z0-9]/g, '');
-                if (engAnswerNoSpaces.length >= 3) {
-                  if (engTextNoSpaces.includes(engAnswerNoSpaces) || sender.engChatBuffer.includes(engAnswerNoSpaces)) {
-                    isCheating = true;
-                  }
-                }
-              }
-            }
-          });
-        }
-
-        if (isCheating) {
-          messageToSend = "(ممنوع تسريب الإجابة!)";
-          
-          // Disqualify cheater
-          const opponent = room.players.find((p: any) => p.id !== socket.id);
-          if (opponent && sender) {
-            // Inform everyone
-            const messageObj = { senderId: "system", text: `تم استبعاد ${sender.name} لمحاولة تسريب الإجابة! 🚫` };
-            if (!room.chatHistory) room.chatHistory = [];
-            room.chatHistory.push({ ...messageObj, senderName: "النظام", timestamp: Date.now() });
-            io.to(roomId).emit("chat_bubble", messageObj);
-            
-            // End game and make opponent winner
-            // Small delay to ensure the message is seen
-            setTimeout(() => {
-              endGame(roomId, opponent.name, true);
-            }, 1000);
-            return; // Stop processing this message
-          }
-        }
-
-        if (sender && sender.age < 13) {
-          console.log(`Child player ${sender.name} (${sender.id}) sent: "${filteredText}". Message replaced.`);
-          messageToSend = "(رسالة طفل)"; // Generic message for children
-        }
-
-        if (messageToSend.trim().length === 0 && text.trim().length > 0) {
-          // If message was only emojis, don't send anything or send a warning
-          socket.emit("error", "الرموز التعبيرية غير مسموح بها في الدردشة.");
-          return;
-        }
-
-        const isChild = sender && sender.age < 13;
-        const hasProfanity = messageToSend !== filteredText && !isChild;
-
-        if (hasProfanity || isChild) {
-          console.log(`Shadow banning message from ${socket.id} in room ${roomId}: ${filteredText}`);
-          
-          if (hasProfanity && sender) {
-            sender.profanityCount = (sender.profanityCount || 0) + 1;
-            console.log(`Player ${sender.name} profanity count: ${sender.profanityCount}`);
-            
-            if (sender.profanityCount >= 3) {
-              const oneDayInMs = 24 * 60 * 60 * 1000;
-              const banUntil = Date.now() + oneDayInMs;
-              
-              // Update server player data
-              const serverPlayer = allPlayers.get(sender.serial);
-              if (serverPlayer) {
-                serverPlayer.banUntil = banUntil;
-                serverPlayer.banCount = (serverPlayer.banCount || 0) + 1;
-                savePlayerData(sender.serial);
-              }
-              
-              // Inform everyone and disqualify
-              io.to(roomId).emit("chat_bubble", { 
-                senderId: "system", 
-                text: `تم حظر ${sender.name} لمدة 24 ساعة لتكرار استخدام كلمات مسيئة! 🚫` 
-              });
-              
-              socket.emit("banned_status", { banUntil, isPermanent: false });
-              
-              const opponent = room.players.find((p: any) => p.id !== socket.id);
-              setTimeout(() => {
-                endGame(roomId, opponent ? opponent.name : null, true);
-              }, 1500);
-              
-              return;
-            }
-          }
-
-          // Send the original message ONLY to the sender so they think it went through
-          socket.emit("chat_bubble", { senderId: socket.id, text: filteredText });
-          
-          // Clear typing status for the opponent
-          socket.to(roomId).emit("opponent_stop_typing");
-          
-          // Trigger bot response if applicable, so the sender still feels engaged
-          const bot = room.players.find((p: any) => p.isBot);
-          if (bot) {
-            handleBotEvent(roomId, 'chat_message', { senderId: socket.id, text: messageToSend });
-          }
-          
-          // Do NOT broadcast to the human opponent
-          return;
-        }
+        const messageToSend = text;
 
         console.log(`Broadcasting chat to room ${roomId}`);
+        
+        // Turn logic for Quick Chat (Updates state but doesn't block for speed)
+        if (room.gameState === 'discussion') {
+          if (messageToSend === 'آه' || messageToSend === 'لأ') {
+            // Turn switches to the player who answered
+            room.currentTurn = socket.id;
+            room.waitingForAnswerFrom = null;
+          } else {
+            room.currentTurn = null;
+            const opponent = room.players.find((p: any) => p.id !== socket.id);
+            if (opponent) {
+              room.waitingForAnswerFrom = opponent.id;
+            }
+          }
+        }
         
         // Save to room chat history
         if (!room.chatHistory) room.chatHistory = [];
@@ -3101,6 +2964,7 @@ io.on("connection", (socket) => {
         if (room.chatHistory.length > 50) room.chatHistory.shift();
 
         io.to(roomId).emit("chat_bubble", { senderId: socket.id, text: messageToSend });
+        io.to(roomId).emit("room_update", room);
         
         // Clear typing status when message is sent
         socket.to(roomId).emit("opponent_stop_typing");
@@ -4151,6 +4015,50 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("claim_collection_reward", ({ serial, categoryId, stage }, callback) => {
+      const player = allPlayers.get(serial);
+      if (!player) return;
+
+      // Check if already claimed
+      const alreadyClaimed = db.prepare(`
+        SELECT 1 FROM claimed_collection_rewards 
+        WHERE player_serial = ? AND category_id = ? AND stage = ?
+      `).get(serial, categoryId, stage);
+
+      if (alreadyClaimed) return;
+
+      // Verify completion
+      const category = COLLECTION_DATA.find(c => c.id === categoryId);
+      const targetStage = category?.stages.find(s => s.stage === stage);
+      if (!category || !targetStage) return;
+
+      const collection = db.prepare(`SELECT * FROM player_collections WHERE player_serial = ?`).all(serial);
+      const collectionMap = new Map<string, number>(collection.map((c: any) => [c.image_name, c.count]));
+
+      const isStageComplete = targetStage.images.every((imgName: string) => {
+        const normImgName = normalizeEgyptian(imgName).toLowerCase();
+        return (collectionMap.get(normImgName) || 0) >= 5;
+      });
+
+      if (isStageComplete) {
+        db.prepare(`
+          INSERT INTO claimed_collection_rewards (player_serial, category_id, stage)
+          VALUES (?, ?, ?)
+        `).run(serial, categoryId, stage);
+
+        player.xp = (player.xp || 0) + targetStage.reward.xp;
+        player.level = getLevel(player.xp);
+        savePlayerData(serial);
+
+        socket.emit("collection_reward_claimed", {
+          categoryName: category.name,
+          stage: stage,
+          xp: targetStage.reward.xp,
+          frame: targetStage.reward.frame
+        });
+      }
+    });
+
     socket.on("admin_set_admin_status", ({ serial, isAdmin, email, adminToken }, callback) => {
       // This is a special event to bootstrap the first admin or manage others
       // For security, it should check if the requester is already an admin OR if it's the first one
@@ -4230,8 +4138,6 @@ io.on("connection", (socket) => {
       if (socket.data?.serial) {
         playerSockets.delete(socket.data.serial);
       }
-      lastChatTimes.delete(socket.id);
-      chatCounts.delete(socket.id);
       broadcastOnlineCount();
       // Remove from matchmaking queue
       const qIndex = matchmakingQueue.findIndex(p => p.id === socket.id);
@@ -4410,6 +4316,8 @@ io.on("connection", (socket) => {
     room.startTime = Date.now();
     room.isPaused = false;
     room.lastUpdates = null;
+    room.currentTurn = room.players[0].id;
+    room.waitingForAnswerFrom = null;
 
     io.to(roomId).emit("room_update", room);
     io.to(roomId).emit("game_started"); // Signal client to start initial cooldowns
@@ -4500,6 +4408,79 @@ io.on("connection", (socket) => {
     intervals.set(roomId, interval);
   }
 
+  function recordCollectionWin(playerSerial: string, imageName: string) {
+    try {
+      const normalizedName = normalizeEgyptian(imageName).toLowerCase();
+      
+      // Find category and stage
+      let targetCategory: any = null;
+      let targetStage: any = null;
+      for (const category of COLLECTION_DATA) {
+        for (const stage of category.stages) {
+          if (stage.images.some(img => normalizeEgyptian(img).toLowerCase() === normalizedName)) {
+            targetCategory = category;
+            targetStage = stage;
+            break;
+          }
+        }
+        if (targetCategory) break;
+      }
+      
+      if (!targetCategory || !targetStage) return; // Should not happen
+
+      // Check if stage is unlocked
+      if (targetStage.stage > 1) {
+        const previousStageClaimed = db.prepare(`
+          SELECT 1 FROM claimed_collection_rewards 
+          WHERE player_serial = ? AND category_id = ? AND stage = ?
+        `).get(playerSerial, targetCategory.id, targetStage.stage - 1);
+        
+        if (!previousStageClaimed) {
+          console.log(`[Collection] Stage ${targetStage.stage} not unlocked for ${playerSerial}`);
+          return; // Stage not unlocked
+        }
+      }
+
+      // 1. Increment count
+      db.prepare(`
+        INSERT INTO player_collections (player_serial, image_name, count)
+        VALUES (?, ?, 1)
+        ON CONFLICT(player_serial, image_name) DO UPDATE SET count = count + 1
+      `).run(playerSerial, normalizedName);
+
+      // 2. Check for rewards
+      const collection = db.prepare(`SELECT * FROM player_collections WHERE player_serial = ?`).all(playerSerial);
+      const collectionMap = new Map<string, number>(collection.map((c: any) => [c.image_name, c.count]));
+
+      for (const category of COLLECTION_DATA) {
+        for (const stage of category.stages) {
+          // Check if all images in this stage have count >= 5
+          const isStageComplete = stage.images.every(imgName => {
+            const normImgName = normalizeEgyptian(imgName).toLowerCase();
+            return (collectionMap.get(normImgName) || 0) >= 5;
+          });
+
+          if (isStageComplete) {
+            console.log(`[Collection] Stage ${stage.stage} complete for ${playerSerial}`);
+            // Check if already claimed
+            const alreadyClaimed = db.prepare(`
+              SELECT 1 FROM claimed_collection_rewards 
+              WHERE player_serial = ? AND category_id = ? AND stage = ?
+            `).get(playerSerial, category.id, stage.stage);
+
+            if (!alreadyClaimed) {
+              console.log(`[Collection] Reward ready to be claimed for stage ${stage.stage} by ${playerSerial}`);
+            } else {
+              console.log(`[Collection] Reward already claimed for stage ${stage.stage} by ${playerSerial}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error recording collection win:", error);
+    }
+  }
+
   function endGame(roomId: string, winnerName: string | null, isForced: boolean = false, isTrueWin: boolean = false) {
     const room = rooms.get(roomId);
     if (room) {
@@ -4562,6 +4543,10 @@ io.on("connection", (socket) => {
           if (isTrueWin) {
             winner.streak = (winner.streak || 0) + 1;
             winner.wins = (winner.wins || 0) + 1;
+            // Record collection win
+            if (winner.serial && winner.targetImage) {
+              recordCollectionWin(winner.serial, winner.targetImage.name);
+            }
           }
           
           updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true, level: winner.level, useToken: winner.useToken };
