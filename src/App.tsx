@@ -1319,6 +1319,7 @@ export default function App() {
   const [quickChatOffset, setQuickChatOffset] = useState(0);
   const [isReelsSpinning, setIsReelsSpinning] = useState(false);
   const [spinningReels, setSpinningReels] = useState<boolean[]>([false, false, false, false]);
+  const [reelRandomItems, setReelRandomItems] = useState<string[][]>([[], [], [], []]);
   const askedQuickChatNodeRef = useRef<any | null>(null);
 
   useEffect(() => {
@@ -10078,16 +10079,34 @@ export default function App() {
                             if (isReelsSpinning) return;
                             playSound('clickOpen');
                             setIsReelsSpinning(true);
-                            setSpinningReels([true, true, true, true]);
+                            
+                            // Generate random items for the reels
+                            const newReelItems = Array.from({ length: 4 }).map(() => {
+                              const items = [];
+                              for (let j = 0; j < 10; j++) {
+                                const randomNode = currentQuickChatNodes[Math.floor(Math.random() * currentQuickChatNodes.length)];
+                                items.push(randomNode?.text || '...');
+                              }
+                              return items;
+                            });
+                            setReelRandomItems(newReelItems);
+
+                            // Staggered Start
+                            setSpinningReels([true, false, false, false]);
+                            setTimeout(() => setSpinningReels(prev => [true, true, false, false]), 100);
+                            setTimeout(() => setSpinningReels(prev => [true, true, true, false]), 200);
+                            setTimeout(() => setSpinningReels(prev => [true, true, true, true]), 300);
+                            
                             setQuickChatOffset(prev => (prev + 4 >= currentQuickChatNodes.length ? 0 : prev + 4));
                             
-                            setTimeout(() => setSpinningReels([false, true, true, true]), 300);
-                            setTimeout(() => setSpinningReels([false, false, true, true]), 450);
-                            setTimeout(() => setSpinningReels([false, false, false, true]), 600);
+                            // Staggered Stop
+                            setTimeout(() => setSpinningReels(prev => [false, true, true, true]), 600);
+                            setTimeout(() => setSpinningReels(prev => [false, false, true, true]), 750);
+                            setTimeout(() => setSpinningReels(prev => [false, false, false, true]), 900);
                             setTimeout(() => {
                               setSpinningReels([false, false, false, false]);
                               setIsReelsSpinning(false);
-                            }, 750);
+                            }, 1050);
                           }}
                           className={`flex items-center justify-center gap-2 bg-purple-100 text-purple-700 hover:bg-purple-200 py-1 md:py-1.5 px-3 rounded-lg text-[13px] md:text-sm font-bold transition-colors w-full shadow-sm border border-purple-200 ${isReelsSpinning ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
@@ -10114,13 +10133,23 @@ export default function App() {
                               <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
                                 {spinningReels[i] && node ? (
                                   <motion.div
-                                    animate={{ y: i % 2 === 0 ? [0, isMobile ? -80 : -96] : [isMobile ? -80 : 0, 0] }}
-                                    transition={{ repeat: Infinity, duration: 0.15 + (i * 0.02), ease: "linear" }}
-                                    className="absolute top-0 flex flex-col w-full"
+                                    animate={{ 
+                                      y: i % 2 === 0 
+                                        ? [0, isMobile ? -360 : -432] 
+                                        : [isMobile ? -360 : -432, 0] 
+                                    }}
+                                    transition={{ 
+                                      repeat: Infinity, 
+                                      duration: 0.15 + (i * 0.03), 
+                                      ease: "linear" 
+                                    }}
+                                    className="absolute top-0 flex flex-col w-full blur-[0.8px] md:blur-[1px]"
                                   >
-                                    <span className="h-10 md:h-12 flex items-center justify-center truncate w-full px-2">{node.text}</span>
-                                    <span className="h-10 md:h-12 flex items-center justify-center truncate w-full px-2 text-purple-300">؟</span>
-                                    <span className="h-10 md:h-12 flex items-center justify-center truncate w-full px-2">{node.text}</span>
+                                    {reelRandomItems[i].map((text, idx) => (
+                                      <span key={idx} className="h-10 md:h-12 flex items-center justify-center truncate w-full px-2 text-purple-400/70">
+                                        {text}
+                                      </span>
+                                    ))}
                                   </motion.div>
                                 ) : (
                                   <motion.span
