@@ -80,8 +80,10 @@ const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
   return <span className="flex items-center justify-center gap-2" dir="ltr">XP: <span className="text-yellow-400">{displayXP}</span></span>;
 };
 import confetti from 'canvas-confetti';
+import { COLLECTION_DATA } from '../collectionData';
 import { AdminCustomization } from './components/AdminCustomization';
 import { AdminLogin } from './components/AdminLogin';
+import { QuickChatManager } from './components/QuickChatManager';
 import { AvatarDisplay } from './components/AvatarDisplay';
 import { LevelUpModal } from './components/LevelUpModal';
 import { MatchIntro } from './components/MatchIntro';
@@ -90,7 +92,6 @@ import { STATIC_ASSETS } from './constants';
 import Cropper from 'react-easy-crop';
 import { Howl, Howler } from 'howler';
 import { filterProfanity } from './profanityFilter';
-import { checkChatMessageContext } from './services/chatContextService.ts';
 
 declare global {
   interface Window {
@@ -305,7 +306,20 @@ interface Room {
   isFrozen?: boolean;
   freezeTimer?: number;
   adCooldownTimer?: number;
+  currentTurn?: string | null;
+  waitingForAnswerFrom?: string | null;
 }
+
+const findNodeByText = (text: string, nodes: any[]): any | null => {
+  for (const node of nodes) {
+    if (node.text === text) return node;
+    if (node.children) {
+      const found = findNodeByText(text, node.children);
+      if (found) return found;
+    }
+  }
+  return null;
+};
 
 const AVATARS = [
   { id: '/assets/avatar.png', level: 1, gender: 'all' },
@@ -385,6 +399,23 @@ const isSameWeek = (d1: number, d2: number) => {
 };
 
 import { CheckoutPage } from './components/CheckoutPage';
+
+function normalizeEgyptian(text: string): string {
+  if (!text) return "";
+  let normalized = text.trim();
+  normalized = normalized.replace(/[أإآ]/g, 'ا');
+  normalized = normalized.replace(/ة/g, 'ه');
+  normalized = normalized.replace(/ى/g, 'ي');
+  normalized = normalized.replace(/ؤ/g, 'و');
+  normalized = normalized.replace(/ئ/g, 'ي');
+  normalized = normalized.replace(/گ/g, 'ج');
+  normalized = normalized.replace(/پ/g, 'ب');
+  normalized = normalized.replace(/ڤ/g, 'ف');
+  normalized = normalized.replace(/چ/g, 'ج');
+  normalized = normalized.replace(/ژ/g, 'ز');
+  normalized = normalized.replace(/ڤ/g, 'ف');
+  return normalized;
+}
 
 export default function App() {
   const { customConfig, refreshConfig } = useAvatarConfig();
@@ -497,6 +528,11 @@ export default function App() {
 
     if (socket) {
       socket.on('reward_claimed', () => setIsRewardClaimed(true));
+      socket.on('collection_reward_claimed', (data: any) => {
+        showAlert(`مبروك! أكملت المرحلة ${data.stage} من فئة ${data.categoryName} وحصلت على ${data.xp} XP! 🏆`, 'مكافأة المجموعة');
+        setXp(prev => prev + data.xp);
+        if (playerSerial) fetchCollection(playerSerial);
+      });
       return () => {
         socket.off('reward_claimed');
       };
@@ -761,7 +797,7 @@ export default function App() {
     setAdminVisiblePlayersCount(10);
   }, [adminSearchQuery, adminPlayerFilter]);
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
-  const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors' | 'announcements' | 'rewards' | 'policies' | 'avatar_review' | 'contacts' | 'live_matches'>('players');
+  const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors' | 'announcements' | 'rewards' | 'policies' | 'avatar_review' | 'contacts' | 'live_matches' | 'quick_chat'>('players');
   const [rewardHistory, setRewardHistory] = useState<any[]>([]);
   const [adminContacts, setAdminContacts] = useState<any[]>([]);
   const [activeRooms, setActiveRooms] = useState<any[]>([]);
@@ -1273,6 +1309,34 @@ export default function App() {
 
   const [roomId, setRoomId] = useState('');
   const [room, setRoom] = useState<Room | null>(null);
+  const [clickedResponses, setClickedResponses] = useState<string[]>([]);
+  const [isQuickResponseDisabled, setIsQuickResponseDisabled] = useState(false);
+  const quickResponseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Quick Chat State
+  const [currentQuickChatNodes, setCurrentQuickChatNodes] = useState<any[]>([]);
+  const [quickChatOffset, setQuickChatOffset] = useState(0);
+  const [isReelsSpinning, setIsReelsSpinning] = useState(false);
+  const [spinningReels, setSpinningReels] = useState<boolean[]>([false, false, false, false]);
+  const askedQuickChatNodeRef = useRef<any | null>(null);
+
+  useEffect(() => {
+    if (currentQuickChatNodes.length > 0 && quickChatOffset >= currentQuickChatNodes.length) {
+      setQuickChatOffset(0);
+    }
+  }, [currentQuickChatNodes.length, quickChatOffset]);
+
+  useEffect(() => {
+    if (room?.gameState === 'finished' || room?.gameState === 'waiting') {
+      setIsQuickResponseDisabled(false);
+      setClickedResponses([]);
+      if (quickResponseTimeoutRef.current) {
+        clearTimeout(quickResponseTimeoutRef.current);
+        quickResponseTimeoutRef.current = null;
+      }
+    }
+  }, [room?.gameState]);
+
   const roomRef = useRef<Room | null>(null);
   const isIntentionalLeaveRef = useRef(false);
   useEffect(() => { roomRef.current = room; }, [room]);
@@ -1280,6 +1344,13 @@ export default function App() {
   const [joined, setJoined] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  const [playerCollection, setPlayerCollection] = useState<any[]>([]);
+  const [claimedCollectionRewards, setClaimedCollectionRewards] = useState<any[]>([]);
+  const [seenCategoryCounts, setSeenCategoryCounts] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('khamin_seen_category_counts');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [showCollectionModal, setShowCollectionModal] = useState<string | null>(null);
   const [announcementMessage, setAnnouncementMessage] = useState<string | null>(null);
   const [activeGlobalReward, setActiveGlobalReward] = useState<any | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -1296,6 +1367,68 @@ export default function App() {
   const [recentOpponents, setRecentOpponents] = useState<any[]>([]);
   const [showRecentOpponents, setShowRecentOpponents] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
+  const [confirmedAttributes, setConfirmedAttributes] = useState<string[]>([]);
+  const lastInitializedQuickChatRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (room?.gameState === 'discussion' && room.category && customConfig?.quickChat) {
+      const initKey = `${room.id}-${room.category}`;
+      if (lastInitializedQuickChatRef.current === initKey) return;
+
+      const categoryObj = categories.find(c => c.id === room.category);
+      const categoryName = categoryObj ? categoryObj.name : room.category;
+
+      const rootNode = customConfig.quickChat.find((n: any) => 
+        n.text.trim() === categoryName.trim() || 
+        n.text.trim() === room.category.trim() ||
+        categoryName.includes(n.text.trim()) ||
+        n.text.includes(categoryName.trim())
+      );
+
+      if (rootNode && rootNode.children) {
+        let nodes = [...rootNode.children];
+        const normalizedCategory = normalizeEgyptian(categoryName + room.category);
+        const isPeople = normalizedCategory.includes('اشخاص');
+        const isAnimals = normalizedCategory.includes('حيوانات');
+        const isFood = normalizedCategory.includes('اكلات');
+        
+        if (isPeople || isAnimals || isFood) {
+          nodes.sort((a, b) => {
+            const aText = normalizeEgyptian(a.text);
+            const bText = normalizeEgyptian(b.text);
+            let aIsPriority = false;
+            let bIsPriority = false;
+            
+            if (isPeople) {
+              aIsPriority = aText.includes('رجل') || aText.includes('ست');
+              bIsPriority = bText.includes('رجل') || bText.includes('ست');
+            } else if (isAnimals) {
+              aIsPriority = aText.includes('بري') || aText.includes('بحري');
+              bIsPriority = bText.includes('بري') || bText.includes('بحري');
+            } else if (isFood) {
+              aIsPriority = aText.includes('حلو') || aText.includes('حادق');
+              bIsPriority = bText.includes('حلو') || bText.includes('حادق');
+            }
+            
+            if (aIsPriority && !bIsPriority) return -1;
+            if (!aIsPriority && bIsPriority) return 1;
+            return 0;
+          });
+        }
+        setCurrentQuickChatNodes(nodes);
+        setQuickChatOffset(0);
+      } else {
+        setCurrentQuickChatNodes([]);
+        setQuickChatOffset(0);
+      }
+      askedQuickChatNodeRef.current = null;
+      setConfirmedAttributes([]);
+      lastInitializedQuickChatRef.current = initKey;
+    } else if (room?.gameState !== 'discussion') {
+      lastInitializedQuickChatRef.current = null;
+      setConfirmedAttributes([]);
+    }
+  }, [room?.gameState, room?.category, room?.id, customConfig?.quickChat, categories]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [totalPlayersCount, setTotalPlayersCount] = useState(0);
   const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, age: number, level?: number } } | null>(null);
@@ -2040,26 +2173,38 @@ export default function App() {
     };
   }, [socket, playerSerial]);
 
-  const handleAdminLogin = async () => {
+  const fetchAdminImages = useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/google/url');
-      const { url } = await response.json();
-      // Redirect the current window to Google Auth
-      window.location.href = url;
-    } catch (err) {
-      setError('فشل الاتصال بخدمة جوجل.');
-    }
-  };
-
-  const fetchAdminImages = async () => {
-    try {
+      console.log("Fetching admin images...");
       const res = await fetch('/api/admin/images');
       const data = await res.json();
+      console.log("Admin images fetched:", data);
       if (Array.isArray(data)) setAdminImages(data);
     } catch (error) {
       console.error("Fetch images failed", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAdminImages();
+  }, [fetchAdminImages]);
+
+  const fetchCollection = useCallback(async (serial: string) => {
+    try {
+      const res = await fetch(`/api/collection/${serial}`);
+      const data = await res.json();
+      if (data.collection) setPlayerCollection(data.collection);
+      if (data.claimed) setClaimedCollectionRewards(data.claimed);
+    } catch (error) {
+      console.error("Fetch collection failed", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (playerSerial) {
+      fetchCollection(playerSerial);
+    }
+  }, [playerSerial, fetchCollection]);
 
   useEffect(() => {
     if (showAdminDashboard && socket) {
@@ -2526,6 +2671,113 @@ export default function App() {
     newSocket.on('chat_bubble', async ({ senderId, text }) => {
       if (senderId !== newSocket.id && isOpponentBlockedRef.current) return;
       
+      // Re-enable quick response buttons if message is from opponent
+      if (senderId !== newSocket.id && senderId !== 'system') {
+        setIsQuickResponseDisabled(false);
+        setClickedResponses([]);
+        if (quickResponseTimeoutRef.current) {
+          clearTimeout(quickResponseTimeoutRef.current);
+          quickResponseTimeoutRef.current = null;
+        }
+
+        // Quick Chat Reels Logic
+        if (text === 'آه' || text === 'لأ') {
+          setIsReelsSpinning(true);
+          setSpinningReels([true, true, true, true]);
+          setTimeout(() => setSpinningReels([false, true, true, true]), 600);
+          setTimeout(() => setSpinningReels([false, false, true, true]), 900);
+          setTimeout(() => setSpinningReels([false, false, false, true]), 1200);
+          setTimeout(() => {
+            setSpinningReels([false, false, false, false]);
+            setIsReelsSpinning(false);
+            if (text === 'آه' && askedQuickChatNodeRef.current) {
+              const nodeText = askedQuickChatNodeRef.current.text;
+              setConfirmedAttributes(prev => prev.includes(nodeText) ? prev : [...prev, nodeText]);
+              
+              const children = askedQuickChatNodeRef.current.children;
+              if (children && children.length > 0) {
+                // If 'Yes' and has children, we enter its branch
+                setCurrentQuickChatNodes(children);
+                setQuickChatOffset(0);
+              } else {
+                // If 'Yes' but no children (flat structure), just remove this question
+                const nodeToFilter = askedQuickChatNodeRef.current;
+                setCurrentQuickChatNodes(prev => {
+                  const filtered = prev.filter(n => n.id !== nodeToFilter.id && n.text !== nodeToFilter.text);
+                  // If only one option remains, it's inferred as 'Yes'
+                  if (filtered.length === 1) {
+                    const inferredNode = filtered[0];
+                    setConfirmedAttributes(prevAttrs => prevAttrs.includes(inferredNode.text) ? prevAttrs : [...prevAttrs, inferredNode.text]);
+                    return inferredNode.children && inferredNode.children.length > 0 ? inferredNode.children : [];
+                  }
+                  return filtered;
+                });
+              }
+            } else if (text === 'لأ' && askedQuickChatNodeRef.current) {
+              // Answer is 'No', remove this branch/question from current options
+              const nodeToFilter = askedQuickChatNodeRef.current;
+              const currentCategory = roomRef.current?.category || '';
+              const categoryObj = categories.find(c => c.id === currentCategory);
+              const categoryName = categoryObj ? categoryObj.name : currentCategory;
+              const normalizedCategory = normalizeEgyptian(categoryName + currentCategory);
+              const isPeople = normalizedCategory.includes('اشخاص');
+              const isAnimals = normalizedCategory.includes('حيوانات');
+              const isFood = normalizedCategory.includes('اكلات');
+              
+              const nodeText = normalizeEgyptian(nodeToFilter.text);
+              const isGenderNode = isPeople && (nodeText.includes('رجل') || nodeText.includes('ست'));
+              const isAnimalTypeNode = isAnimals && (nodeText.includes('بري') || nodeText.includes('بحري'));
+              const isFoodTypeNode = isFood && (nodeText.includes('حلو') || nodeText.includes('حادق'));
+
+              if (isGenderNode || isAnimalTypeNode || isFoodTypeNode) {
+                setCurrentQuickChatNodes(prev => {
+                  let otherText = '';
+                  if (isGenderNode) {
+                    otherText = nodeText.includes('رجل') ? 'ست' : 'رجل';
+                  } else if (isAnimalTypeNode) {
+                    otherText = nodeText.includes('بري') ? 'بحري' : 'بري';
+                  } else if (isFoodTypeNode) {
+                    otherText = nodeText.includes('حلو') ? 'حادق' : 'حلو';
+                  }
+                  
+                  const otherNode = prev.find(n => normalizeEgyptian(n.text).includes(otherText));
+                  
+                  if (otherNode) {
+                    // Automatic inference
+                    setConfirmedAttributes(prevAttrs => prevAttrs.includes(otherNode.text) ? prevAttrs : [...prevAttrs, otherNode.text]);
+                    return otherNode.children && otherNode.children.length > 0 ? otherNode.children : [];
+                  }
+                  
+                  // Fallback to default filtering
+                  const filtered = prev.filter(n => n.id !== nodeToFilter.id && n.text !== nodeToFilter.text);
+                  if (filtered.length === 1) {
+                    const inferredNode = filtered[0];
+                    setConfirmedAttributes(prevAttrs => prevAttrs.includes(inferredNode.text) ? prevAttrs : [...prevAttrs, inferredNode.text]);
+                    return inferredNode.children && inferredNode.children.length > 0 ? inferredNode.children : [];
+                  }
+                  return filtered;
+                });
+              } else {
+                setCurrentQuickChatNodes(prev => {
+                  const filtered = prev.filter(n => n.id !== nodeToFilter.id && n.text !== nodeToFilter.text);
+                  
+                  // If only one option remains, it's inferred as 'Yes'
+                  if (filtered.length === 1) {
+                    const inferredNode = filtered[0];
+                    setConfirmedAttributes(prevAttrs => prevAttrs.includes(inferredNode.text) ? prevAttrs : [...prevAttrs, inferredNode.text]);
+                    
+                    // Auto-advance to its children (even if empty, to clear siblings)
+                    return inferredNode.children && inferredNode.children.length > 0 ? inferredNode.children : [];
+                  }
+                  return filtered;
+                });
+              }
+            }
+            askedQuickChatNodeRef.current = null;
+          }, 1500); // Spin duration
+        }
+      }
+      
       // Update spectator data if spectating
       if (spectatingRoomIdRef.current) {
         setSpectatorRoomData(prev => {
@@ -2546,27 +2798,6 @@ export default function App() {
 
       const sender = roomRef.current?.players.find((p: any) => p.id === senderId);
       const msgId = Math.random().toString(36).substr(2, 9);
-      
-      // Check context if in guessing phase (for both sender and receiver)
-      if (roomRef.current?.gameState === 'guessing' && sender && !sender.isBot) {
-        const targetWords = roomRef.current.players
-          .map(p => p.targetImage?.name)
-          .filter(Boolean) as string[];
-          
-        if (targetWords.length > 0) {
-          // We only want the sender to trigger the out_of_context_detected event to avoid duplicate triggers
-          if (senderId === newSocket.id) {
-            const isRelated = await checkChatMessageContext(text, targetWords.join(' أو '));
-            if (!isRelated) {
-              newSocket.emit('out_of_context_detected', { 
-                roomId: roomRef.current.id, 
-                senderId, 
-                text 
-              });
-            }
-          }
-        }
-      }
 
       // Play message sound for incoming messages
       if (senderId !== newSocket.id) {
@@ -2874,10 +3105,15 @@ export default function App() {
           const maintenanceResponse = await fetch('/api/maintenance');
           if (maintenanceResponse.ok) {
             const maintenanceData = await maintenanceResponse.json();
+            const params = new URLSearchParams(window.location.search);
+            const isAdminInUrl = params.get('isAdmin') === 'true';
+            
             if (maintenanceData.maintenance) {
-              setIsMaintenanceMode(true);
-              setIsAppLoading(false);
-              return;
+              if (!isAdmin && !isAdminInUrl) {
+                setIsMaintenanceMode(true);
+                setIsAppLoading(false);
+                return;
+              }
             }
           }
         } catch (err) {
@@ -3978,6 +4214,7 @@ export default function App() {
 
   const renderModals = () => (
     <>
+      {renderCollectionModal()}
       {/* Global Reward Modal */}
       <AnimatePresence>
         {activeGlobalReward && (activeGlobalReward.type !== 'tokens' || getLevel(xp) >= 50) && (
@@ -5553,7 +5790,7 @@ export default function App() {
               <motion.div
                 initial={{ scale: 0.9, y: 50 }}
                 animate={{ scale: 1, y: 0 }}
-                className="bg-white rounded-[40px] w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl border-4 border-purple-100"
+                className="bg-white rounded-[40px] w-full h-full flex flex-col shadow-2xl border-4 border-purple-100"
               >
                 {/* Header */}
                 <div className="p-6 border-b-4 border-black flex items-center justify-between bg-white/90 backdrop-blur-sm">
@@ -5654,6 +5891,12 @@ export default function App() {
                           className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'live_matches' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
                         >
                           المباريات المباشرة
+                        </button>
+                        <button 
+                          onClick={() => setAdminTab('quick_chat')}
+                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'quick_chat' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
+                        >
+                          Quick Chat
                         </button>
                       </div>
                     </div>
@@ -7025,6 +7268,8 @@ export default function App() {
                         )}
                       </div>
                     </div>
+                  ) : adminTab === 'quick_chat' ? (
+                    <QuickChatManager config={customConfig} refreshConfig={refreshConfig} showAlert={showAlert} />
                   ) : adminTab === 'players' ? (
                     <>
                       {/* Sidebar - Reports */}
@@ -7644,6 +7889,143 @@ export default function App() {
     </>
   );
 
+  const renderCollectionModal = () => {
+    if (!showCollectionModal) return null;
+    const category = COLLECTION_DATA.find(c => c.id === showCollectionModal);
+    if (!category) return null;
+
+    return (
+      <AnimatePresence>
+        <div 
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowCollectionModal(null)}
+        >
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white border-8 border-black rounded-[2rem] w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
+          >
+            {/* Header */}
+            <div className="p-6 border-b-4 border-black flex justify-between items-center bg-accent-blue/10">
+              <button onClick={() => setShowCollectionModal(null)} className="w-10 h-10 bg-white border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
+                <X className="w-6 h-6" />
+              </button>
+              <div className="flex items-center gap-3 flex-row-reverse">
+                <span className="text-3xl">{category.icon}</span>
+                <h2 className="text-2xl font-bold text-main uppercase tracking-tighter">مكافآت {category.name}</h2>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+              {category.stages.map((stage, sIdx) => {
+                const prevStageComplete = sIdx === 0 || category.stages[sIdx - 1].images.every(img => {
+                  const norm = normalizeEgyptian(img).toLowerCase();
+                  const count = playerCollection.find(c => c.image_name === norm)?.count || 0;
+                  return count >= 5;
+                });
+                const isLocked = !prevStageComplete;
+                const isClaimed = claimedCollectionRewards.some(r => r.category_id === category.id && r.stage === stage.stage);
+                const isStageComplete = stage.images.every(imgName => {
+                  const norm = normalizeEgyptian(imgName).toLowerCase();
+                  const count = playerCollection.find(c => c.image_name === norm)?.count || 0;
+                  return count >= 5;
+                });
+
+                return (
+                  <div key={stage.stage} className={`relative ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className="flex items-center justify-between mb-4 flex-row-reverse">
+                      <h3 className="text-xl font-black text-main">المرحلة {stage.stage}</h3>
+                      {isLocked && <Lock className="w-5 h-5 text-gray-400" />}
+                      {isClaimed && <Check className="w-6 h-6 text-green-500" />}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      {stage.images.map((imgName, iIdx) => {
+                        const norm = normalizeEgyptian(imgName).toLowerCase();
+                        const count = playerCollection.find(c => c.image_name === norm)?.count || 0;
+                        const isRevealed = count > 0;
+                        const isUnlocked = count >= 5;
+
+                        return (
+                          <div key={iIdx} className="flex flex-col items-center gap-1">
+                            <div className={`w-full aspect-square bg-gray-50/50 border-4 border-black rounded-2xl flex items-center justify-center relative overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${isUnlocked ? 'bg-white' : ''}`}>
+                              {isRevealed ? (
+                                <div className="relative w-full h-full">
+                                  {(() => {
+                                    const found = adminImages.find(img => {
+                                      const catMatch = String(img.category) === String(category.id);
+                                      const nameMatch = img.name.trim() === imgName.trim();
+                                      return catMatch && nameMatch;
+                                    });
+                                    if (!found) {
+                                      console.log("Image not found:", { imgName, categoryId: category.id, adminImages: adminImages.map(i => ({name: i.name, cat: i.category})) });
+                                    }
+                                    return (
+                                      <img 
+                                        src={found?.data || `https://picsum.photos/seed/${imgName}/200/200`}
+                                        alt={imgName} 
+                                        className="w-full h-full object-cover"
+                                        referrerPolicy="no-referrer"
+                                      />
+                                    );
+                                  })()}
+                                  <span className="absolute bottom-1 left-1 text-[8px] font-black text-white bg-black/50 px-1 rounded">
+                                    {imgName}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-4xl font-black text-gray-300">?</span>
+                              )}
+                              {count > 0 && (
+                                <div className={`absolute bottom-1 right-1 border-2 border-black rounded-lg px-1 text-[10px] font-black ${isUnlocked ? 'bg-green-400' : 'bg-accent-yellow'}`}>
+                                  {count}/5
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Reward Footer */}
+                    <div className="mt-4 p-2 bg-accent-yellow/10 border-4 border-black rounded-2xl flex items-center justify-between flex-row-reverse">
+                      <div className="flex items-center gap-0.5 text-sm font-black text-main">
+                        <Zap className="w-4 h-4 text-accent-yellow fill-accent-yellow" />
+                        <span>{stage.reward.xp} XP</span>
+                        {stage.reward.frame && <span className="text-accent-blue">+ إطار مميز</span>}
+                      </div>
+                      
+                      {isClaimed ? (
+                        <div className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs font-black">تم الاستلام</div>
+                      ) : (
+                        <button 
+                          disabled={!isStageComplete}
+                          onClick={() => {
+                            socket.emit('claim_collection_reward', { 
+                              serial: playerSerial, 
+                              categoryId: category.id, 
+                              stage: stage.stage 
+                            });
+                          }}
+                          className={`px-3 py-1 rounded-lg text-xs font-black transition-colors ${isStageComplete ? 'bg-main text-white hover:bg-main/90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                        >
+                          استلام المكافأة
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    );
+  };
+
   const renderUpdateBanner = () => {
     if (!needRefresh && !needsUpdate) return null;
     return createPortal(
@@ -7727,7 +8109,7 @@ export default function App() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="text-xl md:text-2xl font-black text-brown-muted text-center leading-relaxed"
+            className="text-xl md:text-2xl font-black text-brown-muted text-center leading-relaxed mb-8"
           >
             احنا اسفين, دقايق بس بنضيف حاجات جديدة يا ابطال التخمين.
           </motion.p>
@@ -8413,7 +8795,8 @@ export default function App() {
         >
 
           {/* Profile Card */}
-          <div className="player-card flex items-center gap-3 md:gap-4 p-3 md:p-4 flex-row-reverse mb-6 md:mb-10 w-full">
+          <div className="player-card flex flex-col p-3 md:p-4 mb-4 md:mb-4 w-full">
+            <div className="flex items-center gap-3 md:gap-4 flex-row-reverse w-full">
               <div className="relative shrink-0 w-16 h-16 md:w-20 md:h-20">
                 {renderAvatarContent(avatar, getLevel(xp), false, true)}
               </div>
@@ -8470,6 +8853,64 @@ export default function App() {
                 </div>
               </div>
             </div>
+          </div>
+            
+          {/* Collection Icons - Moved outside player card */}
+          <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
+            {COLLECTION_DATA.map((cat) => {
+              const hasAny = playerCollection.some(c => {
+                const catImages = cat.stages.flatMap(s => s.images.map(img => normalizeEgyptian(img).toLowerCase()));
+                return catImages.includes(c.image_name);
+              });
+
+              const currentCount = cat.stages.flatMap(s => s.images).reduce((acc, img) => {
+                const norm = normalizeEgyptian(img).toLowerCase();
+                const count = playerCollection.find(c => c.image_name === norm)?.count || 0;
+                return acc + count;
+              }, 0);
+
+              const hasNewImage = currentCount > (seenCategoryCounts[cat.id] || 0);
+
+              const hasClaimableReward = cat.stages.some(stage => {
+                const isClaimed = claimedCollectionRewards.some(r => r.category_id === cat.id && r.stage === stage.stage);
+                if (isClaimed) return false;
+                
+                const isStageComplete = stage.images.every(imgName => {
+                  const norm = normalizeEgyptian(imgName).toLowerCase();
+                  const count = playerCollection.find(c => c.image_name === norm)?.count || 0;
+                  return count >= 5;
+                });
+                
+                return isStageComplete;
+              });
+
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => { 
+                    playSound('clickOpen'); 
+                    setShowCollectionModal(cat.id);
+                    if (hasNewImage) {
+                      const newCounts = { ...seenCategoryCounts, [cat.id]: currentCount };
+                      setSeenCategoryCounts(newCounts);
+                      localStorage.setItem('khamin_seen_category_counts', JSON.stringify(newCounts));
+                    }
+                  }}
+                  className={`relative w-9 h-9 md:w-11 md:h-11 rounded-xl border-2 border-black flex items-center justify-center text-lg md:text-xl transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none ${
+                    hasAny ? 'bg-white opacity-100' : 'bg-white opacity-70 grayscale'
+                  }`}
+                >
+                  {cat.icon}
+                  {(hasClaimableReward || hasNewImage) && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
           <div className="card-game p-3 md:p-5">
 
@@ -8639,7 +9080,7 @@ export default function App() {
                           }
                         }}
                         disabled={getLevel(xp) < 50}
-                        className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-black font-black text-xs px-3 py-1.5 rounded-md shadow-sm border border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-black font-black text-xs md:text-[12px] text-[10px] px-1 py-1 md:px-3 md:py-1.5 rounded-md shadow-sm border border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
                         {getLevel(xp) < 50 ? 'مغلق' : 'استلم الهدية'}
                       </button>
@@ -8656,8 +9097,10 @@ export default function App() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="fixed inset-0 bg-black/60 backdrop-blur-md z-[5000] flex items-center justify-center p-4"
+                  onClick={() => setShowRewardModal(false)}
                 >
                   <motion.div
+                    onClick={(e) => e.stopPropagation()}
                     initial={{ scale: 0.9, y: 20 }}
                     animate={{ scale: 1, y: 0 }}
                     exit={{ scale: 0.9, y: 20 }}
@@ -8725,7 +9168,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={handleRandomMatch}
-                  className="flex-1 btn-game btn-primary py-3 md:py-4 text-sm md:text-xl gap-1 md:gap-3 cursor-pointer touch-manipulation"
+                  className="flex-1 btn-game btn-primary py-4 md:py-4 text-sm md:text-xl gap-1 md:gap-3 cursor-pointer touch-manipulation"
                 >
                   <div className="flex items-center gap-1.5" dir="ltr">
                   <span className="large-emoji">🔍</span>
@@ -9102,58 +9545,94 @@ export default function App() {
       </header>
 
 
-      <main className="flex-1 relative flex flex-col items-center justify-between py-2 px-2 max-w-md mx-auto w-full">
-        {/* Opponent (Top) */}
-        <div className="relative flex flex-col items-center justify-center w-full flex-1">
-          {opponent && (
-            <>
-              <div className="relative w-16 h-16 md:w-24 md:h-24">
-                {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false, true)}
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-black shadow-sm z-20 whitespace-nowrap">
-                  Lvl {opponent.level || getLevel(opponent.xp || 0)}
+      <main className="flex-1 relative flex flex-col items-center py-2 px-2 max-w-md mx-auto w-full overflow-hidden">
+        {/* Players Header (VS Mode) */}
+        <div className="w-full flex items-center justify-center gap-3 md:gap-6 py-2 px-4 bg-white/60 backdrop-blur-md rounded-[32px] border-4 border-white shadow-xl mb-4 relative z-50">
+          {/* Player (Me) */}
+          <div className="flex flex-col items-center relative">
+            {me && (
+              <>
+                <div className="relative w-14 h-14 md:w-20 md:h-20">
+                  {renderAvatarContent(me.avatar, getLevel(xp), false, true)}
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[8px] md:text-[10px] font-black px-2 py-0.3 rounded-full border-1.5 border-black shadow-sm z-20 whitespace-nowrap">
+                    Lvl {getLevel(xp)}
+                  </div>
+                  {showHammer === me.id && (
+                    <motion.div 
+                      initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
+                      animate={{ rotate: 45, y: -30, x: 0, opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute -top-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+                    >
+                      <Hammer className="w-16 h-16 text-[#2D3436] fill-[#FF9F43] drop-shadow-lg" />
+                    </motion.div>
+                  )}
                 </div>
-                {showHammer === opponent.id && (
-                  <motion.div 
-                    initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
-                    animate={{ rotate: 45, y: -30, x: 0, opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute -top-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[70px] md:max-w-[90px] flex items-center gap-2">
+                  {me.name}
+                  {reports > 0 && <Flag className="w-3 h-3 text-red-500" fill="currentColor" />}
+                </div>
+                {me.age && <div className="text-[8px] text-brown-muted font-bold">({me.age} سنة)</div>}
+              </>
+            )}
+          </div>
+
+          {/* VS Divider */}
+          <div className="flex flex-col items-center justify-center">
+            <div className="text-2xl md:text-4xl font-black text-accent-orange italic drop-shadow-sm animate-pulse">VS</div>
+          </div>
+
+          {/* Opponent */}
+          <div className="flex flex-col items-center relative">
+            {opponent ? (
+              <>
+                <div className="relative w-14 h-14 md:w-20 md:h-20">
+                  {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false, true)}
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[8px] md:text-[10px] font-black px-2 py-0.3 rounded-full border-1.5 border-black shadow-sm z-20 whitespace-nowrap">
+                    Lvl {opponent.level || getLevel(opponent.xp || 0)}
+                  </div>
+                  {showHammer === opponent.id && (
+                    <motion.div 
+                      initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
+                      animate={{ rotate: 45, y: -30, x: 0, opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute -top-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+                    >
+                      <Hammer className="w-16 h-16 text-[#2D3436] fill-[#FF9F43] drop-shadow-lg" />
+                    </motion.div>
+                  )}
+                </div>
+                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[70px] md:max-w-[90px] flex items-center gap-2">
+                  {opponent.name}
+                  <button onClick={() => setShowReportModal(true)} className="text-red-500">
+                    <Flag className="w-3 h-3" fill={opponent.reports > 0 ? "currentColor" : "none"} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const newBlockedState = !isOpponentBlocked;
+                      setIsOpponentBlocked(newBlockedState);
+                      socket?.emit('toggle_mute_opponent', { roomId, isMuted: newBlockedState });
+                    }}
+                    className={isOpponentBlocked ? 'text-red-500' : 'text-brown-light'}
                   >
-                    <Hammer className="w-20 h-20 text-[#2D3436] fill-[#FF9F43] drop-shadow-lg" />
-                  </motion.div>
-                )}
+                    <MessageSquareOff className="w-3 h-3" />
+                  </button>
+                </div>
+                {opponent.age && <div className="text-[8px] text-brown-muted font-bold">({opponent.age} سنة)</div>}
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-14 h-14 md:w-20 md:h-20 bg-gray-100 rounded-full border-4 border-white shadow-inner flex items-center justify-center">
+                  <User className="w-8 h-8 text-gray-300 animate-pulse" />
+                </div>
+                <div className="text-[10px] font-bold text-gray-400">بانتظار...</div>
               </div>
-              <div className="mt-1 font-black text-base flex items-center gap-2 text-main bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm">
-                {opponent.name}
-                <button 
-                  onClick={() => setShowReportModal(true)}
-                  className={`${opponent.reports && opponent.reports > 0 ? 'text-red-500' : 'text-brown-light'} hover:bg-red-50 p-1.5 rounded-full transition-all`}
-                  title={opponent.reports && opponent.reports > 0 ? `هذا اللاعب لديه ${opponent.reports} إبلاغات` : "الإبلاغ عن هذا اللاعب"}
-                >
-                  <Flag 
-                    className={`w-4 h-4 ${opponent.reports && opponent.reports > 0 ? 'animate-pulse' : ''}`} 
-                    fill={opponent.reports && opponent.reports > 0 ? "currentColor" : "none"}
-                  />
-                </button>
-                <button 
-                  onClick={() => {
-                    const newBlockedState = !isOpponentBlocked;
-                    setIsOpponentBlocked(newBlockedState);
-                    socket?.emit('toggle_mute_opponent', { roomId, isMuted: newBlockedState });
-                  }}
-                  className={`${isOpponentBlocked ? 'text-red-500 bg-red-100' : 'text-brown-light hover:bg-gray-100'} p-1.5 rounded-full transition-all`}
-                  title={isOpponentBlocked ? "إلغاء الحظر" : "حظر اللاعب (كتم الصوت والدردشة)"}
-                >
-                  <MessageSquareOff className="w-4 h-4" />
-                </button>
-              </div>
-              {opponent.age && <div className="text-xs text-brown-muted font-bold mt-1">({opponent.age} سنة)</div>}
-            </>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Center Content: Image or Waiting UI */}
-        <div className="flex-[2] flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0 overflow-hidden">
           {room.gameState === 'waiting' ? (
             <div className="w-full card-game p-3 md:p-6 text-center space-y-3 md:space-y-5 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#F6E6CD]">
@@ -9281,24 +9760,23 @@ export default function App() {
                       )}
                       <div ref={chatEndRef} />
                     </div>
-                    <form onSubmit={handleSendChat} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative">
-                      <button type="submit" disabled={isMutedByOpponent} className="bg-[#128C7E] text-white p-3 rounded-full shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
-                        <Send className="w-5 h-5" />
-                      </button>
-                      <input 
-                        type="text" 
-                        value={chatInput}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
-                          const cleanVal = val.replace(emojiRegex, '');
-                          setChatInput(cleanVal);
-                        }}
-                        placeholder="اسأل المنافس وخمن الاجابة..."
-                        className="flex-1 bg-white border-none rounded-full px-4 py-2 text-base outline-none shadow-sm font-bold disabled:bg-gray-200 disabled:cursor-not-allowed"
-                        maxLength={250}
-                        disabled={isMutedByOpponent}
-                      />
+                    <form onSubmit={(e) => e.preventDefault()} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative items-center">
+                      <div className="flex-1 flex gap-0 overflow-x-auto no-scrollbar py-1">
+                        {['🐞', '🌿', '📦', '👥', '🍕', '🦜', '🐘'].map(emote => (
+                          <button
+                            key={emote}
+                            type="button"
+                            disabled={isMutedByOpponent}
+                            onClick={() => {
+                              playSound('clickOpen');
+                              socket?.emit('send_emote', { roomId: room!.id, emote });
+                            }}
+                            className="bg-white text-xl p-2 rounded-xl shadow-sm hover:bg-gray-50 active:scale-95 transition-all min-w-[30px] min-h-[30px] flex items-center justify-center disabled:opacity-50"
+                          >
+                            {emote}
+                          </button>
+                        ))}
+                      </div>
                       <button 
                         type="button" 
                         onClick={() => {
@@ -9412,15 +9890,39 @@ export default function App() {
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
-                    className="relative z-10 flex flex-col items-center w-full"
+                    className="relative z-10 flex flex-row items-center justify-center gap-3 md:gap-6 w-full px-4"
                   >
-                    <div className="relative w-full max-w-[11rem] md:max-w-[14rem] aspect-square bg-white p-1.5 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden transform rotate-1 hover:rotate-0 transition-transform duration-300 border-2 border-white flex items-center justify-center mb-4 md:mb-0">
+                    {/* Confirmed Attributes Box on the left (User's Right) */}
+                    <div className="flex-1 max-w-[9rem] md:max-w-[14rem] h-[9rem] md:h-[12rem] bg-white backdrop-blur-[2px] rounded-[20px] border border-black p-2 shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-y-auto flex flex-col gap-1 custom-scrollbar">
+                      {confirmedAttributes.length === 0 ? (
+                        <div className="flex-1 flex items-center justify-center text-[12px] text-gray-500 font-bold text-center px-1">
+                          التخمينات الصح هتظهر هنا
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          {confirmedAttributes.map((attr, idx) => (
+                            <motion.div 
+                              key={idx}
+                              initial={{ x: -10, opacity: 0 }}
+                              animate={{ x: 0, opacity: 1 }}
+                              className="text-[10px] md:text-[11px] font-black text-purple-900 flex items-center gap-1 py-0.5 px-1 border-b border-purple-50/30 last:border-0"
+                            >
+                              <span className="text-purple-500 text-[8px]">●</span>
+                              {attr}
+                            </motion.div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Target Image on the right (User's Left) */}
+                    <div className="relative w-full max-w-[9rem] md:max-w-[12rem] aspect-square bg-white p-1.5 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden border-2 border-white flex items-center justify-center">
                       <img 
                         src={opponent?.targetImage?.image} 
                         className={`w-full h-full object-cover rounded-xl ${funnyFilter === opponent?.id ? 'invert sepia hue-rotate-90 scale-110' : ''}`}
                         alt="Target"
                       />
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white/90 px-3 py-0.5 rounded-full font-black text-xs md:text-sm text-main shadow-sm border border-gray-200 backdrop-blur-sm z-10 whitespace-nowrap">
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white/90 px-3 py-0.5 rounded-full font-black text-[10px] md:text-xs text-main shadow-sm border border-gray-200 backdrop-blur-sm z-10 whitespace-nowrap">
                         {opponent?.targetImage?.name}
                       </div>
                     </div>
@@ -9458,120 +9960,188 @@ export default function App() {
 
               {/* Gameplay Chat Box - Moved to Center */}
               {room.gameState !== 'waiting' && room.gameState !== 'finished' && room.gameState !== 'guessing' && (
-                <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner flex flex-col h-50 md:h-64 mt-4 z-20 relative">
-                  {isMutedByOpponent && (
-                    <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
-                      <Lock className="w-12 h-12 mb-2 text-red-400" />
-                      <span className="font-black text-lg text-center px-4">تم حظر الدردشة من قبل المنافس</span>
+                <>
+                  <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner flex flex-col h-50 md:h-64 mt-4 z-20 relative">
+                    {isMutedByOpponent && (
+                      <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
+                        <Lock className="w-12 h-12 mb-2 text-red-400" />
+                        <span className="font-black text-lg text-center px-4">تم حظر الدردشة من قبل المنافس</span>
+                      </div>
+                    )}
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+                      {chatHistory.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic">
+                          اسأل المنافس وخمن الاجابة...
+                        </div>
+                      ) : (
+                        chatHistory.map((msg, index) => (
+                          <div key={`game-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
+                            <div className={`max-w-[85%] p-1.5 px-2.5 rounded-xl text-xs font-bold shadow-sm relative break-words ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
+                              <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
+                                {msg.playerName}
+                              </div>
+                              <div className={`leading-tight whitespace-pre-wrap ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      {isOpponentTyping && (
+                        <div className="flex justify-end">
+                          <TypingIndicator />
+                        </div>
+                      )}
+                      <div ref={chatEndRef} />
+                    </div>
+                    <form onSubmit={(e) => e.preventDefault()} className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative items-center">
+                      <div className="flex-1 flex gap-2 py-1">
+                        <button
+                          disabled={isMutedByOpponent || isQuickResponseDisabled || clickedResponses.includes('آه') || room?.waitingForAnswerFrom !== socket?.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isQuickResponseDisabled || clickedResponses.includes('آه') || room?.waitingForAnswerFrom !== socket?.id) return;
+                            playSound('clickOpen');
+                            socket?.emit('send_chat', { roomId: room!.id, text: 'آه' });
+                            setClickedResponses(prev => [...prev, 'آه']);
+                            
+                            if (!quickResponseTimeoutRef.current) {
+                              quickResponseTimeoutRef.current = setTimeout(() => {
+                                setIsQuickResponseDisabled(true);
+                                quickResponseTimeoutRef.current = null;
+                              }, 3000);
+                            }
+                          }}
+                          className={`flex-1 py-1.5 px-4 rounded-xl font-black text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes('آه') ? 'bg-green-500 text-white border-green-600 scale-105' : 'bg-white text-green-600 border-green-500 hover:bg-green-50'}`}
+                        >
+                          آه
+                        </button>
+
+                        <button
+                          disabled={isMutedByOpponent || isQuickResponseDisabled || clickedResponses.includes('لأ') || room?.waitingForAnswerFrom !== socket?.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isQuickResponseDisabled || clickedResponses.includes('لأ') || room?.waitingForAnswerFrom !== socket?.id) return;
+                            playSound('clickOpen');
+                            socket?.emit('send_chat', { roomId: room!.id, text: 'لأ' });
+                            setClickedResponses(prev => [...prev, 'لأ']);
+                            
+                            if (!quickResponseTimeoutRef.current) {
+                              quickResponseTimeoutRef.current = setTimeout(() => {
+                                setIsQuickResponseDisabled(true);
+                                quickResponseTimeoutRef.current = null;
+                              }, 3000);
+                            }
+                          }}
+                          className={`flex-1 py-1.5 px-4 rounded-xl font-black text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes('لأ') ? 'bg-red-500 text-white border-red-600 scale-105' : 'bg-white text-red-600 border-red-500 hover:bg-red-50'}`}
+                        >
+                          لأ
+                        </button>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          playSound('clickOpen');
+                          setShowEmotes(!showEmotes);
+                        }}
+                        className="bg-white text-brown-muted p-2 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all w-10 h-10 flex items-center justify-center shrink-0"
+                      >
+                        <Smile className="w-5 h-5" />
+                      </button>
+                      {showEmotes && (
+                        <div className="absolute bottom-full left-2 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-1 w-48 z-50">
+                          {EMOTES.map(emote => (
+                            <button
+                              key={emote}
+                              type="button"
+                              onClick={() => {
+                                playSound('clickOpen');
+                                socket?.emit('send_emote', { roomId: room!.id, emote });
+                                setShowEmotes(false);
+                              }}
+                              className="text-1xl hover:scale-125 transition-transform p-1"
+                            >
+                              {emote}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </form>
+                  </div>
+
+                  {/* Quick Chat Reels */}
+                  {room.gameState === 'discussion' && (
+                    <div className="w-[75%] md:w-full mt-2 flex flex-col gap-2 z-20">
+                      {currentQuickChatNodes.length > 4 && (
+                        <button
+                          disabled={isReelsSpinning}
+                          onClick={() => {
+                            if (isReelsSpinning) return;
+                            playSound('clickOpen');
+                            setIsReelsSpinning(true);
+                            setSpinningReels([true, true, true, true]);
+                            setQuickChatOffset(prev => (prev + 4 >= currentQuickChatNodes.length ? 0 : prev + 4));
+                            
+                            setTimeout(() => setSpinningReels([false, true, true, true]), 300);
+                            setTimeout(() => setSpinningReels([false, false, true, true]), 450);
+                            setTimeout(() => setSpinningReels([false, false, false, true]), 600);
+                            setTimeout(() => {
+                              setSpinningReels([false, false, false, false]);
+                              setIsReelsSpinning(false);
+                            }, 750);
+                          }}
+                          className={`flex items-center justify-center gap-2 bg-purple-100 text-purple-700 hover:bg-purple-200 py-1.5 px-3 rounded-lg text-sm font-bold transition-colors w-full shadow-sm border border-purple-200 ${isReelsSpinning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <RefreshCw className={`w-4 h-4 ${isReelsSpinning ? 'animate-spin' : ''}`} />
+                          تغيير الأسئلة
+                        </button>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        {Array.from({ length: 4 }).map((_, i) => {
+                          const node = currentQuickChatNodes[quickChatOffset + i];
+                          const isMyTurn = room.currentTurn === socket?.id;
+                          return (
+                            <button
+                              key={node ? node.id : `empty-${i}`}
+                              disabled={!node || isReelsSpinning || isMutedByOpponent || !isMyTurn}
+                              onClick={() => {
+                                if (!node || isReelsSpinning || isMutedByOpponent || !isMyTurn) return;
+                                playSound('clickOpen');
+                                socket?.emit('send_chat', { roomId: room!.id, text: node.text });
+                                askedQuickChatNodeRef.current = node;
+                              }}
+                              className={`rounded-xl p-0 text-center font-bold text-sm shadow-sm transition-all overflow-hidden relative h-12 flex items-center justify-center border-2 ${node && isMyTurn ? 'bg-white border-purple-300 text-purple-800 hover:bg-purple-50 active:scale-95' : 'bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed'}`}
+                            >
+                              <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
+                                {spinningReels[i] && node ? (
+                                  <motion.div
+                                    animate={{ y: i % 2 === 0 ? [0, -96] : [-96, 0] }}
+                                    transition={{ repeat: Infinity, duration: 0.15 + (i * 0.02), ease: "linear" }}
+                                    className="absolute top-0 flex flex-col w-full"
+                                  >
+                                    <span className="h-12 flex items-center justify-center truncate w-full px-2">{node.text}</span>
+                                    <span className="h-12 flex items-center justify-center truncate w-full px-2 text-purple-300">؟</span>
+                                    <span className="h-12 flex items-center justify-center truncate w-full px-2">{node.text}</span>
+                                  </motion.div>
+                                ) : (
+                                  <motion.span
+                                    key={node ? node.id : `empty-text-${i}`}
+                                    initial={{ opacity: 0, y: 15 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="truncate w-full px-2"
+                                  >
+                                    {node ? node.text : '...'}
+                                  </motion.span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
-                  <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
-                    {chatHistory.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic">
-                        اسأل المنافس وخمن الاجابة...
-                      </div>
-                    ) : (
-                      chatHistory.map((msg, index) => (
-                        <div key={`game-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
-                          <div className={`max-w-[85%] p-1.5 px-2.5 rounded-xl text-xs font-bold shadow-sm relative break-words ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
-                            <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
-                              {msg.playerName}
-                            </div>
-                            <div className={`leading-tight whitespace-pre-wrap ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                    {isOpponentTyping && (
-                      <div className="flex justify-end">
-                        <TypingIndicator />
-                      </div>
-                    )}
-                    <div ref={chatEndRef} />
-                  </div>
-                  <form onSubmit={handleSendChat} className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative">
-                    <button type="submit" disabled={isMutedByOpponent} className="bg-[#128C7E] text-white p-3 rounded-full shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
-                      <Send className="w-5 h-5" />
-                    </button>
-                    <input 
-                      type="text" 
-                      value={chatInput}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
-                        const cleanVal = val.replace(emojiRegex, '');
-                        setChatInput(cleanVal);
-                      }}
-                      placeholder="دردشة..."
-                      className="flex-1 bg-white border-none rounded-full px-3 py-1.5 text-base outline-none shadow-sm font-bold disabled:bg-gray-200 disabled:cursor-not-allowed"
-                      maxLength={250}
-                      disabled={isMutedByOpponent}
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => {
-                        playSound('clickOpen');
-                        setShowEmotes(!showEmotes);
-                      }}
-                      className="bg-white text-brown-muted p-2 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all w-10 h-10 flex items-center justify-center"
-                    >
-                      <Smile className="w-5 h-5" />
-                    </button>
-                    {showEmotes && (
-                      <div className="absolute bottom-full left-2 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-1 w-48 z-50">
-                        {EMOTES.map(emote => (
-                          <button
-                            key={emote}
-                            type="button"
-                            onClick={() => {
-                              playSound('clickOpen');
-                              socket?.emit('send_emote', { roomId: room!.id, emote });
-                              setShowEmotes(false);
-                            }}
-                            className="text-1xl hover:scale-125 transition-transform p-1"
-                          >
-                            {emote}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </form>
-                </div>
+                </>
               )}
             </div>
-          )}
-        </div>
-
-        {/* Player (Bottom) */}
-        <div className="relative flex flex-col items-center justify-center flex-1">
-          {me && (
-            <>
-              <div className="relative w-16 h-16 md:w-24 md:h-24">
-                {renderAvatarContent(me.avatar, getLevel(xp), false, true)}
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full border-2 border-black shadow-sm z-20 whitespace-nowrap">
-                  Lvl {getLevel(xp)}
-                </div>
-                {showHammer === me.id && (
-                  <motion.div 
-                    initial={{ rotate: -45, y: -60, x: -20, opacity: 0 }}
-                    animate={{ rotate: 45, y: -30, x: 0, opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute -top-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
-                  >
-                    <Hammer className="w-20 h-20 text-[#2D3436] fill-[#FF9F43] drop-shadow-lg" />
-                  </motion.div>
-                )}
-              </div>
-              <div className="mt-1 font-black text-lg text-main bg-white/80 px-4 py-1 rounded-full shadow-sm backdrop-blur-sm flex items-center gap-2">
-                {me.name}
-                {reports > 0 && (
-                  <Flag className="w-4 h-4 text-red-500" fill="currentColor" title={`لديك ${reports} إبلاغات`} />
-                )}
-              </div>
-              {me.age && <div className="text-xs text-brown-muted font-bold mt-1">({me.age} سنة)</div>}
-              
-
-            </>
           )}
         </div>
       </main>
