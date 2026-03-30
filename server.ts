@@ -207,6 +207,9 @@ const app = express();
     }
   }
 
+  const USE_FIRESTORE_CONFIG = process.env.USE_FIRESTORE_CONFIG === 'true';
+  const firestore = admin.apps.length > 0 ? admin.firestore() : null;
+
   let configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false, quickChat: [], version: currentVersion };
   let activeGlobalReward: any = null;
   let gamePolicies = {
@@ -216,12 +219,31 @@ const app = express();
     privacyEn: "Privacy Policy for Guess Guess game.\n\n1. We collect your basic data such as name and avatar.\n2. We do not share your data with any third party.\n3. Data is used only to improve the gaming experience."
   };
   const configPath = path.join(__dirname, 'public/uploads/config.json');
+  
+  // Load initial config from file
   if (fs.existsSync(configPath)) {
     try {
       configCache = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
       if (!configCache.version) configCache.version = currentVersion;
     } catch (e) {
       console.error("Error reading config:", e);
+    }
+  }
+
+  // Override with Firestore if enabled
+  if (USE_FIRESTORE_CONFIG && firestore) {
+    try {
+      const doc = await firestore.collection('settings').doc('gameConfig').get();
+      if (doc.exists) {
+        const remoteConfig = doc.data() as any;
+        configCache = { ...configCache, ...remoteConfig };
+        console.log("[Config] Loaded from Firestore successfully.");
+      } else {
+        await firestore.collection('settings').doc('gameConfig').set(configCache);
+        console.log("[Config] Initialized Firestore with local config.");
+      }
+    } catch (e) {
+      console.error("[Config] Failed to load from Firestore:", e);
     }
   }
 
@@ -306,11 +328,20 @@ const app = express();
     }
   });
 
-  app.post("/api/config", (req, res) => {
+  app.post("/api/config", async (req, res) => {
     console.log('[API] Received config update:', req.body);
     configCache = req.body;
-    fs.writeFileSync(configPath, JSON.stringify(req.body));
+    fs.writeFileSync(configPath, JSON.stringify(req.body, null, 2));
     
+    if (USE_FIRESTORE_CONFIG && firestore) {
+      try {
+        await firestore.collection('settings').doc('gameConfig').set(req.body);
+        console.log("[Config] Saved to Firestore.");
+      } catch (e) {
+        console.error("[Config] Failed to save to Firestore:", e);
+      }
+    }
+
     // Also update version.json if version is provided
     if (req.body.version) {
       try {
@@ -322,6 +353,41 @@ const app = express();
     
     io.emit('config_updated', req.body);
     res.json({ success: true });
+  });
+
+  app.get("/api/admin/download-config", (req, res) => {
+    if (fs.existsSync(configPath)) {
+      res.download(configPath, 'config.json');
+    } else {
+      res.status(404).json({ error: "Config file not found" });
+    }
+  });
+
+  app.post("/api/admin/upload-config", upload.single("config"), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    try {
+      const newConfig = JSON.parse(fs.readFileSync(req.file.path, 'utf-8'));
+      configCache = newConfig;
+      fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2));
+      
+      if (USE_FIRESTORE_CONFIG && firestore) {
+        try {
+          await firestore.collection('settings').doc('gameConfig').set(newConfig);
+          console.log("[Config] Uploaded config saved to Firestore.");
+        } catch (e) {
+          console.error("[Config] Failed to save uploaded config to Firestore:", e);
+        }
+      }
+
+      fs.unlinkSync(req.file.path); // remove temp file
+      io.emit('config_updated', newConfig);
+      res.json({ success: true });
+    } catch (e) {
+      console.error("Error uploading config:", e);
+      res.status(400).json({ error: "Invalid JSON format" });
+    }
   });
 
   app.get("/api/config", (req, res) => {
