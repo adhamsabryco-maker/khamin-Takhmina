@@ -418,6 +418,7 @@ function normalizeEgyptian(text: string): string {
 }
 
 export default function App() {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const { customConfig, refreshConfig } = useAvatarConfig();
   const appVersion = customConfig.version || '1.1.1';
   const [initialVersion, setInitialVersion] = useState<string | null>(null);
@@ -10010,7 +10011,7 @@ export default function App() {
                               }, 3000);
                             }
                           }}
-                          className={`flex-1 py-1.5 px-4 rounded-xl font-black text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes('آه') ? 'bg-green-500 text-white border-green-600 scale-105' : 'bg-white text-green-600 border-green-500 hover:bg-green-50'}`}
+                          className={`flex-1 py-1 md:py-1.5 px-4 rounded-xl font-black text-[13px] md:text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes('آه') ? 'bg-green-500 text-white border-green-600 scale-105' : 'bg-white text-green-600 border-green-500 hover:bg-green-50'}`}
                         >
                           آه
                         </button>
@@ -10031,7 +10032,7 @@ export default function App() {
                               }, 3000);
                             }
                           }}
-                          className={`flex-1 py-1.5 px-4 rounded-xl font-black text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes('لأ') ? 'bg-red-500 text-white border-red-600 scale-105' : 'bg-white text-red-600 border-red-500 hover:bg-red-50'}`}
+                          className={`flex-1 py-1 md:py-1.5 px-4 rounded-xl font-black text-[13px] md:text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes('لأ') ? 'bg-red-500 text-white border-red-600 scale-105' : 'bg-white text-red-600 border-red-500 hover:bg-red-50'}`}
                         >
                           لأ
                         </button>
@@ -10088,13 +10089,13 @@ export default function App() {
                               setIsReelsSpinning(false);
                             }, 750);
                           }}
-                          className={`flex items-center justify-center gap-2 bg-purple-100 text-purple-700 hover:bg-purple-200 py-1.5 px-3 rounded-lg text-sm font-bold transition-colors w-full shadow-sm border border-purple-200 ${isReelsSpinning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`flex items-center justify-center gap-2 bg-purple-100 text-purple-700 hover:bg-purple-200 py-1 md:py-1.5 px-3 rounded-lg text-[13px] md:text-sm font-bold transition-colors w-full shadow-sm border border-purple-200 ${isReelsSpinning ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <RefreshCw className={`w-4 h-4 ${isReelsSpinning ? 'animate-spin' : ''}`} />
                           تغيير الأسئلة
                         </button>
                       )}
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {Array.from({ length: 4 }).map((_, i) => {
                           const node = currentQuickChatNodes[quickChatOffset + i];
                           const isMyTurn = room.currentTurn === socket?.id;
@@ -10108,18 +10109,18 @@ export default function App() {
                                 socket?.emit('send_chat', { roomId: room!.id, text: node.text });
                                 askedQuickChatNodeRef.current = node;
                               }}
-                              className={`rounded-xl p-0 text-center font-bold text-sm shadow-sm transition-all overflow-hidden relative h-12 flex items-center justify-center border-2 ${node && isMyTurn ? 'bg-white border-purple-300 text-purple-800 hover:bg-purple-50 active:scale-95' : 'bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed'}`}
+                              className={`rounded-xl p-0 text-center font-bold text-[13px] md:text-sm shadow-sm transition-all overflow-hidden relative h-10 md:h-12 flex items-center justify-center border-2 ${node && isMyTurn ? 'bg-white border-purple-300 text-purple-800 hover:bg-purple-50 active:scale-95' : 'bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed'}`}
                             >
                               <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
                                 {spinningReels[i] && node ? (
                                   <motion.div
-                                    animate={{ y: i % 2 === 0 ? [0, -96] : [-96, 0] }}
+                                    animate={{ y: i % 2 === 0 ? [0, isMobile ? -80 : -96] : [isMobile ? -80 : 0, 0] }}
                                     transition={{ repeat: Infinity, duration: 0.15 + (i * 0.02), ease: "linear" }}
                                     className="absolute top-0 flex flex-col w-full"
                                   >
-                                    <span className="h-12 flex items-center justify-center truncate w-full px-2">{node.text}</span>
-                                    <span className="h-12 flex items-center justify-center truncate w-full px-2 text-purple-300">؟</span>
-                                    <span className="h-12 flex items-center justify-center truncate w-full px-2">{node.text}</span>
+                                    <span className="h-10 md:h-12 flex items-center justify-center truncate w-full px-2">{node.text}</span>
+                                    <span className="h-10 md:h-12 flex items-center justify-center truncate w-full px-2 text-purple-300">؟</span>
+                                    <span className="h-10 md:h-12 flex items-center justify-center truncate w-full px-2">{node.text}</span>
                                   </motion.div>
                                 ) : (
                                   <motion.span
