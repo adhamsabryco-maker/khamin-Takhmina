@@ -344,7 +344,7 @@ const AVATARS = [
   { id: 'avatar-lvl-girl-40.png', level: 40, gender: 'girl' },
 ];
 
-const APP_VERSION = '1.1.1'; // Version for cache clearing
+const APP_VERSION = '1.1.5'; // Version for cache clearing
 
 
 
@@ -372,7 +372,7 @@ const enterFullscreen = () => {
 
 const TypingIndicator = () => (
   <div className="flex items-center gap-1 px-3 py-2 bg-white rounded-xl rounded-tl-none shadow-sm w-fit border border-gray-100">
-    <span className="text-[10px] font-bold text-accent-blue mr-1">المنافس يكتب</span>
+    <span className="text-[10px] font-bold text-accent-blue mr-1">انتظر...! المنافس يقوم بتغيير السؤال.</span>
     <div className="flex gap-0.5">
       <span className="w-1 h-1 bg-accent-blue rounded-full typing-dot"></span>
       <span className="w-1 h-1 bg-accent-blue rounded-full typing-dot"></span>
@@ -1322,6 +1322,7 @@ export default function App() {
   const [spinningReels, setSpinningReels] = useState<boolean[]>([false, false, false, false]);
   const [reelRandomItems, setReelRandomItems] = useState<string[][]>([[], [], [], []]);
   const askedQuickChatNodeRef = useRef<any | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (currentQuickChatNodes.length > 0 && quickChatOffset >= currentQuickChatNodes.length) {
@@ -10081,6 +10082,9 @@ export default function App() {
                             playSound('luckyReels');
                             setIsReelsSpinning(true);
                             
+                            // Show typing indicator to opponent
+                            socket?.emit('typing', { roomId: room!.id });
+                            
                             // Generate random items for the reels
                             const newReelItems = Array.from({ length: 4 }).map(() => {
                               const items = [];
@@ -10108,6 +10112,13 @@ export default function App() {
                               setSpinningReels([false, false, false, false]);
                               setIsReelsSpinning(false);
                             }, 1050);
+
+                            // Stop typing indicator after 1.5 seconds
+                            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                            typingTimeoutRef.current = setTimeout(() => {
+                              socket?.emit('stop_typing', { roomId: room!.id });
+                              typingTimeoutRef.current = null;
+                            }, 1500);
                           }}
                           className={`flex items-center justify-center gap-2 bg-purple-100 text-purple-700 hover:bg-purple-200 py-1 md:py-1.5 px-3 rounded-lg text-[13px] md:text-sm font-bold transition-colors w-full shadow-sm border border-purple-200 ${isReelsSpinning ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
@@ -10126,6 +10137,14 @@ export default function App() {
                               onClick={() => {
                                 if (!node || isReelsSpinning || isMutedByOpponent || !isMyTurn) return;
                                 playSound('clickOpen');
+                                
+                                // Clear typing timeout and stop indicator immediately
+                                if (typingTimeoutRef.current) {
+                                  clearTimeout(typingTimeoutRef.current);
+                                  typingTimeoutRef.current = null;
+                                }
+                                socket?.emit('stop_typing', { roomId: room!.id });
+                                
                                 socket?.emit('send_chat', { roomId: room!.id, text: node.text });
                                 askedQuickChatNodeRef.current = node;
                               }}
