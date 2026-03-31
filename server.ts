@@ -197,7 +197,7 @@ const app = express();
   });
 
   const APP_VERSION_FILE = path.join(__dirname, 'version.json');
-  let currentVersion = '1.1.1';
+  let currentVersion = '1.1.5';
   if (fs.existsSync(APP_VERSION_FILE)) {
     try {
       const vData = JSON.parse(fs.readFileSync(APP_VERSION_FILE, 'utf-8'));
