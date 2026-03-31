@@ -344,7 +344,12 @@ const AVATARS = [
   { id: 'avatar-lvl-girl-40.png', level: 40, gender: 'girl' },
 ];
 
-const APP_VERSION = '1.1.5'; // Version for cache clearing
+// Get version from meta tag injected by server, fallback to hardcoded if not found
+const getAppVersion = () => {
+  const metaVersion = document.querySelector('meta[name="app-version"]')?.getAttribute('content');
+  return (metaVersion && metaVersion !== '{{VERSION}}') ? metaVersion : '1.1.5';
+};
+const APP_VERSION = getAppVersion(); // Version for cache clearing
 
 
 
