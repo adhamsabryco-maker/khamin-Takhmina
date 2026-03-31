@@ -1206,7 +1206,15 @@ export default function App() {
   useEffect(() => {
     const lastVersion = localStorage.getItem('khamin_app_version');
     if (lastVersion && lastVersion !== APP_VERSION) {
-      localStorage.clear();
+      // DO NOT use localStorage.clear() here! It wipes the player's ID and logs them out.
+      // We only want to clear the service worker caches.
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          for (let name of names) {
+            caches.delete(name);
+          }
+        });
+      }
       localStorage.setItem('khamin_app_version', APP_VERSION);
       window.location.reload();
     } else if (!lastVersion) {
@@ -2381,10 +2389,9 @@ export default function App() {
         // Fetch actual server data
         newSocket.emit('get_player_data', { serial, fingerprint }, (data: any) => {
           if (data && data.error) {
-            localStorage.removeItem('khamin_player_serial');
-            setPlayerSerial(null);
-            setPlayerName('');
-            setError(data.error);
+            // We DO NOT remove the serial from localStorage here anymore.
+            // This prevents permanent account loss if the server DB is temporarily empty/reset.
+            setError('تعذر العثور على حسابك في الخادم. قد يكون هناك تحديث أو صيانة. إذا قمت بإنشاء حساب جديد سيتم مسح حسابك القديم.');
             setShowWelcomeModal(true);
           } else if (data) {
             setXp(data.xp);
@@ -2465,7 +2472,9 @@ export default function App() {
             localStorage.setItem('khamin_xp', data.xp.toString());
             localStorage.setItem('khamin_wins', (data.wins || 0).toString());
           } else {
-            clearPlayerData();
+            // We DO NOT call clearPlayerData() here anymore to prevent permanent account loss
+            // if the server database is temporarily empty or unavailable.
+            setError('لم يتم العثور على حسابك في قاعدة البيانات. قد يكون هناك تحديث أو صيانة.');
             setPendingWelcomeModal(true);
           }
         });
