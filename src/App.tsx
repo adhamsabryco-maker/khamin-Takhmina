@@ -9154,7 +9154,7 @@ export default function App() {
                     {error}
                   </motion.div>
                 )}
-                <label className="block text-base md:text-lg font-black text-main mb-1 md:mb-2 px-1">دخول بكود غرفة</label>
+                <label className="block text-base md:text-lg font-bold text-main mb-1 md:mb-2 px-1">إنشاء / دخول بكود غرفة</label>
                 <div className="flex gap-2">
                   <input 
                     type="text" 
