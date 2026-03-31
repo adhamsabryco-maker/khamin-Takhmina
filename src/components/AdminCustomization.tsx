@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { useAvatarConfig } from '../contexts/AvatarContext';
 import { Socket } from 'socket.io-client';
@@ -13,6 +13,59 @@ export const AdminCustomization = ({ showAlert, socket }: { showAlert: (msg: str
       setVersionInput(config.version);
     }
   }, [config.version]);
+
+  const dbFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDbUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm('تحذير خطير: رفع ملف قاعدة بيانات جديد سيقوم بمسح كافة البيانات الحالية وإعادة تشغيل الخادم. هل أنت متأكد من رغبتك في المتابعة؟')) {
+      if (dbFileInputRef.current) dbFileInputRef.current.value = '';
+      return;
+    }
+
+    if (!socket) {
+      showAlert('غير متصل بالخادم.', 'خطأ');
+      return;
+    }
+
+    setUploading(true);
+    
+    // Request token for upload
+    socket.emit('admin_request_db_download', async (res: any) => {
+      if (res.success && res.token) {
+        const formData = new FormData();
+        formData.append('database', file);
+
+        try {
+          const response = await fetch(`/api/admin/upload-db?token=${res.token}`, {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (response.ok) {
+            showAlert('تم رفع قاعدة البيانات بنجاح. سيتم إعادة تشغيل الخادم الآن...', 'نجاح');
+            setTimeout(() => {
+              window.location.reload();
+            }, 3000);
+          } else {
+            const errText = await response.text();
+            showAlert(`فشل رفع قاعدة البيانات: ${errText}`, 'خطأ');
+          }
+        } catch (err) {
+          showAlert('حدث خطأ أثناء رفع قاعدة البيانات.', 'خطأ');
+        } finally {
+          setUploading(false);
+          if (dbFileInputRef.current) dbFileInputRef.current.value = '';
+        }
+      } else {
+        showAlert('عذراً، لا تملك صلاحية لرفع قاعدة البيانات.', 'خطأ');
+        setUploading(false);
+        if (dbFileInputRef.current) dbFileInputRef.current.value = '';
+      }
+    });
+  };
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: string, level?: number) => {
     const file = event.target.files?.[0];
@@ -84,6 +137,61 @@ export const AdminCustomization = ({ showAlert, socket }: { showAlert: (msg: str
   return (
     <div className="p-6 space-y-8 overflow-y-auto h-full">
       <h2 className="text-2xl font-black text-main">إدارة تخصيص اللعبة</h2>
+
+      {/* Database Backup - Moved to top for visibility */}
+      <div className="box-game p-6 shadow-sm border-2 border-blue-100 bg-blue-50/30">
+        <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-blue-900">💾 نسخة احتياطية لقاعدة البيانات</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-blue-100 shadow-sm">
+            <div>
+              <p className="font-bold text-blue-900">تحميل ملف players.db</p>
+              <p className="text-xs text-blue-700 mt-1">يحتوي على بيانات اللاعبين، المتجر، الإعدادات، والمزيد.</p>
+            </div>
+            <button 
+              onClick={() => {
+                if (!socket) {
+                  showAlert('غير متصل بالخادم.', 'خطأ');
+                  return;
+                }
+                
+                socket.emit('admin_request_db_download', (res: any) => {
+                  if (res.success && res.token) {
+                    window.open(`/api/admin/download-db?token=${res.token}`, '_blank');
+                  } else {
+                    showAlert('عذراً، لا تملك صلاحية لتحميل قاعدة البيانات.', 'خطأ');
+                  }
+                });
+              }}
+              className="btn-game bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 shadow-[0_4px_0_0_#2563eb] active:shadow-none active:translate-y-1"
+            >
+              تحميل الآن
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-red-100 shadow-sm">
+            <div>
+              <p className="font-bold text-red-900">رفع ملف players.db</p>
+              <p className="text-xs text-red-700 mt-1">
+                تحذير: سيتم مسح كافة البيانات الحالية واستبدالها بالملف المرفوع، وسيتم إعادة تشغيل الخادم.
+              </p>
+            </div>
+            <input
+              type="file"
+              accept=".db,application/x-sqlite3"
+              className="hidden"
+              ref={dbFileInputRef}
+              onChange={handleDbUpload}
+            />
+            <button 
+              onClick={() => dbFileInputRef.current?.click()}
+              disabled={uploading}
+              className={`btn-game bg-red-500 hover:bg-red-600 text-white py-2 px-6 shadow-[0_4px_0_0_#dc2626] active:shadow-none active:translate-y-1 ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {uploading ? 'جاري الرفع...' : 'رفع الآن'}
+            </button>
+          </div>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Avatars */}
@@ -220,38 +328,6 @@ export const AdminCustomization = ({ showAlert, socket }: { showAlert: (msg: str
             <p className="text-xs text-brown-muted">
               تغيير هذا الرقم يجبر المتصفح على تحميل كافة ملفات اللعبة الجديدة والتحديثات فوراً عند فتح شاشة التحميل.
             </p>
-          </div>
-        </div>
-
-        {/* Database Backup */}
-        <div className="box-game p-6 shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">💾 نسخة احتياطية لقاعدة البيانات</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-2xl border border-blue-100">
-              <div>
-                <p className="font-bold text-blue-900">تحميل ملف players.db</p>
-                <p className="text-xs text-blue-700 mt-1">يحتوي على بيانات اللاعبين، المتجر، الإعدادات، والمزيد.</p>
-              </div>
-              <button 
-                onClick={() => {
-                  if (!socket) {
-                    showAlert('غير متصل بالخادم.', 'خطأ');
-                    return;
-                  }
-                  
-                  socket.emit('admin_request_db_download', (res: any) => {
-                    if (res.success && res.token) {
-                      window.open(`/api/admin/download-db?token=${res.token}`, '_blank');
-                    } else {
-                      showAlert('عذراً، لا تملك صلاحية لتحميل قاعدة البيانات.', 'خطأ');
-                    }
-                  });
-                }}
-                className="btn-game bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 shadow-[0_4px_0_0_#2563eb] active:shadow-none active:translate-y-1"
-              >
-                تحميل الآن
-              </button>
-            </div>
           </div>
         </div>
       </div>
