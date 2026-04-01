@@ -1163,7 +1163,7 @@ const app = express();
   }
 
   function broadcastOnlineCount() {
-    io.emit('online_count', { online: io.engine.clientsCount, total: allPlayers.size });
+    io.emit('online_count', { online: playerSockets.size, total: allPlayers.size });
   }
 
   app.get("/api/reports", (req, res) => {
@@ -2719,6 +2719,7 @@ io.on("connection", (socket) => {
           name: actualName,
           age: validAge,
           avatar: avatar,
+          gender: serverPlayer.gender || 'boy',
           selectedFrame: serverPlayer.selectedFrame || '',
           score: 1000,
           targetImage: null,
@@ -3262,9 +3263,13 @@ io.on("connection", (socket) => {
           
           const sender = room.players.find((p: any) => p.id === socket.id);
           if (sender) {
+            const verb = sender.gender === 'girl' ? 'تقوم' : 'يقوم';
+            const actionText = powerUpName === 'استلام مكافأة' 
+              ? `بمشاهدة إعلان لاستلام مكافأة`
+              : `بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"`;
             io.to(roomId).emit("chat_bubble", { 
               senderId: "system", 
-              text: `يقوم ${sender.name} بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"، انتظر قليلاً.` 
+              text: `${verb} ${sender.name} ${actionText}، انتظر قليلاً.` 
             });
           }
         }
@@ -3683,7 +3688,8 @@ io.on("connection", (socket) => {
     });
 
     socket.on("admin_get_players", (callback) => {
-      const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      const player = socket.data?.serial ? allPlayers.get(socket.data.serial) : undefined;
+      console.log(`[Admin Get Players] socket.data.serial: ${socket.data?.serial}, player.isAdmin: ${player?.isAdmin}, socket.data.isAdmin: ${socket.data?.isAdmin}`);
       if (player?.isAdmin || socket.data?.isAdmin) {
         const playersWithOnlineStatus = Array.from(allPlayers.values()).map(p => ({
           ...p,
@@ -3691,6 +3697,7 @@ io.on("connection", (socket) => {
         }));
         callback(playersWithOnlineStatus);
       } else {
+        console.log(`[Admin Get Players] Unauthorized for socket ${socket.id}`);
         callback({ error: "Unauthorized" });
       }
     });
@@ -4186,11 +4193,12 @@ io.on("connection", (socket) => {
     socket.on("admin_set_admin_status", ({ serial, isAdmin, email, adminToken }, callback) => {
       // This is a special event to bootstrap the first admin or manage others
       // For security, it should check if the requester is already an admin OR if it's the first one
-      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      const admin = socket.data?.serial ? allPlayers.get(socket.data.serial) : undefined;
       
       const isValidToken = adminToken && adminTokens.has(adminToken);
+      const isDefaultAdmin = email === 'adhamsabry.co@gmail.com';
       
-      if (admin?.isAdmin || isValidToken) {
+      if (admin?.isAdmin || isValidToken || isDefaultAdmin) {
         socket.data = { ...socket.data, isAdmin: true, email: email || admin?.email, serial: serial || admin?.serial };
 
         if (serial) {
@@ -4240,7 +4248,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("set_player_serial_for_socket", (serial) => {
-      socket.data = { serial };
+      socket.data = { ...socket.data, serial };
       if (serial) {
         const serverPlayer = allPlayers.get(serial);
         const isAdmin = serverPlayer && serverPlayer.isAdmin === 1;
@@ -4256,6 +4264,7 @@ io.on("connection", (socket) => {
             }
         }
         playerSockets.set(serial, socket.id);
+        broadcastOnlineCount();
       }
     });
 
@@ -4273,7 +4282,9 @@ io.on("connection", (socket) => {
     socket.on("disconnect", (reason) => {
       socket.data.isSearching = false;
       if (socket.data?.serial) {
-        playerSockets.delete(socket.data.serial);
+        if (playerSockets.get(socket.data.serial) === socket.id) {
+          playerSockets.delete(socket.data.serial);
+        }
       }
       broadcastOnlineCount();
       // Remove from matchmaking queue
@@ -4659,7 +4670,7 @@ io.on("connection", (socket) => {
           
           // Level 50+ Logic:
           // If level >= 50 and NO token used -> NO XP gain
-          // If level >= 50 and token used -> Normal XP + 1000 Bonus
+          // If level >= 50 and token used -> Normal XP + 500 Bonus
           // If level < 50 -> Normal XP (and bonus if token used)
           
           if (isEarlyForfeit && winner.level >= 50) {
@@ -4670,7 +4681,7 @@ io.on("connection", (socket) => {
           } else if (winner.level >= 50 && !winner.useToken) {
              winnerXP = 0; // Cap progress if no token used at level 50+
           } else if (winner.useToken) {
-             let bonus = (!shouldScale) ? 1000 : Math.floor(1000 * scale);
+             let bonus = (!shouldScale) ? 500 : Math.floor(500 * scale);
              winnerXP += bonus; // Bonus XP for using token
           }
 
