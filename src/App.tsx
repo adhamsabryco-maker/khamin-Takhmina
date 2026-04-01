@@ -376,9 +376,9 @@ const enterFullscreen = () => {
   }
 };
 
-const TypingIndicator = () => (
+const TypingIndicator = ({ gender }: { gender?: string }) => (
   <div className="flex items-center gap-1 px-3 py-2 bg-white rounded-xl rounded-tl-none shadow-sm w-fit border border-gray-100">
-    <span className="text-[10px] font-bold text-accent-blue mr-1">انتظر...! المنافس يقوم بتغيير السؤال.</span>
+    <span className="text-[10px] font-bold text-accent-blue mr-1">انتظر...! المنافس {gender === 'girl' ? 'تقوم' : 'يقوم'} بتغيير السؤال.</span>
     <div className="flex gap-0.5">
       <span className="w-1 h-1 bg-accent-blue rounded-full typing-dot"></span>
       <span className="w-1 h-1 bg-accent-blue rounded-full typing-dot"></span>
@@ -751,7 +751,7 @@ export default function App() {
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [adminReports, setAdminReports] = useState<any[]>([]);
   const [adminPlayers, setAdminPlayers] = useState<any[]>([]);
-  const [adminPlayerFilter, setAdminPlayerFilter] = useState<'all' | 'reports' | 'level' | 'wins' | 'streak' | 'online'>('all');
+  const [adminPlayerFilter, setAdminPlayerFilter] = useState<'all' | 'reports' | 'level' | 'wins' | 'streak' | 'online' | 'banned'>('all');
   const [adminVisiblePlayersCount, setAdminVisiblePlayersCount] = useState(10);
   const adminPlayersListRef = useRef<HTMLDivElement>(null);
   const filteredAdminPlayers = useMemo(() => {
@@ -781,6 +781,10 @@ export default function App() {
         break;
       case 'online':
         players = players.filter(p => p.isOnline);
+        players.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+        break;
+      case 'banned':
+        players = players.filter(p => (p.banUntil && p.banUntil > Date.now()) || p.isPermanentBan === 1);
         players.sort((a, b) => (b.xp || 0) - (a.xp || 0));
         break;
       default:
@@ -1378,6 +1382,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : {};
   });
   const [showCollectionModal, setShowCollectionModal] = useState<string | null>(null);
+  const [pendingClaimReward, setPendingClaimReward] = useState<{categoryId: string, stage: number} | null>(null);
   const [announcementMessage, setAnnouncementMessage] = useState<string | null>(null);
   const [activeGlobalReward, setActiveGlobalReward] = useState<any | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -2401,8 +2406,9 @@ export default function App() {
         newSocket.emit('set_player_serial_for_socket', serial);
         const isAdmin = localStorage.getItem('khamin_is_admin') === 'true';
         const adminEmail = localStorage.getItem('khamin_admin_email');
+        const adminToken = localStorage.getItem('khamin_admin_token');
         if (isAdmin) {
-          newSocket.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail });
+          newSocket.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail, adminToken });
         }
         // Fetch actual server data
         newSocket.emit('get_player_data', { serial, fingerprint }, (data: any) => {
@@ -3685,6 +3691,106 @@ export default function App() {
     }
   };
 
+  const handleRewardAd = (categoryId: string, stage: number) => {
+    if (adTriggeredRef.current) return;
+    
+    // Close confirmation modal immediately
+    setPendingClaimReward(null);
+
+    adTriggeredRef.current = false;
+    let localAdTriggered = false;
+
+    const startAdProcess = () => {
+      if (adTriggeredRef.current) return;
+      adTriggeredRef.current = true;
+      if (roomId) {
+        socket?.emit('ad_started', { roomId, powerUpName: 'استلام مكافأة' });
+      }
+      socket?.emit('start_ad_watch', { serial: playerSerial });
+    };
+
+    let adSafetyTimeout: NodeJS.Timeout;
+
+    const onAdComplete = () => {
+      clearTimeout(adSafetyTimeout);
+      adTriggeredRef.current = false;
+      
+      if (roomId) {
+        socket?.emit('ad_ended', { roomId });
+      }
+
+      socket?.emit('claim_collection_reward', { 
+        serial: playerSerial, 
+        categoryId, 
+        stage 
+      });
+    };
+
+    const startMockAd = () => {
+      if (adTriggeredRef.current) return;
+      startAdProcess();
+      onAdComplete();
+    };
+
+    const handleAdUnavailable = () => {
+      if (adTriggeredRef.current) return;
+      startMockAd();
+    };
+
+    if (typeof window.adBreak === 'function') {
+      const adTimeout = setTimeout(() => {
+        if (!localAdTriggered) {
+          handleAdUnavailable();
+        }
+      }, 2000);
+
+      try {
+        window.adBreak({
+          type: 'reward',
+          name: 'claim_collection_reward',
+          beforeAd: () => {
+            clearTimeout(adTimeout);
+            localAdTriggered = true;
+            startAdProcess();
+            adSafetyTimeout = setTimeout(() => {
+              if (roomId) {
+                socket?.emit('ad_ended', { roomId });
+              }
+              adTriggeredRef.current = false;
+              showAlert('حدث خطأ أثناء تحميل الإعلان.', 'خطأ');
+            }, 60000);
+          },
+          afterAd: () => {},
+          beforeReward: (showAdFn: any) => { showAdFn(); },
+          adDismissed: () => {
+            clearTimeout(adSafetyTimeout);
+            adTriggeredRef.current = false;
+            if (roomId) {
+              socket?.emit('ad_ended', { roomId });
+            }
+            showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
+          },
+          adViewed: () => {
+            onAdComplete();
+          },
+          adBreakDone: (placementInfo: any) => {
+            if (!localAdTriggered) {
+              clearTimeout(adTimeout);
+              handleAdUnavailable();
+            } else {
+              adTriggeredRef.current = false;
+            }
+          }
+        });
+      } catch (error) {
+        clearTimeout(adTimeout);
+        handleAdUnavailable();
+      }
+    } else {
+      handleAdUnavailable();
+    }
+  };
+
   const handleProfileUpdate = () => {
     if (!socket) return;
 
@@ -4527,6 +4633,37 @@ export default function App() {
                     setShowAdConfirmation(false);
                     setActivePowerUp(null);
                   }}
+                  className="flex-1 bg-gray-500 hover:brightness-110 text-white py-4 rounded-2xl font-black"
+                >
+                  لا
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reward Ad Confirmation Modal */}
+      <AnimatePresence>
+        {pendingClaimReward && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center p-4 text-white"
+          >
+            <div className="bg-modal-theme p-8 rounded-[2rem] text-center max-w-sm w-full space-y-6">
+              <h2 className="text-2xl font-black text-accent-orange">استلام المكافأة</h2>
+              <p className="text-brown-dark font-bold">هل تود مشاهدة إعلان لاستلام المكافأة؟</p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => handleRewardAd(pendingClaimReward.categoryId, pendingClaimReward.stage)}
+                  className="flex-1 bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black"
+                >
+                  نعم، شاهد الآن
+                </button>
+                <button 
+                  onClick={() => setPendingClaimReward(null)}
                   className="flex-1 bg-gray-500 hover:brightness-110 text-white py-4 rounded-2xl font-black"
                 >
                   لا
@@ -7446,12 +7583,13 @@ export default function App() {
                                 onChange={(e) => setAdminPlayerFilter(e.target.value as any)}
                                 className="bg-gray-100 border-2 rounded-lg px-3 py-1.5 text-xs font-black text-brown-dark focus:ring-2 focus:ring-purple-400 outline-none cursor-pointer"
                               >
-                                <option value="all">الكل (حسب المستوى)</option>
-                                <option value="reports">الأكثر بلاغات</option>
-                                <option value="level">الأعلى مستوى</option>
-                                <option value="wins">الأكثر فوزاً</option>
-                                <option value="streak">الأكثر فوز متتالي</option>
-                                <option value="online">المتصلون الآن</option>
+                                <option value="all">الكل ({adminPlayers.length})</option>
+                                <option value="reports">الأكثر بلاغات ({adminPlayers.filter(p => p.reports > 0).length})</option>
+                                <option value="level">الأعلى مستوى ({adminPlayers.length})</option>
+                                <option value="wins">الأكثر فوزاً ({adminPlayers.filter(p => p.wins > 0).length})</option>
+                                <option value="streak">الأكثر فوز متتالي ({adminPlayers.filter(p => p.streak > 0).length})</option>
+                                <option value="online">المتصلون الآن ({adminPlayers.filter(p => p.isOnline).length})</option>
+                                <option value="banned">المحظورين ({adminPlayers.filter(p => (p.banUntil && p.banUntil > Date.now()) || p.isPermanentBan === 1).length})</option>
                               </select>
                             </div>
                           </div>
@@ -7578,11 +7716,11 @@ export default function App() {
                                     >
                                       حظر 24س
                                     </button>
-                                    {p.banUntil > Date.now() && (
+                                    {(p.banUntil > Date.now() || p.isPermanentBan === 1) && (
                                       <button 
                                         onClick={() => {
                                           showConfirm('هل أنت متأكد من إلغاء حظر هذا اللاعب؟', () => {
-                                            socket?.emit('admin_update_player', { serial: p.serial, updates: { banUntil: 0 } }, (res: any) => {
+                                            socket?.emit('admin_update_player', { serial: p.serial, updates: { banUntil: 0, isPermanentBan: 0 } }, (res: any) => {
                                               if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                             });
                                           }, 'إلغاء الحظر');
@@ -7761,7 +7899,7 @@ export default function App() {
 
                             <div className="mt-6 space-y-2">
                               <label className="block text-sm font-bold text-brown-dark mb-2">الفئات الحالية</label>
-                              <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
+                              <div className="max-h-100 overflow-y-auto space-y-2 pr-2">
                                 {categories.map(cat => (
                                   <div key={cat.id} className="flex items-center justify-between p-2 box-game">
                                     <div className="flex items-center gap-2">
@@ -8160,11 +8298,7 @@ export default function App() {
                         isStageComplete={isStageComplete}
                         previewFrame={`/${category.id}-category-frame-gift.png`}
                         onClaim={() => {
-                          socket.emit('claim_collection_reward', { 
-                            serial: playerSerial, 
-                            categoryId: category.id, 
-                            stage: stage.stage 
-                          });
+                          setPendingClaimReward({ categoryId: category.id, stage: stage.stage });
                         }}
                       />
                     ) : (
@@ -8181,11 +8315,7 @@ export default function App() {
                           <button 
                             disabled={!isStageComplete}
                             onClick={() => {
-                              socket.emit('claim_collection_reward', { 
-                                serial: playerSerial, 
-                                categoryId: category.id, 
-                                stage: stage.stage 
-                              });
+                              setPendingClaimReward({ categoryId: category.id, stage: stage.stage });
                             }}
                             className={`px-3 py-1 rounded-lg text-xs font-black transition-colors ${isStageComplete ? 'bg-orange-500 text-white hint-glow hover:bg-orange/90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                           >
@@ -8660,6 +8790,14 @@ export default function App() {
               </button>
             </div>
           )}
+          
+          <div className="flex justify-center gap-4 mt-8 text-sm font-bold text-brown-light">
+            <button onClick={() => setShowTermsModal(true)} className="hover:text-purple-600 transition-colors">الشروط والأحكام</button>
+            <span>|</span>
+            <button onClick={() => setShowPrivacyModal(true)} className="hover:text-purple-600 transition-colors">سياسة الخصوصية</button>
+            <span>|</span>
+            <button onClick={() => setShowContactModal(true)} className="hover:text-purple-600 transition-colors">اتصل بنا</button>
+          </div>
         </motion.div>
         {renderModals()}
       </div>
@@ -9379,7 +9517,7 @@ export default function App() {
                   <div className="w-full flex text-left" dir="ltr">
                     <span className="font-bold text-xs md:text-sm">Lvl 50+</span>
                     <span class="flex text-xs md:text-sm text-gray-400 px-1">|</span>
-                    <span className="font-bold text-xs md:text-sm">1000xp</span>
+                    <span className="font-bold text-xs md:text-sm">500xp</span>
                   </div>
                 </div>
               </div>
@@ -9539,7 +9677,7 @@ export default function App() {
                       ما فائدته؟
                     </h3>
                     <p className="text-sm font-bold leading-relaxed">
-                      الـ Token هو تذكرتك للعب مع المحترفين! يسمح لك باللعب ضد لاعبين مستواهم 40 أو أعلى، والحصول على XP إضافي (1000 XP) عند الفوز.
+                      الـ Token هو تذكرتك للعب مع المحترفين! يسمح لك باللعب ضد لاعبين مستواهم 40 أو أعلى، والحصول على XP إضافي (500 XP) عند الفوز.
                     </p>
                   </div>
 
@@ -9933,7 +10071,7 @@ export default function App() {
                       )}
                       {isOpponentTyping && (
                         <div className="flex justify-end">
-                          <TypingIndicator />
+                          <TypingIndicator gender={opponent?.gender} />
                         </div>
                       )}
                       <div ref={chatEndRef} />
@@ -10054,7 +10192,7 @@ export default function App() {
                     className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
                   >
                     <div className="bg-red-500 text-white p-8 rounded-[32px] shadow-xl shadow-red-500/30 text-center animate-pulse border-b-8 border-red-700 w-full max-w-md">
-                      <h3 className="text-3xl font-black">المنافس يقوم بالتخمين الآن!</h3>
+                      <h3 className="text-3xl font-black">المنافس {opponent?.gender === 'girl' ? 'تقوم' : 'يقوم'} بالتخمين الآن!</h3>
                       <p className="font-bold mt-2 opacity-90 text-xl">انتظر {room.quickGuessTimer} ثوانٍ</p>
                     </div>
                   </motion.div>
@@ -10165,7 +10303,7 @@ export default function App() {
                       )}
                       {isOpponentTyping && (
                         <div className="flex justify-end">
-                          <TypingIndicator />
+                          <TypingIndicator gender={opponent?.gender} />
                         </div>
                       )}
                       <div ref={chatEndRef} />
