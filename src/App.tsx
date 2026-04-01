@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import html2canvas from 'html2canvas';
 import { createPortal } from 'react-dom';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { GoogleGenAI } from "@google/genai";
@@ -1198,8 +1199,8 @@ export default function App() {
     }
   };
 
-  const renderAvatarContent = (avatarStr: string, level: number = 1, hideExtras: boolean = false, isOnline: boolean = false) => {
-    return <AvatarDisplay avatar={avatarStr} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={hideExtras} isOnline={isOnline} />;
+  const renderAvatarContent = (avatarStr: string, level: number = 1, hideExtras: boolean = false, isOnline: boolean = false, frame?: string) => {
+    return <AvatarDisplay avatar={avatarStr} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={hideExtras} isOnline={isOnline} selectedFrame={frame} />;
   };
 
   const truncateName = (name: string, limit: number = 12) => {
@@ -1305,6 +1306,7 @@ export default function App() {
   }, [xp, streak]);
 
   const [avatar, setAvatar] = useState(() => localStorage.getItem('khamin_player_avatar') || AVATARS[0].id);
+  const [selectedFrame, setSelectedFrame] = useState(() => localStorage.getItem('khamin_player_frame') || '');
   const [hasSelectedAvatar, setHasSelectedAvatar] = useState(false);
 
   useEffect(() => {
@@ -1313,6 +1315,13 @@ export default function App() {
       socket.emit('update_avatar', { avatar });
     }
   }, [avatar, socket]);
+
+  useEffect(() => {
+    localStorage.setItem('khamin_player_frame', selectedFrame);
+    if (socket && playerSerial) {
+      socket.emit('update_selected_frame', { playerSerial, frame: selectedFrame });
+    }
+  }, [selectedFrame, socket, playerSerial]);
 
   useEffect(() => {
     localStorage.setItem('khamin_player_name', playerName);
@@ -1449,7 +1458,7 @@ export default function App() {
   }, [room?.gameState, room?.category, room?.id, customConfig?.quickChat, categories]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [totalPlayersCount, setTotalPlayersCount] = useState(0);
-  const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, age: number, level?: number } } | null>(null);
+  const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, selectedFrame?: string, age: number, level?: number } } | null>(null);
   const [hasResponded, setHasResponded] = useState(false);
   const [opponentAccepted, setOpponentAccepted] = useState(false);
   const [matchResponseTimeLeft, setMatchResponseTimeLeft] = useState<number | null>(null);
@@ -2207,6 +2216,10 @@ export default function App() {
     fetchAdminImages();
   }, [fetchAdminImages]);
 
+  useEffect(() => {
+    console.log("DEBUG: adminImages updated:", adminImages.map(img => ({name: img.name, category: img.category})));
+  }, [adminImages]);
+
   const fetchCollection = useCallback(async (serial: string) => {
     try {
       const res = await fetch(`/api/collection/${serial}`);
@@ -2472,6 +2485,10 @@ export default function App() {
             if (data.pendingAvatar) {
               setCustomAvatar(data.pendingAvatar);
               // We don't save pending to localStorage to avoid it persisting if rejected
+            }
+            if (data.selectedFrame !== undefined) {
+              setSelectedFrame(data.selectedFrame);
+              localStorage.setItem('khamin_player_frame', data.selectedFrame);
             }
 
             localStorage.setItem('khamin_xp', data.xp.toString());
@@ -3449,6 +3466,10 @@ export default function App() {
         setTokens(player.tokens || 0);
         setStreak(player.streak || 0);
         setOwnedHelpers(player.ownedHelpers || {});
+        if (player.selectedFrame !== undefined) {
+          setSelectedFrame(player.selectedFrame);
+          localStorage.setItem('khamin_player_frame', player.selectedFrame);
+        }
         
         localStorage.setItem('khamin_player_serial', player.serial);
         localStorage.setItem('khamin_player_name', player.name);
@@ -4902,7 +4923,7 @@ export default function App() {
                 <div className="bg-white p-3 rounded-2xl border-4 border-black space-y-4">
                   <div className="flex items-center gap-4 flex-row-reverse">
                     <div className="relative w-16 h-16">
-                      {renderAvatarContent(avatar, getLevel(xp), false, true)}
+                      {renderAvatarContent(avatar, getLevel(xp), false, true, selectedFrame)}
                     </div>
                     <div className="text-right flex-1">
                       <div className="font-black text-lg text-main">{playerName}</div>
@@ -5088,11 +5109,58 @@ export default function App() {
                       {customAvatar && (
                         <button
                           onClick={() => setAvatar(customAvatar)}
-                          className={`relative w-14 h-14 rounded-xl overflow-hidden border-2 ${avatar === customAvatar ? 'border-purple-500' : 'border-black'}`}
+                          className={`relative w-14 h-14 rounded-xl overflow-hidden border-2 flex-shrink-0 ${avatar === customAvatar ? 'border-purple-500' : 'border-black'}`}
                         >
                           <img src={customAvatar} className="w-full h-full object-cover" alt="Custom" />
                         </button>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Frame Selection */}
+                  <div className="pt-4 border-t border-game">
+                    <div className="flex items-center justify-between mb-3 flex-row-reverse">
+                      <span className="text-sm font-black text-brown-muted">إطارات مميزة</span>
+                      <span className="text-[10px] font-black text-brown-muted bg-gray-200 px-2 py-1 rounded-lg">
+                        اجمع الصور لفتحها
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {/* Default No Frame Option */}
+                      <button
+                        onClick={() => setSelectedFrame('')}
+                        className={`relative aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${selectedFrame === '' ? '!bg-orange-100 !border-orange-400 scale-105' : 'hover:bg-gray-200'}`}
+                      >
+                        <span className="text-xs font-black text-brown-muted">بدون إطار</span>
+                      </button>
+                      
+                      {/* Collection Frames */}
+                      {COLLECTION_DATA.map((cat, index) => {
+                        const finalStage = cat.stages[cat.stages.length - 1];
+                        const frameImage = finalStage.reward.frame;
+                        if (!frameImage) return null;
+                        
+                        const isUnlocked = claimedCollectionRewards.some(r => r.category_id === cat.id && r.stage === finalStage.stage);
+                        
+                        return (
+                          <button
+                            key={`frame-${cat.id}-${index}`}
+                            onClick={() => isUnlocked && setSelectedFrame(frameImage)}
+                            disabled={!isUnlocked}
+                            className={`relative aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${selectedFrame === frameImage ? '!bg-orange-100 !border-orange-400 scale-105' : 'hover:bg-gray-200'} ${!isUnlocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
+                          >
+                            <div className="w-full h-full p-1 relative">
+                              <img src={`/assets/${frameImage}`} alt={`${cat.name} Frame`} className="w-full h-full object-contain absolute inset-0 z-10" />
+                            </div>
+                            {!isUnlocked && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-xl z-20">
+                                <Lock className="w-4 h-4 text-white mb-1" />
+                                <span className="text-[10px] font-black text-white">{cat.icon}</span>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -5246,7 +5314,7 @@ export default function App() {
                                 <div key={index} className="flex items-center justify-between p-3 border-b border-gray-100 hover:bg-gray-50 flex-row-reverse">
                                   <div className="flex items-center gap-3 flex-row-reverse">
                                     <div className="w-8 h-8">
-                                      {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), true)}
+                                      {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), true, false, opponent.selectedFrame)}
                                     </div>
                                     <div className="flex flex-col items-end">
                                       <span className="text-sm font-black text-main">{opponent.name}</span>
@@ -7252,7 +7320,7 @@ export default function App() {
                               <div className="flex items-center justify-center gap-4 mb-6">
                                 <div className="flex flex-col items-center gap-2 flex-1">
                                   <div className="w-12 h-12">
-                                    {renderAvatarContent(room.players[0]?.avatar, getLevel(room.players[0]?.xp || 0), false, true)}
+                                    {renderAvatarContent(room.players[0]?.avatar, getLevel(room.players[0]?.xp || 0), false, true, room.players[0]?.selectedFrame)}
                                   </div>
                                   <span className="text-xs font-black text-brown-dark truncate w-full text-center">{room.players[0]?.name}</span>
                                 </div>
@@ -7261,7 +7329,7 @@ export default function App() {
 
                                 <div className="flex flex-col items-center gap-2 flex-1">
                                   <div className="w-12 h-12">
-                                    {renderAvatarContent(room.players[1]?.avatar, getLevel(room.players[1]?.xp || 0), false, true)}
+                                    {renderAvatarContent(room.players[1]?.avatar, getLevel(room.players[1]?.xp || 0), false, true, room.players[1]?.selectedFrame)}
                                   </div>
                                   <span className="text-xs font-black text-brown-dark truncate w-full text-center">{room.players[1]?.name || '...'}</span>
                                 </div>
@@ -7407,7 +7475,7 @@ export default function App() {
                                 <div key={`admin-player-${p.serial}-${index}`} className="box-game p-5 hover:border-purple-200 transition-all group relative">
                                   <div className="flex items-center gap-4 mb-4">
                                     <div className="w-14 h-14">
-                                      {renderAvatarContent(p.avatar, getLevel(p.xp), false, p.isOnline)}
+                                      {renderAvatarContent(p.avatar, getLevel(p.xp), false, p.isOnline, p.selectedFrame)}
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
@@ -7911,6 +7979,76 @@ export default function App() {
     </>
   );
 
+  const RewardCard = ({ playerName, level, avatar, selectedFrame, reward, categoryName, isClaimed, onClaim, isStageComplete, previewFrame }: any) => {
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    const handleShare = async () => {
+      if (cardRef.current) {
+        try {
+          const canvas = await html2canvas(cardRef.current, { 
+            useCORS: true, 
+            backgroundColor: null,
+            scale: 2 // Improve quality
+          });
+          const dataUrl = canvas.toDataURL('image/png');
+          
+          if (navigator.share) {
+            const blob = await (await fetch(dataUrl)).blob();
+            const file = new File([blob], 'reward.png', { type: 'image/png' });
+            await navigator.share({
+              files: [file],
+              title: 'مكافأتي في خمن تخمينة!',
+              text: 'شوف مكافأتي في لعبة خمن تخمينة!',
+              url: window.location.origin
+            });
+          } else {
+            const link = document.createElement('a');
+            link.download = 'reward.png';
+            link.href = dataUrl;
+            link.click();
+          }
+        } catch (err) {
+          console.error('Share failed:', err);
+          alert('حدث خطأ أثناء المشاركة، يرجى المحاولة مرة أخرى.');
+        }
+      }
+    };
+
+    const frameToDisplay = isClaimed ? selectedFrame : previewFrame;
+
+    return (
+      <div className="flex flex-col items-center gap-4 pt-6 md:pt-6 space-y-3 md:space-y-4">
+        <div ref={cardRef} className="bg-gradient-to-br from-accent-yellow/20 to-accent-blue/20 p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-sm bg-white">
+          <div className="flex flex-col items-center gap-2">
+            <div className="relative w-24 h-24">
+              {renderAvatarContent(avatar, level, false, true, frameToDisplay)}
+            </div>
+            <h3 className="text-2xl font-black text-main">{playerName}</h3>
+            <p className="text-sm font-bold text-gray-600">المستوى: {level}</p>
+            <div className="mt-4 p-3 bg-white rounded-xl border-2 border-black w-full text-center">
+              <p className="text-sm font-black text-main">مبروك! كسبت:</p>
+              <p className="text-lg font-black text-accent-orange">{reward.xp} XP</p>
+              {reward.frame && <p className="text-sm font-black text-accent-blue">+ إطار مميز</p>}
+            </div>
+          </div>
+        </div>
+        {isClaimed ? (
+          <button onClick={handleShare} className="btn-game btn-secondary py-3 px-6 text-lg font-black">
+            مشاركة الكارت
+          </button>
+        ) : (
+          <button 
+            disabled={!isStageComplete}
+            onClick={onClaim}
+            className={`px-3 py-1 rounded-lg text-xs font-black transition-colors ${isStageComplete ? 'bg-orange-500 text-white hint-glow hover:bg-orange/90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+          >
+            استلام المكافأة
+          </button>
+        )}
+      </div>
+    );
+  };
+
   const renderCollectionModal = () => {
     if (!showCollectionModal) return null;
     const category = COLLECTION_DATA.find(c => c.id === showCollectionModal);
@@ -7978,16 +8116,13 @@ export default function App() {
                                 <div className="relative w-full h-full">
                                   {(() => {
                                     const found = adminImages.find(img => {
-                                      const catMatch = String(img.category) === String(category.id);
+                                      const catMatch = img.category === category.id;
                                       const nameMatch = img.name.trim() === imgName.trim();
                                       return catMatch && nameMatch;
                                     });
-                                    if (!found) {
-                                      console.log("Image not found:", { imgName, categoryId: category.id, adminImages: adminImages.map(i => ({name: i.name, cat: i.category})) });
-                                    }
                                     return (
                                       <img 
-                                        src={found?.data || `https://picsum.photos/seed/${imgName}/200/200`}
+                                        src={found?.data ? (found.data.startsWith('data:') ? found.data : `data:image/png;base64,${found.data}`) : `https://picsum.photos/seed/${imgName}/200/200`}
                                         alt={imgName} 
                                         className="w-full h-full object-cover"
                                         referrerPolicy="no-referrer"
@@ -8013,31 +8148,52 @@ export default function App() {
                     </div>
 
                     {/* Reward Footer */}
-                    <div className="mt-4 p-2 bg-accent-yellow/10 border-4 border-black rounded-2xl flex items-center justify-between flex-row-reverse">
-                      <div className="flex items-center gap-0.5 text-sm font-black text-main">
-                        <Zap className="w-4 h-4 text-accent-yellow fill-accent-yellow" />
-                        <span>{stage.reward.xp} XP</span>
-                        {stage.reward.frame && <span className="text-accent-blue">+ إطار مميز</span>}
+                    {stage.stage === 3 ? (
+                      <RewardCard 
+                        playerName={playerName}
+                        level={getLevel(xp)}
+                        avatar={avatar}
+                        selectedFrame={selectedFrame}
+                        reward={stage.reward}
+                        categoryName={category.name}
+                        isClaimed={isClaimed}
+                        isStageComplete={isStageComplete}
+                        previewFrame={`/${category.id}-category-frame-gift.png`}
+                        onClaim={() => {
+                          socket.emit('claim_collection_reward', { 
+                            serial: playerSerial, 
+                            categoryId: category.id, 
+                            stage: stage.stage 
+                          });
+                        }}
+                      />
+                    ) : (
+                      <div className="mt-4 p-2 bg-accent-yellow/10 border-4 border-black rounded-2xl flex items-center justify-between flex-row-reverse">
+                        <div className="flex items-center gap-0.5 text-sm font-black text-main">
+                          <Zap className="w-4 h-4 text-accent-yellow fill-accent-yellow" />
+                          <span>{stage.reward.xp} XP</span>
+                          {stage.reward.frame && <span className="text-accent-blue">+ إطار مميز</span>}
+                        </div>
+                        
+                        {isClaimed ? (
+                          <div className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs font-black">تم الاستلام</div>
+                        ) : (
+                          <button 
+                            disabled={!isStageComplete}
+                            onClick={() => {
+                              socket.emit('claim_collection_reward', { 
+                                serial: playerSerial, 
+                                categoryId: category.id, 
+                                stage: stage.stage 
+                              });
+                            }}
+                            className={`px-3 py-1 rounded-lg text-xs font-black transition-colors ${isStageComplete ? 'bg-orange-500 text-white hint-glow hover:bg-orange/90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                          >
+                            استلام المكافأة
+                          </button>
+                        )}
                       </div>
-                      
-                      {isClaimed ? (
-                        <div className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs font-black">تم الاستلام</div>
-                      ) : (
-                        <button 
-                          disabled={!isStageComplete}
-                          onClick={() => {
-                            socket.emit('claim_collection_reward', { 
-                              serial: playerSerial, 
-                              categoryId: category.id, 
-                              stage: stage.stage 
-                            });
-                          }}
-                          className={`px-3 py-1 rounded-lg text-xs font-black transition-colors ${isStageComplete ? 'bg-main text-white hover:bg-main/90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                        >
-                          استلام المكافأة
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -8324,7 +8480,7 @@ export default function App() {
                   {spectatorRoomData.players.map((p: any) => (
                     <div key={p.serial} className="bg-white/5 rounded-2xl p-3 border border-white/10 flex items-center gap-3">
                       <div className="w-10 h-10">
-                        {renderAvatarContent(p.avatar, getLevel(p.xp), false, true)}
+                        {renderAvatarContent(p.avatar, getLevel(p.xp), false, true, p.selectedFrame)}
                       </div>
                       <div className="flex-1">
                         <div className="text-white font-black text-xs">{p.name}</div>
@@ -8589,7 +8745,7 @@ export default function App() {
               <h2 className="text-2xl md:text-3xl font-black text-main uppercase tracking-tight" style={{ textShadow: '2px 2px 0px #FFF, -1px -1px 0 #FFF, 1px -1px 0 #FFF, -1px 1px 0 #FFF, 1px 1px 0 #FFF' }}>تم العثور على منافس!</h2>
               <div className="flex flex-col items-center p-3 md:p-4 bg-white rounded-3xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
                 <div className="relative mb-1 md:mb-2 w-20 h-20 md:w-24 md:h-24">
-                  {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0), false, true)}
+                  {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0), false, true, proposedMatch.opponent.selectedFrame)}
                 </div>
                 <div className="text-xl md:text-2xl font-black text-main mb-1">{proposedMatch.opponent.name}</div>
                 <div className="text-sm md:text-base font-bold text-black bg-gray-100 border-2 border-black px-3 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Level {proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0)}</div>
@@ -8820,7 +8976,7 @@ export default function App() {
           <div className="player-card flex flex-col p-3 md:p-4 mb-4 md:mb-4 w-full">
             <div className="flex items-center gap-3 md:gap-4 flex-row-reverse w-full">
               <div className="relative shrink-0 w-16 h-16 md:w-20 md:h-20">
-                {renderAvatarContent(avatar, getLevel(xp), false, true)}
+                {renderAvatarContent(avatar, getLevel(xp), false, true, selectedFrame)}
               </div>
               <div className="flex flex-col justify-center flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-1 flex-row-reverse">
@@ -8955,7 +9111,7 @@ export default function App() {
                     <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1 z-10">
                       <div className="relative mb-2 flex flex-col items-center">
                         <div className="w-14 h-14 md:w-16 md:h-16">
-                          {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0), false, topPlayers[1].isOnline)}
+                          {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0), false, topPlayers[1].isOnline, topPlayers[1].selectedFrame)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-gray-300 text-brown-muted w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
                       </div>
@@ -8983,7 +9139,7 @@ export default function App() {
                         {/* <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-[60]" /> */}
                         <div className="fire-glow-effect"></div>
                         <div className="w-16 h-16 md:w-20 md:h-20 relative z-10">
-                          {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level || getLevel(topPlayers[0].xp || 0), false, topPlayers[0].isOnline)}
+                          {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level || getLevel(topPlayers[0].xp || 0), false, topPlayers[0].isOnline, topPlayers[0].selectedFrame)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-[60] animate-bounce">1</div>
                       </div>
@@ -9008,7 +9164,7 @@ export default function App() {
                     <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1 z-10">
                       <div className="relative mb-2 flex flex-col items-center">
                         <div className="w-14 h-14 md:w-16 md:h-16">
-                          {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level || getLevel(topPlayers[2].xp || 0), false, topPlayers[2].isOnline)}
+                          {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level || getLevel(topPlayers[2].xp || 0), false, topPlayers[2].isOnline, topPlayers[2].selectedFrame)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
@@ -9274,7 +9430,7 @@ export default function App() {
                         #{topPlayers.findIndex(p => p.serial === playerSerial) + 1}
                       </div>
                       <div className="relative w-10 h-10">
-                        {renderAvatarContent(avatar, getLevel(xp), true, true)}
+                        {renderAvatarContent(avatar, getLevel(xp), true, true, selectedFrame)}
                       </div>
                       <div className="flex-1 min-w-0 text-right">
                         <div className="font-black truncate">أنت ({playerName})</div>
@@ -9312,7 +9468,7 @@ export default function App() {
                         </div>
                         
                         <div className="relative w-10 h-10">
-                          {renderAvatarContent(player.avatar, player.level, true, player.isOnline)}
+                          {renderAvatarContent(player.avatar, player.level, true, player.isOnline, player.selectedFrame)}
                         </div>
 
                         <div className="flex-1 min-w-0 text-right">
@@ -9575,7 +9731,7 @@ export default function App() {
             {me && (
               <>
                 <div className="relative w-14 h-14 md:w-20 md:h-20">
-                  {renderAvatarContent(me.avatar, getLevel(xp), false, true)}
+                  {renderAvatarContent(me.avatar, getLevel(xp), false, true, me.selectedFrame)}
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[8px] md:text-[10px] font-black px-2 py-0.3 rounded-full border-1.5 border-black shadow-sm z-20 whitespace-nowrap">
                     Lvl {getLevel(xp)}
                   </div>
@@ -9609,7 +9765,7 @@ export default function App() {
             {opponent ? (
               <>
                 <div className="relative w-14 h-14 md:w-20 md:h-20">
-                  {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false, true)}
+                  {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false, true, opponent.selectedFrame)}
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[8px] md:text-[10px] font-black px-2 py-0.3 rounded-full border-1.5 border-black shadow-sm z-20 whitespace-nowrap">
                     Lvl {opponent.level || getLevel(opponent.xp || 0)}
                   </div>
@@ -10650,8 +10806,8 @@ export default function App() {
       <AnimatePresence>
         {showMatchIntro && room && room.players.length >= 2 && (
           <MatchIntro 
-            player1={{ id: room.players[0].id, name: room.players[0].name, level: room.players[0].level, avatar: room.players[0].avatar }}
-            player2={{ id: room.players[1].id, name: room.players[1].name, level: room.players[1].level, avatar: room.players[1].avatar }}
+            player1={{ id: room.players[0].id, name: room.players[0].name, level: room.players[0].level, avatar: room.players[0].avatar, selectedFrame: room.players[0].selectedFrame }}
+            player2={{ id: room.players[1].id, name: room.players[1].name, level: room.players[1].level, avatar: room.players[1].avatar, selectedFrame: room.players[1].selectedFrame }}
             customConfig={customConfig}
             onStartGame={handleMatchIntroStart}
             onComplete={handleMatchIntroComplete}
