@@ -734,7 +734,7 @@ export default function App() {
   useEffect(() => {
     if (socket && isConnected && isAdmin) {
       const adminToken = localStorage.getItem('khamin_admin_token');
-      const adminEmail = localStorage.getItem('khamin_admin_email');
+      const adminEmail = localStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
       socket.emit('admin_set_admin_status', { 
         serial: playerSerial, 
         isAdmin: true, 
@@ -2405,7 +2405,7 @@ export default function App() {
       if (serial) {
         newSocket.emit('set_player_serial_for_socket', serial);
         const isAdmin = localStorage.getItem('khamin_is_admin') === 'true';
-        const adminEmail = localStorage.getItem('khamin_admin_email');
+        const adminEmail = localStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
         const adminToken = localStorage.getItem('khamin_admin_token');
         if (isAdmin) {
           newSocket.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail, adminToken });
@@ -3436,7 +3436,7 @@ export default function App() {
         localStorage.setItem('khamin_wins', '0');
         
         const isAdmin = localStorage.getItem('khamin_is_admin') === 'true';
-        const adminEmail = localStorage.getItem('khamin_admin_email');
+        const adminEmail = localStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
         if (isAdmin) {
           socket?.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail });
         }
