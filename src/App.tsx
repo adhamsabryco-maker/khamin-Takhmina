@@ -4918,9 +4918,9 @@ export default function App() {
                 <button onClick={toggleSettings} className="text-brown-light hover:text-red-500"><X className="w-6 h-6" /></button>
               </div>
 
-              <div className="space-y-4 overflow-x-hidden">
+              <div className="space-y-4">
                 {/* Stats Section */}
-                <div className="bg-white p-3 rounded-2xl border-4 border-black space-y-4">
+                <div className="bg-orange-100 p-3 rounded-2xl border-4 border-black space-y-4">
                   <div className="flex items-center gap-4 flex-row-reverse">
                     <div className="relative w-16 h-16">
                       {renderAvatarContent(avatar, getLevel(xp), false, true, selectedFrame)}
@@ -5075,7 +5075,7 @@ export default function App() {
 
                   {/* Custom Avatar in Settings */}
                   <div className="pt-2 border-t border-game">
-                    <div className="flex items-center justify-between mb-2 flex-row-reverse relative">
+                    <div className="flex items-center justify-between mb-2 flex-row-reverse relative" dir="ltr">
                       <span className="text-xs font-black text-brown-muted">أفاتار مخصص</span>
                       {getLevel(xp) >= 50 && lastSeenAvatarLevel < 50 && (
                         <span className="absolute top-0 right-20 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
@@ -5119,20 +5119,13 @@ export default function App() {
 
                   {/* Frame Selection */}
                   <div className="pt-4 border-t border-game">
-                    <div className="flex items-center justify-between mb-3 flex-row-reverse">
-                      <span className="text-sm font-black text-brown-muted">إطارات مميزة</span>
+                    <div className="flex items-center justify-between mb-3 flex-row-reverse" dir="ltr">
+                      <span className="text-sm font-black text-brown-muted">إطارات أبطال التخمين</span>
                       <span className="text-[10px] font-black text-brown-muted bg-gray-200 px-2 py-1 rounded-lg">
                         اجمع الصور لفتحها
                       </span>
                     </div>
                     <div className="grid grid-cols-4 gap-2">
-                      {/* Default No Frame Option */}
-                      <button
-                        onClick={() => setSelectedFrame('')}
-                        className={`relative aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${selectedFrame === '' ? '!bg-orange-100 !border-orange-400 scale-105' : 'hover:bg-gray-200'}`}
-                      >
-                        <span className="text-xs font-black text-brown-muted">بدون إطار</span>
-                      </button>
                       
                       {/* Collection Frames */}
                       {COLLECTION_DATA.map((cat, index) => {
@@ -5162,16 +5155,23 @@ export default function App() {
                         );
                       })}
                     </div>
+                      {/* Default No Frame Option */}
+                      <button
+                        onClick={() => setSelectedFrame('')}
+                        className={`w-full btn-game bg-orange-100 flex items-center justify-center transition-all overflow-hidden py-2 text-lg gap-2 mb-1 ${selectedFrame === '' ? '!bg-orange-100 !border-orange-400' : 'hover:bg-orange-200'}`}
+                      >
+                        <span className="text-xs font-black text-brown-muted">بدون إطار</span>
+                      </button>                    
                   </div>
 
                   {/* Audio Settings */}
                   <div className="pt-4 border-t border-game space-y-4">
-                    <div className="flex items-center justify-between flex-row-reverse">
+                    <div className="flex items-center justify-between flex-row-reverse" dir="ltr">
                       <span className="text-sm font-black text-brown-muted">إعدادات الصوت</span>
                     </div>
                     
                     {/* SFX Volume */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 bg-purple-100 p-2">
                       <div className="flex justify-between items-center flex-row-reverse">
                         <div className="flex items-center gap-2 flex-row-reverse">
                           <button 
@@ -5198,7 +5198,7 @@ export default function App() {
                     </div>
 
                     {/* Music Volume */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 bg-purple-100 p-2">
                       <div className="flex justify-between items-center flex-row-reverse">
                         <div className="flex items-center gap-2 flex-row-reverse">
                           <button 
@@ -5249,9 +5249,9 @@ export default function App() {
 
                 {/* Reports Status */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between flex-row-reverse">
+                  <div className="flex items-center justify-between flex-row-reverse" dir="ltr">
                     <label className="text-sm font-black text-brown-muted">حالة الحساب</label>
-                    <span className="text-[10px] font-black text-brown-light">10 إبلاغات = حظر 24 ساعة</span>
+                    <span className="text-[10px] font-black text-brown-light" dir="rtl">10 إبلاغات = حظر 24 ساعة</span>
                   </div>
                   <div className="box-game p-3">
                     <div className="flex items-center justify-between mb-2 flex-row-reverse">
@@ -8096,7 +8096,7 @@ export default function App() {
 
                 return (
                   <div key={stage.stage} className={`relative ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <div className="flex items-center justify-between mb-4 flex-row-reverse">
+                    <div className="flex items-center justify-between mb-4 flex-row-reverse" dir="ltr">
                       <h3 className="text-xl font-black text-main">المرحلة {stage.stage}</h3>
                       {isLocked && <Lock className="w-5 h-5 text-gray-400" />}
                       {isClaimed && <Check className="w-6 h-6 text-green-500" />}
@@ -9325,7 +9325,7 @@ export default function App() {
                       const val = e.target.value.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
                       setRoomId(val);
                     }}
-                    placeholder="كود الغرفة..."
+                    placeholder="أكتب كود الغرفة..."
                     className="input-game flex-1 py-2 md:py-4"
                     maxLength={6}
                   />
