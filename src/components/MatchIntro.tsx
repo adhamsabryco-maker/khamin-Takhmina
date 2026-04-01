@@ -8,6 +8,7 @@ interface Player {
   name: string;
   level: number;
   avatar: string;
+  selectedFrame?: string;
 }
 
 interface MatchIntroProps {
@@ -103,7 +104,7 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, custom
         >
           <div className="text-center space-y-2 md:space-y-4 bg-accent-orange/80 p-4 md:p-6 border-4 border-black">
             <div className="w-20 h-20 md:w-32 md:h-32 mx-auto">
-              <AvatarDisplay avatar={player2.avatar} level={player2.level} customConfig={customConfig} hideExtras={true} />
+              <AvatarDisplay avatar={player2.avatar} level={player2.level} customConfig={customConfig} hideExtras={true} selectedFrame={player2.selectedFrame} />
             </div>
             <h2 className="text-xl md:text-3xl font-black text-white drop-shadow-md">{player2.name}</h2>
             <p className="text-lg md:text-xl font-bold text-white/90 drop-shadow-sm">Level {player2.level}</p>
@@ -119,7 +120,7 @@ export const MatchIntro: React.FC<MatchIntroProps> = ({ player1, player2, custom
         >
           <div className="text-center space-y-2 md:space-y-4 bg-accent-blue/80 p-4 md:p-6 border-4 border-black">
             <div className="w-20 h-20 md:w-32 md:h-32 mx-auto">
-              <AvatarDisplay avatar={player1.avatar} level={player1.level} customConfig={customConfig} hideExtras={true} />
+              <AvatarDisplay avatar={player1.avatar} level={player1.level} customConfig={customConfig} hideExtras={true} selectedFrame={player1.selectedFrame} />
             </div>
             <h2 className="text-xl md:text-3xl font-black text-white drop-shadow-md">{player1.name}</h2>
             <p className="text-lg md:text-xl font-bold text-white/90 drop-shadow-sm">Level {player1.level}</p>

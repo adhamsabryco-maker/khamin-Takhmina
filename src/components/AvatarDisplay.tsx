@@ -2,7 +2,7 @@ import React from 'react';
 import { Star } from 'lucide-react';
 import { STATIC_ASSETS } from '../constants';
 
-export const AvatarDisplay = React.memo(({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false, isOnline = false }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean, isOnline?: boolean }) => {
+export const AvatarDisplay = React.memo(({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false, isOnline = false, selectedFrame }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean, isOnline?: boolean, selectedFrame?: string }) => {
   const getMilestoneLevel = (lvl: number) => {
     if (lvl >= 50) return 50;
     if (lvl >= 40) return 40;
@@ -47,7 +47,11 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
                      (staticAvatar ? `/assets/${Array.isArray(staticAvatar) ? staticAvatar[0] : staticAvatar}` : 
                      avatar))));
 
-  const displayFrame = !hideExtras && (customFrame ? `/uploads/${customFrame}` : (staticFrame ? `/assets/${staticFrame}` : null));
+  let displayFrame = !hideExtras && (customFrame ? `/uploads/${customFrame}` : (staticFrame ? `/assets/${staticFrame}` : null));
+  if (selectedFrame && !hideExtras) {
+    displayFrame = `/assets/${selectedFrame}`;
+  }
+  
   const displayStar = !hideExtras && (customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null));
 
   const getAvatarStyle = (lvl: number) => {
