@@ -3803,6 +3803,7 @@ io.on("connection", (socket) => {
 
     socket.on("admin_send_announcement", (message, callback) => {
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      console.log(`[Admin Send Announcement] socket.data.serial: ${socket.data?.serial}, admin.isAdmin: ${admin?.isAdmin}, socket.data.isAdmin: ${socket.data?.isAdmin}`);
       if (admin?.isAdmin || socket.data?.isAdmin) {
         io.emit("system_announcement", message);
         callback({ success: true });
@@ -3813,6 +3814,7 @@ io.on("connection", (socket) => {
 
     socket.on("admin_force_refresh", (callback) => {
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      console.log(`[Admin Force Refresh] socket.data.serial: ${socket.data?.serial}, admin.isAdmin: ${admin?.isAdmin}, socket.data.isAdmin: ${socket.data?.isAdmin}`);
       if (admin?.isAdmin || socket.data?.isAdmin) {
         io.emit("force_refresh");
         callback({ success: true });
@@ -4040,6 +4042,7 @@ io.on("connection", (socket) => {
 
     socket.on("admin_get_active_rooms", (callback) => {
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      console.log(`[Admin Get Active Rooms] socket.data.serial: ${socket.data?.serial}, admin.isAdmin: ${admin?.isAdmin}, socket.data.isAdmin: ${socket.data?.isAdmin}`);
       if (admin?.isAdmin || socket.data?.isAdmin) {
         const activeRooms = Array.from(rooms.entries())
           .filter(([id, room]) => room.gameState !== 'waiting' && room.gameState !== 'finished')
@@ -4193,7 +4196,7 @@ io.on("connection", (socket) => {
     socket.on("admin_set_admin_status", ({ serial, isAdmin, email, adminToken }, callback) => {
       // This is a special event to bootstrap the first admin or manage others
       // For security, it should check if the requester is already an admin OR if it's the first one
-      const admin = socket.data?.serial ? allPlayers.get(socket.data.serial) : undefined;
+      const admin = serial ? allPlayers.get(serial) : (socket.data?.serial ? allPlayers.get(socket.data.serial) : undefined);
       
       const isValidToken = adminToken && adminTokens.has(adminToken);
       const isDefaultAdmin = email === 'adhamsabry.co@gmail.com';
@@ -4212,7 +4215,7 @@ io.on("connection", (socket) => {
               isOnline: playerSockets.has(p.serial)
             }));
             const reports = db.prepare('SELECT * FROM reports ORDER BY timestamp DESC').all();
-            callback({ success: true, players, reports });
+            if (typeof callback === 'function') callback({ success: true, players, reports });
             return;
           }
         }
@@ -4223,12 +4226,12 @@ io.on("connection", (socket) => {
              isOnline: playerSockets.has(p.serial)
            }));
            const reports = db.prepare('SELECT * FROM reports ORDER BY timestamp DESC').all();
-           callback({ success: true, players, reports });
+           if (typeof callback === 'function') callback({ success: true, players, reports });
         } else {
-           callback({ error: "Player not found" });
+           if (typeof callback === 'function') callback({ error: "Player not found" });
         }
       } else {
-        callback({ error: "Unauthorized" });
+        if (typeof callback === 'function') callback({ error: "Unauthorized" });
       }
     });
 
