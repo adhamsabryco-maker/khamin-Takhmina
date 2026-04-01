@@ -197,7 +197,7 @@ const app = express();
   });
 
   const APP_VERSION_FILE = path.join(__dirname, 'version.json');
-  let currentVersion = '1.1.1';
+  let currentVersion = '1.1.5';
   if (fs.existsSync(APP_VERSION_FILE)) {
     try {
       const vData = JSON.parse(fs.readFileSync(APP_VERSION_FILE, 'utf-8'));
@@ -560,7 +560,7 @@ const app = express();
     lastContactAt?: number,
     blockedSerials?: string[],
     blockedFingerprints?: string[],
-    recentOpponents?: { serial: string, name: string, avatar: string, timestamp: number, level?: number, xp?: number }[],
+    recentOpponents?: { serial: string, name: string, avatar: string, selectedFrame?: string, timestamp: number, level?: number, xp?: number }[],
     reportedSerials?: string[]
   }>();
 
@@ -706,6 +706,7 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN blockedSerials TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN blockedFingerprints TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -780,6 +781,8 @@ const app = express();
       { id: 'objects', name: 'جماد', icon: '📦' },
       { id: 'birds', name: 'طيور', icon: '🦜' },
       { id: 'plants', name: 'نبات', icon: '🌿' },
+      { id: 'insects', name: 'حشرات', icon: '🐞' },
+      { id: 'football', name: 'كرة القدم', icon: '⚽' },
     ];
     const insertCat = db.prepare('INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)');
     const insertManyCats = db.transaction((cats) => {
@@ -788,6 +791,31 @@ const app = express();
       }
     });
     insertManyCats(defaultCategories);
+  }
+
+  // Migration: Ensure 'insects' and 'football' categories exist and have correct IDs
+  const categoriesToMigrate = [
+    { oldName: 'حشرات', newId: 'insects', newName: 'حشرات', newIcon: '🐞' },
+    { oldName: 'كرة القدم', newId: 'football', newName: 'كرة القدم', newIcon: '⚽' },
+  ];
+
+  for (const cat of categoriesToMigrate) {
+    // Check if category exists by name
+    const existingCat = db.prepare('SELECT * FROM categories WHERE name = ?').get(cat.oldName) as { id: string } | undefined;
+    if (existingCat) {
+      if (existingCat.id !== cat.newId) {
+        // Update custom_images to point to new ID
+        db.prepare('UPDATE custom_images SET category = ? WHERE category = ?').run(cat.newId, existingCat.id);
+        // Update category ID
+        db.prepare('UPDATE categories SET id = ? WHERE id = ?').run(cat.newId, existingCat.id);
+      }
+    } else {
+      // If not exists, insert it
+      const exists = db.prepare('SELECT * FROM categories WHERE id = ?').get(cat.newId);
+      if (!exists) {
+        db.prepare('INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)').run(cat.newId, cat.newName, cat.newIcon, Date.now());
+      }
+    }
   }
 
   db.exec(`
@@ -833,8 +861,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame)
   `);
 
   function savePlayerData(serial: string) {
@@ -869,7 +897,9 @@ const app = express();
         lastContactAt: player.lastContactAt || 0,
         blockedSerials: JSON.stringify(player.blockedSerials || []),
         blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
-        recentOpponents: JSON.stringify(player.recentOpponents || [])
+        recentOpponents: JSON.stringify(player.recentOpponents || []),
+        reportedSerials: JSON.stringify(player.reportedSerials || []),
+        selectedFrame: player.selectedFrame || ''
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -906,7 +936,8 @@ const app = express();
         blockedSerials: JSON.stringify(player.blockedSerials || []),
         blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
         recentOpponents: JSON.stringify(player.recentOpponents || []),
-        reportedSerials: JSON.stringify(player.reportedSerials || [])
+        reportedSerials: JSON.stringify(player.reportedSerials || []),
+        selectedFrame: player.selectedFrame || ''
       });
     }
   });
@@ -967,7 +998,8 @@ const app = express();
           blockedSerials: JSON.parse(row.blockedSerials || '[]'),
           blockedFingerprints: JSON.parse(row.blockedFingerprints || '[]'),
           recentOpponents: JSON.parse(row.recentOpponents || '[]'),
-          reportedSerials: JSON.parse(row.reportedSerials || '[]')
+          reportedSerials: JSON.parse(row.reportedSerials || '[]'),
+          selectedFrame: row.selectedFrame || ''
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -1107,6 +1139,7 @@ const app = express();
           wins: p.wins,
           streak: p.streak || 0,
           avatar: p.avatar,
+          selectedFrame: p.selectedFrame,
           gender: p.gender,
           isAdmin: p.isAdmin,
           serial: p.serial,
@@ -1673,11 +1706,11 @@ const app = express();
 
         p1.socket.emit("match_proposed", {
           matchId,
-          opponent: { name: p2.playerName, avatar: p2.avatar, age: p2.age, level: getLevel(p2.xp || 0) }
+          opponent: { name: p2.playerName, avatar: p2.avatar, selectedFrame: p2.selectedFrame || '', age: p2.age, level: getLevel(p2.xp || 0) }
         });
         p2.socket.emit("match_proposed", {
           matchId,
-          opponent: { name: p1.playerName, avatar: p1.avatar, age: p1.age, level: getLevel(p1.xp || 0) }
+          opponent: { name: p1.playerName, avatar: p1.avatar, selectedFrame: p1.selectedFrame || '', age: p1.age, level: getLevel(p1.xp || 0) }
         });
 
         break; // Found a match for p1, move to next available player
@@ -1756,7 +1789,7 @@ const app = express();
 
         p.socket.emit("match_proposed", {
           matchId,
-          opponent: { name: botPlayer.playerName, avatar: botPlayer.avatar, age: botPlayer.age, level: botPersona.level }
+          opponent: { name: botPlayer.playerName, avatar: botPlayer.avatar, selectedFrame: botPlayer.selectedFrame || '', age: botPlayer.age, level: botPersona.level }
         });
 
         break; // Only one bot match per check to avoid overwhelming
@@ -2463,6 +2496,17 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("update_selected_frame", ({ playerSerial, frame }, callback) => {
+      const player = allPlayers.get(playerSerial);
+      if (player) {
+        player.selectedFrame = frame;
+        savePlayerData(playerSerial);
+        if (callback) callback({ success: true, frame: player.selectedFrame });
+      } else {
+        if (callback) callback({ success: false, error: "Player not found" });
+      }
+    });
+
     socket.on("get_top_players", (callback) => {
       callback(getTopPlayers());
     });
@@ -2629,6 +2673,16 @@ io.on("connection", (socket) => {
         rooms.delete(roomId);
       }
 
+      // Check if player is already in a match
+      const isAlreadyInMatch = Array.from(rooms.values()).some(room => 
+        room.gameState !== 'finished' && room.gameState !== 'waiting' && room.players.some(p => p.serial === serial)
+      );
+
+      if (isAlreadyInMatch && serverPlayer.isAdmin !== 1) {
+        socket.emit("error", { message: "أنت بالفعل في مباراة أخرى!" });
+        return;
+      }
+
       if (!rooms.has(roomId)) {
         rooms.set(roomId, {
           startTime: Date.now(),
@@ -2665,6 +2719,7 @@ io.on("connection", (socket) => {
           name: actualName,
           age: validAge,
           avatar: avatar,
+          selectedFrame: serverPlayer.selectedFrame || '',
           score: 1000,
           targetImage: null,
           isMuted: false,
@@ -2766,6 +2821,7 @@ io.on("connection", (socket) => {
         playerId, 
         playerName: actualName, 
         avatar, 
+        selectedFrame: bannedPlayer.selectedFrame || '',
         age: validAge,
         xp: actualXp,
         streak: streak || 0,
@@ -2861,6 +2917,7 @@ io.on("connection", (socket) => {
               name: match.p1.playerName,
               age: match.p1.age,
               avatar: match.p1.avatar,
+              selectedFrame: match.p1.selectedFrame || '',
               score: 1000,
               targetImage: null,
               isMuted: false,
@@ -2890,6 +2947,7 @@ io.on("connection", (socket) => {
               name: match.p2.playerName,
               age: match.p2.age,
               avatar: match.p2.avatar,
+              selectedFrame: match.p2.selectedFrame || '',
               score: 1000,
               targetImage: null,
               isMuted: false,
@@ -4184,6 +4242,19 @@ io.on("connection", (socket) => {
     socket.on("set_player_serial_for_socket", (serial) => {
       socket.data = { serial };
       if (serial) {
+        const serverPlayer = allPlayers.get(serial);
+        const isAdmin = serverPlayer && serverPlayer.isAdmin === 1;
+
+        if (!isAdmin) {
+            // Disconnect old socket if it exists
+            const oldSocketId = playerSockets.get(serial);
+            if (oldSocketId && oldSocketId !== socket.id) {
+                const oldSocket = io.sockets.sockets.get(oldSocketId);
+                if (oldSocket) {
+                    oldSocket.disconnect(true);
+                }
+            }
+        }
         playerSockets.set(serial, socket.id);
       }
     });
@@ -4660,6 +4731,7 @@ io.on("connection", (socket) => {
               serial: opponent.serial,
               name: opponent.name,
               avatar: opponent.avatar,
+              selectedFrame: opponent.selectedFrame || '',
               timestamp: Date.now(),
               level: opponent.level || getLevel(opponent.xp || 0),
               xp: opponent.xp || 0
@@ -4721,6 +4793,7 @@ io.on("connection", (socket) => {
                   serial: opponent.serial,
                   name: opponent.name,
                   avatar: opponent.avatar,
+                  selectedFrame: opponent.selectedFrame || '',
                   timestamp: Date.now(),
                   level: opponent.level || getLevel(opponent.xp || 0),
                   xp: opponent.xp || 0

@@ -33,7 +33,7 @@ export const COLLECTION_DATA: CategoryCollection[] = [
       {
         stage: 3,
         images: ['أخطبوط', 'تمساح', 'حرباية', 'ضبع', 'قرش', 'كوالا'],
-        reward: { xp: 10000, frame: 'premium-animal-frame' }
+        reward: { xp: 10000, frame: 'animals-category-frame-gift.png' }
       }
     ]
   },
@@ -55,7 +55,7 @@ export const COLLECTION_DATA: CategoryCollection[] = [
       {
         stage: 3,
         images: ['نسر', 'يمامة', 'فرخة', 'هدهد', 'نورس', 'وزة'],
-        reward: { xp: 10000, frame: 'premium-bird-frame' }
+        reward: { xp: 10000, frame: 'birds-category-frame-gift.png' }
       }
     ]
   },
@@ -77,7 +77,7 @@ export const COLLECTION_DATA: CategoryCollection[] = [
       {
         stage: 3,
         images: ['مندي', 'مقلوبة', 'محشي', 'كوزي', 'كبة', 'فتة'],
-        reward: { xp: 10000, frame: 'premium-food-frame' }
+        reward: { xp: 10000, frame: 'food-category-frame-gift.png' }
       }
     ]
   },
@@ -99,7 +99,7 @@ export const COLLECTION_DATA: CategoryCollection[] = [
       {
         stage: 3,
         images: ['عمرو دياب', 'يسرا اللوزي', 'رامز جلال', 'شيرين عبد الوهاب', 'تامر عاشور', 'تامر حسني'],
-        reward: { xp: 10000, frame: 'premium-people-frame' }
+        reward: { xp: 10000, frame: 'people-category-frame-gift.png' }
       }
     ]
   },
@@ -121,7 +121,7 @@ export const COLLECTION_DATA: CategoryCollection[] = [
       {
         stage: 3,
         images: ['ميكرويف', 'موبايل', 'مكنسة', 'كوتشي', 'دولاب', 'جاكيت'],
-        reward: { xp: 10000, frame: 'premium-object-frame' }
+        reward: { xp: 10000, frame: 'objects-category-frame-gift.png' }
       }
     ]
   },
@@ -143,7 +143,7 @@ export const COLLECTION_DATA: CategoryCollection[] = [
       {
         stage: 3,
         images: ['موز', 'مانجو', 'كرنب', 'فول حراتي', 'سبانخ', 'ذرة'],
-        reward: { xp: 10000, frame: 'premium-plant-frame' }
+        reward: { xp: 10000, frame: 'plants-category-frame-gift.png' }
       }
     ]
   },
@@ -165,7 +165,29 @@ export const COLLECTION_DATA: CategoryCollection[] = [
       {
         stage: 3,
         images: ['يراعة', 'نملة', 'نحلة', 'مايو', 'فرس النبي', 'عصوية'],
-        reward: { xp: 10000, frame: 'premium-insect-frame' }
+        reward: { xp: 10000, frame: 'insects-category-frame-gift.png' }
+      }
+    ]
+  },
+  {
+    id: 'football',
+    icon: '⚽',
+    name: 'كرة القدم',
+    stages: [
+      {
+        stage: 1,
+        images: ['محمد صلاح', 'محمد صلاح', 'محمد صلاح', 'محمد صلاح', 'محمد صلاح', 'محمد صلاح'],
+        reward: { xp: 2500 }
+      },
+      {
+        stage: 2,
+        images: ['محمد صلاح', 'محمد صلاح', 'محمد صلاح', 'محمد صلاح', 'محمد صلاح', 'محمد صلاح'],
+        reward: { xp: 5000 }
+      },
+      {
+        stage: 3,
+        images: ['محمد صلاح', 'محمد صلاح', 'محمد صلاح', 'محمد صلاح', 'محمد صلاح', 'محمد صلاح'],
+        reward: { xp: 10000, frame: 'football-category-frame-gift.png' }
       }
     ]
   }
