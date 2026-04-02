@@ -4650,7 +4650,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center p-4 text-white"
+            className="fixed inset-0 bg-black/95 z-[20000] flex items-center justify-center p-4 text-white"
           >
             <div className="bg-modal-theme p-8 rounded-[2rem] text-center max-w-sm w-full space-y-6">
               <h2 className="text-2xl font-black text-accent-orange">استلام المكافأة</h2>
