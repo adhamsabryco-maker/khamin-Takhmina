@@ -3104,6 +3104,11 @@ export default function App() {
       setError('انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.');
     });
 
+    newSocket.on('account_deleted_by_admin', () => {
+      clearPlayerData();
+      window.location.reload();
+    });
+
     newSocket.on('banned_status', ({ banUntil, isPermanent }) => {
       if (isPermanent) {
         setIsPermanentBan(true);
@@ -8025,16 +8030,16 @@ export default function App() {
                 <h3 className="text-3xl font-black text-main mb-4">الإبلاغ عن {reportTarget ? reportTarget.name : opponent?.name}</h3>
                 <div className="space-y-4 mb-4">
                   <button 
-                    onClick={() => handleReportPlayer('محتوى مسيء في الشات')}
+                    onClick={() => handleReportPlayer('الكذب والتضليل فى الأجابة')}
                     className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-2 text-lg"
                   >
-                    محتوى مسيء في الشات
+                    الكذب والتضليل فى الأجابة
                   </button>
                   <button 
-                    onClick={() => handleReportPlayer('سلوك غير لائق')}
+                    onClick={() => handleReportPlayer('يتعمد التأخير فى الرد')}
                     className="w-full btn-game btn-danger bg-red-100 border-red-200 text-red-500 hover:bg-red-200 py-2 text-lg"
                   >
-                    سلوك غير لائق
+                    يتعمد التأخير فى الرد
                   </button>
                   <button 
                     onClick={() => handleReportPlayer('استخدام الغش')}
@@ -9884,7 +9889,7 @@ export default function App() {
                     </motion.div>
                   )}
                 </div>
-                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[70px] md:max-w-[90px] flex items-center gap-2">
+                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[70px] md:max-w-[90px] flex items-center gap-2" dir="ltr">
                   {me.name}
                   {reports > 0 && <Flag className="w-3 h-3 text-red-500" fill="currentColor" />}
                 </div>
@@ -9918,21 +9923,27 @@ export default function App() {
                     </motion.div>
                   )}
                 </div>
-                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[70px] md:max-w-[90px] flex items-center gap-2">
+                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[70px] md:max-w-[90px] flex items-center gap-2" dir="ltr">
                   {opponent.name}
-                  <button onClick={() => setShowReportModal(true)} className="text-red-500">
-                    <Flag className="w-3 h-3" fill={opponent.reports > 0 ? "currentColor" : "none"} />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      const newBlockedState = !isOpponentBlocked;
-                      setIsOpponentBlocked(newBlockedState);
-                      socket?.emit('toggle_mute_opponent', { roomId, isMuted: newBlockedState });
-                    }}
-                    className={isOpponentBlocked ? 'text-red-500' : 'text-brown-light'}
-                  >
-                    <MessageSquareOff className="w-3 h-3" />
-                  </button>
+                  {opponent.isAdmin ? (
+                    <Shield className="w-3 h-3 text-purple-500" />
+                  ) : (
+                    <>
+                      <button onClick={() => setShowReportModal(true)} className="text-red-500">
+                        <Flag className="w-3 h-3" fill={opponent.reports > 0 ? "currentColor" : "none"} />
+                      </button>
+                      {/* <button 
+                        onClick={() => {
+                          const newBlockedState = !isOpponentBlocked;
+                          setIsOpponentBlocked(newBlockedState);
+                          socket?.emit('toggle_mute_opponent', { roomId, isMuted: newBlockedState });
+                        }}
+                        className={isOpponentBlocked ? 'text-red-500' : 'text-brown-light'}
+                      >
+                        <MessageSquareOff className="w-3 h-3" />
+                      </button> */}
+                    </>
+                  )}
                 </div>
                 {opponent.age && <div className="text-[8px] text-brown-muted font-bold">({opponent.age} سنة)</div>}
               </>
