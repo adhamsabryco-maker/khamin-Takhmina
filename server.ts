@@ -3199,7 +3199,7 @@ io.on("connection", (socket) => {
           player.wordLengthUsed = true;
           const targetName = player.targetImage.name;
           const lengthWithoutSpaces = targetName.replace(/\s+/g, '').length;
-          socket.emit("word_length_result", { length: lengthWithoutSpaces })
+          socket.emit("word_length_result", { length: lengthWithoutSpaces });
           io.to(roomId).emit("room_update", room);
         }
       } else if (cardType === "word_count") {
