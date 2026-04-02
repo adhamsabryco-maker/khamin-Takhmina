@@ -10451,7 +10451,7 @@ export default function App() {
                           تغيير الأسئلة
                         </button>
                       )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
                         {Array.from({ length: 4 }).map((_, i) => {
                           const node = currentQuickChatNodes[quickChatOffset + i];
                           const isMyTurn = room.currentTurn === socket?.id;
