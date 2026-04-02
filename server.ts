@@ -2678,7 +2678,7 @@ io.on("connection", (socket) => {
         room.gameState !== 'finished' && room.gameState !== 'waiting' && room.players.some(p => p.serial === serial)
       );
 
-      if (isAlreadyInMatch && serverPlayer.isAdmin !== 1) {
+      if (isAlreadyInMatch && !serverPlayer.isAdmin) {
         socket.emit("error", { message: "أنت بالفعل في مباراة أخرى!" });
         return;
       }
@@ -2741,7 +2741,8 @@ io.on("connection", (socket) => {
           reportedBy: actualReportedBy,
           usedToken: false,
           profanityCount: 0,
-          ownedHelpers: serverPlayer.ownedHelpers || {}
+          ownedHelpers: serverPlayer.ownedHelpers || {},
+          isAdmin: !!serverPlayer.isAdmin
         };
         room.players.push(player);
         
@@ -2939,7 +2940,8 @@ io.on("connection", (socket) => {
               reportedBy: p1ServerPlayer ? p1ServerPlayer.reportedBy : [],
               useToken: match.p1.useToken,
               profanityCount: 0,
-              ownedHelpers: match.p1.ownedHelpers || {}
+              ownedHelpers: match.p1.ownedHelpers || {},
+              isAdmin: !!p1ServerPlayer?.isAdmin
             },
             {
               id: match.p2.socket.id,
@@ -2971,7 +2973,8 @@ io.on("connection", (socket) => {
               persona: match.p2.persona,
               useToken: match.p2.useToken,
               profanityCount: 0,
-              ownedHelpers: match.p2.ownedHelpers || {}
+              ownedHelpers: match.p2.ownedHelpers || {},
+              isAdmin: !!p2ServerPlayer?.isAdmin
             }
           ],
           gameState: "waiting",
@@ -4135,6 +4138,7 @@ io.on("connection", (socket) => {
           
           for (const [socketId, s] of io.sockets.sockets) {
             if (s.data?.serial === serial) {
+              io.to(socketId).emit("account_deleted_by_admin");
               io.to(socketId).emit("banned_status", { isPermanent: true });
               break;
             }
@@ -4254,7 +4258,7 @@ io.on("connection", (socket) => {
       socket.data = { ...socket.data, serial };
       if (serial) {
         const serverPlayer = allPlayers.get(serial);
-        const isAdmin = serverPlayer && serverPlayer.isAdmin === 1;
+        const isAdmin = (serverPlayer && serverPlayer.isAdmin === true) || !!socket.data?.isAdmin;
 
         if (!isAdmin) {
             // Disconnect old socket if it exists
