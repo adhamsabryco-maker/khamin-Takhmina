@@ -11,6 +11,7 @@ import Database from 'better-sqlite3';
 import multer from "multer";
 import os from "os";
 import admin from 'firebase-admin';
+import archiver from 'archiver';
 
 // Initialize Firebase Admin
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -1195,6 +1196,36 @@ const app = express();
         // Remove token after use for security
         adminTokens.delete(token);
       }
+    });
+  });
+
+  app.get("/api/admin/download-uploads", (req, res) => {
+    const token = req.query.token as string;
+    if (!token || !adminTokens.has(token)) {
+      return res.status(403).send("Unauthorized");
+    }
+
+    const uploadsPath = path.join(__dirname, 'public/uploads');
+    if (!fs.existsSync(uploadsPath)) {
+      return res.status(404).send("Uploads folder not found");
+    }
+
+    res.attachment('uploads-backup.zip');
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // Sets the compression level.
+    });
+
+    archive.on('error', (err) => {
+      console.error("Error creating zip archive:", err);
+      if (!res.headersSent) {
+        res.status(500).send({ error: err.message });
+      }
+    });
+
+    archive.pipe(res);
+    archive.directory(uploadsPath, false);
+    archive.finalize().then(() => {
+      adminTokens.delete(token);
     });
   });
 
@@ -3197,7 +3228,6 @@ io.on("connection", (socket) => {
         if ((playerLevel >= 20 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.wordLengthUsed) {
           deductFreeUse();
           player.wordLengthUsed = true;
-          const targetName = player.targetImage.name;
           const lengthWithoutSpaces = targetName.replace(/\s+/g, '').length;
           socket.emit("word_length_result", { length: lengthWithoutSpaces });
           io.to(roomId).emit("room_update", room);
@@ -4251,6 +4281,21 @@ io.on("connection", (socket) => {
         callback({ success: true, token: downloadToken });
       } else {
         console.log(`[DB Download] Unauthorized request from socket ${socket.id}`);
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_request_uploads_download", (callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        const downloadToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        adminTokens.add(downloadToken);
+        console.log(`[Uploads Download] Generated token ${downloadToken} for admin ${admin?.serial || socket.data?.serial}`);
+        // Token expires in 5 minutes
+        setTimeout(() => adminTokens.delete(downloadToken), 1000 * 60 * 5);
+        callback({ success: true, token: downloadToken });
+      } else {
+        console.log(`[Uploads Download] Unauthorized request from socket ${socket.id}`);
         callback({ error: "Unauthorized" });
       }
     });
