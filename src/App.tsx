@@ -1381,6 +1381,10 @@ export default function App() {
     const saved = localStorage.getItem('khamin_seen_category_counts');
     return saved ? JSON.parse(saved) : {};
   });
+  const [seenFrames, setSeenFrames] = useState<string[]>(() => {
+    const saved = localStorage.getItem('khamin_seen_frames');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [showCollectionModal, setShowCollectionModal] = useState<string | null>(null);
   const [pendingClaimReward, setPendingClaimReward] = useState<{categoryId: string, stage: number} | null>(null);
   const [announcementMessage, setAnnouncementMessage] = useState<string | null>(null);
@@ -1388,6 +1392,15 @@ export default function App() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStatus, setLoadingStatus] = useState('جاري التحقق من التحديثات...');
   const [gameVersion, setGameVersion] = useState(localStorage.getItem('khamin_game_version') || '1.1.1');
+
+  const unlockedFrames = useMemo(() => {
+    return COLLECTION_DATA.filter(cat => {
+      const finalStage = cat.stages[cat.stages.length - 1];
+      return claimedCollectionRewards.some(r => r.category_id === cat.id && r.stage === finalStage.stage);
+    }).map(cat => cat.id);
+  }, [claimedCollectionRewards]);
+
+  const hasNewFrame = unlockedFrames.some(id => !seenFrames.includes(id));
   const [isSearching, setIsSearching] = useState(false);
   const isSearchingRef = useRef(false);
   const [isPrivate, setIsPrivate] = useState(false);
@@ -5280,13 +5293,25 @@ export default function App() {
                         return (
                           <button
                             key={`frame-${cat.id}-${index}`}
-                            onClick={() => isUnlocked && setSelectedFrame(frameImage)}
+                            onClick={() => {
+                              if (isUnlocked) {
+                                setSelectedFrame(frameImage);
+                                if (!seenFrames.includes(cat.id)) {
+                                  const newSeen = [...seenFrames, cat.id];
+                                  setSeenFrames(newSeen);
+                                  localStorage.setItem('khamin_seen_frames', JSON.stringify(newSeen));
+                                }
+                              }
+                            }}
                             disabled={!isUnlocked}
                             className={`relative aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${selectedFrame === frameImage ? '!bg-orange-100 !border-orange-400 scale-105' : 'hover:bg-gray-200'} ${!isUnlocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
                           >
                             <div className="w-full h-full p-1 relative">
                               <img src={`/assets/${frameImage}`} alt={`${cat.name} Frame`} className="w-full h-full object-contain absolute inset-0 z-10" />
                             </div>
+                            {isUnlocked && !seenFrames.includes(cat.id) && (
+                                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse z-30"></span>
+                            )}
                             {!isUnlocked && (
                               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-xl z-20">
                                 <Lock className="w-4 h-4 text-white mb-1" />
@@ -5839,17 +5864,11 @@ export default function App() {
                   * قوانين لعبة - خمن تخمينة:
                 </h2>
                 <ul className="text-sm text-right space-y-2 text-brown-dark font-bold dir-rtl" dir="rtl">
-                  <li>1- ممنوع الشتائم او اى الفاظ خارجة.</li>
+                  <li>1- ممنوع الكذب وتضليل الأجابة.</li>
+                  <li>7- ممنوع تعمد التأخير فى الرد.</li>
                   <li>2- ممنوع تسريب الاجابة.</li>
                   <li>3- ممنوع الغش من الطرفين.</li>
-                  <li>4- ممنوع كتابة اي ارقام تليفونات.</li>
-                  <li>5- ممنوع كتابة اي بيانات شخصية.</li>
                   <li>6- تخمين الاجابة فقط فى نوافذ التخمين.</li>
-                  <li>7- عدم تكرار الاسئلة من اللاعبين.</li>
-                  <li>8- عدم تخيير اللاعب بين سؤالين.</li>
-                  <li>9- ممنوع الكذب وتضليل الاجابة.</li>
-                  <li>10- الاسئلة تكون واضحة ومحددة.</li>
-                  <li>11- استخدام (كتم الشات 💬) عند الحاجة.</li>
                   <li>12- الابلاغ 🚩 عن اي لاعب يخالف القوانين.</li>
                 </ul>
                 <p className="text-xs text-red-600 font-black text-center mt-4 bg-red-50 p-2 rounded-lg border border-red-200">
@@ -8135,20 +8154,35 @@ export default function App() {
           });
           const dataUrl = canvas.toDataURL('image/png');
           
-          if (navigator.share) {
-            const blob = await (await fetch(dataUrl)).blob();
-            const file = new File([blob], 'reward.png', { type: 'image/png' });
-            await navigator.share({
-              files: [file],
-              title: 'مكافأتي في خمن تخمينة!',
-              text: 'شوف مكافأتي في لعبة خمن تخمينة!',
-              url: window.location.origin
-            });
-          } else {
+          const downloadFallback = () => {
             const link = document.createElement('a');
             link.download = 'reward.png';
             link.href = dataUrl;
             link.click();
+          };
+
+          if (navigator.share && navigator.canShare) {
+            try {
+              const blob = await (await fetch(dataUrl)).blob();
+              const file = new File([blob], 'reward.png', { type: 'image/png' });
+              if (navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                  files: [file],
+                  title: 'مكافأتي في خمن تخمينة!',
+                  text: 'شوف مكافأتي في لعبة خمن تخمينة!',
+                  url: window.location.origin
+                });
+              } else {
+                downloadFallback();
+              }
+            } catch (shareErr: any) {
+              console.warn('Share API failed or was cancelled, falling back to download:', shareErr);
+              if (shareErr.name !== 'AbortError') {
+                downloadFallback();
+              }
+            }
+          } else {
+            downloadFallback();
           }
         } catch (err) {
           console.error('Share failed:', err);
@@ -8161,23 +8195,23 @@ export default function App() {
 
     return (
       <div className="flex flex-col items-center gap-4 pt-6 md:pt-6 space-y-3 md:space-y-4">
-        <div ref={cardRef} className="bg-gradient-to-br from-accent-yellow/20 to-accent-blue/20 p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-sm bg-white">
+        <div ref={cardRef} className="p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-sm bg-[#fdfbf7]">
           <div className="flex flex-col items-center gap-2">
             <div className="relative w-24 h-24">
               {renderAvatarContent(avatar, level, false, true, frameToDisplay)}
             </div>
-            <h3 className="text-2xl font-black text-main">{playerName}</h3>
-            <p className="text-sm font-bold text-gray-600">المستوى: {level}</p>
+            <h3 className="text-2xl font-black" style={{ color: '#4a3f35' }}>{playerName}</h3>
+            <p className="text-sm font-bold" style={{ color: '#4b5563' }}>المستوى: {level}</p>
             <div className="mt-4 p-3 bg-white rounded-xl border-2 border-black w-full text-center">
-              <p className="text-sm font-black text-main">مبروك! كسبت:</p>
-              <p className="text-lg font-black text-accent-orange">{reward.xp} XP</p>
-              {reward.frame && <p className="text-sm font-black text-accent-blue">+ إطار مميز</p>}
+              <p className="text-sm font-black" style={{ color: '#4a3f35' }}>مبروك! كسبت:</p>
+              <p className="text-lg font-black" style={{ color: '#f97316' }}>{reward.xp} XP</p>
+              {reward.frame && <p className="text-sm font-black" style={{ color: '#3b82f6' }}>+ إطار مميز</p>}
             </div>
           </div>
         </div>
         {isClaimed ? (
           <button onClick={handleShare} className="btn-game btn-secondary py-3 px-6 text-lg font-black">
-            مشاركة الكارت
+            مشاركة المكافأة 🚀
           </button>
         ) : (
           <button 
@@ -8868,7 +8902,7 @@ export default function App() {
                 title="الإعدادات"
               >
                 <Settings className="w-4 h-4 md:w-5 md:h-5" />
-                {(AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) && (
+                {((AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) || hasNewFrame) && (
                   <span className="absolute -top-1 -right-1 flex h-4 w-4">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
@@ -9098,7 +9132,7 @@ export default function App() {
               title="الإعدادات"
             >
               <Settings className="w-4 h-4 md:w-5 md:h-5" />
-              {(AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) && (
+              {((AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) || hasNewFrame) && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
@@ -9855,7 +9889,7 @@ export default function App() {
             title="الإعدادات"
           >
             <Settings className="w-4 h-4 md:w-5 md:h-5" />
-            {(AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) && (
+            {((AVATAR_UNLOCKS.some(lvl => getLevel(xp) >= lvl && lastSeenAvatarLevel < lvl)) || hasNewFrame) && (
               <span className="absolute -top-1 -right-1 flex h-4 w-4">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
@@ -9969,7 +10003,7 @@ export default function App() {
                 ></div>
               </div>
               <div className="flex justify-between items-center bg-white/50 p-3 rounded-2xl border border-orange-100 shadow-sm">
-                <h2 className={`text-lg md:text-xl font-black text-accent-orange ${room.players.length < 2 ? 'animate-pulse' : ''}`}>
+                <h2 className={`text-lg md:text-lg font-black text-accent-orange ${room.players.length < 2 ? 'animate-pulse' : ''}`}>
                   {room.players.length < 2 ? 'بانتظار المنافس...' : 'اتفقوا على فئة التخمين للبدء!'}
                 </h2>
                 <div className={`text-lg font-black font-mono px-3 py-1 rounded-lg ${room.isFrozen ? 'text-cyan-500 bg-cyan-50 animate-pulse' : 'text-red-500 bg-gray-100'}`}>
@@ -10056,7 +10090,7 @@ export default function App() {
 
                 {/* WhatsApp Style Chat Box - Hidden when consensus reached or waiting for opponent */}
                 {!consensusReached && room.players.length >= 2 && (
-                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner flex flex-col h-50 mt-4 relative">
+                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner flex flex-col h-46 mt-4 relative">
                     {isMutedByOpponent && (
                       <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                         <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -10742,7 +10776,7 @@ export default function App() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full font-black shadow-[0_8px_0_rgba(0,0,0,0.2)] z-[500] flex items-center gap-4 border-4 ${error.includes('انضم') ? 'bg-green-500 border-green-400 text-white' : 'bg-red-500 border-red-400 text-white'}`}
+            className={`fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-[55%] flex items-center justify-center p-6 px-6 py-3 rounded-full font-black shadow-[0_8px_0_rgba(0,0,0,0.2)] z-[500] flex items-center gap-4 border-4 ${error.includes('انضم') ? 'bg-green-500 border-green-400 text-white' : 'bg-red-500 border-red-400 text-white'}`}
           >
             {error}
             <button onClick={() => setError('')} className="bg-white/20 hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center text-sm transition-colors">X</button>
