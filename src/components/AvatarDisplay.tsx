@@ -55,11 +55,11 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
   const displayStar = !hideExtras && (customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null));
 
   const getAvatarStyle = (lvl: number) => {
-    if (lvl >= 50) return 'bg-red-50 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
-    if (lvl >= 40) return 'bg-purple-50 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
-    if (lvl >= 30) return 'bg-emerald-50 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
-    if (lvl >= 20) return 'bg-yellow-50 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
-    if (lvl >= 10) return 'bg-gray-200 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
+    if (lvl >= 50) return 'bg-[#fef2f2] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
+    if (lvl >= 40) return 'bg-[#faf5ff] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
+    if (lvl >= 30) return 'bg-[#ecfdf5] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
+    if (lvl >= 20) return 'bg-[#fefce8] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
+    if (lvl >= 10) return 'bg-[#e5e7eb] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
     return 'bg-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
   };
 
@@ -81,14 +81,15 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
                 {displayStar ? (
                   <img 
                     src={displayStar} 
+                    crossOrigin="anonymous"
                     className="w-3.5 h-3.5 object-contain drop-shadow-md" 
                     style={{ transform: `rotate(-${angle}deg)` }} 
                     alt="Star"
                   />
                 ) : (
                   <Star 
-                    className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-md" 
-                    style={{ transform: `rotate(-${angle}deg)` }} 
+                    className="w-3 h-3 drop-shadow-md" 
+                    style={{ transform: `rotate(-${angle}deg)`, color: '#eab308', fill: '#eab308' }} 
                   />
                 )}
               </div>
@@ -115,7 +116,7 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
         ${displayFrame ? 'p-1.5' : `border-4 ${getAvatarStyle(level)}`}
       `}>
         {displayAvatar.startsWith('data:image') || displayAvatar.startsWith('http') || displayAvatar.startsWith('/uploads/') || displayAvatar.startsWith('/assets/') ? (
-          <img src={displayAvatar} className="w-full h-full object-cover rounded-full" alt="Avatar" />
+          <img src={displayAvatar} crossOrigin="anonymous" className="w-full h-full object-cover rounded-full" alt="Avatar" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-inherit font-black">{displayAvatar}</div>
         )}
@@ -125,6 +126,7 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
       {displayFrame && (
         <img 
           src={displayFrame} 
+          crossOrigin="anonymous"
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] h-[115%] max-w-none object-contain pointer-events-none z-20" 
           alt="Frame" 
         />
@@ -132,7 +134,7 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
 
       {/* Online Indicator - Bottom Right */}
       {isOnline && (
-        <div className="absolute bottom-[5%] right-[5%] w-[11%] h-[11%] bg-green-500 rounded-full z-40" />
+        <div className="absolute bottom-[5%] right-[5%] w-[11%] h-[11%] rounded-full z-40" style={{ backgroundColor: '#22c55e' }} />
       )}
     </div>
   );
