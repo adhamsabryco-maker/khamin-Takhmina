@@ -10705,14 +10705,33 @@ export default function App() {
       {/* Hint Display */}
       <AnimatePresence>
         {hint && (
-          <motion.div 
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            className="fixed bottom-28 left-6 z-[250] bg-blue-500 text-white px-8 py-6 rounded-[32px] shadow-[0_8px_0_rgba(0,0,0,0.2)] font-black text-lg border-4 border-blue-400"
-          >
-            {hint}
-          </motion.div>
+          <>
+            {/* 1. الطبقة الشفافة اللي ورا النافذة */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setHint(null)} // بتقفل لما تضغط في أي مكان بره
+              className="fixed inset-0 z-[240] bg-transparent cursor-default" // bg-black/10 بيعمل ضل خفيف، لو عايزها شفافة تماماً خليها bg-transparent
+            />
+
+            {/* 2. النافذة نفسها */}
+            <motion.div 
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              className="fixed bottom-28 left-6 z-[250] bg-blue-500 text-white px-8 py-6 rounded-[32px] shadow-[0_8px_0_rgba(0,0,0,0.2)] font-black text-lg border-4 border-blue-400 relative"
+            >
+              <button 
+                onClick={() => setHint(null)} 
+                className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-white shadow-md transition-colors"
+              >
+                ✕
+              </button>
+
+              {hint}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
