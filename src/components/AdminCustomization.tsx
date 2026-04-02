@@ -168,6 +168,32 @@ export const AdminCustomization = ({ showAlert, socket }: { showAlert: (msg: str
             </button>
           </div>
 
+          <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-blue-100 shadow-sm">
+            <div>
+              <p className="font-bold text-blue-900">تحميل ملفات الصور (uploads)</p>
+              <p className="text-xs text-blue-700 mt-1">يحتوي على الأفاتار، الإطارات، الأسئلة المخصصة، والصور المرفوعة.</p>
+            </div>
+            <button 
+              onClick={() => {
+                if (!socket) {
+                  showAlert('غير متصل بالخادم.', 'خطأ');
+                  return;
+                }
+                
+                socket.emit('admin_request_uploads_download', (res: any) => {
+                  if (res.success && res.token) {
+                    window.open(`/api/admin/download-uploads?token=${res.token}`, '_blank');
+                  } else {
+                    showAlert('عذراً، لا تملك صلاحية لتحميل الملفات.', 'خطأ');
+                  }
+                });
+              }}
+              className="btn-game bg-indigo-500 hover:bg-indigo-600 text-white py-2 px-6 shadow-[0_4px_0_0_#4f46e5] active:shadow-none active:translate-y-1"
+            >
+              تحميل ZIP
+            </button>
+          </div>
+
           <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-red-100 shadow-sm">
             <div>
               <p className="font-bold text-red-900">رفع ملف players.db</p>
