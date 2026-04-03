@@ -3978,7 +3978,7 @@ export default function App() {
     const hasFreeUse = (ownedHelpers[type] || 0) > 0;
 
     // Quick guess doesn't require an ad
-    if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage || hasFreeUse) {
+    if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage) {
       // Actually use the card FIRST so the server sees we still have the free use
       socket?.emit('use_card', { roomId, cardType: type, serial: playerSerial });
 
@@ -10671,8 +10671,8 @@ export default function App() {
             }
 
             const isReady = readyPowerUps.includes(card.id);
-            // A power-up requires an ad if it's not locked, not pro, not quick guess, not ready, no free use, AND it hasn't been used yet (not disabled)
-            const requiresAd = !isLocked && !hasProPackage && card.id !== 'quick_guess' && !isReady && !hasFreeUse && !card.disabled;
+            // A power-up requires an ad if it's not locked, not pro, not quick guess, not ready, AND it hasn't been used yet (not disabled)
+            const requiresAd = !isLocked && !hasProPackage && card.id !== 'quick_guess' && !isReady && !card.disabled;
 
             // Only disable other cards during quick guess if they are specifically quick guess, or if game is finished
             const isCardDisabled = isLocked || card.disabled || cardCooldown > 0 || room.gameState === 'finished' || (room.isPaused && card.id === 'quick_guess') || (requiresAd && isCooldown);
@@ -10707,13 +10707,13 @@ export default function App() {
                   </div>
                 )}
 
-                {hasFreeUse && !isLocked && (
-                  <div className="absolute -top-2 -right-2 text-lg md:text-xl z-10 animate-bounce" title="استخدام مجاني">
+                {hasFreeUse && isLevelLocked && (
+                  <div className="absolute -top-2 -right-2 text-lg md:text-xl z-10 animate-bounce" title="مفتوحة من المهام اليومية">
                     ✨
                   </div>
                 )}
                 
-                {!isLocked && !hasProPackage && card.id !== 'quick_guess' && !isReady && !hasFreeUse && (
+                {!isLocked && !hasProPackage && card.id !== 'quick_guess' && !isReady && (
                   <div className="absolute -top-1.5 -left-1.5 z-10 text-lg md:text-xl drop-shadow-md" title="مشاهدة إعلان">
                     📺
                   </div>
