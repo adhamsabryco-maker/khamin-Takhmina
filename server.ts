@@ -3246,6 +3246,7 @@ io.on("connection", (socket) => {
         if ((playerLevel >= 20 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.wordLengthUsed) {
           deductFreeUse();
           player.wordLengthUsed = true;
+          const targetName = player.targetImage.name;
           const lengthWithoutSpaces = targetName.replace(/\s+/g, '').length;
           socket.emit("word_length_result", { length: lengthWithoutSpaces });
           io.to(roomId).emit("room_update", room);
