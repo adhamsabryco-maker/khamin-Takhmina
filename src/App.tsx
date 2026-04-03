@@ -10361,7 +10361,7 @@ export default function App() {
                             e.stopPropagation();
                             if (isQuickResponseDisabled || clickedResponses.includes('آه') || room?.waitingForAnswerFrom !== socket?.id) return;
                             playSound('clickOpen');
-                            socket?.emit('send_chat', { roomId: room!.id, text: 'آه' });
+                            socket?.emit('send_chat', { roomId: room!.id, text: 'آه', passTurn: currentQuickChatNodes.length === 0 });
                             setClickedResponses(prev => [...prev, 'آه']);
                             
                             if (!quickResponseTimeoutRef.current) {
@@ -10382,7 +10382,7 @@ export default function App() {
                             e.stopPropagation();
                             if (isQuickResponseDisabled || clickedResponses.includes('لأ') || room?.waitingForAnswerFrom !== socket?.id) return;
                             playSound('clickOpen');
-                            socket?.emit('send_chat', { roomId: room!.id, text: 'لأ' });
+                            socket?.emit('send_chat', { roomId: room!.id, text: 'لأ', passTurn: currentQuickChatNodes.length === 0 });
                             setClickedResponses(prev => [...prev, 'لأ']);
                             
                             if (!quickResponseTimeoutRef.current) {
@@ -10486,65 +10486,79 @@ export default function App() {
                         </button>
                       )}
                       <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
-                        {Array.from({ length: 4 }).map((_, i) => {
-                          const node = currentQuickChatNodes[quickChatOffset + i];
-                          const isMyTurn = room.currentTurn === socket?.id;
-                          return (
-                            <button
-                              key={node ? node.id : `empty-${i}`}
-                              disabled={!node || isReelsSpinning || isMutedByOpponent || !isMyTurn}
-                              onClick={() => {
-                                if (!node || isReelsSpinning || isMutedByOpponent || !isMyTurn) return;
-                                playSound('clickOpen');
-                                
-                                // Clear typing timeout and stop indicator immediately
-                                if (typingTimeoutRef.current) {
-                                  clearTimeout(typingTimeoutRef.current);
-                                  typingTimeoutRef.current = null;
-                                }
-                                socket?.emit('stop_typing', { roomId: room!.id });
-                                
-                                socket?.emit('send_chat', { roomId: room!.id, text: node.text });
-                                askedQuickChatNodeRef.current = node;
-                              }}
-                              className={`rounded-xl p-0 text-center font-bold text-[13px] md:text-sm shadow-sm transition-all overflow-hidden relative h-10 md:h-12 flex items-center justify-center border-2 ${node && isMyTurn ? 'bg-white border-purple-300 text-purple-800 hover:bg-purple-50 active:scale-95' : 'bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed'}`}
-                            >
-                              <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
-                                {spinningReels[i] && node ? (
-                                  <motion.div
-                                    animate={{ 
-                                      y: i % 2 === 0 
-                                        ? [0, isMobile ? -360 : -432] 
-                                        : [isMobile ? -360 : -432, 0] 
-                                    }}
-                                    transition={{ 
-                                      repeat: Infinity, 
-                                      duration: 0.15 + (i * 0.03), 
-                                      ease: "linear" 
-                                    }}
-                                    className="absolute top-0 flex flex-col w-full blur-[0.8px] md:blur-[1px]"
-                                  >
-                                    {reelRandomItems[i].map((text, idx) => (
-                                      <span key={idx} className="h-10 md:h-12 flex items-center justify-center truncate w-full px-2 text-purple-400/70">
-                                        {text}
-                                      </span>
-                                    ))}
-                                  </motion.div>
-                                ) : (
-                                  <motion.span
-                                    key={node ? node.id : `empty-text-${i}`}
-                                    initial={{ opacity: 0, y: 15 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="truncate w-full px-2"
-                                  >
-                                    {node ? node.text : '...'}
-                                  </motion.span>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
+                        {currentQuickChatNodes.length === 0 ? (
+                          <button
+                            disabled={room.currentTurn !== socket?.id || isMutedByOpponent}
+                            onClick={() => {
+                              if (room.currentTurn !== socket?.id || isMutedByOpponent) return;
+                              playSound('clickOpen');
+                              socket?.emit('pass_turn', { roomId: room!.id });
+                            }}
+                            className={`rounded-xl p-0 text-center font-bold text-[13px] md:text-sm shadow-sm transition-all overflow-hidden relative h-10 md:h-12 flex items-center justify-center border-2 ${room.currentTurn === socket?.id ? 'bg-white border-orange-300 text-orange-800 hover:bg-orange-50 active:scale-95' : 'bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed'}`}
+                          >
+                            تخطي الدور (لا يوجد أسئلة)
+                          </button>
+                        ) : (
+                          Array.from({ length: 4 }).map((_, i) => {
+                            const node = currentQuickChatNodes[quickChatOffset + i];
+                            const isMyTurn = room.currentTurn === socket?.id;
+                            return (
+                              <button
+                                key={node ? node.id : `empty-${i}`}
+                                disabled={!node || isReelsSpinning || isMutedByOpponent || !isMyTurn}
+                                onClick={() => {
+                                  if (!node || isReelsSpinning || isMutedByOpponent || !isMyTurn) return;
+                                  playSound('clickOpen');
+                                  
+                                  // Clear typing timeout and stop indicator immediately
+                                  if (typingTimeoutRef.current) {
+                                    clearTimeout(typingTimeoutRef.current);
+                                    typingTimeoutRef.current = null;
+                                  }
+                                  socket?.emit('stop_typing', { roomId: room!.id });
+                                  
+                                  socket?.emit('send_chat', { roomId: room!.id, text: node.text });
+                                  askedQuickChatNodeRef.current = node;
+                                }}
+                                className={`rounded-xl p-0 text-center font-bold text-[13px] md:text-sm shadow-sm transition-all overflow-hidden relative h-10 md:h-12 flex items-center justify-center border-2 ${node && isMyTurn ? 'bg-white border-purple-300 text-purple-800 hover:bg-purple-50 active:scale-95' : 'bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed'}`}
+                              >
+                                <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
+                                  {spinningReels[i] && node ? (
+                                    <motion.div
+                                      animate={{ 
+                                        y: i % 2 === 0 
+                                          ? [0, isMobile ? -360 : -432] 
+                                          : [isMobile ? -360 : -432, 0] 
+                                      }}
+                                      transition={{ 
+                                        repeat: Infinity, 
+                                        duration: 0.15 + (i * 0.03), 
+                                        ease: "linear" 
+                                      }}
+                                      className="absolute top-0 flex flex-col w-full blur-[0.8px] md:blur-[1px]"
+                                    >
+                                      {reelRandomItems[i].map((text, idx) => (
+                                        <span key={idx} className="h-10 md:h-12 flex items-center justify-center truncate w-full px-2 text-purple-400/70">
+                                          {text}
+                                        </span>
+                                      ))}
+                                    </motion.div>
+                                  ) : (
+                                    <motion.span
+                                      key={node ? node.id : `empty-text-${i}`}
+                                      initial={{ opacity: 0, y: 15 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ duration: 0.3 }}
+                                      className="truncate w-full px-2"
+                                    >
+                                      {node ? node.text : '...'}
+                                    </motion.span>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   )}
