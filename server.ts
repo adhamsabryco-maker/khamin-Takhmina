@@ -3086,7 +3086,7 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("send_chat", ({ roomId, text }) => {
+    socket.on("send_chat", ({ roomId, text, passTurn }) => {
       console.log(`Chat request from ${socket.id} for room ${roomId}: ${text}`);
       const room = rooms.get(roomId);
       if (room) {
@@ -3099,13 +3099,19 @@ io.on("connection", (socket) => {
         
         // Turn logic for Quick Chat (Updates state but doesn't block for speed)
         if (room.gameState === 'discussion') {
+          const opponent = room.players.find((p: any) => p.id !== socket.id);
           if (messageToSend === 'آه' || messageToSend === 'لأ') {
-            // Turn switches to the player who answered
-            room.currentTurn = socket.id;
-            room.waitingForAnswerFrom = null;
+            if (passTurn && opponent) {
+              // The answerer has no questions, so turn goes back to the asker
+              room.currentTurn = opponent.id;
+              room.waitingForAnswerFrom = null;
+            } else {
+              // Turn switches to the player who answered
+              room.currentTurn = socket.id;
+              room.waitingForAnswerFrom = null;
+            }
           } else {
             room.currentTurn = null;
-            const opponent = room.players.find((p: any) => p.id !== socket.id);
             if (opponent) {
               room.waitingForAnswerFrom = opponent.id;
             }
@@ -3135,6 +3141,18 @@ io.on("connection", (socket) => {
         }
       } else {
         console.log(`Room ${roomId} not found for chat`);
+      }
+    });
+
+    socket.on("pass_turn", ({ roomId }) => {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === 'discussion') {
+        const opponent = room.players.find((p: any) => p.id !== socket.id);
+        if (opponent) {
+          room.currentTurn = opponent.id;
+          room.waitingForAnswerFrom = null;
+          io.to(roomId).emit("room_update", room);
+        }
       }
     });
 
