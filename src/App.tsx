@@ -10074,15 +10074,15 @@ export default function App() {
               {/* Rain Gift Event Section - Moved outside and below leaderboard */}
               {gamePolicies.isRainGiftEnabled && (
               <div className="p-2 bg-gradient-to-r from-accent-orange/10 to-accent-green/10 rounded-2xl border-2 border-white shadow-sm box-game">
-              <span className="flex font-bold p-1 py-2 items-center justify-center md:text-[13px] text-[12px] text-accent-orange">هدايا 🎁 كل يوم الساعة 7 مساء بتوقيت مصر 🌧️</span>
+              <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[12px] text-accent-orange">هدايا 🎁 كل يوم الساعة 7 مساء بتوقيت مصر 🌧️</span>
+              <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[12px] text-accent-purple">مدة الحدث 3 دقائق فقط! ⏰</span>
                 <div className="flex items-center justify-between flex-row-reverse">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2" dir="ltr">
                     <div className="w-8 h-8 bg-accent-orange rounded-full flex items-center justify-center text-white shadow-sm">
-                      <Clock className="w-4 h-4" />
+                      <Clock className="w-6 h-6" />
                     </div>
                     <div className="text-right">
-                      <div className="text-[10px] font-black text-brown-muted uppercase tracking-wider">مطر الهدايا</div>
-                      <div className="text-sm font-black text-main">{rainGiftCountdown}</div>
+                      <div className="text-[21px] font-bold text-main">{rainGiftCountdown}</div>
                     </div>
                   </div>
                   <button
