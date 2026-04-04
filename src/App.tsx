@@ -12,6 +12,7 @@ import {
   Mail,
   User,
   Image as ImageIcon,
+  Bell,
   Users, 
   Trophy, 
   Timer, 
@@ -366,11 +367,11 @@ const AVATAR_UNLOCKS = [10, 20, 30, 40, 50];
 
 const DAILY_QUEST_REWARDS = [50, 100, 150, 250, 300, 400, 500];
 const HELPER_ITEMS = [
-  { id: 'word_length', name: 'كاشف الحروف', icon: '📝' },
-  { id: 'word_count', name: 'عدد الكلمات', icon: '🔢' },
-  { id: 'time_freeze', name: 'تجميد الوقت', icon: '❄️' },
-  { id: 'hint', name: 'تلميح', icon: '💡' },
-  { id: 'spy_lens', name: 'الجاسوس', icon: '👁️' }
+  { id: 'word_length', name: 'كاشف الحروف', icon: <Type className="w-5 h-5 text-green-500" /> },
+  { id: 'word_count', name: 'عدد الكلمات', icon: <Hash className="w-5 h-5 text-indigo-500" /> },
+  { id: 'time_freeze', name: 'تجميد الوقت', icon: <Snowflake className="w-5 h-5 text-cyan-500" /> },
+  { id: 'hint', name: 'تلميح', icon: <HelpCircle className="w-5 h-5 text-blue-500" /> },
+  { id: 'spy_lens', name: 'الجاسوس', icon: <Eye className="w-5 h-5 text-purple-500" /> }
 ];
 
 const enterFullscreen = () => {
@@ -427,6 +428,22 @@ function normalizeEgyptian(text: string): string {
   normalized = normalized.replace(/ژ/g, 'ز');
   normalized = normalized.replace(/ڤ/g, 'ف');
   return normalized;
+}
+
+// Helper to convert VAPID key
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }
 
 export default function App() {
@@ -798,11 +815,11 @@ export default function App() {
         } else { // Helper items (18% chance)
            type = 'helper';
            const helpers = [
-             { id: 'spy_lens', icon: '👁️' },
-             { id: 'time_freeze', icon: '❄️' },
-             { id: 'hint', icon: '💡' },
-             { id: 'word_count', icon: '🔢' },
-             { id: 'word_length', icon: '📝' }
+             { id: 'spy_lens', icon: <Eye className="w-8 h-8 text-purple-500" /> },
+             { id: 'time_freeze', icon: <Snowflake className="w-8 h-8 text-cyan-500" /> },
+             { id: 'hint', icon: <HelpCircle className="w-8 h-8 text-blue-500" /> },
+             { id: 'word_count', icon: <Hash className="w-8 h-8 text-indigo-500" /> },
+             { id: 'word_length', icon: <Type className="w-8 h-8 text-green-500" /> }
            ];
            const h = helpers[Math.floor(Math.random() * helpers.length)];
            value = h.id;
@@ -1512,6 +1529,100 @@ export default function App() {
   const [joined, setJoined] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('khamin_notifications_enabled') !== 'false');
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
+  const [pushTitle, setPushTitle] = useState('');
+  const [pushBody, setPushBody] = useState('');
+  const [pushUrl, setPushUrl] = useState('/');
+  const [isSendingPush, setIsSendingPush] = useState(false);
+
+  const subscribeToPush = async (force = false) => {
+    if (!notificationsEnabled) return; // Don't subscribe if disabled
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.log('Push notifications not supported');
+      return;
+    }
+
+    // Check current permission
+    if (!force && 'Notification' in window && Notification.permission === 'default') {
+      // Check if we already dismissed the prompt permanently
+      const isDismissed = localStorage.getItem('khamin_push_prompt_dismissed') === 'true';
+      
+      if (!isDismissed) {
+        setShowPushPrompt(true);
+        return;
+      }
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      
+      // Get public key from server
+      const response = await fetch('/api/push/public-key');
+      const { publicKey } = await response.json();
+      
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+
+      // Send subscription to server
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serial: playerSerial,
+          subscription
+        })
+      });
+      console.log('Push subscription successful');
+      setShowPushPrompt(false);
+    } catch (err) {
+      console.error('Failed to subscribe to push:', err);
+    }
+  };
+
+  const unsubscribeFromPush = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      
+      if (subscription) {
+        await subscription.unsubscribe();
+        // Notify server to remove subscription
+        await fetch('/api/push/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            serial: playerSerial,
+            subscription
+          })
+        });
+      }
+      console.log('Push unsubscription successful');
+    } catch (err) {
+      console.error('Failed to unsubscribe from push:', err);
+    }
+  };
+
+  const toggleNotifications = async () => {
+    const newValue = !notificationsEnabled;
+    setNotificationsEnabled(newValue);
+    localStorage.setItem('khamin_notifications_enabled', newValue.toString());
+    
+    if (newValue) {
+      await subscribeToPush(true);
+    } else {
+      await unsubscribeFromPush();
+    }
+    
+    // Update server player data
+    if (socket && isConnected) {
+      socket.emit('update_player_notifications', { serial: playerSerial, enabled: newValue });
+    }
+  };
   const [playerCollection, setPlayerCollection] = useState<any[]>([]);
   const [claimedCollectionRewards, setClaimedCollectionRewards] = useState<any[]>([]);
   const [seenCategoryCounts, setSeenCategoryCounts] = useState<Record<string, number>>(() => {
@@ -3272,6 +3383,10 @@ export default function App() {
         if (!response.ok) throw new Error('Failed to fetch config');
         const config = await response.json();
         
+        // Try to subscribe to push notifications
+        // We do it after a short delay to not block loading
+        setTimeout(() => subscribeToPush(), 60000);
+
         const serverVersion = config.version || '1.1.1';
         setGameVersion(serverVersion);
         setLoadingProgress(50);
@@ -4265,7 +4380,7 @@ export default function App() {
                         </motion.div>
                       ) : (
                         <div className="text-8xl">
-                          {cyclingReward ? cyclingReward.icon : '❓'}
+                          {cyclingReward ? (HELPER_ITEMS.find(h => h.id === cyclingReward.id)?.icon || cyclingReward.icon) : '❓'}
                         </div>
                       )}
                       <h3 className="text-2xl font-black text-white">
@@ -4286,7 +4401,7 @@ export default function App() {
                         </div>
                         {chestReward.helper && chestReward.helper.id !== 'bonus_xp' && (
                           <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white flex items-center justify-center gap-3">
-                            <span className="text-2xl">{chestReward.helper.icon}</span>
+                            <span className="text-2xl">{HELPER_ITEMS.find(h => h.id === chestReward.helper.id)?.icon || chestReward.helper.icon}</span>
                             <div className="text-xl font-black">{chestReward.helper.name}</div>
                           </div>
                         )}
@@ -5449,6 +5564,24 @@ export default function App() {
                       >
                         <span className="text-xs font-black text-brown-muted">بدون إطار</span>
                       </button>                    
+                  </div>
+
+                  {/* Notification Settings */}
+                  <div className="pt-4 border-t border-game space-y-4">
+                    <div className="flex items-center justify-between flex-row-reverse">
+                      <div className="flex items-center gap-2 flex-row-reverse">
+                        <div className="w-8 h-8 bg-accent-purple rounded-xl flex items-center justify-center text-white shadow-sm border-2 border-black">
+                          <Bell className="w-4 h-4" />
+                        </div>
+                        <span className="text-sm font-black text-brown-muted">إشعارات الهاتف</span>
+                      </div>
+                      <button 
+                        onClick={toggleNotifications}
+                        className={`w-12 h-6 rounded-full border-2 border-black transition-all relative ${notificationsEnabled ? 'bg-accent-green' : 'bg-gray-300'}`}
+                      >
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border-2 border-black transition-all ${notificationsEnabled ? 'right-0.5' : 'left-0.5'}`}></div>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Audio Settings */}
@@ -7524,6 +7657,83 @@ export default function App() {
                           </button>
 
                           <div className="border-t-2 border-dashed border-gray-200 pt-8 mt-8">
+                            <h3 className="text-xl font-black text-accent-purple mb-4 flex items-center gap-2">
+                              <Bell className="w-6 h-6" />
+                              إرسال إشعار للهاتف (Push Notification)
+                            </h3>
+                            <p className="text-brown-muted font-bold mb-6">
+                              هذا الإشعار سيظهر على شاشة قفل الهاتف لجميع اللاعبين الذين قاموا بتثبيت اللعبة (PWA) ووافقوا على الإشعارات.
+                            </p>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-black text-brown-dark mb-1">عنوان الإشعار</label>
+                                <input
+                                  type="text"
+                                  value={pushTitle}
+                                  onChange={(e) => setPushTitle(e.target.value)}
+                                  className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-purple outline-none"
+                                  placeholder="مثال: تحديث جديد متاح! 🚀"
+                                  dir="rtl"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-black text-brown-dark mb-1">نص الإشعار</label>
+                                <textarea
+                                  value={pushBody}
+                                  onChange={(e) => setPushBody(e.target.value)}
+                                  className="w-full h-24 p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-purple outline-none resize-none"
+                                  placeholder="اكتب تفاصيل الإشعار هنا..."
+                                  dir="rtl"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-black text-brown-dark mb-1">الرابط (اختياري)</label>
+                                <input
+                                  type="text"
+                                  value={pushUrl}
+                                  onChange={(e) => setPushUrl(e.target.value)}
+                                  className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-purple outline-none"
+                                  placeholder="/"
+                                  dir="ltr"
+                                />
+                              </div>
+                              <button
+                                disabled={isSendingPush || !pushTitle || !pushBody}
+                                onClick={async () => {
+                                  setIsSendingPush(true);
+                                  try {
+                                    const response = await fetch('/api/push/send', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        title: pushTitle,
+                                        body: pushBody,
+                                        url: pushUrl,
+                                        adminToken: localStorage.getItem('khamin_admin_token')
+                                      })
+                                    });
+                                    const res = await response.json();
+                                    if (res.success) {
+                                      showAlert(`تم إرسال الإشعار لـ ${res.sentCount} جهاز بنجاح!`, 'نجاح');
+                                      setPushTitle('');
+                                      setPushBody('');
+                                    } else {
+                                      showAlert('فشل إرسال الإشعار', 'خطأ');
+                                    }
+                                  } catch (err) {
+                                    showAlert('حدث خطأ أثناء الإرسال', 'خطأ');
+                                  } finally {
+                                    setIsSendingPush(false);
+                                  }
+                                }}
+                                className={`w-full py-4 bg-accent-purple hover:bg-purple-600 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1 ${isSendingPush ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >
+                                {isSendingPush ? 'جاري الإرسال...' : 'إرسال إشعار للهواتف الآن'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="border-t-2 border-dashed border-gray-200 pt-8 mt-8">
                             <h3 className="text-2xl font-black text-brown-dark mb-2 flex items-center gap-2">
                               <RefreshCw className="text-accent-blue" />
                               تحديث إجباري لجميع اللاعبين
@@ -9244,7 +9454,7 @@ export default function App() {
             >
               <div 
                 className={`rounded-full flex items-center justify-center text-white font-black shadow-lg border-2 border-white/50 ${
-                  item.type === 'xp' ? 'bg-accent-blue text-[13px] md:text-[13px]' : item.type === 'token' ? 'bg-yellow-500 text-2xl md:text-3xl' : 'bg-accent-green text-2xl md:text-3xl'
+                  item.type === 'xp' ? 'bg-accent-blue text-[13px] md:text-[13px]' : item.type === 'token' ? 'bg-yellow-500 text-2xl md:text-3xl' : 'bg-accent-green-soft text-2xl md:text-3xl'
                 }`}
                 style={{ width: item.size, height: item.size }}
               >
@@ -9284,8 +9494,12 @@ export default function App() {
             </div>
             {Object.entries(collectedRewards.helpers || {}).map(([id, count]) => (
               <div key={id} className="bg-white/50 p-4 rounded-2xl border-2 border-accent-green/20 relative">
-                <div className="text-2xl mb-1">
-                  {( {spy_lens: '👁️', time_freeze: '❄️', hint: '💡', word_count: '🔢', word_length: '📝'} as any)[id]}
+                <div className="text-2xl mb-1 flex justify-center">
+                  {id === 'spy_lens' && <Eye className="w-8 h-8 text-purple-500" />}
+                  {id === 'time_freeze' && <Snowflake className="w-8 h-8 text-cyan-500" />}
+                  {id === 'hint' && <HelpCircle className="w-8 h-8 text-blue-500" />}
+                  {id === 'word_count' && <Hash className="w-8 h-8 text-indigo-500" />}
+                  {id === 'word_length' && <Type className="w-8 h-8 text-green-500" />}
                 </div>
                 <div className="text-[10px] font-black text-accent-green">
                   {( {spy_lens: 'الجاسوس', time_freeze: 'تجميد الوقت', hint: 'تلميح', word_count: 'عدد الكلمات', word_length: 'كاشف الحروف'} as any)[id]} x{count}
@@ -9700,7 +9914,7 @@ export default function App() {
               {/* Rain Gift Event Section - Moved outside and below leaderboard */}
               {gamePolicies.isRainGiftEnabled && (
               <div className="p-2 bg-gradient-to-r from-accent-orange/10 to-accent-green/10 rounded-2xl border-2 border-white shadow-sm box-game">
-              <span className="flex font-bold p-1 py-2 items-center justify-center md:text-[13px] text-[12px] text-accent-orange">هدايا كل يوم الساعة 7 مساء بتوقيت مصر 🤩</span>
+              <span className="flex font-bold p-1 py-2 items-center justify-center md:text-[13px] text-[12px] text-accent-orange">هدايا 🎁 كل يوم الساعة 7 مساء بتوقيت مصر 🌧️</span>
                 <div className="flex items-center justify-between flex-row-reverse">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-accent-orange rounded-full flex items-center justify-center text-white shadow-sm">
@@ -9737,19 +9951,19 @@ export default function App() {
                     <span className="text-yellow-600">Tokens</span> <span className="text-[12px]">{tokens}</span>
                   </span>
                   <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-[13px]">👁️</span> <span className="text-[12px]">{ownedHelpers.spy_lens || 0}</span>
+                    <span className="text-[13px]"><Eye className="w-4 h-4 text-purple-500" /></span> <span className="text-[12px]">{ownedHelpers.spy_lens || 0}</span>
                   </span>
                   <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-[13px]">💡</span> <span className="text-[12px]">{ownedHelpers.hint || 0}</span>
+                    <span className="text-[13px]"><HelpCircle className="w-4 h-4 text-blue-500" /></span> <span className="text-[12px]">{ownedHelpers.hint || 0}</span>
                   </span>
                   <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-[13px]">❄️</span> <span className="text-[12px]">{ownedHelpers.time_freeze || 0}</span>
+                    <span className="text-[13px]"><Snowflake className="w-4 h-4 text-cyan-500" /></span> <span className="text-[12px]">{ownedHelpers.time_freeze || 0}</span>
                   </span>
                   <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-[13px]">🔢</span> <span className="text-[12px]">{ownedHelpers.word_count || 0}</span>
+                    <span className="text-[13px]"><Hash className="w-4 h-4 text-indigo-500" /></span> <span className="text-[12px]">{ownedHelpers.word_count || 0}</span>
                   </span>
                   <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-[13px]">📝</span> <span className="text-[12px]">{ownedHelpers.word_length || 0}</span>
+                    <span className="text-[13px]"><Type className="w-4 h-4 text-green-500" /></span> <span className="text-[12px]">{ownedHelpers.word_length || 0}</span>
                   </span>
                 </div>
               </div>
@@ -11303,6 +11517,49 @@ export default function App() {
         )}
       </AnimatePresence>
 
+
+      {/* Push Notification Prompt */}
+      <AnimatePresence>
+        {showPushPrompt && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 50 }}
+            className="fixed bottom-6 right-6 left-6 md:left-auto md:w-96 z-[7000]"
+          >
+            <div className="box-game p-6 bg-white border-4 border-accent-purple shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-12 h-12 bg-accent-purple rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm border-2 border-black">
+                  <Bell className="w-6 h-6 animate-bounce" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-black text-main leading-tight mb-1">تفعيل الإشعارات؟ 🔔</h3>
+                  <p className="text-xs font-bold text-brown-muted">
+                    كن أول من يعرف عن التحديثات الجديدة، الهدايا اليومية، والفعاليات الحصرية!
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    localStorage.setItem('khamin_push_prompt_dismissed', 'true');
+                    setShowPushPrompt(false);
+                  }}
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-brown-dark rounded-xl font-black text-sm transition-all border-2 border-black"
+                >
+                  ليس الآن
+                </button>
+                <button
+                  onClick={() => subscribeToPush(true)}
+                  className="flex-2 py-3 bg-accent-purple hover:bg-purple-600 text-white rounded-xl font-black text-sm transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transform hover:-translate-y-1"
+                >
+                  تفعيل الآن 🚀
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Connection Status Indicator */}
       <AnimatePresence>
