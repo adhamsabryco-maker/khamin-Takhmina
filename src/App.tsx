@@ -1535,21 +1535,36 @@ export default function App() {
       const fetchPushStats = async () => {
         try {
           const token = localStorage.getItem('khamin_admin_token');
-          if (!token) return;
+          if (!token) {
+            console.log("No admin token found in localStorage");
+            return;
+          }
+          console.log("Fetching push stats with token...");
           const response = await fetch(`/api/admin/push-stats?token=${token}`);
+          if (!response.ok) {
+            console.error("Push stats API failed:", response.status);
+            setPushStatsError(`خطأ في جلب البيانات (${response.status})`);
+            return;
+          }
           const data = await response.json();
+          console.log("Push stats received:", data);
           if (data.count !== undefined) {
-            setPushStats({ count: data.count });
+            setPushStats({ count: data.count, totalPlayers: data.totalPlayers || 0 });
+            setPushStatsError(null);
+          } else {
+            console.warn("Push stats response missing count:", data);
+            setPushStatsError("بيانات غير مكتملة");
           }
         } catch (err) {
           console.error("Error fetching push stats:", err);
+          setPushStatsError("خطأ في الاتصال");
         }
       };
       fetchPushStats();
       const interval = setInterval(fetchPushStats, 30000); // Update every 30s
       return () => clearInterval(interval);
     }
-  }, [isAdmin]);
+  }, [isAdmin, showAdminDashboard, adminTab]);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem('khamin_notifications_enabled');
@@ -1565,7 +1580,8 @@ export default function App() {
   const [pushBody, setPushBody] = useState('');
   const [pushUrl, setPushUrl] = useState('/');
   const [isSendingPush, setIsSendingPush] = useState(false);
-  const [pushStats, setPushStats] = useState<{ count: number } | null>(null);
+  const [pushStats, setPushStats] = useState<{ count: number, totalPlayers: number } | null>(null);
+  const [pushStatsError, setPushStatsError] = useState<string | null>(null);
 
   const subscribeToPush = async (force = false) => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -4440,8 +4456,10 @@ export default function App() {
                           📦
                         </motion.div>
                       ) : (
-                        <div className="text-8xl bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 flex items-center justify-center gap-3">
-                          {cyclingReward ? (HELPER_ITEMS.find(h => h.id === cyclingReward.id)?.icon || cyclingReward.icon) : '❓'}
+                        <div className="w-40 h-40 bg-white rounded-[32px] border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center mx-auto mb-4">
+                          <div className="scale-[5] transform flex items-center justify-center">
+                            {cyclingReward ? (HELPER_ITEMS.find(h => h.id === cyclingReward.id)?.icon || cyclingReward.icon) : <span className="text-2xl">❓</span>}
+                          </div>
                         </div>
                       )}
                       <h3 className="text-2xl font-black text-white">
@@ -4457,23 +4475,30 @@ export default function App() {
                       <div className="text-8xl mb-4 animate-bounce">✨</div>
                       <h3 className="text-3xl font-black text-white mb-2">مبروك!</h3>
                       <div className="space-y-3">
-                        <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white">
+                        <div className="bg-white p-4 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black">
                           <div className="text-xl font-black">+{chestReward.xp} XP</div>
                         </div>
                         {chestReward.helper && chestReward.helper.id !== 'bonus_xp' && (
-                          <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white flex items-center justify-center gap-3">
-                            <span className="text-2xl">{HELPER_ITEMS.find(h => h.id === chestReward.helper.id)?.icon || chestReward.helper.icon}</span>
-                            <div className="text-xl font-black">{chestReward.helper.name}</div>
+                          <div className="bg-white p-4 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black flex items-center justify-center gap-4">
+                            <div className="w-16 h-16 bg-gray-50 rounded-xl border-2 border-black flex items-center justify-center">
+                              <div className="scale-[2.5] transform flex items-center justify-center">
+                                {HELPER_ITEMS.find(h => h.id === chestReward.helper.id)?.icon || chestReward.helper.icon}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs font-bold text-gray-500">وسيلة مساعدة</div>
+                              <div className="text-xl font-black">{chestReward.helper.name}</div>
+                            </div>
                           </div>
                         )}
                         {chestReward.helper && chestReward.helper.id === 'bonus_xp' && (
-                          <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white flex items-center justify-center gap-3">
+                          <div className="bg-white p-4 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black flex items-center justify-center gap-3">
                             <span className="text-2xl">⭐</span>
                             <div className="text-xl font-black">تم تحويل الوسيلة إلى 100 XP</div>
                           </div>
                         )}
                         {chestReward.tokens > 0 && (
-                          <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white">
+                          <div className="bg-white p-4 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black">
                             <div className="text-xl font-black">+{chestReward.tokens} Tokens</div>
                           </div>
                         )}
@@ -7736,19 +7761,49 @@ export default function App() {
                               إرسال إشعار للهاتف (Push Notification)
                             </h3>
 
-                            {pushStats !== null && (
-                              <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded-xl mb-6 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="p-2 bg-blue-100 rounded-lg">
-                                    <Bell className="w-5 h-5 text-blue-600" />
+                            {pushStats === null ? (
+                              <div className="bg-gray-50 border-2 border-dashed border-gray-200 p-4 rounded-xl mb-6 flex items-center justify-center gap-3">
+                                {pushStatsError ? (
+                                  <p className="text-sm font-bold text-red-500">{pushStatsError}</p>
+                                ) : (
+                                  <>
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                                    <p className="text-sm font-bold text-gray-500">جاري جلب الإحصائيات...</p>
+                                  </>
+                                )}
+                                {!localStorage.getItem('khamin_admin_token') && (
+                                  <p className="text-xs text-red-500 font-bold"> (يرجى تسجيل الدخول مجدداً لتفعيل الإحصائيات)</p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded-xl flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-blue-100 rounded-lg">
+                                      <Bell className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-bold text-blue-800">المشتركين في الإشعارات</p>
+                                      <p className="text-xs text-blue-600">الذين وافقوا على الإشعارات</p>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <p className="text-sm font-bold text-blue-800">اللاعبين المشتركين في الإشعارات</p>
-                                    <p className="text-xs text-blue-600">هؤلاء هم اللاعبون الذين وافقوا على استقبال الإشعارات</p>
+                                  <div className="text-2xl font-black text-blue-700">
+                                    {pushStats.count}
                                   </div>
                                 </div>
-                                <div className="text-2xl font-black text-blue-700">
-                                  {pushStats.count}
+                                <div className="bg-purple-50 border-2 border-purple-200 p-4 rounded-xl flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-purple-100 rounded-lg">
+                                      <Users className="w-5 h-5 text-purple-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-bold text-purple-800">إجمالي اللاعبين</p>
+                                      <p className="text-xs text-purple-600">جميع اللاعبين المسجلين</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-2xl font-black text-purple-700">
+                                    {pushStats.totalPlayers}
+                                  </div>
                                 </div>
                               </div>
                             )}
