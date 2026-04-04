@@ -448,7 +448,20 @@ const app = express();
     }
   });
 
-  app.post("/api/push/send", express.json(), (req, res) => {
+  app.get("/api/admin/push-stats", (req, res) => {
+    const token = req.query.token as string;
+    if (!adminTokens.has(token)) return res.status(403).json({ error: "Unauthorized" });
+    
+    const stats = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM players 
+      WHERE notificationsEnabled = 1
+    `).get() as any;
+    
+    res.json({ count: stats.count || 0 });
+  });
+
+  app.post("/api/push/send", express.json(), async (req, res) => {
     const { title, body, url, adminToken } = req.body;
     if (!adminTokens.has(adminToken)) return res.status(403).json({ error: "Unauthorized" });
     
@@ -465,24 +478,29 @@ const app = express();
     
     console.log(`[Push] Sending notification to ${subscriptions.length} devices...`);
     
-    const sendPromises = subscriptions.map(sub => {
+    const sendPromises = subscriptions.map(async (sub) => {
       try {
         const subscription = JSON.parse(sub.subscription);
-        return webpush.sendNotification(subscription, payload).catch(err => {
-          if (err.statusCode === 410 || err.statusCode === 404) {
-            // Subscription expired or no longer valid, remove it
-            db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
-          } else {
-            console.error("Error sending push notification:", err);
-          }
-        });
-      } catch (e) {
-        return Promise.resolve();
+        await webpush.sendNotification(subscription, payload);
+        return true; // Success
+      } catch (err: any) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          // Subscription expired or no longer valid, remove it
+          db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
+        } else {
+          console.error("Error sending push notification:", err);
+        }
+        return false; // Failure
       }
     });
 
-    Promise.all(sendPromises).then(() => {
-      res.json({ success: true, sentCount: subscriptions.length });
+    const results = await Promise.all(sendPromises);
+    const successfulCount = results.filter(r => r === true).length;
+
+    res.json({ 
+      success: true, 
+      sentCount: successfulCount,
+      totalAttempted: subscriptions.length 
     });
   });
 
