@@ -2266,6 +2266,9 @@ io.on("connection", (socket) => {
       const player = allPlayers.get(serial);
       if (!player) return;
 
+      // Check for daily reset before claiming rewards
+      checkDailyReset(player, serial, socket);
+
       const now = Date.now();
       const lastClaim = player.lastDailyClaim || 0;
       
@@ -2631,6 +2634,9 @@ io.on("connection", (socket) => {
       
       const player = allPlayers.get(serial);
       if (player && callback) {
+        // Check for daily reset as soon as player connects/gets data
+        checkDailyReset(player, serial, socket);
+
         // Update IP and fingerprint
         const forwardedFor = socket.handshake.headers['x-forwarded-for'];
         const ip = Array.isArray(forwardedFor) ? forwardedFor[0] : (forwardedFor ? forwardedFor.split(',')[0].trim() : socket.handshake.address);
@@ -3272,7 +3278,7 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("use_card", ({ roomId, cardType, serial }) => {
+    socket.on("use_card", ({ roomId, cardType, serial, isAdReward }) => {
       const room = rooms.get(roomId);
       if (!room || room.isPaused) return;
 
@@ -3286,9 +3292,43 @@ io.on("connection", (socket) => {
       const hasFreeUse = dbPlayer && dbPlayer.ownedHelpers && dbPlayer.ownedHelpers[cardType] > 0;
       const hasPro = dbPlayer && dbPlayer.proPackageExpiry && dbPlayer.proPackageExpiry > Date.now();
       const hasUnlockedHelpers = dbPlayer && dbPlayer.unlockedHelpersExpiry && dbPlayer.unlockedHelpersExpiry > Date.now();
+      
+      // Check if this use is from a verified ad reward
+      const isVerifiedAdReward = isAdReward && room.adRewardedPowerUps && room.adRewardedPowerUps.get(socket.id) === cardType;
 
       // Helper function to deduct free use
       const deductFreeUse = () => {
+        const requiredLevels: { [key: string]: number } = {
+          'hint': 10,
+          'word_length': 20,
+          'time_freeze': 30,
+          'word_count': 40,
+          'spy_lens': 50
+        };
+        
+        const playerLevel = getLevel(dbPlayer.xp || 0);
+        const isLevelLocked = cardType !== 'quick_guess' && playerLevel < (requiredLevels[cardType] || 0);
+
+        if (isVerifiedAdReward) {
+          // Consume the ad reward
+          if (room.adRewardedPowerUps) room.adRewardedPowerUps.delete(socket.id);
+          
+          // If they have a free use (gift), we consume it
+          // This is mandatory if they are level-locked, and optional but preferred if they aren't
+          if (hasFreeUse && !hasPro && !hasUnlockedHelpers) {
+            dbPlayer.ownedHelpers[cardType] -= 1;
+            if (dbPlayer.ownedHelpers[cardType] <= 0) {
+              delete dbPlayer.ownedHelpers[cardType];
+            }
+            savePlayerData(serial);
+            socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers });
+            
+            // Update room player
+            player.ownedHelpers = dbPlayer.ownedHelpers;
+          }
+          return;
+        }
+        
         if (hasFreeUse && !hasPro && !hasUnlockedHelpers) { // Only deduct if NOT Pro and NOT using Unlocked Helpers
           dbPlayer.ownedHelpers[cardType] -= 1;
           if (dbPlayer.ownedHelpers[cardType] <= 0) {
@@ -3304,7 +3344,7 @@ io.on("connection", (socket) => {
 
       if (cardType === "hint") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 10 || hasFreeUse || hasPro || hasUnlockedHelpers) && (!player.hintCount || player.hintCount < 2)) {
+        if ((playerLevel >= 10 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && (!player.hintCount || player.hintCount < 2)) {
           deductFreeUse();
           if (!player.hintCount) player.hintCount = 0;
           player.hintCount++;
@@ -3329,7 +3369,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "word_length") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 20 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.wordLengthUsed) {
+        if ((playerLevel >= 20 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.wordLengthUsed) {
           deductFreeUse();
           player.wordLengthUsed = true;
           const targetName = player.targetImage.name;
@@ -3339,7 +3379,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "word_count") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 40 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.wordCountUsed) {
+        if ((playerLevel >= 40 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.wordCountUsed) {
           deductFreeUse();
           player.wordCountUsed = true;
           const targetName = player.targetImage.name;
@@ -3349,7 +3389,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "time_freeze") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 30 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.timeFreezeUsed && !room.isFrozen) {
+        if ((playerLevel >= 30 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.timeFreezeUsed && !room.isFrozen) {
           deductFreeUse();
           player.timeFreezeUsed = true;
           room.isFrozen = true;
@@ -3359,7 +3399,7 @@ io.on("connection", (socket) => {
         }
       } else if (cardType === "spy_lens") {
         const playerLevel = getLevel(player.xp || 0);
-        if ((playerLevel >= 50 || hasFreeUse || hasPro || hasUnlockedHelpers) && !player.spyLensUsed) {
+        if ((playerLevel >= 50 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.spyLensUsed) {
           deductFreeUse();
           player.spyLensUsed = true;
           // The player wants to see their own target image (which is what the opponent sees)
@@ -3390,15 +3430,15 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("ad_started", ({ roomId, powerUpName }) => {
+    socket.on("ad_started", ({ roomId, powerUpName, helperId }) => {
       const room = rooms.get(roomId);
       if (room) {
         if (!room.adPausedPlayers) room.adPausedPlayers = new Set();
         room.adPausedPlayers.add(socket.id);
         
         if (powerUpName) {
-          if (!room.powerUpAdsInProgress) room.powerUpAdsInProgress = new Set();
-          room.powerUpAdsInProgress.add(socket.id);
+          if (!room.powerUpAdsInProgress) room.powerUpAdsInProgress = new Map();
+          room.powerUpAdsInProgress.set(socket.id, helperId || true);
           
           const sender = room.players.find((p: any) => p.id === socket.id);
           if (sender) {
@@ -3412,6 +3452,14 @@ io.on("connection", (socket) => {
             });
           }
         }
+      }
+    });
+
+    socket.on("ad_reward_ready", ({ roomId, helperId }) => {
+      const room = rooms.get(roomId);
+      if (room && room.powerUpAdsInProgress && room.powerUpAdsInProgress.has(socket.id)) {
+        if (!room.adRewardedPowerUps) room.adRewardedPowerUps = new Map();
+        room.adRewardedPowerUps.set(socket.id, helperId);
       }
     });
 
