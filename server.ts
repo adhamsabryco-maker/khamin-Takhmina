@@ -435,12 +435,18 @@ const app = express();
   });
 
   app.post("/api/push/unsubscribe", express.json(), (req, res) => {
-    const { subscription } = req.body;
+    const { serial, subscription } = req.body;
     if (!subscription) return res.status(400).json({ error: "No subscription provided" });
     
     try {
       const subStr = JSON.stringify(subscription);
       db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(subStr);
+      
+      // Also ensure notificationsEnabled is 0 for this player
+      if (serial) {
+        db.prepare('UPDATE players SET notificationsEnabled = 0 WHERE serial = ?').run(serial);
+      }
+      
       res.json({ success: true });
     } catch (err) {
       console.error("Failed to remove push subscription:", err);
@@ -452,13 +458,21 @@ const app = express();
     const token = req.query.token as string;
     if (!adminTokens.has(token)) return res.status(403).json({ error: "Unauthorized" });
     
+    // Count unique players who have a subscription AND have enabled notifications
     const stats = db.prepare(`
-      SELECT COUNT(*) as count 
-      FROM players 
-      WHERE notificationsEnabled = 1
+      SELECT COUNT(DISTINCT ps.serial) as count 
+      FROM push_subscriptions ps
+      INNER JOIN players p ON ps.serial = p.serial
+      WHERE p.notificationsEnabled = 1
     `).get() as any;
+
+    // Also get total players count
+    const totalPlayers = db.prepare('SELECT COUNT(*) as count FROM players').get() as any;
     
-    res.json({ count: stats.count || 0 });
+    res.json({ 
+      count: stats.count || 0,
+      totalPlayers: totalPlayers.count || 0
+    });
   });
 
   app.post("/api/push/send", express.json(), async (req, res) => {
@@ -844,7 +858,9 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN blockedFingerprints TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''`); } catch (e) {}
-  try { db.exec(`ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 1`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 0`); } catch (e) {}
+  // Reset everyone to 0 since this is a new feature and we want to ensure accuracy
+  db.prepare('UPDATE players SET notificationsEnabled = 0').run();
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -1089,7 +1105,7 @@ const app = express();
         reportedSerials: JSON.stringify(player.reportedSerials || []),
         selectedFrame: player.selectedFrame || '',
         lastRainGiftResetDay: player.lastRainGiftResetDay || null,
-        notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 1
+        notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -1129,7 +1145,7 @@ const app = express();
         reportedSerials: JSON.stringify(player.reportedSerials || []),
         selectedFrame: player.selectedFrame || '',
         lastRainGiftResetDay: player.lastRainGiftResetDay || null,
-        notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 1
+        notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0
       });
     }
   });
@@ -1193,7 +1209,7 @@ const app = express();
           reportedSerials: JSON.parse(row.reportedSerials || '[]'),
           selectedFrame: row.selectedFrame || '',
           lastRainGiftResetDay: row.lastRainGiftResetDay || null,
-          notificationsEnabled: row.notificationsEnabled !== undefined ? row.notificationsEnabled : 1
+          notificationsEnabled: row.notificationsEnabled !== undefined ? row.notificationsEnabled : 0
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
