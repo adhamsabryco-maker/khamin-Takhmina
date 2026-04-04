@@ -3434,22 +3434,27 @@ io.on("connection", (socket) => {
       const room = rooms.get(roomId);
       if (room) {
         if (!room.adPausedPlayers) room.adPausedPlayers = new Set();
+        
+        // Only emit message if player was NOT already in adPausedPlayers
+        const alreadyInAd = room.adPausedPlayers.has(socket.id);
         room.adPausedPlayers.add(socket.id);
         
         if (powerUpName) {
           if (!room.powerUpAdsInProgress) room.powerUpAdsInProgress = new Map();
           room.powerUpAdsInProgress.set(socket.id, helperId || true);
           
-          const sender = room.players.find((p: any) => p.id === socket.id);
-          if (sender) {
-            const verb = sender.gender === 'girl' ? 'تقوم' : 'يقوم';
-            const actionText = powerUpName === 'استلام مكافأة' 
-              ? `بمشاهدة إعلان لاستلام مكافأة`
-              : `بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"`;
-            io.to(roomId).emit("chat_bubble", { 
-              senderId: "system", 
-              text: `${verb} ${sender.name} ${actionText}، انتظر قليلاً.` 
-            });
+          if (!alreadyInAd) {
+            const sender = room.players.find((p: any) => p.id === socket.id);
+            if (sender) {
+              const verb = sender.gender === 'girl' ? 'تقوم' : 'يقوم';
+              const actionText = powerUpName === 'استلام مكافأة' 
+                ? `بمشاهدة إعلان لاستلام مكافأة`
+                : `بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"`;
+              io.to(roomId).emit("chat_bubble", { 
+                senderId: "system", 
+                text: `${verb} ${sender.name} ${actionText}، انتظر قليلاً.` 
+              });
+            }
           }
         }
       }
