@@ -217,7 +217,8 @@ const app = express();
     termsAr: "الشروط والأحكام الافتراضية للعبة خمن تخمينة.\n\n1. يجب احترام جميع اللاعبين.\n2. يمنع استخدام أي برامج مساعدة أو غش.\n3. الإدارة غير مسؤولة عن أي خسارة للبيانات.",
     termsEn: "Default Terms and Conditions for Guess Guess game.\n\n1. All players must be respected.\n2. Use of any helper programs or cheating is prohibited.\n3. The administration is not responsible for any data loss.",
     privacyAr: "سياسة الخصوصية للعبة خمن تخمينة.\n\n1. نحن نقوم بجمع بياناتك الأساسية مثل الاسم والصورة الرمزية.\n2. لا نقوم بمشاركة بياناتك مع أي طرف ثالث.\n3. يتم استخدام البيانات لتحسين تجربة اللعب فقط.",
-    privacyEn: "Privacy Policy for Guess Guess game.\n\n1. We collect your basic data such as name and avatar.\n2. We do not share your data with any third party.\n3. Data is used only to improve the gaming experience."
+    privacyEn: "Privacy Policy for Guess Guess game.\n\n1. We collect your basic data such as name and avatar.\n2. We do not share your data with any third party.\n3. Data is used only to improve the gaming experience.",
+    isRainGiftEnabled: true
   };
   const configPath = path.join(__dirname, 'public/uploads/config.json');
   
@@ -562,7 +563,9 @@ const app = express();
     blockedSerials?: string[],
     blockedFingerprints?: string[],
     recentOpponents?: { serial: string, name: string, avatar: string, selectedFrame?: string, timestamp: number, level?: number, xp?: number }[],
-    reportedSerials?: string[]
+    reportedSerials?: string[],
+    selectedFrame?: string,
+    lastRainGiftResetDay?: string
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -690,6 +693,7 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN adsWatchedToday INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastRainGiftResetDay TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN dailyQuestStreak INTEGER DEFAULT 1`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastDailyClaim INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN weeklyTokensClaimed INTEGER DEFAULT 0`); } catch (e) {}
@@ -862,9 +866,34 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay)
   `);
+
+  // Helper to check and perform daily reset for Rain Gift rewards
+  function checkDailyReset(player: any, serial: string, socket?: any) {
+    if (!player) return;
+    
+    const getEgyptDay = () => {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    };
+    
+    const currentDay = getEgyptDay();
+    if (player.lastRainGiftResetDay !== currentDay) {
+      player.ownedHelpers = {};
+      player.tokens = 0; // Reset tokens as requested: "بما فيهم الـ Tokens"
+      player.lastRainGiftResetDay = currentDay;
+      console.log(`[Rain Gift] Daily reset for ${serial} on ${currentDay}`);
+      savePlayerData(serial);
+      if (socket) {
+        socket.emit("player_data_update", { 
+          serial, 
+          tokens: player.tokens, 
+          ownedHelpers: player.ownedHelpers 
+        });
+      }
+    }
+  }
 
   function savePlayerData(serial: string) {
     try {
@@ -900,7 +929,8 @@ const app = express();
         blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
         recentOpponents: JSON.stringify(player.recentOpponents || []),
         reportedSerials: JSON.stringify(player.reportedSerials || []),
-        selectedFrame: player.selectedFrame || ''
+        selectedFrame: player.selectedFrame || '',
+        lastRainGiftResetDay: player.lastRainGiftResetDay || null
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -938,7 +968,8 @@ const app = express();
         blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
         recentOpponents: JSON.stringify(player.recentOpponents || []),
         reportedSerials: JSON.stringify(player.reportedSerials || []),
-        selectedFrame: player.selectedFrame || ''
+        selectedFrame: player.selectedFrame || '',
+        lastRainGiftResetDay: player.lastRainGiftResetDay || null
       });
     }
   });
@@ -1000,7 +1031,8 @@ const app = express();
           blockedFingerprints: JSON.parse(row.blockedFingerprints || '[]'),
           recentOpponents: JSON.parse(row.recentOpponents || '[]'),
           reportedSerials: JSON.parse(row.reportedSerials || '[]'),
-          selectedFrame: row.selectedFrame || ''
+          selectedFrame: row.selectedFrame || '',
+          lastRainGiftResetDay: row.lastRainGiftResetDay || null
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -1039,6 +1071,9 @@ const app = express();
     
     const privacyEnRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('privacy_policy_en') as any;
     if (privacyEnRow && privacyEnRow.value) gamePolicies.privacyEn = privacyEnRow.value;
+    
+    const rainGiftRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('is_rain_gift_enabled') as any;
+    if (rainGiftRow && rainGiftRow.value !== undefined) gamePolicies.isRainGiftEnabled = rainGiftRow.value === 'true';
   } catch (err) {
     console.error("Failed to load game policies:", err);
   }
@@ -1792,6 +1827,7 @@ const app = express();
           xp: (botPersona.level - 1) * (botPersona.level - 1) * 50, // Approximate XP for level
           isBot: true,
           persona: botPersona.personality,
+          selectedFrame: '',
           socket: {
             id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
             emit: (event: string, data: any) => {
@@ -2283,9 +2319,9 @@ io.on("connection", (socket) => {
       const playerLevel = getLevel(player.xp);
       let helperReward: any = randomHelper;
 
-      // Level 50+ Pro Logic: Helper turns into 100 XP
-      if (playerLevel >= 50 && isPro) {
-        helperReward = { id: 'bonus_xp', name: '100 XP إضافية (Pro)', icon: '⭐' };
+      // Level 50+ Logic: Helper turns into 100 XP
+      if (playerLevel >= 50) {
+        helperReward = { id: 'bonus_xp', name: '100 XP إضافية', icon: '⭐' };
         xpReward += 100;
       }
 
@@ -2312,10 +2348,10 @@ io.on("connection", (socket) => {
         player.tokens = (player.tokens || 0) + tokenReward;
       }
       
-      // Clear old helpers and add the new one (if any and not virtual)
-      player.ownedHelpers = {};
+      // Add the new helper (if any and not virtual)
+      if (!player.ownedHelpers) player.ownedHelpers = {};
       if (helperReward && helperReward.id !== 'bonus_xp') {
-        player.ownedHelpers[helperReward.id] = 1;
+        player.ownedHelpers[helperReward.id] = (player.ownedHelpers[helperReward.id] || 0) + 1;
       }
 
       // Update streak
@@ -2340,6 +2376,53 @@ io.on("connection", (socket) => {
         xp: player.xp,
         level: player.level,
         streak: 0,
+        wins: player.wins || 0,
+        tokens: player.tokens
+      });
+    });
+
+    socket.on("claim_rain_gift", ({ serial, rewards, isPro }) => {
+      const player = allPlayers.get(serial);
+      if (!player) return;
+
+      // Check for daily reset
+      checkDailyReset(player, serial, socket);
+
+      // Apply rewards
+      if (rewards.xp) player.xp = (player.xp || 0) + rewards.xp;
+      if (rewards.tokens) player.tokens = (player.tokens || 0) + rewards.tokens;
+      
+      if (rewards.helpers && typeof rewards.helpers === 'object') {
+        if (!player.ownedHelpers) player.ownedHelpers = {};
+        const playerLevel = getLevel(player.xp);
+        
+        Object.entries(rewards.helpers).forEach(([helperId, count]) => {
+          if (typeof count === 'number' && count > 0) {
+            // Level 50+ or Level 50+ Pro: Convert to XP
+            if (playerLevel >= 50) {
+              player.xp = (player.xp || 0) + (count * 100);
+            } else {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + count;
+            }
+          }
+        });
+      }
+
+      player.level = getLevel(player.xp);
+      savePlayerData(serial);
+
+      socket.emit("player_data_update", { 
+        serial, 
+        xp: player.xp, 
+        tokens: player.tokens, 
+        ownedHelpers: player.ownedHelpers,
+        level: player.level
+      });
+      
+      socket.emit("player_stats_update", {
+        xp: player.xp,
+        level: player.level,
+        streak: player.streak || 0,
         wins: player.wins || 0,
         tokens: player.tokens
       });
@@ -2583,10 +2666,8 @@ io.on("connection", (socket) => {
                  date1.getUTCDate() === date2.getUTCDate();
         };
 
-        if (lastClaim !== 0 && !isSameDay(now, lastClaim)) {
-          player.ownedHelpers = {};
-          savePlayerData(serial);
-        }
+        // The checkDailyReset function handles daily resets for ownedHelpers and tokens.
+        // We don't need to clear ownedHelpers here based on lastDailyClaim.
 
         // Check if there's an active global reward
         if (activeGlobalReward && activeGlobalReward.expiresAt > Date.now()) {
@@ -2672,6 +2753,9 @@ io.on("connection", (socket) => {
         socket.emit("auth_error");
         return;
       }
+      
+      // Check for daily reset
+      checkDailyReset(serverPlayer, serial, socket);
       
       // Safety: Unban admin if they were accidentally banned
       if (serverPlayer.email === 'adhamsabry.co@gmail.com' && (serverPlayer.banUntil > 0 || serverPlayer.isPermanentBan)) {
@@ -3197,13 +3281,15 @@ io.on("connection", (socket) => {
       if (!player || !opponent) return;
 
       const dbPlayer = allPlayers.get(serial);
+      if (dbPlayer) checkDailyReset(dbPlayer, serial, socket);
+      
       const hasFreeUse = dbPlayer && dbPlayer.ownedHelpers && dbPlayer.ownedHelpers[cardType] > 0;
       const hasPro = dbPlayer && dbPlayer.proPackageExpiry && dbPlayer.proPackageExpiry > Date.now();
       const hasUnlockedHelpers = dbPlayer && dbPlayer.unlockedHelpersExpiry && dbPlayer.unlockedHelpersExpiry > Date.now();
 
       // Helper function to deduct free use
       const deductFreeUse = () => {
-        if (hasFreeUse) { // Always deduct free use if available, even for Pro users, to clear the quest icon
+        if (hasFreeUse && !hasPro && !hasUnlockedHelpers) { // Only deduct if NOT Pro and NOT using Unlocked Helpers
           dbPlayer.ownedHelpers[cardType] -= 1;
           if (dbPlayer.ownedHelpers[cardType] <= 0) {
             delete dbPlayer.ownedHelpers[cardType];
@@ -3884,11 +3970,13 @@ io.on("connection", (socket) => {
           gamePolicies.termsEn = data.termsEn;
           gamePolicies.privacyAr = data.privacyAr;
           gamePolicies.privacyEn = data.privacyEn;
+          gamePolicies.isRainGiftEnabled = data.isRainGiftEnabled;
           
           db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('terms_policy_ar', data.termsAr);
           db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('terms_policy_en', data.termsEn);
           db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('privacy_policy_ar', data.privacyAr);
           db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('privacy_policy_en', data.privacyEn);
+          db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('is_rain_gift_enabled', data.isRainGiftEnabled ? 'true' : 'false');
           
           io.emit('policies_update', gamePolicies);
           callback({ success: true });
@@ -4826,9 +4914,6 @@ io.on("connection", (socket) => {
           
           savePlayerData(p.serial);
           
-          // Clear ownedHelpers after the match ends (single use per match)
-          player.ownedHelpers = {};
-          
           // Deduct token logic:
           // Always deduct if useToken was true, regardless of win/loss/level
           if (p.useToken && (player.tokens || 0) > 0) {
@@ -4885,9 +4970,6 @@ io.on("connection", (socket) => {
                   data.recentOpponents = data.recentOpponents.slice(0, 10);
                 }
               }
-              
-              // Clear ownedHelpers after the match ends (single use per match)
-              data.ownedHelpers = {};
               
               if (p.useToken && (data.tokens || 0) > 0) {
                 data.tokens = (data.tokens || 0) - 1;
