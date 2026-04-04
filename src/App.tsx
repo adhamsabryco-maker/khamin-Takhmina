@@ -64,6 +64,8 @@ import {
   History,
   Activity,
   MessageCircle,
+  Clock,
+  CloudRain,
 } from 'lucide-react';
 
 const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
@@ -105,6 +107,9 @@ declare global {
 // Audio URLs
 const SOUNDS = {
   hammer: '/sounds/hammer.mp3',
+  pop: '/sounds/pop.mp3',
+  xp: '/sounds/xp.mp3',
+  prize: '/sounds/prize.mp3',
   win: '/sounds/win.mp3',
   lose: '/sounds/lose.mp3',
   countdown: '/sounds/countdown.mp3',
@@ -688,6 +693,133 @@ export default function App() {
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
   const [showMatchIntro, setShowMatchIntro] = useState(false);
 
+  // Rain Gift Event States
+  const [showRainGiftGame, setShowRainGiftGame] = useState(false);
+  const [isRainGiftActive, setIsRainGiftActive] = useState(false);
+  const [rainGiftCountdown, setRainGiftCountdown] = useState<string>('');
+  const [fallingItems, setFallingItems] = useState<any[]>([]);
+  const [collectedRewards, setCollectedRewards] = useState({ xp: 0, tokens: 0, helpers: {} as Record<string, number> });
+  const [gameTimer, setGameTimer] = useState(180);
+  const [showRainGiftSummary, setShowRainGiftSummary] = useState(false);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      try {
+        const egyptTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+        const target = new Date(egyptTime);
+        target.setHours(19, 0, 0, 0);
+        
+        const diffMinutes = (egyptTime.getTime() - target.getTime()) / (1000 * 60);
+        const active = diffMinutes >= 0 && diffMinutes <= 3;
+        
+        setIsRainGiftActive(active);
+        
+        if (active) {
+          setRainGiftCountdown('الحدث متاح الآن!');
+        } else {
+          if (egyptTime > target) {
+            target.setDate(target.getDate() + 1);
+          }
+          const diff = target.getTime() - egyptTime.getTime();
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+          setRainGiftCountdown(`${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+        }
+      } catch (e) {
+        // Fallback if timezone not supported
+        const utcHour = now.getUTCHours();
+        const targetUTCHour = 17; // 7 PM Egypt is roughly 17:00 UTC
+        const active = utcHour === targetUTCHour && now.getUTCMinutes() <= 3;
+        setIsRainGiftActive(active);
+        setRainGiftCountdown(active ? 'الحدث متاح الآن!' : 'قريباً...');
+      }
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    let spawnInterval: NodeJS.Timeout;
+    
+    if (showRainGiftGame) {
+      setGameTimer(180);
+      setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
+      setFallingItems([]);
+      
+      interval = setInterval(() => {
+        setGameTimer(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            clearInterval(spawnInterval);
+            setTimeout(() => {
+              setShowRainGiftGame(false);
+              setShowRainGiftSummary(true);
+            }, 100);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      spawnInterval = setInterval(() => {
+        const id = Math.random().toString(36).substr(2, 9);
+        const x = Math.random() * 90 + 5;
+        const duration = Math.random() * 1.5 + 2; // Slightly faster: 2s to 3.5s
+        
+        const rand = Math.random();
+        let type: 'xp' | 'token' | 'helper' = 'xp';
+        let value: any = 10;
+        let icon = '⭐';
+        
+        if (rand < 0.80) { // 80% XP chance
+           type = 'xp';
+           const xpRand = Math.random();
+           if (xpRand < 0.4) value = 10;
+           else if (xpRand < 0.7) value = 20;
+           else if (xpRand < 0.95) value = 30;
+           else if (xpRand < 0.98) value = 40; // 3% chance
+           else if (xpRand < 0.995) value = 50; // 1.5% chance
+           else value = 100; // 0.5% chance
+           icon = `${value}XP`;
+        } else if (rand < 0.82) { // 2% Token chance
+           type = 'token';
+           value = 1;
+           icon = '🪙';
+        } else { // Helper items (18% chance)
+           type = 'helper';
+           const helpers = [
+             { id: 'spy_lens', icon: '👁️' },
+             { id: 'time_freeze', icon: '❄️' },
+             { id: 'hint', icon: '💡' },
+             { id: 'word_count', icon: '🔢' },
+             { id: 'word_length', icon: '📝' }
+           ];
+           const h = helpers[Math.floor(Math.random() * helpers.length)];
+           value = h.id;
+           icon = h.icon;
+        }
+        
+        const newItem = { id, x, duration, type, value, icon, size: Math.random() * 30 + 50 }; // Larger: 60px to 90px
+        setFallingItems(prev => [...prev, newItem]);
+        
+        setTimeout(() => {
+          setFallingItems(prev => prev.filter(i => i.id !== id));
+        }, duration * 1000);
+        
+      }, 350);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(spawnInterval);
+    };
+  }, [showRainGiftGame]);
+
   useEffect(() => {
     if (socket) {
       socket.on('force_refresh', () => {
@@ -839,7 +971,7 @@ export default function App() {
   const [adminTokenRewardAmount, setAdminTokenRewardAmount] = useState<number>(100);
   const [adminTokenRewardMessage, setAdminTokenRewardMessage] = useState('هدية خاصة للاعبين المميزين (مستوى 50+) 🎁');
   const [confirmTokenSend, setConfirmTokenSend] = useState(false);
-  const [gamePolicies, setGamePolicies] = useState({ termsAr: '', termsEn: '', privacyAr: '', privacyEn: '' });
+  const [gamePolicies, setGamePolicies] = useState({ termsAr: '', termsEn: '', privacyAr: '', privacyEn: '', isRainGiftEnabled: true });
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -1584,60 +1716,36 @@ export default function App() {
 
 
   useEffect(() => {
-    const savedTokensEarned = localStorage.getItem('khamin_tokens_earned_this_week');
-    if (savedTokensEarned) setTokensEarnedThisWeek(parseInt(savedTokensEarned));
-    const savedLastTokenDay = localStorage.getItem('khamin_last_token_earned_day');
-    if (savedLastTokenDay) setLastTokenEarnedDay(parseInt(savedLastTokenDay));
-  }, []);
-
-  useEffect(() => {
-    const checkDay = () => {
-      const now = Date.now();
-      if (lastDailyClaim !== 0 && !isSameDay(now, lastDailyClaim) && !isSameDay(now, appOpenDate)) {
-         setIsNewDayNotification(true);
-      }
-    };
-    const interval = setInterval(checkDay, 60000);
-    return () => clearInterval(interval);
-  }, [lastDailyClaim, appOpenDate]);
-
-  useEffect(() => {
     if (!joined && !hasSeenDailyToday && playerSerial) {
-      const now = Date.now();
-      const lastClaim = lastDailyClaim;
-      
-      const isSameDay = (d1: number, d2: number) => {
-        const date1 = new Date(d1);
-        const date2 = new Date(d2);
-        return date1.getUTCFullYear() === date2.getUTCFullYear() &&
-               date1.getUTCMonth() === date2.getUTCMonth() &&
-               date1.getUTCDate() === date2.getUTCDate();
+      const getEgyptDay = () => {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
       };
+      
+      const currentDay = getEgyptDay();
+      const lastResetDay = localStorage.getItem('khamin_last_reset_day');
 
-      if (lastClaim === 0) {
+      if (lastResetDay !== currentDay) {
+        // It's a new day in Egypt!
         setOwnedHelpers({});
         localStorage.setItem('khamin_owned_helpers', '{}');
-        setShowDailyQuestModal(true);
-        setHasSeenDailyToday(true);
-      } else if (!isSameDay(now, lastClaim)) {
-        const lastDate = new Date(lastClaim);
-        const todayDate = new Date(now);
+        setTokens(0); // Reset tokens as requested
+        setDailyQuestStreak(prev => {
+          const lastClaim = lastDailyClaim;
+          const isConsecutiveDay = (d1: number, d2: number) => {
+            const date1 = new Date(d1);
+            const date2 = new Date(d2);
+            date2.setUTCDate(date2.getUTCDate() + 1);
+            return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+                   date1.getUTCMonth() === date2.getUTCMonth() &&
+                   date1.getUTCDate() === date2.getUTCDate();
+          };
+          if (lastClaim !== 0 && !isConsecutiveDay(Date.now(), lastClaim)) {
+            return 1;
+          }
+          return prev;
+        });
         
-        // Normalize to start of day for comparison
-        const lastDayStart = new Date(lastDate.getFullYear(), lastDate.getMonth(), lastDate.getDate()).getTime();
-        const todayStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate()).getTime();
-        const oneDay = 24 * 60 * 60 * 1000;
-
-        if (todayStart - lastDayStart > oneDay) {
-          // Missed a day, reset streak
-          setDailyQuestStreak(1);
-          localStorage.setItem('khamin_daily_streak', '1');
-        }
-        
-        // Clear ownedHelpers because it's a new day
-        setOwnedHelpers({});
-        localStorage.setItem('khamin_owned_helpers', '{}');
-
+        localStorage.setItem('khamin_last_reset_day', currentDay);
         setShowDailyQuestModal(true);
         setHasSeenDailyToday(true);
       }
@@ -4173,7 +4281,7 @@ export default function App() {
                         {chestReward.helper && chestReward.helper.id === 'bonus_xp' && (
                           <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 text-white flex items-center justify-center gap-3">
                             <span className="text-2xl">⭐</span>
-                            <div className="text-xl font-black">تم تحويل الوسيلة إلى 100 XP (Pro)</div>
+                            <div className="text-xl font-black">تم تحويل الوسيلة إلى 100 XP</div>
                           </div>
                         )}
                         {chestReward.tokens > 0 && (
@@ -7152,8 +7260,8 @@ export default function App() {
                                 الشروط والأحكام (عربي)
                               </label>
                               <textarea
-                                value={gamePolicies.termsAr}
-                                onChange={(e) => setGamePolicies(prev => ({ ...prev, termsAr: e.target.value }))}
+                                value={gamePolicies?.termsAr || ''}
+                                onChange={(e) => setGamePolicies(prev => ({ ...(prev || {}), termsAr: e.target.value }))}
                                 className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl font-bold text-sm resize-none focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                                 placeholder="اكتب الشروط والأحكام (عربي) هنا..."
                                 dir="rtl"
@@ -7163,8 +7271,8 @@ export default function App() {
                                 الشروط والأحكام (إنجليزي)
                               </label>
                               <textarea
-                                value={gamePolicies.termsEn}
-                                onChange={(e) => setGamePolicies(prev => ({ ...prev, termsEn: e.target.value }))}
+                                value={gamePolicies?.termsEn || ''}
+                                onChange={(e) => setGamePolicies(prev => ({ ...(prev || {}), termsEn: e.target.value }))}
                                 className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl font-bold text-sm resize-none focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                                 placeholder="Write Terms and Conditions (English) here..."
                                 dir="ltr"
@@ -7177,8 +7285,8 @@ export default function App() {
                                 سياسة الخصوصية (عربي)
                               </label>
                               <textarea
-                                value={gamePolicies.privacyAr}
-                                onChange={(e) => setGamePolicies(prev => ({ ...prev, privacyAr: e.target.value }))}
+                                value={gamePolicies?.privacyAr || ''}
+                                onChange={(e) => setGamePolicies(prev => ({ ...(prev || {}), privacyAr: e.target.value }))}
                                 className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl font-bold text-sm resize-none focus:border-accent-purple focus:ring-2 focus:ring-purple-200 outline-none transition-all"
                                 placeholder="اكتب سياسة الخصوصية (عربي) هنا..."
                                 dir="rtl"
@@ -7188,8 +7296,8 @@ export default function App() {
                                 سياسة الخصوصية (إنجليزي)
                               </label>
                               <textarea
-                                value={gamePolicies.privacyEn}
-                                onChange={(e) => setGamePolicies(prev => ({ ...prev, privacyEn: e.target.value }))}
+                                value={gamePolicies?.privacyEn || ''}
+                                onChange={(e) => setGamePolicies(prev => ({ ...(prev || {}), privacyEn: e.target.value }))}
                                 className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl font-bold text-sm resize-none focus:border-accent-purple focus:ring-2 focus:ring-purple-200 outline-none transition-all"
                                 placeholder="Write Privacy Policy (English) here..."
                                 dir="ltr"
@@ -7432,7 +7540,7 @@ export default function App() {
                       </div>
                     </div>
                   ) : adminTab === 'customization' ? (
-                    <AdminCustomization showAlert={showAlert} socket={socket} />
+                    <AdminCustomization showAlert={showAlert} socket={socket} gamePolicies={gamePolicies} setGamePolicies={setGamePolicies} />
                   ) : adminTab === 'live_matches' ? (
                     <div className="flex-1 flex flex-col overflow-hidden bg-gray-50/50 p-6">
                       <div className="flex items-center justify-between mb-6">
@@ -9072,9 +9180,145 @@ export default function App() {
     );
   }
 
+  const renderRainGiftGame = () => {
+    if (!showRainGiftGame) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black/85 z-[10000] overflow-hidden h-screen w-screen touch-none select-none flex justify-center">
+        <style>{`
+          @keyframes fall {
+            0% { transform: translateY(-100px); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(110vh); opacity: 0; }
+          }
+          .gift-fall {
+            animation: fall linear forwards;
+            will-change: transform, opacity;
+          }
+        `}</style>
+        
+        <div className="relative w-full max-w-md h-full">
+          {/* Timer */}
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-accent-orange text-white px-6 py-2 rounded-full font-black text-xl shadow-lg z-20 flex items-center gap-2">
+            <Clock className="w-6 h-6" />
+            {Math.floor(gameTimer / 60)}:{(gameTimer % 60).toString().padStart(2, '0')}
+          </div>
+          
+          {/* Falling Items */}
+          {fallingItems.map(item => (
+            <div
+              key={item.id}
+              className="absolute cursor-pointer select-none gift-fall flex items-center justify-center pointer-events-auto"
+              style={{ 
+                width: item.size + 35, 
+                height: item.size + 35, 
+                left: `calc(${item.x}% - 20px)`,
+                animationDuration: `${item.duration}s`
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                if (item.type === 'xp') playSound('xp');
+                else if (item.type === 'token') playSound('prize');
+                else if (item.type === 'helper') playSound('pop');
+                setCollectedRewards(prev => {
+                  const next = { ...prev, helpers: { ...(prev.helpers || {}) } };
+                  if (item.type === 'xp') next.xp += item.value;
+                  else if (item.type === 'token') next.tokens += item.value;
+                  else if (item.type === 'helper') {
+                    next.helpers[item.value] = (next.helpers[item.value] || 0) + 1;
+                  }
+                  return next;
+                });
+                setFallingItems(prev => prev.filter(i => i.id !== item.id));
+              }}
+            >
+              <div 
+                className={`rounded-full flex items-center justify-center text-white font-black shadow-lg border-2 border-white/50 ${
+                  item.type === 'xp' ? 'bg-accent-blue text-[13px] md:text-[13px]' : item.type === 'token' ? 'bg-yellow-500 text-2xl md:text-3xl' : 'bg-accent-green text-2xl md:text-3xl'
+                }`}
+                style={{ width: item.size, height: item.size }}
+              >
+                {item.icon}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderRainGiftSummary = () => {
+    if (!showRainGiftSummary) return null;
+    
+    const level = getLevel(xp);
+
+    return (
+      <div className="fixed inset-0 bg-black/60 z-[10001] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-modal-theme p-8 rounded-[2.5rem] w-full max-w-md text-center space-y-6 relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-full h-2 bg-accent-orange"></div>
+          <h2 className="text-3xl font-black text-main">انتهى المطر! 🌧️✨</h2>
+          <p className="text-brown-muted font-bold">لقد جمعت الكثير من الهدايا الرائعة:</p>
+          
+          <div className="grid grid-cols-2 gap-4 max-h-[40vh] overflow-y-auto p-2">
+            <div className="bg-white/50 p-4 rounded-2xl border-2 border-accent-blue/20">
+              <div className="text-2xl mb-1">⭐</div>
+              <div className="text-xl font-black text-accent-blue">+{collectedRewards.xp} XP</div>
+            </div>
+            <div className="bg-white/50 p-4 rounded-2xl border-2 border-yellow-500/20">
+              <div className="text-2xl mb-1">🪙</div>
+              <div className="text-xl font-black text-yellow-600">+{collectedRewards.tokens} Token</div>
+            </div>
+            {Object.entries(collectedRewards.helpers || {}).map(([id, count]) => (
+              <div key={id} className="bg-white/50 p-4 rounded-2xl border-2 border-accent-green/20 relative">
+                <div className="text-2xl mb-1">
+                  {( {spy_lens: '👁️', time_freeze: '❄️', hint: '💡', word_count: '🔢', word_length: '📝'} as any)[id]}
+                </div>
+                <div className="text-[10px] font-black text-accent-green">
+                  {( {spy_lens: 'الجاسوس', time_freeze: 'تجميد الوقت', hint: 'تلميح', word_count: 'عدد الكلمات', word_length: 'كاشف الحروف'} as any)[id]} x{count}
+                </div>
+                {level >= 50 && (
+                  <div className="absolute -top-2 -right-2 bg-accent-blue text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
+                    +{Number(count) * 50} XP
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          
+          {level >= 50 && Object.keys(collectedRewards.helpers || {}).length > 0 && (
+            <p className="text-xs text-accent-blue font-bold">
+              * تم تحويل وسائل المساعدة إلى XP لأن مستواك 50+
+            </p>
+          )}
+          <p className="text-[10px] md:text-xs text-red-500 font-bold mt-2">
+            * يجب استخدام هدايا وسائل المساعدة والـ Tokens في نفس اليوم وإلا سيتم تصفيرها.
+          </p>
+          
+          <button
+            onClick={() => {
+              socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
+              setShowRainGiftSummary(false);
+              playSound('win');
+            }}
+            className="w-full bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black text-xl shadow-lg transition-all"
+          >
+            استلام الهدايا
+          </button>
+        </motion.div>
+      </div>
+    );
+  };
+
   if (!joined) {
     return (
       <>
+        {renderRainGiftGame()}
+        {renderRainGiftSummary()}
         {renderUpdateBanner()}
         {/* Fixed Header */}
         <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
@@ -9282,6 +9526,7 @@ export default function App() {
                   </h2>
                   <span className="text-[10px] md:text-xs font-bold text-accent-orange px-2 py-1 rounded-full">المتصدرون حالياً</span>
                 </div>
+
                 <div className="flex items-end justify-center gap-2 md:gap-4">
                   {/* Rank 2 */}
                   {topPlayers[1] && (
@@ -9442,6 +9687,64 @@ export default function App() {
                   </div>
                 )}
               </div>
+
+              {/* Rain Gift Event Section - Moved outside and below leaderboard */}
+              {gamePolicies.isRainGiftEnabled && (
+              <div className="p-2 bg-gradient-to-r from-accent-orange/10 to-accent-green/10 rounded-2xl border-2 border-white shadow-sm box-game">
+              <span className="flex font-bold p-1 py-2 items-center justify-center md:text-[13px] text-[12px] text-accent-orange">هدايا كل يوم الساعة 7 مساء بتوقيت مصر 🤩</span>
+                <div className="flex items-center justify-between flex-row-reverse">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-accent-orange rounded-full flex items-center justify-center text-white shadow-sm">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] font-black text-brown-muted uppercase tracking-wider">مطر الهدايا</div>
+                      <div className="text-sm font-black text-main">{rainGiftCountdown}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setGameTimer(180);
+                      setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
+                      setFallingItems([]);
+                      setShowRainGiftGame(true);
+                      playSound('clickOpen');
+                    }}
+                    // Enabled for testing as requested
+                    disabled={!isAdmin && !isRainGiftActive}
+                    className={`px-6 py-2 rounded-xl font-black text-xs transition-all shadow-md ${
+                      (isAdmin || isRainGiftActive) // Always active style for testing
+                      ? 'bg-accent-green text-white hover:scale-105 active:scale-95 animate-pulse' 
+                      : 'bg-gray-300 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    اشترك في الحدث
+                  </button>
+                </div>
+                
+                {/* Balance Display */}
+                <div className="mt-3 pt-3 border-t border-white/50 flex flex-wrap justify-center gap-2 text-xs font-bold text-brown-dark" dir="ltr">
+                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                    <span className="text-yellow-600">Tokens</span> <span className="text-[12px]">{tokens}</span>
+                  </span>
+                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                    <span className="text-[13px]">👁️</span> <span className="text-[12px]">{ownedHelpers.spy_lens || 0}</span>
+                  </span>
+                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                    <span className="text-[13px]">💡</span> <span className="text-[12px]">{ownedHelpers.hint || 0}</span>
+                  </span>
+                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                    <span className="text-[13px]">❄️</span> <span className="text-[12px]">{ownedHelpers.time_freeze || 0}</span>
+                  </span>
+                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                    <span className="text-[13px]">🔢</span> <span className="text-[12px]">{ownedHelpers.word_count || 0}</span>
+                  </span>
+                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                    <span className="text-[13px]">📝</span> <span className="text-[12px]">{ownedHelpers.word_length || 0}</span>
+                  </span>
+                </div>
+              </div>
+              )}
             </div>
 
             {/* Reward Modal */}
@@ -9481,7 +9784,7 @@ export default function App() {
                   متصل الآن: {onlineCount > 1000 ? '1000+' : onlineCount}
                 </span>
                 </div>            
-              <div class="pt-2 md:pt-3 border-t-2 border-game">
+              <div className="pt-2 md:pt-3 border-t-2 border-game">
                 {error && (
                   <motion.div 
                     ref={errorRef}
@@ -9792,6 +10095,8 @@ export default function App() {
 
   return (
     <>
+    {renderRainGiftGame()}
+    {renderRainGiftSummary()}
     {renderUpdateBanner()}
     <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-16 md:pt-20">
       {/* Install Modal */}
