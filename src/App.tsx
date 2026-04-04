@@ -3681,13 +3681,16 @@ export default function App() {
     // Close confirmation modal immediately to prevent "fixed window" issue
     setShowAdConfirmation(false);
 
-    adTriggeredRef.current = false;
+    // Set triggered to true immediately to prevent double clicks
+    adTriggeredRef.current = true;
 
     let localAdTriggered = false;
 
     const startAdProcess = () => {
-      if (adTriggeredRef.current) return;
-      adTriggeredRef.current = true;
+      // We don't check adTriggeredRef here because we set it at the start of handleWatchAd
+      // but we can check a local flag if we want to be extra safe for this specific process
+      if (localAdTriggered) return;
+      localAdTriggered = true;
       
       if (roomId && isPowerUp) {
         const powerUpName = {
@@ -3725,10 +3728,6 @@ export default function App() {
         // Notify server that ad reward is ready for this helper
         if (roomId) {
           socket?.emit('ad_reward_ready', { roomId, helperId: activePowerUp });
-          // Auto-use the helper immediately after ad
-          socket?.emit('use_card', { roomId, cardType: activePowerUp, serial: playerSerial, isAdReward: true });
-          // Remove from ready since we just used it
-          setReadyPowerUps(prev => prev.filter(p => p !== activePowerUp));
         }
         setActivePowerUp(null);
       } else {
