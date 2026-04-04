@@ -1530,6 +1530,27 @@ export default function App() {
   const [joined, setJoined] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  useEffect(() => {
+    if (isAdmin) {
+      const fetchPushStats = async () => {
+        try {
+          const token = localStorage.getItem('khamin_admin_token');
+          if (!token) return;
+          const response = await fetch(`/api/admin/push-stats?token=${token}`);
+          const data = await response.json();
+          if (data.count !== undefined) {
+            setPushStats({ count: data.count });
+          }
+        } catch (err) {
+          console.error("Error fetching push stats:", err);
+        }
+      };
+      fetchPushStats();
+      const interval = setInterval(fetchPushStats, 30000); // Update every 30s
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem('khamin_notifications_enabled');
     if (saved !== null) return saved === 'true';
@@ -1544,6 +1565,7 @@ export default function App() {
   const [pushBody, setPushBody] = useState('');
   const [pushUrl, setPushUrl] = useState('/');
   const [isSendingPush, setIsSendingPush] = useState(false);
+  const [pushStats, setPushStats] = useState<{ count: number } | null>(null);
 
   const subscribeToPush = async (force = false) => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -7713,6 +7735,23 @@ export default function App() {
                               <Bell className="w-6 h-6" />
                               إرسال إشعار للهاتف (Push Notification)
                             </h3>
+
+                            {pushStats !== null && (
+                              <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded-xl mb-6 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 bg-blue-100 rounded-lg">
+                                    <Bell className="w-5 h-5 text-blue-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-bold text-blue-800">اللاعبين المشتركين في الإشعارات</p>
+                                    <p className="text-xs text-blue-600">هؤلاء هم اللاعبون الذين وافقوا على استقبال الإشعارات</p>
+                                  </div>
+                                </div>
+                                <div className="text-2xl font-black text-blue-700">
+                                  {pushStats.count}
+                                </div>
+                              </div>
+                            )}
                             <p className="text-brown-muted font-bold mb-6">
                               هذا الإشعار سيظهر على شاشة قفل الهاتف لجميع اللاعبين الذين قاموا بتثبيت اللعبة (PWA) ووافقوا على الإشعارات.
                             </p>
@@ -7777,7 +7816,10 @@ export default function App() {
                                     });
                                     const res = await response.json();
                                     if (res.success) {
-                                      showAlert(`تم إرسال الإشعار لـ ${res.sentCount} جهاز بنجاح!`, 'نجاح');
+                                      const msg = res.sentCount === res.totalAttempted 
+                                        ? `تم إرسال الإشعار لـ ${res.sentCount} جهاز بنجاح! 🔔`
+                                        : `تم إرسال الإشعار لـ ${res.sentCount} من أصل ${res.totalAttempted} جهاز بنجاح! (تم تنظيف الاشتراكات القديمة)`;
+                                      showAlert(msg, 'نجاح');
                                       setPushTitle('');
                                       setPushBody('');
                                     } else {
