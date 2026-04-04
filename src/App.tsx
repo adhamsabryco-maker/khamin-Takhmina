@@ -48,6 +48,7 @@ import {
   RefreshCw,
   Smile,
   Loader2,
+  LogOut,
   Plus,
   Edit2,
   ShoppingCart,
@@ -1529,7 +1530,15 @@ export default function App() {
   const [joined, setJoined] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('khamin_notifications_enabled') !== 'false');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    const saved = localStorage.getItem('khamin_notifications_enabled');
+    if (saved !== null) return saved === 'true';
+    // If no saved preference, default to true ONLY if permission is already granted
+    if ('Notification' in window && Notification.permission === 'granted') {
+      return true;
+    }
+    return false;
+  });
   const [showPushPrompt, setShowPushPrompt] = useState(false);
   const [pushTitle, setPushTitle] = useState('');
   const [pushBody, setPushBody] = useState('');
@@ -1537,21 +1546,40 @@ export default function App() {
   const [isSendingPush, setIsSendingPush] = useState(false);
 
   const subscribeToPush = async (force = false) => {
-    if (!notificationsEnabled) return; // Don't subscribe if disabled
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       console.log('Push notifications not supported');
       return;
     }
 
     // Check current permission
-    if (!force && 'Notification' in window && Notification.permission === 'default') {
-      // Check if we already dismissed the prompt permanently
+    console.log('[Push] Checking permission:', Notification.permission);
+    
+    // If permission is default and not forced, show our custom prompt
+    if (!force && Notification.permission === 'default') {
       const isDismissed = localStorage.getItem('khamin_push_prompt_dismissed') === 'true';
+      console.log('[Push] Prompt dismissed:', isDismissed);
       
       if (!isDismissed) {
         setShowPushPrompt(true);
         return;
       }
+      return; // Don't proceed if dismissed
+    }
+
+    // If permission is denied, we can't do anything automatically
+    if (Notification.permission === 'denied') {
+      console.log('[Push] Permission denied by user');
+      if (force) {
+        showAlert('لقد قمت بحظر الإشعارات من إعدادات المتصفح. يرجى تفعيلها يدوياً لتلقي التنبيهات.', 'تنبيه');
+      }
+      return;
+    }
+
+    // If we are here, either permission is granted or we are forcing (which will trigger browser prompt)
+    // But we only proceed if notifications are enabled in our app settings OR we are forcing
+    if (!force && !notificationsEnabled) {
+      console.log('[Push] Notifications disabled in app settings');
+      return;
     }
 
     try {
@@ -1566,6 +1594,10 @@ export default function App() {
         applicationServerKey: urlBase64ToUint8Array(publicKey)
       });
 
+      // If we got here, subscription was successful (user clicked "Allow" in browser prompt)
+      setNotificationsEnabled(true);
+      localStorage.setItem('khamin_notifications_enabled', 'true');
+
       // Send subscription to server
       await fetch('/api/push/subscribe', {
         method: 'POST',
@@ -1575,10 +1607,17 @@ export default function App() {
           subscription
         })
       });
+      
       console.log('Push subscription successful');
       setShowPushPrompt(false);
+      if (force) {
+        showAlert('تم تفعيل إشعارات الهاتف بنجاح! 🔔', 'نجاح');
+      }
     } catch (err) {
       console.error('Failed to subscribe to push:', err);
+      if (force) {
+        showAlert('فشل تفعيل الإشعارات. يرجى المحاولة مرة أخرى.', 'خطأ');
+      }
     }
   };
 
@@ -4379,7 +4418,7 @@ export default function App() {
                           📦
                         </motion.div>
                       ) : (
-                        <div className="text-8xl">
+                        <div className="text-8xl bg-white/20 backdrop-blur-md p-4 rounded-2xl border-2 border-white/30 flex items-center justify-center gap-3">
                           {cyclingReward ? (HELPER_ITEMS.find(h => h.id === cyclingReward.id)?.icon || cyclingReward.icon) : '❓'}
                         </div>
                       )}
@@ -6443,6 +6482,19 @@ export default function App() {
                     >
                       <X className="w-5 h-5" />
                     </button>
+                    <button 
+                      onClick={() => {
+                        localStorage.removeItem('khamin_is_admin');
+                        localStorage.removeItem('khamin_admin_token');
+                        localStorage.removeItem('khamin_admin_email');
+                        setIsAdmin(false);
+                        setShowAdminDashboard(false);
+                        showAlert('تم تسجيل الخروج من لوحة التحكم بنجاح', 'نجاح');
+                      }}
+                      className="flex items-center gap-2 p-3 bg-red-100 text-red-600 rounded-xl border-2 border-gray-100 font-black text-sm hover:bg-red-200 transition-all"
+                    >
+                      <LogOut className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
 
@@ -7665,6 +7717,17 @@ export default function App() {
                               هذا الإشعار سيظهر على شاشة قفل الهاتف لجميع اللاعبين الذين قاموا بتثبيت اللعبة (PWA) ووافقوا على الإشعارات.
                             </p>
                             <div className="space-y-4">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    localStorage.removeItem('khamin_push_prompt_dismissed');
+                                    showAlert('تم إعادة تعيين رسالة الترحيب. ستظهر بعد دقيقة من تحديث الصفحة.', 'نجاح');
+                                  }}
+                                  className="text-xs bg-gray-300 p-2 rounded-lg font-bold text-brown-muted hover:bg-gray-200 rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1"
+                                >
+                                  إعادة تعيين رسالة الترحيب (للتجربة)
+                                </button>
+                              </div>
                               <div>
                                 <label className="block text-sm font-black text-brown-dark mb-1">عنوان الإشعار</label>
                                 <input
