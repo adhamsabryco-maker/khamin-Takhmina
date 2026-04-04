@@ -93,9 +93,8 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 
-const adminTokens = new Set<string>();
-
 async function startServer() {
+  let adminTokens: any;
   try {
   const getLevel = (xp: number) => Math.floor(Math.sqrt(xp / 50)) + 1;
 const getQuickGuessWaitTime = (level: number) => {
@@ -549,8 +548,6 @@ const app = express();
       if (isAdmin) {
         adminToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         adminTokens.add(adminToken);
-        // Remove token after 2 hours
-        setTimeout(() => adminTokens.delete(adminToken as string), 1000 * 60 * 60 * 2);
       }
 
       // Redirect directly back to the app with the auth parameters
@@ -715,6 +712,39 @@ const app = express();
     } catch (err) {
       console.error("[DB] Failed to seed shop items:", err);
     }
+
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS admin_tokens (
+        token TEXT PRIMARY KEY,
+        expiresAt INTEGER
+      );
+    `);
+
+    adminTokens = {
+      add: (token: string) => {
+        const expiresAt = Date.now() + 1000 * 60 * 60 * 2; // 2 hours
+        db.prepare('INSERT INTO admin_tokens (token, expiresAt) VALUES (?, ?)').run(token, expiresAt);
+      },
+      has: (token: string) => {
+        if (!token) return false;
+        const row = db.prepare('SELECT expiresAt FROM admin_tokens WHERE token = ?').get(token) as any;
+        if (!row) return false;
+        if (Date.now() > row.expiresAt) {
+          db.prepare('DELETE FROM admin_tokens WHERE token = ?').run(token);
+          return false;
+        }
+        return true;
+      },
+      delete: (token: string) => {
+        db.prepare('DELETE FROM admin_tokens WHERE token = ?').run(token);
+      },
+      cleanup: () => {
+        db.prepare('DELETE FROM admin_tokens WHERE expiresAt < ?').run(Date.now());
+      }
+    };
+
+    // Cleanup expired tokens on startup
+    adminTokens.cleanup();
   } catch (err) {
     console.error(`[DB] Failed to open database at ${dbPath}:`, err);
     // Final fallback to a guaranteed writable location
@@ -1326,7 +1356,7 @@ const app = express();
   app.get("/api/admin/download-db", (req, res) => {
     const token = req.query.token as string;
     console.log(`[DB Download] Request received with token: ${token}`);
-    console.log(`[DB Download] Current adminTokens:`, Array.from(adminTokens));
+    console.log(`[DB Download] Current adminTokens: (DB backed)`);
     if (!token || !adminTokens.has(token)) {
       console.log(`[DB Download] Unauthorized. Token missing or invalid.`);
       return res.status(403).send("Unauthorized");
