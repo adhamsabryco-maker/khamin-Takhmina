@@ -445,6 +445,11 @@ export default function App() {
     onRegisterError(error) {
       console.log('SW registration error', error);
     },
+    onNeedRefresh() {
+      // Automatically update when a new SW is available
+      console.log('[DEBUG] New SW available, updating...');
+      updateServiceWorker(true);
+    }
   });
 
   useEffect(() => {
@@ -2486,7 +2491,7 @@ export default function App() {
   const connectSocket = useCallback(() => {
     console.log('Initializing socket connection to:', window.location.origin);
     const newSocket = io(window.location.origin, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 20000
@@ -3262,8 +3267,8 @@ export default function App() {
         setLoadingStatus('جاري الاتصال بالسيرفر...');
         setLoadingProgress(10);
 
-        // Fetch real config from server
-        const response = await fetch('/api/config');
+        // Fetch real config from server with cache busting
+        const response = await fetch('/api/config?t=' + Date.now());
         if (!response.ok) throw new Error('Failed to fetch config');
         const config = await response.json();
         
@@ -3271,9 +3276,9 @@ export default function App() {
         setGameVersion(serverVersion);
         setLoadingProgress(50);
         
-        // Check maintenance mode
+        // Check maintenance mode with cache busting
         try {
-          const maintenanceResponse = await fetch('/api/maintenance');
+          const maintenanceResponse = await fetch('/api/maintenance?t=' + Date.now());
           if (maintenanceResponse.ok) {
             const maintenanceData = await maintenanceResponse.json();
             const params = new URLSearchParams(window.location.search);
@@ -3337,8 +3342,8 @@ export default function App() {
           const url = new URL(window.location.href);
           url.searchParams.set('v', Date.now().toString());
           console.log('[DEBUG] Reloading to:', url.toString());
-          // window.location.href = url.toString(); // Temporarily disabled to stop loop
-          // return;
+          window.location.href = url.toString();
+          return;
         }
         localStorage.setItem('khamin_game_version', serverVersion);
 
@@ -3695,7 +3700,7 @@ export default function App() {
         }[activePowerUp || ''];
         
         if (roomId) {
-          socket?.emit('ad_started', { roomId, powerUpName });
+          socket?.emit('ad_started', { roomId, powerUpName, helperId: activePowerUp });
         }
       } else if (roomId) {
         socket?.emit('ad_started', { roomId });
@@ -3716,6 +3721,14 @@ export default function App() {
       if (isPowerUp) {
         if (!readyPowerUps.includes(activePowerUp!)) {
           setReadyPowerUps(prev => [...prev, activePowerUp!]);
+        }
+        // Notify server that ad reward is ready for this helper
+        if (roomId) {
+          socket?.emit('ad_reward_ready', { roomId, helperId: activePowerUp });
+          // Auto-use the helper immediately after ad
+          socket?.emit('use_card', { roomId, cardType: activePowerUp, serial: playerSerial, isAdReward: true });
+          // Remove from ready since we just used it
+          setReadyPowerUps(prev => prev.filter(p => p !== activePowerUp));
         }
         setActivePowerUp(null);
       } else {
@@ -4085,10 +4098,10 @@ export default function App() {
     
     const hasFreeUse = (ownedHelpers[type] || 0) > 0;
 
-    // Quick guess doesn't require an ad
+    // Use card immediately ONLY if it's quick guess, already ready from an ad, or player has Pro package
     if (type === 'quick_guess' || readyPowerUps.includes(type) || hasProPackage) {
       // Actually use the card FIRST so the server sees we still have the free use
-      socket?.emit('use_card', { roomId, cardType: type, serial: playerSerial });
+      socket?.emit('use_card', { roomId, cardType: type, serial: playerSerial, isAdReward: readyPowerUps.includes(type) });
 
       // Remove from ready
       if (type !== 'quick_guess' && readyPowerUps.includes(type)) {
@@ -9099,9 +9112,6 @@ export default function App() {
                   جاري البحث عن منافس...
                 </h2>
                 <div className="flex justify-center">
-                  <p className="text-sm md:text-base text-black font-bold bg-gray-100 border-2 border-black inline-block px-4 py-2 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                    يتم البحث عن لاعبين بمستوى قريب منك
-                  </p>
                 </div>
                 {searchTimeLeft !== null && (
                   <div className="flex justify-center mt-2">
@@ -9811,9 +9821,10 @@ export default function App() {
                   />
                   <button 
                     onClick={handleJoin}
-                    className="btn-game btn-secondary px-4 md:px-6 py-2 md:py-3 text-base md:text-lg"
+                    disabled={!isConnected}
+                    className={`btn-game btn-secondary px-4 md:px-6 py-2 md:py-3 text-base md:text-lg ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    دخول
+                    {isConnected ? 'دخول' : 'جاري الاتصال...'}
                   </button>
                 </div>
               </div>
@@ -9826,12 +9837,13 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={handleRandomMatch}
-                  className="flex-1 btn-game btn-primary py-4 md:py-4 text-sm md:text-xl gap-1 md:gap-3 cursor-pointer touch-manipulation"
+                  disabled={!isConnected}
+                  className={`flex-1 btn-game btn-primary py-4 md:py-4 text-sm md:text-xl gap-1 md:gap-3 cursor-pointer touch-manipulation ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className="flex items-center gap-1.5" dir="ltr">
                   <span className="large-emoji">🔍</span>
                   </div>
-                  <span>بحث عشوائي</span>
+                  <span>{isConnected ? 'بحث عشوائي' : 'جاري الاتصال...'}</span>
                 </button>
 
                 <div className="flex flex-col box-game p-2 h-16 relative overflow-hidden">
@@ -10976,7 +10988,8 @@ export default function App() {
             }
 
             const isReady = readyPowerUps.includes(card.id);
-            // A power-up requires an ad if it's not locked, not pro, not quick guess, not ready, AND it hasn't been used yet (not disabled)
+            // A power-up requires an ad if it's not locked, not pro, not quick guess, and not ready
+            // Even if it has a free use (gift), it still requires an ad to be activated
             const requiresAd = !isLocked && !hasProPackage && card.id !== 'quick_guess' && !isReady && !card.disabled;
 
             // Only disable other cards during quick guess if they are specifically quick guess, or if game is finished
