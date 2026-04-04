@@ -12,6 +12,7 @@ import multer from "multer";
 import os from "os";
 import admin from 'firebase-admin';
 import archiver from 'archiver';
+import webpush from 'web-push';
 
 // Initialize Firebase Admin
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -404,6 +405,88 @@ const app = express();
     res.json({ maintenance: process.env.MAINTENANCE_MODE === 'true' });
   });
 
+  // Push Notification Endpoints
+  app.get("/api/push/public-key", (req, res) => {
+    res.json({ publicKey: vapidKeys.publicKey });
+  });
+
+  app.post("/api/push/subscribe", express.json(), (req, res) => {
+    const { serial, subscription } = req.body;
+    if (!subscription) return res.status(400).json({ error: "No subscription provided" });
+    
+    try {
+      const subStr = JSON.stringify(subscription);
+      // Check if subscription already exists
+      const existing = db.prepare('SELECT id FROM push_subscriptions WHERE subscription = ?').get(subStr) as any;
+      if (!existing) {
+        db.prepare('INSERT INTO push_subscriptions (serial, subscription, timestamp) VALUES (?, ?, ?)')
+          .run(serial || null, subStr, Date.now());
+      }
+      
+      // Also ensure notificationsEnabled is 1 for this player
+      if (serial) {
+        db.prepare('UPDATE players SET notificationsEnabled = 1 WHERE serial = ?').run(serial);
+      }
+      
+      res.status(201).json({ success: true });
+    } catch (err) {
+      console.error("Failed to save push subscription:", err);
+      res.status(500).json({ error: "Failed to save subscription" });
+    }
+  });
+
+  app.post("/api/push/unsubscribe", express.json(), (req, res) => {
+    const { subscription } = req.body;
+    if (!subscription) return res.status(400).json({ error: "No subscription provided" });
+    
+    try {
+      const subStr = JSON.stringify(subscription);
+      db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(subStr);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Failed to remove push subscription:", err);
+      res.status(500).json({ error: "Failed to remove subscription" });
+    }
+  });
+
+  app.post("/api/push/send", express.json(), (req, res) => {
+    const { title, body, url, adminToken } = req.body;
+    if (!adminTokens.has(adminToken)) return res.status(403).json({ error: "Unauthorized" });
+    
+    // Only send to subscriptions where the player has notificationsEnabled = 1
+    // We join with players table to check the status
+    const subscriptions = db.prepare(`
+      SELECT ps.subscription, ps.serial 
+      FROM push_subscriptions ps
+      LEFT JOIN players p ON ps.serial = p.serial
+      WHERE p.notificationsEnabled = 1 OR ps.serial IS NULL
+    `).all() as any[];
+    
+    const payload = JSON.stringify({ title, body, url: url || '/' });
+    
+    console.log(`[Push] Sending notification to ${subscriptions.length} devices...`);
+    
+    const sendPromises = subscriptions.map(sub => {
+      try {
+        const subscription = JSON.parse(sub.subscription);
+        return webpush.sendNotification(subscription, payload).catch(err => {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            // Subscription expired or no longer valid, remove it
+            db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
+          } else {
+            console.error("Error sending push notification:", err);
+          }
+        });
+      } catch (e) {
+        return Promise.resolve();
+      }
+    });
+
+    Promise.all(sendPromises).then(() => {
+      res.json({ success: true, sentCount: subscriptions.length });
+    });
+  });
+
   app.post("/api/claim-level-50-reward", (req, res) => {
     const { serial } = req.body;
     const player = allPlayers.get(serial);
@@ -565,7 +648,8 @@ const app = express();
     recentOpponents?: { serial: string, name: string, avatar: string, selectedFrame?: string, timestamp: number, level?: number, xp?: number }[],
     reportedSerials?: string[],
     selectedFrame?: string,
-    lastRainGiftResetDay?: string
+    lastRainGiftResetDay?: string,
+    notificationsEnabled?: number
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -712,6 +796,7 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN blockedFingerprints TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 1`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -733,6 +818,31 @@ const app = express();
       value TEXT
     )
   `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      serial TEXT,
+      subscription TEXT,
+      timestamp INTEGER
+    )
+  `);
+
+  // Setup VAPID keys for Push Notifications
+  let vapidKeys = { publicKey: '', privateKey: '' };
+  const existingVapid = db.prepare('SELECT value FROM settings WHERE key = ?').get('vapid_keys') as any;
+  if (existingVapid) {
+    vapidKeys = JSON.parse(existingVapid.value);
+  } else {
+    vapidKeys = webpush.generateVAPIDKeys();
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('vapid_keys', JSON.stringify(vapidKeys));
+  }
+  
+  webpush.setVapidDetails(
+    'mailto:adhamsabry.co@gmail.com',
+    vapidKeys.publicKey,
+    vapidKeys.privateKey
+  );
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS reward_history (
@@ -866,8 +976,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, notificationsEnabled)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @notificationsEnabled)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -930,7 +1040,8 @@ const app = express();
         recentOpponents: JSON.stringify(player.recentOpponents || []),
         reportedSerials: JSON.stringify(player.reportedSerials || []),
         selectedFrame: player.selectedFrame || '',
-        lastRainGiftResetDay: player.lastRainGiftResetDay || null
+        lastRainGiftResetDay: player.lastRainGiftResetDay || null,
+        notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 1
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -969,7 +1080,8 @@ const app = express();
         recentOpponents: JSON.stringify(player.recentOpponents || []),
         reportedSerials: JSON.stringify(player.reportedSerials || []),
         selectedFrame: player.selectedFrame || '',
-        lastRainGiftResetDay: player.lastRainGiftResetDay || null
+        lastRainGiftResetDay: player.lastRainGiftResetDay || null,
+        notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 1
       });
     }
   });
@@ -1032,7 +1144,8 @@ const app = express();
           recentOpponents: JSON.parse(row.recentOpponents || '[]'),
           reportedSerials: JSON.parse(row.reportedSerials || '[]'),
           selectedFrame: row.selectedFrame || '',
-          lastRainGiftResetDay: row.lastRainGiftResetDay || null
+          lastRainGiftResetDay: row.lastRainGiftResetDay || null,
+          notificationsEnabled: row.notificationsEnabled !== undefined ? row.notificationsEnabled : 1
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -2311,11 +2424,11 @@ io.on("connection", (socket) => {
       let tokenReward = 0;
       
       const HELPER_ITEMS = [
-        { id: 'word_length', name: 'كاشف الحروف', icon: '📝' },
-        { id: 'word_count', name: 'عدد الكلمات', icon: '🔢' },
-        { id: 'time_freeze', name: 'تجميد الوقت', icon: '❄️' },
-        { id: 'hint', name: 'تلميح', icon: '💡' },
-        { id: 'spy_lens', name: 'الجاسوس', icon: '👁️' }
+        { id: 'word_length', name: 'كاشف الحروف', icon: 'Type' },
+        { id: 'word_count', name: 'عدد الكلمات', icon: 'Hash' },
+        { id: 'time_freeze', name: 'تجميد الوقت', icon: 'Snowflake' },
+        { id: 'hint', name: 'تلميح', icon: 'HelpCircle' },
+        { id: 'spy_lens', name: 'الجاسوس', icon: 'Eye' }
       ];
       const randomHelper = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
 
@@ -2621,6 +2734,14 @@ io.on("connection", (socket) => {
         if (callback) callback({ success: true, frame: player.selectedFrame });
       } else {
         if (callback) callback({ success: false, error: "Player not found" });
+      }
+    });
+
+    socket.on("update_player_notifications", ({ serial, enabled }) => {
+      const player = allPlayers.get(serial);
+      if (player) {
+        player.notificationsEnabled = enabled ? 1 : 0;
+        savePlayerData(serial);
       }
     });
 
