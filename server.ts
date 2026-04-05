@@ -865,8 +865,6 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 0`); } catch (e) {}
-  // Reset everyone to 0 since this is a new feature and we want to ensure accuracy
-  db.prepare('UPDATE players SET notificationsEnabled = 0').run();
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
