@@ -9609,7 +9609,7 @@ export default function App() {
         
         <div className="relative w-full max-w-md h-full mx-auto">
           {/* Header with Timer and Close Button */}
-          <div className="absolute top-5 w-full px-2 flex justify-between items-center z-20 pointer-events-auto">
+          <div className="absolute top-3 w-full px-2 flex justify-between items-center z-20 pointer-events-auto">
             <button 
               onClick={() => {
                 setShowRainGiftGame(false);
@@ -9621,7 +9621,7 @@ export default function App() {
               }}
               className="bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-black hover:scale-105 active:scale-95 transition-all"
             >
-              <LogOut className="w-6 h-6" />
+              <X className="w-6 h-6" />
             </button>
             
             <div className="bg-accent-orange text-white px-4 py-1 rounded-full font-black text-xl flex items-center gap-2">
