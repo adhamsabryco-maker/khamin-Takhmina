@@ -448,6 +448,125 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+const RewardCard = React.memo(({ playerName, level, avatar, selectedFrame, reward, categoryName, isClaimed, onClaim, isStageComplete, previewFrame, customConfig }: any) => {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleShare = async () => {
+    if (cardRef.current) {
+      try {
+        const canvas = await html2canvas(cardRef.current, { 
+          useCORS: true, 
+          backgroundColor: null,
+          scale: 2 // Improve quality
+        });
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        const downloadFallback = () => {
+          const link = document.createElement('a');
+          link.download = 'reward.png';
+          link.href = dataUrl;
+          link.click();
+        };
+
+        if (navigator.share && navigator.canShare) {
+          try {
+            const blob = await (await fetch(dataUrl)).blob();
+            const file = new File([blob], 'reward.png', { type: 'image/png' });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: 'مكافأتي في خمن تخمينة!',
+                text: 'شوف مكافأتي في لعبة خمن تخمينة!',
+                url: window.location.origin
+              });
+            } else {
+              downloadFallback();
+            }
+          } catch (shareErr: any) {
+            console.warn('Share API failed or was cancelled, falling back to download:', shareErr);
+            if (shareErr.name !== 'AbortError') {
+              downloadFallback();
+            }
+          }
+        } else {
+          downloadFallback();
+        }
+      } catch (err) {
+        console.error('Share failed:', err);
+        alert('حدث خطأ أثناء المشاركة، يرجى المحاولة مرة أخرى.');
+      }
+    }
+  };
+
+  const frameToDisplay = isClaimed ? selectedFrame : previewFrame;
+
+  return (
+    <div className="flex flex-col items-center gap-4 pt-6 md:pt-6 space-y-3 md:space-y-4">
+      <div ref={cardRef} className="p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-sm bg-[#fdfbf7]">
+        <div className="flex flex-col items-center gap-2">
+          <div className="relative w-24 h-24">
+            <AvatarDisplay avatar={avatar} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={false} isOnline={true} selectedFrame={frameToDisplay} />
+          </div>
+          <h3 className="text-2xl font-black" style={{ color: '#4a3f35' }}>{playerName}</h3>
+          <p className="text-sm font-bold" style={{ color: '#4b5563' }}>المستوى: {level}</p>
+          <div className="mt-4 p-3 bg-white rounded-xl border-2 border-black w-full text-center">
+            <p className="text-sm font-black" style={{ color: '#4a3f35' }}>مبروك! كسبت:</p>
+            <p className="text-lg font-black" style={{ color: '#f97316' }}>{reward.xp} XP</p>
+            {reward.frame && <p className="text-sm font-black" style={{ color: '#3b82f6' }}>+ إطار مميز</p>}
+          </div>
+        </div>
+      </div>
+      {isClaimed ? (
+        <button onClick={handleShare} className="btn-game btn-secondary py-3 px-6 text-lg font-black">
+          مشاركة المكافأة 🚀
+        </button>
+      ) : (
+        <button 
+          disabled={!isStageComplete}
+          onClick={onClaim}
+          className={`px-3 py-1 rounded-lg text-xs font-black transition-colors ${isStageComplete ? 'bg-orange-500 text-white hint-glow hover:bg-orange/90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+        >
+          استلام المكافأة
+        </button>
+      )}
+    </div>
+  );
+});
+
+const AnimatedXp = ({ xp, joined, children }: { xp: number, joined: boolean, children: (displayXp: number) => React.ReactNode }) => {
+  const [displayXp, setDisplayXp] = useState(xp);
+  
+  useEffect(() => {
+    if (xp === displayXp || joined) return;
+
+    const duration = 500;
+    const startXp = displayXp;
+    const targetXp = xp;
+    let startTime: number | null = null;
+    let animationFrame: number;
+
+    const animate = (currentTime: number) => {
+      if (!startTime) startTime = currentTime;
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const nextValue = startXp + (targetXp - startXp) * progress;
+      
+      setDisplayXp(nextValue);
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      } else {
+        setDisplayXp(targetXp);
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [xp, joined]);
+
+  return <>{children(displayXp)}</>;
+};
+
 export default function App() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const { customConfig, refreshConfig } = useAvatarConfig();
@@ -604,7 +723,6 @@ export default function App() {
   }, []);
 
   const [xp, setXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0'));
-  const [displayXp, setDisplayXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0'));
 
   const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0'));
   const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0'));
@@ -794,7 +912,7 @@ export default function App() {
       
       spawnInterval = setInterval(() => {
         const id = Math.random().toString(36).substr(2, 9);
-        const x = Math.random() * 90 + 5;
+        const x = Math.random() * 60 + 20; // 20% to 80% to keep items fully inside the screen
         const duration = Math.random() * 1.5 + 2; // Slightly faster: 2s to 3.5s
         
         const rand = Math.random();
@@ -1539,33 +1657,6 @@ export default function App() {
 
   const [joined, setJoined] = useState(false);
   
-  useEffect(() => {
-    if (displayXp !== xp) {
-      if (joined) {
-        // If in game, don't animate yet, wait until they return to home
-        return;
-      }
-      
-      const duration = 1500;
-      const steps = 60;
-      const stepTime = duration / steps;
-      const diff = xp - displayXp;
-      const stepAmount = diff / steps;
-      let current = displayXp;
-      
-      const interval = setInterval(() => {
-        current += stepAmount;
-        if ((stepAmount > 0 && current >= xp) || (stepAmount < 0 && current <= xp)) {
-          clearInterval(interval);
-          setDisplayXp(xp);
-        } else {
-          setDisplayXp(current);
-        }
-      }, stepTime);
-      
-      return () => clearInterval(interval);
-    }
-  }, [xp, displayXp, joined]);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   useEffect(() => {
@@ -1888,13 +1979,28 @@ export default function App() {
     const saved = localStorage.getItem('khamin_owned_helpers');
     return saved ? JSON.parse(saved) : {};
   });
+
+  useEffect(() => {
+    if (joined && playerSerial) {
+      const pendingGift = localStorage.getItem('khamin_pending_rain_gift');
+      if (pendingGift) {
+        try {
+          const rewards = JSON.parse(pendingGift);
+          if (rewards.xp > 0 || rewards.tokens > 0 || Object.keys(rewards.helpers || {}).length > 0) {
+            socket?.emit('claim_rain_gift', { serial: playerSerial, rewards, isPro: hasProPackage });
+          }
+        } catch (e) {}
+        localStorage.removeItem('khamin_pending_rain_gift');
+      }
+    }
+  }, [joined, playerSerial, socket, hasProPackage]);
+
   const [dailyQuestRewardInfo, setDailyQuestRewardInfo] = useState<{ xp: number, helper?: string, tokens?: number } | null>(null);
   const [isChestOpening, setIsChestOpening] = useState(false);
   const [isCycling, setIsCycling] = useState(false);
   const [cyclingReward, setCyclingReward] = useState<any>(null);
   const [chestReward, setChestReward] = useState<any>(null);
   const [pendingDailyReward, setPendingDailyReward] = useState<any>(null);
-  const [isNewDayNotification, setIsNewDayNotification] = useState(false);
   const [appOpenDate] = useState(Date.now());
   const [tokensEarnedThisWeek, setTokensEarnedThisWeek] = useState(0);
   const [lastTokenEarnedDay, setLastTokenEarnedDay] = useState(0);
@@ -1948,38 +2054,10 @@ export default function App() {
 
   useEffect(() => {
     if (!joined && !hasSeenDailyToday && playerSerial) {
-      const getEgyptDay = () => {
-        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-      };
-      
-      const currentDay = getEgyptDay();
-      const lastResetDay = localStorage.getItem('khamin_last_reset_day');
-
-      if (lastResetDay !== currentDay) {
-        // It's a new day in Egypt!
-        setOwnedHelpers({});
-        localStorage.setItem('khamin_owned_helpers', '{}');
-        setTokens(0); // Reset tokens as requested
-        setDailyQuestStreak(prev => {
-          const lastClaim = lastDailyClaim;
-          const isConsecutiveDay = (d1: number, d2: number) => {
-            const date1 = new Date(d1);
-            const date2 = new Date(d2);
-            date2.setUTCDate(date2.getUTCDate() + 1);
-            return date1.getUTCFullYear() === date2.getUTCFullYear() &&
-                   date1.getUTCMonth() === date2.getUTCMonth() &&
-                   date1.getUTCDate() === date2.getUTCDate();
-          };
-          if (lastClaim !== 0 && !isConsecutiveDay(Date.now(), lastClaim)) {
-            return 1;
-          }
-          return prev;
-        });
-        
-        localStorage.setItem('khamin_last_reset_day', currentDay);
+      const hasUnclaimedDaily = lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim);
+      if (hasUnclaimedDaily) {
         setShowDailyQuestModal(true);
         setHasSeenDailyToday(true);
-        setIsNewDayNotification(true);
       }
     }
   }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial]);
@@ -2043,7 +2121,6 @@ export default function App() {
       playSound('clickOpen');
       closeAllModals();
       setShowDailyQuestModal(true);
-      setIsNewDayNotification(false);
     }
   };
   
@@ -5408,6 +5485,7 @@ export default function App() {
       <AnimatePresence>
         {showSettingsModal && (
           <motion.div
+            key="settings-modal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -5449,32 +5527,36 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between items-center mb-1 flex-row-reverse">
-                        <span className="text-xs font-black text-brown-muted">Level {getLevel(Math.floor(displayXp))}</span>
-                      </div>
-                      <div className="w-full bg-[var(--level-bar-bg)] rounded-full h-2 overflow-hidden mb-2" dir="ltr">
-                        <div 
-                          className="h-full transition-all duration-500" 
-                          style={{ width: `${Math.min(100, (getLevel(Math.floor(displayXp)) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
-                        ></div>
-                      </div>
-                      <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 shadow-inner overflow-hidden relative border-2 border-black" dir="ltr">
-                        <div 
-                          className="h-full transition-all duration-500" 
-                          style={{ width: `${getXpProgress(Math.floor(displayXp))}%`, backgroundColor: 'var(--xp-bar-fill)' }}
-                        ></div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-[10px] font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(Math.floor(displayXp)) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
-                            <Zap className="w-3 h-3" />
-                            {Math.floor(displayXp)} / {getXpForNextLevel(getLevel(Math.floor(displayXp)))} XP
-                          </span>
+                  <AnimatedXp xp={xp} joined={joined}>
+                    {(displayXp) => (
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between items-center mb-1 flex-row-reverse">
+                            <span className="text-xs font-black text-brown-muted">Level {getLevel(Math.floor(displayXp))}</span>
+                          </div>
+                          <div className="w-full bg-[var(--level-bar-bg)] rounded-full h-2 overflow-hidden mb-2" dir="ltr">
+                            <div 
+                              className="h-full transition-all duration-500" 
+                              style={{ width: `${Math.min(100, (getLevel(Math.floor(displayXp)) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
+                            ></div>
+                          </div>
+                          <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 shadow-inner overflow-hidden relative border-2 border-black" dir="ltr">
+                            <div 
+                              className="h-full transition-all duration-500" 
+                              style={{ width: `${getXpProgress(Math.floor(displayXp))}%`, backgroundColor: 'var(--xp-bar-fill)' }}
+                            ></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-[10px] font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(Math.floor(displayXp)) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
+                                <Zap className="w-3 h-3" />
+                                {Math.floor(displayXp)} / {getXpForNextLevel(getLevel(Math.floor(displayXp)))} XP
+                              </span>
+                            </div>
+                          </div>
                         </div>
+                        {renderStars(getLevel(Math.floor(displayXp)))}
                       </div>
-                    </div>
-                    {renderStars(getLevel(Math.floor(displayXp)))}
-                  </div>
+                    )}
+                  </AnimatedXp>
                 </div>
 
                 {/* Edit Section */}
@@ -5993,6 +6075,7 @@ export default function App() {
         {/* Blocked Players Modal */}
         {showBlockedPlayers && (
           <motion.div
+            key="blocked-players-modal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -8638,7 +8721,7 @@ export default function App() {
                 />
               </div>
 
-              <div class="mt-1 text-white text-[13px] text-center bg-red-500 px-2 py-1 shadow-sm backdrop-blur-sm items-center gap-2">يجب أن تلتزم صور الأفاتار المرفوعة بقوانين اللعبة ومعايير المجتمع. ⚠️</div>
+              <div className="mt-1 text-white text-[13px] text-center bg-red-500 px-2 py-1 shadow-sm backdrop-blur-sm items-center gap-2">يجب أن تلتزم صور الأفاتار المرفوعة بقوانين اللعبة ومعايير المجتمع. ⚠️</div>
 
               <div className="flex gap-4">
                 <button
@@ -8661,91 +8744,6 @@ export default function App() {
       </AnimatePresence>
     </>
   );
-
-  const RewardCard = ({ playerName, level, avatar, selectedFrame, reward, categoryName, isClaimed, onClaim, isStageComplete, previewFrame }: any) => {
-    const cardRef = useRef<HTMLDivElement>(null);
-
-    const handleShare = async () => {
-      if (cardRef.current) {
-        try {
-          const canvas = await html2canvas(cardRef.current, { 
-            useCORS: true, 
-            backgroundColor: null,
-            scale: 2 // Improve quality
-          });
-          const dataUrl = canvas.toDataURL('image/png');
-          
-          const downloadFallback = () => {
-            const link = document.createElement('a');
-            link.download = 'reward.png';
-            link.href = dataUrl;
-            link.click();
-          };
-
-          if (navigator.share && navigator.canShare) {
-            try {
-              const blob = await (await fetch(dataUrl)).blob();
-              const file = new File([blob], 'reward.png', { type: 'image/png' });
-              if (navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                  files: [file],
-                  title: 'مكافأتي في خمن تخمينة!',
-                  text: 'شوف مكافأتي في لعبة خمن تخمينة!',
-                  url: window.location.origin
-                });
-              } else {
-                downloadFallback();
-              }
-            } catch (shareErr: any) {
-              console.warn('Share API failed or was cancelled, falling back to download:', shareErr);
-              if (shareErr.name !== 'AbortError') {
-                downloadFallback();
-              }
-            }
-          } else {
-            downloadFallback();
-          }
-        } catch (err) {
-          console.error('Share failed:', err);
-          alert('حدث خطأ أثناء المشاركة، يرجى المحاولة مرة أخرى.');
-        }
-      }
-    };
-
-    const frameToDisplay = isClaimed ? selectedFrame : previewFrame;
-
-    return (
-      <div className="flex flex-col items-center gap-4 pt-6 md:pt-6 space-y-3 md:space-y-4">
-        <div ref={cardRef} className="p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-sm bg-[#fdfbf7]">
-          <div className="flex flex-col items-center gap-2">
-            <div className="relative w-24 h-24">
-              {renderAvatarContent(avatar, level, false, true, frameToDisplay)}
-            </div>
-            <h3 className="text-2xl font-black" style={{ color: '#4a3f35' }}>{playerName}</h3>
-            <p className="text-sm font-bold" style={{ color: '#4b5563' }}>المستوى: {level}</p>
-            <div className="mt-4 p-3 bg-white rounded-xl border-2 border-black w-full text-center">
-              <p className="text-sm font-black" style={{ color: '#4a3f35' }}>مبروك! كسبت:</p>
-              <p className="text-lg font-black" style={{ color: '#f97316' }}>{reward.xp} XP</p>
-              {reward.frame && <p className="text-sm font-black" style={{ color: '#3b82f6' }}>+ إطار مميز</p>}
-            </div>
-          </div>
-        </div>
-        {isClaimed ? (
-          <button onClick={handleShare} className="btn-game btn-secondary py-3 px-6 text-lg font-black">
-            مشاركة المكافأة 🚀
-          </button>
-        ) : (
-          <button 
-            disabled={!isStageComplete}
-            onClick={onClaim}
-            className={`px-3 py-1 rounded-lg text-xs font-black transition-colors ${isStageComplete ? 'bg-orange-500 text-white hint-glow hover:bg-orange/90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-          >
-            استلام المكافأة
-          </button>
-        )}
-      </div>
-    );
-  };
 
   const renderCollectionModal = () => {
     if (!showCollectionModal) return null;
@@ -8857,6 +8855,7 @@ export default function App() {
                         isClaimed={isClaimed}
                         isStageComplete={isStageComplete}
                         previewFrame={`/${category.id}-category-frame-gift.png`}
+                        customConfig={customConfig}
                         onClaim={() => {
                           setPendingClaimReward({ categoryId: category.id, stage: stage.stage });
                         }}
@@ -9608,11 +9607,29 @@ export default function App() {
           }
         `}</style>
         
-        <div className="relative w-full max-w-md h-full">
-          {/* Timer */}
-          <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-accent-orange text-white px-6 py-2 rounded-full font-black text-xl shadow-lg z-20 flex items-center gap-2">
-            <Clock className="w-6 h-6" />
-            {Math.floor(gameTimer / 60)}:{(gameTimer % 60).toString().padStart(2, '0')}
+        <div className="relative w-full max-w-md h-full mx-auto">
+          {/* Header with Timer and Close Button */}
+          <div className="absolute top-10 w-full px-6 flex justify-between items-center z-20 pointer-events-auto">
+            <button 
+              onClick={() => {
+                setShowRainGiftGame(false);
+                if (collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers).length > 0) {
+                  socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
+                }
+                localStorage.removeItem('khamin_pending_rain_gift');
+                setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
+              }}
+              className="bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-black shadow-lg border-2 border-white hover:scale-105 active:scale-95 transition-all"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            <div className="bg-accent-orange text-white px-6 py-2 rounded-full font-black text-xl shadow-lg flex items-center gap-2 border-2 border-white">
+              <Clock className="w-6 h-6" />
+              {Math.floor(gameTimer / 60)}:{(gameTimer % 60).toString().padStart(2, '0')}
+            </div>
+            
+            <div className="w-10"></div> {/* Spacer to keep timer centered */}
           </div>
           
           {/* Falling Items */}
@@ -9623,7 +9640,7 @@ export default function App() {
               style={{ 
                 width: item.size + 35, 
                 height: item.size + 35, 
-                left: `calc(${item.x}% - 20px)`,
+                left: `calc(${item.x}% - ${(item.size + 35) / 2}px)`,
                 animationDuration: `${item.duration}s`
               }}
               onPointerDown={(e) => {
@@ -9638,6 +9655,7 @@ export default function App() {
                   else if (item.type === 'helper') {
                     next.helpers[item.value] = (next.helpers[item.value] || 0) + 1;
                   }
+                  localStorage.setItem('khamin_pending_rain_gift', JSON.stringify(next));
                   return next;
                 });
                 setFallingItems(prev => prev.filter(i => i.id !== item.id));
@@ -9716,6 +9734,7 @@ export default function App() {
           <button
             onClick={() => {
               socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
+              localStorage.removeItem('khamin_pending_rain_gift');
               setShowRainGiftSummary(false);
               playSound('win');
             }}
@@ -9751,7 +9770,7 @@ export default function App() {
               title="المهام اليومية"
             >
               <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
-              {isNewDayNotification && (
+              {(lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim)) && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
@@ -9809,63 +9828,67 @@ export default function App() {
 
           {/* Profile Card */}
           <div className="player-card flex flex-col p-3 md:p-4 mb-4 md:mb-4 w-full">
-            <div className="flex items-center gap-3 md:gap-4 flex-row-reverse w-full">
-              <div className="relative shrink-0 w-16 h-16 md:w-20 md:h-20">
-                {renderAvatarContent(avatar, getLevel(Math.floor(displayXp)), false, true, selectedFrame)}
-              </div>
-              <div className="flex flex-col justify-center flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-1 flex-row-reverse">
-                  <div className="text-sm md:text-base font-black text-main truncate text-right">{playerName || 'لاعب جديد'}</div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs md:text-sm font-black text-accent-blue box-game px-2 py-0.5">Level {getLevel(Math.floor(displayXp))}</span>
+            <AnimatedXp xp={xp} joined={joined}>
+              {(displayXp) => (
+                <div className="flex items-center gap-3 md:gap-4 flex-row-reverse w-full">
+                  <div className="relative shrink-0 w-16 h-16 md:w-20 md:h-20">
+                    {renderAvatarContent(avatar, getLevel(Math.floor(displayXp)), false, true, selectedFrame)}
+                  </div>
+                  <div className="flex flex-col justify-center flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1 flex-row-reverse">
+                      <div className="text-sm md:text-base font-black text-main truncate text-right">{playerName || 'لاعب جديد'}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs md:text-sm font-black text-accent-blue box-game px-2 py-0.5">Level {getLevel(Math.floor(displayXp))}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Level Bar */}
+                    <div className="w-full bg-[var(--level-bar-bg)] rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
+                      <div 
+                        className="h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${Math.min(100, (getLevel(Math.floor(displayXp)) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
+                      ></div>
+                    </div>
+                    
+                    {/* XP Bar */}
+                    <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border-2 border-black mb-2" dir="ltr">
+                      <div 
+                        className="h-full transition-all duration-500" 
+                        style={{ width: `${getXpProgress(Math.floor(displayXp))}%`, backgroundColor: 'var(--xp-bar-fill)' }}
+                      ></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-[10px] md:text-xs font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(Math.floor(displayXp)) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
+                          <Zap className="w-3 h-3" />
+                          {Math.floor(displayXp)} / {getXpForNextLevel(getLevel(Math.floor(displayXp)))} XP
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Tokens and Pro Package */}
+                    <div className="flex items-center justify-end gap-2 mt-1">
+                      <span 
+                        className={`text-xs md:text-sm font-black box-game px-2 py-0.5 flex items-center justify-center gap-1 transition-all h-[26px] md:h-[30px] ${
+                          hasProPackage 
+                            ? 'text-yellow-600' 
+                            : 'text-gray-400 opacity-70'
+                        }`} 
+                        title="باقة المحترفين"
+                      >
+                        <Zap className={`w-3 h-3 transition-all ${
+                          hasProPackage 
+                            ? 'fill-yellow-500 text-yellow-500 animate-pulse' 
+                            : 'fill-gray-400 text-gray-400'
+                        }`} />
+                        <span className="text-[10px]" dir="ltr">Day({proPackageDaysLeft})</span>
+                      </span>
+                      <span className="text-xs md:text-sm font-black text-accent-purple box-game px-2 py-0.5 flex items-center justify-center gap-1 h-[26px] md:h-[30px]">
+                        {tokens} <span className="text-[10px] text-accent-purple">Tokens</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
-                
-                {/* Level Bar */}
-                <div className="w-full bg-[var(--level-bar-bg)] rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
-                  <div 
-                    className="h-full rounded-full transition-all duration-500" 
-                    style={{ width: `${Math.min(100, (getLevel(Math.floor(displayXp)) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
-                  ></div>
-                </div>
-                
-                {/* XP Bar */}
-                <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border-2 border-black mb-2" dir="ltr">
-                  <div 
-                    className="h-full transition-all duration-500" 
-                    style={{ width: `${getXpProgress(Math.floor(displayXp))}%`, backgroundColor: 'var(--xp-bar-fill)' }}
-                  ></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] md:text-xs font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(Math.floor(displayXp)) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
-                      <Zap className="w-3 h-3" />
-                      {Math.floor(displayXp)} / {getXpForNextLevel(getLevel(Math.floor(displayXp)))} XP
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Tokens and Pro Package */}
-                <div className="flex items-center justify-end gap-2 mt-1">
-                  <span 
-                    className={`text-xs md:text-sm font-black box-game px-2 py-0.5 flex items-center justify-center gap-1 transition-all h-[26px] md:h-[30px] ${
-                      hasProPackage 
-                        ? 'text-yellow-600' 
-                        : 'text-gray-400 opacity-70'
-                    }`} 
-                    title="باقة المحترفين"
-                  >
-                    <Zap className={`w-3 h-3 transition-all ${
-                      hasProPackage 
-                        ? 'fill-yellow-500 text-yellow-500 animate-pulse' 
-                        : 'fill-gray-400 text-gray-400'
-                    }`} />
-                    <span className="text-[10px]" dir="ltr">Day({proPackageDaysLeft})</span>
-                  </span>
-                  <span className="text-xs md:text-sm font-black text-accent-purple box-game px-2 py-0.5 flex items-center justify-center gap-1 h-[26px] md:h-[30px]">
-                    {tokens} <span className="text-[10px] text-accent-purple">Tokens</span>
-                  </span>
-                </div>
-              </div>
-            </div>
+              )}
+            </AnimatedXp>
           </div>
             
           {/* Collection Icons - Moved outside player card */}
@@ -10113,7 +10136,7 @@ export default function App() {
                       <Clock className="w-6 h-6" />
                     </div>
                     <div className="text-right">
-                      <div className="text-[21px] font-bold text-main">{rainGiftCountdown}</div>
+                      <div className={`font-bold text-main ${isRainGiftActive ? 'text-base md:text-lg' : 'text-[21px]'}`}>{rainGiftCountdown}</div>
                     </div>
                   </div>
                   <button
