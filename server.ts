@@ -680,6 +680,8 @@ const app = express();
     reportedSerials?: string[],
     selectedFrame?: string,
     lastRainGiftResetDay?: string,
+    rainGiftTokens?: number,
+    rainGiftHelpers?: { [key: string]: number },
     notificationsEnabled?: number
   }>();
 
@@ -842,6 +844,8 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastRainGiftResetDay TEXT`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN rainGiftTokens INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN rainGiftHelpers TEXT DEFAULT '{}'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN dailyQuestStreak INTEGER DEFAULT 1`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastDailyClaim INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN weeklyTokensClaimed INTEGER DEFAULT 0`); } catch (e) {}
@@ -1042,23 +1046,68 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, notificationsEnabled)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @notificationsEnabled)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
   function checkDailyReset(player: any, serial: string, socket?: any) {
     if (!player) return;
     
-    const getEgyptDay = () => {
-      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const getRainGiftEventDay = () => {
+      const parts = new Intl.DateTimeFormat('en-GB', { 
+        timeZone: 'Africa/Cairo', 
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: 'numeric', hour12: false 
+      }).formatToParts(new Date());
+      
+      let year = 0, month = 0, day = 0, hour = 0, minute = 0;
+      for (const part of parts) {
+        if (part.type === 'year') year = parseInt(part.value, 10);
+        if (part.type === 'month') month = parseInt(part.value, 10);
+        if (part.type === 'day') day = parseInt(part.value, 10);
+        if (part.type === 'hour') {
+          hour = parseInt(part.value, 10);
+          if (hour === 24) hour = 0; // Handle 24:00 as 00:00
+        }
+        if (part.type === 'minute') minute = parseInt(part.value, 10);
+      }
+      
+      // Event starts at 19:00 Egypt time. Reset at 18:50 Egypt time.
+      if (hour < 18 || (hour === 18 && minute < 50)) {
+        const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+        d.setUTCDate(d.getUTCDate() - 1);
+        year = d.getUTCFullYear();
+        month = d.getUTCMonth() + 1;
+        day = d.getUTCDate();
+      }
+      
+      return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     };
     
-    const currentDay = getEgyptDay();
+    const currentDay = getRainGiftEventDay();
     if (player.lastRainGiftResetDay !== currentDay) {
-      player.ownedHelpers = {};
-      player.tokens = 0; // Reset tokens as requested: "بما فيهم الـ Tokens"
       player.lastRainGiftResetDay = currentDay;
+      
+      // Reset only the unused tokens and helpers obtained from Rain Gift
+      if (player.rainGiftTokens && player.rainGiftTokens > 0) {
+        player.tokens = Math.max(0, (player.tokens || 0) - player.rainGiftTokens);
+        player.rainGiftTokens = 0;
+      }
+      
+      if (player.rainGiftHelpers) {
+        if (!player.ownedHelpers) player.ownedHelpers = {};
+        for (const [helperId, count] of Object.entries(player.rainGiftHelpers)) {
+          if (typeof count === 'number' && count > 0) {
+            player.ownedHelpers[helperId] = Math.max(0, (player.ownedHelpers[helperId] || 0) - count);
+            if (player.ownedHelpers[helperId] === 0) {
+              delete player.ownedHelpers[helperId];
+            }
+          }
+        }
+        player.rainGiftHelpers = {};
+      }
+
       console.log(`[Rain Gift] Daily reset for ${serial} on ${currentDay}`);
       savePlayerData(serial);
       if (socket) {
@@ -1107,6 +1156,8 @@ const app = express();
         reportedSerials: JSON.stringify(player.reportedSerials || []),
         selectedFrame: player.selectedFrame || '',
         lastRainGiftResetDay: player.lastRainGiftResetDay || null,
+        rainGiftTokens: player.rainGiftTokens || 0,
+        rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
         notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0
       });
       invalidateTopPlayersCache();
@@ -1147,6 +1198,8 @@ const app = express();
         reportedSerials: JSON.stringify(player.reportedSerials || []),
         selectedFrame: player.selectedFrame || '',
         lastRainGiftResetDay: player.lastRainGiftResetDay || null,
+        rainGiftTokens: player.rainGiftTokens || 0,
+        rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
         notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0
       });
     }
@@ -1211,6 +1264,8 @@ const app = express();
           reportedSerials: JSON.parse(row.reportedSerials || '[]'),
           selectedFrame: row.selectedFrame || '',
           lastRainGiftResetDay: row.lastRainGiftResetDay || null,
+          rainGiftTokens: row.rainGiftTokens || 0,
+          rainGiftHelpers: JSON.parse(row.rainGiftHelpers || '{}'),
           notificationsEnabled: row.notificationsEnabled !== undefined ? row.notificationsEnabled : 0
         });
       });
@@ -2572,10 +2627,14 @@ io.on("connection", (socket) => {
 
       // Apply rewards
       if (rewards.xp) player.xp = (player.xp || 0) + rewards.xp;
-      if (rewards.tokens) player.tokens = (player.tokens || 0) + rewards.tokens;
+      if (rewards.tokens) {
+        player.tokens = (player.tokens || 0) + rewards.tokens;
+        player.rainGiftTokens = (player.rainGiftTokens || 0) + rewards.tokens;
+      }
       
       if (rewards.helpers && typeof rewards.helpers === 'object') {
         if (!player.ownedHelpers) player.ownedHelpers = {};
+        if (!player.rainGiftHelpers) player.rainGiftHelpers = {};
         const playerLevel = getLevel(player.xp);
         
         Object.entries(rewards.helpers).forEach(([helperId, count]) => {
@@ -2585,6 +2644,7 @@ io.on("connection", (socket) => {
               player.xp = (player.xp || 0) + (count * 100);
             } else {
               player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + count;
+              player.rainGiftHelpers[helperId] = (player.rainGiftHelpers[helperId] || 0) + count;
             }
           }
         });
@@ -2653,6 +2713,9 @@ io.on("connection", (socket) => {
       }
 
       // Deduct
+      if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[helperId] > 0) {
+        dbPlayer.rainGiftHelpers[helperId] -= 1;
+      }
       dbPlayer.ownedHelpers[helperId] -= 1;
       if (dbPlayer.ownedHelpers[helperId] === 0) {
         delete dbPlayer.ownedHelpers[helperId];
@@ -2789,10 +2852,12 @@ io.on("connection", (socket) => {
         if (gender) {
           player.gender = gender;
           // Update gender in all rooms the player is in
-          for (const room of rooms.values()) {
+          for (const [roomId, room] of rooms.entries()) {
             const playerInRoom = room.players.find((p: any) => p.serial === playerSerial);
             if (playerInRoom) {
               playerInRoom.gender = gender;
+              // Emit room_update so clients see the change
+              io.to(roomId).emit("room_update", room);
             }
           }
         }
@@ -3512,6 +3577,9 @@ io.on("connection", (socket) => {
           // If they have a free use (gift), we consume it
           // This is mandatory if they are level-locked, and optional but preferred if they aren't
           if (hasFreeUse && !hasPro && !hasUnlockedHelpers) {
+            if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[cardType] > 0) {
+              dbPlayer.rainGiftHelpers[cardType] -= 1;
+            }
             dbPlayer.ownedHelpers[cardType] -= 1;
             if (dbPlayer.ownedHelpers[cardType] <= 0) {
               delete dbPlayer.ownedHelpers[cardType];
@@ -3526,6 +3594,9 @@ io.on("connection", (socket) => {
         }
         
         if (hasFreeUse && !hasPro && !hasUnlockedHelpers) { // Only deduct if NOT Pro and NOT using Unlocked Helpers
+          if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[cardType] > 0) {
+            dbPlayer.rainGiftHelpers[cardType] -= 1;
+          }
           dbPlayer.ownedHelpers[cardType] -= 1;
           if (dbPlayer.ownedHelpers[cardType] <= 0) {
             delete dbPlayer.ownedHelpers[cardType];
@@ -5168,6 +5239,9 @@ io.on("connection", (socket) => {
           if (p.useToken && (player.tokens || 0) > 0) {
             const isRefundedWinner = (p.id === winner?.id) && refundWinnerToken;
             if (!isRefundedWinner) {
+              if (player.rainGiftTokens && player.rainGiftTokens > 0) {
+                player.rainGiftTokens -= 1;
+              }
               player.tokens = (player.tokens || 0) - 1;
             }
           }
