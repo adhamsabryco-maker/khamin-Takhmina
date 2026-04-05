@@ -603,6 +603,8 @@ export default function App() {
   }, []);
 
   const [xp, setXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0'));
+  const [displayXp, setDisplayXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0'));
+
   const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0'));
   const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0'));
   const [tokens, setTokens] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
@@ -1528,6 +1530,34 @@ export default function App() {
   useEffect(() => { roomRef.current = room; }, [room]);
 
   const [joined, setJoined] = useState(false);
+  
+  useEffect(() => {
+    if (displayXp !== xp) {
+      if (joined) {
+        // If in game, don't animate yet, wait until they return to home
+        return;
+      }
+      
+      const duration = 1500;
+      const steps = 60;
+      const stepTime = duration / steps;
+      const diff = xp - displayXp;
+      const stepAmount = diff / steps;
+      let current = displayXp;
+      
+      const interval = setInterval(() => {
+        current += stepAmount;
+        if ((stepAmount > 0 && current >= xp) || (stepAmount < 0 && current <= xp)) {
+          clearInterval(interval);
+          setDisplayXp(xp);
+        } else {
+          setDisplayXp(current);
+        }
+      }, stepTime);
+      
+      return () => clearInterval(interval);
+    }
+  }, [xp, displayXp, joined]);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   useEffect(() => {
@@ -3169,7 +3199,7 @@ export default function App() {
           id: msgId, 
           senderId, 
           text, 
-          playerName: sender?.name || (senderId === newSocket.id ? playerNameRef.current : 'منافس'),
+          playerName: sender?.name || (senderId === 'system' ? 'النظام' : (senderId === newSocket.id ? playerNameRef.current : 'منافس')),
           avatar: sender?.avatar || '👤'
         }];
       });
@@ -3788,7 +3818,7 @@ export default function App() {
         setPlayerSerial(player.serial);
         setPlayerName(player.name);
         setPlayerAge(player.age || 18);
-        setGender(player.gender || 'male');
+        setGender(player.gender || 'boy');
         setAvatar(player.avatar);
         setXp(player.xp || 0);
         setWins(player.wins || 0);
@@ -3803,7 +3833,7 @@ export default function App() {
         localStorage.setItem('khamin_player_serial', player.serial);
         localStorage.setItem('khamin_player_name', player.name);
         localStorage.setItem('khamin_player_age', (player.age || 18).toString());
-        localStorage.setItem('khamin_player_gender', player.gender || 'male');
+        localStorage.setItem('khamin_player_gender', player.gender || 'boy');
         localStorage.setItem('khamin_player_avatar', player.avatar);
         localStorage.setItem('khamin_wins', (player.wins || 0).toString());
         localStorage.setItem('khamin_xp', (player.xp || 0).toString());
@@ -3879,8 +3909,6 @@ export default function App() {
     let localAdTriggered = false;
 
     const startAdProcess = () => {
-      // We don't check adTriggeredRef here because we set it at the start of handleWatchAd
-      // but we can check a local flag if we want to be extra safe for this specific process
       if (localAdTriggered) return;
       localAdTriggered = true;
       
@@ -3932,14 +3960,12 @@ export default function App() {
     };
 
     const startMockAd = () => {
-      if (adTriggeredRef.current) return;
       console.log('Falling back to mock ad');
       startAdProcess();
       onAdComplete();
     };
 
     const handleAdUnavailable = () => {
-      if (adTriggeredRef.current) return;
       console.warn('Google Ads unavailable, falling back to mock ad temporarily');
       startMockAd();
     };
@@ -3963,7 +3989,6 @@ export default function App() {
           beforeAd: () => {
             console.log('AdSense: beforeAd');
             clearTimeout(adTimeout);
-            localAdTriggered = true;
             startAdProcess();
             
             // Safety timeout: if ad doesn't finish or dismiss within 60 seconds, resume game
@@ -4031,8 +4056,8 @@ export default function App() {
     let localAdTriggered = false;
 
     const startAdProcess = () => {
-      if (adTriggeredRef.current) return;
-      adTriggeredRef.current = true;
+      if (localAdTriggered) return;
+      localAdTriggered = true;
       if (roomId) {
         socket?.emit('ad_started', { roomId, powerUpName: 'استلام مكافأة' });
       }
@@ -4057,13 +4082,11 @@ export default function App() {
     };
 
     const startMockAd = () => {
-      if (adTriggeredRef.current) return;
       startAdProcess();
       onAdComplete();
     };
 
     const handleAdUnavailable = () => {
-      if (adTriggeredRef.current) return;
       startMockAd();
     };
 
@@ -4080,7 +4103,6 @@ export default function App() {
           name: 'claim_collection_reward',
           beforeAd: () => {
             clearTimeout(adTimeout);
-            localAdTriggered = true;
             startAdProcess();
             adSafetyTimeout = setTimeout(() => {
               if (roomId) {
@@ -5421,28 +5443,28 @@ export default function App() {
                   <div className="space-y-3">
                     <div>
                       <div className="flex justify-between items-center mb-1 flex-row-reverse">
-                        <span className="text-xs font-black text-brown-muted">Level {getLevel(xp)}</span>
+                        <span className="text-xs font-black text-brown-muted">Level {getLevel(Math.floor(displayXp))}</span>
                       </div>
                       <div className="w-full bg-[var(--level-bar-bg)] rounded-full h-2 overflow-hidden mb-2" dir="ltr">
                         <div 
                           className="h-full transition-all duration-500" 
-                          style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
+                          style={{ width: `${Math.min(100, (getLevel(Math.floor(displayXp)) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
                         ></div>
                       </div>
                       <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 shadow-inner overflow-hidden relative border-2 border-black" dir="ltr">
                         <div 
                           className="h-full transition-all duration-500" 
-                          style={{ width: `${getXpProgress(xp)}%`, backgroundColor: 'var(--xp-bar-fill)' }}
+                          style={{ width: `${getXpProgress(Math.floor(displayXp))}%`, backgroundColor: 'var(--xp-bar-fill)' }}
                         ></div>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-[10px] font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(xp) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
+                          <span className="text-[10px] font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(Math.floor(displayXp)) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
                             <Zap className="w-3 h-3" />
-                            {xp} / {getXpForNextLevel(getLevel(xp))} XP
+                            {Math.floor(displayXp)} / {getXpForNextLevel(getLevel(Math.floor(displayXp)))} XP
                           </span>
                         </div>
                       </div>
                     </div>
-                    {renderStars(getLevel(xp))}
+                    {renderStars(getLevel(Math.floor(displayXp)))}
                   </div>
                 </div>
 
@@ -9780,13 +9802,13 @@ export default function App() {
           <div className="player-card flex flex-col p-3 md:p-4 mb-4 md:mb-4 w-full">
             <div className="flex items-center gap-3 md:gap-4 flex-row-reverse w-full">
               <div className="relative shrink-0 w-16 h-16 md:w-20 md:h-20">
-                {renderAvatarContent(avatar, getLevel(xp), false, true, selectedFrame)}
+                {renderAvatarContent(avatar, getLevel(Math.floor(displayXp)), false, true, selectedFrame)}
               </div>
               <div className="flex flex-col justify-center flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-1 flex-row-reverse">
                   <div className="text-sm md:text-base font-black text-main truncate text-right">{playerName || 'لاعب جديد'}</div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs md:text-sm font-black text-accent-blue box-game px-2 py-0.5">Level {getLevel(xp)}</span>
+                    <span className="text-xs md:text-sm font-black text-accent-blue box-game px-2 py-0.5">Level {getLevel(Math.floor(displayXp))}</span>
                   </div>
                 </div>
                 
@@ -9794,7 +9816,7 @@ export default function App() {
                 <div className="w-full bg-[var(--level-bar-bg)] rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
                   <div 
                     className="h-full rounded-full transition-all duration-500" 
-                    style={{ width: `${Math.min(100, (getLevel(xp) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
+                    style={{ width: `${Math.min(100, (getLevel(Math.floor(displayXp)) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
                   ></div>
                 </div>
                 
@@ -9802,12 +9824,12 @@ export default function App() {
                 <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border-2 border-black mb-2" dir="ltr">
                   <div 
                     className="h-full transition-all duration-500" 
-                    style={{ width: `${getXpProgress(xp)}%`, backgroundColor: 'var(--xp-bar-fill)' }}
+                    style={{ width: `${getXpProgress(Math.floor(displayXp))}%`, backgroundColor: 'var(--xp-bar-fill)' }}
                   ></div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] md:text-xs font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(xp) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
+                    <span className="text-[10px] md:text-xs font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(Math.floor(displayXp)) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
                       <Zap className="w-3 h-3" />
-                      {xp} / {getXpForNextLevel(getLevel(xp))} XP
+                      {Math.floor(displayXp)} / {getXpForNextLevel(getLevel(Math.floor(displayXp)))} XP
                     </span>
                   </div>
                 </div>
