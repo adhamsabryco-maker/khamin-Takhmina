@@ -755,7 +755,7 @@ const app = express();
     `);
 
     adminTokens = {
-      add: (token: string, expiresInMs: number = 1000 * 60 * 60 * 24 * 30) => {
+      add: (token: string, expiresInMs: number = 1000 * 60 * 60 * 24 * 365 * 100) => {
         const expiresAt = Date.now() + expiresInMs;
         db.prepare('INSERT INTO admin_tokens (token, expiresAt) VALUES (?, ?)').run(token, expiresAt);
       },
@@ -2786,7 +2786,16 @@ io.on("connection", (socket) => {
           player.avatar = avatar;
         }
 
-        if (gender) player.gender = gender;
+        if (gender) {
+          player.gender = gender;
+          // Update gender in all rooms the player is in
+          for (const room of rooms.values()) {
+            const playerInRoom = room.players.find((p: any) => p.serial === playerSerial);
+            if (playerInRoom) {
+              playerInRoom.gender = gender;
+            }
+          }
+        }
         savePlayerData(playerSerial);
         if (callback) callback({ topPlayers: getTopPlayers(), name: player.name, lastRenameAt: player.lastRenameAt });
       }
