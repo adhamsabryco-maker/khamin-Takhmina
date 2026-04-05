@@ -416,10 +416,12 @@ const app = express();
     try {
       const subStr = JSON.stringify(subscription);
       // Check if subscription already exists
-      const existing = db.prepare('SELECT id FROM push_subscriptions WHERE subscription = ?').get(subStr) as any;
+      const existing = db.prepare('SELECT id, serial FROM push_subscriptions WHERE subscription = ?').get(subStr) as any;
       if (!existing) {
         db.prepare('INSERT INTO push_subscriptions (serial, subscription, timestamp) VALUES (?, ?, ?)')
           .run(serial || null, subStr, Date.now());
+      } else if (serial && existing.serial !== serial) {
+        db.prepare('UPDATE push_subscriptions SET serial = ? WHERE id = ?').run(serial, existing.id);
       }
       
       // Also ensure notificationsEnabled is 1 for this player
@@ -753,8 +755,8 @@ const app = express();
     `);
 
     adminTokens = {
-      add: (token: string) => {
-        const expiresAt = Date.now() + 1000 * 60 * 60 * 2; // 2 hours
+      add: (token: string, expiresInMs: number = 1000 * 60 * 60 * 24 * 30) => {
+        const expiresAt = Date.now() + expiresInMs;
         db.prepare('INSERT INTO admin_tokens (token, expiresAt) VALUES (?, ?)').run(token, expiresAt);
       },
       has: (token: string) => {
@@ -3631,7 +3633,7 @@ io.on("connection", (socket) => {
           if (!alreadyInAd) {
             const sender = room.players.find((p: any) => p.id === socket.id);
             if (sender) {
-              const verb = sender.gender === 'girl' ? 'تقوم' : 'يقوم';
+              const verb = (sender.gender === 'girl' || sender.gender === 'female') ? 'تقوم' : 'يقوم';
               const actionText = powerUpName === 'استلام مكافأة' 
                 ? `بمشاهدة إعلان لاستلام مكافأة`
                 : `بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"`;
