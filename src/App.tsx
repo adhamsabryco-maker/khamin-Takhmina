@@ -747,6 +747,10 @@ export default function App() {
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [activePowerUp, setActivePowerUp] = useState<string | null>(null);
   const [isDocumentHidden, setIsDocumentHidden] = useState(document.hidden);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    const saved = localStorage.getItem('khamin_notifications_enabled');
+    return saved !== null ? saved === 'true' : true;
+  });
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -807,13 +811,16 @@ export default function App() {
         showAlert(msg, 'تنبيه');
       });
 
+      // Sync notifications status
+      socket.emit('update_player_notifications', { serial: playerSerial, enabled: notificationsEnabled });
+
       return () => {
         socket.off('ad_status');
         socket.off('ad_success');
         socket.off('ad_error');
       };
     }
-  }, [socket, isConnected, playerSerial]);
+  }, [socket, isConnected, playerSerial, notificationsEnabled]);
 
   const [proPackageExpiry, setProPackageExpiry] = useState<number | null>(() => {
     const saved = localStorage.getItem('khamin_pro_package_expiry');
@@ -1695,15 +1702,6 @@ export default function App() {
     }
   }, [isAdmin, showAdminDashboard, adminTab]);
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    const saved = localStorage.getItem('khamin_notifications_enabled');
-    if (saved !== null) return saved === 'true';
-    // If no saved preference, default to true ONLY if permission is already granted
-    if ('Notification' in window && Notification.permission === 'granted') {
-      return true;
-    }
-    return false;
-  });
   const [showPushPrompt, setShowPushPrompt] = useState(false);
   const [pushTitle, setPushTitle] = useState('');
   const [pushBody, setPushBody] = useState('');
@@ -1775,6 +1773,10 @@ export default function App() {
         })
       });
       
+      if (socket && isConnected) {
+        socket.emit('update_player_notifications', { serial: playerSerial, enabled: true });
+      }
+      
       console.log('Push subscription successful');
       setShowPushPrompt(false);
       if (force) {
@@ -1806,6 +1808,10 @@ export default function App() {
             subscription
           })
         });
+        
+        if (socket && isConnected) {
+          socket.emit('update_player_notifications', { serial: playerSerial, enabled: false });
+        }
       }
       console.log('Push unsubscription successful');
     } catch (err) {
@@ -9609,7 +9615,7 @@ export default function App() {
         
         <div className="relative w-full max-w-md h-full mx-auto">
           {/* Header with Timer and Close Button */}
-          <div className="absolute top-3 w-full px-2 flex justify-between items-center z-20 pointer-events-auto">
+          <div className="absolute top-5 w-full px-6 flex justify-between items-center z-20 pointer-events-auto">
             <button 
               onClick={() => {
                 setShowRainGiftGame(false);
@@ -9619,12 +9625,12 @@ export default function App() {
                 localStorage.removeItem('khamin_pending_rain_gift');
                 setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
               }}
-              className="bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-black hover:scale-105 active:scale-95 transition-all"
+              className="bg-red-500 text-white w-10 h-10 rounded-full border-red-100 flex items-center justify-center font-black shadow-lg hover:scale-105 active:scale-95 transition-all"
             >
               <X className="w-6 h-6" />
             </button>
             
-            <div className="bg-accent-orange text-white px-4 py-1 rounded-full font-black text-xl flex items-center gap-2">
+            <div className="bg-accent-orange text-white px-6 py-1 rounded-full font-black text-xl shadow-lg flex items-center gap-2">
               <Clock className="w-6 h-6" />
               {Math.floor(gameTimer / 60)}:{(gameTimer % 60).toString().padStart(2, '0')}
             </div>
