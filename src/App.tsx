@@ -9609,7 +9609,7 @@ export default function App() {
         
         <div className="relative w-full max-w-md h-full mx-auto">
           {/* Header with Timer and Close Button */}
-          <div className="absolute top-10 w-full px-6 flex justify-between items-center z-20 pointer-events-auto">
+          <div className="absolute top-5 w-full px-2 flex justify-between items-center z-20 pointer-events-auto">
             <button 
               onClick={() => {
                 setShowRainGiftGame(false);
@@ -9619,12 +9619,12 @@ export default function App() {
                 localStorage.removeItem('khamin_pending_rain_gift');
                 setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
               }}
-              className="bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-black shadow-lg border-2 border-white hover:scale-105 active:scale-95 transition-all"
+              className="bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-black hover:scale-105 active:scale-95 transition-all"
             >
-              <X className="w-6 h-6" />
+              <LogOut className="w-6 h-6" />
             </button>
             
-            <div className="bg-accent-orange text-white px-6 py-2 rounded-full font-black text-xl shadow-lg flex items-center gap-2 border-2 border-white">
+            <div className="bg-accent-orange text-white px-4 py-1 rounded-full font-black text-xl flex items-center gap-2">
               <Clock className="w-6 h-6" />
               {Math.floor(gameTimer / 60)}:{(gameTimer % 60).toString().padStart(2, '0')}
             </div>
