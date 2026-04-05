@@ -278,6 +278,7 @@ interface Player {
   name: string;
   age: number; // Added for player privacy and child protection
   avatar: string;
+  gender: string;
   score: number;
   targetImage: { name: string; image: string } | null;
   isMuted: boolean;
@@ -1451,11 +1452,18 @@ export default function App() {
     return (
       <div className="flex justify-center gap-1 mt-1">
         {Array.from({ length: starsCount }).map((_, i) => (
-          displayStar ? (
-            <img key={i} src={displayStar} className="w-4 h-4 object-contain drop-shadow-sm" alt="Star" />
-          ) : (
-            <Star key={i} className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-sm" />
-          )
+          <motion.div
+            key={i}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: i * 0.1 }}
+          >
+            {displayStar ? (
+              <img src={displayStar} className="w-4 h-4 object-contain drop-shadow-sm" alt="Star" />
+            ) : (
+              <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-sm" />
+            )}
+          </motion.div>
         ))}
       </div>
     );
@@ -1971,6 +1979,7 @@ export default function App() {
         localStorage.setItem('khamin_last_reset_day', currentDay);
         setShowDailyQuestModal(true);
         setHasSeenDailyToday(true);
+        setIsNewDayNotification(true);
       }
     }
   }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial]);
