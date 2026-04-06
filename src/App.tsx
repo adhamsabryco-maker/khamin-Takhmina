@@ -2101,6 +2101,7 @@ export default function App() {
           helper: pendingDailyReward.helperReward, 
           tokens: pendingDailyReward.tokenReward 
         });
+        stopSound('cyclingReward');
         playSound('bell');
         setIsCycling(false);
         
