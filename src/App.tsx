@@ -115,6 +115,10 @@ const SOUNDS = {
   win: '/sounds/win.mp3',
   lose: '/sounds/lose.mp3',
   countdown: '/sounds/countdown.mp3',
+  cyclingReward: '/sounds/cyclingReward.mp3',
+  chestOpen: '/sounds/chestOpen.mp3',
+  shakingBox: '/sounds/shakingBox.mp3',
+  bell: '/sounds/bell.mp3',
   correct: '/sounds/correct.mp3',
   message: '/sounds/message.mp3',
   clickOpen: '/sounds/click-open.mp3',
@@ -2087,6 +2091,7 @@ export default function App() {
     const interval = setInterval(() => {
       const randomItem = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
       setCyclingReward(randomItem);
+      playSound('cyclingReward');
       cycleCount++;
       if (cycleCount >= 40) {
         clearInterval(interval);
@@ -2096,6 +2101,7 @@ export default function App() {
           helper: pendingDailyReward.helperReward, 
           tokens: pendingDailyReward.tokenReward 
         });
+        playSound('bell');
         setIsCycling(false);
         
         // Apply rewards locally for immediate UI update
@@ -4559,6 +4565,7 @@ export default function App() {
                     <div className="space-y-6">
                       {!isCycling ? (
                         <motion.div
+                          onAnimationStart={() => playSound('shakingBox')}
                           animate={{ 
                             rotate: [0, -10, 10, -10, 10, 0],
                             scale: [1, 1.1, 1]
