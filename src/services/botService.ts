@@ -3,35 +3,31 @@ import { GoogleGenAI } from "@google/genai";
 const apiKey = process.env.GEMINI_API_KEY || (process as any).env?.GOOGLE_API_KEY || "";
 const ai = new GoogleGenAI({ apiKey });
 
-export const getBotResponse = async (history: any[], systemInstruction: string) => {
-  const fallbackResponses = [
-    "مش عارف أقول إيه والله! 🤔",
-    "سؤال صعب شوية.. خليني أفكر..",
-    "يا ترى إيه الإجابة؟ 🧐",
-    "لعبة ممتعة جداً! كمل..",
-    "أنا معاك، مستني التخمين الجاي..",
-    "يا واد يا لعيب! 😉",
-    "ركز شوية، قربت توصل..",
-    "مممم.. مش متأكد أوي..",
-    "إيه الحلاوة دي! كمل..",
-    "يا مسهل الحال.. يارب تطلع صح!"
-  ];
+export const getBotResponse = async (history: any[], systemInstruction: string, temperature: number = 0.9) => {
+  const fallbackResponses = ["آه", "لأ"];
 
   const maxRetries = 3;
   let retryCount = 0;
+
+  let validHistory = [...history];
+  if (validHistory.length === 0) {
+    validHistory.push({ role: 'user', parts: [{ text: 'ابدأ اللعب واسأل سؤالك الأول.' }] });
+  } else if (validHistory[0].role === 'model') {
+    validHistory.unshift({ role: 'user', parts: [{ text: 'ابدأ اللعب.' }] });
+  }
 
   while (retryCount <= maxRetries) {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: history,
+        contents: validHistory,
         config: {
           systemInstruction,
           maxOutputTokens: 100,
-          temperature: 0.9,
+          temperature: temperature,
         }
       });
-      return response.text || fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+      return response.text || "آه"; 
     } catch (error: any) {
       if (error.message?.includes('429') && retryCount < maxRetries) {
         retryCount++;
@@ -41,8 +37,8 @@ export const getBotResponse = async (history: any[], systemInstruction: string) 
         continue;
       }
       console.error("Bot Response Error:", error.message);
-      return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+      return "آه";
     }
   }
-  return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+  return "آه";
 };
