@@ -2003,23 +2003,13 @@ export default function App() {
   });
   const [showLevelInfo, setShowLevelInfo] = useState(false);
   const [showLuckyWheelModal, setShowLuckyWheelModal] = useState(false);
-  const [hasSeenLuckyWheelToday, setHasSeenLuckyWheelToday] = useState(() => {
-    const saved = localStorage.getItem('khamin_has_seen_lucky_wheel_today');
-    const lastSeen = localStorage.getItem('khamin_last_lucky_wheel_date');
-    if (saved === 'true' && lastSeen) {
-      const d1 = new Date();
-      const d2 = new Date(parseInt(lastSeen));
-      if (d1.getUTCFullYear() === d2.getUTCFullYear() && d1.getUTCMonth() === d2.getUTCMonth() && d1.getUTCDate() === d2.getUTCDate()) {
-        return true;
-      }
-    }
-    return false;
+  const [hasSeenLuckyWheelThisSession, setHasSeenLuckyWheelThisSession] = useState(() => {
+    return sessionStorage.getItem('khamin_has_seen_lucky_wheel_session') === 'true';
   });
 
-  const updateHasSeenLuckyWheelToday = (value: boolean) => {
-    setHasSeenLuckyWheelToday(value);
-    localStorage.setItem('khamin_has_seen_lucky_wheel_today', value.toString());
-    localStorage.setItem('khamin_last_lucky_wheel_date', Date.now().toString());
+  const updateHasSeenLuckyWheelThisSession = (value: boolean) => {
+    setHasSeenLuckyWheelThisSession(value);
+    sessionStorage.setItem('khamin_has_seen_lucky_wheel_session', value.toString());
   };
   const [spinStatus, setSpinStatus] = useState({ dailySpinCount: 0, freeSpinUsed: 0, maxPaidSpins: 10, hasFreeSpin: true });
   const [isSpinning, setIsSpinning] = useState(false);
@@ -2028,11 +2018,29 @@ export default function App() {
   const [localIsSpinning, setLocalIsSpinning] = useState(false);
   const [showReward, setShowReward] = useState(false);
   const [showDailyQuestModal, setShowDailyQuestModal] = useState(false);
-  const [spinCooldown, setSpinCooldown] = useState(0);
+  const [spinCooldown, setSpinCooldown] = useState(() => {
+    const savedEnd = localStorage.getItem('khamin_spin_cooldown_end');
+    if (savedEnd) {
+      const end = parseInt(savedEnd);
+      const now = Date.now();
+      if (end > now) {
+        return Math.ceil((end - now) / 1000);
+      }
+    }
+    return 0;
+  });
 
   useEffect(() => {
     if (spinCooldown > 0) {
-      const timer = setTimeout(() => setSpinCooldown(prev => prev - 1), 1000);
+      const timer = setTimeout(() => {
+        setSpinCooldown(prev => {
+          const next = prev - 1;
+          if (next <= 0) {
+            localStorage.removeItem('khamin_spin_cooldown_end');
+          }
+          return next;
+        });
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [spinCooldown]);
@@ -2098,6 +2106,7 @@ export default function App() {
         // Since freeSpinUsed is 1 after the first spin, any spin where dailySpinCount > 1 is an ad spin.
         if (spinResult.dailySpinCount > 1) {
           setSpinCooldown(30);
+          localStorage.setItem('khamin_spin_cooldown_end', (Date.now() + 30000).toString());
         }
         
         // Update stats
@@ -2256,18 +2265,14 @@ export default function App() {
       const hasUnclaimedDaily = lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim);
       if (hasUnclaimedDaily) {
         setShowDailyQuestModal(true);
-        setHasSeenDailyToday(true);
-      } else if (!hasSeenLuckyWheelToday && (luckyWheelEnabled || isAdmin)) {
-        // If daily quest already seen/claimed, show lucky wheel
-        // Check if it's a new day for the lucky wheel
-        const lastSeen = localStorage.getItem('khamin_last_lucky_wheel_date');
-        if (!lastSeen || !isSameDay(Date.now(), parseInt(lastSeen))) {
-          setShowLuckyWheelModal(true);
-          updateHasSeenLuckyWheelToday(true);
-        }
+      } else if (!hasSeenLuckyWheelThisSession && !hasUsedFreeSpin && (luckyWheelEnabled || isAdmin)) {
+        // If daily quest already seen/claimed, show lucky wheel if free spin is available
+        setShowLuckyWheelModal(true);
+        updateHasSeenLuckyWheelThisSession(true);
       }
+      setHasSeenDailyToday(true);
     }
-  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, hasSeenLuckyWheelToday, luckyWheelEnabled, isAdmin]);
+  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, hasSeenLuckyWheelThisSession, hasUsedFreeSpin, luckyWheelEnabled, isAdmin]);
 
   useEffect(() => {
     if (socket && isConnected && playerSerial) {
@@ -2355,9 +2360,9 @@ export default function App() {
       playSound('clickClose');
       setShowDailyQuestModal(false);
       // After closing daily quest, check if we should show lucky wheel
-      if (!hasSeenLuckyWheelToday && (luckyWheelEnabled || isAdmin)) {
+      if (!hasSeenLuckyWheelThisSession && !hasUsedFreeSpin && (luckyWheelEnabled || isAdmin)) {
         setShowLuckyWheelModal(true);
-        updateHasSeenLuckyWheelToday(true);
+        updateHasSeenLuckyWheelThisSession(true);
       }
     } else {
       playSound('clickOpen');
@@ -4875,7 +4880,7 @@ export default function App() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/85 backdrop-blur-md z-[6000] flex items-center justify-center p-4"
-          onClick={() => setShowDailyQuestModal(false)}
+          onClick={toggleDailyQuests}
         >
           <motion.div
             initial={{ scale: 0.9, y: 20 }}
@@ -4886,7 +4891,7 @@ export default function App() {
           >
             <div className="p-6 text-center relative shrink-0 bg-accent-yellow border-b-4 border-black">
               <button 
-                onClick={() => { playSound('clickClose'); setShowDailyQuestModal(false); }}
+                onClick={toggleDailyQuests}
                 className="absolute top-4 right-4 w-8 h-8 bg-black/10 hover:bg-black/20 rounded-full flex items-center justify-center text-black transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -5020,7 +5025,7 @@ export default function App() {
                         onClick={() => {
                           setIsChestOpening(false);
                           setChestReward(null);
-                          setShowDailyQuestModal(false);
+                          toggleDailyQuests();
                         }}
                         className="w-full btn-game btn-success flex items-center justify-center mt-6 px-8 py-3 bg-white text-accent-blue rounded-xl font-black text-lg shadow-lg hover:bg-gray-100 transition-colors"
                       >
