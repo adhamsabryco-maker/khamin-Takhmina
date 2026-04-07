@@ -68,7 +68,31 @@ import {
   MessageCircle,
   Clock,
   CloudRain,
+  Disc,
 } from 'lucide-react';
+
+const SPIN_REWARDS_UI = [
+  { id: 'time_freeze', type: 'helper', value: 'time_freeze', label: 'تجميد الوقت', icon: <Snowflake className="w-6 h-6" />, color: '#06b6d4' },
+  { id: 'word_length', type: 'helper', value: 'word_length', label: 'كاشف الحروف', icon: <Type className="w-6 h-6" />, color: '#22c55e' },
+  { id: 'word_count', type: 'helper', value: 'word_count', label: 'عدد الكلمات', icon: <Hash className="w-6 h-6" />, color: '#6366f1' },
+  { id: 'hint', type: 'helper', value: 'hint', label: 'تلميح', icon: <HelpCircle className="w-6 h-6" />, color: '#3b82f6' },
+  { id: 'spy_lens', type: 'helper', value: 'spy_lens', label: 'الجاسوس', icon: <Eye className="w-6 h-6" />, color: '#a855f7' },
+  { id: 'token_1', type: 'token', value: 1, label: 'Token 1', icon: <Coins className="w-6 h-6" />, color: '#fbbf24' },
+  { id: 'token_2', type: 'token', value: 2, label: 'Token 2', icon: <Coins className="w-6 h-6" />, color: '#f59e0b' },
+  { id: 'token_3', type: 'token', value: 3, label: 'Token 3', icon: <Coins className="w-6 h-6" />, color: '#d97706' },
+  { id: 'token_4', type: 'token', value: 4, label: 'Token 4', icon: <Coins className="w-6 h-6" />, color: '#b45309' },
+  { id: 'token_5', type: 'token', value: 5, label: 'Token 5', icon: <Coins className="w-6 h-6" />, color: '#92400e' },
+  { id: 'token_10', type: 'token', value: 10, label: 'Token 10', icon: <Coins className="w-6 h-6" />, color: '#78350f' },
+  { id: 'xp_10', type: 'xp', value: 10, label: '10 XP', icon: <Star className="w-6 h-6" />, color: '#f97316' },
+  { id: 'xp_20', type: 'xp', value: 20, label: '20 XP', icon: <Star className="w-6 h-6" />, color: '#ea580c' },
+  { id: 'xp_30', type: 'xp', value: 30, label: '30 XP', icon: <Star className="w-6 h-6" />, color: '#c2410c' },
+  { id: 'xp_40', type: 'xp', value: 40, label: '40 XP', icon: <Star className="w-6 h-6" />, color: '#9a3412' },
+  { id: 'xp_50', type: 'xp', value: 50, label: '50 XP', icon: <Star className="w-6 h-6" />, color: '#7c2d12' },
+  { id: 'xp_100', type: 'xp', value: 100, label: '100 XP', icon: <Star className="w-6 h-6" />, color: '#431407' },
+  { id: 'xp_5000', type: 'xp', value: 5000, label: '5000 XP', icon: <Star className="w-6 h-6" />, color: '#ef4444' },
+  { id: 'xp_10000', type: 'xp', value: 10000, label: '10000 XP', icon: <Star className="w-6 h-6" />, color: '#dc2626' },
+  { id: 'pro_30', type: 'pro', value: 30, label: 'باقة المحترفين', icon: <Crown className="w-6 h-6" />, color: '#ec4899' },
+];
 
 const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
   const [displayXP, setDisplayXP] = useState(0);
@@ -125,6 +149,8 @@ const SOUNDS = {
   clickClose: '/sounds/click-close.mp3',
   tick: '/sounds/tick.mp3',
   luckyReels: '/sounds/lucky-reels-sound-effect.mp3',
+  spinStart: '/sounds/lucky-reels-sound-effect.mp3',
+  spinStop: '/sounds/bell.mp3',
   lobbyBackground: '/sounds/lobby-background-music.mp3',
   gameBackground: '/sounds/start-game-background-music.mp3',
 };
@@ -1155,6 +1181,7 @@ export default function App() {
     paymob_iframe_id: '1013400',
     paymob_hmac: 'A2DBAF7F92579F5B6CE8687D60BE29BA'
   });
+  const [luckyWheelEnabled, setLuckyWheelEnabled] = useState(true);
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => {
     const saved = localStorage.getItem('khamin_theme_config');
     if (saved) {
@@ -1975,7 +2002,59 @@ export default function App() {
     return 1;
   });
   const [showLevelInfo, setShowLevelInfo] = useState(false);
+  const [showLuckyWheelModal, setShowLuckyWheelModal] = useState(false);
+  const [hasSeenLuckyWheelToday, setHasSeenLuckyWheelToday] = useState(() => {
+    const saved = localStorage.getItem('khamin_has_seen_lucky_wheel_today');
+    const lastSeen = localStorage.getItem('khamin_last_lucky_wheel_date');
+    if (saved === 'true' && lastSeen) {
+      const d1 = new Date();
+      const d2 = new Date(parseInt(lastSeen));
+      if (d1.getUTCFullYear() === d2.getUTCFullYear() && d1.getUTCMonth() === d2.getUTCMonth() && d1.getUTCDate() === d2.getUTCDate()) {
+        return true;
+      }
+    }
+    return false;
+  });
+
+  const updateHasSeenLuckyWheelToday = (value: boolean) => {
+    setHasSeenLuckyWheelToday(value);
+    localStorage.setItem('khamin_has_seen_lucky_wheel_today', value.toString());
+    localStorage.setItem('khamin_last_lucky_wheel_date', Date.now().toString());
+  };
+  const [spinStatus, setSpinStatus] = useState({ dailySpinCount: 0, freeSpinUsed: 0, maxPaidSpins: 10, hasFreeSpin: true });
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [spinResult, setSpinResult] = useState<any>(null);
+  const [rotation, setRotation] = useState(0);
+  const [localIsSpinning, setLocalIsSpinning] = useState(false);
+  const [showReward, setShowReward] = useState(false);
   const [showDailyQuestModal, setShowDailyQuestModal] = useState(false);
+  const [spinCooldown, setSpinCooldown] = useState(0);
+
+  useEffect(() => {
+    if (spinCooldown > 0) {
+      const timer = setTimeout(() => setSpinCooldown(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [spinCooldown]);
+
+  const [hasUsedFreeSpin, setHasUsedFreeSpin] = useState(() => {
+    const saved = localStorage.getItem('khamin_has_used_free_spin');
+    const lastUsed = localStorage.getItem('khamin_last_free_spin_date');
+    if (saved === 'true' && lastUsed) {
+      const d1 = new Date();
+      const d2 = new Date(parseInt(lastUsed));
+      if (d1.getUTCFullYear() === d2.getUTCFullYear() && d1.getUTCMonth() === d2.getUTCMonth() && d1.getUTCDate() === d2.getUTCDate()) {
+        return true;
+      }
+    }
+    return false;
+  });
+
+  const updateHasUsedFreeSpin = (value: boolean) => {
+    setHasUsedFreeSpin(value);
+    localStorage.setItem('khamin_has_used_free_spin', value.toString());
+    localStorage.setItem('khamin_last_free_spin_date', Date.now().toString());
+  };
   const [dailyQuestStreak, setDailyQuestStreak] = useState(() => {
     const saved = localStorage.getItem('khamin_daily_streak');
     return saved ? parseInt(saved) : 1;
@@ -1985,6 +2064,116 @@ export default function App() {
     return saved ? parseInt(saved) : 0;
   });
   const [hasSeenDailyToday, setHasSeenDailyToday] = useState(false);
+
+  useEffect(() => {
+    if (showLuckyWheelModal) {
+      setRotation(0);
+      setShowReward(false);
+      setLocalIsSpinning(false);
+      setIsSpinning(false);
+    }
+  }, [showLuckyWheelModal]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (spinResult && localIsSpinning) {
+      const segments = SPIN_REWARDS_UI;
+      const segmentAngle = 360 / segments.length;
+      const rewardIndex = segments.findIndex(r => r.id === spinResult.reward.id);
+      const targetIndex = rewardIndex >= 0 ? rewardIndex : 0;
+      
+      const extraSpins = 8;
+      const targetAngle = 360 * extraSpins + (360 - (targetIndex * segmentAngle));
+      
+      setRotation(targetAngle);
+      
+      timer = setTimeout(() => {
+        setLocalIsSpinning(false);
+        setIsSpinning(false);
+        setShowReward(true);
+        playSound('win');
+        
+        // Start cooldown if it was an ad spin
+        // If dailySpinCount > 1, it means we've done at least one spin.
+        // Since freeSpinUsed is 1 after the first spin, any spin where dailySpinCount > 1 is an ad spin.
+        if (spinResult.dailySpinCount > 1) {
+          setSpinCooldown(30);
+        }
+        
+        // Update stats
+        setXp(spinResult.newStats.xp);
+        setTokens(spinResult.newStats.tokens);
+        setOwnedHelpers(spinResult.newStats.ownedHelpers);
+        setProPackageExpiry(spinResult.newStats.proPackageExpiry);
+      }, 5000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [spinResult, localIsSpinning]);
+
+  const handleSpinClick = () => {
+    if (isSpinning || localIsSpinning || spinCooldown > 0) return;
+    
+    const isAdSpin = !spinStatus.hasFreeSpin;
+    
+    if (isAdSpin) {
+      if (spinStatus.dailySpinCount >= 11 && !isAdmin) {
+        showAlert('لقد استنفدت جميع محاولاتك لليوم! عد غداً.', 'تنبيه');
+        return;
+      }
+      
+      // Ad logic
+      const adFunc = (window as any).adBreak || (window as any).showAdBreak || (window as any).adConfig || (window as any).adsbygoogle?.push;
+      if (typeof adFunc === 'function') {
+        try {
+          adFunc({
+            type: 'reward',
+            name: 'lucky_wheel_spin',
+            beforeAd: () => Howler.mute(true),
+            afterAd: () => Howler.mute(false),
+            beforeReward: (showAdFn: any) => {
+              showAdFn();
+            },
+            adViewed: () => {
+              startSpin(true);
+            },
+            adDismissed: () => {
+              Howler.mute(false);
+              showAlert('يجب مشاهدة الإعلان للحصول على المحاولة!', 'تنبيه');
+            },
+            adBreakDone: (placementInfo: any) => {
+              console.log("Ad break done:", placementInfo);
+            }
+          });
+        } catch (e) {
+          console.error("Ad error:", e);
+          startSpin(true);
+        }
+      } else {
+        // Fallback if no ad SDK
+        startSpin(true);
+      }
+    } else {
+      startSpin(false);
+    }
+  };
+
+  const startSpin = (isAd: boolean) => {
+    if (!isAd) {
+      updateHasUsedFreeSpin(true);
+    }
+    setLocalIsSpinning(false);
+    setRotation(0);
+    setShowReward(false);
+    
+    setTimeout(() => {
+      setLocalIsSpinning(true);
+      setIsSpinning(true);
+      playSound('luckyReels');
+      socket?.emit('perform_spin', { serial: playerSerial, isAdSpin: isAd });
+    }, 50);
+  };
   const [ownedHelpers, setOwnedHelpers] = useState<{ [key: string]: number }>(() => {
     const saved = localStorage.getItem('khamin_owned_helpers');
     return saved ? JSON.parse(saved) : {};
@@ -2068,9 +2257,44 @@ export default function App() {
       if (hasUnclaimedDaily) {
         setShowDailyQuestModal(true);
         setHasSeenDailyToday(true);
+      } else if (!hasSeenLuckyWheelToday && (luckyWheelEnabled || isAdmin)) {
+        // If daily quest already seen/claimed, show lucky wheel
+        // Check if it's a new day for the lucky wheel
+        const lastSeen = localStorage.getItem('khamin_last_lucky_wheel_date');
+        if (!lastSeen || !isSameDay(Date.now(), parseInt(lastSeen))) {
+          setShowLuckyWheelModal(true);
+          updateHasSeenLuckyWheelToday(true);
+        }
       }
     }
-  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial]);
+  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, hasSeenLuckyWheelToday, luckyWheelEnabled, isAdmin]);
+
+  useEffect(() => {
+    if (socket && isConnected && playerSerial) {
+      socket.emit('get_spin_status', { serial: playerSerial });
+      socket.on('spin_status', (status) => setSpinStatus(status));
+      socket.on('spin_result', (data) => {
+        setSpinResult(null); // Reset to ensure next spin triggers effect
+        setTimeout(() => setSpinResult(data), 0);
+        setSpinStatus({
+          dailySpinCount: data.dailySpinCount,
+          freeSpinUsed: data.freeSpinUsed,
+          maxPaidSpins: 10,
+          hasFreeSpin: data.freeSpinUsed === 0
+        });
+      });
+      socket.on('spin_error', (msg) => {
+        setIsSpinning(false);
+        showAlert(msg, 'تنبيه');
+      });
+
+      return () => {
+        socket.off('spin_status');
+        socket.off('spin_result');
+        socket.off('spin_error');
+      };
+    }
+  }, [socket, isConnected, playerSerial]);
 
   const handleClaimDailyQuest = () => {
     setIsChestOpening(true);
@@ -2130,10 +2354,26 @@ export default function App() {
     if (showDailyQuestModal) {
       playSound('clickClose');
       setShowDailyQuestModal(false);
+      // After closing daily quest, check if we should show lucky wheel
+      if (!hasSeenLuckyWheelToday && (luckyWheelEnabled || isAdmin)) {
+        setShowLuckyWheelModal(true);
+        updateHasSeenLuckyWheelToday(true);
+      }
     } else {
       playSound('clickOpen');
       closeAllModals();
       setShowDailyQuestModal(true);
+    }
+  };
+
+  const toggleLuckyWheel = () => {
+    if (showLuckyWheelModal) {
+      playSound('clickClose');
+      setShowLuckyWheelModal(false);
+    } else {
+      playSound('clickOpen');
+      closeAllModals();
+      setShowLuckyWheelModal(true);
     }
   };
   
@@ -2153,6 +2393,7 @@ export default function App() {
     setShowAdminDashboard(false);
     setShowReportModal(false);
     setShowShopModal(false);
+    setShowLuckyWheelModal(false);
   };
 
   const toggleSettings = () => {
@@ -2708,6 +2949,9 @@ export default function App() {
             paymob_iframe_id: settings.paymob_iframe_id || '1013400',
             paymob_hmac: settings.paymob_hmac || 'A2DBAF7F92579F5B6CE8687D60BE29BA'
           });
+          if (settings.lucky_wheel_enabled !== undefined) {
+            setLuckyWheelEnabled(settings.lucky_wheel_enabled === 'true');
+          }
         }
       });
       fetchAdminImages();
@@ -2826,6 +3070,12 @@ export default function App() {
 
     newSocket.on('global_reward_available', (reward: any) => {
       setActiveGlobalReward(reward);
+    });
+
+    newSocket.on('app_settings', (settings: any) => {
+      if (settings && settings.lucky_wheel_enabled !== undefined) {
+        setLuckyWheelEnabled(settings.lucky_wheel_enabled === 'true' || settings.lucky_wheel_enabled === true);
+      }
     });
 
     newSocket.on('connect', () => {
@@ -4455,6 +4705,147 @@ export default function App() {
            date1.getUTCDate() === date2.getUTCDate();
   };
 
+  const renderLuckyWheelModal = () => {
+    const segments = SPIN_REWARDS_UI;
+    const segmentAngle = 360 / segments.length;
+
+    return (
+      <AnimatePresence>
+        {showLuckyWheelModal && (
+          <div 
+            className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={toggleLuckyWheel}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-md overflow-hidden relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-pink-500 p-4 border-b-4 border-black flex justify-between items-center" dir="ltr">
+                <h2 className="text-white text-2xl font-black flex items-center gap-2">
+                  <Disc className="w-6 h-6 animate-spin-slow" />
+                  عجلة الحظ
+                </h2>
+                <button onClick={toggleLuckyWheel} className="text-white hover:text-pink-200"><X className="w-6 h-6" /></button>
+              </div>
+
+              <div className="p-6 flex flex-col items-center gap-6">
+                {/* The Wheel */}
+                <div className="relative w-64 h-64 md:w-80 md:h-80">
+                  {/* Pointer */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-10 w-8 h-8 text-pink-600 drop-shadow-md">
+                    <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[25px] border-t-current mx-auto" />
+                  </div>
+                  
+                  {/* Wheel Body */}
+                  <motion.div 
+                    animate={{ rotate: rotation }}
+                    transition={localIsSpinning ? { duration: 5, ease: [0.15, 0, 0.15, 1] } : { duration: 0 }}
+                    className="w-full h-full rounded-full border-4 border-black overflow-hidden relative"
+                    style={{ 
+                      background: `conic-gradient(from ${-segmentAngle/2}deg, ${segments.map((s, i) => `${s.color} ${i * segmentAngle}deg ${(i + 1) * segmentAngle}deg`).join(', ')})` 
+                    }}
+                  >
+                    {/* Icons & Labels on segments */}
+                    {segments.map((s, i) => {
+                      const angle = i * segmentAngle;
+                      return (
+                        <div 
+                          key={`icon-${s.id}`}
+                          className="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-start pt-2"
+                          style={{ transform: `rotate(${angle}deg)` }}
+                        >
+                          <div 
+                            className="flex flex-col items-center gap-1"
+                          >
+                            <div 
+                              className="text-white"
+                              style={{ transform: `rotate(${-angle}deg)` }}
+                            >
+                              {s.icon}
+                            </div>
+                            <div 
+                              className="text-white flex items-center justify-center"
+                              style={{ 
+                                height: '60px',
+                                width: '20px',
+                                writingMode: 'vertical-rl',
+                                textOrientation: 'mixed'
+                              }}
+                            >
+                              <span className="text-[9px] md:text-[9px] font-bold whitespace-nowrap leading-none text-center uppercase tracking-tighter">
+                                {s.label}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                  
+                  {/* Center Hub */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white border-4 border-black rounded-full z-20 flex items-center justify-center">
+                    <div className="w-4 h-4 bg-pink-500 rounded-full animate-pulse" />
+                  </div>
+                </div>
+
+                {/* Info & Button */}
+                <div className="w-full text-center space-y-4">
+                  <p className="text-xs font-bold text-red-600">
+                    جميع الهدايا التي تحصل عليها يجب أن تستخدم في نفس اليوم.
+                  </p>
+                  {showReward && spinResult && (
+                    <motion.div 
+                      initial={{ y: 10, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      className="p-3 bg-yellow-100 border-2 border-yellow-400 rounded-xl"
+                    >
+                      <p className="text-sm font-bold text-yellow-800">مبروك! كسبت:</p>
+                      <p className="text-xl font-black text-yellow-600">{spinResult.reward.label}</p>
+                    </motion.div>
+                  )}
+
+                  <div className="flex flex-col gap-2">
+                    <button 
+                      onClick={handleSpinClick}
+                      disabled={isSpinning || localIsSpinning || spinCooldown > 0}
+                      className={`w-full py-2 rounded-2xl font-black text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black transition-all active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 ${
+                        isSpinning || localIsSpinning || spinCooldown > 0
+                        ? 'bg-gray-300 cursor-not-allowed' 
+                        : spinStatus.hasFreeSpin 
+                          ? 'bg-accent-green text-white hover:brightness-110' 
+                          : 'bg-accent-blue text-white hover:brightness-110'
+                      }`}
+                    >
+                      {isSpinning || localIsSpinning ? (
+                        'جاري التدوير...'
+                      ) : spinCooldown > 0 ? (
+                        <>انتظر {spinCooldown} ثانية...</>
+                      ) : !hasUsedFreeSpin && spinStatus.hasFreeSpin ? (
+                        <>لف العجلة (مجاناً)</>
+                      ) : (
+                        <>
+                          <span className="text-2xl">📺</span>
+                          لف العجلة (مشاهدة إعلان)
+                        </>
+                      )}
+                    </button>
+                    
+                    <p className="text-sm font-bold text-gray-500">
+                      المحاولات المتبقية: {isAdmin ? 'غير محدود' : `${Math.max(0, 11 - spinStatus.dailySpinCount)} / 11`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    );
+  };
+
   const renderDailyQuestModal = () => {
     let effectiveStreak = dailyQuestStreak;
     const now = Date.now();
@@ -4518,7 +4909,7 @@ export default function App() {
                   return (
                     <div 
                       key={day}
-                      className={`relative flex flex-col items-center p-2 rounded-2xl border-4 transition-all ${
+                      className={`relative flex flex-col items-center p-1 rounded-2xl border-4 transition-all ${
                         isClaimed ? 'bg-gray-100 border-gray-300 opacity-50' :
                         isCurrent ? 'bg-accent-yellow-light border-accent-yellow scale-105 shadow-lg' :
                         'bg-white border-black'
@@ -4938,6 +5329,7 @@ export default function App() {
 
       {renderCheckoutPage()}
       {renderDailyQuestModal()}
+      {renderLuckyWheelModal()}
       {renderComplaintModal()}
       {renderContactModal()}
       {/* Custom Alert Modal */}
@@ -5560,7 +5952,7 @@ export default function App() {
                               style={{ width: `${getXpProgress(Math.floor(displayXp))}%`, backgroundColor: 'var(--xp-bar-fill)' }}
                             ></div>
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-[10px] font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(Math.floor(displayXp)) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
+                              <span className="text-[10px] font-bold flex items-center gap-1" style={{ color: getXpProgress(Math.floor(displayXp)) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
                                 <Zap className="w-3 h-3" />
                                 {Math.floor(displayXp)} / {getXpForNextLevel(getLevel(Math.floor(displayXp)))} XP
                               </span>
@@ -8050,7 +8442,7 @@ export default function App() {
                       </div>
                     </div>
                   ) : adminTab === 'customization' ? (
-                    <AdminCustomization showAlert={showAlert} socket={socket} gamePolicies={gamePolicies} setGamePolicies={setGamePolicies} />
+                    <AdminCustomization showAlert={showAlert} socket={socket} gamePolicies={gamePolicies} setGamePolicies={setGamePolicies} luckyWheelEnabled={luckyWheelEnabled} setLuckyWheelEnabled={setLuckyWheelEnabled} />
                   ) : adminTab === 'live_matches' ? (
                     <div className="flex-1 flex flex-col overflow-hidden bg-gray-50/50 p-6">
                       <div className="flex items-center justify-between mb-6">
@@ -9792,6 +10184,23 @@ export default function App() {
               )}
             </button>
 
+            {/* Lucky Wheel Button */}
+            {(luckyWheelEnabled || isAdmin) && (
+              <button 
+                onClick={toggleLuckyWheel}
+                className="w-9 h-9 md:w-10 md:h-10 bg-pink-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-pink-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                title="عجلة الحظ"
+              >
+                <Disc className="w-4 h-4 md:w-5 md:h-5" />
+                {spinStatus.hasFreeSpin && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Info Button */}
             <button 
               onClick={toggleLevelInfo}
@@ -9851,37 +10260,10 @@ export default function App() {
                   <div className="flex flex-col justify-center flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1 flex-row-reverse">
                       <div className="text-sm md:text-base font-black text-main truncate text-right">{playerName || 'لاعب جديد'}</div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs md:text-sm font-black text-accent-blue box-game px-2 py-0.5">Level {getLevel(Math.floor(displayXp))}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Level Bar */}
-                    <div className="w-full bg-[var(--level-bar-bg)] rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
-                      <div 
-                        className="h-full rounded-full transition-all duration-500" 
-                        style={{ width: `${Math.min(100, (getLevel(Math.floor(displayXp)) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
-                      ></div>
-                    </div>
-                    
-                    {/* XP Bar */}
-                    <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border-2 border-black mb-2" dir="ltr">
-                      <div 
-                        className="h-full transition-all duration-500" 
-                        style={{ width: `${getXpProgress(Math.floor(displayXp))}%`, backgroundColor: 'var(--xp-bar-fill)' }}
-                      ></div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[10px] md:text-xs font-black drop-shadow-sm flex items-center gap-1" style={{ color: getXpProgress(Math.floor(displayXp)) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
-                          <Zap className="w-3 h-3" />
-                          {Math.floor(displayXp)} / {getXpForNextLevel(getLevel(Math.floor(displayXp)))} XP
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Tokens and Pro Package */}
-                    <div className="flex items-center justify-end gap-2 mt-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs md:text-sm font-black text-accent-blue px-0.5 py-0.5">Level {getLevel(Math.floor(displayXp))}</span>
                       <span 
-                        className={`text-xs md:text-sm font-black box-game px-2 py-0.5 flex items-center justify-center gap-1 transition-all h-[26px] md:h-[30px] ${
+                        className={`text-xs md:text-sm font-black gap-0.5 px-0.5 py-0.5 flex items-center justify-center transition-all h-[26px] md:h-[30px] ${
                           hasProPackage 
                             ? 'text-yellow-600' 
                             : 'text-gray-400 opacity-70'
@@ -9894,10 +10276,54 @@ export default function App() {
                             : 'fill-gray-400 text-gray-400'
                         }`} />
                         <span className="text-[10px]" dir="ltr">Day({proPackageDaysLeft})</span>
-                      </span>
-                      <span className="text-xs md:text-sm font-black text-accent-purple box-game px-2 py-0.5 flex items-center justify-center gap-1 h-[26px] md:h-[30px]">
-                        {tokens} <span className="text-[10px] text-accent-purple">Tokens</span>
-                      </span>
+                      </span>                        
+                      </div>
+                    </div>
+                    
+                    {/* Level Bar */}
+                    <div className="w-full bg-[var(--level-bar-bg)] rounded-full h-2 md:h-3 shadow-inner overflow-hidden mb-2" dir="ltr">
+                      <div 
+                        className="h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${Math.min(100, (getLevel(Math.floor(displayXp)) / 50) * 100)}%`, backgroundColor: 'var(--level-bar-fill)' }}
+                      ></div>
+                    </div>
+                    
+                    {/* XP Bar */}
+                    <div className="w-full bg-[var(--xp-bar-bg)] rounded-full h-5 md:h-6 shadow-inner overflow-hidden relative border-2 border-black mb-1" dir="ltr">
+                      <div 
+                        className="h-full transition-all duration-500" 
+                        style={{ width: `${getXpProgress(Math.floor(displayXp))}%`, backgroundColor: 'var(--xp-bar-fill)' }}
+                      ></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-[10px] md:text-xs font-bold flex items-center gap-1" style={{ color: getXpProgress(Math.floor(displayXp)) >= 100 ? 'var(--xp-bar-text-active)' : 'var(--xp-bar-text)' }}>
+                          <Zap className="w-3 h-3" />
+                          {Math.floor(displayXp)} / {getXpForNextLevel(getLevel(Math.floor(displayXp)))} XP
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Tokens and Pro Package */}
+                    <div className="flex flex-wrap justify-center gap-1">
+                      <div className="mt-0.5 pt-0.5 flex flex-wrap justify-center gap-0.3 md:gap-0.5 text-xs font-bold text-brown-dark" dir="ltr">
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                          <span className="text-[13px] md:text-[14px]"><Coins className="w-3 h-3 md:w-4 md:h-4 text-yellow-600" /></span> <span className="text-[11px] md:text-[12px]">{tokens}</span>
+                        </span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.spy_lens || 0}</span>
+                        </span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.hint || 0}</span>
+                        </span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                          <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.time_freeze || 0}</span>
+                        </span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                          <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.word_count || 0}</span>
+                        </span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                          <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.word_length || 0}</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -9906,7 +10332,7 @@ export default function App() {
           </div>
             
           {/* Collection Icons - Moved outside player card */}
-          <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
+          <div className="flex items-center justify-center gap-1.5 mb-4 flex-wrap">
             {COLLECTION_DATA.map((cat) => {
               const hasAny = playerCollection.some(c => {
                 const catImages = cat.stages.flatMap(s => s.images.map(img => normalizeEgyptian(img).toLowerCase()));
@@ -10106,7 +10532,7 @@ export default function App() {
 
                 {/* Level 50 Reward Section */}
                 {!isRewardClaimed && (
-                  <div className="mt-2 p-2 justify-between items-center flex gap-9 md:gap-2 bg-gradient-to-br from-amber-50 to-yellow-100 border border-amber-300 rounded-lg shadow-sm">
+                  <div className="mt-2 p-2 justify-between items-center flex gap-2 md:gap-2 bg-gradient-to-br from-amber-50 to-yellow-100 border border-amber-300 rounded-lg shadow-sm">
                   <div className="items-center justify-between gap-2">
                     <h3 className="font-bold md:font-black md:text-sm text-xs text-amber-900">هدية أول لاعب يصل Lvl 50 🎁</h3>
                     <span className="font-bold md:text-[12px] text-[10px] text-amber-800">10 Tokens + باقة المحترفين 7 أيام</span>
@@ -10142,7 +10568,7 @@ export default function App() {
               {/* Rain Gift Event Section - Moved outside and below leaderboard */}
               {gamePolicies.isRainGiftEnabled && (
               <div className="p-2 bg-gradient-to-r from-accent-orange/10 to-accent-green/10 rounded-2xl border-2 border-white shadow-sm box-game">
-              <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[12px] text-accent-orange">هدايا 🎁 كل يوم الساعة 7 مساء بتوقيت مصر 🌧️</span>
+              <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[11px] text-accent-orange">مطر الهدايا 🎁 كل يوم الساعة 7 مساء بتوقيت مصر 🌧️</span>
               <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[12px] text-accent-purple">مدة الحدث 3 دقائق فقط! ⏰</span>
                 <div className="flex items-center justify-between flex-row-reverse">
                   <div className="flex items-center gap-2" dir="ltr">
@@ -10171,28 +10597,6 @@ export default function App() {
                   >
                     اشترك في الحدث
                   </button>
-                </div>
-                
-                {/* Balance Display */}
-                <div className="mt-3 pt-3 border-t border-white/50 flex flex-wrap justify-center gap-2 text-xs font-bold text-brown-dark" dir="ltr">
-                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-yellow-600">Tokens</span> <span className="text-[12px]">{tokens}</span>
-                  </span>
-                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-[13px]"><Eye className="w-4 h-4 text-purple-500" /></span> <span className="text-[12px]">{ownedHelpers.spy_lens || 0}</span>
-                  </span>
-                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-[13px]"><HelpCircle className="w-4 h-4 text-blue-500" /></span> <span className="text-[12px]">{ownedHelpers.hint || 0}</span>
-                  </span>
-                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-[13px]"><Snowflake className="w-4 h-4 text-cyan-500" /></span> <span className="text-[12px]">{ownedHelpers.time_freeze || 0}</span>
-                  </span>
-                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-[13px]"><Hash className="w-4 h-4 text-indigo-500" /></span> <span className="text-[12px]">{ownedHelpers.word_count || 0}</span>
-                  </span>
-                  <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                    <span className="text-[13px]"><Type className="w-4 h-4 text-green-500" /></span> <span className="text-[12px]">{ownedHelpers.word_length || 0}</span>
-                  </span>
                 </div>
               </div>
               )}
