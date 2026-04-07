@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Image as ImageIcon, Trash2, Gift, CloudRain } from 'lucide-react';
+import { Upload, Image as ImageIcon, Trash2, Gift, CloudRain, Disc } from 'lucide-react';
 import { useAvatarConfig } from '../contexts/AvatarContext';
 import { Socket } from 'socket.io-client';
 
-export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePolicies }: { showAlert: (msg: string, title?: string) => void, socket: Socket | null, gamePolicies: any, setGamePolicies: any }) => {
+export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePolicies, luckyWheelEnabled, setLuckyWheelEnabled }: { showAlert: (msg: string, title?: string) => void, socket: Socket | null, gamePolicies: any, setGamePolicies: any, luckyWheelEnabled: boolean, setLuckyWheelEnabled: (val: boolean) => void }) => {
   const [uploading, setUploading] = useState(false);
   const { customConfig: config, refreshConfig } = useAvatarConfig();
   const [versionInput, setVersionInput] = useState(config.version || '1.0.0');
@@ -325,26 +325,53 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
             <Gift className="w-5 h-5 text-accent-orange" />
             إعدادات الأحداث
           </h3>
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-accent-orange/20 rounded-lg flex items-center justify-center">
-                <CloudRain className="w-6 h-6 text-accent-orange" />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-accent-orange/20 rounded-lg flex items-center justify-center">
+                  <CloudRain className="w-6 h-6 text-accent-orange" />
+                </div>
+                <div>
+                  <div className="font-black text-brown-dark">حدث مطر الهدايا</div>
+                  <div className="text-xs font-bold text-brown-muted">تفعيل أو إيقاف صندوق الحدث في الصفحة الرئيسية</div>
+                </div>
               </div>
-              <div>
-                <div className="font-black text-brown-dark">حدث مطر الهدايا</div>
-                <div className="text-xs font-bold text-brown-muted">تفعيل أو إيقاف صندوق الحدث في الصفحة الرئيسية</div>
-              </div>
+              <button
+                onClick={() => {
+                  const newPolicies = { ...gamePolicies, isRainGiftEnabled: !gamePolicies.isRainGiftEnabled };
+                  setGamePolicies(newPolicies);
+                  socket?.emit('admin_update_policies', newPolicies);
+                }}
+                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${gamePolicies?.isRainGiftEnabled ? 'bg-accent-green' : 'bg-gray-300'}`}
+              >
+                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${gamePolicies?.isRainGiftEnabled ? 'translate-x-1' : 'translate-x-7'}`} />
+              </button>
             </div>
-            <button
-              onClick={() => {
-                const newPolicies = { ...gamePolicies, isRainGiftEnabled: !gamePolicies.isRainGiftEnabled };
-                setGamePolicies(newPolicies);
-                socket?.emit('admin_update_policies', newPolicies);
-              }}
-              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${gamePolicies?.isRainGiftEnabled ? 'bg-accent-green' : 'bg-gray-300'}`}
-            >
-              <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${gamePolicies?.isRainGiftEnabled ? 'translate-x-1' : 'translate-x-7'}`} />
-            </button>
+
+            <div className="flex items-center justify-between p-4 bg-pink-50 rounded-xl border-2 border-pink-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-pink-200 rounded-lg flex items-center justify-center">
+                  <Disc className="w-6 h-6 text-pink-600" />
+                </div>
+                <div>
+                  <div className="font-black text-pink-900">عجلة الحظ</div>
+                  <div className="text-xs font-bold text-pink-700">تفعيل أو إيقاف أيقونة عجلة الحظ في الشريط العلوي</div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  const newValue = !luckyWheelEnabled;
+                  setLuckyWheelEnabled(newValue);
+                  socket?.emit('admin_update_settings', { lucky_wheel_enabled: newValue }, (res: any) => {
+                    if (res.success) showAlert('تم تحديث حالة عجلة الحظ بنجاح', 'نجاح');
+                    else showAlert('حدث خطأ أثناء الحفظ', 'خطأ');
+                  });
+                }}
+                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${luckyWheelEnabled ? 'bg-pink-500' : 'bg-gray-300'}`}
+              >
+                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${luckyWheelEnabled ? 'translate-x-1' : 'translate-x-7'}`} />
+              </button>
+            </div>
           </div>
         </div>
 
