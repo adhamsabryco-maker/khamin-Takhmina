@@ -42,6 +42,7 @@ const dbUpload = multer({ dest: os.tmpdir() });
 
 import { filterProfanity, filterGameTerms } from "./src/profanityFilter";
 import { GoogleGenAI } from "@google/genai";
+import { getBotResponse } from "./src/services/botService";
 import { COLLECTION_DATA } from "./collectionData";
 
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "dummy_key_to_prevent_crash" });
@@ -50,14 +51,68 @@ if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
 }
 
 const BOT_PERSONAS = [
-  { name: "زيزو", age: 22, level: 15, avatar: "avatar-free-02.png", gender: "boy", personality: "هزار وفرفشة، بيحب يستخدم كلمات زي 'يا زميلي' و 'يا صاحبي' و 'أنجز يا وحش'" },
-  { name: "منة", age: 20, level: 8, avatar: "avatar-free-01.png", gender: "girl", personality: "هادية ومركزة، كلامها قليل ومحدد، بتستخدم 'أيوة' و 'لأ' و 'مش عارفة'" },
-  { name: "أبو مكة", age: 35, level: 42, avatar: "avatar-lvl-20.png", gender: "boy", personality: "حريف وقديم في اللعبة، كلامه فيه حكمة شوية وبيحب يشجع المنافس 'عاش يا بطل'" },
-  { name: "حمو", age: 19, level: 5, avatar: "avatar-free-04.png", gender: "boy", personality: "لسه جديد وبيتعلم، بيغلط كتير وبيهزر على نفسه 'أنا ضايع خالص يا جدعان'" },
-  { name: "سارة", age: 24, level: 25, avatar: "avatar-lvl-10.png", gender: "girl", personality: "ذكية وبتحب التحدي، بتسأل أسئلة صعبة وبتحاول توقع المنافس في الغلط" },
-  { name: "ميدو", age: 21, level: 12, avatar: "avatar-lvl-40.png", gender: "boy", personality: "بيحب الرغي والكلام الجانبي، ممكن يحكي موقف حصل معاه وهو بيلعب" },
-  { name: "نور", age: 23, level: 18, avatar: "avatar-free-03.png", gender: "girl", personality: "بتحب الضحك والهزار، بس ذكية جداً في اللعب" },
-  { name: "ليلى", age: 26, level: 30, avatar: "avatar-lvl-30.png", gender: "girl", personality: "جدية شوية، بس بتحب المنافسة الشريفة" }
+  { name: "زيزو", age: 22, level: 15, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "هزار وفرفشة، بيحب يستخدم كلمات زي 'يا زميلي' و 'يا صاحبي' و 'أنجز يا وحش'" },
+  { name: "منة", age: 20, level: 8, avatar: "avatar-free-girl-01.png", gender: "girl", personality: "هادية ومركزة، كلامها قليل ومحدد، بتستخدم 'أيوة' و 'لأ' و 'مش عارفة'" },
+  { name: "أبو مكة", age: 35, level: 42, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "حريف وقديم في اللعبة، كلامه فيه حكمة شوية وبيحب يشجع المنافس 'عاش يا بطل'" },
+  { name: "حمو", age: 19, level: 5, avatar: "avatar-free-boy-04.png", gender: "boy", personality: "لسه جديد وبيتعلم، بيغلط كتير وبيهزر على نفسه 'أنا ضايع خالص يا جدعان'" },
+  { name: "سارة", age: 24, level: 25, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "ذكية وبتحب التحدي، بتسأل أسئلة صعبة وبتحاول توقع المنافس في الغلط" },
+  { name: "ميدو", age: 21, level: 12, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيحب الرغي والكلام الجانبي، ممكن يحكي موقف حصل معاه وهو بيلعب" },
+  { name: "نور", age: 23, level: 18, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "بتحب الضحك والهزار، بس ذكية جداً في اللعب" },
+  { name: "ليلى", age: 26, level: 30, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "جدية شوية، بس بتحب المنافسة الشريفة" },
+
+  // المستويات المبتدئة (Free Avatars)
+  { name: "بوجي", age: 18, level: 2, avatar: "avatar-free-boy-01.png", gender: "boy", personality: "مرتبك جداً وبيسأل كتير 'هو الدور على مين؟'" },
+  { name: "توكا", age: 19, level: 4, avatar: "avatar-free-girl-02.png", gender: "girl", personality: "بتحب الإيموجيز جداً وكلامها كله دلع 'سوري مخدتش بالي'" },
+  { name: "كيمو", age: 21, level: 6, avatar: "avatar-free-boy-02.png", gender: "boy", personality: "بيحب التحدي رغم إنه لسه بيبدأ 'هكسبك يعني هكسبك'" },
+  { name: "مارينا", age: 22, level: 3, avatar: "avatar-free-girl-03.png", gender: "girl", personality: "مجاملة جداً 'لعبك حلو أوي ما شاء الله'" },
+  { name: "سمسم", age: 17, level: 8, avatar: "avatar-free-boy-03.png", gender: "boy", personality: "لسه منزل اللعبة حالا 'يا جدعان حد يفهمني بنلعب إزاي'" },
+  { name: "نودي", age: 20, level: 7, avatar: "avatar-free-girl-04.png", gender: "girl", personality: "متسرعة وبتحب تلعب بسرعة 'يلا بسرعة ورانا مشاوير'" },
+  { name: "شيكا", age: 24, level: 9, avatar: "avatar-free-boy-04.png", gender: "boy", personality: "كلامه كورة 'أنا هعمل عليك ريمونتادا دلوقتي'" },
+  { name: "لولو", age: 21, level: 5, avatar: "avatar-free-girl-01.png", gender: "girl", personality: "بتحب الكلام عن الحظ 'أوف الحظ النهاردة مش معايا خالص'" },
+
+  // مستوى 10 لـ 19
+  { name: "عبده", age: 27, level: 11, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيحب يشتت المنافس 'بص العصفورة' ويهزر كتير" },
+  { name: "روكا", age: 23, level: 14, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "واثقة في نفسها وبتحب كلمة 'تم القصف'" },
+  { name: "صاصا", age: 22, level: 16, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بتاع قفشات أفلام 'أنا بابا يلا'" },
+  { name: "هنا", age: 19, level: 13, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "هادية بس ذكية 'ركز في ورقتك يا بطل'" },
+  { name: "بيبو", age: 25, level: 19, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "حريف وبيلعب بدماغه 'اللعبة دي محتاجة نفس طويل'" },
+  { name: "سلمى", age: 24, level: 17, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "بتحب النظام 'لو سمحت العب بالترتيب'" },
+
+  // مستوى 20 لـ 29
+  { name: "تيتو", age: 28, level: 22, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "مش بيحب الخسارة أبداً 'لا دي أكيد صدفة، نلعب تاني'" },
+  { name: "نادين", age: 26, level: 26, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحلل كل حركة 'همم.. الحركة دي وراها حاجة'" },
+  { name: "فارس", age: 30, level: 28, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "هادي جداً وبيلعب ببرود أعصاب يحرق الدم" },
+  { name: "جنا", age: 22, level: 21, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحب تشجع نفسها 'عاش يا أنا، قربنا نخلص'" },
+  { name: "مارك", age: 25, level: 24, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحب المنافسة 'وريني هتعمل إيه في دي'" },
+  { name: "شهد", age: 23, level: 29, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "طموحة وعايزة توصل لليفل 30 'خلاص هانت كلها دورين وأعلى'" },
+
+  // مستوى 30 لـ 39
+  { name: "الجوكر", age: 32, level: 33, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "غامض وكلامه قليل 'السكوت علامة الاحتراف'" },
+  { name: "مايا", age: 27, level: 35, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "خبرة وبتحب تدي نصايح 'لو لعبتها يمين كانت هتبقى أحلى'" },
+  { name: "سلطان", age: 34, level: 31, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "كبير القعدة 'نورتم التربيزة يا شباب'" },
+  { name: "لارا", age: 25, level: 38, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "سريعة جداً في الرد واللعب 'متحاولش تفكر كتير'" },
+  { name: "دكتور اكس", age: 29, level: 36, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "بيحسبها بالورقة والقلم 'الاحتمالات بتقول إني هكسب'" },
+  { name: "بيري", age: 28, level: 32, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "راقية في تعاملها 'لعب ممتع للجميع'" },
+
+  // مستوى 40 فما فوق
+  { name: "العقرب", age: 40, level: 45, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "ملك اللعبة 'محدش بياكلها معايا بالساهل'" },
+  { name: "الملكة", age: 33, level: 41, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "برنسيسة اللعبة 'لعبكم لسه محتاج شوية مجهود'" },
+  { name: "الجنرال", age: 38, level: 48, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "صارم جداً 'الخطأ هنا بموت، ركز'" },
+  { name: "الهانم", age: 36, level: 44, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "ذكاء حاد وهدوء قاتل 'اللعب فن مش عن عن'" },
+  { name: "الأسطورة", age: 45, level: 50, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "أعلى لفل في اللعبة 'اتعلموا من العبد لله'" },
+  { name: "سندريلا", age: 29, level: 43, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "هادية بس بتخلص الدور في ثانية" },
+
+    // شخصيات بأسماء مركبة (ألقاب وأسماء ثنائية)
+  { name: "علي القاضي", age: 31, level: 37, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "حكيم وهادي، كلامه موزون وبيركز في كل حركة 'العدل أساس اللعبة'" },
+  { name: "ملك التخمين", age: 24, level: 23, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيعتمد على إحساسه جداً 'قلبي بيقولي إنك بتغش يا زميلي'" },
+  { name: "سيف محمد", age: 20, level: 14, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "شاب طموح وبيلعب بتكتيك 'واحدة واحدة وهجيبك'" },
+  { name: "نور الهادي", age: 22, level: 9, avatar: "avatar-free-girl-02.png", gender: "girl", personality: "رقيقة في كلامها بس بتلعب بذكاء 'اللعب معاكوا ممتع جداً'" },
+  { name: "عمر الكبنج", age: 29, level: 27, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "برنس في نفسه وبيلعب بشياكة 'أهم حاجة الروح الرياضية'" },
+  { name: "برنسيسة اللعبة", age: 26, level: 41, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "واثقة جداً من فوزها 'محدش يقدر يغلب البرنسيسة'" },
+  { name: "ياسين العملاق", age: 33, level: 34, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "بيحب التحديات الصعبة 'وروني هتعملوا إيه مع العملاق'" },
+  { name: "مريم الصادق", age: 21, level: 6, avatar: "avatar-free-girl-03.png", gender: "girl", personality: "بتحب الصراحة 'أنا حظي وحش النهاردة بس هحاول'" },
+  { name: "كابتن ماجد", age: 25, level: 18, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيحب الحماس وكلام الكورة 'الكورة في ملعبي دلوقتي'" },
+  { name: "ليلى عبد الله", age: 28, level: 31, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "كلامها فيه رزانة وهدوء 'كل دور وله لابد من فائز'" }
 ];
 
 // Global Error Handlers to prevent server crashes
@@ -310,14 +365,14 @@ const app = express();
   app.get("/manifest.webmanifest", manifestHandler);
 
   // Route to serve the icon with a versioned filename
-  app.get("/icon.svg", (req, res) => {
+  app.get("/icon-v2.svg", (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     
-    const iconFile = path.join(__dirname, "dist", "icon.svg");
-    const publicIconFile = path.join(__dirname, "public", "icon.svg");
-    const rootIconFile = path.join(__dirname, "icon.svg");
+    const iconFile = path.join(__dirname, "dist", "icon-v2.svg");
+    const publicIconFile = path.join(__dirname, "public", "icon-v2.svg");
+    const rootIconFile = path.join(__dirname, "icon-v2.svg");
 
     if (fs.existsSync(iconFile)) {
       res.sendFile(iconFile);
@@ -1928,7 +1983,44 @@ const app = express();
       p.socket.connected
     );
 
-    if (availablePlayers.length < 2) return;
+    if (availablePlayers.length < 2) {
+      // Check if a human player is waiting for more than 5 seconds
+      if (false && configCache.aiBotEnabled && availablePlayers.length === 1 && Date.now() - availablePlayers[0].joinedAt > 5000) {
+        const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
+        
+        // Calculate avatar based on level
+        let botAvatar = botPersona.avatar;
+        if (botPersona.level >= 10) {
+          const levelMilestone = Math.floor(botPersona.level / 10) * 10;
+          botAvatar = `avatar-lvl-${botPersona.gender}-${levelMilestone}.png`;
+        } else {
+          botAvatar = `avatar-free-${botPersona.gender}-01.png`;
+        }
+
+        const bot = {
+          id: 'bot_' + Date.now(),
+          playerId: 'bot_' + Date.now(),
+          playerName: botPersona.name,
+          avatar: botAvatar,
+          age: botPersona.age,
+          xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
+          streak: 0,
+          wins: 0,
+          serial: 'bot_' + Date.now(),
+          joinedAt: Date.now(),
+          status: 'searching',
+          isBot: true,
+          socket: {
+            connected: true,
+            emit: (event: string, data: any) => {
+              console.log(`[Bot ${botPersona.name}] Received event ${event}:`, data);
+            }
+          }
+        };
+        matchmakingQueue.push(bot);
+      }
+      return;
+    }
 
     // Sort by joinedAt to be fair
     availablePlayers.sort((a, b) => a.joinedAt - b.joinedAt);
@@ -2023,7 +2115,138 @@ const app = express();
     }
   }
 
+  function finalizeMatch(matchId: string) {
+    const match = pendingMatches.get(matchId);
+    if (!match) return;
+    if (match.p1Response !== 'accept' || match.p2Response !== 'accept') {
+      console.log(`[Matchmaking] Cannot finalize match ${matchId}. p1Response: ${match.p1Response}, p2Response: ${match.p2Response}`);
+      return;
+    }
+
+    console.log(`[Matchmaking] Both players accepted match ${matchId}. Finalizing...`);
+    clearTimeout(match.timeoutId);
+    pendingMatches.delete(matchId);
+    
+    const roomId = `random_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[Matchmaking] Room created: ${roomId} for match ${matchId}`);
+    
+    match.p1.socket.join(roomId);
+    if (match.p1.socket.data) match.p1.socket.data.isSearching = false;
+    
+    // Update bot socket to use roomId instead of matchId
+    if (match.p2.isBot) {
+      console.log(`[Matchmaking] Setting up bot for room ${roomId}`);
+      match.p2.socket.emit = (event: string, data: any) => {
+        handleBotEvent(roomId, event, data);
+      };
+    } else {
+      match.p2.socket.join(roomId);
+      if (match.p2.socket.data) match.p2.socket.data.isSearching = false;
+    }
+
+    const p1ServerPlayer = allPlayers.get(match.p1.serial);
+    const p2ServerPlayer = match.p2.isBot ? null : allPlayers.get(match.p2.serial);
+
+    const room = {
+      id: roomId,
+      players: [
+        {
+          id: match.p1.socket.id,
+          playerId: match.p1.playerId,
+          serial: match.p1.serial,
+          name: match.p1.playerName,
+          age: match.p1.age,
+          avatar: match.p1.avatar,
+          selectedFrame: match.p1.selectedFrame || '',
+          score: 1000,
+          targetImage: null,
+          isMuted: false,
+          hasGuessed: false,
+          selectedCategory: null,
+          hintCount: 0,
+          quickGuessUsed: false,
+          wordLengthUsed: false,
+          timeFreezeUsed: false,
+          wordCountUsed: false,
+          spyLensUsed: false,
+          reported: false,
+          xp: match.p1.xp || 0,
+          level: getLevel(match.p1.xp || 0),
+          streak: match.p1.streak || 0,
+          wins: match.p1.wins || 0,
+          reports: p1ServerPlayer ? p1ServerPlayer.reports : 0,
+          reportedBy: p1ServerPlayer ? p1ServerPlayer.reportedBy : [],
+          useToken: match.p1.useToken,
+          profanityCount: 0,
+          ownedHelpers: match.p1.ownedHelpers || {},
+          isAdmin: !!p1ServerPlayer?.isAdmin
+        },
+        {
+          id: match.p2.socket.id,
+          playerId: match.p2.playerId,
+          serial: match.p2.serial || 'bot_serial',
+          name: match.p2.playerName,
+          age: match.p2.age,
+          avatar: match.p2.avatar,
+          selectedFrame: match.p2.selectedFrame || '',
+          score: 1000,
+          targetImage: null,
+          isMuted: false,
+          hasGuessed: false,
+          selectedCategory: null,
+          hintCount: 0,
+          quickGuessUsed: false,
+          wordLengthUsed: false,
+          timeFreezeUsed: false,
+          wordCountUsed: false,
+          spyLensUsed: false,
+          reported: false,
+          xp: match.p2.xp || 0,
+          level: getLevel(match.p2.xp || 0),
+          streak: match.p2.streak || 0,
+          wins: match.p2.wins || 0,
+          reports: p2ServerPlayer ? p2ServerPlayer.reports : 0,
+          reportedBy: p2ServerPlayer ? p2ServerPlayer.reportedBy : [],
+          isBot: match.p2.isBot,
+          persona: match.p2.persona,
+          useToken: match.p2.useToken,
+          profanityCount: 0,
+          ownedHelpers: match.p2.ownedHelpers || {},
+          isAdmin: !!p2ServerPlayer?.isAdmin
+        }
+      ],
+      gameState: "waiting",
+      timer: 60,
+      category: "people",
+      isPaused: false,
+      pausingPlayerId: null,
+      quickGuessTimer: 0,
+      adCooldownTimer: 0,
+    };
+
+    rooms.set(roomId, room);
+    startWaitingInterval(roomId);
+    
+    // Emit directly to sockets to avoid race condition with join()
+    match.p1.socket.emit("room_update", room);
+    match.p1.socket.emit("random_match_found", { roomId });
+    
+    if (!match.p2.isBot) {
+      match.p2.socket.emit("room_update", room);
+      match.p2.socket.emit("random_match_found", { roomId });
+    }
+
+    // Also emit to room for any other listeners (like spectators if they existed)
+    io.to(roomId).emit("room_update", room);
+    io.to(roomId).emit("random_match_found", { roomId });
+    
+    if (match.p2.isBot) {
+      handleBotEvent(roomId, 'room_update', room);
+    }
+  }
+
   function checkBotMatchmaking() {
+    return; // Bot system disabled
     const configPath = path.join(__dirname, 'public/uploads/config.json');
     let aiBotEnabled = false;
     if (fs.existsSync(configPath)) {
@@ -2036,11 +2259,15 @@ const app = express();
     if (!aiBotEnabled) return;
 
     const now = Date.now();
+    // Requirement 5: Only add bot if a human is searching
+    const humanSearching = matchmakingQueue.find(p => !p.isBot && p.status === 'searching');
+    if (!humanSearching) return;
+
     for (let i = 0; i < matchmakingQueue.length; i++) {
       const p = matchmakingQueue[i];
-      if (p.status !== 'searching') continue;
+      if (p.isBot || p.status !== 'searching') continue;
       
-      // If player has been waiting for more than 10 seconds and is not using a token
+      // If player has been waiting for more than 10 seconds
       if (p.joinedAt && now - p.joinedAt > 10000 && !p.useToken) {
         // Create a bot match
         p.status = 'proposing';
@@ -2049,21 +2276,28 @@ const app = express();
         const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
         const matchId = `match_bot_${Math.random().toString(36).substr(2, 9)}`;
         
-        // Mock bot player
+        // Requirement 4: Bot avatar based on level
+        let botAvatar = botPersona.avatar;
+        if (botPersona.level >= 10) {
+          const levelMilestone = Math.floor(botPersona.level / 10) * 10;
+          botAvatar = `avatar-lvl-${botPersona.gender}-${levelMilestone}.png`;
+        } else {
+          botAvatar = `avatar-free-${botPersona.gender}-01.png`;
+        }
+
         const botPlayer = {
           playerId: `bot_${Math.random().toString(36).substr(2, 9)}`,
           playerName: botPersona.name,
-          avatar: botPersona.avatar,
+          avatar: botAvatar,
           age: botPersona.age,
           gender: botPersona.gender,
-          xp: (botPersona.level - 1) * (botPersona.level - 1) * 50, // Approximate XP for level
+          xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
           isBot: true,
           persona: botPersona.personality,
           selectedFrame: '',
           socket: {
             id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
             emit: (event: string, data: any) => {
-              // Bot "receives" events here
               handleBotEvent(matchId, event, data);
             }
           }
@@ -2074,7 +2308,7 @@ const app = express();
           p1: p,
           p2: botPlayer,
           p1Response: null,
-          p2Response: 'accept', // Bot always accepts
+          p2Response: null,
           timeoutId: setTimeout(() => {
             const match = pendingMatches.get(matchId);
             if (match && match.p1Response !== 'accept') {
@@ -2088,10 +2322,13 @@ const app = express();
 
         p.socket.emit("match_proposed", {
           matchId,
-          opponent: { name: botPlayer.playerName, avatar: botPlayer.avatar, selectedFrame: botPlayer.selectedFrame || '', age: botPlayer.age, level: botPersona.level }
+          opponent: { name: botPlayer.playerName, avatar: botPlayer.avatar, selectedFrame: botPlayer.selectedFrame || '', age: botPlayer.age, level: botPersona.level },
+          opponentAccepted: false
         });
+        
+        console.log(`[Bot Matchmaking] Proposed match ${matchId} between human ${p.playerName} and bot ${botPlayer.playerName}`);
 
-        break; // Only one bot match per check to avoid overwhelming
+        break;
       }
     }
   }
@@ -2099,12 +2336,202 @@ const app = express();
   // setInterval(checkBotMatchmaking, 5000);
 
   const botConversations = new Map<string, any[]>();
+  const botFlags = new Map<string, boolean>();
   const botIntervals = new Map<string, NodeJS.Timeout>();
+  const botTimeouts = new Map<string, NodeJS.Timeout>();
   const playerBotHistory = new Map<string, number>();
 
+  async function triggerBotQuestion(roomId: string, bot: any) {
+    const currentRoom = rooms.get(roomId);
+    if (!currentRoom || currentRoom.gameState !== 'discussion') return;
+    
+    // Only ask if it's the bot's turn
+    if (currentRoom.currentTurn !== bot.id) return;
+
+    try {
+      const player = currentRoom.players.find((p: any) => !p.isBot);
+      const botPersona = BOT_PERSONAS.find(p => p.name === bot.playerName);
+      
+      const configPath = path.join(__dirname, 'public/uploads/config.json');
+      let questions: string[] = [];
+      if (fs.existsSync(configPath)) {
+        try {
+          const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+          if (config.quickChat) {
+            const catKey = `qc_${currentRoom.category}`;
+            const categoryNode = config.quickChat.find((qc: any) => 
+              qc.id === catKey || 
+              qc.id === currentRoom.category || 
+              qc.text === currentRoom.category ||
+              qc.id === `qc_animals` && currentRoom.category === 'حيوانات' ||
+              qc.id === `qc_food` && currentRoom.category === 'أكلات' ||
+              qc.id === `qc_people` && currentRoom.category === 'أشخاص'
+            );
+            console.log(`[BotQuestion] Room: ${roomId}, Category: ${currentRoom.category}, NodeFound: ${!!categoryNode}`);
+            
+            if (categoryNode && categoryNode.children) {
+              console.log(`[BotQuestion] Room: ${roomId}, ChildrenCount: ${categoryNode.children.length}`);
+              if (categoryNode.children.length > 0) {
+                console.log(`[BotQuestion] FirstChild: ${JSON.stringify(categoryNode.children[0].text)}, HasChildren: ${!!categoryNode.children[0].children}`);
+              }
+              const history = botConversations.get(roomId) || [];
+              
+              // Identify branches (nodes with children) and leaves (nodes without children)
+              const branches = categoryNode.children.filter((c: any) => c.children && c.children.length > 0);
+              const topLevelLeaves = categoryNode.children.filter((c: any) => !c.children || c.children.length === 0);
+              
+              console.log(`[BotQuestion] Room: ${roomId}, Branches: ${branches.length}, TopLevelLeaves: ${topLevelLeaves.length}`);
+              
+              let confirmedBranch = null;
+              const rejectedBranchTexts = new Set<string>();
+              const askedQuestionTexts = new Set<string>();
+
+              // Analyze history
+              const normalize = (t: string) => t.replace(/[؟?]/g, '').trim();
+
+              for (let i = 0; i < history.length; i++) {
+                const msg = history[i];
+                const text = msg.parts[0].text.trim();
+                const normText = normalize(text);
+                
+                if (text === 'آه' || text === 'لأ') continue;
+                
+                askedQuestionTexts.add(text);
+                askedQuestionTexts.add(normText);
+                
+                // Check if this was a branch question
+                const branch = branches.find((b: any) => 
+                  normText === normalize(b.text) || 
+                  text === b.text
+                );
+                
+                if (branch && i < history.length - 1) {
+                  const answer = history[i+1].parts[0].text.trim();
+                  if (answer === 'آه') {
+                    confirmedBranch = branch;
+                  } else if (answer === 'لأ') {
+                    rejectedBranchTexts.add(branch.text);
+                    rejectedBranchTexts.add(normalize(branch.text));
+                  }
+                }
+              }
+
+              if (confirmedBranch) {
+                console.log(`[BotQuestion] Room: ${roomId}, ConfirmedBranch: ${confirmedBranch.text}`);
+                // We have a confirmed branch, ask questions from it
+                confirmedBranch.children.forEach((q: any) => {
+                  if (!askedQuestionTexts.has(q.text) && !askedQuestionTexts.has(normalize(q.text))) {
+                    questions.push(q.text);
+                  }
+                });
+                // If all questions in branch are asked, fallback to top-level leaves
+                if (questions.length === 0) {
+                  topLevelLeaves.forEach((l: any) => {
+                    if (!askedQuestionTexts.has(l.text) && !askedQuestionTexts.has(normalize(l.text))) {
+                      questions.push(l.text);
+                    }
+                  });
+                }
+              } else {
+                // No branch confirmed yet, prioritize unasked branches
+                const unaskedBranches = branches.filter((b: any) => 
+                  !askedQuestionTexts.has(b.text) && 
+                  !askedQuestionTexts.has(normalize(b.text)) && 
+                  !rejectedBranchTexts.has(b.text)
+                );
+                
+                console.log(`[BotQuestion] Room: ${roomId}, UnaskedBranches: ${unaskedBranches.length}`);
+                
+                if (unaskedBranches.length > 0) {
+                  // MANDATORY: Ask branches first!
+                  unaskedBranches.forEach((b: any) => questions.push(b.text));
+                } else {
+                  // All branches asked/rejected or no branches exist, use all leaves
+                  const allPossibleLeaves: string[] = [];
+                  topLevelLeaves.forEach((l: any) => allPossibleLeaves.push(l.text));
+                  
+                  // Also include leaves from branches that weren't explicitly rejected
+                  branches.forEach((b: any) => {
+                    if (!rejectedBranchTexts.has(b.text) && !rejectedBranchTexts.has(normalize(b.text))) {
+                      b.children.forEach((c: any) => allPossibleLeaves.push(c.text));
+                    }
+                  });
+                  
+                  allPossibleLeaves.forEach(qText => {
+                    if (!askedQuestionTexts.has(qText) && !askedQuestionTexts.has(normalize(qText))) {
+                      questions.push(qText);
+                    }
+                  });
+                }
+              }
+              
+              console.log(`[BotQuestion] Room: ${roomId}, FinalQuestionsCount: ${questions.length}`);
+            }
+          }
+        } catch (e) {
+          console.error("Config Parsing Error in triggerBotQuestion:", e);
+        }
+      }
+
+      const systemInstruction = `
+      أنت لاعب مصري حقيقي في لعبة تخمين صور. اسمك: ${bot.playerName}. شخصيتك: ${botPersona?.personality}.
+      
+      مهمتك الحالية:
+      أنت تحاول تخمين صورة المنافس وهي: "${player?.targetImage?.name || player?.targetImage}".
+      يجب أن تختار سؤالاً من القائمة المتاحة يساعدك في التأكد من أن هذه هي الصورة الصحيحة.
+      
+      قواعد هامة جداً (ممنوع مخالفتها):
+      1. اللعبة تعتمد على الأسئلة السريعة والرد بـ (آه / لأ).
+      2. دورك الآن هو أن تسأل المنافس سؤالاً واحداً فقط من قائمة الأسئلة المتاحة (Quick Chat) أدناه.
+      3. الأولوية القصوى: إذا كانت القائمة تحتوي على أسئلة تصنيفية (مثل: بري؟، بحري؟، حلو؟، حادق؟، رجل؟، ست؟)، يجب أن تختار واحداً منها أولاً قبل أي أسئلة أخرى.
+      4. حلل صورة المنافس "${player?.targetImage?.name || player?.targetImage}" جيداً واختر السؤال الذي تنطبق إجابته بـ "آه" عليها لتقترب من الحل.
+      5. ممنوع تكرار أي سؤال سألته أنت سابقاً في المحادثة.
+      6. اكتب السؤال كما هو بالضبط من القائمة، بدون أي إضافات أو إيموجي.
+      
+      بيانات اللعبة:
+      - صورتك (التي يحاول المنافس تخمينها): ${bot.targetImage?.name || bot.targetImage}.
+      - صورة المنافس (التي تحاول أنت تخمينها): ${player?.targetImage?.name || player?.targetImage}.
+      - قائمة الأسئلة المتاحة (يجب الاختيار منها): ${JSON.stringify(questions)}.
+      `;
+
+      const history = botConversations.get(roomId) || [];
+      let botReply = await getBotResponse(history, systemInstruction, 0);
+      
+      botReply = botReply.trim();
+      
+      // Strict selection from questions list
+      if (questions.length > 0) {
+        const exactMatch = questions.find(q => q.trim() === botReply);
+        if (exactMatch) {
+          botReply = exactMatch;
+        } else {
+          // Fuzzy match
+          const fuzzyMatch = questions.find(q => 
+            botReply.includes(q.replace(/[؟?]/g, '').trim()) || 
+            q.includes(botReply.replace(/[؟?]/g, '').trim())
+          );
+          if (fuzzyMatch) {
+            botReply = fuzzyMatch;
+          } else {
+            // Fallback to first question in list (which should be a branch if available)
+            botReply = questions[0];
+          }
+        }
+      }
+      
+      console.log(`[BotQuestion] Room: ${roomId}, BotSelected: ${botReply}`);
+      
+      history.push({ role: 'model', parts: [{ text: botReply }] });
+      botConversations.set(roomId, history);
+
+      handleBotChat(roomId, bot, botReply);
+
+    } catch (error) {
+      console.error("Bot Questioning Error:", error);
+    }
+  }
+
   function startBotQuestioning(roomId: string) {
-    // Disabled for Quick Chat
-    /*
     const room = rooms.get(roomId);
     if (!room || room.gameState !== 'discussion') return;
 
@@ -2113,50 +2540,42 @@ const app = express();
 
     if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
 
-    const interval = setInterval(async () => {
-      const currentRoom = rooms.get(roomId);
-      if (!currentRoom || currentRoom.gameState !== 'discussion') {
-        clearInterval(interval);
-        botIntervals.delete(roomId);
-        return;
-      }
+    // If it's the bot's turn at the start, ask immediately
+    if (room.currentTurn === bot.id) {
+      setTimeout(() => {
+        triggerBotQuestion(roomId, bot);
+      }, 3000 + Math.random() * 2000);
+    }
 
-      try {
-        const history = botConversations.get(roomId) || [];
-        const systemInstruction = `
-أنت لاعب مصري حقيقي في لعبة تخمين صور. اسمك وشخصيتك هي: ${bot.persona}.
-تحدث بالعامية المصرية العامية تماماً، كأنك شاب مصري بيلعب مع صحابه.
-استخدم كلمات عامية، اختصارات، ورموز تعبيرية (Emojis) بشكل طبيعي.
-لا تخرج عن الشخصية أبداً. لا تذكر أبداً أنك ذكاء اصطناعي أو بوت.
-إذا سألك المنافس، رد عليه بأسلوب طبيعي، أحياناً رد بسؤال، وأحياناً رد بإجابة مباشرة.
-إذا كان دورك في التخمين، اسأل أسئلة ذكية عن الصورة.
-إذا كان دورك في الإجابة، أجب بصدق (نعم أو لا) مع إضافة تعليق بشخصيتك.
-ردودك يجب أن تكون قصيرة، عفوية، وواقعية جداً.
-`;
-        const response = await genAI.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: history,
-          config: {
-            systemInstruction,
-            maxOutputTokens: 100,
-            temperature: 0.9,
-          }
-        });
-
-        const botQuestion = response.text || "هو حيوان كبير؟";
-        history.push({ role: 'model', parts: [{ text: botQuestion }] });
-        botConversations.set(roomId, history);
-
-        const messageObj = { senderId: bot.id, text: botQuestion };
-        if (!room.chatHistory) room.chatHistory = [];
-        room.chatHistory.push({ ...messageObj, senderName: bot.name, timestamp: Date.now() });
-        io.to(roomId).emit("chat_bubble", messageObj);
-      } catch (error) {
-        console.error("Bot Questioning Error:", error);
-      }
-    }, 25000 + Math.random() * 10000);
+    const interval = setInterval(() => {
+      triggerBotQuestion(roomId, bot);
+    }, 15000 + Math.random() * 10000);
     botIntervals.set(roomId, interval);
-    */
+  }
+
+  function handleBotChat(roomId: string, bot: any, text: string) {
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const messageObj = { senderId: bot.id, text: text };
+    if (!room.chatHistory) room.chatHistory = [];
+    room.chatHistory.push({ ...messageObj, senderName: bot.playerName, timestamp: Date.now() });
+    io.to(roomId).emit("chat_bubble", messageObj);
+
+    // Turn logic (Requirement 7)
+    if (room.gameState === 'discussion') {
+      const opponent = room.players.find((p: any) => p.id !== bot.id);
+      if (text.startsWith('آه') || text.startsWith('لأ')) {
+        // Answered, turn goes to the one who answered
+        room.currentTurn = bot.id;
+        room.waitingForAnswerFrom = null;
+      } else {
+        // Asked a question, waiting for answer
+        room.currentTurn = null;
+        room.waitingForAnswerFrom = opponent?.id || null;
+      }
+      io.to(roomId).emit("room_update", room);
+    }
   }
 
   function startBotGuessing(roomId: string) {
@@ -2179,27 +2598,24 @@ const app = express();
       const targetImage = currentPlayer.targetImage;
       const winCount = playerBotHistory.get(currentPlayer.playerId) || 0;
       
-      // Win 2, Lose 1 logic
-      const shouldWin = winCount % 3 !== 2;
+      // Win 3 for human, then 1 for bot logic
+      const shouldWin = winCount % 4 === 3; 
       playerBotHistory.set(player.playerId, winCount + 1);
 
       let guess = targetImage;
       if (!shouldWin) {
-        // Find a wrong guess from the same category
         const categoryImages = getCategoryImages(currentRoom.category);
         const wrongImages = categoryImages.filter(img => img !== targetImage);
         guess = wrongImages[Math.floor(Math.random() * wrongImages.length)] || "مش عارف";
       }
 
-      // Submit bot guess
       bot.hasGuessed = true;
       const correct = guess === targetImage;
       io.to(roomId).emit("guess_result", { playerId: bot.id, correct });
 
       if (correct) {
-        endGame(roomId, bot.name, false, true);
+        endGame(roomId, bot.playerName, false, true);
       } else {
-        // If both guessed and wrong, end game
         if (room.players.every((p: any) => p.hasGuessed)) {
           endGame(roomId, null);
         }
@@ -2220,61 +2636,107 @@ const app = express();
     if (event === 'room_update') {
       // Initialize conversation if not already done
       if (!botConversations.has(roomId)) {
-        botConversations.set(roomId, [
-          { role: 'user', parts: [{ text: `أهلاً يا زميلي، أنا ${bot.name} وجاهز للتحدي!` }] }
-        ]);
+        botConversations.set(roomId, []);
       }
       
-      // 1. Handle Category Selection
+      // Requirement 6: Category selection negotiation
       if (room.gameState === 'waiting') {
-        // Trigger bot to think about category and chat if it hasn't already
-        // Only trigger once to avoid infinite loops or spam
-        if (!botConversations.has(roomId + '_category_triggered')) {
-          botConversations.set(roomId + '_category_triggered', []);
+        const player = room.players.find((p: any) => !p.isBot);
+        
+        if (!botFlags.has(roomId + '_category_logic')) {
+          botFlags.set(roomId + '_category_logic', true);
           
-          // Simulate thinking time
-          setTimeout(() => {
-            const categories = ["animals", "food", "people", "objects", "birds", "plants"];
-            const randomCategory = categories[Math.floor(Math.random() * categories.length)];
-            bot.selectedCategory = randomCategory;
+          const performCategorySelection = async () => {
+            const categories = ["animals", "food", "people", "objects", "birds", "plants", "insects", "football"];
             
-            const catNames: Record<string, string> = { animals: "حيوانات", food: "أكلات", people: "أشخاص", objects: "جماد", birds: "طيور", plants: "نبات" };
-            const categoryName = catNames[randomCategory] || randomCategory;
+            // 1. Initial wait (1 to 3 seconds) before doing anything
+            await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
             
-            // Send the chat message as the bot
-            handleBotEvent(roomId, 'chat_message', { senderId: bot.id, text: `إيه رأيك نلعب في ${categoryName}؟` });
+            let currentRoom = rooms.get(roomId);
+            if (!currentRoom || currentRoom.gameState !== 'waiting') return;
+            let currentPlayer = currentRoom.players.find((p: any) => !p.isBot);
             
-            // Add the bot's choice to the conversation history so it remembers it
-            const history = botConversations.get(roomId) || [];
-            history.push({ role: 'model', parts: [{ text: `إيه رأيك نلعب في ${categoryName}؟` }] });
-            botConversations.set(roomId, history);
+            // 2. Decide initial action
+            const rand = Math.random();
+            if (rand < 0.3 && currentPlayer?.selectedCategory) {
+              // 30% chance to agree immediately if player already selected
+              bot.selectedCategory = currentPlayer.selectedCategory;
+              io.to(currentRoom.id).emit("room_update", currentRoom);
+            } else {
+              // Pick a random category
+              bot.selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+              io.to(currentRoom.id).emit("room_update", currentRoom);
+              
+              // 3. Hesitate and change mind (40% chance)
+              if (Math.random() < 0.4) {
+                await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+                currentRoom = rooms.get(roomId);
+                if (!currentRoom || currentRoom.gameState !== 'waiting') return;
+                
+                bot.selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+                io.to(currentRoom.id).emit("room_update", currentRoom);
+              }
+              
+              // 4. Eventually agree with player after some time (to not block the game)
+              await new Promise(r => setTimeout(r, 4000 + Math.random() * 4000));
+              currentRoom = rooms.get(roomId);
+              if (!currentRoom || currentRoom.gameState !== 'waiting') return;
+              
+              currentPlayer = currentRoom.players.find((p: any) => !p.isBot);
+              if (currentPlayer?.selectedCategory) {
+                bot.selectedCategory = currentPlayer.selectedCategory;
+                io.to(currentRoom.id).emit("room_update", currentRoom);
+              }
+            }
             
-            io.to(room.id).emit("room_update", room);
-          }, 3000 + Math.random() * 2000); // 3-5 seconds thinking time
-        }
-        
-        // Check if both players selected the same category
-        const allSelected = room.players.length === 2 && 
-                          room.players.every((p: any) => p.selectedCategory === bot.selectedCategory);
-        
-        if (allSelected) {
-          room.category = bot.selectedCategory;
-          // startGame(room.id); // Removed automatic start
+            // Check if game should start
+            currentRoom = rooms.get(roomId);
+            if (currentRoom && currentRoom.gameState === 'waiting') {
+              const p1 = currentRoom.players[0];
+              const p2 = currentRoom.players[1];
+              // We don't call startGame here anymore, we wait for the player to click the button
+            }
+          };
+          
+          performCategorySelection();
+        } else {
+          // If the initial sequence is done, but the player changes category again,
+          // the bot should agree after a short delay to allow the game to start.
+          if (player?.selectedCategory && bot.selectedCategory !== player.selectedCategory) {
+            if (!botTimeouts.has(roomId + '_agree_timeout')) {
+              const timeout = setTimeout(() => {
+                const currentRoom = rooms.get(roomId);
+                if (!currentRoom || currentRoom.gameState !== 'waiting') return;
+                const currentPlayer = currentRoom.players.find((p: any) => !p.isBot);
+                if (currentPlayer?.selectedCategory) {
+                  bot.selectedCategory = currentPlayer.selectedCategory;
+                  io.to(currentRoom.id).emit("room_update", currentRoom);
+                  
+                  const p1 = currentRoom.players[0];
+                  const p2 = currentRoom.players[1];
+                  // We don't call startGame here anymore, we wait for the player to click the button
+                }
+                botTimeouts.delete(roomId + '_agree_timeout');
+              }, 3000 + Math.random() * 2000); // 3-5 seconds delay
+              botTimeouts.set(roomId + '_agree_timeout', timeout);
+            }
+          }
         }
       }
     }
 
     if (event === 'game_started') {
       // Initialize conversation
-      botConversations.set(roomId, [
-        { role: 'user', parts: [{ text: `أهلاً يا زميلي، أنا ${bot.name} وجاهز للتحدي!` }] }
-      ]);
+      botConversations.set(roomId, []);
       
       // Start questioning loop
       startBotQuestioning(roomId);
     }
 
     if (event === 'chat_message') {
+      // Requirement: Bot should not respond to chat during category selection (waiting state)
+      if (room.gameState === 'waiting') return;
+
       const { senderId, text } = data;
       if (senderId === bot.id) return; // Don't respond to self
 
@@ -2283,47 +2745,100 @@ const app = express();
       history.push({ role: 'user', parts: [{ text }] });
       botConversations.set(roomId, history);
 
-      // Call Gemini (Disabled for Quick Chat)
-      /*
-      try {
-        const systemInstruction = `أنت لاعب مصري حقيقي في لعبة تخمين صور. اسمك وشخصيتك هي: ${bot.persona}. 
-        تحدث بالعامية المصرية العامية تماماً، كأنك شاب مصري بيلعب مع صحابه. 
-        استخدم كلمات عامية، اختصارات، ورموز تعبيرية (Emojis) بشكل طبيعي جداً.
-        
-        أنت الآن في مرحلة "اختيار الفئة". 
-        - إذا لم يتم الاتفاق على فئة بعد، تفاعل مع اقتراحات المنافس. لا توافق فوراً! ناقش، اعترض، اقترح فئة أخرى، أو عبر عن حماسك أو رفضك للفئة المقترحة.
-        - كن عفوياً جداً. أحياناً اكتب كلمات ناقصة، أو أخطاء إملائية بسيطة (مثل "طيور" بدل "طيور" أو "اكلات" بدل "أكلات")، أو استخدم "..." كثيراً.
-        - لا تكن منظماً أو آلياً. ردودك يجب أن تكون قصيرة، عفوية، وواقعية جداً.
-        - لا تذكر أبداً أنك ذكاء اصطناعي أو بوت.
-        `;
-        const response = await genAI.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: history,
-          config: {
-            systemInstruction,
-            maxOutputTokens: 100,
-            temperature: 0.8,
-          }
-        });
+      // If the human answered "آه" or "لأ", the bot should NOT reply with an answer.
+      if (text === 'آه' || text === 'لأ') {
+        if (room.currentTurn === bot.id) {
+          // Human passed turn, bot should ask
+          setTimeout(() => {
+            triggerBotQuestion(roomId, bot);
+          }, 2000 + Math.random() * 2000);
+        }
+        return; // Do not generate a reply
+      }
 
-        const botReply = response.text || "مش عارف أقول إيه والله!";
+      // Check if user message is an emoji (including complex emojis with ZWJ and modifiers)
+      const emojiRegex = /^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?(\u200D\p{Emoji_Presentation}|\u200D\p{Emoji}\uFE0F)*)+$/u;
+      const isUserEmoji = emojiRegex.test(text.trim());
+
+      try {
+        const botPersona = BOT_PERSONAS.find(p => p.name === bot.playerName);
+        const player = room.players.find((p: any) => !p.isBot);
+        
+        console.log(`[BotAnswer] Room: ${roomId}, BotHas: ${bot.targetImage?.name || bot.targetImage}, UserAsked: ${text}`);
+        
+        let botReply = '';
+
+        if (isUserEmoji) {
+          // If user sent emoji, bot should reply with emoji
+          const fallbackEmojis = ["😂", "🤪", "🤔", "🙄", "👀", "👋", "👍", "👎", "🤷🏼‍♂️", "🤦🏼‍♂️"];
+          botReply = fallbackEmojis[Math.floor(Math.random() * fallbackEmojis.length)];
+        } else {
+          // User sent a question, bot MUST reply with آه or لأ using Gemini
+          const systemInstruction = `أنت خبير في تصنيف الأشياء والرد بدقة في لعبة "خمن الصورة".
+          
+          معلوماتك الحالية:
+          - صورتك التي تملكها: "${bot.targetImage?.name || bot.targetImage}"
+          - الفئة: "${room.category}"
+          
+          تحليل الصورة "${bot.targetImage?.name || bot.targetImage}":
+          - إذا كانت حيوان: هل هو (بري) يعيش على الأرض؟ أم (بحري) يعيش في الماء؟ هل هو مفترس؟ هل يطير؟
+          - إذا كانت طعام: هل هو (حلو) سكري؟ أم (حادق) مالح/مطبوخ؟
+          - إذا كانت شخص: هل هو (رجل)؟ أم (امرأة)؟
+          
+          المنافس يسألك الآن: "${text}"
+          
+          مهمتك:
+          1. فكر بعمق: هل السؤال "${text}" ينطبق حقيقةً على صورتك "${bot.targetImage?.name || bot.targetImage}"؟
+          2. يجب أن تكون إجابتك صادقة 100% ومنطقية.
+          3. أجب بكلمة واحدة فقط: "آه" (نعم) أو "لأ" (لا).
+          
+          أمثلة للتوضيح:
+          - إذا كانت صورتك "حوت" والسؤال "بري؟" -> الإجابة يجب أن تكون "لأ" (لأن الحوت بحري).
+          - إذا كانت صورتك "أسد" والسؤال "بري؟" -> الإجابة يجب أن تكون "آه".
+          - إذا كانت صورتك "بيتزا" والسؤال "حلو؟" -> الإجابة يجب أن تكون "لأ".
+          
+          ممنوع كتابة أي شرح أو إيموجي. فقط "آه" أو "لأ".`;
+          
+          botReply = await getBotResponse(history, systemInstruction, 0);
+          botReply = botReply.trim();
+          
+          if (botReply.includes('آه') || botReply.includes('نعم') || botReply.includes('اه')) {
+            botReply = 'آه';
+          } else if (botReply.includes('لأ') || botReply.includes('لا')) {
+            botReply = 'لأ';
+          } else {
+            // Force آه or لأ randomly if Gemini messed up
+            botReply = Math.random() > 0.5 ? 'آه' : 'لأ';
+          }
+        }
+
         history.push({ role: 'model', parts: [{ text: botReply }] });
         botConversations.set(roomId, history);
 
-        // Calculate typing delay based on text length (approx 50ms per character)
-        const typingDelay = Math.min(5000, Math.max(1000, botReply.length * 50));
+        const typingDelay = Math.min(4000, Math.max(1000, botReply.length * 50));
         
         setTimeout(() => {
           const messageObj = { senderId: bot.id, text: botReply };
           if (!room.chatHistory) room.chatHistory = [];
-          room.chatHistory.push({ ...messageObj, senderName: bot.name, timestamp: Date.now() });
+          room.chatHistory.push({ ...messageObj, senderName: bot.playerName, timestamp: Date.now() });
           io.to(roomId).emit("chat_bubble", messageObj);
+          
+          if (botReply === 'آه' || botReply === 'لأ') {
+            // Update turn logic: after bot answers, it's the bot's turn to ask
+            room.currentTurn = bot.id;
+            room.waitingForAnswerFrom = null;
+            io.to(roomId).emit("room_update", room);
+            
+            // Trigger bot to ask a question shortly after answering
+            setTimeout(() => {
+              triggerBotQuestion(roomId, bot);
+            }, 2000 + Math.random() * 2000);
+          }
         }, typingDelay);
 
       } catch (error) {
         console.error("Gemini Error:", error);
       }
-      */
     }
   }
 
@@ -2352,6 +2867,7 @@ io.on("connection", (socket) => {
     socket.on('request_match_intro', ({ roomId }) => {
       const room = rooms.get(roomId);
       if (room && room.gameState === 'waiting') {
+        room.gameState = 'starting'; // Prevent bot from changing category during intro
         io.to(roomId).emit('match_intro_triggered');
       }
     });
@@ -3221,15 +3737,41 @@ io.on("connection", (socket) => {
 
     socket.on("respond_to_match", ({ matchId, response }) => {
       const match = pendingMatches.get(matchId);
-      if (!match) return;
+      if (!match) {
+        console.log(`[Matchmaking] Match ${matchId} not found for response ${response}`);
+        return;
+      }
 
       const isP1 = match.p1.socket.id === socket.id;
       const isP2 = match.p2.socket.id === socket.id;
 
-      if (!isP1 && !isP2) return;
+      console.log(`[Matchmaking] Response ${response} from socket ${socket.id} for match ${matchId}. isP1: ${isP1}, isP2: ${isP2}. Match P1 Socket: ${match.p1.socket.id}, Match P2 Socket: ${match.p2.socket.id}`);
+
+      if (!isP1 && !isP2) {
+        console.log(`[Matchmaking] Socket ${socket.id} is neither P1 nor P2 for match ${matchId}`);
+        return;
+      }
 
       if (isP1) match.p1Response = response;
       if (isP2) match.p2Response = response;
+
+      // If human accepts and opponent is bot, bot accepts after a delay
+      if (isP1 && response === 'accept' && match.p2.isBot) {
+        console.log(`[Bot Matchmaking] Human ${match.p1.playerName} accepted match ${matchId}. Bot ${match.p2.playerName} will accept shortly.`);
+        setTimeout(() => {
+          const currentMatch = pendingMatches.get(matchId);
+          if (currentMatch && currentMatch.p1Response === 'accept') {
+            console.log(`[Bot Matchmaking] Bot ${currentMatch.p2.playerName} automatically accepting match ${matchId}`);
+            currentMatch.p2Response = 'accept';
+            currentMatch.p1.socket.emit("opponent_accepted");
+            
+            // Check if both accepted
+            if (currentMatch.p1Response === 'accept' && currentMatch.p2Response === 'accept') {
+              finalizeMatch(matchId);
+            }
+          }
+        }, 1500 + Math.random() * 1500);
+      }
 
       const myData = isP1 ? match.p1 : match.p2;
       const oppData = isP1 ? match.p2 : match.p1;
@@ -3275,106 +3817,7 @@ io.on("connection", (socket) => {
       }
 
       if (match.p1Response === 'accept' && match.p2Response === 'accept') {
-        clearTimeout(match.timeoutId);
-        pendingMatches.delete(matchId);
-        
-        const roomId = `random_${Math.random().toString(36).substr(2, 9)}`;
-        match.p1.socket.join(roomId);
-        if (match.p1.socket.data) match.p1.socket.data.isSearching = false;
-        if (!match.p2.isBot) {
-          match.p2.socket.join(roomId);
-          if (match.p2.socket.data) match.p2.socket.data.isSearching = false;
-        }
-
-        const p1ServerPlayer = allPlayers.get(match.p1.serial);
-        const p2ServerPlayer = match.p2.isBot ? null : allPlayers.get(match.p2.serial);
-
-        const room = {
-          id: roomId,
-          players: [
-            {
-              id: match.p1.socket.id,
-              playerId: match.p1.playerId,
-              serial: match.p1.serial,
-              name: match.p1.playerName,
-              age: match.p1.age,
-              avatar: match.p1.avatar,
-              selectedFrame: match.p1.selectedFrame || '',
-              score: 1000,
-              targetImage: null,
-              isMuted: false,
-              hasGuessed: false,
-              selectedCategory: null,
-              hintCount: 0,
-              quickGuessUsed: false,
-              wordLengthUsed: false,
-              timeFreezeUsed: false,
-              wordCountUsed: false,
-              spyLensUsed: false,
-              reported: false,
-              xp: match.p1.xp || 0,
-              level: getLevel(match.p1.xp || 0),
-              streak: match.p1.streak || 0,
-              wins: match.p1.wins || 0,
-              reports: p1ServerPlayer ? p1ServerPlayer.reports : 0,
-              reportedBy: p1ServerPlayer ? p1ServerPlayer.reportedBy : [],
-              useToken: match.p1.useToken,
-              profanityCount: 0,
-              ownedHelpers: match.p1.ownedHelpers || {},
-              isAdmin: !!p1ServerPlayer?.isAdmin
-            },
-            {
-              id: match.p2.socket.id,
-              playerId: match.p2.playerId,
-              serial: match.p2.serial || 'bot_serial',
-              name: match.p2.playerName,
-              age: match.p2.age,
-              avatar: match.p2.avatar,
-              selectedFrame: match.p2.selectedFrame || '',
-              score: 1000,
-              targetImage: null,
-              isMuted: false,
-              hasGuessed: false,
-              selectedCategory: null,
-              hintCount: 0,
-              quickGuessUsed: false,
-              wordLengthUsed: false,
-              timeFreezeUsed: false,
-              wordCountUsed: false,
-              spyLensUsed: false,
-              reported: false,
-              xp: match.p2.xp || 0,
-              level: getLevel(match.p2.xp || 0),
-              streak: match.p2.streak || 0,
-              wins: match.p2.wins || 0,
-              reports: p2ServerPlayer ? p2ServerPlayer.reports : 0,
-              reportedBy: p2ServerPlayer ? p2ServerPlayer.reportedBy : [],
-              isBot: match.p2.isBot,
-              persona: match.p2.persona,
-              useToken: match.p2.useToken,
-              profanityCount: 0,
-              ownedHelpers: match.p2.ownedHelpers || {},
-              isAdmin: !!p2ServerPlayer?.isAdmin
-            }
-          ],
-          gameState: "waiting",
-          timer: 60,
-          category: "people",
-          isPaused: false,
-          pausingPlayerId: null,
-          quickGuessTimer: 0,
-          adCooldownTimer: 0,
-        };
-
-        rooms.set(roomId, room);
-        startWaitingInterval(roomId);
-        io.to(roomId).emit("room_update", room);
-        io.to(roomId).emit("random_match_found", { roomId });
-        
-        if (match.p2.isBot) {
-          // IMPORTANT: Pass roomId, not matchId
-          handleBotEvent(roomId, 'room_update', room);
-        }
+        finalizeMatch(matchId);
       }
     });
 
@@ -3408,12 +3851,12 @@ io.on("connection", (socket) => {
     socket.on("force_start_game", ({ roomId }) => {
       console.log(`[MatchIntro] Force start game requested for room: ${roomId}`);
       const room = rooms.get(roomId);
-      if (room && room.players.length === 2) {
+      if (room && room.players.length === 2 && room.gameState === 'starting') {
         console.log(`[MatchIntro] Starting game for room: ${roomId}`);
         room.gameState = 'waiting'; // Ensure it's in a state that can start
         startGame(roomId);
       } else {
-        console.log(`[MatchIntro] Failed to start game for room: ${roomId}. Room exists: ${!!room}, Players: ${room?.players?.length}`);
+        console.log(`[MatchIntro] Failed to start game for room: ${roomId}. Room exists: ${!!room}, Players: ${room?.players?.length}, State: ${room?.gameState}`);
       }
     });
 
@@ -3449,20 +3892,33 @@ io.on("connection", (socket) => {
         // Turn logic for Quick Chat (Updates state but doesn't block for speed)
         if (room.gameState === 'discussion') {
           const opponent = room.players.find((p: any) => p.id !== socket.id);
-          if (messageToSend === 'آه' || messageToSend === 'لأ') {
-            if (passTurn && opponent) {
-              // The answerer has no questions, so turn goes back to the asker
-              room.currentTurn = opponent.id;
-              room.waitingForAnswerFrom = null;
+          const emojiRegex = /^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?(\u200D\p{Emoji_Presentation}|\u200D\p{Emoji}\uFE0F)*)+$/u;
+          const isEmoji = emojiRegex.test(messageToSend.trim());
+
+          if (!isEmoji) {
+            if (messageToSend === 'آه' || messageToSend === 'لأ') {
+              if (messageToSend === 'آه') {
+                if (!room.confirmedAnswers) room.confirmedAnswers = [];
+                // Find the last question asked by the opponent
+                const lastQuestion = room.chatHistory?.slice().reverse().find((m: any) => m.senderId !== socket.id && m.text !== 'آه' && m.text !== 'لأ');
+                if (lastQuestion) {
+                  room.confirmedAnswers.push(lastQuestion.text);
+                }
+              }
+              if (passTurn && opponent) {
+                // The answerer has no questions, so turn goes back to the asker
+                room.currentTurn = opponent.id;
+                room.waitingForAnswerFrom = null;
+              } else {
+                // Turn switches to the player who answered
+                room.currentTurn = socket.id;
+                room.waitingForAnswerFrom = null;
+              }
             } else {
-              // Turn switches to the player who answered
-              room.currentTurn = socket.id;
-              room.waitingForAnswerFrom = null;
-            }
-          } else {
-            room.currentTurn = null;
-            if (opponent) {
-              room.waitingForAnswerFrom = opponent.id;
+              room.currentTurn = null;
+              if (opponent) {
+                room.waitingForAnswerFrom = opponent.id;
+              }
             }
           }
         }
@@ -3501,6 +3957,12 @@ io.on("connection", (socket) => {
           room.currentTurn = opponent.id;
           room.waitingForAnswerFrom = null;
           io.to(roomId).emit("room_update", room);
+          
+          if (opponent.isBot) {
+            setTimeout(() => {
+              triggerBotQuestion(roomId, opponent);
+            }, 2000 + Math.random() * 2000);
+          }
         }
       }
     });
@@ -4877,7 +5339,22 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomId);
     if (!room || room.gameState !== 'waiting') return;
 
+    // Always ensure room.category matches the agreed category if players have agreed
+    const p1 = room.players[0];
+    const p2 = room.players[1];
+    if (p1.selectedCategory && p1.selectedCategory === p2.selectedCategory) {
+      room.category = p1.selectedCategory;
+    }
+
+    if (!room.category) {
+      console.error(`[StartGame] No category selected for room ${roomId}`);
+      io.to(roomId).emit("game_stopped", { reason: "لم يتم اختيار فئة للمباراة." });
+      rooms.delete(roomId);
+      return;
+    }
+
     const categoryImages = getCategoryImages(room.category);
+    console.log(`[StartGame] Room ${roomId} category: ${room.category}, Found images: ${categoryImages.length}`);
     
     // Priority logic: images from last 3 days get 3x probability
     const pool: any[] = [];
@@ -5196,6 +5673,18 @@ io.on("connection", (socket) => {
       room.lastUpdates = updates;
       io.to(roomId).emit("room_update", room);
 
+      // Clear bot intervals and timeouts
+      if (botIntervals.has(roomId)) {
+        clearInterval(botIntervals.get(roomId));
+        botIntervals.delete(roomId);
+      }
+      if (botTimeouts.has(roomId + '_agree_timeout')) {
+        clearTimeout(botTimeouts.get(roomId + '_agree_timeout'));
+        botTimeouts.delete(roomId + '_agree_timeout');
+      }
+      botConversations.delete(roomId);
+      botConversations.delete(roomId + '_category_triggered');
+
       // Update allPlayers leaderboard
       room.players.forEach((p: any) => {
         if (p.isBot) return; // Skip bots
@@ -5341,7 +5830,7 @@ io.on("connection", (socket) => {
   } else {
     app.use(express.static(path.join(__dirname, "dist"), {
       setHeaders: (res, path) => {
-        if (path.endsWith('.html') || path.endsWith('sw.js') || path.endsWith('manifest.webmanifest') || path.endsWith('manifest.json') || path.endsWith('icon.svg')) {
+        if (path.endsWith('.html') || path.endsWith('sw.js') || path.endsWith('manifest.webmanifest') || path.endsWith('manifest.json') || path.endsWith('icon-v2.svg')) {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
           res.setHeader('Pragma', 'no-cache');
           res.setHeader('Expires', '0');
