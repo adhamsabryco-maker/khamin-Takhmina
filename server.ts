@@ -45,6 +45,29 @@ import { GoogleGenAI } from "@google/genai";
 import { getBotResponse } from "./src/services/botService";
 import { COLLECTION_DATA } from "./collectionData";
 
+const SPIN_REWARDS = [
+  { id: 'time_freeze', type: 'helper', value: 'time_freeze', weight: 50, label: 'تجميد الوقت', icon: 'Snowflake' },
+  { id: 'word_length', type: 'helper', value: 'word_length', weight: 40, label: 'طول الكلمة', icon: 'Type' },
+  { id: 'word_count', type: 'helper', value: 'word_count', weight: 30, label: 'عدد الكلمات', icon: 'Hash' },
+  { id: 'hint', type: 'helper', value: 'hint', weight: 20, label: 'تلميح', icon: 'HelpCircle' },
+  { id: 'spy_lens', type: 'helper', value: 'spy_lens', weight: 10, label: 'عدسة التجسس', icon: 'Eye' },
+  { id: 'token_1', type: 'token', value: 1, weight: 8, label: '1 توكن', icon: 'Coins' },
+  { id: 'token_2', type: 'token', value: 2, weight: 5, label: '2 توكن', icon: 'Coins' },
+  { id: 'token_3', type: 'token', value: 3, weight: 1, label: '3 توكن', icon: 'Coins' },
+  { id: 'token_4', type: 'token', value: 4, weight: 0.05, label: '4 توكن', icon: 'Coins' },
+  { id: 'token_5', type: 'token', value: 5, weight: 0.0001, label: '5 توكن', icon: 'Coins' },
+  { id: 'token_10', type: 'token', value: 10, weight: 0.000001, label: '10 توكن', icon: 'Coins' },
+  { id: 'xp_10', type: 'xp', value: 10, weight: 90, label: '10 XP', icon: 'Star' },
+  { id: 'xp_20', type: 'xp', value: 20, weight: 80, label: '20 XP', icon: 'Star' },
+  { id: 'xp_30', type: 'xp', value: 30, weight: 70, label: '30 XP', icon: 'Star' },
+  { id: 'xp_40', type: 'xp', value: 40, weight: 60, label: '40 XP', icon: 'Star' },
+  { id: 'xp_50', type: 'xp', value: 50, weight: 2, label: '50 XP', icon: 'Star' },
+  { id: 'xp_100', type: 'xp', value: 100, weight: 1, label: '100 XP', icon: 'Star' },
+  { id: 'xp_5000', type: 'xp', value: 5000, weight: 0.0001, label: '5000 XP', icon: 'Star' },
+  { id: 'xp_10000', type: 'xp', value: 10000, weight: 0.0000001, label: '10000 XP', icon: 'Star' },
+  { id: 'pro_30', type: 'pro', value: 30, weight: 0, label: 'باقة المحترفين', icon: 'Crown' },
+];
+
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "dummy_key_to_prevent_crash" });
 if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
   console.warn("WARNING: Neither GEMINI_API_KEY nor GOOGLE_API_KEY is set. AI features will not work.");
@@ -737,7 +760,10 @@ const app = express();
     lastRainGiftResetDay?: string,
     rainGiftTokens?: number,
     rainGiftHelpers?: { [key: string]: number },
-    notificationsEnabled?: number
+    notificationsEnabled?: number,
+    lastSpinDate?: string,
+    dailySpinCount?: number,
+    freeSpinUsed?: number
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -920,6 +946,13 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastSpinDate TEXT`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN dailySpinCount INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN freeSpinUsed INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN luckyWheelTokens INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN luckyWheelHelpers TEXT DEFAULT '{}'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastLuckyWheelResetDay TEXT`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN luckyWheelDaysUsed INTEGER DEFAULT 0`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -1099,8 +1132,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -1138,6 +1171,39 @@ const app = express();
       return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     };
     
+    const getLuckyWheelResetDay = () => {
+      const parts = new Intl.DateTimeFormat('en-GB', { 
+        timeZone: 'Africa/Cairo', 
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: 'numeric', hour12: false 
+      }).formatToParts(new Date());
+      
+      let year = 0, month = 0, day = 0, hour = 0, minute = 0;
+      for (const part of parts) {
+        if (part.type === 'year') year = parseInt(part.value, 10);
+        if (part.type === 'month') month = parseInt(part.value, 10);
+        if (part.type === 'day') day = parseInt(part.value, 10);
+        if (part.type === 'hour') {
+          hour = parseInt(part.value, 10);
+          if (hour === 24) hour = 0;
+        }
+        if (part.type === 'minute') minute = parseInt(part.value, 10);
+      }
+      
+      // Reset at 23:50 Egypt time
+      if (hour < 23 || (hour === 23 && minute < 50)) {
+        const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+        d.setUTCDate(d.getUTCDate() - 1);
+        year = d.getUTCFullYear();
+        month = d.getUTCMonth() + 1;
+        day = d.getUTCDate();
+      }
+      
+      return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    };
+
+    let needsSave = false;
+    
     const currentDay = getRainGiftEventDay();
     if (player.lastRainGiftResetDay !== currentDay) {
       player.lastRainGiftResetDay = currentDay;
@@ -1162,6 +1228,37 @@ const app = express();
       }
 
       console.log(`[Rain Gift] Daily reset for ${serial} on ${currentDay}`);
+      needsSave = true;
+    }
+
+    const currentLuckyWheelDay = getLuckyWheelResetDay();
+    if (player.lastLuckyWheelResetDay !== currentLuckyWheelDay) {
+      player.lastLuckyWheelResetDay = currentLuckyWheelDay;
+
+      // Reset only the unused tokens and helpers obtained from Lucky Wheel
+      if (player.luckyWheelTokens && player.luckyWheelTokens > 0) {
+        player.tokens = Math.max(0, (player.tokens || 0) - player.luckyWheelTokens);
+        player.luckyWheelTokens = 0;
+      }
+      
+      if (player.luckyWheelHelpers) {
+        if (!player.ownedHelpers) player.ownedHelpers = {};
+        for (const [helperId, count] of Object.entries(player.luckyWheelHelpers)) {
+          if (typeof count === 'number' && count > 0) {
+            player.ownedHelpers[helperId] = Math.max(0, (player.ownedHelpers[helperId] || 0) - count);
+            if (player.ownedHelpers[helperId] === 0) {
+              delete player.ownedHelpers[helperId];
+            }
+          }
+        }
+        player.luckyWheelHelpers = {};
+      }
+
+      console.log(`[Lucky Wheel] Daily reset for ${serial} on ${currentLuckyWheelDay}`);
+      needsSave = true;
+    }
+
+    if (needsSave) {
       savePlayerData(serial);
       if (socket) {
         socket.emit("player_data_update", { 
@@ -1211,7 +1308,14 @@ const app = express();
         lastRainGiftResetDay: player.lastRainGiftResetDay || null,
         rainGiftTokens: player.rainGiftTokens || 0,
         rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
-        notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0
+        notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0,
+        lastSpinDate: player.lastSpinDate || null,
+        dailySpinCount: player.dailySpinCount || 0,
+        freeSpinUsed: player.freeSpinUsed || 0,
+        luckyWheelTokens: player.luckyWheelTokens || 0,
+        luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
+        lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
+        luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -1253,7 +1357,14 @@ const app = express();
         lastRainGiftResetDay: player.lastRainGiftResetDay || null,
         rainGiftTokens: player.rainGiftTokens || 0,
         rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
-        notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0
+        notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0,
+        lastSpinDate: player.lastSpinDate || null,
+        dailySpinCount: player.dailySpinCount || 0,
+        freeSpinUsed: player.freeSpinUsed || 0,
+        luckyWheelTokens: player.luckyWheelTokens || 0,
+        luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
+        lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
+        luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0
       });
     }
   });
@@ -1319,7 +1430,10 @@ const app = express();
           lastRainGiftResetDay: row.lastRainGiftResetDay || null,
           rainGiftTokens: row.rainGiftTokens || 0,
           rainGiftHelpers: JSON.parse(row.rainGiftHelpers || '{}'),
-          notificationsEnabled: row.notificationsEnabled !== undefined ? row.notificationsEnabled : 0
+          notificationsEnabled: row.notificationsEnabled !== undefined ? row.notificationsEnabled : 0,
+          lastSpinDate: row.lastSpinDate || null,
+          dailySpinCount: row.dailySpinCount || 0,
+          freeSpinUsed: row.freeSpinUsed || 0
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -2852,6 +2966,13 @@ io.on("connection", (socket) => {
     socket.emit('theme_updated', themeConfig);
     socket.emit('top_players_update', getTopPlayers());
     socket.emit('policies_update', gamePolicies);
+    
+    try {
+      const luckyWheelSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('lucky_wheel_enabled') as { value: string } | undefined;
+      socket.emit('app_settings', { lucky_wheel_enabled: luckyWheelSetting ? luckyWheelSetting.value === 'true' : true });
+    } catch (e) {
+      console.error("Failed to fetch app settings:", e);
+    }
 
     socket.on('admin_save_theme', (newTheme) => {
       console.log("[Theme] Admin updated theme");
@@ -3007,6 +3128,114 @@ io.on("connection", (socket) => {
         adsWatched: player.adsWatchedToday || 0,
         maxAds: 5,
         canWatch: (player.adsWatchedToday || 0) < 5 && getLevel(player.xp) >= 1
+      });
+    });
+
+    socket.on("get_spin_status", ({ serial }) => {
+      const player = allPlayers.get(serial);
+      if (!player) return;
+
+      const today = new Date().toISOString().split('T')[0];
+      if (player.lastSpinDate !== today) {
+        player.dailySpinCount = 0;
+        player.freeSpinUsed = 0;
+        player.lastSpinDate = today;
+        savePlayerData(serial);
+      }
+
+      socket.emit("spin_status", {
+        dailySpinCount: player.dailySpinCount || 0,
+        freeSpinUsed: player.freeSpinUsed || 0,
+        maxPaidSpins: 10,
+        hasFreeSpin: (player.freeSpinUsed || 0) === 0
+      });
+    });
+
+    socket.on("perform_spin", ({ serial, isAdSpin }) => {
+      const player = allPlayers.get(serial);
+      if (!player) return;
+
+      const today = new Date().toISOString().split('T')[0];
+      if (player.lastSpinDate !== today) {
+        player.dailySpinCount = 0;
+        player.freeSpinUsed = 0;
+        player.lastSpinDate = today;
+      }
+
+      const freeSpinAvailable = (player.freeSpinUsed || 0) === 0;
+      const paidSpinsDone = (player.dailySpinCount || 0) - (player.freeSpinUsed || 0);
+      
+      if (!isAdSpin && !freeSpinAvailable) {
+        socket.emit("spin_error", "لقد استنفدت المحاولة المجانية اليوم!");
+        return;
+      }
+
+      if (isAdSpin && paidSpinsDone >= 10 && !player.isAdmin) {
+        socket.emit("spin_error", "لقد استنفدت جميع المحاولات المدفوعة اليوم (10 محاولات)!");
+        return;
+      }
+
+      // Perform weighted random selection
+      const totalWeight = SPIN_REWARDS.reduce((sum, item) => sum + item.weight, 0);
+      let random = Math.random() * totalWeight;
+      let selectedReward = SPIN_REWARDS[0];
+
+      for (const reward of SPIN_REWARDS) {
+        if (random < reward.weight) {
+          selectedReward = reward;
+          break;
+        }
+        random -= reward.weight;
+      }
+
+      // Update player state
+      if (!isAdSpin) {
+        player.freeSpinUsed = 1;
+        
+        // Smart retention mechanic for free spins
+        const daysUsed = player.luckyWheelDaysUsed || 0;
+        if (daysUsed === 0) {
+          selectedReward = SPIN_REWARDS.find(r => r.id === 'xp_5000') || selectedReward;
+        } else if (daysUsed === 2) {
+          selectedReward = SPIN_REWARDS.find(r => r.id === 'xp_10000') || selectedReward;
+        } else if (daysUsed === 4) {
+          selectedReward = SPIN_REWARDS.find(r => r.id === 'token_10') || selectedReward;
+        }
+        player.luckyWheelDaysUsed = daysUsed + 1;
+      }
+      player.dailySpinCount = (player.dailySpinCount || 0) + 1;
+
+      // Apply reward
+      if (selectedReward.type === 'xp') {
+        player.xp = (player.xp || 0) + (selectedReward.value as number);
+      } else if (selectedReward.type === 'token') {
+        player.tokens = (player.tokens || 0) + (selectedReward.value as number);
+        player.luckyWheelTokens = (player.luckyWheelTokens || 0) + (selectedReward.value as number);
+      } else if (selectedReward.type === 'helper') {
+        const helpers = player.ownedHelpers || {};
+        helpers[selectedReward.value as string] = (helpers[selectedReward.value as string] || 0) + 1;
+        player.ownedHelpers = helpers;
+        
+        const lwHelpers = player.luckyWheelHelpers || {};
+        lwHelpers[selectedReward.value as string] = (lwHelpers[selectedReward.value as string] || 0) + 1;
+        player.luckyWheelHelpers = lwHelpers;
+      } else if (selectedReward.type === 'pro') {
+        const currentExpiry = player.proPackageExpiry || Date.now();
+        player.proPackageExpiry = Math.max(currentExpiry, Date.now()) + (selectedReward.value as number) * 24 * 60 * 60 * 1000;
+      }
+
+      savePlayerData(serial);
+
+      socket.emit("spin_result", {
+        reward: selectedReward,
+        dailySpinCount: player.dailySpinCount,
+        freeSpinUsed: player.freeSpinUsed,
+        newStats: {
+          xp: player.xp,
+          tokens: player.tokens,
+          ownedHelpers: player.ownedHelpers || {},
+          proPackageExpiry: player.proPackageExpiry
+        }
       });
     });
 
@@ -4711,6 +4940,11 @@ io.on("connection", (socket) => {
               stmt.run(key, String(value));
             }
           })();
+          
+          if (settings.lucky_wheel_enabled !== undefined) {
+            io.emit('app_settings', { lucky_wheel_enabled: settings.lucky_wheel_enabled === 'true' || settings.lucky_wheel_enabled === true });
+          }
+          
           callback({ success: true });
         } catch (err) {
           callback({ error: "Database error" });
