@@ -3414,7 +3414,7 @@ export default function App() {
     newSocket.on('match_proposed', (data) => {
       setProposedMatch(data);
       setHasResponded(false);
-      setOpponentAccepted(false);
+      setOpponentAccepted(data.opponentAccepted || false);
       setMatchResponseTimeLeft(10);
     });
 
@@ -4631,7 +4631,7 @@ export default function App() {
                           setChestReward(null);
                           setShowDailyQuestModal(false);
                         }}
-                        className="mt-6 px-8 py-3 bg-white text-accent-blue rounded-xl font-black text-lg shadow-lg hover:bg-gray-100 transition-colors"
+                        className="w-full btn-game btn-success flex items-center justify-center mt-6 px-8 py-3 bg-white text-accent-blue rounded-xl font-black text-lg shadow-lg hover:bg-gray-100 transition-colors"
                       >
                         رائع!
                       </button>
