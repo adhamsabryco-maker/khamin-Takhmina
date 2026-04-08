@@ -71,6 +71,8 @@ import {
   Disc,
 } from 'lucide-react';
 
+import easyGuessData from './data/easyGuess.json';
+
 const SPIN_REWARDS_UI = [
   { id: 'time_freeze', type: 'helper', value: 'time_freeze', label: 'تجميد الوقت', icon: <Snowflake className="w-6 h-6" />, color: '#06b6d4' },
   { id: 'word_length', type: 'helper', value: 'word_length', label: 'كاشف الحروف', icon: <Type className="w-6 h-6" />, color: '#22c55e' },
@@ -320,6 +322,7 @@ interface Player {
   timeFreezeUsed?: boolean;
   spyLensUsed?: boolean;
   reported: boolean; // Added for player reporting feature
+  helpersUsedCount?: number;
   lastGuess?: string;
   xp: number;
   level?: number;
@@ -597,6 +600,8 @@ const AnimatedXp = ({ xp, joined, children }: { xp: number, joined: boolean, chi
   return <>{children(displayXp)}</>;
 };
 
+const getLevel = (xp: number) => Math.floor(Math.sqrt(xp / 50)) + 1;
+
 export default function App() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const { customConfig, refreshConfig } = useAvatarConfig();
@@ -872,6 +877,27 @@ export default function App() {
   const hasUnlockedHelpers = unlockedHelpersExpiry !== null && unlockedHelpersExpiry > Date.now();
   const proPackageDaysLeft = hasProPackage ? Math.ceil((proPackageExpiry! - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
   const [showLevelUp, setShowLevelUp] = useState<number | null>(null);
+  const prevLevelRef = useRef(getLevel(xp));
+
+  useEffect(() => {
+    const currentLevel = getLevel(xp);
+    if (currentLevel > prevLevelRef.current) {
+      let milestoneCrossed = null;
+      for (let m of [10, 20, 30, 40, 50]) {
+        if (prevLevelRef.current < m && currentLevel >= m) {
+          milestoneCrossed = m;
+        }
+      }
+      
+      if (milestoneCrossed) {
+        setShowLevelUp(milestoneCrossed);
+      } else {
+        setShowLevelUp(currentLevel);
+      }
+      playSound('win');
+    }
+    prevLevelRef.current = currentLevel;
+  }, [xp]);
   const [showMatchIntro, setShowMatchIntro] = useState(false);
 
   // Rain Gift Event States
@@ -1546,7 +1572,6 @@ export default function App() {
     }
   }, []);
 
-  const getLevel = (xp: number) => Math.floor(Math.sqrt(xp / 50)) + 1;
   const sortPlayers = (players: any[]) => {
     return [...players].sort((a, b) => {
       const levelA = a.level || getLevel(a.xp || 0);
@@ -2044,6 +2069,15 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [spinCooldown]);
+
+  const [hasUsedFreeQuickGuess, setHasUsedFreeQuickGuess] = useState(() => {
+    return localStorage.getItem('khamin_has_used_free_quick_guess') === 'true';
+  });
+
+  const updateHasUsedFreeQuickGuess = (value: boolean) => {
+    setHasUsedFreeQuickGuess(value);
+    localStorage.setItem('khamin_has_used_free_quick_guess', value.toString());
+  };
 
   const [hasUsedFreeSpin, setHasUsedFreeSpin] = useState(() => {
     const saved = localStorage.getItem('khamin_has_used_free_spin');
@@ -3117,6 +3151,7 @@ export default function App() {
             setShowWelcomeModal(true);
           } else if (data) {
             setXp(data.xp);
+            prevLevelRef.current = getLevel(data.xp);
             setWins(data.wins || 0);
             setReports(data.reports || 0);
             setTokens(data.tokens || 0);
@@ -3588,6 +3623,12 @@ export default function App() {
       setReadyPowerUps([]);
       setActivePowerUp(null);
       setShowAdConfirmation(false);
+      
+      // Mark free quick guess as used after the first match finishes
+      if (!hasUsedFreeQuickGuess) {
+        updateHasUsedFreeQuickGuess(true);
+      }
+
       const isWinner = winnerId === newSocket.id;
       if (isWinner) {
         playSound('win');
@@ -3604,16 +3645,7 @@ export default function App() {
       if (updates && updates[newSocket.id]) {
         const myUpdate = updates[newSocket.id];
         setXp(prev => {
-          const oldLevel = getLevel(prev);
           const newXp = prev + myUpdate.xp;
-          const newLevel = getLevel(newXp);
-          if (newLevel > oldLevel) {
-            setShowLevelUp(newLevel);
-            playSound('win');
-            
-            // If it's a milestone level, ensure notifications show up immediately
-            // by not updating lastSeen levels yet (they should already be lower)
-          }
           localStorage.setItem('khamin_xp', newXp.toString());
           return newXp;
         });
@@ -4175,6 +4207,7 @@ export default function App() {
         setGender(player.gender || 'boy');
         setAvatar(player.avatar);
         setXp(player.xp || 0);
+        prevLevelRef.current = getLevel(player.xp || 0);
         setWins(player.wins || 0);
         setTokens(player.tokens || 0);
         setStreak(player.streak || 0);
@@ -4203,6 +4236,21 @@ export default function App() {
         setLoginError('رقم ID غير صحيح أو الحساب غير موجود');
       }
     });
+  };
+
+  const getEasyGuessOptions = () => {
+    if (!room || !room.category || !me?.targetImage?.name) return null;
+    const categoryObj = categories.find(c => c.id === room.category);
+    const categoryName = categoryObj ? categoryObj.name : room.category;
+    
+    // @ts-ignore
+    const categoryData = easyGuessData[categoryName];
+    if (!categoryData) return null;
+    
+    const options = categoryData[me.targetImage.name];
+    if (!options || !Array.isArray(options)) return null;
+    
+    return options;
   };
 
   const handleGuess = (e: React.FormEvent) => {
@@ -5220,6 +5268,20 @@ export default function App() {
 
   const renderModals = () => (
     <>
+      {/* Level Up Overlay */}
+      <AnimatePresence>
+        {showLevelUp !== null && (
+          <LevelUpModal 
+            level={showLevelUp} 
+            avatar={avatar} 
+            customConfig={customConfig} 
+            onClose={() => {
+              setShowLevelUp(null);
+            }} 
+          />
+        )}
+      </AnimatePresence>
+
       {renderCollectionModal()}
       {/* Global Reward Modal */}
       <AnimatePresence>
@@ -10597,10 +10659,10 @@ export default function App() {
                     className={`px-6 py-2 rounded-xl font-black text-xs transition-all shadow-md ${
                       (isAdmin || isRainGiftActive) // Always active style for testing
                       ? 'bg-accent-green text-white hover:scale-105 active:scale-95 animate-pulse' 
-                      : 'bg-gray-300 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
                   >
-                    اشترك في الحدث
+                    {(isAdmin || isRainGiftActive) ? 'اشترك في الحدث' : 'انتهي الحدث اليوم'}
                   </button>
                 </div>
               </div>
@@ -11364,18 +11426,56 @@ export default function App() {
                   className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
                 >
                   <div className="w-full max-w-md card-game p-8 text-center relative">
-                    <div className="text-8xl font-black text-red-500 mb-4 drop-shadow-md">{room.quickGuessTimer}</div>
-                    <h3 className="text-3xl font-black text-main mb-6">تخمين سريع!</h3>
-                    <form onSubmit={handleQuickGuess} className="flex flex-col gap-3">
-                      <input 
-                        autoFocus
-                        type="text" 
-                        value={guess}
-                        onChange={(e) => setGuess(e.target.value)}
-                        placeholder="ما هي الصورة؟"
-                        className="input-game text-center text-2xl"
-                      />
-                      <button className="btn-game btn-primary py-4 text-xl">إرسال</button>
+                    <div className="text-6xl font-black text-red-500 mb-4 drop-shadow-md">{room.quickGuessTimer}</div>
+                    <h3 className="text-2xl font-black text-main mb-6">تخمين سريع!</h3>
+                      <form onSubmit={handleQuickGuess} className="flex flex-col gap-3">
+                        <input 
+                          autoFocus
+                          type="text" 
+                          value={guess}
+                          onChange={(e) => setGuess(e.target.value)}
+                          placeholder="ما هي الصورة؟"
+                          className="input-game text-center text-2xl"
+                        />
+                        
+                        {/* Easy Guess Options */}
+                        {getEasyGuessOptions() && (() => {
+                          const isQuickGuessLocked = hasUsedFreeQuickGuess && (me?.helpersUsedCount || 0) < 3;
+                          return (
+                          <div className="flex flex-col items-center gap-1 mt-2">
+                            <span className="text-[10px] text-brown-muted font-bold opacity-70">اختار اجابة او خمن بنفسك</span>
+                            <div className="relative w-full">
+                              {/* Blur Overlay */}
+                              {isQuickGuessLocked && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
+                                  <span className="text-[11px] font-black text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
+                                    يجب استخدام على الاقل 3 وسائل مساعدة لفتح اختيارات الإجابات السريعة
+                                  </span>
+                                </div>
+                              )}
+                              <div className={`flex flex-wrap justify-center gap-2 p-1 ${isQuickGuessLocked ? 'blur-xl select-none pointer-events-none' : ''}`}>
+                                {getEasyGuessOptions()?.map((option: string, idx: number) => (
+                                  <button
+                                    key={`quick-easy-${idx}`}
+                                    type="button"
+                                    onClick={() => {
+                                      if (!isQuickGuessLocked) {
+                                        playSound('clickOpen');
+                                        setGuess(option);
+                                      }
+                                    }}
+                                    className="px-4 py-2 bg-accent-orange text-white rounded-xl font-black text-sm hover:brightness-110 active:scale-95 transition-all shadow-md border-b-4 border-orange-600"
+                                  >
+                                    {isQuickGuessLocked ? '???' : option}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          );
+                        })()}
+
+                        <button className={`btn-game btn-primary py-4 text-xl transition-all ${guess.trim() ? 'button-glow scale-105' : ''}`}>إرسال</button>
                       
                       <button 
                         type="button"
@@ -11479,7 +11579,45 @@ export default function App() {
                           placeholder="ما هي الصورة؟"
                           className="input-game flex-1 py-2 text-center"
                         />
-                        <button className="btn-game btn-primary w-full py-2.5 text-base md:text-lg">إرسال</button>
+
+                        {/* Easy Guess Options */}
+                        {getEasyGuessOptions() && (() => {
+                          const isQuickGuessLocked = hasUsedFreeQuickGuess && (me?.helpersUsedCount || 0) < 3;
+                          return (
+                          <div className="flex flex-col items-center gap-1 mt-1">
+                            <span className="text-[10px] text-brown-muted font-bold opacity-70">اختار اجابة او خمن بنفسك</span>
+                            <div className="relative w-full">
+                              {/* Blur Overlay */}
+                              {isQuickGuessLocked && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
+                                  <span className="text-[11px] font-black text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
+                                    يجب استخدام على الاقل 3 وسائل مساعدة لفتح اختيارات الإجابات السريعة
+                                  </span>
+                                </div>
+                              )}
+                              <div className={`flex flex-wrap justify-center gap-2 p-1 ${isQuickGuessLocked ? 'blur-xl select-none pointer-events-none' : ''}`}>
+                                {getEasyGuessOptions()?.map((option: string, idx: number) => (
+                                  <button
+                                    key={`final-easy-${idx}`}
+                                    type="button"
+                                    onClick={() => {
+                                      if (!isQuickGuessLocked) {
+                                        playSound('clickOpen');
+                                        setGuess(option);
+                                      }
+                                    }}
+                                    className="px-3 py-1.5 bg-accent-orange text-white rounded-xl font-black text-xs md:text-sm hover:brightness-110 active:scale-95 transition-all shadow-md border-b-4 border-orange-600"
+                                  >
+                                    {isQuickGuessLocked ? '???' : option}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          );
+                        })()}
+
+                        <button className={`btn-game btn-primary w-full py-2.5 text-base md:text-lg transition-all ${guess.trim() ? 'button-glow scale-105' : ''}`}>إرسال</button>
                       </div>
                     </form>
                   </motion.div>
@@ -12139,21 +12277,6 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Level Up Overlay */}
-      <AnimatePresence>
-        {showLevelUp !== null && (
-          <LevelUpModal 
-            level={showLevelUp} 
-            avatar={avatar} 
-            customConfig={customConfig} 
-            onClose={() => {
-              setShowLevelUp(null);
-            }} 
-          />
-        )}
-      </AnimatePresence>
-
 
       {/* Push Notification Prompt */}
       <AnimatePresence>
