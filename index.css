@@ -608,3 +608,13 @@ body::after {
   animation: fireAnimation 1s ease-in-out infinite alternate;
   background-color: transparent;
 }
+
+@keyframes buttonGlow {
+  0% { box-shadow: 0 0 5px rgba(255, 51, 0, 0.4); }
+  50% { box-shadow: 0 0 15px 8px rgba(255, 51, 0, 0.7); }
+  100% { box-shadow: 0 0 5px rgba(255, 51, 0, 0.4); }
+}
+
+.button-glow {
+  animation: buttonGlow 1.2s ease-in-out infinite;
+}
