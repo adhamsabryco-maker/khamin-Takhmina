@@ -47,16 +47,16 @@ import { COLLECTION_DATA } from "./collectionData";
 
 const SPIN_REWARDS = [
   { id: 'time_freeze', type: 'helper', value: 'time_freeze', weight: 50, label: 'تجميد الوقت', icon: 'Snowflake' },
-  { id: 'word_length', type: 'helper', value: 'word_length', weight: 40, label: 'طول الكلمة', icon: 'Type' },
+  { id: 'word_length', type: 'helper', value: 'word_length', weight: 40, label: 'كاشف الحروف', icon: 'Type' },
   { id: 'word_count', type: 'helper', value: 'word_count', weight: 30, label: 'عدد الكلمات', icon: 'Hash' },
   { id: 'hint', type: 'helper', value: 'hint', weight: 20, label: 'تلميح', icon: 'HelpCircle' },
-  { id: 'spy_lens', type: 'helper', value: 'spy_lens', weight: 10, label: 'عدسة التجسس', icon: 'Eye' },
-  { id: 'token_1', type: 'token', value: 1, weight: 8, label: '1 توكن', icon: 'Coins' },
-  { id: 'token_2', type: 'token', value: 2, weight: 5, label: '2 توكن', icon: 'Coins' },
-  { id: 'token_3', type: 'token', value: 3, weight: 1, label: '3 توكن', icon: 'Coins' },
-  { id: 'token_4', type: 'token', value: 4, weight: 0.05, label: '4 توكن', icon: 'Coins' },
-  { id: 'token_5', type: 'token', value: 5, weight: 0.0001, label: '5 توكن', icon: 'Coins' },
-  { id: 'token_10', type: 'token', value: 10, weight: 0.000001, label: '10 توكن', icon: 'Coins' },
+  { id: 'spy_lens', type: 'helper', value: 'spy_lens', weight: 10, label: 'الجاسوس', icon: 'Eye' },
+  { id: 'token_1', type: 'token', value: 1, weight: 8, label: 'Token 1', icon: 'Coins' },
+  { id: 'token_2', type: 'token', value: 2, weight: 5, label: 'Token 2', icon: 'Coins' },
+  { id: 'token_3', type: 'token', value: 3, weight: 1, label: 'Token 3', icon: 'Coins' },
+  { id: 'token_4', type: 'token', value: 4, weight: 0.05, label: 'Token 4', icon: 'Coins' },
+  { id: 'token_5', type: 'token', value: 5, weight: 0.0001, label: 'Token 5', icon: 'Coins' },
+  { id: 'token_10', type: 'token', value: 10, weight: 0.000001, label: 'Token 10', icon: 'Coins' },
   { id: 'xp_10', type: 'xp', value: 10, weight: 90, label: '10 XP', icon: 'Star' },
   { id: 'xp_20', type: 'xp', value: 20, weight: 80, label: '20 XP', icon: 'Star' },
   { id: 'xp_30', type: 'xp', value: 30, weight: 70, label: '30 XP', icon: 'Star' },
@@ -763,7 +763,11 @@ const app = express();
     notificationsEnabled?: number,
     lastSpinDate?: string,
     dailySpinCount?: number,
-    freeSpinUsed?: number
+    freeSpinUsed?: number,
+    luckyWheelTokens?: number,
+    luckyWheelHelpers?: { [key: string]: number },
+    lastLuckyWheelResetDay?: string,
+    luckyWheelDaysUsed?: number
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -2292,6 +2296,7 @@ const app = express();
           reportedBy: p1ServerPlayer ? p1ServerPlayer.reportedBy : [],
           useToken: match.p1.useToken,
           profanityCount: 0,
+          helpersUsedCount: 0,
           ownedHelpers: match.p1.ownedHelpers || {},
           isAdmin: !!p1ServerPlayer?.isAdmin
         },
@@ -2325,6 +2330,7 @@ const app = express();
           persona: match.p2.persona,
           useToken: match.p2.useToken,
           profanityCount: 0,
+          helpersUsedCount: 0,
           ownedHelpers: match.p2.ownedHelpers || {},
           isAdmin: !!p2ServerPlayer?.isAdmin
         }
@@ -3866,6 +3872,7 @@ io.on("connection", (socket) => {
           reportedBy: actualReportedBy,
           usedToken: false,
           profanityCount: 0,
+          helpersUsedCount: 0,
           ownedHelpers: serverPlayer.ownedHelpers || {},
           isAdmin: !!serverPlayer.isAdmin
         };
@@ -4304,6 +4311,7 @@ io.on("connection", (socket) => {
           deductFreeUse();
           if (!player.hintCount) player.hintCount = 0;
           player.hintCount++;
+          player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
           const targetName = player.targetImage.name;
           const hintChar = targetName[player.hintCount - 1] || "?";
           socket.emit("hint_received", { 
@@ -4328,6 +4336,7 @@ io.on("connection", (socket) => {
         if ((playerLevel >= 20 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.wordLengthUsed) {
           deductFreeUse();
           player.wordLengthUsed = true;
+          player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
           const targetName = player.targetImage.name;
           const lengthWithoutSpaces = targetName.replace(/\s+/g, '').length;
           socket.emit("word_length_result", { length: lengthWithoutSpaces });
@@ -4338,6 +4347,7 @@ io.on("connection", (socket) => {
         if ((playerLevel >= 40 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.wordCountUsed) {
           deductFreeUse();
           player.wordCountUsed = true;
+          player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
           const targetName = player.targetImage.name;
           const wordCount = targetName.trim().split(/\s+/).length;
           socket.emit("word_count_result", { count: wordCount });
@@ -4358,6 +4368,7 @@ io.on("connection", (socket) => {
         if ((playerLevel >= 50 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.spyLensUsed) {
           deductFreeUse();
           player.spyLensUsed = true;
+          player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
           // The player wants to see their own target image (which is what the opponent sees)
           socket.emit("spy_lens_active", { image: player.targetImage.image });
           io.to(roomId).emit("room_update", room);
