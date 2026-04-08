@@ -11152,7 +11152,7 @@ export default function App() {
                     </motion.div>
                   )}
                 </div>
-                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[70px] md:max-w-[90px] flex items-center gap-2" dir="ltr">
+                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[80px] md:max-w-[90px] flex items-center gap-1" dir="ltr">
                   {me.name}
                   {reports > 0 && <Flag className="w-3 h-3 text-red-500" fill="currentColor" />}
                 </div>
@@ -11443,12 +11443,12 @@ export default function App() {
                           const isQuickGuessLocked = hasUsedFreeQuickGuess && (me?.helpersUsedCount || 0) < 3;
                           return (
                           <div className="flex flex-col items-center gap-1 mt-2">
-                            <span className="text-[10px] text-brown-muted font-bold opacity-70">اختار اجابة او خمن بنفسك</span>
+                            <span className="text-[13px] text-brown-muted font-bold">اختار اجابة او خمن بنفسك</span>
                             <div className="relative w-full">
                               {/* Blur Overlay */}
                               {isQuickGuessLocked && (
                                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
-                                  <span className="text-[11px] font-black text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
+                                  <span className="text-[12px] font-bold text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
                                     يجب استخدام على الاقل 3 وسائل مساعدة لفتح اختيارات الإجابات السريعة
                                   </span>
                                 </div>
@@ -11585,12 +11585,12 @@ export default function App() {
                           const isQuickGuessLocked = hasUsedFreeQuickGuess && (me?.helpersUsedCount || 0) < 3;
                           return (
                           <div className="flex flex-col items-center gap-1 mt-1">
-                            <span className="text-[10px] text-brown-muted font-bold opacity-70">اختار اجابة او خمن بنفسك</span>
+                            <span className="text-[13px] text-brown-muted font-bold">اختار اجابة او خمن بنفسك</span>
                             <div className="relative w-full">
                               {/* Blur Overlay */}
                               {isQuickGuessLocked && (
                                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
-                                  <span className="text-[11px] font-black text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
+                                  <span className="text-[12px] font-bold text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
                                     يجب استخدام على الاقل 3 وسائل مساعدة لفتح اختيارات الإجابات السريعة
                                   </span>
                                 </div>
