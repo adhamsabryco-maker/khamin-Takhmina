@@ -203,9 +203,7 @@ function getBotAnswer(category: string, imageName: string | any, questionId: str
       'أكلات': 'qc_food',
       'اشخاص': 'qc_people',
       'جماد': 'qc_objects',
-      'objects': 'qc_objects',
       'نبات': 'qc_plants',
-      'plants': 'qc_plants',
       'طيور': 'qc_birds',
       'حشرات': 'qc_insects',
       'كرة القدم': 'qc_football'
@@ -2724,14 +2722,14 @@ const app = express();
               qc.id === currentRoom.category || 
               qc.text === currentRoom.category ||
               normalizeEgyptian(qc.text) === normalizeEgyptian(currentRoom.category) ||
-              (qc.id === 'qc_animals' && (currentRoom.category === 'حيوانات' || currentRoom.category === 'animals')) ||
-              (qc.id === 'qc_food' && (currentRoom.category === 'أكلات' || currentRoom.category === 'food')) ||
-              (qc.id === 'qc_people' && (currentRoom.category === 'اشخاص' || currentRoom.category === 'people')) ||
-              (qc.id === 'qc_objects' && (currentRoom.category === 'جماد' || currentRoom.category === 'objects')) ||
-              (qc.id === 'qc_plants' && (currentRoom.category === 'نبات' || currentRoom.category === 'plants')) ||
-              (qc.id === 'qc_birds' && (currentRoom.category === 'طيور' || currentRoom.category === 'birds')) ||
-              (qc.id === 'qc_insects' && (currentRoom.category === 'حشرات' || currentRoom.category === 'insects')) ||
-              (qc.id === 'qc_football' && (currentRoom.category === 'كرة القدم' || currentRoom.category === 'football'))
+              qc.id === `qc_animals` && currentRoom.category === 'حيوانات' ||
+              qc.id === `qc_food` && currentRoom.category === 'أكلات' ||
+              qc.id === `qc_people` && currentRoom.category === 'اشخاص' ||
+              qc.id === `qc_objects` && currentRoom.category === 'جماد' ||
+              qc.id === `qc_plants` && currentRoom.category === 'نبات' ||
+              qc.id === `qc_birds` && currentRoom.category === 'طيور' ||
+              qc.id === `qc_insects` && currentRoom.category === 'حشرات' ||
+              qc.id === `qc_football` && currentRoom.category === 'كرة القدم'
             );
             console.log(`[BotQuestion] Room: ${roomId}, Category: ${currentRoom.category}, NodeFound: ${!!categoryNode}`);
             
