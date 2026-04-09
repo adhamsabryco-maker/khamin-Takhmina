@@ -42,7 +42,6 @@ const dbUpload = multer({ dest: os.tmpdir() });
 
 import { filterProfanity, filterGameTerms } from "./src/profanityFilter";
 import { GoogleGenAI } from "@google/genai";
-import { getBotResponse } from "./src/services/botService";
 import { COLLECTION_DATA } from "./collectionData";
 
 const SPIN_REWARDS = [
@@ -74,16 +73,17 @@ if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
 }
 
 const BOT_PERSONAS = [
+  // الشخصيات اللي كانت فوق الـ 20 وتم ضبطها
   { name: "زيزو", age: 22, level: 15, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "هزار وفرفشة، بيحب يستخدم كلمات زي 'يا زميلي' و 'يا صاحبي' و 'أنجز يا وحش'" },
   { name: "منة", age: 20, level: 8, avatar: "avatar-free-girl-01.png", gender: "girl", personality: "هادية ومركزة، كلامها قليل ومحدد، بتستخدم 'أيوة' و 'لأ' و 'مش عارفة'" },
-  { name: "أبو مكة", age: 35, level: 42, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "حريف وقديم في اللعبة، كلامه فيه حكمة شوية وبيحب يشجع المنافس 'عاش يا بطل'" },
+  { name: "أبو مكة", age: 35, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "حريف وقديم في اللعبة، كلامه فيه حكمة شوية وبيحب يشجع المنافس 'عاش يا بطل'" },
   { name: "حمو", age: 19, level: 5, avatar: "avatar-free-boy-04.png", gender: "boy", personality: "لسه جديد وبيتعلم، بيغلط كتير وبيهزر على نفسه 'أنا ضايع خالص يا جدعان'" },
-  { name: "سارة", age: 24, level: 25, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "ذكية وبتحب التحدي، بتسأل أسئلة صعبة وبتحاول توقع المنافس في الغلط" },
+  { name: "سارة", age: 24, level: 19, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "ذكية وبتحب التحدي، بتسأل أسئلة صعبة وبتحاول توقع المنافس في الغلط" },
   { name: "ميدو", age: 21, level: 12, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيحب الرغي والكلام الجانبي، ممكن يحكي موقف حصل معاه وهو بيلعب" },
   { name: "نور", age: 23, level: 18, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "بتحب الضحك والهزار، بس ذكية جداً في اللعب" },
-  { name: "ليلى", age: 26, level: 30, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "جدية شوية، بس بتحب المنافسة الشريفة" },
+  { name: "ليلى", age: 26, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "جدية شوية، بس بتحب المنافسة الشريفة" },
 
-  // المستويات المبتدئة (Free Avatars)
+  // المستويات المبتدئة (كما هي لأنها تحت الـ 20)
   { name: "بوجي", age: 18, level: 2, avatar: "avatar-free-boy-01.png", gender: "boy", personality: "مرتبك جداً وبيسأل كتير 'هو الدور على مين؟'" },
   { name: "توكا", age: 19, level: 4, avatar: "avatar-free-girl-02.png", gender: "girl", personality: "بتحب الإيموجيز جداً وكلامها كله دلع 'سوري مخدتش بالي'" },
   { name: "كيمو", age: 21, level: 6, avatar: "avatar-free-boy-02.png", gender: "boy", personality: "بيحب التحدي رغم إنه لسه بيبدأ 'هكسبك يعني هكسبك'" },
@@ -101,42 +101,143 @@ const BOT_PERSONAS = [
   { name: "بيبو", age: 25, level: 19, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "حريف وبيلعب بدماغه 'اللعبة دي محتاجة نفس طويل'" },
   { name: "سلمى", age: 24, level: 17, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "بتحب النظام 'لو سمحت العب بالترتيب'" },
 
-  // مستوى 20 لـ 29
-  { name: "تيتو", age: 28, level: 22, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "مش بيحب الخسارة أبداً 'لا دي أكيد صدفة، نلعب تاني'" },
-  { name: "نادين", age: 26, level: 26, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحلل كل حركة 'همم.. الحركة دي وراها حاجة'" },
-  { name: "فارس", age: 30, level: 28, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "هادي جداً وبيلعب ببرود أعصاب يحرق الدم" },
-  { name: "جنا", age: 22, level: 21, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحب تشجع نفسها 'عاش يا أنا، قربنا نخلص'" },
-  { name: "مارك", age: 25, level: 24, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحب المنافسة 'وريني هتعمل إيه في دي'" },
-  { name: "شهد", age: 23, level: 29, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "طموحة وعايزة توصل لليفل 30 'خلاص هانت كلها دورين وأعلى'" },
+  // الشخصيات اللي كانت +20 (تم تعديلها لسقف الـ 20)
+  { name: "تيتو", age: 28, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "مش بيحب الخسارة أبداً 'لا دي أكيد صدفة، نلعب تاني'" },
+  { name: "نادين", age: 26, level: 19, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحلل كل حركة 'همم.. الحركة دي وراها حاجة'" },
+  { name: "فارس", age: 30, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "هادي جداً وبيلعب ببرود أعصاب يحرق الدم" },
+  { name: "جنا", age: 22, level: 18, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحب تشجع نفسها 'عاش يا أنا، قربنا نخلص'" },
+  { name: "مارك", age: 25, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحب المنافسة 'وريني هتعمل إيه في دي'" },
+  { name: "شهد", age: 23, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "طموحة وعايزة توصل لأعلى مستوى 'خلاص هانت كلها دورين وأقفل الليفل'" },
 
-  // مستوى 30 لـ 39
-  { name: "الجوكر", age: 32, level: 33, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "غامض وكلامه قليل 'السكوت علامة الاحتراف'" },
-  { name: "مايا", age: 27, level: 35, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "خبرة وبتحب تدي نصايح 'لو لعبتها يمين كانت هتبقى أحلى'" },
-  { name: "سلطان", age: 34, level: 31, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "كبير القعدة 'نورتم التربيزة يا شباب'" },
-  { name: "لارا", age: 25, level: 38, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "سريعة جداً في الرد واللعب 'متحاولش تفكر كتير'" },
-  { name: "دكتور اكس", age: 29, level: 36, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "بيحسبها بالورقة والقلم 'الاحتمالات بتقول إني هكسب'" },
-  { name: "بيري", age: 28, level: 32, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "راقية في تعاملها 'لعب ممتع للجميع'" },
+  // مستوى 10 لـ 20 (تم ضغطهم ليكونوا قمة الهرم في لعبتك)
+  { name: "الجوكر", age: 32, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "غامض وكلامه قليل 'السكوت علامة الاحتراف'" },
+  { name: "مايا", age: 27, level: 18, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "خبرة وبتحب تدي نصايح 'لو لعبتها يمين كانت هتبقى أحلى'" },
+  { name: "سلطان", age: 34, level: 17, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "كبير القعدة 'نورتم التربيزة يا شباب'" },
+  { name: "لارا", age: 25, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "سريعة جداً في الرد واللعب 'متحاولش تفكر كتير'" },
+  { name: "دكتور اكس", age: 29, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحسبها بالورقة والقلم 'الاحتمالات بتقول إني هكسب'" },
+  { name: "بيري", age: 28, level: 16, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "راقية في تعاملها 'لعب ممتع للجميع'" },
 
-  // مستوى 40 فما فوق
-  { name: "العقرب", age: 40, level: 45, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "ملك اللعبة 'محدش بياكلها معايا بالساهل'" },
-  { name: "الملكة", age: 33, level: 41, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "برنسيسة اللعبة 'لعبكم لسه محتاج شوية مجهود'" },
-  { name: "الجنرال", age: 38, level: 48, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "صارم جداً 'الخطأ هنا بموت، ركز'" },
-  { name: "الهانم", age: 36, level: 44, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "ذكاء حاد وهدوء قاتل 'اللعب فن مش عن عن'" },
-  { name: "الأسطورة", age: 45, level: 50, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "أعلى لفل في اللعبة 'اتعلموا من العبد لله'" },
-  { name: "سندريلا", age: 29, level: 43, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "هادية بس بتخلص الدور في ثانية" },
+  // مستوى العمالقة (تم تعديلهم من +40 ليكونوا ضمن سقف الـ 20)
+  { name: "العقرب", age: 40, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "ملك اللعبة 'محدش بياكلها معايا بالساهل'" },
+  { name: "الملكة", age: 33, level: 19, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "برنسيسة اللعبة 'لعبكم لسه محتاج شوية مجهود'" },
+  { name: "الجنرال", age: 38, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "صارم جداً 'الخطأ هنا بموت، ركز'" },
+  { name: "الهانم", age: 36, level: 18, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "ذكاء حاد وهدوء قاتل 'اللعب فن مش عن عن'" },
+  { name: "الأسطورة", age: 45, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "أعلى لفل في اللعبة 'اتعلموا من العبد لله'" },
+  { name: "سندريلا", age: 29, level: 17, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "هادية بس بتخلص الدور في ثانية" },
 
-    // شخصيات بأسماء مركبة (ألقاب وأسماء ثنائية)
-  { name: "علي القاضي", age: 31, level: 37, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "حكيم وهادي، كلامه موزون وبيركز في كل حركة 'العدل أساس اللعبة'" },
-  { name: "ملك التخمين", age: 24, level: 23, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيعتمد على إحساسه جداً 'قلبي بيقولي إنك بتغش يا زميلي'" },
+  // شخصيات بأسماء مركبة (تم ضبط المستويات والصور)
+  { name: "علي القاضي", age: 31, level: 18, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "حكيم وهادي، كلامه موزون وبيركز في كل حركة 'العدل أساس اللعبة'" },
+  { name: "ملك التخمين", age: 24, level: 15, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيعتمد على إحساسه جداً 'قلبي بيقولي إنك بتغش يا زميلي'" },
   { name: "سيف محمد", age: 20, level: 14, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "شاب طموح وبيلعب بتكتيك 'واحدة واحدة وهجيبك'" },
   { name: "نور الهادي", age: 22, level: 9, avatar: "avatar-free-girl-02.png", gender: "girl", personality: "رقيقة في كلامها بس بتلعب بذكاء 'اللعب معاكوا ممتع جداً'" },
-  { name: "عمر الكبنج", age: 29, level: 27, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "برنس في نفسه وبيلعب بشياكة 'أهم حاجة الروح الرياضية'" },
-  { name: "برنسيسة اللعبة", age: 26, level: 41, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "واثقة جداً من فوزها 'محدش يقدر يغلب البرنسيسة'" },
-  { name: "ياسين العملاق", age: 33, level: 34, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "بيحب التحديات الصعبة 'وروني هتعملوا إيه مع العملاق'" },
+  { name: "عمر الكبنج", age: 29, level: 17, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "برنس في نفسه وبيلعب بشياكة 'أهم حاجة الروح الرياضية'" },
+  { name: "برنسيسة اللعبة", age: 26, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "واثقة جداً من فوزها 'محدش يقدر يغلب البرنسيسة'" },
+  { name: "ياسين العملاق", age: 33, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحب التحديات الصعبة 'وروني هتعملوا إيه مع العملاق'" },
   { name: "مريم الصادق", age: 21, level: 6, avatar: "avatar-free-girl-03.png", gender: "girl", personality: "بتحب الصراحة 'أنا حظي وحش النهاردة بس هحاول'" },
   { name: "كابتن ماجد", age: 25, level: 18, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيحب الحماس وكلام الكورة 'الكورة في ملعبي دلوقتي'" },
-  { name: "ليلى عبد الله", age: 28, level: 31, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "كلامها فيه رزانة وهدوء 'كل دور وله لابد من فائز'" }
+  { name: "ليلى عبد الله", age: 28, level: 13, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "كلامها فيه رزانة وهدوء 'كل دور وله لابد من فائز'" }
 ];
+
+function getBranchForImage(imageName: string, category: string): string {
+  const normCategory = normalizeEgyptian(category);
+  const normImage = normalizeEgyptian(imageName);
+  
+  // Try to find branch from botAnswersCache first
+  const catKey = Object.keys(botAnswersCache).find(k => normalizeEgyptian(k) === normCategory);
+  if (catKey) {
+    const categoryData = botAnswersCache[catKey];
+    for (const key of Object.keys(categoryData)) {
+      const value = categoryData[key];
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        const imageKey = Object.keys(value).find(k => normalizeEgyptian(k) === normImage);
+        if (imageKey) return key;
+      }
+    }
+  }
+
+  if (normCategory === normalizeEgyptian('حيوانات')) return 'بري';
+  if (normCategory === normalizeEgyptian('أكلات')) return 'حادق';
+  if (normCategory === normalizeEgyptian('اشخاص')) return 'رجل';
+  return '';
+}
+
+let botAnswersCache: any = {};
+let configCache: any = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false, quickChat: [], version: "1.0.0" };
+
+// Global Error Handlers to prevent server crashes
+
+function findQuestionId(text: string, quickChat: any[]): string | null {
+  if (!quickChat) return null;
+  const normalizedInput = normalizeEgyptian(text);
+  for (const item of quickChat) {
+    const normalizedItemText = normalizeEgyptian(item.text);
+    if (normalizedItemText === normalizedInput) {
+      console.log(`[findQuestionId] Match found: "${text}" -> "${item.id}"`);
+      return item.id;
+    }
+    if (item.children && item.children.length > 0) {
+      const foundId = findQuestionId(text, item.children);
+      if (foundId) return foundId;
+    }
+  }
+  return null;
+}
+
+function getBotAnswer(category: string, imageName: string | any, questionId: string, botAnswers: any): string | null {
+  const actualImageName = (imageName && typeof imageName === 'object') ? imageName.name : imageName;
+  const normImage = normalizeEgyptian(actualImageName);
+  
+  console.log(`[getBotAnswer] Search: Cat="${category}", Image="${actualImageName}", QID="${questionId}"`);
+  
+  // Find category data
+  let categoryData = botAnswers[category];
+  if (!categoryData) {
+    const qcId = category.startsWith('qc_') ? category : `qc_${category}`;
+    categoryData = botAnswers[qcId];
+  }
+  if (!categoryData) {
+    const catKey = Object.keys(botAnswers).find(k => normalizeEgyptian(k) === normalizeEgyptian(category));
+    if (catKey) categoryData = botAnswers[catKey];
+  }
+
+  if (!categoryData) {
+    console.log(`[BotAnswer] Category "${category}" not found in JSON.`);
+    return null;
+  }
+
+  // 1. Check if question is a branch ID (e.g., "qc_animals_wild")
+  if (categoryData[questionId] && typeof categoryData[questionId] === 'object' && !Array.isArray(categoryData[questionId])) {
+    const branchData = categoryData[questionId];
+    const imageInThisBranch = !!Object.keys(branchData).find(k => normalizeEgyptian(k) === normImage);
+    console.log(`[BotAnswer] Branch ID match: ${questionId}. Image in branch: ${imageInThisBranch}`);
+    return imageInThisBranch ? "آه" : "لأ";
+  }
+  
+  // 2. Find the image and check its question IDs
+  for (const key of Object.keys(categoryData)) {
+    const value = categoryData[key];
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      // Search inside branch
+      const imageKey = Object.keys(value).find(k => normalizeEgyptian(k) === normImage);
+      if (imageKey) {
+        const ids = value[imageKey];
+        const found = Array.isArray(ids) && ids.includes(questionId);
+        console.log(`[BotAnswer] Image found in branch "${key}". Question ID "${questionId}" match: ${found}`);
+        return found ? "آه" : "لأ";
+      }
+    } else if (Array.isArray(value)) {
+      // Search in root
+      if (normalizeEgyptian(key) === normImage) {
+        const found = value.includes(questionId);
+        console.log(`[BotAnswer] Image found in root. Question ID "${questionId}" match: ${found}`);
+        return found ? "آه" : "لأ";
+      }
+    }
+  }
+  
+  console.log(`[BotAnswer] Image "${actualImageName}" not found in JSON.`);
+  return null;
+}
 
 // Global Error Handlers to prevent server crashes
 process.on('uncaughtException', (err) => {
@@ -154,7 +255,10 @@ function normalizeEgyptian(text: string): string {
     .replace(/ة/g, "ه")
     .replace(/ى/g, "ي")
     .replace(/ؤ/g, "و")
-    .replace(/لآ/g, "لا");
+    .replace(/ئ/g, "ي")
+    .replace(/لآ/g, "لا")
+    .replace(/[؟?]/g, "")
+    .trim();
 }
 
 function isSameDay(d1: number, d2: number) {
@@ -289,7 +393,7 @@ const app = express();
   const USE_FIRESTORE_CONFIG = process.env.USE_FIRESTORE_CONFIG === 'true';
   const firestore = admin.apps.length > 0 ? admin.firestore() : null;
 
-  let configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false, quickChat: [], version: currentVersion };
+  configCache = { avatars: {}, frames: {}, stars: {}, aiBotEnabled: false, quickChat: [], version: currentVersion };
   let activeGlobalReward: any = null;
   let gamePolicies = {
     termsAr: "الشروط والأحكام الافتراضية للعبة خمن تخمينة.\n\n1. يجب احترام جميع اللاعبين.\n2. يمنع استخدام أي برامج مساعدة أو غش.\n3. الإدارة غير مسؤولة عن أي خسارة للبيانات.",
@@ -307,6 +411,17 @@ const app = express();
       if (!configCache.version) configCache.version = currentVersion;
     } catch (e) {
       console.error("Error reading config:", e);
+    }
+  }
+
+  const botAnswersPath = path.join(__dirname, 'public/uploads/bot_answers.json');
+  if (fs.existsSync(botAnswersPath)) {
+    try {
+      botAnswersCache = JSON.parse(fs.readFileSync(botAnswersPath, 'utf-8'));
+      console.log(`[BotAnswers] Loaded ${Object.keys(botAnswersCache).length} categories`);
+      console.log("[BotAnswers] Loaded successfully.");
+    } catch (e) {
+      console.error("Error reading bot_answers:", e);
     }
   }
 
@@ -472,6 +587,24 @@ const app = express();
 
   app.get("/api/config", (req, res) => {
     res.json(configCache);
+  });
+
+  app.get("/api/admin/bot-answers", (req, res) => {
+    res.json(botAnswersCache);
+  });
+
+  app.post("/api/admin/bot-answers", async (req, res) => {
+    try {
+      const newAnswers = req.body;
+      const botAnswersPath = path.join(__dirname, 'public/uploads/bot_answers.json');
+      fs.writeFileSync(botAnswersPath, JSON.stringify(newAnswers, null, 2));
+      botAnswersCache = newAnswers;
+      console.log("[BotAnswers] Updated via API");
+      res.json({ success: true });
+    } catch (e: any) {
+      console.error("Error saving bot answers:", e);
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.get("/api/version", (req, res) => {
@@ -1603,8 +1736,26 @@ const app = express();
     io.emit("top_players_update", getTopPlayers(true));
   }
 
+  let currentFakeBots = 15 + Math.floor(Math.random() * 20);
+
+  // Update fake bots count gradually with random intervals
+  function updateFakeBotsGradually() {
+    const change = Math.floor(Math.random() * 9) - 3; // -3 to +5
+    currentFakeBots += change;
+    
+    // Keep it within a reasonable range (e.g., 10 to 50)
+    if (currentFakeBots < 10) currentFakeBots = 10;
+    if (currentFakeBots > 50) currentFakeBots = 50;
+    
+    broadcastOnlineCount();
+    
+    const nextDelay = 30000 + Math.random() * 60000; // 30-90 seconds
+    setTimeout(updateFakeBotsGradually, nextDelay);
+  }
+  updateFakeBotsGradually();
+
   function broadcastOnlineCount() {
-    io.emit('online_count', { online: playerSockets.size, total: allPlayers.size });
+    io.emit('online_count', { online: playerSockets.size + currentFakeBots, total: allPlayers.size + 50 });
   }
 
   app.get("/api/reports", (req, res) => {
@@ -2103,7 +2254,7 @@ const app = express();
 
     if (availablePlayers.length < 2) {
       // Check if a human player is waiting for more than 5 seconds
-      if (false && configCache.aiBotEnabled && availablePlayers.length === 1 && Date.now() - availablePlayers[0].joinedAt > 5000) {
+      if (configCache.aiBotEnabled && availablePlayers.length === 1 && Date.now() - availablePlayers[0].joinedAt > 5000) {
         const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
         
         // Calculate avatar based on level
@@ -2366,7 +2517,6 @@ const app = express();
   }
 
   function checkBotMatchmaking() {
-    return; // Bot system disabled
     const configPath = path.join(__dirname, 'public/uploads/config.json');
     let aiBotEnabled = false;
     if (fs.existsSync(configPath)) {
@@ -2468,12 +2618,83 @@ const app = express();
     // Only ask if it's the bot's turn
     if (currentRoom.currentTurn !== bot.id) return;
 
+    // Bot watching ad logic (10% chance if level >= 10)
+    if (bot.level >= 10 && Math.random() < 0.1) {
+      const helpers = ['word_length', 'word_count', 'time_freeze', 'hint', 'spy_lens'];
+      const randomHelper = helpers[Math.floor(Math.random() * helpers.length)];
+      const helperNames: Record<string, string> = {
+        'word_length': 'كاشف الحروف',
+        'word_count': 'عدد الكلمات',
+        'time_freeze': 'تجميد الوقت',
+        'hint': 'تلميح',
+        'spy_lens': 'الجاسوس'
+      };
+      
+      const verb = (bot.gender === 'girl' || bot.gender === 'female') ? 'تقوم' : 'يقوم';
+      io.to(roomId).emit("chat_bubble", { 
+        senderId: "system", 
+        text: `${verb} ${bot.playerName} بمشاهدة إعلان لفتح وسيلة مساعدة "${helperNames[randomHelper]}"، انتظر قليلاً.` 
+      });
+
+      // Wait for ad to finish
+      await new Promise(resolve => setTimeout(resolve, 5000 + Math.random() * 3000));
+      
+      // Re-fetch room state after waiting
+      const updatedRoom = rooms.get(roomId);
+      if (!updatedRoom || updatedRoom.gameState !== 'discussion' || updatedRoom.currentTurn !== bot.id) return;
+    }
+
     try {
       const player = currentRoom.players.find((p: any) => !p.isBot);
       const botPersona = BOT_PERSONAS.find(p => p.name === bot.playerName);
       
+      // Bot Quick Guess Logic
+      const winCount = playerBotHistory.get(player.playerId) || 0;
+      if (winCount > 0 && Math.random() < 0.15) { // 15% chance to attempt quick guess if played before
+        const confirmedAnswersCount = currentRoom.confirmedAnswers ? currentRoom.confirmedAnswers.length : 0;
+        
+        currentRoom.isPaused = true;
+        currentRoom.pausingPlayerId = bot.id;
+        currentRoom.quickGuessTimer = 15;
+        io.to(roomId).emit("room_update", currentRoom);
+        io.to(roomId).emit("quick_guess_started", { playerId: bot.id });
+        
+        // Wait a bit to simulate thinking
+        await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 2000));
+        
+        const updatedRoom = rooms.get(roomId);
+        if (!updatedRoom || updatedRoom.gameState !== 'discussion') return;
+
+        let isCorrect = false;
+        let guess = "";
+        
+        if (confirmedAnswersCount >= 3) {
+          isCorrect = true;
+          guess = bot.targetImage.name || bot.targetImage;
+        } else {
+          // Guess wrong
+          const categoryImages = getCategoryImages(currentRoom.category);
+          const wrongImages = categoryImages.filter(img => img !== bot.targetImage);
+          guess = wrongImages[Math.floor(Math.random() * wrongImages.length)]?.name || "مش عارف";
+        }
+        
+        updatedRoom.isPaused = false;
+        updatedRoom.pausingPlayerId = null;
+        io.to(roomId).emit("room_update", updatedRoom);
+
+        if (isCorrect) {
+          io.to(roomId).emit("guess_result", { playerId: bot.id, correct: true });
+          endGame(roomId, bot.playerName, false, true);
+        } else {
+          io.to(roomId).emit("guess_result", { playerId: bot.id, correct: false });
+          endGame(roomId, player.name);
+        }
+        return;
+      }
+
       const configPath = path.join(__dirname, 'public/uploads/config.json');
       let questions: string[] = [];
+      let isAskingBranch = false;
       if (fs.existsSync(configPath)) {
         try {
           const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
@@ -2485,7 +2706,7 @@ const app = express();
               qc.text === currentRoom.category ||
               qc.id === `qc_animals` && currentRoom.category === 'حيوانات' ||
               qc.id === `qc_food` && currentRoom.category === 'أكلات' ||
-              qc.id === `qc_people` && currentRoom.category === 'أشخاص'
+              qc.id === `qc_people` && currentRoom.category === 'اشخاص'
             );
             console.log(`[BotQuestion] Room: ${roomId}, Category: ${currentRoom.category}, NodeFound: ${!!categoryNode}`);
             
@@ -2494,7 +2715,6 @@ const app = express();
               if (categoryNode.children.length > 0) {
                 console.log(`[BotQuestion] FirstChild: ${JSON.stringify(categoryNode.children[0].text)}, HasChildren: ${!!categoryNode.children[0].children}`);
               }
-              const history = botConversations.get(roomId) || [];
               
               // Identify branches (nodes with children) and leaves (nodes without children)
               const branches = categoryNode.children.filter((c: any) => c.children && c.children.length > 0);
@@ -2502,36 +2722,57 @@ const app = express();
               
               console.log(`[BotQuestion] Room: ${roomId}, Branches: ${branches.length}, TopLevelLeaves: ${topLevelLeaves.length}`);
               
-              let confirmedBranch = null;
-              const rejectedBranchTexts = new Set<string>();
+              const chatHistory = currentRoom.chatHistory || [];
               const askedQuestionTexts = new Set<string>();
+              const rejectedBranchTexts = new Set<string>();
+              let confirmedBranch = null;
 
-              // Analyze history
               const normalize = (t: string) => t.replace(/[؟?]/g, '').trim();
 
-              for (let i = 0; i < history.length; i++) {
-                const msg = history[i];
-                const text = msg.parts[0].text.trim();
+              for (let i = 0; i < chatHistory.length; i++) {
+                const msg = chatHistory[i];
+                let text = msg.text.trim();
+                if (text === 'اه') text = 'آه';
+                if (text === 'لا') text = 'لأ';
                 const normText = normalize(text);
                 
                 if (text === 'آه' || text === 'لأ') continue;
                 
-                askedQuestionTexts.add(text);
-                askedQuestionTexts.add(normText);
-                
-                // Check if this was a branch question
-                const branch = branches.find((b: any) => 
-                  normText === normalize(b.text) || 
-                  text === b.text
-                );
-                
-                if (branch && i < history.length - 1) {
-                  const answer = history[i+1].parts[0].text.trim();
-                  if (answer === 'آه') {
-                    confirmedBranch = branch;
-                  } else if (answer === 'لأ') {
-                    rejectedBranchTexts.add(branch.text);
-                    rejectedBranchTexts.add(normalize(branch.text));
+                // Only track questions asked by the bot to guess the player's image
+                if (msg.senderId === bot.id) {
+                  askedQuestionTexts.add(text);
+                  askedQuestionTexts.add(normText);
+                  
+                  // Check if this was a branch question
+                  const branch = branches.find((b: any) => 
+                    normText === normalize(b.text) || 
+                    text === b.text
+                  );
+                  
+                  if (branch && i < chatHistory.length - 1) {
+                    const answerMsg = chatHistory[i+1];
+                    // The answer should be from the player
+                    if (answerMsg.senderId !== bot.id) {
+                      let answer = answerMsg.text.trim();
+                      if (answer === 'اه') answer = 'آه';
+                      if (answer === 'لا') answer = 'لأ';
+                      
+                      if (answer === 'آه') {
+                        confirmedBranch = branch;
+                      } else if (answer === 'لأ') {
+                        rejectedBranchTexts.add(branch.text);
+                        rejectedBranchTexts.add(normalize(branch.text));
+                        
+                        // INFERENCE LOGIC: If there are exactly 2 branches, confirm the other one
+                        if (branches.length === 2) {
+                          const otherBranch = branches.find((b: any) => b.text !== branch.text);
+                          if (otherBranch) {
+                            confirmedBranch = otherBranch;
+                            console.log(`[BotQuestion] Inferred Branch: ${confirmedBranch.text} because ${branch.text} was rejected.`);
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -2565,6 +2806,7 @@ const app = express();
                 if (unaskedBranches.length > 0) {
                   // MANDATORY: Ask branches first!
                   unaskedBranches.forEach((b: any) => questions.push(b.text));
+                  isAskingBranch = true; // Flag that we are asking a branch
                 } else {
                   // All branches asked/rejected or no branches exist, use all leaves
                   const allPossibleLeaves: string[] = [];
@@ -2593,58 +2835,38 @@ const app = express();
         }
       }
 
-      const systemInstruction = `
-      أنت لاعب مصري حقيقي في لعبة تخمين صور. اسمك: ${bot.playerName}. شخصيتك: ${botPersona?.personality}.
-      
-      مهمتك الحالية:
-      أنت تحاول تخمين صورة المنافس وهي: "${player?.targetImage?.name || player?.targetImage}".
-      يجب أن تختار سؤالاً من القائمة المتاحة يساعدك في التأكد من أن هذه هي الصورة الصحيحة.
-      
-      قواعد هامة جداً (ممنوع مخالفتها):
-      1. اللعبة تعتمد على الأسئلة السريعة والرد بـ (آه / لأ).
-      2. دورك الآن هو أن تسأل المنافس سؤالاً واحداً فقط من قائمة الأسئلة المتاحة (Quick Chat) أدناه.
-      3. الأولوية القصوى: إذا كانت القائمة تحتوي على أسئلة تصنيفية (مثل: بري؟، بحري؟، حلو؟، حادق؟، رجل؟، ست؟)، يجب أن تختار واحداً منها أولاً قبل أي أسئلة أخرى.
-      4. حلل صورة المنافس "${player?.targetImage?.name || player?.targetImage}" جيداً واختر السؤال الذي تنطبق إجابته بـ "آه" عليها لتقترب من الحل.
-      5. ممنوع تكرار أي سؤال سألته أنت سابقاً في المحادثة.
-      6. اكتب السؤال كما هو بالضبط من القائمة، بدون أي إضافات أو إيموجي.
-      
-      بيانات اللعبة:
-      - صورتك (التي يحاول المنافس تخمينها): ${bot.targetImage?.name || bot.targetImage}.
-      - صورة المنافس (التي تحاول أنت تخمينها): ${player?.targetImage?.name || player?.targetImage}.
-      - قائمة الأسئلة المتاحة (يجب الاختيار منها): ${JSON.stringify(questions)}.
-      `;
+      const categoryImages = getCategoryImages(currentRoom.category);
+      const categoryImageNames = categoryImages.map((img: any) => img.name).join('، ');
 
-      const history = botConversations.get(roomId) || [];
-      let botReply = await getBotResponse(history, systemInstruction, 0);
-      
-      botReply = botReply.trim();
-      
-      // Strict selection from questions list
+      // Pick a question without AI
+      let botReply = "";
       if (questions.length > 0) {
-        const exactMatch = questions.find(q => q.trim() === botReply);
-        if (exactMatch) {
-          botReply = exactMatch;
-        } else {
-          // Fuzzy match
-          const fuzzyMatch = questions.find(q => 
-            botReply.includes(q.replace(/[؟?]/g, '').trim()) || 
-            q.includes(botReply.replace(/[؟?]/g, '').trim())
-          );
-          if (fuzzyMatch) {
-            botReply = fuzzyMatch;
-          } else {
-            // Fallback to first question in list (which should be a branch if available)
-            botReply = questions[0];
-          }
-        }
+        botReply = questions[Math.floor(Math.random() * questions.length)];
+      } else {
+        // Fallback if no questions are available
+        // Pass the turn to the human player
+        currentRoom.currentTurn = player.id;
+        currentRoom.waitingForAnswerFrom = null;
+        io.to(roomId).emit("room_update", currentRoom);
+        return;
       }
       
-      console.log(`[BotQuestion] Room: ${roomId}, BotSelected: ${botReply}`);
+      console.log(`[BotQuestion] Room: ${roomId}, BotSelected (Deterministic): ${botReply}`);
       
-      history.push({ role: 'model', parts: [{ text: botReply }] });
-      botConversations.set(roomId, history);
+      const chatHistory = botConversations.get(roomId) || [];
+      chatHistory.push({ role: 'model', parts: [{ text: botReply }] });
+      botConversations.set(roomId, chatHistory);
 
-      handleBotChat(roomId, bot, botReply);
+      // Simulate changing questions if it's not a branch question (30% chance)
+      if (!isAskingBranch && Math.random() < 0.3) {
+        io.to(roomId).emit("opponent_typing");
+        setTimeout(() => {
+          io.to(roomId).emit("opponent_stop_typing");
+          handleBotChat(roomId, bot, botReply);
+        }, 2000 + Math.random() * 2000);
+      } else {
+        handleBotChat(roomId, bot, botReply);
+      }
 
     } catch (error) {
       console.error("Bot Questioning Error:", error);
@@ -2666,11 +2888,6 @@ const app = express();
         triggerBotQuestion(roomId, bot);
       }, 3000 + Math.random() * 2000);
     }
-
-    const interval = setInterval(() => {
-      triggerBotQuestion(roomId, bot);
-    }, 15000 + Math.random() * 10000);
-    botIntervals.set(roomId, interval);
   }
 
   function handleBotChat(roomId: string, bot: any, text: string) {
@@ -2712,14 +2929,22 @@ const app = express();
       const currentRoom = rooms.get(roomId);
       if (!currentRoom || currentRoom.gameState !== 'guessing') return;
 
+      const currentBot = currentRoom.players.find((p: any) => p.isBot);
       const currentPlayer = currentRoom.players.find((p: any) => !p.isBot);
-      if (!currentPlayer) return;
+      if (!currentBot || !currentPlayer) return;
 
-      const targetImage = currentPlayer.targetImage;
+      // The bot is trying to guess its OWN hidden image (which is visible to the human)
+      const targetImage = currentBot.targetImage;
       const winCount = playerBotHistory.get(currentPlayer.playerId) || 0;
       
-      // Win 3 for human, then 1 for bot logic
-      const shouldWin = winCount % 4 === 3; 
+      // More random win logic instead of strictly every 4th match
+      let shouldWin = false;
+      if (winCount > 0) {
+        // The more matches played, the higher the chance of the bot winning
+        const winChance = Math.min(0.2 + (winCount * 0.1), 0.6); // 30% to 60% max
+        shouldWin = Math.random() < winChance;
+      }
+      
       playerBotHistory.set(player.playerId, winCount + 1);
 
       let guess = targetImage;
@@ -2747,11 +2972,14 @@ const app = express();
     const room = rooms.get(roomId);
     if (!room) return;
 
-    const bot = room.players.find((p: any) => p.isBot);
-    if (!bot) return;
+    // Explicitly identify bot and human players to avoid any confusion
+    const botPlayer = room.players.find((p: any) => p.isBot);
+    const humanPlayer = room.players.find((p: any) => !p.isBot);
 
-    const player = room.players.find((p: any) => !p.isBot);
-    if (!player) return;
+    if (!botPlayer || !humanPlayer) {
+      console.log(`[handleBotEvent] Missing bot or human player in room ${roomId}. Players:`, room.players.map((p: any) => ({ name: p.playerName, isBot: p.isBot })));
+      return;
+    }
 
     if (event === 'room_update') {
       // Initialize conversation if not already done
@@ -2761,8 +2989,6 @@ const app = express();
       
       // Requirement 6: Category selection negotiation
       if (room.gameState === 'waiting') {
-        const player = room.players.find((p: any) => !p.isBot);
-        
         if (!botFlags.has(roomId + '_category_logic')) {
           botFlags.set(roomId + '_category_logic', true);
           
@@ -2780,11 +3006,21 @@ const app = express();
             const rand = Math.random();
             if (rand < 0.3 && currentPlayer?.selectedCategory) {
               // 30% chance to agree immediately if player already selected
-              bot.selectedCategory = currentPlayer.selectedCategory;
+              botPlayer.selectedCategory = currentPlayer.selectedCategory;
+              currentRoom.category = currentPlayer.selectedCategory;
               io.to(currentRoom.id).emit("room_update", currentRoom);
+              
+              if (Math.random() < 0.5) {
+                setTimeout(() => {
+                  const r = rooms.get(roomId);
+                  if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category)) {
+                    startGame(roomId);
+                  }
+                }, 1500 + Math.random() * 2000);
+              }
             } else {
               // Pick a random category
-              bot.selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+              botPlayer.selectedCategory = categories[Math.floor(Math.random() * categories.length)];
               io.to(currentRoom.id).emit("room_update", currentRoom);
               
               // 3. Hesitate and change mind (40% chance)
@@ -2793,7 +3029,7 @@ const app = express();
                 currentRoom = rooms.get(roomId);
                 if (!currentRoom || currentRoom.gameState !== 'waiting') return;
                 
-                bot.selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+                botPlayer.selectedCategory = categories[Math.floor(Math.random() * categories.length)];
                 io.to(currentRoom.id).emit("room_update", currentRoom);
               }
               
@@ -2804,17 +3040,19 @@ const app = express();
               
               currentPlayer = currentRoom.players.find((p: any) => !p.isBot);
               if (currentPlayer?.selectedCategory) {
-                bot.selectedCategory = currentPlayer.selectedCategory;
+                botPlayer.selectedCategory = currentPlayer.selectedCategory;
+                currentRoom.category = currentPlayer.selectedCategory;
                 io.to(currentRoom.id).emit("room_update", currentRoom);
+                
+                if (Math.random() < 0.5) {
+                  setTimeout(() => {
+                    const r = rooms.get(roomId);
+                    if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category)) {
+                      startGame(roomId);
+                    }
+                  }, 1500 + Math.random() * 2000);
+                }
               }
-            }
-            
-            // Check if game should start
-            currentRoom = rooms.get(roomId);
-            if (currentRoom && currentRoom.gameState === 'waiting') {
-              const p1 = currentRoom.players[0];
-              const p2 = currentRoom.players[1];
-              // We don't call startGame here anymore, we wait for the player to click the button
             }
           };
           
@@ -2822,19 +3060,25 @@ const app = express();
         } else {
           // If the initial sequence is done, but the player changes category again,
           // the bot should agree after a short delay to allow the game to start.
-          if (player?.selectedCategory && bot.selectedCategory !== player.selectedCategory) {
+          if (humanPlayer?.selectedCategory && botPlayer.selectedCategory !== humanPlayer.selectedCategory) {
             if (!botTimeouts.has(roomId + '_agree_timeout')) {
               const timeout = setTimeout(() => {
                 const currentRoom = rooms.get(roomId);
                 if (!currentRoom || currentRoom.gameState !== 'waiting') return;
                 const currentPlayer = currentRoom.players.find((p: any) => !p.isBot);
                 if (currentPlayer?.selectedCategory) {
-                  bot.selectedCategory = currentPlayer.selectedCategory;
+                  botPlayer.selectedCategory = currentPlayer.selectedCategory;
+                  currentRoom.category = currentPlayer.selectedCategory;
                   io.to(currentRoom.id).emit("room_update", currentRoom);
                   
-                  const p1 = currentRoom.players[0];
-                  const p2 = currentRoom.players[1];
-                  // We don't call startGame here anymore, we wait for the player to click the button
+                  if (Math.random() < 0.5) {
+                    setTimeout(() => {
+                      const r = rooms.get(roomId);
+                      if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category)) {
+                        startGame(roomId);
+                      }
+                    }, 1500 + Math.random() * 2000);
+                  }
                 }
                 botTimeouts.delete(roomId + '_agree_timeout');
               }, 3000 + Math.random() * 2000); // 3-5 seconds delay
@@ -2858,7 +3102,7 @@ const app = express();
       if (room.gameState === 'waiting') return;
 
       const { senderId, text } = data;
-      if (senderId === bot.id) return; // Don't respond to self
+      if (senderId === botPlayer.id) return; // Don't respond to self
 
       // Add to history
       const history = botConversations.get(roomId) || [];
@@ -2867,10 +3111,10 @@ const app = express();
 
       // If the human answered "آه" or "لأ", the bot should NOT reply with an answer.
       if (text === 'آه' || text === 'لأ') {
-        if (room.currentTurn === bot.id) {
+        if (room.currentTurn === botPlayer.id) {
           // Human passed turn, bot should ask
           setTimeout(() => {
-            triggerBotQuestion(roomId, bot);
+            triggerBotQuestion(roomId, botPlayer);
           }, 2000 + Math.random() * 2000);
         }
         return; // Do not generate a reply
@@ -2881,55 +3125,67 @@ const app = express();
       const isUserEmoji = emojiRegex.test(text.trim());
 
       try {
-        const botPersona = BOT_PERSONAS.find(p => p.name === bot.playerName);
-        const player = room.players.find((p: any) => !p.isBot);
+        const botPersona = BOT_PERSONAS.find(p => p.name === botPlayer.playerName);
         
-        console.log(`[BotAnswer] Room: ${roomId}, BotHas: ${bot.targetImage?.name || bot.targetImage}, UserAsked: ${text}`);
+        console.log(`[BotAnswer] Room: ${roomId}, BotHas: ${botPlayer.targetImage?.name || botPlayer.targetImage}, UserAsked: ${text}`);
         
         let botReply = '';
 
         if (isUserEmoji) {
           // If user sent emoji, bot should reply with emoji
-          const fallbackEmojis = ["😂", "🤪", "🤔", "🙄", "👀", "👋", "👍", "👎", "🤷🏼‍♂️", "🤦🏼‍♂️"];
+          const fallbackEmojis = ["😂", "🤪", "😡","😔", "🤔", "🙄", "🤯", "😭", "👀", "🕒", "👋", "✋", "👌", "👍", "👎", "🎉", "🤷🏼‍♂️", "🤷🏻‍♀️", "🤦🏼‍♂️", "🤦"];
           botReply = fallbackEmojis[Math.floor(Math.random() * fallbackEmojis.length)];
         } else {
-          // User sent a question, bot MUST reply with آه or لأ using Gemini
-          const systemInstruction = `أنت خبير في تصنيف الأشياء والرد بدقة في لعبة "خمن الصورة".
-          
-          معلوماتك الحالية:
-          - صورتك التي تملكها: "${bot.targetImage?.name || bot.targetImage}"
-          - الفئة: "${room.category}"
-          
-          تحليل الصورة "${bot.targetImage?.name || bot.targetImage}":
-          - إذا كانت حيوان: هل هو (بري) يعيش على الأرض؟ أم (بحري) يعيش في الماء؟ هل هو مفترس؟ هل يطير؟
-          - إذا كانت طعام: هل هو (حلو) سكري؟ أم (حادق) مالح/مطبوخ؟
-          - إذا كانت شخص: هل هو (رجل)؟ أم (امرأة)؟
-          
-          المنافس يسألك الآن: "${text}"
-          
-          مهمتك:
-          1. فكر بعمق: هل السؤال "${text}" ينطبق حقيقةً على صورتك "${bot.targetImage?.name || bot.targetImage}"؟
-          2. يجب أن تكون إجابتك صادقة 100% ومنطقية.
-          3. أجب بكلمة واحدة فقط: "آه" (نعم) أو "لأ" (لا).
-          
-          أمثلة للتوضيح:
-          - إذا كانت صورتك "حوت" والسؤال "بري؟" -> الإجابة يجب أن تكون "لأ" (لأن الحوت بحري).
-          - إذا كانت صورتك "أسد" والسؤال "بري؟" -> الإجابة يجب أن تكون "آه".
-          - إذا كانت صورتك "بيتزا" والسؤال "حلو؟" -> الإجابة يجب أن تكون "لأ".
-          
-          ممنوع كتابة أي شرح أو إيموجي. فقط "آه" أو "لأ".`;
-          
-          botReply = await getBotResponse(history, systemInstruction, 0);
-          botReply = botReply.trim();
-          
-          if (botReply.includes('آه') || botReply.includes('نعم') || botReply.includes('اه')) {
-            botReply = 'آه';
-          } else if (botReply.includes('لأ') || botReply.includes('لا')) {
-            botReply = 'لأ';
-          } else {
-            // Force آه or لأ randomly if Gemini messed up
-            botReply = Math.random() > 0.5 ? 'آه' : 'لأ';
+          // Read files directly to avoid cache issues as requested
+          let botAnswers: any = {};
+          let config: any = { quickChat: [] };
+          try {
+            const botAnswersPath = path.join(process.cwd(), 'public/uploads/bot_answers.json');
+            const configPath = path.join(process.cwd(), 'public/uploads/config.json');
+            botAnswers = JSON.parse(fs.readFileSync(botAnswersPath, 'utf-8'));
+            config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+          } catch (e) {
+            console.error("Error reading bot files:", e);
           }
+
+          const botImage = botPlayer.targetImage;
+          const botImageName = (botImage && typeof botImage === 'object') ? botImage.name : botImage;
+          const playerImage = humanPlayer.targetImage;
+          const playerImageName = (playerImage && typeof playerImage === 'object') ? playerImage.name : playerImage;
+          
+          console.log(`[BotAnswer] Room: ${roomId}`);
+          console.log(`[BotAnswer] Bot Player: "${botPlayer.playerName}" (ID: ${botPlayer.id})`);
+          console.log(`[BotAnswer] Bot Target Image: "${botImageName}"`);
+          console.log(`[BotAnswer] Human Player Target Image: "${playerImageName}"`);
+          console.log(`[BotAnswer] User Asked: "${text}"`);
+
+          const questionId = findQuestionId(text, config.quickChat || []);
+          console.log(`[BotAnswer] Found Question ID: "${questionId}"`);
+
+          let deterministicAnswer = null;
+
+          if (questionId) {
+            // Check if questionId is the category ID itself
+            if (questionId === room.category || questionId === `qc_${room.category}`) {
+              deterministicAnswer = "آه";
+              console.log(`[BotAnswer] Matched category ID: ${questionId}`);
+            } 
+            else {
+              // CRITICAL: The human is trying to guess their OWN hidden image.
+              // Therefore, the bot must answer based on the HUMAN'S image, not the bot's image.
+              deterministicAnswer = getBotAnswer(room.category, playerImageName, questionId, botAnswers);
+            }
+          }
+
+          if (deterministicAnswer) {
+            botReply = deterministicAnswer;
+            console.log(`[BotAnswer] Deterministic answer: ${botReply}`);
+          } else {
+            botReply = "لأ";
+            console.log(`[BotAnswer] Defaulting to "لأ"`);
+          }
+          
+          botReply = botReply.trim();
         }
 
         history.push({ role: 'model', parts: [{ text: botReply }] });
@@ -2938,20 +3194,20 @@ const app = express();
         const typingDelay = Math.min(4000, Math.max(1000, botReply.length * 50));
         
         setTimeout(() => {
-          const messageObj = { senderId: bot.id, text: botReply };
+          const messageObj = { senderId: botPlayer.id, text: botReply };
           if (!room.chatHistory) room.chatHistory = [];
-          room.chatHistory.push({ ...messageObj, senderName: bot.playerName, timestamp: Date.now() });
+          room.chatHistory.push({ ...messageObj, senderName: botPlayer.playerName, timestamp: Date.now() });
           io.to(roomId).emit("chat_bubble", messageObj);
           
           if (botReply === 'آه' || botReply === 'لأ') {
             // Update turn logic: after bot answers, it's the bot's turn to ask
-            room.currentTurn = bot.id;
+            room.currentTurn = botPlayer.id;
             room.waitingForAnswerFrom = null;
             io.to(roomId).emit("room_update", room);
             
             // Trigger bot to ask a question shortly after answering
             setTimeout(() => {
-              triggerBotQuestion(roomId, bot);
+              triggerBotQuestion(roomId, botPlayer);
             }, 2000 + Math.random() * 2000);
           }
         }, typingDelay);
@@ -4111,6 +4367,19 @@ io.on("connection", (socket) => {
       const room = rooms.get(roomId);
       if (room) {
         io.to(roomId).emit("emote_received", { senderId: socket.id, emote });
+        
+        // Bot emote response logic
+        const sender = room.players.find((p: any) => p.id === socket.id);
+        if (sender && !sender.isBot) {
+          const bot = room.players.find((p: any) => p.isBot);
+          if (bot) {
+            setTimeout(() => {
+              const botEmotes = ["😂", "🤪", "😡","😔", "🤔", "🙄", "🤯", "😭", "👀", "🕒", "👋", "✋", "👌", "👍", "👎", "🎉", "🤷🏼‍♂️", "🤷🏻‍♀️", "🤦🏼‍♂️", "🤦"];
+              const randomEmote = botEmotes[Math.floor(Math.random() * botEmotes.length)];
+              io.to(roomId).emit("emote_received", { senderId: bot.id, emote: randomEmote });
+            }, 1000 + Math.random() * 2000);
+          }
+        }
       }
     });
 
@@ -4167,7 +4436,7 @@ io.on("connection", (socket) => {
           text: messageToSend,
           timestamp: Date.now()
         });
-        if (room.chatHistory.length > 50) room.chatHistory.shift();
+        if (room.chatHistory.length > 500) room.chatHistory.shift();
 
         io.to(roomId).emit("chat_bubble", { senderId: socket.id, text: messageToSend });
         io.to(roomId).emit("room_update", room);
@@ -5621,6 +5890,8 @@ io.on("connection", (socket) => {
       return;
     }
 
+    console.log(`[startGame] Starting game in room ${roomId}. Category: ${room.category}`);
+    
     room.players[0].targetImage = shuffled[0];
     // Ensure different image if possible
     let secondIdx = 1 % shuffled.length;
@@ -5630,6 +5901,10 @@ io.on("connection", (socket) => {
       }
     }
     room.players[1].targetImage = shuffled[secondIdx];
+
+    room.players.forEach((p: any, idx: number) => {
+      console.log(`[startGame] Player ${idx}: "${p.playerName}" (isBot: ${p.isBot}), Target Image: "${p.targetImage?.name}"`);
+    });
 
     // Get English translations for cheating prevention (background)
     room.players.forEach(async (p: any) => {
