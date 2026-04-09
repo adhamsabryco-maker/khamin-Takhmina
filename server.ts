@@ -107,7 +107,7 @@ const BOT_PERSONAS = [
   { name: "فارس", age: 30, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "هادي جداً وبيلعب ببرود أعصاب يحرق الدم" },
   { name: "جنا", age: 22, level: 18, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحب تشجع نفسها 'عاش يا أنا، قربنا نخلص'" },
   { name: "مارك", age: 25, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحب المنافسة 'وريني هتعمل إيه في دي'" },
-  { name: "شهد", age: 23, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "طموحة وعايزة توصل لأعلى مستوى 'خلاص هانت كلها دورين وأقفل الليفل'" }
+  { name: "شهد", age: 23, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "طموحة وعايزة توصل لأعلى مستوى 'خلاص هانت كلها دورين وأقفل الليفل'" },
 
   // مستوى 10 لـ 20 (تم ضغطهم ليكونوا قمة الهرم في لعبتك)
   { name: "الجوكر", age: 32, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "غامض وكلامه قليل 'السكوت علامة الاحتراف'" },
