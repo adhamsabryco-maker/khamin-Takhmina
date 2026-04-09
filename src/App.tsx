@@ -4853,7 +4853,7 @@ export default function App() {
                     <motion.div 
                       initial={{ y: 10, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
-                      className="p-3 bg-yellow-100 border-2 border-yellow-400 rounded-xl"
+                      className="p-1 bg-yellow-100 border-2 border-yellow-400 rounded-xl"
                     >
                       <p className="text-sm font-bold text-yellow-800">مبروك! كسبت:</p>
                       <p className="text-xl font-black text-yellow-600">{spinResult.reward.label}</p>
@@ -5630,7 +5630,7 @@ export default function App() {
                 <div className="flex items-center justify-between box-game p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                      <Zap className="w-6 h-6 text-purple-500" />
+                      <Coins className="w-6 h-6 text-purple-500" />
                     </div>
                     <div>
                       <div className="text-xs font-bold text-brown-muted">رصيدك الحالي</div>
@@ -10658,7 +10658,7 @@ export default function App() {
                     disabled={!isAdmin && !isRainGiftActive}
                     className={`px-6 py-2 rounded-xl font-black text-xs transition-all shadow-md ${
                       (isAdmin || isRainGiftActive) // Always active style for testing
-                      ? 'bg-accent-green text-white hover:scale-105 active:scale-95 animate-pulse' 
+                      ? 'bg-accent-green text-white hover:scale-105 active:scale-95 event-glow' 
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
                   >
@@ -10782,8 +10782,8 @@ export default function App() {
                   <div className="border-t border-game mt-1 mb-0.5"></div>
                   <div className="w-full flex text-left" dir="ltr">
                     <span className="font-bold text-xs md:text-sm">Lvl 50+</span>
-                    <span class="flex text-xs md:text-sm text-gray-400 px-1">|</span>
-                    <span className="font-bold text-xs md:text-sm">500xp</span>
+                    <span className="flex text-xs md:text-sm text-gray-400 px-1">|</span>
+                    <span className="font-bold text-xs md:text-sm">1=500xp</span>
                   </div>
                 </div>
               </div>
@@ -10930,7 +10930,7 @@ export default function App() {
                   <X className="w-5 h-5" />
                 </button>
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
-                  <Zap className="w-8 h-8 text-accent-purple" />
+                  <Coins className="w-8 h-8 text-accent-purple" />
                 </div>
                 <h2 className="text-2xl font-black text-light mb-1">ما هو الـ Token؟</h2>
               </div>
@@ -10939,7 +10939,7 @@ export default function App() {
                 <div className="space-y-4 text-brown-dark">
                   <div className="box-game p-4">
                     <h3 className="font-black mb-2 flex items-center gap-2" style={{ color: 'var(--shop-info-title)' }}>
-                      <Zap className="w-4 h-4" />
+                      <Coins className="w-4 h-4" />
                       ما فائدته؟
                     </h3>
                     <p className="text-sm font-bold leading-relaxed">

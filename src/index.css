@@ -618,3 +618,13 @@ body::after {
 .button-glow {
   animation: buttonGlow 1.2s ease-in-out infinite;
 }
+
+@keyframes eventGlow {
+  0% { box-shadow: 0 0 5px rgba(0, 255, 0, 0.4); }
+  50% { box-shadow: 0 0 15px 8px rgba(0, 255, 0, 0.7); }
+  100% { box-shadow: 0 0 5px rgba(0, 255, 0, 0.4); }
+}
+
+.event-glow {
+  animation: eventGlow 1.2s ease-in-out infinite;
+}
