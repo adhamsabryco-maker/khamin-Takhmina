@@ -195,6 +195,23 @@ function getBotAnswer(category: string, imageName: string | any, questionId: str
     const qcId = category.startsWith('qc_') ? category : `qc_${category}`;
     categoryData = botAnswers[qcId];
   }
+  
+  // Robust mapping for Arabic names
+  if (!categoryData) {
+    const mappings: Record<string, string> = {
+      'حيوانات': 'qc_animals',
+      'أكلات': 'qc_food',
+      'اشخاص': 'qc_people',
+      'جماد': 'qc_objects',
+      'نبات': 'qc_plants',
+      'طيور': 'qc_birds',
+      'حشرات': 'qc_insects',
+      'كرة القدم': 'qc_football'
+    };
+    const mappedId = mappings[category] || mappings[normalizeEgyptian(category)];
+    if (mappedId) categoryData = botAnswers[mappedId];
+  }
+
   if (!categoryData) {
     const catKey = Object.keys(botAnswers).find(k => normalizeEgyptian(k) === normalizeEgyptian(category));
     if (catKey) categoryData = botAnswers[catKey];
@@ -2704,9 +2721,15 @@ const app = express();
               qc.id === catKey || 
               qc.id === currentRoom.category || 
               qc.text === currentRoom.category ||
+              normalizeEgyptian(qc.text) === normalizeEgyptian(currentRoom.category) ||
               qc.id === `qc_animals` && currentRoom.category === 'حيوانات' ||
               qc.id === `qc_food` && currentRoom.category === 'أكلات' ||
-              qc.id === `qc_people` && currentRoom.category === 'اشخاص'
+              qc.id === `qc_people` && currentRoom.category === 'اشخاص' ||
+              qc.id === `qc_objects` && currentRoom.category === 'جماد' ||
+              qc.id === `qc_plants` && currentRoom.category === 'نبات' ||
+              qc.id === `qc_birds` && currentRoom.category === 'طيور' ||
+              qc.id === `qc_insects` && currentRoom.category === 'حشرات' ||
+              qc.id === `qc_football` && currentRoom.category === 'كرة القدم'
             );
             console.log(`[BotQuestion] Room: ${roomId}, Category: ${currentRoom.category}, NodeFound: ${!!categoryNode}`);
             
@@ -2727,7 +2750,7 @@ const app = express();
               const rejectedBranchTexts = new Set<string>();
               let confirmedBranch = null;
 
-              const normalize = (t: string) => t.replace(/[؟?]/g, '').trim();
+              const normalize = (t: string) => normalizeEgyptian(t);
 
               for (let i = 0; i < chatHistory.length; i++) {
                 const msg = chatHistory[i];
@@ -2740,13 +2763,11 @@ const app = express();
                 
                 // Only track questions asked by the bot to guess the player's image
                 if (msg.senderId === bot.id) {
-                  askedQuestionTexts.add(text);
                   askedQuestionTexts.add(normText);
                   
                   // Check if this was a branch question
                   const branch = branches.find((b: any) => 
-                    normText === normalize(b.text) || 
-                    text === b.text
+                    normText === normalize(b.text)
                   );
                   
                   if (branch && i < chatHistory.length - 1) {
@@ -2760,7 +2781,6 @@ const app = express();
                       if (answer === 'آه') {
                         confirmedBranch = branch;
                       } else if (answer === 'لأ') {
-                        rejectedBranchTexts.add(branch.text);
                         rejectedBranchTexts.add(normalize(branch.text));
                         
                         // INFERENCE LOGIC: If there are exactly 2 branches, confirm the other one
@@ -2781,14 +2801,14 @@ const app = express();
                 console.log(`[BotQuestion] Room: ${roomId}, ConfirmedBranch: ${confirmedBranch.text}`);
                 // We have a confirmed branch, ask questions from it
                 confirmedBranch.children.forEach((q: any) => {
-                  if (!askedQuestionTexts.has(q.text) && !askedQuestionTexts.has(normalize(q.text))) {
+                  if (!askedQuestionTexts.has(normalize(q.text))) {
                     questions.push(q.text);
                   }
                 });
                 // If all questions in branch are asked, fallback to top-level leaves
                 if (questions.length === 0) {
                   topLevelLeaves.forEach((l: any) => {
-                    if (!askedQuestionTexts.has(l.text) && !askedQuestionTexts.has(normalize(l.text))) {
+                    if (!askedQuestionTexts.has(normalize(l.text))) {
                       questions.push(l.text);
                     }
                   });
@@ -2796,9 +2816,8 @@ const app = express();
               } else {
                 // No branch confirmed yet, prioritize unasked branches
                 const unaskedBranches = branches.filter((b: any) => 
-                  !askedQuestionTexts.has(b.text) && 
                   !askedQuestionTexts.has(normalize(b.text)) && 
-                  !rejectedBranchTexts.has(b.text)
+                  !rejectedBranchTexts.has(normalize(b.text))
                 );
                 
                 console.log(`[BotQuestion] Room: ${roomId}, UnaskedBranches: ${unaskedBranches.length}`);
@@ -2814,13 +2833,13 @@ const app = express();
                   
                   // Also include leaves from branches that weren't explicitly rejected
                   branches.forEach((b: any) => {
-                    if (!rejectedBranchTexts.has(b.text) && !rejectedBranchTexts.has(normalize(b.text))) {
+                    if (!rejectedBranchTexts.has(normalize(b.text))) {
                       b.children.forEach((c: any) => allPossibleLeaves.push(c.text));
                     }
                   });
                   
                   allPossibleLeaves.forEach(qText => {
-                    if (!askedQuestionTexts.has(qText) && !askedQuestionTexts.has(normalize(qText))) {
+                    if (!askedQuestionTexts.has(normalize(qText))) {
                       questions.push(qText);
                     }
                   });
