@@ -2345,6 +2345,7 @@ const app = express();
           status: 'searching',
           isBot: true,
           socket: {
+            id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
             connected: true,
             emit: (event: string, data: any) => {
               console.log(`[Bot ${botPersona.name}] Received event ${event}:`, data);
