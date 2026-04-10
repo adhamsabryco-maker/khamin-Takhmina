@@ -1224,6 +1224,10 @@ const app = express();
     { oldName: 'كرة القدم', newId: 'football', newName: 'كرة القدم', newIcon: '⚽' },
     { oldName: 'جماد', newId: 'objects', newName: 'جماد', newIcon: '📦' },
     { oldName: 'نبات', newId: 'plants', newName: 'نبات', newIcon: '🌿' },
+    { oldName: 'حيوانات', newId: 'animals', newName: 'حيوانات', newIcon: '🐘' },
+    { oldName: 'أكلات', newId: 'food', newName: 'أكلات', newIcon: '🍕' },
+    { oldName: 'اشخاص', newId: 'people', newName: 'اشخاص', newIcon: '👥' },
+    { oldName: 'طيور', newId: 'birds', newName: 'طيور', newIcon: '🦜' },
   ];
 
   for (const cat of categoriesToMigrate) {
