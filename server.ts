@@ -1759,16 +1759,58 @@ const app = express();
     io.emit("top_players_update", getTopPlayers(true));
   }
 
-  let currentFakeBots = 15 + Math.floor(Math.random() * 20);
+  let currentFakeBots = 50;
+
+  function getTargetFakeBots() {
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = { timeZone: 'Africa/Cairo', hour: 'numeric', minute: 'numeric', hour12: false };
+    const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(now);
+    let hour = 0;
+    let minute = 0;
+    for (const part of parts) {
+      if (part.type === 'hour') hour = parseInt(part.value);
+      if (part.type === 'minute') minute = parseInt(part.value);
+    }
+    if (hour === 24) hour = 0;
+    
+    const timeInHours = hour + minute / 60;
+
+    let min = 10;
+    let max = 30;
+
+    if (timeInHours >= 19 && timeInHours <= 23.99) {
+      // Peak: 7 PM to midnight
+      min = 35; max = 50;
+    } else if (timeInHours >= 3 && timeInHours <= 7) {
+      // Dawn: 3 AM to 7 AM
+      min = 5; max = 15;
+    } else if (timeInHours > 7 && timeInHours < 19) {
+      // Morning to Evening: 7 AM to 7 PM (12 hours)
+      const progress = (timeInHours - 7) / 12;
+      min = 5 + Math.floor(progress * 30);
+      max = 15 + Math.floor(progress * 35);
+    } else {
+      // Night: Midnight to 3 AM (3 hours)
+      const progress = timeInHours / 3;
+      min = 35 - Math.floor(progress * 30);
+      max = 50 - Math.floor(progress * 35);
+    }
+
+    return min + Math.floor(Math.random() * (max - min));
+  }
 
   // Update fake bots count gradually with random intervals
   function updateFakeBotsGradually() {
-    const change = Math.floor(Math.random() * 9) - 3; // -3 to +5
-    currentFakeBots += change;
+    const targetBots = getTargetFakeBots();
     
-    // Keep it within a reasonable range (e.g., 10 to 50)
-    if (currentFakeBots < 10) currentFakeBots = 10;
-    if (currentFakeBots > 50) currentFakeBots = 50;
+    if (currentFakeBots < targetBots) {
+      currentFakeBots += Math.floor(Math.random() * 5) + 1;
+    } else if (currentFakeBots > targetBots) {
+      currentFakeBots -= Math.floor(Math.random() * 5) + 1;
+    }
+    
+    currentFakeBots += Math.floor(Math.random() * 3) - 1;
+    if (currentFakeBots < 5) currentFakeBots = 5;
     
     broadcastOnlineCount();
     
@@ -2656,11 +2698,15 @@ const app = express();
       const verb = (bot.gender === 'girl' || bot.gender === 'female') ? 'تقوم' : 'يقوم';
       io.to(roomId).emit("chat_bubble", { 
         senderId: "system", 
-        text: `${verb} ${bot.playerName} بمشاهدة إعلان لفتح وسيلة مساعدة "${helperNames[randomHelper]}"، انتظر قليلاً.` 
+        text: `${verb} ${bot.name} بمشاهدة إعلان لفتح وسيلة مساعدة "${helperNames[randomHelper]}"، انتظر قليلاً.` 
       });
 
-      // Wait for ad to finish
-      await new Promise(resolve => setTimeout(resolve, 5000 + Math.random() * 3000));
+      // Wait for ad to finish (5 to 15 seconds)
+      const adDuration = 5000 + Math.random() * 10000;
+      await new Promise(resolve => setTimeout(resolve, adDuration));
+      
+      // Wait 1-2 seconds after ad finishes to simulate using the helper
+      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
       
       // Re-fetch room state after waiting
       const updatedRoom = rooms.get(roomId);
@@ -2669,11 +2715,15 @@ const app = express();
 
     try {
       const player = currentRoom.players.find((p: any) => !p.isBot);
-      const botPersona = BOT_PERSONAS.find(p => p.name === bot.playerName);
+      const botPersona = BOT_PERSONAS.find(p => p.name === bot.name);
       
       // Bot Quick Guess Logic
       const winCount = playerBotHistory.get(player.playerId) || 0;
-      if (winCount > 0 && Math.random() < 0.15) { // 15% chance to attempt quick guess if played before
+      const botLevel = botPersona ? botPersona.level : 1;
+      const quickGuessCooldown = Math.max(3, 150 - (botLevel - 1) * 3);
+      const elapsedTime = 600 - (currentRoom.timer || 600);
+
+      if (winCount > 0 && elapsedTime >= quickGuessCooldown && Math.random() < 0.15) { // 15% chance to attempt quick guess if played before
         const confirmedAnswersCount = currentRoom.confirmedAnswers ? currentRoom.confirmedAnswers.length : 0;
         
         currentRoom.isPaused = true;
@@ -2707,7 +2757,7 @@ const app = express();
 
         if (isCorrect) {
           io.to(roomId).emit("guess_result", { playerId: bot.id, correct: true });
-          endGame(roomId, bot.playerName, false, true);
+          endGame(roomId, bot.name, false, true);
         } else {
           io.to(roomId).emit("guess_result", { playerId: bot.id, correct: false });
           endGame(roomId, player.name);
@@ -2882,13 +2932,19 @@ const app = express();
       chatHistory.push({ role: 'model', parts: [{ text: botReply }] });
       botConversations.set(roomId, chatHistory);
 
-      // Simulate changing questions if it's not a branch question (30% chance)
-      if (!isAskingBranch && Math.random() < 0.3) {
+      // Simulate changing questions if it's not a branch question (15% chance to avoid being annoying)
+      if (!isAskingBranch && Math.random() < 0.15) {
+        // Simulate changing questions ONCE
         io.to(roomId).emit("opponent_typing");
-        setTimeout(() => {
-          io.to(roomId).emit("opponent_stop_typing");
-          handleBotChat(roomId, bot, botReply);
-        }, 2000 + Math.random() * 2000);
+        // Wait to read new questions (2 to 4 seconds)
+        await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
+        io.to(roomId).emit("opponent_stop_typing");
+        
+        // Wait 1-2 seconds after finishing changing before asking the actual question
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+        
+        // Finally, ask the actual question (no typing indicator needed for quick chat)
+        handleBotChat(roomId, bot, botReply);
       } else {
         handleBotChat(roomId, bot, botReply);
       }
@@ -2921,7 +2977,7 @@ const app = express();
 
     const messageObj = { senderId: bot.id, text: text };
     if (!room.chatHistory) room.chatHistory = [];
-    room.chatHistory.push({ ...messageObj, senderName: bot.playerName, timestamp: Date.now() });
+    room.chatHistory.push({ ...messageObj, senderName: bot.name, timestamp: Date.now() });
     io.to(roomId).emit("chat_bubble", messageObj);
 
     // Turn logic (Requirement 7)
@@ -2984,7 +3040,7 @@ const app = express();
       io.to(roomId).emit("guess_result", { playerId: bot.id, correct });
 
       if (correct) {
-        endGame(roomId, bot.playerName, false, true);
+        endGame(roomId, bot.name, false, true);
       } else {
         if (room.players.every((p: any) => p.hasGuessed)) {
           endGame(roomId, null);
@@ -3150,7 +3206,7 @@ const app = express();
       const isUserEmoji = emojiRegex.test(text.trim());
 
       try {
-        const botPersona = BOT_PERSONAS.find(p => p.name === botPlayer.playerName);
+        const botPersona = BOT_PERSONAS.find(p => p.name === botPlayer.name);
         
         console.log(`[BotAnswer] Room: ${roomId}, BotHas: ${botPlayer.targetImage?.name || botPlayer.targetImage}, UserAsked: ${text}`);
         
@@ -3179,7 +3235,7 @@ const app = express();
           const playerImageName = (playerImage && typeof playerImage === 'object') ? playerImage.name : playerImage;
           
           console.log(`[BotAnswer] Room: ${roomId}`);
-          console.log(`[BotAnswer] Bot Player: "${botPlayer.playerName}" (ID: ${botPlayer.id})`);
+          console.log(`[BotAnswer] Bot Player: "${botPlayer.name}" (ID: ${botPlayer.id})`);
           console.log(`[BotAnswer] Bot Target Image: "${botImageName}"`);
           console.log(`[BotAnswer] Human Player Target Image: "${playerImageName}"`);
           console.log(`[BotAnswer] User Asked: "${text}"`);
@@ -3221,7 +3277,7 @@ const app = express();
         setTimeout(() => {
           const messageObj = { senderId: botPlayer.id, text: botReply };
           if (!room.chatHistory) room.chatHistory = [];
-          room.chatHistory.push({ ...messageObj, senderName: botPlayer.playerName, timestamp: Date.now() });
+          room.chatHistory.push({ ...messageObj, senderName: botPlayer.name, timestamp: Date.now() });
           io.to(roomId).emit("chat_bubble", messageObj);
           
           if (botReply === 'آه' || botReply === 'لأ') {
