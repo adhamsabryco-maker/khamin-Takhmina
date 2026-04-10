@@ -2322,14 +2322,8 @@ const app = express();
       if (configCache.aiBotEnabled && availablePlayers.length === 1 && Date.now() - availablePlayers[0].joinedAt > 5000) {
         const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
         
-        // Calculate avatar based on level
-        let botAvatar = botPersona.avatar;
-        if (botPersona.level >= 10) {
-          const levelMilestone = Math.floor(botPersona.level / 10) * 10;
-          botAvatar = `avatar-lvl-${botPersona.gender}-${levelMilestone}.png`;
-        } else {
-          botAvatar = `avatar-free-${botPersona.gender}-01.png`;
-        }
+        // Use the avatar defined in the persona
+        const botAvatar = botPersona.avatar;
 
         const bot = {
           id: 'bot_' + Date.now(),
@@ -2612,14 +2606,8 @@ const app = express();
         const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
         const matchId = `match_bot_${Math.random().toString(36).substr(2, 9)}`;
         
-        // Requirement 4: Bot avatar based on level
-        let botAvatar = botPersona.avatar;
-        if (botPersona.level >= 10) {
-          const levelMilestone = Math.floor(botPersona.level / 10) * 10;
-          botAvatar = `avatar-lvl-${botPersona.gender}-${levelMilestone}.png`;
-        } else {
-          botAvatar = `avatar-free-${botPersona.gender}-01.png`;
-        }
+        // Use the avatar defined in the persona
+        const botAvatar = botPersona.avatar;
 
         const botPlayer = {
           playerId: `bot_${Math.random().toString(36).substr(2, 9)}`,
@@ -3096,7 +3084,8 @@ const app = express();
                 setTimeout(() => {
                   const r = rooms.get(roomId);
                   if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category)) {
-                    startGame(roomId);
+                    r.gameState = 'starting';
+                    io.to(roomId).emit('match_intro_triggered');
                   }
                 }, 1500 + Math.random() * 2000);
               }
@@ -3130,7 +3119,8 @@ const app = express();
                   setTimeout(() => {
                     const r = rooms.get(roomId);
                     if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category)) {
-                      startGame(roomId);
+                      r.gameState = 'starting';
+                      io.to(roomId).emit('match_intro_triggered');
                     }
                   }, 1500 + Math.random() * 2000);
                 }
@@ -3157,7 +3147,8 @@ const app = express();
                     setTimeout(() => {
                       const r = rooms.get(roomId);
                       if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category)) {
-                        startGame(roomId);
+                        r.gameState = 'starting';
+                        io.to(roomId).emit('match_intro_triggered');
                       }
                     }, 1500 + Math.random() * 2000);
                   }
