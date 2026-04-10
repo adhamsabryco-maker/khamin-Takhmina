@@ -2,7 +2,7 @@
   "avatars": {},
   "frames": {},
   "stars": {},
-  "aiBotEnabled": false,
+  "aiBotEnabled": true,
   "quickChat": [
     {
       "id": "qc_animals",
