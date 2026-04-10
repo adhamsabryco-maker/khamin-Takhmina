@@ -1222,6 +1222,8 @@ const app = express();
   const categoriesToMigrate = [
     { oldName: 'حشرات', newId: 'insects', newName: 'حشرات', newIcon: '🐞' },
     { oldName: 'كرة القدم', newId: 'football', newName: 'كرة القدم', newIcon: '⚽' },
+    { oldName: 'جماد', newId: 'objects', newName: 'جماد', newIcon: '📦' },
+    { oldName: 'نبات', newId: 'plants', newName: 'نبات', newIcon: '🌿' },
   ];
 
   for (const cat of categoriesToMigrate) {
