@@ -5987,25 +5987,6 @@ io.on("connection", (socket) => {
       console.log(`[startGame] Player ${idx}: "${p.playerName}" (isBot: ${p.isBot}), Target Image: "${p.targetImage?.name}"`);
     });
 
-    // Get English translations for cheating prevention (background)
-    room.players.forEach(async (p: any) => {
-      if (p.targetImage && p.targetImage.name) {
-        try {
-          const response = await genAI.models.generateContent({
-            model: "gemini-3-flash-preview",
-            contents: `Translate this Arabic word to English (one word only, lowercase): ${p.targetImage.name}`,
-          });
-          const translated = response.text?.trim().toLowerCase();
-          if (translated && translated.length > 2) {
-            p.targetImage.englishName = translated;
-            console.log(`[Cheat Prevention] Translated "${p.targetImage.name}" to "${translated}"`);
-          }
-        } catch (e) {
-          console.error("Translation error for cheat prevention:", e);
-        }
-      }
-    });
-
     room.players[0].hintCount = 0;
     room.players[1].hintCount = 0;
     room.players[0].quickGuessUsed = false;
