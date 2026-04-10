@@ -11186,7 +11186,7 @@ export default function App() {
                     </motion.div>
                   )}
                 </div>
-                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[70px] md:max-w-[90px] flex items-center gap-2" dir="ltr">
+                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[70px] md:max-w-[90px] flex items-center gap-1" dir="ltr">
                   {opponent.name}
                   {opponent.isAdmin ? (
                     <Shield className="w-3 h-3 text-purple-500" />
@@ -11352,7 +11352,7 @@ export default function App() {
                     </div>
                     <form onSubmit={(e) => e.preventDefault()} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative items-center">
                       <div className="flex-1 flex gap-0 overflow-x-auto no-scrollbar py-1">
-                        {['🐞', '🌿', '📦', '👥', '🍕', '🦜', '🐘'].map(emote => (
+                        {['⚽', '🐞', '🌿', '📦', '👥', '🍕', '🦜', '🐘'].map(emote => (
                           <button
                             key={emote}
                             type="button"
