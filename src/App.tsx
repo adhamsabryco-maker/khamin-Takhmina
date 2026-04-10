@@ -684,14 +684,6 @@ export default function App() {
     if (customConfig.version) {
       const version = customConfig.version;
       
-      // Update icon
-      const iconVersionedPath = `/icon-v${version.replace(/\./g, '-')}.svg`;
-      const iconLink = document.querySelector("link[rel='icon']") as HTMLLinkElement;
-      if (iconLink) iconLink.href = iconVersionedPath;
-      
-      const appleIconLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement;
-      if (appleIconLink) appleIconLink.href = iconVersionedPath;
-      
       // Update manifest
       const manifestLink = document.querySelector("link[rel='manifest']") as HTMLLinkElement;
       if (manifestLink) {
