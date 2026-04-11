@@ -2,17 +2,17 @@
   "id": "/",
   "name": "خمن تخمينة",
   "short_name": "خمن تخمينة",
-  "description": "لعبة تخمين كلمات وصور ممتعة",
+  "description": "لعبة خمن تخمينة هي لعبة تخمين صور، وكلمات، واسئلة سريعة، جوائز يومية قيمة، ممتعة جدا وتناسب جميع الاعمار",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "icons": [
     {
-      "src": "/icon-v2.svg",
-      "sizes": "any",
+      "src": "/icon-3.png",
+      "sizes": "144x144",
       "purpose": "any",
-      "type": "image/svg+xml"
+      "type": "image/png"
     },
     {
       "src": "/icon-192.png", 
