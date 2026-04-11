@@ -4776,7 +4776,7 @@ export default function App() {
                 <button onClick={toggleLuckyWheel} className="text-white hover:text-pink-200"><X className="w-6 h-6" /></button>
               </div>
 
-              <div className="p-6 flex flex-col items-center gap-6">
+              <div className="p-4 flex flex-col items-center gap-4">
                 {/* The Wheel */}
                 <div className="relative w-64 h-64 md:w-80 md:h-80">
                   {/* Pointer */}
@@ -4838,14 +4838,11 @@ export default function App() {
 
                 {/* Info & Button */}
                 <div className="w-full text-center space-y-4">
-                  <p className="text-xs font-bold text-red-600">
-                    جميع الهدايا التي تحصل عليها يجب أن تستخدم في نفس اليوم.
-                  </p>
                   {showReward && spinResult && (
                     <motion.div 
                       initial={{ y: 10, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
-                      className="p-1 bg-yellow-100 border-2 border-yellow-400 rounded-xl"
+                      className="p-1 mb-2 bg-yellow-100 border-2 border-yellow-400 rounded-xl"
                     >
                       <p className="text-sm font-bold text-yellow-800">مبروك! كسبت:</p>
                       <p className="text-xl font-black text-yellow-600">{spinResult.reward.label}</p>
@@ -4853,6 +4850,12 @@ export default function App() {
                   )}
 
                   <div className="flex flex-col gap-2">
+                  <p className="text-xs font-bold text-red-600">
+                    جميع الهدايا التي تحصل عليها يجب أن تستخدم في نفس اليوم.
+                  </p>                  
+                    <p className="text-sm font-bold text-gray-500">
+                      المحاولات المتبقية: {isAdmin ? 'غير محدود' : `${Math.max(0, 11 - spinStatus.dailySpinCount)} / 11`}
+                    </p>                  
                     <button 
                       onClick={handleSpinClick}
                       disabled={isSpinning || localIsSpinning || spinCooldown > 0}
@@ -4878,9 +4881,6 @@ export default function App() {
                       )}
                     </button>
                     
-                    <p className="text-sm font-bold text-gray-500">
-                      المحاولات المتبقية: {isAdmin ? 'غير محدود' : `${Math.max(0, 11 - spinStatus.dailySpinCount)} / 11`}
-                    </p>
                   </div>
                 </div>
               </div>
@@ -10320,22 +10320,7 @@ export default function App() {
                     <div className="flex justify-between items-center mb-1 flex-row-reverse">
                       <div className="text-sm md:text-base font-black text-main truncate text-right">{playerName || 'لاعب جديد'}</div>
                       <div className="flex items-center gap-1">
-                        <span className="text-xs md:text-sm font-black text-accent-blue px-0.5 py-0.5">Level {getLevel(Math.floor(displayXp))}</span>
-                      <span 
-                        className={`text-xs md:text-sm font-black gap-0.5 px-0.5 py-0.5 flex items-center justify-center transition-all h-[26px] md:h-[30px] ${
-                          hasProPackage 
-                            ? 'text-yellow-600' 
-                            : 'text-gray-400 opacity-70'
-                        }`} 
-                        title="باقة المحترفين"
-                      >
-                        <Zap className={`w-3 h-3 transition-all ${
-                          hasProPackage 
-                            ? 'fill-yellow-500 text-yellow-500 animate-pulse' 
-                            : 'fill-gray-400 text-gray-400'
-                        }`} />
-                        <span className="text-[10px]" dir="ltr">Day({proPackageDaysLeft})</span>
-                      </span>                        
+                        <span className="text-xs md:text-sm font-black text-accent-blue px-0.5 py-0.5">Level {getLevel(Math.floor(displayXp))}</span>                        
                       </div>
                     </div>
                     
@@ -10364,9 +10349,25 @@ export default function App() {
                     {/* Tokens and Pro Package */}
                     <div className="flex flex-wrap justify-center gap-1">
                       <div className="mt-0.5 pt-0.5 flex flex-wrap justify-center gap-0.3 md:gap-0.5 text-xs font-bold text-brown-dark" dir="ltr">
+                      <span 
+                        className={`gap-0.5 flex items-center justify-center transition-all ${
+                          hasProPackage 
+                            ? 'text-yellow-600' 
+                            : 'text-gray-400 opacity-70'
+                        }`} 
+                        title="باقة المحترفين"
+                      >
+                        <Zap className={`w-3 h-3 md:w-4 md:h-4 transition-all ${
+                          hasProPackage 
+                            ? 'fill-yellow-500 text-yellow-500 animate-pulse' 
+                            : 'fill-gray-400 text-gray-400'
+                        }`} />
+                        <span className="text-[11px] md:text-[12px]" dir="ltr">{proPackageDaysLeft}</span>
+                      </span>                      
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Coins className="w-3 h-3 md:w-4 md:h-4 text-yellow-600" /></span> <span className="text-[11px] md:text-[12px]">{tokens}</span>
+                          <span className="text-[13px] md:text-[14px]"><Coins className="w-3 h-3 md:w-4 md:h-4 text-purple-600" /></span> <span className="text-[11px] md:text-[12px]">{tokens}</span>
                         </span>
+                        <span className="flex text-xs md:text-sm text-gray-400 px-0.5">|</span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
                           <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.spy_lens || 0}</span>
                         </span>
@@ -11224,7 +11225,7 @@ export default function App() {
                 ></div>
               </div>
               <div className="flex justify-between items-center bg-white/50 p-3 rounded-2xl border border-orange-100 shadow-sm">
-                <h2 className={`text-lg md:text-lg font-black text-accent-orange ${room.players.length < 2 ? 'animate-pulse' : ''}`}>
+                <h2 className={`text-sm md:text-sm font-black text-accent-orange ${room.players.length < 2 ? 'animate-pulse' : ''}`}>
                   {room.players.length < 2 ? 'بانتظار المنافس...' : 'اتفقوا على فئة التخمين للبدء!'}
                 </h2>
                 <div className={`text-lg font-black font-mono px-3 py-1 rounded-lg ${room.isFrozen ? 'text-cyan-500 bg-cyan-50 animate-pulse' : 'text-red-500 bg-gray-100'}`}>
