@@ -3967,6 +3967,86 @@ io.on("connection", (socket) => {
       callback(getTopPlayers());
     });
     
+    socket.on("get_city_search", ({ serial }) => {
+      if (!serial) return;
+      const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(`city_search_${serial}`);
+      if (row) {
+        socket.emit("city_search_update", JSON.parse(row.value));
+      } else {
+        socket.emit("city_search_update", null);
+      }
+    });
+
+    socket.on("start_city_search", ({ serial, cityId }) => {
+      if (!serial) return;
+      const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(`city_search_${serial}`);
+      if (row) {
+        const state = JSON.parse(row.value);
+        if (state.active) return;
+      }
+
+      let xp = Math.floor(Math.random() * 201); // Random number between 0 and 200
+      let time_freeze = 0; for(let i=0; i<5; i++) if (Math.random() < 0.70) time_freeze++;
+      let word_count = 0; for(let i=0; i<5; i++) if (Math.random() < 0.60) word_count++;
+      let word_length = 0; for(let i=0; i<5; i++) if (Math.random() < 0.50) word_length++;
+      let hint = 0; for(let i=0; i<5; i++) if (Math.random() < 0.40) hint++;
+      let spy_lens = 0; for(let i=0; i<5; i++) if (Math.random() < 0.20) spy_lens++;
+      let tokens = 0; for(let i=0; i<5; i++) if (Math.random() < 0.03) tokens++;
+      let pro_package_days = 0; for(let i=0; i<5; i++) if (Math.random() < 0.000001) pro_package_days++;
+
+      const newState = {
+        active: true,
+        cityId,
+        startTime: Date.now(),
+        endTime: Date.now() + 60 * 60 * 1000, // 1 hour
+        rewards: { xp, time_freeze, word_count, word_length, hint, spy_lens, tokens, pro_package_days }
+      };
+
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(`city_search_${serial}`, JSON.stringify(newState));
+      socket.emit("city_search_update", newState);
+    });
+
+    socket.on("claim_city_search", ({ serial }) => {
+      if (!serial) return;
+      const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(`city_search_${serial}`);
+      if (!row) return;
+      const state = JSON.parse(row.value);
+      if (!state.active || Date.now() < state.endTime) return;
+
+      const player = allPlayers.get(serial);
+      if (!player) return;
+
+      player.xp += state.rewards.xp;
+      
+      if (state.rewards.tokens > 0) {
+        const tokenRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`tokens_${serial}`);
+        let currentTokens = tokenRow ? parseInt(tokenRow.value) : 0;
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(`tokens_${serial}`, (currentTokens + state.rewards.tokens).toString());
+      }
+      
+      if (state.rewards.pro_package_days > 0) {
+        const proRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`pro_package_${serial}`);
+        let currentExpiry = proRow ? parseInt(proRow.value) : Date.now();
+        if (currentExpiry < Date.now()) currentExpiry = Date.now();
+        const newExpiry = currentExpiry + (state.rewards.pro_package_days * 24 * 60 * 60 * 1000);
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(`pro_package_${serial}`, newExpiry.toString());
+      }
+
+      if (!player.ownedHelpers) player.ownedHelpers = {};
+      if (state.rewards.time_freeze > 0) player.ownedHelpers.time_freeze = (player.ownedHelpers.time_freeze || 0) + state.rewards.time_freeze;
+      if (state.rewards.word_count > 0) player.ownedHelpers.word_count = (player.ownedHelpers.word_count || 0) + state.rewards.word_count;
+      if (state.rewards.word_length > 0) player.ownedHelpers.word_length = (player.ownedHelpers.word_length || 0) + state.rewards.word_length;
+      if (state.rewards.hint > 0) player.ownedHelpers.hint = (player.ownedHelpers.hint || 0) + state.rewards.hint;
+      if (state.rewards.spy_lens > 0) player.ownedHelpers.spy_lens = (player.ownedHelpers.spy_lens || 0) + state.rewards.spy_lens;
+
+      db.prepare("UPDATE players SET xp = ?, ownedHelpers = ? WHERE serial = ?").run(player.xp, JSON.stringify(player.ownedHelpers), serial);
+      
+      db.prepare("DELETE FROM settings WHERE key = ?").run(`city_search_${serial}`);
+      
+      socket.emit("city_search_update", null);
+      socket.emit("rewards_claimed", state.rewards);
+    });
+
     socket.on("get_player_data", (data, callback) => {
       const serial = typeof data === 'string' ? data : data.serial;
       const fingerprint = typeof data === 'object' ? data.fingerprint : null;
