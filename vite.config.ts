@@ -20,15 +20,15 @@ export default defineConfig(({mode}) => {
           id: '/',
           name: 'خمن تخمينة',
           short_name:'خمن تخمينة',
-          description: 'لعبة تخمين كلمات وصور ممتعة',
+          description: 'لعبة خمن تخمينة هي لعبة تخمين صور، وكلمات، واسئلة سريعة، جوائز يومية قيمة، ممتعة جدا وتناسب جميع الاعمار',
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone', // خليها standalone أحسن للتوافق
           icons: [
             {
-              src: 'icon-v2.svg',
-              sizes: 'any', // الـ SVG يفضل يكون any
-              type: 'image/svg+xml',
+              src: 'icon-3.png',
+              sizes: '144x144', // الـ SVG يفضل يكون any
+              type: 'image/png',
               purpose: 'any' 
             },
             {

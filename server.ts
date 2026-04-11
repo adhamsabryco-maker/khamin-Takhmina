@@ -466,23 +466,23 @@ const app = express();
     res.setHeader('Expires', '0');
     const version = configCache.version || '1.1.1';
     // Use a versioned path for the icon to force OS-level PWA icon updates
-    const iconPath = `/icon-v2.svg`;
+    const iconPath = `/icon-3.png`;
     
     res.json({
       "id": "/",
       "name": "خمن تخمينة",
       "short_name": "خمن تخمينة",
-      "description": "لعبة تخمين كلمات وصور ممتعة",
+      "description": "لعبة خمن تخمينة هي لعبة تخمين صور، وكلمات، واسئلة سريعة، جوائز يومية قيمة، ممتعة جدا وتناسب جميع الاعمار",
       "start_url": "/",
       "display": "standalone",
       "background_color": "#ffffff",
       "theme_color": "#ffffff",
       "icons": [
         {
-          "src": "/icon-v2.svg",
-          "sizes": "any",
+          "src": "/icon-3.png",
+          "sizes": "144x144",
           "purpose": "any",
-          "type": "image/svg+xml"
+          "type": "image/png"
         },
         {
           "src": "/icon-192.png", 
@@ -520,14 +520,14 @@ const app = express();
   app.get("/manifest.webmanifest", manifestHandler);
 
   // Route to serve the icon with a versioned filename
-  app.get("/icon-v2.svg", (req, res) => {
+  app.get("/icon-3.png", (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     
-    const iconFile = path.join(__dirname, "dist", "icon-v2.svg");
-    const publicIconFile = path.join(__dirname, "public", "icon-v2.svg");
-    const rootIconFile = path.join(__dirname, "icon-v2.svg");
+    const iconFile = path.join(__dirname, "dist", "icon-3.png");
+    const publicIconFile = path.join(__dirname, "public", "icon-3.png");
+    const rootIconFile = path.join(__dirname, "icon-3.png");
 
     if (fs.existsSync(iconFile)) {
       res.sendFile(iconFile);
@@ -6404,7 +6404,7 @@ io.on("connection", (socket) => {
   } else {
     app.use(express.static(path.join(__dirname, "dist"), {
       setHeaders: (res, path) => {
-        if (path.endsWith('.html') || path.endsWith('sw.js') || path.endsWith('manifest.webmanifest') || path.endsWith('manifest.json') || path.endsWith('icon-v2.svg')) {
+        if (path.endsWith('.html') || path.endsWith('sw.js') || path.endsWith('manifest.webmanifest') || path.endsWith('manifest.json') || path.endsWith('icon-3.png')) {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
           res.setHeader('Pragma', 'no-cache');
           res.setHeader('Expires', '0');
