@@ -761,6 +761,12 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [pendingWelcomeModal, setPendingWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showCitySearch, setShowCitySearch] = useState(false);
+  const [citySearchState, setCitySearchState] = useState<any>(null);
+  const [isCitySearchLoaded, setIsCitySearchLoaded] = useState(false);
+  const [displayedRewards, setDisplayedRewards] = useState<any>(null);
+  const [citySearchTimeLeft, setCitySearchTimeLeft] = useState("");
+  const [selectedCity, setSelectedCity] = useState(1);
   const [blockedPlayers, setBlockedPlayers] = useState<{serial: string, name: string}[]>([]);
   const [showBlockedPlayers, setShowBlockedPlayers] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
@@ -2028,6 +2034,24 @@ export default function App() {
     setHasSeenLuckyWheelThisSession(value);
     sessionStorage.setItem('khamin_has_seen_lucky_wheel_session', value.toString());
   };
+
+  const [hasSeenCitySearchToday, setHasSeenCitySearchToday] = useState(() => {
+    const saved = localStorage.getItem('khamin_has_seen_city_search_today');
+    if (saved) {
+      try {
+        const { date } = JSON.parse(saved);
+        return isSameDay(Date.now(), date);
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  const updateHasSeenCitySearchToday = () => {
+    setHasSeenCitySearchToday(true);
+    localStorage.setItem('khamin_has_seen_city_search_today', JSON.stringify({ date: Date.now() }));
+  };
   const [spinStatus, setSpinStatus] = useState({ dailySpinCount: 0, freeSpinUsed: 0, maxPaidSpins: 10, hasFreeSpin: true });
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<any>(null);
@@ -2287,7 +2311,7 @@ export default function App() {
 
 
   useEffect(() => {
-    if (!joined && !hasSeenDailyToday && playerSerial) {
+    if (!joined && !hasSeenDailyToday && playerSerial && isCitySearchLoaded) {
       const hasUnclaimedDaily = lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim);
       if (hasUnclaimedDaily) {
         setShowDailyQuestModal(true);
@@ -2295,10 +2319,13 @@ export default function App() {
         // If daily quest already seen/claimed, show lucky wheel if free spin is available
         setShowLuckyWheelModal(true);
         updateHasSeenLuckyWheelThisSession(true);
+      } else if (!hasSeenCitySearchToday && !citySearchState?.active) {
+        setShowCitySearch(true);
+        updateHasSeenCitySearchToday();
       }
       setHasSeenDailyToday(true);
     }
-  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, hasSeenLuckyWheelThisSession, hasUsedFreeSpin, luckyWheelEnabled, isAdmin]);
+  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, hasSeenLuckyWheelThisSession, hasUsedFreeSpin, luckyWheelEnabled, isAdmin, hasSeenCitySearchToday, isCitySearchLoaded, citySearchState]);
 
   useEffect(() => {
     if (socket && isConnected && playerSerial) {
@@ -2389,6 +2416,9 @@ export default function App() {
       if (!hasSeenLuckyWheelThisSession && !hasUsedFreeSpin && (luckyWheelEnabled || isAdmin)) {
         setShowLuckyWheelModal(true);
         updateHasSeenLuckyWheelThisSession(true);
+      } else if (!hasSeenCitySearchToday && !citySearchState?.active) {
+        setShowCitySearch(true);
+        updateHasSeenCitySearchToday();
       }
     } else {
       playSound('clickOpen');
@@ -2401,6 +2431,10 @@ export default function App() {
     if (showLuckyWheelModal) {
       playSound('clickClose');
       setShowLuckyWheelModal(false);
+      if (!hasSeenCitySearchToday && !citySearchState?.active) {
+        setShowCitySearch(true);
+        updateHasSeenCitySearchToday();
+      }
     } else {
       playSound('clickOpen');
       closeAllModals();
@@ -3158,6 +3192,8 @@ export default function App() {
               localStorage.setItem('khamin_owned_helpers', JSON.stringify(data.ownedHelpers));
             }
 
+            newSocket.emit("get_city_search", { serial });
+
             if (data.dailyQuestStreak) {
               setDailyQuestStreak(data.dailyQuestStreak);
               localStorage.setItem('khamin_daily_streak', data.dailyQuestStreak.toString());
@@ -3845,6 +3881,19 @@ export default function App() {
 
     newSocket.on('update_reported_serials', (serials: string[]) => {
       setReportedSerials(serials);
+    });
+
+    newSocket.on("city_search_update", (state) => {
+      setCitySearchState(state);
+      setIsCitySearchLoaded(true);
+    });
+
+    newSocket.on("rewards_claimed", (rewards) => {
+      playSound('win');
+      showAlert("تم استلام المكافآت بنجاح! 🥳", "نجاح");
+      setShowCitySearch(false);
+      setCitySearchState(null);
+      newSocket.emit("get_player_data", { serial: localStorage.getItem('khamin_player_serial'), fingerprint: localStorage.getItem('khamin_fingerprint') });
     });
 
     return newSocket;
@@ -4655,6 +4704,145 @@ export default function App() {
       });
     }
   };
+
+  useEffect(() => {
+    if (!citySearchState?.active) {
+      setDisplayedRewards(null);
+      return;
+    }
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = citySearchState.endTime - now;
+      
+      const totalDuration = citySearchState.endTime - citySearchState.startTime;
+      const elapsed = now - citySearchState.startTime;
+      const progress = Math.min(1, Math.max(0, elapsed / totalDuration));
+
+      if (citySearchState.rewards) {
+        setDisplayedRewards({
+          xp: Math.floor((citySearchState.rewards.xp || 0) * progress),
+          tokens: Math.floor((citySearchState.rewards.tokens || 0) * progress),
+          time_freeze: Math.floor((citySearchState.rewards.time_freeze || 0) * progress),
+          word_count: Math.floor((citySearchState.rewards.word_count || 0) * progress),
+          word_length: Math.floor((citySearchState.rewards.word_length || 0) * progress),
+          hint: Math.floor((citySearchState.rewards.hint || 0) * progress),
+          spy_lens: Math.floor((citySearchState.rewards.spy_lens || 0) * progress),
+          pro_package_days: Math.floor((citySearchState.rewards.pro_package_days || 0) * progress),
+        });
+      }
+
+      if (remaining <= 0) {
+        setCitySearchTimeLeft("00:00:00");
+      } else {
+        const h = Math.floor(remaining / 3600000).toString().padStart(2, '0');
+        const m = Math.floor((remaining % 3600000) / 60000).toString().padStart(2, '0');
+        const s = Math.floor((remaining % 60000) / 1000).toString().padStart(2, '0');
+        setCitySearchTimeLeft(`${h}:${m}:${s}`);
+      }
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [citySearchState]);
+
+  const handleShowAd = (onComplete: () => void) => {
+    if (adTriggeredRef.current) return;
+    
+    adTriggeredRef.current = false;
+    let localAdTriggered = false;
+
+    const startAdProcess = () => {
+      if (localAdTriggered) return;
+      localAdTriggered = true;
+      socket?.emit('start_ad_watch', { serial: playerSerial });
+    };
+
+    let adSafetyTimeout: NodeJS.Timeout;
+
+    const onAdComplete = () => {
+      clearTimeout(adSafetyTimeout);
+      adTriggeredRef.current = false;
+      onComplete();
+    };
+
+    const startMockAd = () => {
+      startAdProcess();
+      onAdComplete();
+    };
+
+    const handleAdUnavailable = () => {
+      startMockAd();
+    };
+
+    if (typeof (window as any).adBreak === 'function') {
+      const adTimeout = setTimeout(() => {
+        if (!localAdTriggered) {
+          handleAdUnavailable();
+        }
+      }, 2000);
+
+      try {
+        (window as any).adBreak({
+          type: 'reward',
+          name: 'city_search_ad',
+          beforeAd: () => {
+            clearTimeout(adTimeout);
+            startAdProcess();
+            Howler.mute(true);
+            
+            adSafetyTimeout = setTimeout(() => {
+              onAdComplete();
+            }, 30000);
+          },
+          afterAd: () => {
+            Howler.mute(false);
+          },
+          beforeReward: (showAdFn: any) => { showAdFn(); },
+          adDismissed: () => {
+            clearTimeout(adSafetyTimeout);
+            onAdComplete();
+          },
+          adViewed: () => {
+            clearTimeout(adSafetyTimeout);
+            onAdComplete();
+          },
+          adBreakDone: (placementInfo: any) => {
+            clearTimeout(adSafetyTimeout);
+            if (!localAdTriggered) {
+              clearTimeout(adTimeout);
+              handleAdUnavailable();
+            }
+          }
+        });
+      } catch (e) {
+        clearTimeout(adTimeout);
+        handleAdUnavailable();
+      }
+    } else {
+      handleAdUnavailable();
+    }
+  };
+
+  const handleStartCitySearch = () => {
+    handleShowAd(() => {
+      socket?.emit("start_city_search", { serial: playerSerial, cityId: selectedCity });
+      // Optimistically update state so the button hides immediately
+      setCitySearchState({
+        active: true,
+        cityId: selectedCity,
+        startTime: Date.now(),
+        endTime: Date.now() + 60 * 60 * 1000,
+        rewards: { xp: 0, tokens: 0, time_freeze: 0, word_count: 0, word_length: 0, hint: 0, spy_lens: 0, pro_package_days: 0 }
+      });
+      showAlert("ارجعوا بعد ساعة ولموا الهدايا والمكافآت 🤩 وابدأوا بحث جديد 🧐", "تم بدء البحث");
+    });
+  };
+
+  const handleClaimCitySearch = () => {
+    socket?.emit("claim_city_search", { serial: playerSerial });
+  };
+
+  const isCitySearchFinished = citySearchState?.active && Date.now() >= citySearchState.endTime;
 
   const handleStartGame = () => {
     playSound('clickOpen');
@@ -5940,6 +6128,171 @@ export default function App() {
                 </div>
                 
                 <p className="text-sm text-center text-brown-light mt-4">استمر في اللعب لتصل إلى أعلى مستوى وتتفوق على أصدقائك!</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* City Search Modal */}
+      <AnimatePresence>
+        {showCitySearch && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[2000] flex items-center justify-center p-4"
+            onClick={() => setShowCitySearch(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-accent-blue p-4 flex justify-between items-center text-white" dir="ltr">
+                <h3 className="font-black text-[14px] flex items-center gap-2">
+                  <Search className="w-6 h-6" /> ابحث في المدينة عن الهدايا
+                </h3>
+                <button onClick={() => setShowCitySearch(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-4">
+                {/* City Selection */}
+                <div className="flex gap-3 justify-center mb-2">
+                  {[
+                    { id: 1, name: 'مدينة الأحلام' },
+                    { id: 2, name: 'مدينة الظلام' },
+                    { id: 3, name: 'مدينة الثلج' },
+                    { id: 4, name: 'مدينة القدماء' }
+                  ].map(city => (
+                    <div key={city.id} className="flex flex-col items-center gap-1">
+                      <img 
+                        src={`/city-gift-0${city.id}.jpg`}
+                        alt={city.name}
+                        className={`w-16 h-16 rounded-xl object-cover cursor-pointer border-4 transition-all ${
+                          (citySearchState?.active ? citySearchState.cityId === city.id : selectedCity === city.id) 
+                            ? 'border-accent-blue scale-103 shadow-md' 
+                            : 'border-transparent opacity-70 hover:opacity-100'
+                        }`}
+                        onClick={() => !citySearchState?.active && setSelectedCity(city.id)}
+                      />
+                      <span className={`text-[10px] mt-1 font-bold transition-all ${
+                        (citySearchState?.active ? citySearchState.cityId === city.id : selectedCity === city.id)
+                          ? 'text-accent-blue scale-103'
+                          : 'text-gray-500'
+                      }`}>{city.name}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Main Image */}
+                <div className="relative w-full flex justify-center items-center rounded-2xl mb-2 bg-gray-900 shadow-inner border-2 border-gray-200">
+                  <img 
+                    src={`/city-gift-0${citySearchState?.active ? citySearchState.cityId : selectedCity}.jpg`} 
+                    className={`flex justify-between items-center w-auto h-auto object-cover transition-opacity duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
+                    alt="Selected City"
+                  />
+                  
+                  {citySearchState?.active && !isCitySearchFinished && (
+                    <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                      <Search className="w-15 h-15 text-white animate-search-circle" />
+                    </div>
+                  )}
+                  
+                  {isCitySearchFinished && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-10">
+                      <div className="bg-accent-green text-white px-6 py-3 rounded-full font-black text-xl shadow-lg flex items-center gap-2 animate-bounce">
+                        <Gift className="w-6 h-6" /> اكتمل البحث!
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {!citySearchState?.active && (
+                  <div className="text-center mb-2 px-2">
+                    <p className="text-sm font-bold text-gray-600 bg-blue-50 p-3 rounded-xl border border-blue-100">
+                     ابحث في المدينة وجمع هدايا XP، Tokens، باقة المحترفين، ووسائل مساعدة!
+                    </p>
+                  </div>
+                )}
+
+                {/* Rewards Display */}
+                {citySearchState?.active && (
+                  <div className="bg-gray-50 p-2 rounded-2xl border border-gray-200 mb-2">
+                    <h4 className="text-center font-bold text-[13px] md:text-[14px] text-gray-500 mb-1">
+                      {isCitySearchFinished ? 'المكافآت التي حصلت عليها:' : 'المكافآت التي يتم تجميعها:'}
+                    </h4>
+                    <div className="flex flex-wrap justify-center gap-1" dir="ltr">
+                      {displayedRewards && (
+                        <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-orange-600 flex items-center gap-0.5">
+                          <Star className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.xp} XP
+                        </span>
+                      )}
+                      {displayedRewards && (
+                        <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-purple-600 flex items-center gap-0.5">
+                          <Coins className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.tokens}
+                        </span>
+                      )}
+                      {displayedRewards && (
+                        <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-yellow-500 flex items-center gap-0.5">
+                          <Crown className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.pro_package_days}
+                        </span>
+                      )}
+                      {displayedRewards && (
+                        <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-cyan-500 flex items-center gap-0.5">
+                          <Snowflake className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.time_freeze}
+                        </span>
+                      )}
+                      {displayedRewards && (
+                        <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-indigo-500 flex items-center gap-0.5">
+                          <Hash className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.word_count}
+                        </span>
+                      )}
+                      {displayedRewards && (
+                        <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-green-500 flex items-center gap-0.5">
+                          <Type className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.word_length}
+                        </span>
+                      )}
+                      {displayedRewards && (
+                        <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-blue-500 flex items-center gap-0.5">
+                          <HelpCircle className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.hint}
+                        </span>
+                      )}
+                      {displayedRewards && (
+                        <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-purple-400 flex items-center gap-0.5">
+                          <Eye className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.spy_lens}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                {!citySearchState?.active ? (
+                  <button 
+                    onClick={handleStartCitySearch} 
+                    className="w-full py-4 bg-accent-blue hover:bg-blue-600 text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#1e3a8a] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2"
+                  >
+                    <span className="text-2xl">📺</span>
+                     ابدأ البحث (شاهد إعلان)
+                  </button>
+                ) : !isCitySearchFinished ? (
+                  <div className="text-center bg-gray-100 rounded-2xl p-1 border-2 border-gray-200">
+                    <div className="text-sm font-bold text-gray-500 mb-1">الوقت المتبقي</div>
+                    <div className="text-3xl font-black text-accent-orange font-mono" dir="ltr">{citySearchTimeLeft}</div>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={handleClaimCitySearch} 
+                    className="w-full py-4 bg-accent-green hover:bg-green-600 text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#15803d] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2 animate-pulse"
+                  >
+                    <Gift className="w-6 h-6" /> استلم المكافآت
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -9565,7 +9918,153 @@ export default function App() {
               </button>
             </div>
 
-            {/* Main Content */}
+            {showCitySearch && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCitySearch(false)}>
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border-4 border-accent-blue/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-accent-blue p-4 flex justify-between items-center text-white">
+              <h3 className="font-black text-xl flex items-center gap-2">
+                <Search className="w-6 h-6" /> البحث في المدينة
+              </h3>
+              <button onClick={() => setShowCitySearch(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* City Selection */}
+              <div className="flex gap-3 justify-center mb-6">
+                {[
+                  { id: 1, name: 'مدينة الأحلام' },
+                  { id: 2, name: 'مدينة الظلام' },
+                  { id: 3, name: 'مدينة الثلج' },
+                  { id: 4, name: 'مدينة القدماء' }
+                ].map(city => (
+                  <div key={city.id} className="flex flex-col items-center gap-1">
+                    <img 
+                      src={`/city-gift-0${city.id}.jpg`}
+                      alt={city.name}
+                      className={`w-16 h-16 rounded-xl object-cover cursor-pointer border-4 transition-all ${
+                        (citySearchState?.active ? citySearchState.cityId === city.id : selectedCity === city.id) 
+                          ? 'border-accent-blue scale-110 shadow-md' 
+                          : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
+                      onClick={() => !citySearchState?.active && setSelectedCity(city.id)}
+                    />
+                    <span className={`text-[10px] font-bold transition-all ${
+                      (citySearchState?.active ? citySearchState.cityId === city.id : selectedCity === city.id)
+                        ? 'text-accent-blue scale-110'
+                        : 'text-gray-500'
+                    }`}>{city.name}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Main Image */}
+              <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-6 bg-gray-900 shadow-inner border-2 border-gray-200">
+                <img 
+                  src={`/city-gift-0${citySearchState?.active ? citySearchState.cityId : selectedCity}.jpg`} 
+                  className={`w-full h-full object-cover transition-opacity duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
+                  alt="Selected City"
+                />
+                
+                {citySearchState?.active && !isCitySearchFinished && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Search className="w-16 h-16 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] animate-search-circle" />
+                  </div>
+                )}
+                
+                {isCitySearchFinished && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="bg-accent-green text-white px-6 py-3 rounded-full font-black text-xl shadow-lg flex items-center gap-2 animate-bounce">
+                      <Gift className="w-6 h-6" /> اكتمل البحث!
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Rewards Display */}
+              {citySearchState?.active && (
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 mb-6">
+                  <h4 className="text-center font-bold text-sm text-gray-500 mb-3">
+                    {isCitySearchFinished ? 'المكافآت التي حصلت عليها:' : 'المكافآت التي يتم تجميعها:'}
+                  </h4>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {displayedRewards && (
+                      <span className="bg-white px-2 py-1 rounded-lg text-xs font-bold text-accent-blue flex items-center gap-1 shadow-sm border border-gray-100">
+                        <Star className="w-4 h-4" /> {displayedRewards.xp} XP
+                      </span>
+                    )}
+                    {displayedRewards && (
+                      <span className="bg-white px-2 py-1 rounded-lg text-xs font-bold text-purple-600 flex items-center gap-1 shadow-sm border border-gray-100">
+                        <Coins className="w-4 h-4" /> {displayedRewards.tokens}
+                      </span>
+                    )}
+                    {displayedRewards && (
+                      <span className="bg-white px-2 py-1 rounded-lg text-xs font-bold text-yellow-600 flex items-center gap-1 shadow-sm border border-gray-100">
+                        <Crown className="w-4 h-4" /> {displayedRewards.pro_package_days} يوم
+                      </span>
+                    )}
+                    {displayedRewards && (
+                      <span className="bg-white px-2 py-1 rounded-lg text-xs font-bold text-cyan-500 flex items-center gap-1 shadow-sm border border-gray-100">
+                        <Snowflake className="w-4 h-4" /> {displayedRewards.time_freeze}
+                      </span>
+                    )}
+                    {displayedRewards && (
+                      <span className="bg-white px-2 py-1 rounded-lg text-xs font-bold text-indigo-500 flex items-center gap-1 shadow-sm border border-gray-100">
+                        <Hash className="w-4 h-4" /> {displayedRewards.word_count}
+                      </span>
+                    )}
+                    {displayedRewards && (
+                      <span className="bg-white px-2 py-1 rounded-lg text-xs font-bold text-orange-500 flex items-center gap-1 shadow-sm border border-gray-100">
+                        <Type className="w-4 h-4" /> {displayedRewards.word_length}
+                      </span>
+                    )}
+                    {displayedRewards && (
+                      <span className="bg-white px-2 py-1 rounded-lg text-xs font-bold text-blue-500 flex items-center gap-1 shadow-sm border border-gray-100">
+                        <HelpCircle className="w-4 h-4" /> {displayedRewards.hint}
+                      </span>
+                    )}
+                    {displayedRewards && (
+                      <span className="bg-white px-2 py-1 rounded-lg text-xs font-bold text-purple-400 flex items-center gap-1 shadow-sm border border-gray-100">
+                        <Eye className="w-4 h-4" /> {displayedRewards.spy_lens}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              {!citySearchState?.active ? (
+                <button 
+                  onClick={handleStartCitySearch} 
+                  className="w-full py-4 bg-accent-blue hover:bg-blue-600 text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#1e3a8a] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2"
+                >
+                  <Tv className="w-6 h-6" /> ابدأ البحث (شاهد إعلان)
+                </button>
+              ) : !isCitySearchFinished ? (
+                <div className="text-center bg-gray-100 rounded-2xl p-4 border-2 border-gray-200">
+                  <div className="text-sm font-bold text-gray-500 mb-1">الوقت المتبقي</div>
+                  <div className="text-3xl font-black text-accent-orange font-mono" dir="ltr">{citySearchTimeLeft}</div>
+                </div>
+              ) : (
+                <button 
+                  onClick={handleClaimCitySearch} 
+                  className="w-full py-4 bg-accent-green hover:bg-green-600 text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#15803d] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2 animate-pulse"
+                >
+                  <Gift className="w-6 h-6" /> استلم المكافآت
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Main Content */}
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
               {/* Active Matches Sidebar (Right side in RTL) */}
               <div className="w-full md:w-64 bg-white/5 border-l border-white/10 flex flex-col overflow-hidden order-last md:order-first">
@@ -9700,7 +10199,7 @@ export default function App() {
               </div>
 
               {/* Live Chat Sidebar */}
-              <div className="w-full md:w-80 bg-white/5 border-r border-white/10 flex flex-col overflow-hidden">
+              <div className="w-full md:w-80 bg-white/5 border-r border-white/10 flex flex-col overflow-hidden relative">
                 <div className="p-4 border-b border-white/10 bg-white/5">
                   <h4 className="text-white font-black flex items-center gap-2">
                     <MessageCircle className="w-5 h-5 text-purple-400" />
@@ -9878,6 +10377,21 @@ export default function App() {
                 title="المتجر"
               >
                 <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+
+              {/* City Search Button */}
+              <button 
+                onClick={() => setShowCitySearch(true)}
+                className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                title="البحث في المدينة"
+              >
+                <Search className="w-4 h-4 md:w-5 md:h-5" />
+                {citySearchState?.active && Date.now() >= citySearchState.endTime && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+                  </span>
+                )}
               </button>
 
               {/* Settings Button */}
@@ -10243,6 +10757,21 @@ export default function App() {
               )}
             </button>
 
+            {/* City Search Button */}
+            <button 
+              onClick={() => setShowCitySearch(true)}
+              className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              title="البحث في المدينة"
+            >
+              <Search className="w-4 h-4 md:w-5 md:h-5" />
+              {citySearchState?.active && Date.now() >= citySearchState.endTime && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+                </span>
+              )}
+            </button>
+
             {/* Lucky Wheel Button */}
             {(luckyWheelEnabled || isAdmin) && (
               <button 
@@ -10357,7 +10886,7 @@ export default function App() {
                         }`} 
                         title="باقة المحترفين"
                       >
-                        <Zap className={`w-3 h-3 md:w-4 md:h-4 transition-all ${
+                        <Crown className={`w-3 h-3 md:w-4 md:h-4 transition-all ${
                           hasProPackage 
                             ? 'fill-yellow-500 text-yellow-500 animate-pulse' 
                             : 'fill-gray-400 text-gray-400'
@@ -10369,19 +10898,19 @@ export default function App() {
                         </span>
                         <span className="flex text-xs md:text-sm text-gray-400 px-0.5">|</span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.spy_lens || 0}</span>
-                        </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.hint || 0}</span>
-                        </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
                           <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.time_freeze || 0}</span>
+                        </span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.spy_lens || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
                           <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.word_count || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
                           <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.word_length || 0}</span>
+                        </span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.hint || 0}</span>
                         </span>
                       </div>
                     </div>
@@ -11102,6 +11631,21 @@ export default function App() {
             title="المتجر"
           >
             <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+
+          {/* City Search Button */}
+          <button 
+            onClick={() => setShowCitySearch(true)}
+            className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            title="البحث في المدينة"
+          >
+            <Search className="w-4 h-4 md:w-5 md:h-5" />
+            {citySearchState?.active && Date.now() >= citySearchState.endTime && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+              </span>
+            )}
           </button>
 
           {/* Settings Button */}

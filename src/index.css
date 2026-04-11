@@ -550,6 +550,16 @@ body::after {
   animation: shake 0.4s ease-in-out;
 }
 
+@keyframes search-circle {
+  0% { transform: rotate(0deg) translateX(60px) rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) translateX(60px) rotate(-180deg) scale(1.2); }
+  100% { transform: rotate(360deg) translateX(60px) rotate(-360deg) scale(1); }
+}
+
+.animate-search-circle {
+  animation: search-circle 3s linear infinite;
+}
+
 @keyframes hintGlow {
   0% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.4); border-color: #FF9F43; }
   50% { box-shadow: 0 0 20px 10px rgba(255, 159, 67, 0.2); border-color: #FFB66D; }
