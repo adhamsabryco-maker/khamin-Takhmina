@@ -3793,6 +3793,8 @@ io.on("connection", (socket) => {
       // Deduct
       if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[helperId] > 0) {
         dbPlayer.rainGiftHelpers[helperId] -= 1;
+      } else if (dbPlayer.luckyWheelHelpers && dbPlayer.luckyWheelHelpers[helperId] > 0) {
+        dbPlayer.luckyWheelHelpers[helperId] -= 1;
       }
       dbPlayer.ownedHelpers[helperId] -= 1;
       if (dbPlayer.ownedHelpers[helperId] === 0) {
@@ -4697,6 +4699,8 @@ io.on("connection", (socket) => {
           if (hasFreeUse && !hasPro && !hasUnlockedHelpers) {
             if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[cardType] > 0) {
               dbPlayer.rainGiftHelpers[cardType] -= 1;
+            } else if (dbPlayer.luckyWheelHelpers && dbPlayer.luckyWheelHelpers[cardType] > 0) {
+              dbPlayer.luckyWheelHelpers[cardType] -= 1;
             }
             dbPlayer.ownedHelpers[cardType] -= 1;
             if (dbPlayer.ownedHelpers[cardType] <= 0) {
@@ -4714,6 +4718,8 @@ io.on("connection", (socket) => {
         if (hasFreeUse && !hasPro && !hasUnlockedHelpers) { // Only deduct if NOT Pro and NOT using Unlocked Helpers
           if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[cardType] > 0) {
             dbPlayer.rainGiftHelpers[cardType] -= 1;
+          } else if (dbPlayer.luckyWheelHelpers && dbPlayer.luckyWheelHelpers[cardType] > 0) {
+            dbPlayer.luckyWheelHelpers[cardType] -= 1;
           }
           dbPlayer.ownedHelpers[cardType] -= 1;
           if (dbPlayer.ownedHelpers[cardType] <= 0) {
@@ -6382,6 +6388,8 @@ io.on("connection", (socket) => {
             if (!isRefundedWinner) {
               if (player.rainGiftTokens && player.rainGiftTokens > 0) {
                 player.rainGiftTokens -= 1;
+              } else if (player.luckyWheelTokens && player.luckyWheelTokens > 0) {
+                player.luckyWheelTokens -= 1;
               }
               player.tokens = (player.tokens || 0) - 1;
             }
