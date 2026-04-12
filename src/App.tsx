@@ -431,9 +431,9 @@ const TypingIndicator = ({ gender }: { gender?: string }) => (
 const isSameDay = (d1: number, d2: number) => {
   const date1 = new Date(d1);
   const date2 = new Date(d2);
-  return date1.getFullYear() === date2.getFullYear() &&
-         date1.getMonth() === date2.getMonth() &&
-         date1.getDate() === date2.getDate();
+  return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+         date1.getUTCMonth() === date2.getUTCMonth() &&
+         date1.getUTCDate() === date2.getUTCDate();
 };
 
 const isSameWeek = (d1: number, d2: number) => {
@@ -2368,25 +2368,34 @@ export default function App() {
 
 
   useEffect(() => {
-    if (!joined && !hasSeenDailyToday && playerSerial && isCitySearchLoaded) {
-      const hasUnclaimedDaily = lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim);
+    if (joined || !playerSerial || showDailyQuestModal || showLuckyWheelModal || showCitySearch) return;
+
+    const hasUnclaimedDaily = lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim);
+    
+    // 1. Daily Quest
+    if (!hasSeenDailyToday) {
       if (hasUnclaimedDaily) {
         setShowDailyQuestModal(true);
-        updateHasSeenDailyToday();
-      } else if (!hasSeenLuckyWheelThisSession && !hasUsedFreeSpin && (luckyWheelEnabled || isAdmin)) {
-        // If daily quest already seen/claimed, show lucky wheel if free spin is available
-        setShowLuckyWheelModal(true);
-        updateHasSeenLuckyWheelThisSession(true);
-        updateHasSeenDailyToday();
-      } else if (!hasSeenCitySearchToday && !citySearchState?.active) {
+      }
+      updateHasSeenDailyToday();
+      return;
+    }
+
+    // 2. Lucky Wheel (only if daily quest was seen or not needed)
+    if (hasSeenDailyToday && !hasSeenLuckyWheelThisSession && !hasUsedFreeSpin && (luckyWheelEnabled || isAdmin)) {
+      setShowLuckyWheelModal(true);
+      updateHasSeenLuckyWheelThisSession(true);
+      return;
+    }
+
+    // 3. City Search (only if lucky wheel was seen or not needed)
+    if (hasSeenDailyToday && (hasSeenLuckyWheelThisSession || hasUsedFreeSpin || (!luckyWheelEnabled && !isAdmin))) {
+      if (!hasSeenCitySearchToday && isCitySearchLoaded && !citySearchState?.active) {
         toggleCitySearch(true);
         updateHasSeenCitySearchToday();
-        updateHasSeenDailyToday();
-      } else {
-        updateHasSeenDailyToday();
       }
     }
-  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, hasSeenLuckyWheelThisSession, hasUsedFreeSpin, luckyWheelEnabled, isAdmin, hasSeenCitySearchToday, isCitySearchLoaded, citySearchState]);
+  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, hasSeenLuckyWheelThisSession, hasUsedFreeSpin, luckyWheelEnabled, isAdmin, hasSeenCitySearchToday, isCitySearchLoaded, citySearchState, showDailyQuestModal, showLuckyWheelModal, showCitySearch]);
 
   useEffect(() => {
     if (socket && isConnected && playerSerial) {
@@ -2427,16 +2436,22 @@ export default function App() {
   }, [socket, isConnected, playerSerial]);
 
   const handleClaimDailyQuest = () => {
+    if (!socket || !isConnected || !playerSerial) {
+      showAlert('عذراً، لا يوجد اتصال بالخادم حالياً. يرجى المحاولة مرة أخرى.', 'تنبيه');
+      return;
+    }
     setIsChestOpening(true);
     setPendingDailyReward(null); // Reset pending reward
     playSound('clickOpen');
-    if (socket) {
-      socket.emit('claim_daily_quest', { serial: playerSerial, isPro: hasProPackage });
-    }
+    socket.emit('claim_daily_quest', { serial: playerSerial, isPro: hasProPackage });
   };
 
   const startCycling = () => {
-    if (!pendingDailyReward || isCycling) return;
+    if (isCycling) return;
+    if (!pendingDailyReward) {
+      showAlert('جاري تجهيز جائزتك، يرجى المحاولة مرة أخرى خلال ثانية...', 'تنبيه');
+      return;
+    }
     setIsCycling(true);
     playSound('chestOpen');
     
