@@ -2313,6 +2313,7 @@ export default function App() {
   const [dailyQuestRewardInfo, setDailyQuestRewardInfo] = useState<{ xp: number, helper?: string, tokens?: number } | null>(null);
   const [isChestOpening, setIsChestOpening] = useState(false);
   const [isCycling, setIsCycling] = useState(false);
+  const [hasClickedChest, setHasClickedChest] = useState(false);
   const [cyclingReward, setCyclingReward] = useState<any>(null);
   const [chestReward, setChestReward] = useState<any>(null);
   const [pendingDailyReward, setPendingDailyReward] = useState<any>(null);
@@ -2368,34 +2369,25 @@ export default function App() {
 
 
   useEffect(() => {
-    if (joined || !playerSerial || showDailyQuestModal || showLuckyWheelModal || showCitySearch) return;
-
-    const hasUnclaimedDaily = lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim);
-    
-    // 1. Daily Quest
-    if (!hasSeenDailyToday) {
+    if (!joined && !hasSeenDailyToday && playerSerial && isCitySearchLoaded) {
+      const hasUnclaimedDaily = lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim);
       if (hasUnclaimedDaily) {
         setShowDailyQuestModal(true);
-      }
-      updateHasSeenDailyToday();
-      return;
-    }
-
-    // 2. Lucky Wheel (only if daily quest was seen or not needed)
-    if (hasSeenDailyToday && !hasSeenLuckyWheelThisSession && !hasUsedFreeSpin && (luckyWheelEnabled || isAdmin)) {
-      setShowLuckyWheelModal(true);
-      updateHasSeenLuckyWheelThisSession(true);
-      return;
-    }
-
-    // 3. City Search (only if lucky wheel was seen or not needed)
-    if (hasSeenDailyToday && (hasSeenLuckyWheelThisSession || hasUsedFreeSpin || (!luckyWheelEnabled && !isAdmin))) {
-      if (!hasSeenCitySearchToday && isCitySearchLoaded && !citySearchState?.active) {
+        updateHasSeenDailyToday();
+      } else if (!hasSeenLuckyWheelThisSession && !hasUsedFreeSpin && (luckyWheelEnabled || isAdmin)) {
+        // If daily quest already seen/claimed, show lucky wheel if free spin is available
+        setShowLuckyWheelModal(true);
+        updateHasSeenLuckyWheelThisSession(true);
+        updateHasSeenDailyToday();
+      } else if (!hasSeenCitySearchToday && !citySearchState?.active) {
         toggleCitySearch(true);
         updateHasSeenCitySearchToday();
+        updateHasSeenDailyToday();
+      } else {
+        updateHasSeenDailyToday();
       }
     }
-  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, hasSeenLuckyWheelThisSession, hasUsedFreeSpin, luckyWheelEnabled, isAdmin, hasSeenCitySearchToday, isCitySearchLoaded, citySearchState, showDailyQuestModal, showLuckyWheelModal, showCitySearch]);
+  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, hasSeenLuckyWheelThisSession, hasUsedFreeSpin, luckyWheelEnabled, isAdmin, hasSeenCitySearchToday, isCitySearchLoaded, citySearchState]);
 
   useEffect(() => {
     if (socket && isConnected && playerSerial) {
@@ -2438,6 +2430,7 @@ export default function App() {
   const handleClaimDailyQuest = () => {
     setIsChestOpening(true);
     setPendingDailyReward(null); // Reset pending reward
+    setHasClickedChest(false); // Reset clicked state
     playSound('clickOpen');
     if (socket) {
       socket.emit('claim_daily_quest', { serial: playerSerial, isPro: hasProPackage });
@@ -2445,7 +2438,11 @@ export default function App() {
   };
 
   const startCycling = () => {
-    if (!pendingDailyReward || isCycling) return;
+    if (isCycling) return;
+    if (!pendingDailyReward) {
+      setHasClickedChest(true);
+      return;
+    }
     setIsCycling(true);
     playSound('chestOpen');
     
@@ -2485,9 +2482,16 @@ export default function App() {
         localStorage.setItem('khamin_owned_helpers', JSON.stringify(pendingDailyReward.newOwnedHelpers));
         
         setPendingDailyReward(null);
+        setHasClickedChest(false);
       }
     }, 50);
   };
+
+  useEffect(() => {
+    if (hasClickedChest && pendingDailyReward && !isCycling) {
+      startCycling();
+    }
+  }, [hasClickedChest, pendingDailyReward, isCycling]);
 
   const toggleDailyQuests = () => {
     if (showDailyQuestModal) {
@@ -2505,6 +2509,11 @@ export default function App() {
       playSound('clickOpen');
       closeAllModals();
       setShowDailyQuestModal(true);
+      setIsChestOpening(false);
+      setIsCycling(false);
+      setHasClickedChest(false);
+      setChestReward(null);
+      setCyclingReward(null);
     }
   };
 
