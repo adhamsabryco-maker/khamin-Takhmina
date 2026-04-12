@@ -2052,59 +2052,7 @@ export default function App() {
     setHasSeenCitySearchToday(true);
     localStorage.setItem('khamin_has_seen_city_search_today', JSON.stringify({ date: Date.now() }));
   };
-
-  const [hasOpenedCitySearchToday, setHasOpenedCitySearchToday] = useState(() => {
-    const saved = localStorage.getItem('khamin_has_opened_city_search_today');
-    if (saved) {
-      try {
-        const { date } = JSON.parse(saved);
-        return isSameDay(Date.now(), date);
-      } catch (e) {
-        return false;
-      }
-    }
-    return false;
-  });
-
-  const updateHasOpenedCitySearchToday = () => {
-    setHasOpenedCitySearchToday(true);
-    localStorage.setItem('khamin_has_opened_city_search_today', JSON.stringify({ date: Date.now() }));
-  };
-
-  const toggleCitySearch = (isAuto: boolean = false) => {
-    if (showCitySearch) {
-      playSound('clickClose');
-      setShowCitySearch(false);
-    } else {
-      playSound('clickOpen');
-      closeAllModals();
-      setShowCitySearch(true);
-      if (!isAuto) {
-        updateHasOpenedCitySearchToday();
-        if (!hasSeenCitySearchToday) {
-          updateHasSeenCitySearchToday();
-        }
-      }
-    }
-  };
-
-  const checkFreeSpinUsedToday = () => {
-    const saved = localStorage.getItem('khamin_has_used_free_spin');
-    const lastUsed = localStorage.getItem('khamin_last_free_spin_date');
-    if (saved === 'true' && lastUsed) {
-      if (isSameDay(Date.now(), parseInt(lastUsed))) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  const [spinStatus, setSpinStatus] = useState(() => ({ 
-    dailySpinCount: 0, 
-    freeSpinUsed: checkFreeSpinUsedToday() ? 1 : 0, 
-    maxPaidSpins: 10, 
-    hasFreeSpin: !checkFreeSpinUsedToday() 
-  }));
+  const [spinStatus, setSpinStatus] = useState({ dailySpinCount: 0, freeSpinUsed: 0, maxPaidSpins: 10, hasFreeSpin: true });
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<any>(null);
   const [rotation, setRotation] = useState(0);
@@ -2147,7 +2095,18 @@ export default function App() {
     localStorage.setItem('khamin_has_used_free_quick_guess', value.toString());
   };
 
-  const [hasUsedFreeSpin, setHasUsedFreeSpin] = useState(() => checkFreeSpinUsedToday());
+  const [hasUsedFreeSpin, setHasUsedFreeSpin] = useState(() => {
+    const saved = localStorage.getItem('khamin_has_used_free_spin');
+    const lastUsed = localStorage.getItem('khamin_last_free_spin_date');
+    if (saved === 'true' && lastUsed) {
+      const d1 = new Date();
+      const d2 = new Date(parseInt(lastUsed));
+      if (d1.getUTCFullYear() === d2.getUTCFullYear() && d1.getUTCMonth() === d2.getUTCMonth() && d1.getUTCDate() === d2.getUTCDate()) {
+        return true;
+      }
+    }
+    return false;
+  });
 
   const updateHasUsedFreeSpin = (value: boolean) => {
     setHasUsedFreeSpin(value);
@@ -2162,23 +2121,7 @@ export default function App() {
     const saved = localStorage.getItem('khamin_last_daily_claim');
     return saved ? parseInt(saved) : 0;
   });
-  const [hasSeenDailyToday, setHasSeenDailyToday] = useState(() => {
-    const saved = localStorage.getItem('khamin_has_seen_daily_today');
-    if (saved) {
-      try {
-        const { date } = JSON.parse(saved);
-        return isSameDay(Date.now(), date);
-      } catch (e) {
-        return false;
-      }
-    }
-    return false;
-  });
-
-  const updateHasSeenDailyToday = () => {
-    setHasSeenDailyToday(true);
-    localStorage.setItem('khamin_has_seen_daily_today', JSON.stringify({ date: Date.now() }));
-  };
+  const [hasSeenDailyToday, setHasSeenDailyToday] = useState(false);
 
   useEffect(() => {
     if (showLuckyWheelModal) {
@@ -2231,7 +2174,7 @@ export default function App() {
   const handleSpinClick = () => {
     if (isSpinning || localIsSpinning || spinCooldown > 0) return;
     
-    const isAdSpin = hasUsedFreeSpin || !spinStatus.hasFreeSpin;
+    const isAdSpin = !spinStatus.hasFreeSpin;
     
     if (isAdSpin) {
       if (spinStatus.dailySpinCount >= 11 && !isAdmin) {
@@ -2313,7 +2256,6 @@ export default function App() {
   const [dailyQuestRewardInfo, setDailyQuestRewardInfo] = useState<{ xp: number, helper?: string, tokens?: number } | null>(null);
   const [isChestOpening, setIsChestOpening] = useState(false);
   const [isCycling, setIsCycling] = useState(false);
-  const [hasClickedChest, setHasClickedChest] = useState(false);
   const [cyclingReward, setCyclingReward] = useState<any>(null);
   const [chestReward, setChestReward] = useState<any>(null);
   const [pendingDailyReward, setPendingDailyReward] = useState<any>(null);
@@ -2373,40 +2315,25 @@ export default function App() {
       const hasUnclaimedDaily = lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim);
       if (hasUnclaimedDaily) {
         setShowDailyQuestModal(true);
-        updateHasSeenDailyToday();
       } else if (!hasSeenLuckyWheelThisSession && !hasUsedFreeSpin && (luckyWheelEnabled || isAdmin)) {
         // If daily quest already seen/claimed, show lucky wheel if free spin is available
         setShowLuckyWheelModal(true);
         updateHasSeenLuckyWheelThisSession(true);
-        updateHasSeenDailyToday();
       } else if (!hasSeenCitySearchToday && !citySearchState?.active) {
-        toggleCitySearch(true);
+        setShowCitySearch(true);
         updateHasSeenCitySearchToday();
-        updateHasSeenDailyToday();
-      } else {
-        updateHasSeenDailyToday();
       }
+      setHasSeenDailyToday(true);
     }
   }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, hasSeenLuckyWheelThisSession, hasUsedFreeSpin, luckyWheelEnabled, isAdmin, hasSeenCitySearchToday, isCitySearchLoaded, citySearchState]);
 
   useEffect(() => {
     if (socket && isConnected && playerSerial) {
       socket.emit('get_spin_status', { serial: playerSerial });
-      socket.on('spin_status', (status) => {
-        setSpinStatus(status);
-        if (status.freeSpinUsed === 1) {
-          updateHasUsedFreeSpin(true);
-        } else {
-          // Only reset if it's a new day (handled by checkFreeSpinUsedToday logic usually, but server is source of truth)
-          setHasUsedFreeSpin(false);
-        }
-      });
+      socket.on('spin_status', (status) => setSpinStatus(status));
       socket.on('spin_result', (data) => {
         setSpinResult(null); // Reset to ensure next spin triggers effect
         setTimeout(() => setSpinResult(data), 0);
-        if (data.freeSpinUsed === 1) {
-          updateHasUsedFreeSpin(true);
-        }
         setSpinStatus({
           dailySpinCount: data.dailySpinCount,
           freeSpinUsed: data.freeSpinUsed,
@@ -2430,7 +2357,6 @@ export default function App() {
   const handleClaimDailyQuest = () => {
     setIsChestOpening(true);
     setPendingDailyReward(null); // Reset pending reward
-    setHasClickedChest(false); // Reset clicked state
     playSound('clickOpen');
     if (socket) {
       socket.emit('claim_daily_quest', { serial: playerSerial, isPro: hasProPackage });
@@ -2438,11 +2364,7 @@ export default function App() {
   };
 
   const startCycling = () => {
-    if (isCycling) return;
-    if (!pendingDailyReward) {
-      setHasClickedChest(true);
-      return;
-    }
+    if (!pendingDailyReward || isCycling) return;
     setIsCycling(true);
     playSound('chestOpen');
     
@@ -2482,16 +2404,9 @@ export default function App() {
         localStorage.setItem('khamin_owned_helpers', JSON.stringify(pendingDailyReward.newOwnedHelpers));
         
         setPendingDailyReward(null);
-        setHasClickedChest(false);
       }
     }, 50);
   };
-
-  useEffect(() => {
-    if (hasClickedChest && pendingDailyReward && !isCycling) {
-      startCycling();
-    }
-  }, [hasClickedChest, pendingDailyReward, isCycling]);
 
   const toggleDailyQuests = () => {
     if (showDailyQuestModal) {
@@ -2502,18 +2417,13 @@ export default function App() {
         setShowLuckyWheelModal(true);
         updateHasSeenLuckyWheelThisSession(true);
       } else if (!hasSeenCitySearchToday && !citySearchState?.active) {
-        toggleCitySearch(true);
+        setShowCitySearch(true);
         updateHasSeenCitySearchToday();
       }
     } else {
       playSound('clickOpen');
       closeAllModals();
       setShowDailyQuestModal(true);
-      setIsChestOpening(false);
-      setIsCycling(false);
-      setHasClickedChest(false);
-      setChestReward(null);
-      setCyclingReward(null);
     }
   };
 
@@ -2522,7 +2432,7 @@ export default function App() {
       playSound('clickClose');
       setShowLuckyWheelModal(false);
       if (!hasSeenCitySearchToday && !citySearchState?.active) {
-        toggleCitySearch(true);
+        setShowCitySearch(true);
         updateHasSeenCitySearchToday();
       }
     } else {
@@ -3414,10 +3324,6 @@ export default function App() {
         setPlayerName(data.name);
         localStorage.setItem('khamin_player_name', data.name);
       }
-      if (data.ownedHelpers !== undefined) {
-        setOwnedHelpers(data.ownedHelpers);
-        localStorage.setItem('khamin_owned_helpers', JSON.stringify(data.ownedHelpers));
-      }
       if (data.lastRenameAt !== undefined) {
         setLastRenameAt(data.lastRenameAt);
         localStorage.setItem('khamin_last_rename_at', data.lastRenameAt.toString());
@@ -3987,30 +3893,6 @@ export default function App() {
       showAlert("تم استلام المكافآت بنجاح! 🥳", "نجاح");
       setShowCitySearch(false);
       setCitySearchState(null);
-      
-      // Update state immediately for instant feedback
-      if (rewards.xp) setXp(prev => prev + rewards.xp);
-      if (rewards.tokens) setTokens(prev => prev + rewards.tokens);
-      
-      if (rewards.pro_package_days) {
-        const currentExpiry = proPackageExpiry || Date.now();
-        const base = currentExpiry < Date.now() ? Date.now() : currentExpiry;
-        const newExpiry = base + (rewards.pro_package_days * 24 * 60 * 60 * 1000);
-        setProPackageExpiry(newExpiry);
-        localStorage.setItem('khamin_pro_package_expiry', newExpiry.toString());
-      }
-      
-      setOwnedHelpers(prev => {
-        const next = { ...prev };
-        if (rewards.time_freeze) next.time_freeze = (next.time_freeze || 0) + rewards.time_freeze;
-        if (rewards.word_count) next.word_count = (next.word_count || 0) + rewards.word_count;
-        if (rewards.word_length) next.word_length = (next.word_length || 0) + rewards.word_length;
-        if (rewards.hint) next.hint = (next.hint || 0) + rewards.hint;
-        if (rewards.spy_lens) next.spy_lens = (next.spy_lens || 0) + rewards.spy_lens;
-        localStorage.setItem('khamin_owned_helpers', JSON.stringify(next));
-        return next;
-      });
-
       newSocket.emit("get_player_data", { serial: localStorage.getItem('khamin_player_serial'), fingerprint: localStorage.getItem('khamin_fingerprint') });
     });
 
@@ -5048,6 +4930,14 @@ export default function App() {
                           room.players[0].selectedCategory === room.players[1].selectedCategory &&
                           room.players[0].selectedCategory !== null;
 
+  const isSameDay = (d1: number, d2: number) => {
+    const date1 = new Date(d1);
+    const date2 = new Date(d2);
+    return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+           date1.getUTCMonth() === date2.getUTCMonth() &&
+           date1.getUTCDate() === date2.getUTCDate();
+  };
+
   const renderLuckyWheelModal = () => {
     const segments = SPIN_REWARDS_UI;
     const segmentAngle = 360 / segments.length;
@@ -5160,7 +5050,7 @@ export default function App() {
                       className={`w-full py-2 rounded-2xl font-black text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black transition-all active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 ${
                         isSpinning || localIsSpinning || spinCooldown > 0
                         ? 'bg-gray-300 cursor-not-allowed' 
-                        : (!hasUsedFreeSpin && spinStatus.hasFreeSpin) 
+                        : spinStatus.hasFreeSpin 
                           ? 'bg-accent-green text-white hover:brightness-110' 
                           : 'bg-accent-blue text-white hover:brightness-110'
                       }`}
@@ -6252,7 +6142,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[2000] flex items-center justify-center p-4"
-            onClick={() => toggleCitySearch()}
+            onClick={() => setShowCitySearch(false)}
           >
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
@@ -6265,7 +6155,7 @@ export default function App() {
                 <h3 className="font-black text-[14px] flex items-center gap-2">
                   <Search className="w-6 h-6" /> ابحث في المدينة عن الهدايا
                 </h3>
-                <button onClick={() => toggleCitySearch()} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
+                <button onClick={() => setShowCitySearch(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -10029,7 +9919,7 @@ export default function App() {
             </div>
 
             {showCitySearch && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => toggleCitySearch()}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCitySearch(false)}>
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -10040,7 +9930,7 @@ export default function App() {
               <h3 className="font-black text-xl flex items-center gap-2">
                 <Search className="w-6 h-6" /> البحث في المدينة
               </h3>
-              <button onClick={() => toggleCitySearch()} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
+              <button onClick={() => setShowCitySearch(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -10491,12 +10381,12 @@ export default function App() {
 
               {/* City Search Button */}
               <button 
-                onClick={() => toggleCitySearch()}
+                onClick={() => setShowCitySearch(true)}
                 className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                 title="البحث في المدينة"
               >
                 <Search className="w-4 h-4 md:w-5 md:h-5" />
-                {((citySearchState?.active && Date.now() >= citySearchState.endTime) || (!hasOpenedCitySearchToday && !citySearchState?.active)) && (
+                {citySearchState?.active && Date.now() >= citySearchState.endTime && (
                   <span className="absolute -top-1 -right-1 flex h-4 w-4">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
@@ -10869,12 +10759,12 @@ export default function App() {
 
             {/* City Search Button */}
             <button 
-              onClick={() => toggleCitySearch()}
+              onClick={() => setShowCitySearch(true)}
               className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               title="البحث في المدينة"
             >
               <Search className="w-4 h-4 md:w-5 md:h-5" />
-              {((citySearchState?.active && Date.now() >= citySearchState.endTime) || (!hasOpenedCitySearchToday && !citySearchState?.active)) && (
+              {citySearchState?.active && Date.now() >= citySearchState.endTime && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
@@ -10890,7 +10780,7 @@ export default function App() {
                 title="عجلة الحظ"
               >
                 <Disc className="w-4 h-4 md:w-5 md:h-5" />
-                {!hasUsedFreeSpin && spinStatus.hasFreeSpin && (
+                {spinStatus.hasFreeSpin && (
                   <span className="absolute -top-1 -right-1 flex h-4 w-4">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
@@ -11745,12 +11635,12 @@ export default function App() {
 
           {/* City Search Button */}
           <button 
-            onClick={() => toggleCitySearch()}
+            onClick={() => setShowCitySearch(true)}
             className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
             title="البحث في المدينة"
           >
             <Search className="w-4 h-4 md:w-5 md:h-5" />
-            {((citySearchState?.active && Date.now() >= citySearchState.endTime) || (!hasOpenedCitySearchToday && !citySearchState?.active)) && (
+            {citySearchState?.active && Date.now() >= citySearchState.endTime && (
               <span className="absolute -top-1 -right-1 flex h-4 w-4">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
