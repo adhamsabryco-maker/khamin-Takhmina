@@ -765,15 +765,6 @@ export default function App() {
   const [citySearchState, setCitySearchState] = useState<any>(null);
   const [isCitySearchLoaded, setIsCitySearchLoaded] = useState(false);
   const [displayedRewards, setDisplayedRewards] = useState<any>(null);
-
-  useEffect(() => {
-    // Preload City Search images
-    const cityImages = [1, 2, 3, 4, 5].map(id => `/city-gift-0${id}.jpg`);
-    cityImages.forEach(src => {
-      const img = new Image();
-      img.src = src;
-    });
-  }, []);
   const [citySearchTimeLeft, setCitySearchTimeLeft] = useState("");
   const [selectedCity, setSelectedCity] = useState(1);
   const [blockedPlayers, setBlockedPlayers] = useState<{serial: string, name: string}[]>([]);
