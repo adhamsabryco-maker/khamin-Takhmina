@@ -2052,6 +2052,24 @@ export default function App() {
     setHasSeenCitySearchToday(true);
     localStorage.setItem('khamin_has_seen_city_search_today', JSON.stringify({ date: Date.now() }));
   };
+
+  const [hasManuallyOpenedCitySearchToday, setHasManuallyOpenedCitySearchToday] = useState(() => {
+    const saved = localStorage.getItem('khamin_has_manually_opened_city_search_today');
+    if (saved) {
+      try {
+        const { date } = JSON.parse(saved);
+        return isSameDay(Date.now(), date);
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  const updateHasManuallyOpenedCitySearchToday = () => {
+    setHasManuallyOpenedCitySearchToday(true);
+    localStorage.setItem('khamin_has_manually_opened_city_search_today', JSON.stringify({ date: Date.now() }));
+  };
   const [spinStatus, setSpinStatus] = useState({ dailySpinCount: 0, freeSpinUsed: 0, maxPaidSpins: 10, hasFreeSpin: true });
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<any>(null);
@@ -2425,6 +2443,13 @@ export default function App() {
       closeAllModals();
       setShowDailyQuestModal(true);
     }
+  };
+
+  const handleOpenCitySearch = () => {
+    playSound('clickOpen');
+    closeAllModals();
+    setShowCitySearch(true);
+    updateHasManuallyOpenedCitySearchToday();
   };
 
   const toggleLuckyWheel = () => {
@@ -3893,6 +3918,30 @@ export default function App() {
       showAlert("تم استلام المكافآت بنجاح! 🥳", "نجاح");
       setShowCitySearch(false);
       setCitySearchState(null);
+      
+      // Update state immediately for instant feedback
+      if (rewards.xp) setXp(prev => prev + rewards.xp);
+      if (rewards.tokens) setTokens(prev => prev + rewards.tokens);
+      
+      if (rewards.pro_package_days) {
+        const currentExpiry = proPackageExpiry || Date.now();
+        const base = currentExpiry < Date.now() ? Date.now() : currentExpiry;
+        const newExpiry = base + (rewards.pro_package_days * 24 * 60 * 60 * 1000);
+        setProPackageExpiry(newExpiry);
+        localStorage.setItem('khamin_pro_package_expiry', newExpiry.toString());
+      }
+      
+      setOwnedHelpers(prev => {
+        const next = { ...prev };
+        if (rewards.time_freeze) next.time_freeze = (next.time_freeze || 0) + rewards.time_freeze;
+        if (rewards.word_count) next.word_count = (next.word_count || 0) + rewards.word_count;
+        if (rewards.word_length) next.word_length = (next.word_length || 0) + rewards.word_length;
+        if (rewards.hint) next.hint = (next.hint || 0) + rewards.hint;
+        if (rewards.spy_lens) next.spy_lens = (next.spy_lens || 0) + rewards.spy_lens;
+        localStorage.setItem('khamin_owned_helpers', JSON.stringify(next));
+        return next;
+      });
+
       newSocket.emit("get_player_data", { serial: localStorage.getItem('khamin_player_serial'), fingerprint: localStorage.getItem('khamin_fingerprint') });
     });
 
@@ -4929,14 +4978,6 @@ export default function App() {
   const consensusReached = room?.players.length === 2 && 
                           room.players[0].selectedCategory === room.players[1].selectedCategory &&
                           room.players[0].selectedCategory !== null;
-
-  const isSameDay = (d1: number, d2: number) => {
-    const date1 = new Date(d1);
-    const date2 = new Date(d2);
-    return date1.getUTCFullYear() === date2.getUTCFullYear() &&
-           date1.getUTCMonth() === date2.getUTCMonth() &&
-           date1.getUTCDate() === date2.getUTCDate();
-  };
 
   const renderLuckyWheelModal = () => {
     const segments = SPIN_REWARDS_UI;
@@ -10381,12 +10422,12 @@ export default function App() {
 
               {/* City Search Button */}
               <button 
-                onClick={() => setShowCitySearch(true)}
+                onClick={handleOpenCitySearch}
                 className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                 title="البحث في المدينة"
               >
                 <Search className="w-4 h-4 md:w-5 md:h-5" />
-                {citySearchState?.active && Date.now() >= citySearchState.endTime && (
+                {((citySearchState?.active && Date.now() >= citySearchState.endTime) || (!citySearchState?.active && !hasManuallyOpenedCitySearchToday)) && (
                   <span className="absolute -top-1 -right-1 flex h-4 w-4">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
@@ -10759,12 +10800,12 @@ export default function App() {
 
             {/* City Search Button */}
             <button 
-              onClick={() => setShowCitySearch(true)}
+              onClick={handleOpenCitySearch}
               className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               title="البحث في المدينة"
             >
               <Search className="w-4 h-4 md:w-5 md:h-5" />
-              {citySearchState?.active && Date.now() >= citySearchState.endTime && (
+              {((citySearchState?.active && Date.now() >= citySearchState.endTime) || (!citySearchState?.active && !hasManuallyOpenedCitySearchToday)) && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
@@ -11635,12 +11676,12 @@ export default function App() {
 
           {/* City Search Button */}
           <button 
-            onClick={() => setShowCitySearch(true)}
+            onClick={handleOpenCitySearch}
             className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
             title="البحث في المدينة"
           >
             <Search className="w-4 h-4 md:w-5 md:h-5" />
-            {citySearchState?.active && Date.now() >= citySearchState.endTime && (
+            {((citySearchState?.active && Date.now() >= citySearchState.endTime) || (!citySearchState?.active && !hasManuallyOpenedCitySearchToday)) && (
               <span className="absolute -top-1 -right-1 flex h-4 w-4">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
