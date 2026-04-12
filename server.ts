@@ -917,7 +917,8 @@ const app = express();
     luckyWheelTokens?: number,
     luckyWheelHelpers?: { [key: string]: number },
     lastLuckyWheelResetDay?: string,
-    luckyWheelDaysUsed?: number
+    luckyWheelDaysUsed?: number,
+    citySearchRewards?: { type: 'token' | 'helper', id?: string, amount: number, timestamp: number }[]
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -1107,6 +1108,7 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN luckyWheelHelpers TEXT DEFAULT '{}'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastLuckyWheelResetDay TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN luckyWheelDaysUsed INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN citySearchRewards TEXT DEFAULT '[]'`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -1292,8 +1294,8 @@ const app = express();
   `);
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -1418,6 +1420,32 @@ const app = express();
       needsSave = true;
     }
 
+    // City Search Reward Expiration (7 days)
+    if (player.citySearchRewards && player.citySearchRewards.length > 0) {
+      const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const initialCount = player.citySearchRewards.length;
+      
+      player.citySearchRewards = player.citySearchRewards.filter(reward => {
+        if (now - reward.timestamp > oneWeekMs) {
+          if (reward.type === 'token') {
+            player.tokens = Math.max(0, (player.tokens || 0) - reward.amount);
+          } else if (reward.type === 'helper' && reward.id) {
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            player.ownedHelpers[reward.id] = Math.max(0, (player.ownedHelpers[reward.id] || 0) - reward.amount);
+            if (player.ownedHelpers[reward.id] === 0) delete player.ownedHelpers[reward.id];
+          }
+          return false;
+        }
+        return true;
+      });
+
+      if (player.citySearchRewards.length !== initialCount) {
+        console.log(`[City Search] Expired ${initialCount - player.citySearchRewards.length} rewards for ${serial}`);
+        needsSave = true;
+      }
+    }
+
     if (needsSave) {
       savePlayerData(serial);
       if (socket) {
@@ -1475,12 +1503,62 @@ const app = express();
         luckyWheelTokens: player.luckyWheelTokens || 0,
         luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
         lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
-        luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0
+        luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
+        citySearchRewards: JSON.stringify(player.citySearchRewards || [])
       });
       invalidateTopPlayersCache();
     } catch (err) {
       console.error(`Failed to save player data for ${serial}:`, err);
     }
+  }
+
+  function consumeHelper(player: any, helperId: string) {
+    if (!player.ownedHelpers || !player.ownedHelpers[helperId] || player.ownedHelpers[helperId] <= 0) return false;
+    
+    // Deduct from temporary buckets first
+    if (player.rainGiftHelpers && player.rainGiftHelpers[helperId] > 0) {
+      player.rainGiftHelpers[helperId] -= 1;
+    } else if (player.luckyWheelHelpers && player.luckyWheelHelpers[helperId] > 0) {
+      player.luckyWheelHelpers[helperId] -= 1;
+    } else if (player.citySearchRewards) {
+      // Deduct from oldest city search reward first
+      const rewardIndex = player.citySearchRewards.findIndex((r: any) => r.type === 'helper' && r.id === helperId && r.amount > 0);
+      if (rewardIndex !== -1) {
+        player.citySearchRewards[rewardIndex].amount -= 1;
+        if (player.citySearchRewards[rewardIndex].amount <= 0) {
+          player.citySearchRewards.splice(rewardIndex, 1);
+        }
+      }
+    }
+
+    player.ownedHelpers[helperId] -= 1;
+    if (player.ownedHelpers[helperId] <= 0) {
+      delete player.ownedHelpers[helperId];
+    }
+    return true;
+  }
+
+  function consumeToken(player: any) {
+    if (!player.tokens || player.tokens <= 0) return false;
+
+    // Deduct from temporary buckets first
+    if (player.rainGiftTokens && player.rainGiftTokens > 0) {
+      player.rainGiftTokens -= 1;
+    } else if (player.luckyWheelTokens && player.luckyWheelTokens > 0) {
+      player.luckyWheelTokens -= 1;
+    } else if (player.citySearchRewards) {
+      // Deduct from oldest city search reward first
+      const rewardIndex = player.citySearchRewards.findIndex((r: any) => r.type === 'token' && r.amount > 0);
+      if (rewardIndex !== -1) {
+        player.citySearchRewards[rewardIndex].amount -= 1;
+        if (player.citySearchRewards[rewardIndex].amount <= 0) {
+          player.citySearchRewards.splice(rewardIndex, 1);
+        }
+      }
+    }
+
+    player.tokens -= 1;
+    return true;
   }
 
   const insertMany = db.transaction((players) => {
@@ -3791,13 +3869,7 @@ io.on("connection", (socket) => {
       }
 
       // Deduct
-      if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[helperId] > 0) {
-        dbPlayer.rainGiftHelpers[helperId] -= 1;
-      }
-      dbPlayer.ownedHelpers[helperId] -= 1;
-      if (dbPlayer.ownedHelpers[helperId] === 0) {
-        delete dbPlayer.ownedHelpers[helperId];
-      }
+      consumeHelper(dbPlayer, helperId);
       savePlayerData(serial);
       socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers });
 
@@ -4018,7 +4090,14 @@ io.on("connection", (socket) => {
 
       player.xp += state.rewards.xp;
       
+      if (!player.citySearchRewards) player.citySearchRewards = [];
+      const now = Date.now();
+
       if (state.rewards.tokens > 0) {
+        player.tokens = (player.tokens || 0) + state.rewards.tokens;
+        player.citySearchRewards.push({ type: 'token', amount: state.rewards.tokens, timestamp: now });
+        
+        // Sync with settings table if needed (though we should prefer players table)
         const tokenRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`tokens_${serial}`);
         let currentTokens = tokenRow ? parseInt(tokenRow.value) : 0;
         db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(`tokens_${serial}`, (currentTokens + state.rewards.tokens).toString());
@@ -4030,21 +4109,38 @@ io.on("connection", (socket) => {
         if (currentExpiry < Date.now()) currentExpiry = Date.now();
         const newExpiry = currentExpiry + (state.rewards.pro_package_days * 24 * 60 * 60 * 1000);
         db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(`pro_package_${serial}`, newExpiry.toString());
+        player.proPackageExpiry = newExpiry;
       }
 
       if (!player.ownedHelpers) player.ownedHelpers = {};
-      if (state.rewards.time_freeze > 0) player.ownedHelpers.time_freeze = (player.ownedHelpers.time_freeze || 0) + state.rewards.time_freeze;
-      if (state.rewards.word_count > 0) player.ownedHelpers.word_count = (player.ownedHelpers.word_count || 0) + state.rewards.word_count;
-      if (state.rewards.word_length > 0) player.ownedHelpers.word_length = (player.ownedHelpers.word_length || 0) + state.rewards.word_length;
-      if (state.rewards.hint > 0) player.ownedHelpers.hint = (player.ownedHelpers.hint || 0) + state.rewards.hint;
-      if (state.rewards.spy_lens > 0) player.ownedHelpers.spy_lens = (player.ownedHelpers.spy_lens || 0) + state.rewards.spy_lens;
+      const helperRewards = [
+        { id: 'time_freeze', amount: state.rewards.time_freeze },
+        { id: 'word_count', amount: state.rewards.word_count },
+        { id: 'word_length', amount: state.rewards.word_length },
+        { id: 'hint', amount: state.rewards.hint },
+        { id: 'spy_lens', amount: state.rewards.spy_lens }
+      ];
 
-      db.prepare("UPDATE players SET xp = ?, ownedHelpers = ? WHERE serial = ?").run(player.xp, JSON.stringify(player.ownedHelpers), serial);
+      helperRewards.forEach(reward => {
+        if (reward.amount > 0) {
+          player.ownedHelpers[reward.id] = (player.ownedHelpers[reward.id] || 0) + reward.amount;
+          player.citySearchRewards.push({ type: 'helper', id: reward.id, amount: reward.amount, timestamp: now });
+        }
+      });
+
+      savePlayerData(serial);
       
       db.prepare("DELETE FROM settings WHERE key = ?").run(`city_search_${serial}`);
       
       socket.emit("city_search_update", null);
       socket.emit("rewards_claimed", state.rewards);
+      socket.emit("player_data_update", {
+        serial,
+        xp: player.xp,
+        tokens: player.tokens,
+        ownedHelpers: player.ownedHelpers,
+        proPackageExpiry: player.proPackageExpiry
+      });
     });
 
     socket.on("get_player_data", (data, callback) => {
@@ -4695,13 +4791,7 @@ io.on("connection", (socket) => {
           // If they have a free use (gift), we consume it
           // This is mandatory if they are level-locked, and optional but preferred if they aren't
           if (hasFreeUse && !hasPro && !hasUnlockedHelpers) {
-            if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[cardType] > 0) {
-              dbPlayer.rainGiftHelpers[cardType] -= 1;
-            }
-            dbPlayer.ownedHelpers[cardType] -= 1;
-            if (dbPlayer.ownedHelpers[cardType] <= 0) {
-              delete dbPlayer.ownedHelpers[cardType];
-            }
+            consumeHelper(dbPlayer, cardType);
             savePlayerData(serial);
             socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers });
             
@@ -4712,13 +4802,7 @@ io.on("connection", (socket) => {
         }
         
         if (hasFreeUse && !hasPro && !hasUnlockedHelpers) { // Only deduct if NOT Pro and NOT using Unlocked Helpers
-          if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[cardType] > 0) {
-            dbPlayer.rainGiftHelpers[cardType] -= 1;
-          }
-          dbPlayer.ownedHelpers[cardType] -= 1;
-          if (dbPlayer.ownedHelpers[cardType] <= 0) {
-            delete dbPlayer.ownedHelpers[cardType];
-          }
+          consumeHelper(dbPlayer, cardType);
           savePlayerData(serial);
           socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers });
           
@@ -6380,10 +6464,7 @@ io.on("connection", (socket) => {
           if (p.useToken && (player.tokens || 0) > 0) {
             const isRefundedWinner = (p.id === winner?.id) && refundWinnerToken;
             if (!isRefundedWinner) {
-              if (player.rainGiftTokens && player.rainGiftTokens > 0) {
-                player.rainGiftTokens -= 1;
-              }
-              player.tokens = (player.tokens || 0) - 1;
+              consumeToken(player);
             }
           }
           
