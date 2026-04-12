@@ -2436,22 +2436,16 @@ export default function App() {
   }, [socket, isConnected, playerSerial]);
 
   const handleClaimDailyQuest = () => {
-    if (!socket || !isConnected || !playerSerial) {
-      showAlert('عذراً، لا يوجد اتصال بالخادم حالياً. يرجى المحاولة مرة أخرى.', 'تنبيه');
-      return;
-    }
     setIsChestOpening(true);
     setPendingDailyReward(null); // Reset pending reward
     playSound('clickOpen');
-    socket.emit('claim_daily_quest', { serial: playerSerial, isPro: hasProPackage });
+    if (socket) {
+      socket.emit('claim_daily_quest', { serial: playerSerial, isPro: hasProPackage });
+    }
   };
 
   const startCycling = () => {
-    if (isCycling) return;
-    if (!pendingDailyReward) {
-      showAlert('جاري تجهيز جائزتك، يرجى المحاولة مرة أخرى خلال ثانية...', 'تنبيه');
-      return;
-    }
+    if (!pendingDailyReward || isCycling) return;
     setIsCycling(true);
     playSound('chestOpen');
     
