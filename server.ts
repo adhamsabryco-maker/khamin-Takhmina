@@ -2365,6 +2365,7 @@ const app = express();
           playerId: 'bot_' + Date.now(),
           playerName: botPersona.name,
           avatar: botAvatar,
+          gender: botPersona.gender,
           age: botPersona.age,
           xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
           streak: 0,
@@ -2460,11 +2461,11 @@ const app = express();
 
         p1.socket.emit("match_proposed", {
           matchId,
-          opponent: { name: p2.playerName, avatar: p2.avatar, selectedFrame: p2.selectedFrame || '', age: p2.age, level: getLevel(p2.xp || 0) }
+          opponent: { name: p2.playerName, avatar: p2.avatar, gender: p2.gender, selectedFrame: p2.selectedFrame || '', age: p2.age, level: getLevel(p2.xp || 0) }
         });
         p2.socket.emit("match_proposed", {
           matchId,
-          opponent: { name: p1.playerName, avatar: p1.avatar, selectedFrame: p1.selectedFrame || '', age: p1.age, level: getLevel(p1.xp || 0) }
+          opponent: { name: p1.playerName, avatar: p1.avatar, gender: p1.gender, selectedFrame: p1.selectedFrame || '', age: p1.age, level: getLevel(p1.xp || 0) }
         });
 
         break; // Found a match for p1, move to next available player
@@ -2521,6 +2522,7 @@ const app = express();
           name: match.p1.playerName,
           age: match.p1.age,
           avatar: match.p1.avatar,
+          gender: match.p1.gender || 'boy',
           selectedFrame: match.p1.selectedFrame || '',
           score: 1000,
           targetImage: null,
@@ -2553,6 +2555,7 @@ const app = express();
           name: match.p2.playerName,
           age: match.p2.age,
           avatar: match.p2.avatar,
+          gender: match.p2.gender || 'boy',
           selectedFrame: match.p2.selectedFrame || '',
           score: 1000,
           targetImage: null,
@@ -4425,6 +4428,7 @@ io.on("connection", (socket) => {
         playerId, 
         playerName: actualName, 
         avatar, 
+        gender: bannedPlayer.gender || 'boy',
         selectedFrame: bannedPlayer.selectedFrame || '',
         age: validAge,
         xp: actualXp,
