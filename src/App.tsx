@@ -1761,9 +1761,33 @@ export default function App() {
   const [pushTitle, setPushTitle] = useState('');
   const [pushBody, setPushBody] = useState('');
   const [pushUrl, setPushUrl] = useState('/');
+  const [pushStartDate, setPushStartDate] = useState('');
+  const [pushEndDate, setPushEndDate] = useState('');
+  const [pushTime, setPushTime] = useState('');
+  const [scheduledPushes, setScheduledPushes] = useState<any[]>([]);
   const [isSendingPush, setIsSendingPush] = useState(false);
   const [pushStats, setPushStats] = useState<{ count: number, totalPlayers: number } | null>(null);
   const [pushStatsError, setPushStatsError] = useState<string | null>(null);
+
+  const fetchScheduledPushes = async () => {
+    const adminToken = localStorage.getItem('khamin_admin_token');
+    if (!adminToken) return;
+    try {
+      const res = await fetch(`/api/push/scheduled?adminToken=${adminToken}`);
+      if (res.ok) {
+        const data = await res.json();
+        setScheduledPushes(data);
+      }
+    } catch (err) {
+      console.error("Error fetching scheduled pushes:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin && showAdminDashboard && adminTab === 'notifications') {
+      fetchScheduledPushes();
+    }
+  }, [isAdmin, showAdminDashboard, adminTab]);
 
   const subscribeToPush = async (force = false) => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -1931,6 +1955,37 @@ export default function App() {
   const [confirmedAttributes, setConfirmedAttributes] = useState<string[]>([]);
   const lastInitializedQuickChatRef = useRef<string | null>(null);
 
+  const hasShownRainGiftAlertRef = useRef(false);
+
+  useEffect(() => {
+    if (isRainGiftActive && gamePolicies.isRainGiftEnabled && !hasShownRainGiftAlertRef.current && !showRainGiftGame && !showRainGiftSummary) {
+      hasShownRainGiftAlertRef.current = true;
+      showConfirm(
+        'بدأ حدث مطر الهدايا الآن! هل تريد الانضمام للحدث وجمع الهدايا؟',
+        () => {
+          if (room) {
+            socket?.emit('leave_room', { roomId: room.id }, () => {
+              resetToHome();
+              setShowRainGiftGame(true);
+            });
+          } else if (isSearching) {
+            socket?.emit('leave_matchmaking');
+            resetToHome();
+            setShowRainGiftGame(true);
+          } else {
+            setShowRainGiftGame(true);
+          }
+        },
+        'حدث مطر الهدايا 🎁',
+        () => {}, // onCancel
+        'اشترك الأن',
+        'حسنا'
+      );
+    } else if (!isRainGiftActive) {
+      hasShownRainGiftAlertRef.current = false;
+    }
+  }, [isRainGiftActive, gamePolicies.isRainGiftEnabled, showRainGiftGame, showRainGiftSummary, room, isSearching, socket]);
+
   useEffect(() => {
     if (room?.gameState === 'discussion' && room.category && customConfig?.quickChat) {
       const initKey = `${room.id}-${room.category}`;
@@ -2011,7 +2066,7 @@ export default function App() {
   }, [error]);
 
   const [customAlert, setCustomAlert] = useState<{ show: boolean, message: string, title?: string }>({ show: false, message: '' });
-  const [customConfirm, setCustomConfirm] = useState<{ show: boolean, message: string, title?: string, onConfirm: () => void }>({ show: false, message: '', onConfirm: () => {} });
+  const [customConfirm, setCustomConfirm] = useState<{ show: boolean, message: string, title?: string, onConfirm: () => void, onCancel?: () => void, confirmText?: string, cancelText?: string }>({ show: false, message: '', onConfirm: () => {} });
   const [customPrompt, setCustomPrompt] = useState<{ show: boolean, message: string, defaultValue?: string, title?: string, onConfirm: (value: string) => void }>({ show: false, message: '', onConfirm: () => {} });
   const [hasSeenLevelInfo, setHasSeenLevelInfo] = useState(() => {
     return localStorage.getItem('khamin_seen_level_info') === 'true';
@@ -2347,6 +2402,9 @@ export default function App() {
   const checkAndShowNextModal = () => {
     if (joined || !playerSerial || !isConnected || !isCitySearchLoaded || !isSpinStatusLoaded) return;
 
+    // Prevent opening the next modal if any of the sequence modals (or welcome modal) are currently open
+    if (showWelcomeModal || showDailyQuestModal || showLuckyWheelModal || showCitySearch) return;
+
     // 1. Daily Quest
     const hasUnclaimedDaily = lastDailyClaim === 0 || !isSameDay(Date.now(), lastDailyClaim);
     if (!hasSeenDailyToday && hasUnclaimedDaily) {
@@ -2377,7 +2435,7 @@ export default function App() {
 
   useEffect(() => {
     checkAndShowNextModal();
-  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, isConnected, isCitySearchLoaded, isSpinStatusLoaded, hasSeenLuckyWheelThisSession, spinStatus.hasFreeSpin, luckyWheelEnabled, isAdmin, hasSeenCitySearchToday, citySearchState]);
+  }, [joined, lastDailyClaim, hasSeenDailyToday, playerSerial, isConnected, isCitySearchLoaded, isSpinStatusLoaded, hasSeenLuckyWheelThisSession, spinStatus.hasFreeSpin, luckyWheelEnabled, isAdmin, hasSeenCitySearchToday, citySearchState, showWelcomeModal, showDailyQuestModal, showLuckyWheelModal, showCitySearch]);
 
   useEffect(() => {
     if (socket && isConnected && playerSerial) {
@@ -2644,8 +2702,8 @@ export default function App() {
     playSound('notification');
   };
 
-  const showConfirm = (message: string, onConfirm: () => void, title: string = 'تأكيد') => {
-    setCustomConfirm({ show: true, message, title, onConfirm });
+  const showConfirm = (message: string, onConfirm: () => void, title: string = 'تأكيد', onCancel?: () => void, confirmText?: string, cancelText?: string) => {
+    setCustomConfirm({ show: true, message, title, onConfirm, onCancel, confirmText, cancelText });
     playSound('clickOpen');
   };
 
@@ -5787,13 +5845,16 @@ export default function App() {
                   }}
                   className="flex-1 btn-game btn-danger py-3 text-lg"
                 >
-                  نعم
+                  {customConfirm.confirmText || 'نعم'}
                 </button>
                 <button 
-                  onClick={() => setCustomConfirm({ ...customConfirm, show: false })}
+                  onClick={() => {
+                    if (customConfirm.onCancel) customConfirm.onCancel();
+                    setCustomConfirm({ ...customConfirm, show: false });
+                  }}
                   className="flex-1 btn-game btn-primary py-3 text-lg"
                 >
-                  إلغاء
+                  {customConfirm.cancelText || 'إلغاء'}
                 </button>
               </div>
             </motion.div>
@@ -6353,9 +6414,54 @@ export default function App() {
                   )}
                   
                   {isCitySearchFinished && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-10">
-                      <div className="bg-accent-green text-white px-6 py-3 rounded-full font-black text-xl shadow-lg flex items-center gap-2 animate-bounce">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10 rounded-2xl p-4">
+                      <div className="bg-accent-green text-white px-6 py-3 rounded-full font-black text-xl shadow-lg flex items-center gap-2 animate-bounce mb-4">
                         <Gift className="w-6 h-6" /> اكتمل البحث!
+                      </div>
+                      <div className="bg-white/95 p-3 rounded-xl shadow-lg border-2 border-accent-green w-full max-w-sm">
+                        <h4 className="text-center font-bold text-sm text-gray-700 mb-2">المكافآت التي حصلت عليها:</h4>
+                        <div className="flex flex-wrap justify-center gap-2" dir="ltr">
+                          {displayedRewards && (
+                            <span className="px-2 py-1 bg-orange-100 rounded-lg text-xs font-bold text-orange-600 flex items-center gap-1">
+                              <Star className="w-4 h-4" /> {displayedRewards.xp} XP
+                            </span>
+                          )}
+                          {displayedRewards && (
+                            <span className="px-2 py-1 bg-purple-100 rounded-lg text-xs font-bold text-purple-600 flex items-center gap-1">
+                              <Coins className="w-4 h-4" /> {displayedRewards.tokens}
+                            </span>
+                          )}
+                          {displayedRewards && displayedRewards.pro_package_days > 0 && (
+                            <span className="px-2 py-1 bg-yellow-100 rounded-lg text-xs font-bold text-yellow-600 flex items-center gap-1">
+                              <Crown className="w-4 h-4" /> {displayedRewards.pro_package_days}
+                            </span>
+                          )}
+                          {displayedRewards && displayedRewards.time_freeze > 0 && (
+                            <span className="px-2 py-1 bg-cyan-100 rounded-lg text-xs font-bold text-cyan-600 flex items-center gap-1">
+                              <Snowflake className="w-4 h-4" /> {displayedRewards.time_freeze}
+                            </span>
+                          )}
+                          {displayedRewards && displayedRewards.word_count > 0 && (
+                            <span className="px-2 py-1 bg-indigo-100 rounded-lg text-xs font-bold text-indigo-600 flex items-center gap-1">
+                              <Hash className="w-4 h-4" /> {displayedRewards.word_count}
+                            </span>
+                          )}
+                          {displayedRewards && displayedRewards.word_length > 0 && (
+                            <span className="px-2 py-1 bg-green-100 rounded-lg text-xs font-bold text-green-600 flex items-center gap-1">
+                              <Type className="w-4 h-4" /> {displayedRewards.word_length}
+                            </span>
+                          )}
+                          {displayedRewards && displayedRewards.hint > 0 && (
+                            <span className="px-2 py-1 bg-blue-100 rounded-lg text-xs font-bold text-blue-600 flex items-center gap-1">
+                              <HelpCircle className="w-4 h-4" /> {displayedRewards.hint}
+                            </span>
+                          )}
+                          {displayedRewards && displayedRewards.spy_lens > 0 && (
+                            <span className="px-2 py-1 bg-purple-100 rounded-lg text-xs font-bold text-purple-600 flex items-center gap-1">
+                              <Eye className="w-4 h-4" /> {displayedRewards.spy_lens}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -8937,29 +9043,103 @@ export default function App() {
                                   dir="ltr"
                                 />
                               </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-sm font-black text-brown-dark mb-1">من تاريخ (اختياري)</label>
+                                  <input
+                                    type="date"
+                                    value={pushStartDate}
+                                    onChange={(e) => setPushStartDate(e.target.value)}
+                                    className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-purple outline-none"
+                                    dir="ltr"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-black text-brown-dark mb-1">إلى تاريخ (اختياري)</label>
+                                  <input
+                                    type="date"
+                                    value={pushEndDate}
+                                    onChange={(e) => setPushEndDate(e.target.value)}
+                                    className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-purple outline-none"
+                                    dir="ltr"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-black text-brown-dark mb-1">وقت الإرسال (اختياري)</label>
+                                  <input
+                                    type="time"
+                                    value={pushTime}
+                                    onChange={(e) => setPushTime(e.target.value)}
+                                    className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold focus:border-accent-purple outline-none"
+                                    dir="ltr"
+                                  />
+                                </div>
+                              </div>
                               <button
                                 disabled={isSendingPush || !pushTitle || !pushBody}
                                 onClick={async () => {
                                   setIsSendingPush(true);
                                   try {
-                                    const response = await fetch('/api/push/send', {
+                                    const isScheduled = pushStartDate && pushEndDate && pushTime;
+                                    const endpoint = isScheduled ? '/api/push/schedule' : '/api/push/send';
+                                    
+                                    let scheduledTimes: number[] = [];
+                                    if (isScheduled) {
+                                      const start = new Date(`${pushStartDate}T${pushTime}`);
+                                      const end = new Date(`${pushEndDate}T${pushTime}`);
+                                      
+                                      if (start > end) {
+                                        showAlert('تاريخ النهاية يجب أن يكون بعد أو يساوي تاريخ البداية', 'خطأ');
+                                        setIsSendingPush(false);
+                                        return;
+                                      }
+                                      
+                                      let current = new Date(start);
+                                      while (current <= end) {
+                                        if (current.getTime() > Date.now()) {
+                                          scheduledTimes.push(current.getTime());
+                                        }
+                                        current.setDate(current.getDate() + 1);
+                                      }
+                                      
+                                      if (scheduledTimes.length === 0) {
+                                        showAlert('يجب اختيار وقت وتاريخ في المستقبل', 'خطأ');
+                                        setIsSendingPush(false);
+                                        return;
+                                      }
+                                    } else if (pushStartDate || pushEndDate || pushTime) {
+                                      showAlert('يجب إدخال (من تاريخ) و (إلى تاريخ) و (وقت الإرسال) معاً لجدولة الإشعار', 'خطأ');
+                                      setIsSendingPush(false);
+                                      return;
+                                    }
+
+                                    const response = await fetch(endpoint, {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({
                                         title: pushTitle,
                                         body: pushBody,
                                         url: pushUrl,
+                                        scheduledTimes,
                                         adminToken: localStorage.getItem('khamin_admin_token')
                                       })
                                     });
                                     const res = await response.json();
                                     if (res.success) {
-                                      const msg = res.sentCount === res.totalAttempted 
-                                        ? `تم إرسال الإشعار لـ ${res.sentCount} جهاز بنجاح! 🔔`
-                                        : `تم إرسال الإشعار لـ ${res.sentCount} من أصل ${res.totalAttempted} جهاز بنجاح! (تم تنظيف الاشتراكات القديمة)`;
-                                      showAlert(msg, 'نجاح');
+                                      if (isScheduled) {
+                                        showAlert('تم جدولة الإشعار بنجاح! 📅', 'نجاح');
+                                        fetchScheduledPushes();
+                                      } else {
+                                        const msg = res.sentCount === res.totalAttempted 
+                                          ? `تم إرسال الإشعار لـ ${res.sentCount} جهاز بنجاح! 🔔`
+                                          : `تم إرسال الإشعار لـ ${res.sentCount} من أصل ${res.totalAttempted} جهاز بنجاح! (تم تنظيف الاشتراكات القديمة)`;
+                                        showAlert(msg, 'نجاح');
+                                      }
                                       setPushTitle('');
                                       setPushBody('');
+                                      setPushStartDate('');
+                                      setPushEndDate('');
+                                      setPushTime('');
                                     } else {
                                       showAlert('فشل إرسال الإشعار', 'خطأ');
                                     }
@@ -8971,9 +9151,75 @@ export default function App() {
                                 }}
                                 className={`w-full py-4 bg-accent-purple hover:bg-purple-600 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1 ${isSendingPush ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
-                                {isSendingPush ? 'جاري الإرسال...' : 'إرسال إشعار للهواتف الآن'}
+                                {isSendingPush ? 'جاري الإرسال...' : (pushStartDate && pushEndDate && pushTime ? 'جدولة الإشعار' : 'إرسال إشعار للهواتف الآن')}
                               </button>
                             </div>
+
+                            {/* Scheduled Pushes List */}
+                            {scheduledPushes.length > 0 && (
+                              <div className="mt-8">
+                                <h4 className="font-black text-brown-dark mb-4 text-lg">الإشعارات المجدولة</h4>
+                                <div className="space-y-3">
+                                  {Object.values(
+                                    scheduledPushes.reduce((acc: any, push: any) => {
+                                      const key = push.groupId || push.id;
+                                      if (!acc[key]) acc[key] = { id: key, title: push.title, body: push.body, pushes: [] };
+                                      acc[key].pushes.push(push);
+                                      return acc;
+                                    }, {})
+                                  ).map((group: any) => {
+                                    const pushes = group.pushes.sort((a: any, b: any) => a.scheduledAt - b.scheduledAt);
+                                    const startDate = pushes[0].scheduledAt;
+                                    const endDate = pushes[pushes.length - 1].scheduledAt;
+                                    const pendingCount = pushes.filter((p: any) => p.status === 'pending').length;
+                                    const sentCount = pushes.filter((p: any) => p.status === 'sent').length;
+                                    const isCompleted = pendingCount === 0;
+
+                                    return (
+                                      <div key={group.id} className="bg-white border-2 border-gray-200 p-4 rounded-xl flex justify-between items-center">
+                                        <div>
+                                          <h5 className="font-bold text-accent-purple">{group.title}</h5>
+                                          <p className="text-sm text-brown-muted mt-1">{group.body}</p>
+                                          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs font-bold text-gray-500">
+                                            <Clock className="w-3 h-3" />
+                                            <span>من: {new Date(startDate).toLocaleDateString('ar-EG')}</span>
+                                            <span>إلى: {new Date(endDate).toLocaleDateString('ar-EG')}</span>
+                                            <span>الساعة: {new Date(startDate).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
+                                            <span className={`px-2 py-0.5 rounded-full ${isCompleted ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                              {isCompleted ? 'مكتمل' : `متبقي ${pendingCount} أيام`}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        {!isCompleted && (
+                                          <button
+                                            onClick={async () => {
+                                              if (window.confirm('هل أنت متأكد من إيقاف وحذف هذا الإشعار المجدول؟')) {
+                                                try {
+                                                  const adminToken = localStorage.getItem('khamin_admin_token');
+                                                  const res = await fetch(`/api/push/scheduled/${group.id}?adminToken=${adminToken}`, {
+                                                    method: 'DELETE'
+                                                  });
+                                                  if (res.ok) {
+                                                    showAlert('تم حذف الإشعار المجدول', 'نجاح');
+                                                    fetchScheduledPushes();
+                                                  }
+                                                } catch (err) {
+                                                  showAlert('حدث خطأ أثناء الحذف', 'خطأ');
+                                                }
+                                              }
+                                            }}
+                                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                                            title="إيقاف الإشعار"
+                                          >
+                                            <Trash2 className="w-5 h-5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           <div className="border-t-2 border-dashed border-gray-200 pt-8 mt-8">
