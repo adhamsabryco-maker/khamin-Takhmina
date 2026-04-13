@@ -748,6 +748,88 @@ const app = express();
     });
   });
 
+  app.get("/api/push/scheduled", express.json(), (req, res) => {
+    const adminToken = req.query.adminToken as string;
+    if (!adminTokens.has(adminToken)) return res.status(403).json({ error: "Unauthorized" });
+    
+    const scheduled = db.prepare('SELECT * FROM scheduled_push_notifications ORDER BY scheduledAt ASC').all();
+    res.json(scheduled);
+  });
+
+  app.post("/api/push/schedule", express.json(), (req, res) => {
+    const { title, body, url, scheduledTimes, adminToken } = req.body;
+    if (!adminTokens.has(adminToken)) return res.status(403).json({ error: "Unauthorized" });
+    
+    const groupId = Math.random().toString(36).substring(2, 15);
+    const createdAt = Date.now();
+    
+    const insert = db.prepare(`
+      INSERT INTO scheduled_push_notifications (id, title, body, url, scheduledAt, createdAt, status, groupId)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+    `);
+    
+    const transaction = db.transaction((times: number[]) => {
+      for (const time of times) {
+        const id = Math.random().toString(36).substring(2, 15);
+        insert.run(id, title, body, url || '/', time, createdAt, groupId);
+      }
+    });
+    
+    transaction(scheduledTimes);
+    res.json({ success: true, groupId });
+  });
+
+  app.delete("/api/push/scheduled/:id", express.json(), (req, res) => {
+    const adminToken = req.query.adminToken as string;
+    if (!adminTokens.has(adminToken)) return res.status(403).json({ error: "Unauthorized" });
+    
+    db.prepare('DELETE FROM scheduled_push_notifications WHERE id = ? OR groupId = ?').run(req.params.id, req.params.id);
+    res.json({ success: true });
+  });
+
+  // Background worker for scheduled push notifications
+  setInterval(async () => {
+    const now = Date.now();
+    const pendingNotifications = db.prepare(`
+      SELECT * FROM scheduled_push_notifications 
+      WHERE status = 'pending' AND scheduledAt <= ?
+    `).all(now) as any[];
+
+    for (const notification of pendingNotifications) {
+      // Mark as sending to prevent duplicate sends
+      db.prepare("UPDATE scheduled_push_notifications SET status = 'sending' WHERE id = ?").run(notification.id);
+      
+      const subscriptions = db.prepare(`
+        SELECT ps.subscription, ps.serial 
+        FROM push_subscriptions ps
+        LEFT JOIN players p ON ps.serial = p.serial
+        WHERE p.notificationsEnabled = 1 OR ps.serial IS NULL
+      `).all() as any[];
+      
+      const payload = JSON.stringify({ title: notification.title, body: notification.body, url: notification.url || '/' });
+      
+      console.log(`[Push] Sending scheduled notification "${notification.title}" to ${subscriptions.length} devices...`);
+      
+      const sendPromises = subscriptions.map(async (sub) => {
+        try {
+          const subscription = JSON.parse(sub.subscription);
+          await webpush.sendNotification(subscription, payload);
+          return true;
+        } catch (err: any) {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
+          }
+          return false;
+        }
+      });
+
+      await Promise.all(sendPromises);
+      
+      // Mark as sent
+      db.prepare("UPDATE scheduled_push_notifications SET status = 'sent' WHERE id = ?").run(notification.id);
+    }
+  }, 60000); // Check every minute
+
   app.post("/api/claim-level-50-reward", (req, res) => {
     const { serial } = req.body;
     const player = allPlayers.get(serial);
@@ -1292,6 +1374,24 @@ const app = express();
       PRIMARY KEY (player_serial, category_id, stage)
     )
   `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS scheduled_push_notifications (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      url TEXT,
+      scheduledAt INTEGER NOT NULL,
+      createdAt INTEGER NOT NULL,
+      status TEXT DEFAULT 'pending',
+      groupId TEXT
+    )
+  `);
+  try {
+    db.exec("ALTER TABLE scheduled_push_notifications ADD COLUMN groupId TEXT");
+  } catch (e) {
+    // Ignore if column already exists
+  }
 
   const insertPlayer = db.prepare(`
     INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards)
