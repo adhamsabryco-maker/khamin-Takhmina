@@ -1630,7 +1630,7 @@ export default function App() {
     const displayStar = customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null);
 
     return (
-      <div className="flex justify-center gap-1 mt-1">
+      <div className="flex justify-center gap-1 mt-1" dir="ltr">
         {Array.from({ length: starsCount }).map((_, i) => (
           <motion.div
             key={i}
@@ -1877,6 +1877,7 @@ export default function App() {
   const toggleNotifications = async () => {
     const newValue = !notificationsEnabled;
     setNotificationsEnabled(newValue);
+    playSound('clickOpen');
     localStorage.setItem('khamin_notifications_enabled', newValue.toString());
     
     if (newValue) {
@@ -1991,7 +1992,7 @@ export default function App() {
   }, [room?.gameState, room?.category, room?.id, customConfig?.quickChat, categories]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [totalPlayersCount, setTotalPlayersCount] = useState(0);
-  const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, selectedFrame?: string, age: number, level?: number } } | null>(null);
+  const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, gender?: string, selectedFrame?: string, age: number, level?: number } } | null>(null);
   const [hasResponded, setHasResponded] = useState(false);
   const [opponentAccepted, setOpponentAccepted] = useState(false);
   const [matchResponseTimeLeft, setMatchResponseTimeLeft] = useState<number | null>(null);
@@ -2071,7 +2072,19 @@ export default function App() {
     setHasManuallyOpenedCitySearchToday(true);
     localStorage.setItem('khamin_has_manually_opened_city_search_today', JSON.stringify({ date: Date.now() }));
   };
-  const [spinStatus, setSpinStatus] = useState({ dailySpinCount: 0, freeSpinUsed: 0, maxPaidSpins: 10, hasFreeSpin: true });
+  const [spinStatus, setSpinStatus] = useState(() => {
+    const saved = localStorage.getItem('khamin_has_used_free_spin');
+    const lastUsed = localStorage.getItem('khamin_last_free_spin_date');
+    let hasFreeSpin = true;
+    if (saved === 'true' && lastUsed) {
+      const d1 = new Date();
+      const d2 = new Date(parseInt(lastUsed));
+      if (d1.getUTCFullYear() === d2.getUTCFullYear() && d1.getUTCMonth() === d2.getUTCMonth() && d1.getUTCDate() === d2.getUTCDate()) {
+        hasFreeSpin = false;
+      }
+    }
+    return { dailySpinCount: 0, freeSpinUsed: hasFreeSpin ? 0 : 1, maxPaidSpins: 10, hasFreeSpin };
+  });
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<any>(null);
   const [rotation, setRotation] = useState(0);
@@ -2372,6 +2385,20 @@ export default function App() {
       socket.on('spin_status', (status) => {
         setSpinStatus(status);
         setIsSpinStatusLoaded(true);
+        // Sync local storage with server status
+        if (status.freeSpinUsed > 0) {
+          setHasUsedFreeSpin(true);
+          localStorage.setItem('khamin_has_used_free_spin', 'true');
+          // We don't necessarily know the exact date from the server here, 
+          // but setting it to now is a safe bet for "today"
+          if (!localStorage.getItem('khamin_last_free_spin_date')) {
+            localStorage.setItem('khamin_last_free_spin_date', Date.now().toString());
+          }
+        } else {
+          setHasUsedFreeSpin(false);
+          localStorage.removeItem('khamin_has_used_free_spin');
+          localStorage.removeItem('khamin_last_free_spin_date');
+        }
       });
       socket.on('spin_result', (data) => {
         setSpinResult(null); // Reset to ensure next spin triggers effect
@@ -2464,10 +2491,43 @@ export default function App() {
   };
 
   const handleOpenCitySearch = () => {
-    playSound('clickOpen');
-    closeAllModals();
-    setShowCitySearch(true);
-    updateHasManuallyOpenedCitySearchToday();
+    if (showCitySearch) {
+      playSound('clickClose');
+      setShowCitySearch(false);
+      // Sequence will continue via useEffect or manual call
+      setTimeout(checkAndShowNextModal, 300);
+    } else {
+      playSound('clickOpen');
+      closeAllModals();
+      setShowCitySearch(true);
+      updateHasManuallyOpenedCitySearchToday();
+    }
+  };
+
+  const handleOpenshowCollectionModal = () => {
+    if (showCollectionModal) {
+      playSound('clickClose');
+      setShowCollectionModal(null);
+      // Sequence will continue via useEffect or manual call
+      setTimeout(checkAndShowNextModal, 300);
+    } else {
+      playSound('clickOpen');
+      closeAllModals();
+      renderCollectionModal();
+    }
+  };
+
+  const handleOpenshowLeaderboardModal = () => {
+    if (showLeaderboardModal) {
+      playSound('clickClose');
+      setShowLeaderboardModal(false);
+      // Sequence will continue via useEffect or manual call
+      setTimeout(checkAndShowNextModal, 300);
+    } else {
+      playSound('clickOpen');
+      closeAllModals();
+      setShowLeaderboardModal(true);
+    }
   };
 
   const toggleLuckyWheel = () => {
@@ -3453,7 +3513,9 @@ export default function App() {
       }
 
       if (roomRef.current?.players.length === 2 && updatedRoom.players.length === 1) {
-        setError('غادر المنافس الغرفة!');
+        const opp = roomRef.current.players.find(p => p.id !== newSocket.id);
+        const verb = (opp?.gender === 'girl') ? 'غادرت' : 'غادر';
+        setError(`${verb} المنافس${opp?.gender === 'girl' ? 'ة' : ''} الغرفة!`);
         setTimeout(() => setError(''), 3000);
       }
 
@@ -3782,11 +3844,11 @@ export default function App() {
       setProposedMatch(prev => {
         if (prev && isSearchingRef.current) {
           let message = 'تم إلغاء التحدي';
-          if (reason === 'rejected') message = 'المنافس رفض التحدي ❌';
+          if (reason === 'rejected') message = `المنافس ${prev.opponent.gender === 'girl' ? 'رفضت' : 'رفض'} التحدي ❌`;
           if (reason === 'timeout') message = 'انتهى وقت قبول التحدي ⏰';
-          if (reason === 'blocked') message = 'المنافس قام بحظرك 🚫';
-          if (reason === 'opponent_left') message = 'المنافس غادر البحث 🏃';
-          if (reason === 'opponent_disconnected') message = 'انقطع اتصال المنافس 🔌';
+          if (reason === 'blocked') message = `المنافس ${prev.opponent.gender === 'girl' ? 'قامت' : 'قام'} بحظرك 🚫`;
+          if (reason === 'opponent_left') message = `المنافس ${prev.opponent.gender === 'girl' ? 'غادرت' : 'غادر'} البحث 🏃`;
+          if (reason === 'opponent_disconnected') message = `انقطع اتصال المنافس ${prev.opponent.gender === 'girl' ? 'ة' : ''} 🔌`;
           
           if (reason !== 'you_rejected') {
             setError(message);
@@ -3883,7 +3945,12 @@ export default function App() {
     });
 
     newSocket.on('opponent_left_lobby', () => {
-      setError('غادر المنافس الغرفة');
+      setRoom(prevRoom => {
+        const opp = prevRoom?.players.find((p: any) => p.serial !== playerSerial);
+        const verb = (opp?.gender === 'girl') ? 'غادرت' : 'غادر';
+        setError(`${verb} المنافس${opp?.gender === 'girl' ? 'ة' : ''} الغرفة`);
+        return prevRoom;
+      });
       setTimeout(() => setError(''), 5000);
       setJoined(false);
       setRoom(null);
@@ -4218,7 +4285,7 @@ export default function App() {
     localStorage.setItem('khamin_player_name', playerName);
     localStorage.setItem('khamin_player_age', playerAge.toString());
     setIsPrivate(true);
-    socket?.emit('join_room', { roomId, playerName, avatar, age: playerAge, xp, streak, wins, serial: playerSerial });
+    socket?.emit('join_room', { roomId, playerName, avatar, age: playerAge, gender, xp, streak, wins, serial: playerSerial });
     setIsOpponentBlocked(false);
   };
 
@@ -4241,7 +4308,7 @@ export default function App() {
     localStorage.setItem('khamin_player_name', playerName);
     localStorage.setItem('khamin_player_age', playerAge.toString());
     setIsPrivate(false);
-    socket?.emit('find_random_match', { playerId, playerName, avatar, age: playerAge, xp, streak, wins, serial: playerSerial, useToken: (getLevel(xp) >= 50 && useToken) });
+    socket?.emit('find_random_match', { playerId, playerName, avatar, age: playerAge, gender, xp, streak, wins, serial: playerSerial, useToken: (getLevel(xp) >= 50 && useToken) });
     setIsOpponentBlocked(false);
   };
 
@@ -5845,7 +5912,7 @@ export default function App() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-md z-[5000] flex items-center justify-center p-4"
             onClick={(e) => {
-              if (e.target === e.currentTarget) setShowShopModal(false);
+              if (e.target === e.currentTarget) toggleShop();
             }}
           >
             <motion.div
@@ -5856,7 +5923,7 @@ export default function App() {
             >
               <div className="p-6 text-center relative shrink-0" style={{ background: `linear-gradient(to right, var(--shop-header-start), var(--shop-header-end))` }}>
                 <button 
-                  onClick={() => { playSound('clickClose'); setShowShopModal(false); }}
+                  onClick={toggleShop}
                   className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -6204,7 +6271,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[2000] flex items-center justify-center p-4"
-            onClick={() => setShowCitySearch(false)}
+            onClick={handleOpenCitySearch}
           >
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
@@ -6217,7 +6284,7 @@ export default function App() {
                 <h3 className="font-black text-[14px] flex items-center gap-2">
                   <Search className="w-6 h-6" /> ابحث في المدينة عن الهدايا
                 </h3>
-                <button onClick={() => setShowCitySearch(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
+                <button onClick={handleOpenCitySearch} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -6497,13 +6564,13 @@ export default function App() {
                     <label className="block text-sm font-black text-brown-muted mb-1 text-right">الجنس</label>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setGender('boy')}
+                        onClick={() => { setGender('boy'); playSound('clickOpen'); }}
                         className={`flex-1 py-2 box-game font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'text-brown-light opacity-60'}`}
                       >
                         ولد 👦
                       </button>
                       <button
-                        onClick={() => setGender('girl')}
+                        onClick={() => { setGender('girl'); playSound('clickOpen'); }}
                         className={`flex-1 py-2 box-game font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-pink-200' : 'text-brown-light opacity-60'}`}
                       >
                         بنت 👧
@@ -6519,7 +6586,7 @@ export default function App() {
                         return (
                           <button
                             key={`settings-avatar-${av.id}-${index}`}
-                            onClick={() => !isLocked && setAvatar(av.id)}
+                            onClick={() => { !isLocked && setAvatar(av.id); playSound('clickOpen'); }}
                             disabled={isLocked}
                             className={`relative aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${avatar === av.id ? '!bg-orange-100 !border-orange-400 scale-105' : 'hover:bg-gray-200'} ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}
                           >
@@ -6562,6 +6629,7 @@ export default function App() {
                           className="hidden" 
                           disabled={getLevel(xp) < 50}
                           onChange={handleFileChange}
+                          onClick={() => playSound('clickOpen')}
                         />
                         {getLevel(xp) >= 50 ? (
                           <>
@@ -6577,7 +6645,7 @@ export default function App() {
                       </label>
                       {customAvatar && (
                         <button
-                          onClick={() => setAvatar(customAvatar)}
+                          onClick={() => { setAvatar(customAvatar); playSound('clickOpen'); }}
                           className={`relative w-14 h-14 rounded-xl overflow-hidden border-2 flex-shrink-0 ${avatar === customAvatar ? 'border-purple-500' : 'border-black'}`}
                         >
                           <img src={customAvatar} className="w-full h-full object-cover" alt="Custom" />
@@ -6610,6 +6678,7 @@ export default function App() {
                             onClick={() => {
                               if (isUnlocked) {
                                 setSelectedFrame(frameImage);
+                                playSound('clickOpen');
                                 if (!seenFrames.includes(cat.id)) {
                                   const newSeen = [...seenFrames, cat.id];
                                   setSeenFrames(newSeen);
@@ -6638,7 +6707,7 @@ export default function App() {
                     </div>
                       {/* Default No Frame Option */}
                       <button
-                        onClick={() => setSelectedFrame('')}
+                        onClick={() => { setSelectedFrame(''); playSound('clickClose'); }}
                         className={`w-full btn-game bg-orange-100 flex items-center justify-center transition-all overflow-hidden py-2 text-lg gap-2 mb-1 ${selectedFrame === '' ? '!bg-orange-100 !border-orange-400' : 'hover:bg-orange-200'}`}
                       >
                         <span className="text-xs font-black text-brown-muted">بدون إطار</span>
@@ -9634,7 +9703,7 @@ export default function App() {
       <AnimatePresence>
         <div 
           className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowCollectionModal(null)}
+          onClick={handleOpenshowCollectionModal}
         >
           <motion.div
             onClick={(e) => e.stopPropagation()}
@@ -9645,7 +9714,7 @@ export default function App() {
           >
             {/* Header */}
             <div className="p-6 border-b-4 border-black flex justify-between items-center bg-accent-blue/10">
-              <button onClick={() => setShowCollectionModal(null)} className="w-10 h-10 bg-white border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
+              <button onClick={handleOpenshowCollectionModal} className="w-10 h-10 bg-white border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
                 <X className="w-6 h-6" />
               </button>
               <div className="flex items-center gap-3 flex-row-reverse">
@@ -9981,7 +10050,7 @@ export default function App() {
             </div>
 
             {showCitySearch && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCitySearch(false)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={handleOpenCitySearch}>
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -9992,7 +10061,7 @@ export default function App() {
               <h3 className="font-black text-xl flex items-center gap-2">
                 <Search className="w-6 h-6" /> البحث في المدينة
               </h3>
-              <button onClick={() => setShowCitySearch(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
+              <button onClick={handleOpenCitySearch} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -10654,6 +10723,7 @@ export default function App() {
             <button 
               onClick={() => {
                 setShowRainGiftGame(false);
+                playSound('clickClose');
                 if (collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers).length > 0) {
                   socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
                 }
@@ -11142,7 +11212,7 @@ export default function App() {
                     const isTop3 = myRankIndex <= 2;
                     return (
                       <button 
-                        onClick={() => setShowLeaderboardModal(true)}
+                        onClick={handleOpenshowLeaderboardModal}
                         className={`mt-3 w-full group relative overflow-hidden ${isTop3 ? 'bg-yellow-500' : 'bg-orange-500'} rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all`}
                       >
                         <div className="bg-white h-10 rounded-[14px] py-3 px-4 flex items-center justify-between">
@@ -11165,7 +11235,7 @@ export default function App() {
                   } else if (myRankIndex === -1 && topPlayers.length > 0) {
                     return (
                       <button 
-                        onClick={() => setShowLeaderboardModal(true)}
+                        onClick={handleOpenshowLeaderboardModal}
                         className="mt-3 w-full h-10 group box-game hover:border-orange-200 py-3 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
@@ -11386,7 +11456,7 @@ export default function App() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-md z-[5000] flex items-center justify-center p-4"
             onClick={(e) => {
-              if (e.target === e.currentTarget) setShowLeaderboardModal(false);
+              if (e.target === e.currentTarget) handleOpenshowLeaderboardModal();
             }}
           >
             <motion.div
@@ -11397,7 +11467,7 @@ export default function App() {
             >
               <div className="bg-orange-500 p-6 text-center relative shrink-0 border-b-4 border-black">
                 <button 
-                  onClick={() => { playSound('clickClose'); setShowLeaderboardModal(false); }}
+                  onClick={handleOpenshowLeaderboardModal}
                   className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
