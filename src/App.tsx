@@ -5803,7 +5803,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10005] flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
@@ -5834,7 +5834,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10005] flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
@@ -11019,33 +11019,55 @@ export default function App() {
     );
   };
 
+  const handleCloseRainGiftSummary = () => {
+    showConfirm(
+      'هل أنت متأكد أنك تريد إغلاق النافذة؟ لن تحصل على الهدايا إذا قمت بالإغلاق.',
+      () => {
+        localStorage.removeItem('khamin_pending_rain_gift');
+        setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
+        setShowRainGiftSummary(false);
+      },
+      'تنبيه',
+      undefined,
+      'نعم، أغلق',
+      'إلغاء'
+    );
+  };
+
   const renderRainGiftSummary = () => {
     if (!showRainGiftSummary) return null;
     
     const level = getLevel(xp);
 
     return (
-      <div className="fixed inset-0 bg-black/60 z-[10001] flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/60 z-[10001] flex items-center justify-center p-4" onClick={handleCloseRainGiftSummary}>
         <motion.div 
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="bg-modal-theme p-8 rounded-[2.5rem] w-full max-w-md text-center space-y-6 relative overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
         >
+          <button 
+            onClick={handleCloseRainGiftSummary}
+            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors z-10"
+          >
+            <X className="w-6 h-6" />
+          </button>
           <div className="absolute top-0 left-0 w-full h-2 bg-accent-orange"></div>
-          <h2 className="text-3xl font-black text-main">انتهى المطر! 🌧️✨</h2>
-          <p className="text-brown-muted font-bold">لقد جمعت الكثير من الهدايا الرائعة:</p>
+          <h2 className="text-2xl mb-2 font-black text-main">انتهى المطر! 🌧️✨</h2>
+          <p className="text-brown-muted mb-2 font-bold">لقد جمعت الكثير من الهدايا الرائعة:</p>
           
-          <div className="grid grid-cols-2 gap-4 max-h-[40vh] overflow-y-auto p-2">
-            <div className="bg-white/50 p-4 rounded-2xl border-2 border-accent-blue/20">
+          <div className="grid grid-cols-2 gap-4 max-h-[40vh] overflow-y-auto  mb-2 p-2 border-2">
+            <div className="bg-white/50 p-2 rounded-2xl border-2 border-accent-blue/20">
               <div className="text-2xl mb-1">⭐</div>
               <div className="text-xl font-black text-accent-blue">+{collectedRewards.xp} XP</div>
             </div>
-            <div className="bg-white/50 p-4 rounded-2xl border-2 border-yellow-500/20">
-              <div className="text-2xl mb-1">🪙</div>
+            <div className="bg-white/50 p-2 rounded-2xl border-2 border-yellow-500/20">
+              <div className="text-2xl mb-1"><Coins className="w-8 h-8 text-purple-600" /></div>
               <div className="text-xl font-black text-yellow-600">+{collectedRewards.tokens} Token</div>
             </div>
             {Object.entries(collectedRewards.helpers || {}).map(([id, count]) => (
-              <div key={id} className="bg-white/50 p-4 rounded-2xl border-2 border-accent-green/20 relative">
+              <div key={id} className="bg-white/50 p-2 rounded-2xl border-2 border-accent-green/20 relative">
                 <div className="text-2xl mb-1 flex justify-center">
                   {id === 'spy_lens' && <Eye className="w-8 h-8 text-purple-500" />}
                   {id === 'time_freeze' && <Snowflake className="w-8 h-8 text-cyan-500" />}
@@ -11057,7 +11079,7 @@ export default function App() {
                   {( {spy_lens: 'الجاسوس', time_freeze: 'تجميد الوقت', hint: 'تلميح', word_count: 'عدد الكلمات', word_length: 'كاشف الحروف'} as any)[id]} x{count}
                 </div>
                 {level >= 50 && (
-                  <div className="absolute -top-2 -right-2 bg-accent-blue text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
+                  <div className="absolute -top-2 -right-2 bg-accent-blue text-white text-[10px] font-bold px-1 py-0.5 rounded-full shadow-md">
                     +{Number(count) * 50} XP
                   </div>
                 )}
@@ -11066,11 +11088,11 @@ export default function App() {
           </div>
           
           {level >= 50 && Object.keys(collectedRewards.helpers || {}).length > 0 && (
-            <p className="text-xs text-accent-blue font-bold">
+            <p className="text-xs mb-2 text-accent-blue font-bold">
               * تم تحويل وسائل المساعدة إلى XP لأن مستواك 50+
             </p>
           )}
-          <p className="text-[10px] md:text-xs text-red-500 font-bold mt-2">
+          <p className="text-[10px] md:text-xs text-red-500 font-bold mb-2 mt-2">
             * يجب استخدام هدايا وسائل المساعدة والـ Tokens في نفس اليوم وإلا سيتم تصفيرها.
           </p>
           
