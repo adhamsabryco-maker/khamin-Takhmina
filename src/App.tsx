@@ -1795,15 +1795,9 @@ export default function App() {
   };
 
   useEffect(() => {
-    let interval: any;
     if (isAdmin && showAdminDashboard && adminTab === 'notifications') {
       fetchScheduledPushes();
-      // Auto-refresh every 10 seconds to keep statuses up to date
-      interval = setInterval(fetchScheduledPushes, 10000);
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
   }, [isAdmin, showAdminDashboard, adminTab]);
 
   const subscribeToPush = async (force = false) => {
@@ -2287,14 +2281,28 @@ export default function App() {
       }
       
       // Ad logic
-      const adFunc = (window as any).adBreak || (window as any).showAdBreak || (window as any).adConfig || (window as any).adsbygoogle?.push;
-      if (typeof adFunc === 'function') {
+      let localAdTriggered = false;
+      const handleAdFailure = () => {
+        showAlert('عفواً، لا يمكن الحصول على المحاولة بدون مشاهدة الإعلان. يرجى إيقاف مانع الإعلانات (AdBlocker) والمحاولة مرة أخرى.', 'خطأ');
+      };
+
+      if (typeof (window as any).adBreak === 'function') {
+        const adTimeout = setTimeout(() => {
+          if (!localAdTriggered) handleAdFailure();
+        }, 3000);
+
         try {
-          adFunc({
+          (window as any).adBreak({
             type: 'reward',
             name: 'lucky_wheel_spin',
-            beforeAd: () => Howler.mute(true),
-            afterAd: () => Howler.mute(false),
+            beforeAd: () => {
+              clearTimeout(adTimeout);
+              localAdTriggered = true;
+              Howler.mute(true);
+            },
+            afterAd: () => {
+              Howler.mute(false);
+            },
             beforeReward: (showAdFn: any) => {
               showAdFn();
             },
@@ -2303,19 +2311,23 @@ export default function App() {
             },
             adDismissed: () => {
               Howler.mute(false);
-              showAlert('يجب مشاهدة الإعلان للحصول على المحاولة!', 'تنبيه');
+              showAlert('يجب مشاهدة الإعلان بالكامل للحصول على المحاولة!', 'تنبيه');
             },
             adBreakDone: (placementInfo: any) => {
-              console.log("Ad break done:", placementInfo);
+              if (!localAdTriggered) {
+                clearTimeout(adTimeout);
+                handleAdFailure();
+              }
             }
           });
         } catch (e) {
           console.error("Ad error:", e);
-          startSpin(true);
+          clearTimeout(adTimeout);
+          handleAdFailure();
         }
       } else {
-        // Fallback if no ad SDK
-        startSpin(true);
+        // No ad SDK found (AdBlocker)
+        handleAdFailure();
       }
     } else {
       startSpin(false);
@@ -11134,44 +11146,59 @@ export default function App() {
           
           <button
             onClick={() => {
-              const adFunc = (window as any).adBreak || (window as any).showAdBreak || (window as any).adConfig || (window as any).adsbygoogle?.push;
-              if (typeof adFunc === 'function') {
+              let localAdTriggered = false;
+              const handleAdFailure = () => {
+                showAlert('عفواً، لا يمكن استلام المكافأة بدون مشاهدة الإعلان. يرجى إيقاف مانع الإعلانات (AdBlocker) والمحاولة مرة أخرى.', 'خطأ');
+              };
+              const successReward = () => {
+                socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
+                localStorage.removeItem('khamin_pending_rain_gift');
+                setShowRainGiftSummary(false);
+                playSound('win');
+              };
+
+              if (typeof (window as any).adBreak === 'function') {
+                const adTimeout = setTimeout(() => {
+                  if (!localAdTriggered) handleAdFailure();
+                }, 3000);
+
                 try {
-                  adFunc({
+                  (window as any).adBreak({
                     type: 'reward',
                     name: 'claim_rain_gift',
-                    beforeAd: () => Howler.mute(true),
-                    afterAd: () => Howler.mute(false),
+                    beforeAd: () => {
+                      clearTimeout(adTimeout);
+                      localAdTriggered = true;
+                      Howler.mute(true);
+                    },
+                    afterAd: () => {
+                      Howler.mute(false);
+                    },
                     beforeReward: (showAdFn: any) => {
                       showAdFn();
                     },
                     adViewed: () => {
-                      socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
-                      localStorage.removeItem('khamin_pending_rain_gift');
-                      setShowRainGiftSummary(false);
-                      playSound('win');
+                      successReward();
                     },
                     adDismissed: () => {
                       Howler.mute(false);
                       showAlert('يجب مشاهدة الإعلان بالكامل لاستلام الهدايا!', 'تنبيه');
                     },
                     adBreakDone: (placementInfo: any) => {
-                      console.log("Ad break done:", placementInfo);
+                      if (!localAdTriggered) {
+                        clearTimeout(adTimeout);
+                        handleAdFailure();
+                      }
                     }
                   });
                 } catch (e) {
                   console.error("Ad error:", e);
-                  socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
-                  localStorage.removeItem('khamin_pending_rain_gift');
-                  setShowRainGiftSummary(false);
-                  playSound('win');
+                  clearTimeout(adTimeout);
+                  handleAdFailure();
                 }
               } else {
-                // Fallback if no ad SDK
-                socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
-                localStorage.removeItem('khamin_pending_rain_gift');
-                setShowRainGiftSummary(false);
-                playSound('win');
+                // No ad SDK found (AdBlocker)
+                handleAdFailure();
               }
             }}
             className="w-full bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black text-xl shadow-lg transition-all flex items-center justify-center gap-2"
