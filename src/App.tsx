@@ -1080,6 +1080,9 @@ export default function App() {
         adminToken 
       }, (res: any) => {
         if (res?.success) {
+          if (res.adminToken) {
+            localStorage.setItem('khamin_admin_token', res.adminToken);
+          }
           if (Array.isArray(res.players)) setAdminPlayers(res.players);
           if (Array.isArray(res.reports)) setAdminReports(res.reports);
         }
@@ -2332,10 +2335,14 @@ export default function App() {
         try {
           const rewards = JSON.parse(pendingGift);
           if (rewards.xp > 0 || rewards.tokens > 0 || Object.keys(rewards.helpers || {}).length > 0) {
-            socket?.emit('claim_rain_gift', { serial: playerSerial, rewards, isPro: hasProPackage });
+            setCollectedRewards(rewards);
+            setShowRainGiftSummary(true);
+          } else {
+            localStorage.removeItem('khamin_pending_rain_gift');
           }
-        } catch (e) {}
-        localStorage.removeItem('khamin_pending_rain_gift');
+        } catch (e) {
+          localStorage.removeItem('khamin_pending_rain_gift');
+        }
       }
     }
   }, [joined, playerSerial, socket, hasProPackage]);
@@ -3025,6 +3032,9 @@ export default function App() {
         }, (res: any) => {
           console.log('Admin status set response:', res);
           if (res.success) {
+            if (res.adminToken) {
+              localStorage.setItem('khamin_admin_token', res.adminToken);
+            }
             closeAllModals();
             setShowAdminDashboard(true);
           } else {
@@ -6417,51 +6427,6 @@ export default function App() {
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10 rounded-2xl p-4">
                       <div className="bg-accent-green text-white px-6 py-3 rounded-full font-black text-xl shadow-lg flex items-center gap-2 animate-bounce mb-4">
                         <Gift className="w-6 h-6" /> اكتمل البحث!
-                      </div>
-                      <div className="bg-white/95 p-3 rounded-xl shadow-lg border-2 border-accent-green w-full max-w-sm">
-                        <h4 className="text-center font-bold text-sm text-gray-700 mb-2">المكافآت التي حصلت عليها:</h4>
-                        <div className="flex flex-wrap justify-center gap-2" dir="ltr">
-                          {displayedRewards && (
-                            <span className="px-2 py-1 bg-orange-100 rounded-lg text-xs font-bold text-orange-600 flex items-center gap-1">
-                              <Star className="w-4 h-4" /> {displayedRewards.xp} XP
-                            </span>
-                          )}
-                          {displayedRewards && (
-                            <span className="px-2 py-1 bg-purple-100 rounded-lg text-xs font-bold text-purple-600 flex items-center gap-1">
-                              <Coins className="w-4 h-4" /> {displayedRewards.tokens}
-                            </span>
-                          )}
-                          {displayedRewards && displayedRewards.pro_package_days > 0 && (
-                            <span className="px-2 py-1 bg-yellow-100 rounded-lg text-xs font-bold text-yellow-600 flex items-center gap-1">
-                              <Crown className="w-4 h-4" /> {displayedRewards.pro_package_days}
-                            </span>
-                          )}
-                          {displayedRewards && displayedRewards.time_freeze > 0 && (
-                            <span className="px-2 py-1 bg-cyan-100 rounded-lg text-xs font-bold text-cyan-600 flex items-center gap-1">
-                              <Snowflake className="w-4 h-4" /> {displayedRewards.time_freeze}
-                            </span>
-                          )}
-                          {displayedRewards && displayedRewards.word_count > 0 && (
-                            <span className="px-2 py-1 bg-indigo-100 rounded-lg text-xs font-bold text-indigo-600 flex items-center gap-1">
-                              <Hash className="w-4 h-4" /> {displayedRewards.word_count}
-                            </span>
-                          )}
-                          {displayedRewards && displayedRewards.word_length > 0 && (
-                            <span className="px-2 py-1 bg-green-100 rounded-lg text-xs font-bold text-green-600 flex items-center gap-1">
-                              <Type className="w-4 h-4" /> {displayedRewards.word_length}
-                            </span>
-                          )}
-                          {displayedRewards && displayedRewards.hint > 0 && (
-                            <span className="px-2 py-1 bg-blue-100 rounded-lg text-xs font-bold text-blue-600 flex items-center gap-1">
-                              <HelpCircle className="w-4 h-4" /> {displayedRewards.hint}
-                            </span>
-                          )}
-                          {displayedRewards && displayedRewards.spy_lens > 0 && (
-                            <span className="px-2 py-1 bg-purple-100 rounded-lg text-xs font-bold text-purple-600 flex items-center gap-1">
-                              <Eye className="w-4 h-4" /> {displayedRewards.spy_lens}
-                            </span>
-                          )}
-                        </div>
                       </div>
                     </div>
                   )}
@@ -10991,10 +10956,11 @@ export default function App() {
                 setShowRainGiftGame(false);
                 playSound('clickClose');
                 if (collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers).length > 0) {
-                  socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
+                  setShowRainGiftSummary(true);
+                } else {
+                  localStorage.removeItem('khamin_pending_rain_gift');
+                  setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
                 }
-                localStorage.removeItem('khamin_pending_rain_gift');
-                setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
               }}
               className="bg-red-500 text-white w-10 h-10 rounded-full border-red-100 flex items-center justify-center font-black shadow-lg hover:scale-105 active:scale-95 transition-all"
             >
@@ -11110,14 +11076,49 @@ export default function App() {
           
           <button
             onClick={() => {
-              socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
-              localStorage.removeItem('khamin_pending_rain_gift');
-              setShowRainGiftSummary(false);
-              playSound('win');
+              const adFunc = (window as any).adBreak || (window as any).showAdBreak || (window as any).adConfig || (window as any).adsbygoogle?.push;
+              if (typeof adFunc === 'function') {
+                try {
+                  adFunc({
+                    type: 'reward',
+                    name: 'claim_rain_gift',
+                    beforeAd: () => Howler.mute(true),
+                    afterAd: () => Howler.mute(false),
+                    beforeReward: (showAdFn: any) => {
+                      showAdFn();
+                    },
+                    adViewed: () => {
+                      socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
+                      localStorage.removeItem('khamin_pending_rain_gift');
+                      setShowRainGiftSummary(false);
+                      playSound('win');
+                    },
+                    adDismissed: () => {
+                      Howler.mute(false);
+                      showAlert('يجب مشاهدة الإعلان بالكامل لاستلام الهدايا!', 'تنبيه');
+                    },
+                    adBreakDone: (placementInfo: any) => {
+                      console.log("Ad break done:", placementInfo);
+                    }
+                  });
+                } catch (e) {
+                  console.error("Ad error:", e);
+                  socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
+                  localStorage.removeItem('khamin_pending_rain_gift');
+                  setShowRainGiftSummary(false);
+                  playSound('win');
+                }
+              } else {
+                // Fallback if no ad SDK
+                socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
+                localStorage.removeItem('khamin_pending_rain_gift');
+                setShowRainGiftSummary(false);
+                playSound('win');
+              }
             }}
-            className="w-full bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black text-xl shadow-lg transition-all"
+            className="w-full bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black text-xl shadow-lg transition-all flex items-center justify-center gap-2"
           >
-            استلام الهدايا
+            <span className="text-2xl">📺</span> استلام الهدايا
           </button>
         </motion.div>
       </div>
