@@ -1776,10 +1776,18 @@ export default function App() {
     const adminToken = localStorage.getItem('khamin_admin_token');
     if (!adminToken) return;
     try {
-      const res = await fetch(`/api/push/scheduled?adminToken=${adminToken}`);
+      const res = await fetch(`/api/push/scheduled?adminToken=${adminToken}&t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setScheduledPushes(data);
+      } else {
+        console.error("Failed to fetch scheduled pushes:", await res.text());
       }
     } catch (err) {
       console.error("Error fetching scheduled pushes:", err);
@@ -3335,7 +3343,11 @@ export default function App() {
         const adminEmail = localStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
         const adminToken = localStorage.getItem('khamin_admin_token');
         if (isAdmin) {
-          newSocket.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail, adminToken });
+          newSocket.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail, adminToken }, (res: any) => {
+            if (res?.success && res.adminToken) {
+              localStorage.setItem('khamin_admin_token', res.adminToken);
+            }
+          });
         }
         // Fetch actual server data
         newSocket.emit('get_player_data', { serial, fingerprint }, (data: any) => {
@@ -4418,7 +4430,11 @@ export default function App() {
         const isAdmin = localStorage.getItem('khamin_is_admin') === 'true';
         const adminEmail = localStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
         if (isAdmin) {
-          socket?.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail });
+          socket?.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail }, (res: any) => {
+            if (res?.success && res.adminToken) {
+              localStorage.setItem('khamin_admin_token', res.adminToken);
+            }
+          });
         }
         
         socket?.emit("get_city_search", { serial });
@@ -9121,9 +9137,18 @@ export default function App() {
                             </div>
 
                             {/* Scheduled Pushes List */}
-                            {scheduledPushes.length > 0 && (
-                              <div className="mt-8">
-                                <h4 className="font-black text-brown-dark mb-4 text-lg">الإشعارات المجدولة</h4>
+                            <div className="mt-8">
+                              <div className="flex justify-between items-center mb-4">
+                                <h4 className="font-black text-brown-dark text-lg">الإشعارات المجدولة</h4>
+                                <button 
+                                  onClick={fetchScheduledPushes}
+                                  className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+                                  title="تحديث السجل"
+                                >
+                                  <RefreshCw className="w-5 h-5 text-gray-600" />
+                                </button>
+                              </div>
+                              {scheduledPushes.length > 0 ? (
                                 <div className="space-y-3">
                                   {Object.values(
                                     scheduledPushes.reduce((acc: any, push: any) => {
@@ -9183,8 +9208,12 @@ export default function App() {
                                     );
                                   })}
                                 </div>
-                              </div>
-                            )}
+                              ) : (
+                                <div className="text-center p-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                                  <p className="text-gray-500 font-bold">لا توجد إشعارات مجدولة حالياً</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           <div className="border-t-2 border-dashed border-gray-200 pt-8 mt-8">
