@@ -5978,6 +5978,12 @@ io.on("connection", (socket) => {
       if (admin?.isAdmin || isValidToken || isDefaultAdmin) {
         socket.data = { ...socket.data, isAdmin: true, email: email || admin?.email, serial: serial || admin?.serial };
 
+        let newToken = adminToken;
+        if (!isValidToken) {
+          newToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          adminTokens.add(newToken);
+        }
+
         if (serial) {
           const player = allPlayers.get(serial);
           if (player) {
@@ -5989,21 +5995,17 @@ io.on("connection", (socket) => {
               isOnline: playerSockets.has(p.serial)
             }));
             const reports = db.prepare('SELECT * FROM reports ORDER BY timestamp DESC').all();
-            if (typeof callback === 'function') callback({ success: true, players, reports });
+            if (typeof callback === 'function') callback({ success: true, players, reports, adminToken: newToken });
             return;
           }
         }
         
-        if (isValidToken) {
-           const players = Array.from(allPlayers.values()).map(p => ({
-             ...p,
-             isOnline: playerSockets.has(p.serial)
-           }));
-           const reports = db.prepare('SELECT * FROM reports ORDER BY timestamp DESC').all();
-           if (typeof callback === 'function') callback({ success: true, players, reports });
-        } else {
-           if (typeof callback === 'function') callback({ error: "Player not found" });
-        }
+        const players = Array.from(allPlayers.values()).map(p => ({
+          ...p,
+          isOnline: playerSockets.has(p.serial)
+        }));
+        const reports = db.prepare('SELECT * FROM reports ORDER BY timestamp DESC').all();
+        if (typeof callback === 'function') callback({ success: true, players, reports, adminToken: newToken });
       } else {
         if (typeof callback === 'function') callback({ error: "Unauthorized" });
       }
