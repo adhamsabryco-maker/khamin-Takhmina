@@ -1795,9 +1795,15 @@ export default function App() {
   };
 
   useEffect(() => {
+    let interval: any;
     if (isAdmin && showAdminDashboard && adminTab === 'notifications') {
       fetchScheduledPushes();
+      // Auto-refresh every 10 seconds to keep statuses up to date
+      interval = setInterval(fetchScheduledPushes, 10000);
     }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isAdmin, showAdminDashboard, adminTab]);
 
   const subscribeToPush = async (force = false) => {
@@ -9180,30 +9186,31 @@ export default function App() {
                                             </span>
                                           </div>
                                         </div>
-                                        {!isCompleted && (
-                                          <button
-                                            onClick={async () => {
-                                              if (window.confirm('هل أنت متأكد من إيقاف وحذف هذا الإشعار المجدول؟')) {
-                                                try {
-                                                  const adminToken = localStorage.getItem('khamin_admin_token');
-                                                  const res = await fetch(`/api/push/scheduled/${group.id}?adminToken=${adminToken}`, {
-                                                    method: 'DELETE'
-                                                  });
-                                                  if (res.ok) {
-                                                    showAlert('تم حذف الإشعار المجدول', 'نجاح');
-                                                    fetchScheduledPushes();
-                                                  }
-                                                } catch (err) {
-                                                  showAlert('حدث خطأ أثناء الحذف', 'خطأ');
+                                        <button
+                                          onClick={async () => {
+                                            const msg = isCompleted 
+                                              ? 'هل أنت متأكد من حذف هذا الإشعار من السجل؟' 
+                                              : 'هل أنت متأكد من إيقاف وحذف هذا الإشعار المجدول؟';
+                                            if (window.confirm(msg)) {
+                                              try {
+                                                const adminToken = localStorage.getItem('khamin_admin_token');
+                                                const res = await fetch(`/api/push/scheduled/${group.id}?adminToken=${adminToken}`, {
+                                                  method: 'DELETE'
+                                                });
+                                                if (res.ok) {
+                                                  showAlert('تم الحذف بنجاح', 'نجاح');
+                                                  fetchScheduledPushes();
                                                 }
+                                              } catch (err) {
+                                                showAlert('حدث خطأ أثناء الحذف', 'خطأ');
                                               }
-                                            }}
-                                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                                            title="إيقاف الإشعار"
-                                          >
-                                            <Trash2 className="w-5 h-5" />
-                                          </button>
-                                        )}
+                                            }
+                                          }}
+                                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                                          title={isCompleted ? "حذف من السجل" : "إيقاف الإشعار"}
+                                        >
+                                          <Trash2 className="w-5 h-5" />
+                                        </button>
                                       </div>
                                     );
                                   })}
