@@ -5002,21 +5002,17 @@ export default function App() {
       onComplete();
     };
 
-    const startMockAd = () => {
-      startAdProcess();
-      onAdComplete();
-    };
-
-    const handleAdUnavailable = () => {
-      startMockAd();
+    const handleAdFailure = () => {
+      adTriggeredRef.current = false;
+      showAlert('عفواً، لا يمكن بدء البحث بدون مشاهدة الإعلان. يرجى إيقاف مانع الإعلانات (AdBlocker) والمحاولة مرة أخرى.', 'خطأ');
     };
 
     if (typeof (window as any).adBreak === 'function') {
       const adTimeout = setTimeout(() => {
         if (!localAdTriggered) {
-          handleAdUnavailable();
+          handleAdFailure();
         }
-      }, 2000);
+      }, 3000);
 
       try {
         (window as any).adBreak({
@@ -5049,16 +5045,16 @@ export default function App() {
             clearTimeout(adSafetyTimeout);
             if (!localAdTriggered) {
               clearTimeout(adTimeout);
-              handleAdUnavailable();
+              handleAdFailure();
             }
           }
         });
       } catch (e) {
         clearTimeout(adTimeout);
-        handleAdUnavailable();
+        handleAdFailure();
       }
     } else {
-      handleAdUnavailable();
+      handleAdFailure();
     }
   };
 
