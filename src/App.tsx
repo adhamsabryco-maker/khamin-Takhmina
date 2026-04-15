@@ -4177,21 +4177,16 @@ export default function App() {
         
         // Check if we need to force update (reload)
         const localVersion = localStorage.getItem('khamin_game_version');
-        const lastRefreshDate = localStorage.getItem('khamin_last_refresh_date');
-        const today = new Date().toDateString();
-        const needsDailyRefresh = lastRefreshDate !== today;
         
-        console.log('[DEBUG] Version Check:', { localVersion, serverVersion, needsDailyRefresh });
+        console.log('[DEBUG] Version Check:', { localVersion, serverVersion });
 
         // Force a hard refresh if:
         // 1. Version mismatch (always reload to get new version)
-        // 2. OR: It's a new day (once a day refresh for freshness)
-        if (needsDailyRefresh || (localVersion && localVersion !== serverVersion)) {
-          console.log('[DEBUG] Needs refresh. Daily:', needsDailyRefresh, 'Version mismatch:', localVersion !== serverVersion);
+        if (localVersion && localVersion !== serverVersion) {
+          console.log('[DEBUG] Needs refresh. Version mismatch:', localVersion !== serverVersion);
           setLoadingStatus('جاري تهيئة الملفات وضمان أحدث نسخة...');
           setLoadingProgress(100);
           localStorage.setItem('khamin_game_version', serverVersion);
-          localStorage.setItem('khamin_last_refresh_date', today);
           
           // Unregister all service workers to force fetching new files
           if ('serviceWorker' in navigator) {
@@ -11150,6 +11145,7 @@ export default function App() {
                 socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
                 localStorage.removeItem('khamin_pending_rain_gift');
                 setShowRainGiftSummary(false);
+                showAlert("تم استلام المكافآت بنجاح! 🥳", "نجاح");
                 playSound('win');
               };
 
