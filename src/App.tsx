@@ -2281,15 +2281,18 @@ export default function App() {
       }
       
       // Ad logic
-      let localAdTriggered = false;
+      let adFinished = false;
+      let adViewed = false;
+      let adDismissed = false;
+
       const handleAdFailure = () => {
-        showAlert('عفواً، لا يمكن الحصول على المحاولة بدون مشاهدة الإعلان. يرجى إيقاف مانع الإعلانات (AdBlocker) والمحاولة مرة أخرى.', 'خطأ');
+        showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
       };
 
       if (typeof (window as any).adBreak === 'function') {
         const adTimeout = setTimeout(() => {
-          if (!localAdTriggered) handleAdFailure();
-        }, 3000);
+          if (!adFinished) handleAdFailure();
+        }, 8000);
 
         try {
           (window as any).adBreak({
@@ -2297,7 +2300,6 @@ export default function App() {
             name: 'lucky_wheel_spin',
             beforeAd: () => {
               clearTimeout(adTimeout);
-              localAdTriggered = true;
               Howler.mute(true);
             },
             afterAd: () => {
@@ -2307,15 +2309,20 @@ export default function App() {
               showAdFn();
             },
             adViewed: () => {
+              adFinished = true;
+              adViewed = true;
               startSpin(true);
             },
             adDismissed: () => {
+              adFinished = true;
+              adDismissed = true;
               Howler.mute(false);
               showAlert('يجب مشاهدة الإعلان بالكامل للحصول على المحاولة!', 'تنبيه');
             },
             adBreakDone: (placementInfo: any) => {
-              if (!localAdTriggered) {
-                clearTimeout(adTimeout);
+              adFinished = true;
+              clearTimeout(adTimeout);
+              if (!adViewed && !adDismissed) {
                 handleAdFailure();
               }
             }
@@ -4979,13 +4986,13 @@ export default function App() {
 
   const handleShowAd = (onComplete: () => void) => {
     if (adTriggeredRef.current) return;
+    adTriggeredRef.current = true;
     
-    adTriggeredRef.current = false;
-    let localAdTriggered = false;
+    let adFinished = false;
+    let adViewed = false;
+    let adDismissed = false;
 
     const startAdProcess = () => {
-      if (localAdTriggered) return;
-      localAdTriggered = true;
       socket?.emit('start_ad_watch', { serial: playerSerial });
     };
 
@@ -4999,15 +5006,13 @@ export default function App() {
 
     const handleAdFailure = () => {
       adTriggeredRef.current = false;
-      showAlert('عفواً، لا يمكن بدء البحث بدون مشاهدة الإعلان. يرجى إيقاف مانع الإعلانات (AdBlocker) والمحاولة مرة أخرى.', 'خطأ');
+      showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
     };
 
     if (typeof (window as any).adBreak === 'function') {
       const adTimeout = setTimeout(() => {
-        if (!localAdTriggered) {
-          handleAdFailure();
-        }
-      }, 3000);
+        if (!adFinished) handleAdFailure();
+      }, 8000);
 
       try {
         (window as any).adBreak({
@@ -5027,19 +5032,24 @@ export default function App() {
           },
           beforeReward: (showAdFn: any) => { showAdFn(); },
           adDismissed: () => {
+            adFinished = true;
+            adDismissed = true;
             clearTimeout(adSafetyTimeout);
             adTriggeredRef.current = false;
             showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
-            // Do not call onAdComplete() here to prevent reward if ad is skipped
           },
           adViewed: () => {
+            adFinished = true;
+            adViewed = true;
             clearTimeout(adSafetyTimeout);
             onAdComplete();
           },
           adBreakDone: (placementInfo: any) => {
+            adFinished = true;
             clearTimeout(adSafetyTimeout);
-            if (!localAdTriggered) {
-              clearTimeout(adTimeout);
+            clearTimeout(adTimeout);
+            if (!adViewed && !adDismissed) {
+              // Google AdSense had no ad to show (No Fill)
               handleAdFailure();
             }
           }
@@ -11137,9 +11147,12 @@ export default function App() {
           
           <button
             onClick={() => {
-              let localAdTriggered = false;
+              let adFinished = false;
+              let adViewed = false;
+              let adDismissed = false;
+
               const handleAdFailure = () => {
-                showAlert('عفواً، لا يمكن استلام المكافأة بدون مشاهدة الإعلان. يرجى إيقاف مانع الإعلانات (AdBlocker) والمحاولة مرة أخرى.', 'خطأ');
+                showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
               };
               const successReward = () => {
                 socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
@@ -11151,8 +11164,8 @@ export default function App() {
 
               if (typeof (window as any).adBreak === 'function') {
                 const adTimeout = setTimeout(() => {
-                  if (!localAdTriggered) handleAdFailure();
-                }, 3000);
+                  if (!adFinished) handleAdFailure();
+                }, 8000);
 
                 try {
                   (window as any).adBreak({
@@ -11160,7 +11173,6 @@ export default function App() {
                     name: 'claim_rain_gift',
                     beforeAd: () => {
                       clearTimeout(adTimeout);
-                      localAdTriggered = true;
                       Howler.mute(true);
                     },
                     afterAd: () => {
@@ -11170,15 +11182,20 @@ export default function App() {
                       showAdFn();
                     },
                     adViewed: () => {
+                      adFinished = true;
+                      adViewed = true;
                       successReward();
                     },
                     adDismissed: () => {
+                      adFinished = true;
+                      adDismissed = true;
                       Howler.mute(false);
                       showAlert('يجب مشاهدة الإعلان بالكامل لاستلام الهدايا!', 'تنبيه');
                     },
                     adBreakDone: (placementInfo: any) => {
-                      if (!localAdTriggered) {
-                        clearTimeout(adTimeout);
+                      adFinished = true;
+                      clearTimeout(adTimeout);
+                      if (!adViewed && !adDismissed) {
                         handleAdFailure();
                       }
                     }
