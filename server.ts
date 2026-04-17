@@ -1191,6 +1191,7 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN lastLuckyWheelResetDay TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN luckyWheelDaysUsed INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN citySearchRewards TEXT DEFAULT '[]'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN keys INTEGER DEFAULT 0`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -1394,8 +1395,8 @@ const app = express();
   }
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -1604,7 +1605,8 @@ const app = express();
         luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
         lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
         luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
-        citySearchRewards: JSON.stringify(player.citySearchRewards || [])
+        citySearchRewards: JSON.stringify(player.citySearchRewards || []),
+        keys: player.keys || 0
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -1654,7 +1656,8 @@ const app = express();
         luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
         lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
         luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
-        citySearchRewards: JSON.stringify(player.citySearchRewards || [])
+        citySearchRewards: JSON.stringify(player.citySearchRewards || []),
+        keys: player.keys || 0
       });
     }
   });
@@ -3471,7 +3474,7 @@ io.on("connection", (socket) => {
       const ip = Array.isArray(forwardedFor) ? forwardedFor[0] : (forwardedFor ? forwardedFor.split(',')[0].trim() : socket.handshake.address);
       
       // Check if banned
-      const banned = db.prepare('SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL) OR (ip = ? AND ip IS NOT NULL)').get(fingerprint || null, ip || null);
+      const banned = db.prepare('SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL)').get(fingerprint || null);
       if (banned) {
         callback({ error: 'تم حظرك نهائياً من اللعبة' });
         return;
@@ -3502,6 +3505,7 @@ io.on("connection", (socket) => {
         isPermanentBan: 0,
         reportedBy: [],
         tokens: 0,
+        keys: 0,
         adsWatchedToday: 0,
         lastAdWatchDate: null
       });
@@ -3841,6 +3845,15 @@ io.on("connection", (socket) => {
       // Check for daily reset
       checkDailyReset(player, serial, socket);
 
+      // Deduct keys
+      if (!player.isAdmin) {
+        if ((player.keys || 0) < 3) {
+          socket.emit("error", "لا تملك مفاتيح كافية!");
+          return;
+        }
+        player.keys -= 3;
+      }
+
       // Apply rewards
       if (rewards.xp) player.xp = (player.xp || 0) + rewards.xp;
       if (rewards.tokens) {
@@ -3874,7 +3887,8 @@ io.on("connection", (socket) => {
         xp: player.xp, 
         tokens: player.tokens, 
         ownedHelpers: player.ownedHelpers,
-        level: player.level
+        level: player.level,
+        keys: player.keys
       });
       
       socket.emit("player_stats_update", {
@@ -3946,8 +3960,20 @@ io.on("connection", (socket) => {
       if (dbPlayer.ownedHelpers[helperId] === 0) {
         delete dbPlayer.ownedHelpers[helperId];
       }
+      
+      // Random chance to drop a key (15% chance)
+      let foundKey = false;
+      if (Math.random() < 0.15) {
+        dbPlayer.keys = (dbPlayer.keys || 0) + 1;
+        foundKey = true;
+      }
+
       savePlayerData(serial);
-      socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers });
+      socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers, keys: dbPlayer.keys });
+      
+      if (foundKey) {
+        socket.emit("key_found", { keys: dbPlayer.keys });
+      }
 
       // Broadcast to room that a helper was used
       io.to(roomId).emit("helper_used", { playerId: socket.id, helperId });
@@ -4225,7 +4251,7 @@ io.on("connection", (socket) => {
         const ip = Array.isArray(forwardedFor) ? forwardedFor[0] : (forwardedFor ? forwardedFor.split(',')[0].trim() : socket.handshake.address);
         
         // Check if banned
-        const banned = db.prepare('SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL) OR (ip = ? AND ip IS NOT NULL)').get(fingerprint || null, ip || null);
+        const banned = db.prepare('SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL)').get(fingerprint || null);
         if (banned || player.isPermanentBan) {
           callback({ error: 'تم حظرك نهائياً من اللعبة' });
           return;
@@ -4912,10 +4938,21 @@ io.on("connection", (socket) => {
         }
       };
 
+      // Helper function to drop a key
+      const dropKeyChance = () => {
+        if (dbPlayer && Math.random() < 0.15) {
+          dbPlayer.keys = (dbPlayer.keys || 0) + 1;
+          savePlayerData(serial);
+          socket.emit("player_data_update", { serial, keys: dbPlayer.keys });
+          socket.emit("key_found", { keys: dbPlayer.keys });
+        }
+      };
+
       if (cardType === "hint") {
         const playerLevel = getLevel(player.xp || 0);
         if ((playerLevel >= 10 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && (!player.hintCount || player.hintCount < 2)) {
           deductFreeUse();
+          dropKeyChance();
           if (!player.hintCount) player.hintCount = 0;
           player.hintCount++;
           player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
@@ -4942,6 +4979,7 @@ io.on("connection", (socket) => {
         const playerLevel = getLevel(player.xp || 0);
         if ((playerLevel >= 20 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.wordLengthUsed) {
           deductFreeUse();
+          dropKeyChance();
           player.wordLengthUsed = true;
           player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
           const targetName = player.targetImage.name;
@@ -4953,6 +4991,7 @@ io.on("connection", (socket) => {
         const playerLevel = getLevel(player.xp || 0);
         if ((playerLevel >= 40 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.wordCountUsed) {
           deductFreeUse();
+          dropKeyChance();
           player.wordCountUsed = true;
           player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
           const targetName = player.targetImage.name;
@@ -4964,6 +5003,7 @@ io.on("connection", (socket) => {
         const playerLevel = getLevel(player.xp || 0);
         if ((playerLevel >= 30 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.timeFreezeUsed && !room.isFrozen) {
           deductFreeUse();
+          dropKeyChance();
           player.timeFreezeUsed = true;
           room.isFrozen = true;
           room.freezeTimer = 60;
@@ -4974,6 +5014,7 @@ io.on("connection", (socket) => {
         const playerLevel = getLevel(player.xp || 0);
         if ((playerLevel >= 50 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.spyLensUsed) {
           deductFreeUse();
+          dropKeyChance();
           player.spyLensUsed = true;
           player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
           // The player wants to see their own target image (which is what the opponent sees)
@@ -5424,6 +5465,9 @@ io.on("connection", (socket) => {
         room.isPaused = false;
         room.pausingPlayerId = null;
         room.quickGuessTimer = 0;
+        room.isFrozen = false;
+        room.freezeTimer = 0;
+        room.adCooldownTimer = 0;
         
         // Reset players state
         room.players.forEach((p: any) => {
@@ -5872,7 +5916,7 @@ io.on("connection", (socket) => {
               db.prepare('INSERT INTO banned_identities (fingerprint, ip, timestamp) VALUES (?, ?, ?)').run(player.fingerprint || null, player.ip || null, Date.now());
             }
           } else if (updates.isPermanentBan === 0) {
-            db.prepare('DELETE FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL) OR (ip = ? AND ip IS NOT NULL)').run(player.fingerprint || null, player.ip || null);
+            db.prepare('DELETE FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL)').run(player.fingerprint || null);
           }
           
           savePlayerData(serial);
@@ -6259,6 +6303,9 @@ io.on("connection", (socket) => {
     room.timer = 600; // 10 minutes
     room.startTime = Date.now();
     room.isPaused = false;
+    room.isFrozen = false;
+    room.freezeTimer = 0;
+    room.adCooldownTimer = 0;
     room.lastUpdates = null;
     room.currentTurn = room.players[0].id;
     room.waitingForAnswerFrom = null;
