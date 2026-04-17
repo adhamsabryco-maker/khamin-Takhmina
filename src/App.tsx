@@ -1976,31 +1976,31 @@ export default function App() {
   useEffect(() => {
     if (isRainGiftActive && gamePolicies.isRainGiftEnabled && !hasShownRainGiftAlertRef.current && !showRainGiftGame && !showRainGiftSummary) {
       hasShownRainGiftAlertRef.current = true;
-      if (keys < 3 && !isAdmin) {
-        showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
-      } else {
-        showConfirm(
-          'بدأ حدث مطر الهدايا الآن! هل تريد الانضمام للحدث وجمع الهدايا؟',
-          () => {
-            if (room) {
-              socket?.emit('leave_room', { roomId: room.id }, () => {
-                resetToHome();
-                setShowRainGiftGame(true);
-              });
-            } else if (isSearching) {
-              socket?.emit('leave_matchmaking');
+      showConfirm(
+        'بدأ حدث مطر الهدايا الآن! هل تريد الانضمام للحدث وجمع الهدايا؟',
+        () => {
+          if (keys < 3 && !isAdmin) {
+            showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
+            return;
+          }
+          if (room) {
+            socket?.emit('leave_room', { roomId: room.id }, () => {
               resetToHome();
               setShowRainGiftGame(true);
-            } else {
-              setShowRainGiftGame(true);
-            }
-          },
-          'حدث مطر الهدايا 🎁',
-          () => {}, // onCancel
-          'اشترك الأن',
-          'حسنا'
-        );
-      }
+            });
+          } else if (isSearching) {
+            socket?.emit('leave_matchmaking');
+            resetToHome();
+            setShowRainGiftGame(true);
+          } else {
+            setShowRainGiftGame(true);
+          }
+        },
+        'حدث مطر الهدايا 🎁',
+        () => {}, // onCancel
+        'اشترك الأن',
+        'حسنا'
+      );
     } else if (!isRainGiftActive) {
       hasShownRainGiftAlertRef.current = false;
     }
