@@ -412,6 +412,103 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
             </p>
           </div>
         </div>
+
+        {/* Mock Ad Settings */}
+        <div className="box-game p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">📺 الإعلان البديل (عند فشل إعلانات جوجل)</h3>
+          <div className="space-y-4">
+            <p className="text-sm font-bold text-brown-muted">قم برفع صورة تظهر للـ لاعبين عند فشل تحميل الإعلان، بحجم 1:1 (مربعة).</p>
+            {(config as any).mockAdImage ? (
+              <div className="space-y-4">
+                <div className="relative aspect-square max-w-[250px] mx-auto border-4 border-gray-200 rounded-xl overflow-hidden bg-black/5">
+                  <img src={`/uploads/${(config as any).mockAdImage}`} className="w-full h-full object-contain" />
+                  <button onClick={async () => {
+                     try {
+                        const filename = (config as any).mockAdImage;
+                        await fetch(`/api/upload/${filename}`, { method: 'DELETE' });
+                        const newConfig = { ...config };
+                        delete (newConfig as any).mockAdImage;
+                        delete (newConfig as any).mockAdLink;
+                        await fetch('/api/config', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(newConfig),
+                        });
+                        refreshConfig();
+                        showAlert('تم الحذف بنجاح', 'نجاح');
+                     } catch(e){
+                        showAlert('حدث خطأ أثناء الحذف', 'خطأ');
+                     }
+                  }} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg transition-transform hover:scale-110 active:scale-95"><Trash2 className="w-4 h-4" /></button>
+                </div>
+                
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    dir="ltr"
+                    className="input-game flex-1 text-left"
+                    placeholder="https://example.com"
+                    defaultValue={(config as any).mockAdLink || ''}
+                    id="mockAdLinkInput"
+                  />
+                  <button
+                    onClick={async () => {
+                      const linkInput = document.getElementById('mockAdLinkInput') as HTMLInputElement;
+                      if (!linkInput) return;
+                      const newConfig = { ...config, mockAdLink: linkInput.value };
+                      try {
+                        await fetch('/api/config', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(newConfig),
+                        });
+                        refreshConfig();
+                        showAlert('تم حفظ الرابط بنجاح', 'نجاح');
+                      } catch(e) {
+                         showAlert('حدث خطأ أثناء حفظ الرابط', 'خطأ');
+                      }
+                    }}
+                    className="btn-game btn-primary py-2 px-6"
+                  >
+                    حفظ الرابط
+                  </button>
+                </div>
+                <p className="text-xs text-brown-muted">رابط الإحالة الذي سيتم فتحه عند ضغط اللاعبين على صورة الإعلان.</p>
+              </div>
+            ) : (
+                <label className="aspect-square max-w-[250px] mx-auto border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 bg-gray-50 transition-colors">
+                  <Upload className="w-8 h-8 text-brown-light mb-2" />
+                  <span className="text-sm font-bold text-brown-light text-center px-4">رفع صورة الإعلان البديل الأساسية</span>
+                  <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploading(true);
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    try {
+                      const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData,
+                      });
+                      const data = await response.json();
+                      const newConfig = { ...config, mockAdImage: data.filename };
+                      await fetch('/api/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newConfig),
+                      });
+                      refreshConfig();
+                      showAlert('تم رفع الصورة بنجاح!', 'نجاح');
+                    } catch (error) {
+                      showAlert('حدث خطأ أثناء الرفع', 'خطأ');
+                    } finally {
+                      setUploading(false);
+                    }
+                  }} disabled={uploading}/>
+                </label>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
