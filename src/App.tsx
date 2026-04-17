@@ -69,6 +69,7 @@ import {
   Clock,
   CloudRain,
   Disc,
+  Key,
 } from 'lucide-react';
 
 import easyGuessData from './data/easyGuess.json';
@@ -737,6 +738,7 @@ export default function App() {
   });
   const [isRewardClaimed, setIsRewardClaimed] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
+  const [showKeyDrop, setShowKeyDrop] = useState(false);
 
   const [fingerprint, setFingerprint] = useState<string | null>(null);
   useEffect(() => {
@@ -754,6 +756,7 @@ export default function App() {
   const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0'));
   const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0'));
   const [tokens, setTokens] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
+  const [keys, setKeys] = useState(() => parseInt(localStorage.getItem('khamin_keys') || '0'));
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
@@ -3379,7 +3382,7 @@ export default function App() {
           if (data && data.error) {
             // We DO NOT remove the serial from localStorage here anymore.
             // This prevents permanent account loss if the server DB is temporarily empty/reset.
-            setError('تعذر العثور على حسابك في الخادم. قد يكون هناك تحديث أو صيانة. إذا قمت بإنشاء حساب جديد سيتم مسح حسابك القديم.');
+            setError(data.error); 
             setShowWelcomeModal(true);
           } else if (data) {
             setXp(data.xp);
@@ -3504,6 +3507,14 @@ export default function App() {
       }
     });
 
+    newSocket.on('key_found', (data: any) => {
+      setKeys(data.keys);
+      localStorage.setItem('khamin_keys', data.keys.toString());
+      setShowKeyDrop(true);
+      setTimeout(() => setShowKeyDrop(false), 3000);
+      playSound('prize'); // Using a milder drop sound instead of the loud win sound
+    });
+
     newSocket.on('player_data_update', (data: any) => {
       if (data.reports !== undefined) setReports(data.reports);
       if (data.xp !== undefined) {
@@ -3517,6 +3528,10 @@ export default function App() {
       if (data.tokens !== undefined) {
         setTokens(data.tokens);
         localStorage.setItem('khamin_tokens', data.tokens.toString());
+      }
+      if (data.keys !== undefined) {
+        setKeys(data.keys);
+        localStorage.setItem('khamin_keys', data.keys.toString());
       }
       if (data.proPackageExpiry !== undefined) {
         setProPackageExpiry(data.proPackageExpiry);
@@ -11391,6 +11406,9 @@ export default function App() {
                         </span>
                         <span className="flex text-xs md:text-sm text-gray-400 px-0.5">|</span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                          <span className="text-[13px] md:text-[14px]"><Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /></span> <span className="text-[11px] md:text-[12px]">{keys || 0}</span>
+                        </span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
                           <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.time_freeze || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
@@ -11651,7 +11669,7 @@ export default function App() {
               {gamePolicies.isRainGiftEnabled && (
               <div className="p-2 bg-gradient-to-r from-accent-orange/10 to-accent-green/10 rounded-2xl border-2 border-white shadow-sm box-game">
               <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[11px] text-accent-orange">مطر الهدايا 🎁 كل يوم الساعة 7 مساء بتوقيت مصر 🌧️</span>
-              <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[12px] text-accent-purple">مدة الحدث 3 دقائق فقط! ⏰</span>
+              <span className="flex font-bold p-0.5 py-0.5 mb-1 items-center justify-center md:text-[13px] text-[12px] text-accent-purple">مدة الحدث 3 دقائق فقط! ⏰</span>
                 <div className="flex items-center justify-between flex-row-reverse">
                   <div className="flex items-center gap-2" dir="ltr">
                     <div className="w-8 h-8 bg-accent-orange rounded-full flex items-center justify-center text-white shadow-sm">
@@ -11661,24 +11679,39 @@ export default function App() {
                       <div className={`font-bold text-main ${isRainGiftActive ? 'text-base md:text-lg' : 'text-[21px]'}`}>{rainGiftCountdown}</div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      setGameTimer(180);
-                      setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
-                      setFallingItems([]);
-                      setShowRainGiftGame(true);
-                      playSound('clickOpen');
-                    }}
-                    // Enabled for testing as requested
-                    disabled={!isAdmin && !isRainGiftActive}
-                    className={`px-6 py-2 rounded-xl font-black text-xs transition-all shadow-md ${
-                      (isAdmin || isRainGiftActive) // Always active style for testing
-                      ? 'bg-accent-green text-white hover:scale-105 active:scale-95 event-glow' 
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    {(isAdmin || isRainGiftActive) ? 'اشترك في الحدث' : 'انتهي الحدث اليوم'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        showAlert('ابحث عن المفاتيح 🗝️ فى مباريات التخمين', 'تنبيه');
+                      }}
+                      className="flex items-center gap-1 bg-white/80 px-2 py-0.5 rounded-lg border-2 border-2 hover:bg-white transition-colors"
+                    >
+                      <span className="text-sm font-bold text-accent-orange">{keys}/3</span>
+                      <Key className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (keys < 3 && !isAdmin) {
+                          showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
+                          return;
+                        }
+                        setGameTimer(180);
+                        setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
+                        setFallingItems([]);
+                        setShowRainGiftGame(true);
+                        playSound('clickOpen');
+                      }}
+                      // Enabled for testing as requested
+                      disabled={(!isAdmin && !isRainGiftActive) || (keys < 3 && !isAdmin)}
+                      className={`px-6 py-2 rounded-xl font-black text-xs transition-all shadow-md ${
+                        (isAdmin || isRainGiftActive) && (keys >= 3 || isAdmin)
+                        ? 'bg-accent-green text-white hover:scale-105 active:scale-95 event-glow' 
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {(isAdmin || isRainGiftActive) ? 'اشترك في الحدث' : 'انتهي الحدث اليوم'}
+                    </button>
+                  </div>
                 </div>
               </div>
               )}
@@ -12157,6 +12190,46 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* Key Drop Animation */}
+      <AnimatePresence>
+        {showKeyDrop && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 10 }}
+            exit={{ opacity: 0, scale: 1.5, y: -20 }}
+            className="fixed top-14 md:top-16 left-1/2 -translate-x-1/2 z-[3000] flex flex-col items-center justify-center pointer-events-none mt-2 md:mt-4"
+          >
+            <div className="relative w-32 h-32 flex items-center justify-center mt-4">
+              <div className="absolute inset-0 bg-yellow-400 blur-xl opacity-50 animate-pulse rounded-full"></div>
+              <div className="absolute inset-0 bg-yellow-200 blur-3xl opacity-30 animate-pulse rounded-full scale-150"></div>
+              
+              {/* Spinning light rays - increased density and changed to orange */}
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 opacity-80"
+              >
+                {[...Array(12)].map((_, i) => (
+                  <div 
+                    key={i}
+                    className="absolute top-0 left-1/2 w-1.5 h-full bg-gradient-to-b from-transparent via-orange-400 to-transparent -translate-x-1/2"
+                    style={{ transform: `rotate(${i * 15}deg)` }}
+                  ></div>
+                ))}
+              </motion.div>
+              
+              <motion.div
+                initial={{ rotate: -15 }}
+                animate={{ rotate: 15 }}
+                transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+              >
+                <Key className="w-16 h-16 md:w-20 md:h-20 text-yellow-300 relative z-10 drop-shadow-sm" />
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
 
       <main className="flex-1 relative flex flex-col items-center py-2 px-2 max-w-md mx-auto w-full overflow-hidden">
