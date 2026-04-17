@@ -9542,7 +9542,7 @@ export default function App() {
                                     </div>
                                   </div>
 
-                                  <div className="grid grid-cols-3 gap-2">
+                                  <div className="grid grid-cols-4 gap-2">
                                     <div className="bg-gray-50 p-2 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-brown-light">الفوز</div>
                                       <div className="text-sm font-black text-brown-dark">{p.wins || 0}</div>
@@ -9554,6 +9554,10 @@ export default function App() {
                                     <div className="bg-blue-50 p-2 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-blue-400">المستوى</div>
                                       <div className="text-sm font-black text-blue-600">{getLevel(p.xp)}</div>
+                                    </div>
+                                    <div className="bg-yellow-50 p-2 rounded-xl text-center">
+                                      <div className="text-[10px] font-bold text-yellow-500">المفاتيح</div>
+                                      <div className="text-sm font-black text-yellow-600">{p.keys || 0}</div>
                                     </div>
                                   </div>
 
