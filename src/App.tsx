@@ -114,6 +114,7 @@ const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
 import confetti from 'canvas-confetti';
 import { COLLECTION_DATA } from '../collectionData';
 import { AdminCustomization } from './components/AdminCustomization';
+import { MockAdModal } from './components/MockAdModal';
 import { AdminLogin } from './components/AdminLogin';
 import { QuickChatManager } from './components/QuickChatManager';
 import { AvatarDisplay } from './components/AvatarDisplay';
@@ -1052,6 +1053,7 @@ export default function App() {
   });
   const [customAvatar, setCustomAvatar] = useState(() => localStorage.getItem('khamin_custom_avatar') || '');
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('khamin_is_admin') === 'true');
+  const [mockAdProviderState, setMockAdProviderState] = useState<{ onComplete: () => void } | null>(null);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showPackageModal, setShowPackageModal] = useState(false);
@@ -1974,31 +1976,35 @@ export default function App() {
   useEffect(() => {
     if (isRainGiftActive && gamePolicies.isRainGiftEnabled && !hasShownRainGiftAlertRef.current && !showRainGiftGame && !showRainGiftSummary) {
       hasShownRainGiftAlertRef.current = true;
-      showConfirm(
-        'بدأ حدث مطر الهدايا الآن! هل تريد الانضمام للحدث وجمع الهدايا؟',
-        () => {
-          if (room) {
-            socket?.emit('leave_room', { roomId: room.id }, () => {
+      if (keys < 3 && !isAdmin) {
+        showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
+      } else {
+        showConfirm(
+          'بدأ حدث مطر الهدايا الآن! هل تريد الانضمام للحدث وجمع الهدايا؟',
+          () => {
+            if (room) {
+              socket?.emit('leave_room', { roomId: room.id }, () => {
+                resetToHome();
+                setShowRainGiftGame(true);
+              });
+            } else if (isSearching) {
+              socket?.emit('leave_matchmaking');
               resetToHome();
               setShowRainGiftGame(true);
-            });
-          } else if (isSearching) {
-            socket?.emit('leave_matchmaking');
-            resetToHome();
-            setShowRainGiftGame(true);
-          } else {
-            setShowRainGiftGame(true);
-          }
-        },
-        'حدث مطر الهدايا 🎁',
-        () => {}, // onCancel
-        'اشترك الأن',
-        'حسنا'
-      );
+            } else {
+              setShowRainGiftGame(true);
+            }
+          },
+          'حدث مطر الهدايا 🎁',
+          () => {}, // onCancel
+          'اشترك الأن',
+          'حسنا'
+        );
+      }
     } else if (!isRainGiftActive) {
       hasShownRainGiftAlertRef.current = false;
     }
-  }, [isRainGiftActive, gamePolicies.isRainGiftEnabled, showRainGiftGame, showRainGiftSummary, room, isSearching, socket]);
+  }, [isRainGiftActive, gamePolicies.isRainGiftEnabled, showRainGiftGame, showRainGiftSummary, room, isSearching, socket, keys, isAdmin]);
 
   useEffect(() => {
     if (room?.gameState === 'discussion' && room.category && customConfig?.quickChat) {
@@ -2289,7 +2295,17 @@ export default function App() {
       let adDismissed = false;
 
       const handleAdFailure = () => {
-        showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
+        if ((customConfig as any)?.mockAdImage) {
+          setMockAdProviderState({
+            onComplete: () => {
+              adFinished = true;
+              adViewed = true;
+              startSpin(true);
+            }
+          });
+        } else {
+          showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
+        }
       };
 
       if (typeof (window as any).adBreak === 'function') {
@@ -4039,7 +4055,12 @@ export default function App() {
     });
 
     newSocket.on('freeze_timer_update', (timer) => {
-      setRoom(prev => prev ? { ...prev, freezeTimer: timer, isFrozen: true } : null);
+      setRoom(prev => {
+        if (!prev || (prev.gameState !== 'discussion' && prev.gameState !== 'guessing')) {
+          return prev;
+        }
+        return { ...prev, freezeTimer: timer, isFrozen: true };
+      });
     });
 
     newSocket.on('freeze_ended', () => {
@@ -5021,7 +5042,15 @@ export default function App() {
 
     const handleAdFailure = () => {
       adTriggeredRef.current = false;
-      showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
+      if ((customConfig as any)?.mockAdImage) {
+        setMockAdProviderState({
+          onComplete: () => {
+            onAdComplete();
+          }
+        });
+      } else {
+        showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
+      }
     };
 
     if (typeof (window as any).adBreak === 'function') {
@@ -11167,7 +11196,15 @@ export default function App() {
               let adDismissed = false;
 
               const handleAdFailure = () => {
-                showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
+                if ((customConfig as any)?.mockAdImage) {
+                  setMockAdProviderState({
+                    onComplete: () => {
+                      successReward();
+                    }
+                  });
+                } else {
+                  showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
+                }
               };
               const successReward = () => {
                 socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
@@ -11670,7 +11707,7 @@ export default function App() {
               <div className="p-2 bg-gradient-to-r from-accent-orange/10 to-accent-green/10 rounded-2xl border-2 border-white shadow-sm box-game">
               <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[11px] text-accent-orange">مطر الهدايا 🎁 كل يوم الساعة 7 مساء بتوقيت مصر 🌧️</span>
               <span className="flex font-bold p-0.5 py-0.5 mb-1 items-center justify-center md:text-[13px] text-[12px] text-accent-purple">مدة الحدث 3 دقائق فقط! ⏰</span>
-                <div className="flex items-center justify-between flex-row-reverse">
+                <div className="flex items-center mb-2 justify-between flex-row-reverse">
                   <div className="flex items-center gap-2" dir="ltr">
                     <div className="w-8 h-8 bg-accent-orange rounded-full flex items-center justify-center text-white shadow-sm">
                       <Clock className="w-6 h-6" />
@@ -11702,9 +11739,9 @@ export default function App() {
                         playSound('clickOpen');
                       }}
                       // Enabled for testing as requested
-                      disabled={(!isAdmin && !isRainGiftActive) || (keys < 3 && !isAdmin)}
-                      className={`px-6 py-2 rounded-xl font-black text-xs transition-all shadow-md ${
-                        (isAdmin || isRainGiftActive) && (keys >= 3 || isAdmin)
+                      disabled={(!isAdmin && !isRainGiftActive)}
+                      className={`px-2 md:px-6 py-2 rounded-xl font-black md:text-[13px] text-[10px] transition-all shadow-md ${
+                        (isAdmin || isRainGiftActive)
                         ? 'bg-accent-green text-white hover:scale-105 active:scale-95 event-glow' 
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
@@ -11713,6 +11750,8 @@ export default function App() {
                     </button>
                   </div>
                 </div>
+                  <span className="flex font-bold p-0.5 py-0.5 pt-2 items-center justify-center md:text-[13px] text-[12px] text-accent-orange border-t-2 border-game">تحتاج 3 🗝️ مفاتيح للإشتراك فى حدث مطر الهدايا</span>
+                  <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[10px] text-accent-purple">ابحث عن مفاتيح التخمين فى المباريات داخل وسائل المساعدة</span>
               </div>
               )}
             </div>
@@ -13464,6 +13503,18 @@ export default function App() {
             customConfig={customConfig}
             onStartGame={handleMatchIntroStart}
             onComplete={handleMatchIntroComplete}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {mockAdProviderState && (
+          <MockAdModal
+            imageUrl={(customConfig as any)?.mockAdImage ? `/uploads/${(customConfig as any)?.mockAdImage}` : null}
+            targetUrl={(customConfig as any)?.mockAdLink || null}
+            onComplete={() => {
+              mockAdProviderState.onComplete();
+              setMockAdProviderState(null);
+            }}
           />
         )}
       </AnimatePresence>
