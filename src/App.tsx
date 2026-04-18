@@ -9542,22 +9542,42 @@ export default function App() {
                                     </div>
                                   </div>
 
-                                  <div className="grid grid-cols-4 gap-2">
-                                    <div className="bg-gray-50 p-2 rounded-xl text-center">
+                                  <div className="grid grid-cols-5 gap-1">
+                                    <div className="bg-gray-50 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-brown-light">الفوز</div>
                                       <div className="text-sm font-black text-brown-dark">{p.wins || 0}</div>
                                     </div>
-                                    <div className="bg-purple-50 p-2 rounded-xl text-center">
+                                    <div className="bg-purple-50 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-purple-400">Tokens</div>
                                       <div className="text-sm font-black text-purple-600">{p.tokens || 0}</div>
                                     </div>
-                                    <div className="bg-blue-50 p-2 rounded-xl text-center">
+                                    <div className="bg-blue-50 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-blue-400">المستوى</div>
                                       <div className="text-sm font-black text-blue-600">{getLevel(p.xp)}</div>
                                     </div>
-                                    <div className="bg-yellow-50 p-2 rounded-xl text-center">
+                                    <div className="bg-yellow-50 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-yellow-500">المفاتيح</div>
                                       <div className="text-sm font-black text-yellow-600">{p.keys || 0}</div>
+                                    </div>
+                                    <div className="bg-blue-100 p-1 rounded-xl text-center">
+                                      <div className="text-[10px] font-bold text-blue-400">النصيحة</div>
+                                      <div className="text-sm font-black text-blue-500">{p.ownedHelpers.hint || 0}</div>
+                                    </div>
+                                    <div className="bg-green-100 p-1 rounded-xl text-center">
+                                      <div className="text-[10px] font-bold text-green-400">كاشف الحروف</div>
+                                      <div className="text-sm font-black text-green-500">{p.ownedHelpers.word_length || 0}</div>
+                                    </div>
+                                    <div className="bg-indigo-100 p-1 rounded-xl text-center">
+                                      <div className="text-[10px] font-bold text-indigo-400">عدد الكلمات</div>
+                                      <div className="text-sm font-black text-indigo-500">{p.ownedHelpers.word_count || 0}</div>
+                                    </div>
+                                    <div className="bg-purple-100 p-1 rounded-xl text-center">
+                                      <div className="text-[10px] font-bold text-purple-400">الجاسوس</div>
+                                      <div className="text-sm font-black text-purple-500">{p.ownedHelpers.spy_lens || 0}</div>
+                                    </div>
+                                    <div className="bg-cyan-100 p-1 rounded-xl text-center">
+                                      <div className="text-[10px] font-bold text-cyan-400">تجميد الوقت</div>
+                                      <div className="text-sm font-black text-cyan-500">{p.ownedHelpers.time_freeze || 0}</div>
                                     </div>
                                   </div>
 
