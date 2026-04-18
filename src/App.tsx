@@ -2290,68 +2290,9 @@ export default function App() {
         return;
       }
       
-      // Ad logic
-      let adFinished = false;
-      let adViewed = false;
-      let adDismissed = false;
-
-      const handleAdFailure = () => {
-        setMockAdProviderState({
-          onComplete: () => {
-            adFinished = true;
-            adViewed = true;
-            startSpin(true);
-          }
-        });
-      };
-
-      if (typeof (window as any).adBreak === 'function') {
-        const adTimeout = setTimeout(() => {
-          if (!adFinished) handleAdFailure();
-        }, 2000);
-
-        try {
-          (window as any).adBreak({
-            type: 'reward',
-            name: 'lucky_wheel_spin',
-            beforeAd: () => {
-              clearTimeout(adTimeout);
-              Howler.mute(true);
-            },
-            afterAd: () => {
-              Howler.mute(false);
-            },
-            beforeReward: (showAdFn: any) => {
-              showAdFn();
-            },
-            adViewed: () => {
-              adFinished = true;
-              adViewed = true;
-              startSpin(true);
-            },
-            adDismissed: () => {
-              adFinished = true;
-              adDismissed = true;
-              Howler.mute(false);
-              showAlert('يجب مشاهدة الإعلان بالكامل للحصول على المحاولة!', 'تنبيه');
-            },
-            adBreakDone: (placementInfo: any) => {
-              adFinished = true;
-              clearTimeout(adTimeout);
-              if (!adViewed && !adDismissed) {
-                handleAdFailure();
-              }
-            }
-          });
-        } catch (e) {
-          console.error("Ad error:", e);
-          clearTimeout(adTimeout);
-          handleAdFailure();
-        }
-      } else {
-        // No ad SDK found (AdBlocker)
-        handleAdFailure();
-      }
+      handleShowAd(() => {
+        startSpin(true);
+      }, 'lucky_wheel_spin', 'يجب مشاهدة الإعلان بالكامل للحصول على المحاولة!');
     } else {
       startSpin(false);
     }
@@ -4618,40 +4559,7 @@ export default function App() {
     // Close confirmation modal immediately to prevent "fixed window" issue
     setShowAdConfirmation(false);
 
-    // Set triggered to true immediately to prevent double clicks
-    adTriggeredRef.current = true;
-
-    let localAdTriggered = false;
-
-    const startAdProcess = () => {
-      if (localAdTriggered) return;
-      localAdTriggered = true;
-      
-      if (roomId && isPowerUp) {
-        const powerUpName = {
-          quick_guess: 'تخمين سريع',
-          hint: 'نصيحة',
-          word_length: 'كاشف الحروف',
-          word_count: 'عدد الكلمات',
-          time_freeze: 'تجميد الوقت',
-          spy_lens: 'الجاسوس'
-        }[activePowerUp || ''];
-        
-        if (roomId) {
-          socket?.emit('ad_started', { roomId, powerUpName, helperId: activePowerUp });
-        }
-      } else if (roomId) {
-        socket?.emit('ad_started', { roomId });
-      }
-      socket?.emit('start_ad_watch', { serial: playerSerial });
-    };
-
-    let adSafetyTimeout: NodeJS.Timeout;
-
     const onAdComplete = () => {
-      clearTimeout(adSafetyTimeout);
-      adTriggeredRef.current = false;
-      
       // Trigger cooldown after ad finishes
       setIsCooldown(true);
       setCooldownTime(30);
@@ -4668,100 +4576,13 @@ export default function App() {
       } else {
         socket?.emit('watch_ad_request', { serial: playerSerial });
       }
-      
-      if (roomId) {
-        socket?.emit('ad_ended', { roomId });
-      }
     };
 
-    const startMockAd = () => {
-      console.log('Falling back to mock ad');
-      startAdProcess();
-      setMockAdProviderState({
-        onComplete: () => {
-          onAdComplete();
-        }
-      });
-    };
-
-    const handleAdUnavailable = () => {
-      console.warn('Google Ads unavailable, falling back to mock ad temporarily');
-      startMockAd();
-    };
-
-    // Call real AdSense adBreak if available
-    if (typeof window.adBreak === 'function') {
-      console.log('Calling Google AdSense adBreak');
-      
-      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 2 seconds, use fallback
-      const adTimeout = setTimeout(() => {
-        if (!localAdTriggered) {
-          console.warn('AdSense adBreak timed out, using fallback');
-          handleAdUnavailable();
-        }
-      }, 2000);
-
-      try {
-        window.adBreak({
-          type: 'reward',
-          name: isPowerUp ? `use_${activePowerUp}` : 'get_token',
-          beforeAd: () => {
-            console.log('AdSense: beforeAd');
-            clearTimeout(adTimeout);
-            startAdProcess();
-            
-            // Safety timeout: if ad doesn't finish or dismiss within 60 seconds, resume game
-            adSafetyTimeout = setTimeout(() => {
-              console.warn('AdSense ad stuck, resuming game');
-              if (roomId) {
-                socket?.emit('ad_ended', { roomId });
-              }
-              setActivePowerUp(null);
-              adTriggeredRef.current = false;
-            }, 60000);
-          },
-          afterAd: () => {
-            console.log('AdSense: afterAd');
-          },
-          beforeReward: (showAdFn: any) => {
-            console.log('AdSense: beforeReward');
-            showAdFn();
-          },
-          adDismissed: () => {
-            console.log('AdSense: adDismissed');
-            clearTimeout(adSafetyTimeout);
-            adTriggeredRef.current = false;
-            showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
-            if (roomId) {
-              socket?.emit('ad_ended', { roomId });
-            }
-            setActivePowerUp(null);
-          },
-          adViewed: () => {
-            console.log('AdSense: adViewed');
-            onAdComplete();
-          },
-          adBreakDone: (placementInfo: any) => {
-            console.log('AdSense: adBreakDone', placementInfo);
-            // If adBreakDone is called but ad was never triggered, it means no ad was available
-            if (!localAdTriggered) {
-              clearTimeout(adTimeout);
-              console.warn('AdSense adBreakDone called without triggering ad, using fallback');
-              handleAdUnavailable();
-            } else {
-              adTriggeredRef.current = false;
-            }
-          }
-        });
-      } catch (error) {
-        console.error('Error calling window.adBreak:', error);
-        clearTimeout(adTimeout);
-        handleAdUnavailable();
-      }
-    } else {
-      // Fallback if AdSense is blocked or not loaded
-      handleAdUnavailable();
-    }
+    handleShowAd(
+      onAdComplete, 
+      isPowerUp ? `use_${activePowerUp}` : 'get_token',
+      isPowerUp ? "يجب مشاهدة الإعلان كاملاً لاستخدام الوسيلة المساعدة!" : "يجب مشاهدة الإعلان كاملاً للحصول على الـ Token!"
+    );
   };
 
   const handleRewardAd = (categoryId: string, stage: number) => {
@@ -4770,98 +4591,13 @@ export default function App() {
     // Close confirmation modal immediately
     setPendingClaimReward(null);
 
-    adTriggeredRef.current = false;
-    let localAdTriggered = false;
-
-    const startAdProcess = () => {
-      if (localAdTriggered) return;
-      localAdTriggered = true;
-      if (roomId) {
-        socket?.emit('ad_started', { roomId, powerUpName: 'استلام مكافأة' });
-      }
-      socket?.emit('start_ad_watch', { serial: playerSerial });
-    };
-
-    let adSafetyTimeout: NodeJS.Timeout;
-
-    const onAdComplete = () => {
-      clearTimeout(adSafetyTimeout);
-      adTriggeredRef.current = false;
-      
-      if (roomId) {
-        socket?.emit('ad_ended', { roomId });
-      }
-
+    handleShowAd(() => {
       socket?.emit('claim_collection_reward', { 
         serial: playerSerial, 
         categoryId, 
         stage 
       });
-    };
-
-    const startMockAd = () => {
-      startAdProcess();
-      setMockAdProviderState({
-        onComplete: () => {
-          onAdComplete();
-        }
-      });
-    };
-
-    const handleAdUnavailable = () => {
-      startMockAd();
-    };
-
-    if (typeof window.adBreak === 'function') {
-      const adTimeout = setTimeout(() => {
-        if (!localAdTriggered) {
-          handleAdUnavailable();
-        }
-      }, 2000);
-
-      try {
-        window.adBreak({
-          type: 'reward',
-          name: 'claim_collection_reward',
-          beforeAd: () => {
-            clearTimeout(adTimeout);
-            startAdProcess();
-            adSafetyTimeout = setTimeout(() => {
-              if (roomId) {
-                socket?.emit('ad_ended', { roomId });
-              }
-              adTriggeredRef.current = false;
-            }, 60000);
-          },
-          afterAd: () => {},
-          beforeReward: (showAdFn: any) => { showAdFn(); },
-          adDismissed: () => {
-            clearTimeout(adSafetyTimeout);
-            adTriggeredRef.current = false;
-            if (roomId) {
-              socket?.emit('ad_ended', { roomId });
-            }
-            showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
-          },
-          adViewed: () => {
-            onAdComplete();
-          },
-          adBreakDone: (placementInfo: any) => {
-            if (!localAdTriggered) {
-              clearTimeout(adTimeout);
-              handleAdUnavailable();
-            } else {
-              adTriggeredRef.current = false;
-            }
-          }
-        });
-      } catch (error) {
-        clearTimeout(adTimeout);
-        handleAdUnavailable();
-      }
-    } else {
-      handleAdUnavailable();
-    }
+    }, 'claim_collection_reward');
   };
 
   const handleProfileUpdate = () => {
@@ -5027,9 +4763,7 @@ export default function App() {
     if (adTriggeredRef.current) return;
     adTriggeredRef.current = true;
     
-    let adFinished = false;
-    let adViewed = false;
-    let adDismissed = false;
+    let flowFinished = false;
 
     const startAdProcess = () => {
       socket?.emit('start_ad_watch', { serial: playerSerial });
@@ -5038,29 +4772,34 @@ export default function App() {
       }
     };
 
-    let adSafetyTimeout: NodeJS.Timeout;
-
-    const onAdComplete = () => {
-      clearTimeout(adSafetyTimeout);
+    const cleanup = () => {
       adTriggeredRef.current = false;
       if (roomId) {
         socket?.emit('ad_ended', { roomId });
       }
+    };
+
+    const handleAdFlowSuccess = () => {
+      if (flowFinished) return;
+      flowFinished = true;
+      cleanup();
       onComplete();
     };
 
-    const handleAdFailure = () => {
-      adTriggeredRef.current = false;
+    const handleAdFlowFailure = () => {
+      if (flowFinished) return;
+      flowFinished = true;
       setMockAdProviderState({
         onComplete: () => {
-          onAdComplete();
+          cleanup();
+          onComplete();
         }
       });
     };
 
     if (typeof (window as any).adBreak === 'function') {
       const adTimeout = setTimeout(() => {
-        if (!adFinished) handleAdFailure();
+        if (!flowFinished) handleAdFlowFailure();
       }, 2000);
 
       try {
@@ -5068,50 +4807,41 @@ export default function App() {
           type: 'reward',
           name: adName,
           beforeAd: () => {
+            if (flowFinished) return;
             clearTimeout(adTimeout);
             startAdProcess();
             Howler.mute(true);
-            
-            adSafetyTimeout = setTimeout(() => {
-              onAdComplete();
-            }, 30000);
           },
           afterAd: () => {
             Howler.mute(false);
           },
-          beforeReward: (showAdFn: any) => { showAdFn(); },
+          beforeReward: (showAdFn: any) => { 
+            if (flowFinished) return;
+            showAdFn(); 
+          },
           adDismissed: () => {
-            adFinished = true;
-            adDismissed = true;
-            clearTimeout(adSafetyTimeout);
-            adTriggeredRef.current = false;
-            if (roomId) {
-              socket?.emit('ad_ended', { roomId });
-            }
+            if (flowFinished) return;
+            flowFinished = true;
+            cleanup();
             showAlert(dismissMessage, "تنبيه");
           },
           adViewed: () => {
-            adFinished = true;
-            adViewed = true;
-            clearTimeout(adSafetyTimeout);
-            onAdComplete();
+            handleAdFlowSuccess();
           },
           adBreakDone: (placementInfo: any) => {
-            adFinished = true;
-            clearTimeout(adSafetyTimeout);
             clearTimeout(adTimeout);
-            if (!adViewed && !adDismissed) {
-              // Google AdSense had no ad to show (No Fill)
-              handleAdFailure();
+            if (!flowFinished) {
+              handleAdFlowFailure();
             }
           }
         });
       } catch (e) {
+        console.error("Ad Sense error:", e);
         clearTimeout(adTimeout);
-        handleAdFailure();
+        handleAdFlowFailure();
       }
     } else {
-      handleAdFailure();
+      handleAdFlowFailure();
     }
   };
 
