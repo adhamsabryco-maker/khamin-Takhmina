@@ -902,6 +902,7 @@ export default function App() {
     prevLevelRef.current = currentLevel;
   }, [xp]);
   const [showMatchIntro, setShowMatchIntro] = useState(false);
+  const [hasSeenPreGameAd, setHasSeenPreGameAd] = useState(false);
 
   // Rain Gift Event States
   const [showRainGiftGame, setShowRainGiftGame] = useState(false);
@@ -2295,23 +2296,19 @@ export default function App() {
       let adDismissed = false;
 
       const handleAdFailure = () => {
-        if ((customConfig as any)?.mockAdImage) {
-          setMockAdProviderState({
-            onComplete: () => {
-              adFinished = true;
-              adViewed = true;
-              startSpin(true);
-            }
-          });
-        } else {
-          showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
-        }
+        setMockAdProviderState({
+          onComplete: () => {
+            adFinished = true;
+            adViewed = true;
+            startSpin(true);
+          }
+        });
       };
 
       if (typeof (window as any).adBreak === 'function') {
         const adTimeout = setTimeout(() => {
           if (!adFinished) handleAdFailure();
-        }, 8000);
+        }, 2000);
 
         try {
           (window as any).adBreak({
@@ -4680,7 +4677,11 @@ export default function App() {
     const startMockAd = () => {
       console.log('Falling back to mock ad');
       startAdProcess();
-      onAdComplete();
+      setMockAdProviderState({
+        onComplete: () => {
+          onAdComplete();
+        }
+      });
     };
 
     const handleAdUnavailable = () => {
@@ -4717,7 +4718,6 @@ export default function App() {
               }
               setActivePowerUp(null);
               adTriggeredRef.current = false;
-              showAlert('حدث خطأ أثناء تحميل الإعلان.', 'خطأ');
             }, 60000);
           },
           afterAd: () => {
@@ -4801,7 +4801,11 @@ export default function App() {
 
     const startMockAd = () => {
       startAdProcess();
-      onAdComplete();
+      setMockAdProviderState({
+        onComplete: () => {
+          onAdComplete();
+        }
+      });
     };
 
     const handleAdUnavailable = () => {
@@ -4827,7 +4831,6 @@ export default function App() {
                 socket?.emit('ad_ended', { roomId });
               }
               adTriggeredRef.current = false;
-              showAlert('حدث خطأ أثناء تحميل الإعلان.', 'خطأ');
             }, 60000);
           },
           afterAd: () => {},
@@ -5020,7 +5023,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [citySearchState]);
 
-  const handleShowAd = (onComplete: () => void) => {
+  const handleShowAd = (onComplete: () => void, adName = 'reward_ad', dismissMessage = "يجب مشاهدة الإعلان كاملاً للحصول على المكافأة!") => {
     if (adTriggeredRef.current) return;
     adTriggeredRef.current = true;
     
@@ -5030,6 +5033,9 @@ export default function App() {
 
     const startAdProcess = () => {
       socket?.emit('start_ad_watch', { serial: playerSerial });
+      if (roomId) {
+        socket?.emit('ad_started', { roomId, powerUpName: null });
+      }
     };
 
     let adSafetyTimeout: NodeJS.Timeout;
@@ -5037,31 +5043,30 @@ export default function App() {
     const onAdComplete = () => {
       clearTimeout(adSafetyTimeout);
       adTriggeredRef.current = false;
+      if (roomId) {
+        socket?.emit('ad_ended', { roomId });
+      }
       onComplete();
     };
 
     const handleAdFailure = () => {
       adTriggeredRef.current = false;
-      if ((customConfig as any)?.mockAdImage) {
-        setMockAdProviderState({
-          onComplete: () => {
-            onAdComplete();
-          }
-        });
-      } else {
-        showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
-      }
+      setMockAdProviderState({
+        onComplete: () => {
+          onAdComplete();
+        }
+      });
     };
 
     if (typeof (window as any).adBreak === 'function') {
       const adTimeout = setTimeout(() => {
         if (!adFinished) handleAdFailure();
-      }, 8000);
+      }, 2000);
 
       try {
         (window as any).adBreak({
           type: 'reward',
-          name: 'city_search_ad',
+          name: adName,
           beforeAd: () => {
             clearTimeout(adTimeout);
             startAdProcess();
@@ -5080,7 +5085,10 @@ export default function App() {
             adDismissed = true;
             clearTimeout(adSafetyTimeout);
             adTriggeredRef.current = false;
-            showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
+            if (roomId) {
+              socket?.emit('ad_ended', { roomId });
+            }
+            showAlert(dismissMessage, "تنبيه");
           },
           adViewed: () => {
             adFinished = true;
@@ -5107,6 +5115,12 @@ export default function App() {
     }
   };
 
+  const handleShowPreGameAd = () => {
+    handleShowAd(() => {
+      setHasSeenPreGameAd(true);
+    }, 'pre_game_category_ad', "يجب مشاهدة الإعلان لاستكمال المباراة واختيار الفئة!");
+  };
+
   const handleStartCitySearch = () => {
     handleShowAd(() => {
       socket?.emit("start_city_search", { serial: playerSerial, cityId: selectedCity });
@@ -5119,7 +5133,7 @@ export default function App() {
         rewards: { xp: 0, tokens: 0, time_freeze: 0, word_count: 0, word_length: 0, hint: 0, spy_lens: 0, pro_package_days: 0 }
       });
       showAlert("ارجعوا بعد ساعة ولموا الهدايا والمكافآت 🤩 وابدأوا بحث جديد 🧐", "تم بدء البحث");
-    });
+    }, 'city_search_ad', "يجب مشاهدة الإعلان كاملاً لبدء البحث!");
   };
 
   const handleClaimCitySearch = () => {
@@ -5141,6 +5155,12 @@ export default function App() {
     setShowMatchIntro(false);
   }, []);
 
+  useEffect(() => {
+    if (room && room.gameState === 'waiting' && room.players.length === 2 && !hasSeenPreGameAd) {
+      handleShowPreGameAd();
+    }
+  }, [room?.gameState, room?.id, room?.players?.length, hasSeenPreGameAd]);
+
   const resetToHome = () => {
     setJoined(false);
     setRoom(null);
@@ -5153,6 +5173,7 @@ export default function App() {
     setChatInput('');
     setHint('');
     setShowMatchIntro(false);
+    setHasSeenPreGameAd(false);
     setReadyPowerUps([]);
     setCooldowns({ quick_guess: 0, hint: 0, word_length: 0, word_count: 0, time_freeze: 0, spy_lens: 0 });
     setIsPrivate(false);
@@ -9561,23 +9582,23 @@ export default function App() {
                                     </div>
                                     <div className="bg-blue-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-blue-400">النصيحة</div>
-                                      <div className="text-sm font-black text-blue-500">{p.ownedHelpers.hint || 0}</div>
+                                      <div className="text-sm font-black text-blue-500">{p.ownedHelpers?.hint || 0}</div>
                                     </div>
                                     <div className="bg-green-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-green-400">كاشف الحروف</div>
-                                      <div className="text-sm font-black text-green-500">{p.ownedHelpers.word_length || 0}</div>
+                                      <div className="text-sm font-black text-green-500">{p.ownedHelpers?.word_length || 0}</div>
                                     </div>
                                     <div className="bg-indigo-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-indigo-400">عدد الكلمات</div>
-                                      <div className="text-sm font-black text-indigo-500">{p.ownedHelpers.word_count || 0}</div>
+                                      <div className="text-sm font-black text-indigo-500">{p.ownedHelpers?.word_count || 0}</div>
                                     </div>
                                     <div className="bg-purple-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-purple-400">الجاسوس</div>
-                                      <div className="text-sm font-black text-purple-500">{p.ownedHelpers.spy_lens || 0}</div>
+                                      <div className="text-sm font-black text-purple-500">{p.ownedHelpers?.spy_lens || 0}</div>
                                     </div>
                                     <div className="bg-cyan-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-cyan-400">تجميد الوقت</div>
-                                      <div className="text-sm font-black text-cyan-500">{p.ownedHelpers.time_freeze || 0}</div>
+                                      <div className="text-sm font-black text-cyan-500">{p.ownedHelpers?.time_freeze || 0}</div>
                                     </div>
                                   </div>
 
@@ -11220,15 +11241,11 @@ export default function App() {
               let adDismissed = false;
 
               const handleAdFailure = () => {
-                if ((customConfig as any)?.mockAdImage) {
-                  setMockAdProviderState({
-                    onComplete: () => {
-                      successReward();
-                    }
-                  });
-                } else {
-                  showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
-                }
+                setMockAdProviderState({
+                  onComplete: () => {
+                    successReward();
+                  }
+                });
               };
               const successReward = () => {
                 socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
@@ -11241,7 +11258,7 @@ export default function App() {
               if (typeof (window as any).adBreak === 'function') {
                 const adTimeout = setTimeout(() => {
                   if (!adFinished) handleAdFailure();
-                }, 8000);
+                }, 2000);
 
                 try {
                   (window as any).adBreak({
@@ -11470,19 +11487,19 @@ export default function App() {
                           <span className="text-[13px] md:text-[14px]"><Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /></span> <span className="text-[11px] md:text-[12px]">{keys || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.time_freeze || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.time_freeze || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.spy_lens || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.spy_lens || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.word_count || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.word_count || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.word_length || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.word_length || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.hint || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.hint || 0}</span>
                         </span>
                       </div>
                     </div>
@@ -12445,43 +12462,58 @@ export default function App() {
                     لاصحابك.
                   </div>
                 )}
-                <div className="grid grid-cols-4 gap-2">
-                  {categories.map(cat => {
-                    const isMyChoice = me?.selectedCategory === cat.id;
-                    const isOpponentChoice = opponent?.selectedCategory === cat.id;
-                    const isAgreed = isMyChoice && isOpponentChoice;
-                    const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
-                    
-                    return (
-                      <button
-                        key={cat.id}
-                        onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
-                        className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
-                          ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
-                          ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
-                        `}
-                      >
-                        <span className="text-2xl md:text-3xl">{cat.icon}</span>
-                        <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
-                        {isNew && (
-                          <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
-                            جديد
-                          </div>
-                        )}
-                        {isOpponentChoice && !isMyChoice && (
-                          <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
-                            اقتراح!
-                          </div>
-                        )}
-                        {isAgreed && (
-                          <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
-                            متفق عليه!
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                
+                {(hasSeenPreGameAd || room.players.length < 2) ? (
+                  <div className="grid grid-cols-4 gap-2">
+                    {categories.map(cat => {
+                      const isMyChoice = me?.selectedCategory === cat.id;
+                      const isOpponentChoice = opponent?.selectedCategory === cat.id;
+                      const isAgreed = isMyChoice && isOpponentChoice;
+                      const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
+                      
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
+                          className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
+                            ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
+                            ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
+                          `}
+                        >
+                          <span className="text-2xl md:text-3xl">{cat.icon}</span>
+                          <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
+                          {isNew && (
+                            <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
+                              جديد
+                            </div>
+                          )}
+                          {isOpponentChoice && !isMyChoice && (
+                            <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                              اقتراح!
+                            </div>
+                          )}
+                          {isAgreed && (
+                            <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                              متفق عليه!
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-2 flex flex-col items-center justify-center gap-4">
+                    <Loader2 className="w-12 h-12 animate-spin text-accent-orange" />
+                    <p className="font-black text-brown-muted text-lg">جاري تحضير فئات المسابقة...</p>
+                    <button 
+                      onClick={() => handleShowPreGameAd()}
+                      className="bg-accent-orange hover:bg-orange-600 text-white font-black px-6 py-3 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center gap-2"
+                    >
+                      <Play className="w-5 h-5 fill-current" />
+                      استكمال مشاهدة الاعلان
+                    </button>
+                  </div>
+                )}
 
                 {/* WhatsApp Style Chat Box - Hidden when consensus reached or waiting for opponent */}
                 {!consensusReached && room.players.length >= 2 && (
