@@ -902,7 +902,6 @@ export default function App() {
     prevLevelRef.current = currentLevel;
   }, [xp]);
   const [showMatchIntro, setShowMatchIntro] = useState(false);
-  const [hasSeenPreGameAd, setHasSeenPreGameAd] = useState(false);
 
   // Rain Gift Event States
   const [showRainGiftGame, setShowRainGiftGame] = useState(false);
@@ -2290,9 +2289,72 @@ export default function App() {
         return;
       }
       
-      handleShowAd(() => {
-        startSpin(true);
-      }, 'lucky_wheel_spin', 'يجب مشاهدة الإعلان بالكامل للحصول على المحاولة!');
+      // Ad logic
+      let adFinished = false;
+      let adViewed = false;
+      let adDismissed = false;
+
+      const handleAdFailure = () => {
+        if ((customConfig as any)?.mockAdImage) {
+          setMockAdProviderState({
+            onComplete: () => {
+              adFinished = true;
+              adViewed = true;
+              startSpin(true);
+            }
+          });
+        } else {
+          showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
+        }
+      };
+
+      if (typeof (window as any).adBreak === 'function') {
+        const adTimeout = setTimeout(() => {
+          if (!adFinished) handleAdFailure();
+        }, 8000);
+
+        try {
+          (window as any).adBreak({
+            type: 'reward',
+            name: 'lucky_wheel_spin',
+            beforeAd: () => {
+              clearTimeout(adTimeout);
+              Howler.mute(true);
+            },
+            afterAd: () => {
+              Howler.mute(false);
+            },
+            beforeReward: (showAdFn: any) => {
+              showAdFn();
+            },
+            adViewed: () => {
+              adFinished = true;
+              adViewed = true;
+              startSpin(true);
+            },
+            adDismissed: () => {
+              adFinished = true;
+              adDismissed = true;
+              Howler.mute(false);
+              showAlert('يجب مشاهدة الإعلان بالكامل للحصول على المحاولة!', 'تنبيه');
+            },
+            adBreakDone: (placementInfo: any) => {
+              adFinished = true;
+              clearTimeout(adTimeout);
+              if (!adViewed && !adDismissed) {
+                handleAdFailure();
+              }
+            }
+          });
+        } catch (e) {
+          console.error("Ad error:", e);
+          clearTimeout(adTimeout);
+          handleAdFailure();
+        }
+      } else {
+        // No ad SDK found (AdBlocker)
+        handleAdFailure();
+      }
     } else {
       startSpin(false);
     }
@@ -4559,7 +4621,40 @@ export default function App() {
     // Close confirmation modal immediately to prevent "fixed window" issue
     setShowAdConfirmation(false);
 
+    // Set triggered to true immediately to prevent double clicks
+    adTriggeredRef.current = true;
+
+    let localAdTriggered = false;
+
+    const startAdProcess = () => {
+      if (localAdTriggered) return;
+      localAdTriggered = true;
+      
+      if (roomId && isPowerUp) {
+        const powerUpName = {
+          quick_guess: 'تخمين سريع',
+          hint: 'نصيحة',
+          word_length: 'كاشف الحروف',
+          word_count: 'عدد الكلمات',
+          time_freeze: 'تجميد الوقت',
+          spy_lens: 'الجاسوس'
+        }[activePowerUp || ''];
+        
+        if (roomId) {
+          socket?.emit('ad_started', { roomId, powerUpName, helperId: activePowerUp });
+        }
+      } else if (roomId) {
+        socket?.emit('ad_started', { roomId });
+      }
+      socket?.emit('start_ad_watch', { serial: playerSerial });
+    };
+
+    let adSafetyTimeout: NodeJS.Timeout;
+
     const onAdComplete = () => {
+      clearTimeout(adSafetyTimeout);
+      adTriggeredRef.current = false;
+      
       // Trigger cooldown after ad finishes
       setIsCooldown(true);
       setCooldownTime(30);
@@ -4576,13 +4671,97 @@ export default function App() {
       } else {
         socket?.emit('watch_ad_request', { serial: playerSerial });
       }
+      
+      if (roomId) {
+        socket?.emit('ad_ended', { roomId });
+      }
     };
 
-    handleShowAd(
-      onAdComplete, 
-      isPowerUp ? `use_${activePowerUp}` : 'get_token',
-      isPowerUp ? "يجب مشاهدة الإعلان كاملاً لاستخدام الوسيلة المساعدة!" : "يجب مشاهدة الإعلان كاملاً للحصول على الـ Token!"
-    );
+    const startMockAd = () => {
+      console.log('Falling back to mock ad');
+      startAdProcess();
+      onAdComplete();
+    };
+
+    const handleAdUnavailable = () => {
+      console.warn('Google Ads unavailable, falling back to mock ad temporarily');
+      startMockAd();
+    };
+
+    // Call real AdSense adBreak if available
+    if (typeof window.adBreak === 'function') {
+      console.log('Calling Google AdSense adBreak');
+      
+      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 2 seconds, use fallback
+      const adTimeout = setTimeout(() => {
+        if (!localAdTriggered) {
+          console.warn('AdSense adBreak timed out, using fallback');
+          handleAdUnavailable();
+        }
+      }, 2000);
+
+      try {
+        window.adBreak({
+          type: 'reward',
+          name: isPowerUp ? `use_${activePowerUp}` : 'get_token',
+          beforeAd: () => {
+            console.log('AdSense: beforeAd');
+            clearTimeout(adTimeout);
+            startAdProcess();
+            
+            // Safety timeout: if ad doesn't finish or dismiss within 60 seconds, resume game
+            adSafetyTimeout = setTimeout(() => {
+              console.warn('AdSense ad stuck, resuming game');
+              if (roomId) {
+                socket?.emit('ad_ended', { roomId });
+              }
+              setActivePowerUp(null);
+              adTriggeredRef.current = false;
+              showAlert('حدث خطأ أثناء تحميل الإعلان.', 'خطأ');
+            }, 60000);
+          },
+          afterAd: () => {
+            console.log('AdSense: afterAd');
+          },
+          beforeReward: (showAdFn: any) => {
+            console.log('AdSense: beforeReward');
+            showAdFn();
+          },
+          adDismissed: () => {
+            console.log('AdSense: adDismissed');
+            clearTimeout(adSafetyTimeout);
+            adTriggeredRef.current = false;
+            showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
+            if (roomId) {
+              socket?.emit('ad_ended', { roomId });
+            }
+            setActivePowerUp(null);
+          },
+          adViewed: () => {
+            console.log('AdSense: adViewed');
+            onAdComplete();
+          },
+          adBreakDone: (placementInfo: any) => {
+            console.log('AdSense: adBreakDone', placementInfo);
+            // If adBreakDone is called but ad was never triggered, it means no ad was available
+            if (!localAdTriggered) {
+              clearTimeout(adTimeout);
+              console.warn('AdSense adBreakDone called without triggering ad, using fallback');
+              handleAdUnavailable();
+            } else {
+              adTriggeredRef.current = false;
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Error calling window.adBreak:', error);
+        clearTimeout(adTimeout);
+        handleAdUnavailable();
+      }
+    } else {
+      // Fallback if AdSense is blocked or not loaded
+      handleAdUnavailable();
+    }
   };
 
   const handleRewardAd = (categoryId: string, stage: number) => {
@@ -4591,13 +4770,95 @@ export default function App() {
     // Close confirmation modal immediately
     setPendingClaimReward(null);
 
-    handleShowAd(() => {
+    adTriggeredRef.current = false;
+    let localAdTriggered = false;
+
+    const startAdProcess = () => {
+      if (localAdTriggered) return;
+      localAdTriggered = true;
+      if (roomId) {
+        socket?.emit('ad_started', { roomId, powerUpName: 'استلام مكافأة' });
+      }
+      socket?.emit('start_ad_watch', { serial: playerSerial });
+    };
+
+    let adSafetyTimeout: NodeJS.Timeout;
+
+    const onAdComplete = () => {
+      clearTimeout(adSafetyTimeout);
+      adTriggeredRef.current = false;
+      
+      if (roomId) {
+        socket?.emit('ad_ended', { roomId });
+      }
+
       socket?.emit('claim_collection_reward', { 
         serial: playerSerial, 
         categoryId, 
         stage 
       });
-    }, 'claim_collection_reward');
+    };
+
+    const startMockAd = () => {
+      startAdProcess();
+      onAdComplete();
+    };
+
+    const handleAdUnavailable = () => {
+      startMockAd();
+    };
+
+    if (typeof window.adBreak === 'function') {
+      const adTimeout = setTimeout(() => {
+        if (!localAdTriggered) {
+          handleAdUnavailable();
+        }
+      }, 2000);
+
+      try {
+        window.adBreak({
+          type: 'reward',
+          name: 'claim_collection_reward',
+          beforeAd: () => {
+            clearTimeout(adTimeout);
+            startAdProcess();
+            adSafetyTimeout = setTimeout(() => {
+              if (roomId) {
+                socket?.emit('ad_ended', { roomId });
+              }
+              adTriggeredRef.current = false;
+              showAlert('حدث خطأ أثناء تحميل الإعلان.', 'خطأ');
+            }, 60000);
+          },
+          afterAd: () => {},
+          beforeReward: (showAdFn: any) => { showAdFn(); },
+          adDismissed: () => {
+            clearTimeout(adSafetyTimeout);
+            adTriggeredRef.current = false;
+            if (roomId) {
+              socket?.emit('ad_ended', { roomId });
+            }
+            showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
+          },
+          adViewed: () => {
+            onAdComplete();
+          },
+          adBreakDone: (placementInfo: any) => {
+            if (!localAdTriggered) {
+              clearTimeout(adTimeout);
+              handleAdUnavailable();
+            } else {
+              adTriggeredRef.current = false;
+            }
+          }
+        });
+      } catch (error) {
+        clearTimeout(adTimeout);
+        handleAdUnavailable();
+      }
+    } else {
+      handleAdUnavailable();
+    }
   };
 
   const handleProfileUpdate = () => {
@@ -4759,96 +5020,91 @@ export default function App() {
     return () => clearInterval(interval);
   }, [citySearchState]);
 
-  const handleShowAd = (onComplete: () => void, adName = 'reward_ad', dismissMessage = "يجب مشاهدة الإعلان كاملاً للحصول على المكافأة!") => {
+  const handleShowAd = (onComplete: () => void) => {
     if (adTriggeredRef.current) return;
     adTriggeredRef.current = true;
     
-    let flowFinished = false;
+    let adFinished = false;
+    let adViewed = false;
+    let adDismissed = false;
 
     const startAdProcess = () => {
       socket?.emit('start_ad_watch', { serial: playerSerial });
-      if (roomId) {
-        socket?.emit('ad_started', { roomId, powerUpName: null });
-      }
     };
 
-    const cleanup = () => {
+    let adSafetyTimeout: NodeJS.Timeout;
+
+    const onAdComplete = () => {
+      clearTimeout(adSafetyTimeout);
       adTriggeredRef.current = false;
-      if (roomId) {
-        socket?.emit('ad_ended', { roomId });
-      }
-    };
-
-    const handleAdFlowSuccess = () => {
-      if (flowFinished) return;
-      flowFinished = true;
-      cleanup();
       onComplete();
     };
 
-    const handleAdFlowFailure = () => {
-      if (flowFinished) return;
-      flowFinished = true;
-      setMockAdProviderState({
-        onComplete: () => {
-          cleanup();
-          onComplete();
-        }
-      });
+    const handleAdFailure = () => {
+      adTriggeredRef.current = false;
+      if ((customConfig as any)?.mockAdImage) {
+        setMockAdProviderState({
+          onComplete: () => {
+            onAdComplete();
+          }
+        });
+      } else {
+        showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
+      }
     };
 
     if (typeof (window as any).adBreak === 'function') {
       const adTimeout = setTimeout(() => {
-        if (!flowFinished) handleAdFlowFailure();
-      }, 2000);
+        if (!adFinished) handleAdFailure();
+      }, 8000);
 
       try {
         (window as any).adBreak({
           type: 'reward',
-          name: adName,
+          name: 'city_search_ad',
           beforeAd: () => {
-            if (flowFinished) return;
             clearTimeout(adTimeout);
             startAdProcess();
             Howler.mute(true);
+            
+            adSafetyTimeout = setTimeout(() => {
+              onAdComplete();
+            }, 30000);
           },
           afterAd: () => {
             Howler.mute(false);
           },
-          beforeReward: (showAdFn: any) => { 
-            if (flowFinished) return;
-            showAdFn(); 
-          },
+          beforeReward: (showAdFn: any) => { showAdFn(); },
           adDismissed: () => {
-            if (flowFinished) return;
-            flowFinished = true;
-            cleanup();
-            showAlert(dismissMessage, "تنبيه");
+            adFinished = true;
+            adDismissed = true;
+            clearTimeout(adSafetyTimeout);
+            adTriggeredRef.current = false;
+            showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
           },
           adViewed: () => {
-            handleAdFlowSuccess();
+            adFinished = true;
+            adViewed = true;
+            clearTimeout(adSafetyTimeout);
+            onAdComplete();
           },
           adBreakDone: (placementInfo: any) => {
+            adFinished = true;
+            clearTimeout(adSafetyTimeout);
             clearTimeout(adTimeout);
-            if (!flowFinished) {
-              handleAdFlowFailure();
+            if (!adViewed && !adDismissed) {
+              // Google AdSense had no ad to show (No Fill)
+              handleAdFailure();
             }
           }
         });
       } catch (e) {
-        console.error("Ad Sense error:", e);
         clearTimeout(adTimeout);
-        handleAdFlowFailure();
+        handleAdFailure();
       }
     } else {
-      handleAdFlowFailure();
+      handleAdFailure();
     }
-  };
-
-  const handleShowPreGameAd = () => {
-    handleShowAd(() => {
-      setHasSeenPreGameAd(true);
-    }, 'pre_game_category_ad', "يجب مشاهدة الإعلان لاستكمال المباراة واختيار الفئة!");
   };
 
   const handleStartCitySearch = () => {
@@ -4863,7 +5119,7 @@ export default function App() {
         rewards: { xp: 0, tokens: 0, time_freeze: 0, word_count: 0, word_length: 0, hint: 0, spy_lens: 0, pro_package_days: 0 }
       });
       showAlert("ارجعوا بعد ساعة ولموا الهدايا والمكافآت 🤩 وابدأوا بحث جديد 🧐", "تم بدء البحث");
-    }, 'city_search_ad', "يجب مشاهدة الإعلان كاملاً لبدء البحث!");
+    });
   };
 
   const handleClaimCitySearch = () => {
@@ -4885,12 +5141,6 @@ export default function App() {
     setShowMatchIntro(false);
   }, []);
 
-  useEffect(() => {
-    if (room && room.gameState === 'waiting' && room.players.length === 2 && !hasSeenPreGameAd) {
-      handleShowPreGameAd();
-    }
-  }, [room?.gameState, room?.id, room?.players?.length, hasSeenPreGameAd]);
-
   const resetToHome = () => {
     setJoined(false);
     setRoom(null);
@@ -4903,7 +5153,6 @@ export default function App() {
     setChatInput('');
     setHint('');
     setShowMatchIntro(false);
-    setHasSeenPreGameAd(false);
     setReadyPowerUps([]);
     setCooldowns({ quick_guess: 0, hint: 0, word_length: 0, word_count: 0, time_freeze: 0, spy_lens: 0 });
     setIsPrivate(false);
@@ -9312,23 +9561,23 @@ export default function App() {
                                     </div>
                                     <div className="bg-blue-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-blue-400">النصيحة</div>
-                                      <div className="text-sm font-black text-blue-500">{p.ownedHelpers?.hint || 0}</div>
+                                      <div className="text-sm font-black text-blue-500">{p.ownedHelpers.hint || 0}</div>
                                     </div>
                                     <div className="bg-green-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-green-400">كاشف الحروف</div>
-                                      <div className="text-sm font-black text-green-500">{p.ownedHelpers?.word_length || 0}</div>
+                                      <div className="text-sm font-black text-green-500">{p.ownedHelpers.word_length || 0}</div>
                                     </div>
                                     <div className="bg-indigo-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-indigo-400">عدد الكلمات</div>
-                                      <div className="text-sm font-black text-indigo-500">{p.ownedHelpers?.word_count || 0}</div>
+                                      <div className="text-sm font-black text-indigo-500">{p.ownedHelpers.word_count || 0}</div>
                                     </div>
                                     <div className="bg-purple-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-purple-400">الجاسوس</div>
-                                      <div className="text-sm font-black text-purple-500">{p.ownedHelpers?.spy_lens || 0}</div>
+                                      <div className="text-sm font-black text-purple-500">{p.ownedHelpers.spy_lens || 0}</div>
                                     </div>
                                     <div className="bg-cyan-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-cyan-400">تجميد الوقت</div>
-                                      <div className="text-sm font-black text-cyan-500">{p.ownedHelpers?.time_freeze || 0}</div>
+                                      <div className="text-sm font-black text-cyan-500">{p.ownedHelpers.time_freeze || 0}</div>
                                     </div>
                                   </div>
 
@@ -10971,11 +11220,15 @@ export default function App() {
               let adDismissed = false;
 
               const handleAdFailure = () => {
-                setMockAdProviderState({
-                  onComplete: () => {
-                    successReward();
-                  }
-                });
+                if ((customConfig as any)?.mockAdImage) {
+                  setMockAdProviderState({
+                    onComplete: () => {
+                      successReward();
+                    }
+                  });
+                } else {
+                  showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
+                }
               };
               const successReward = () => {
                 socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
@@ -10988,7 +11241,7 @@ export default function App() {
               if (typeof (window as any).adBreak === 'function') {
                 const adTimeout = setTimeout(() => {
                   if (!adFinished) handleAdFailure();
-                }, 2000);
+                }, 8000);
 
                 try {
                   (window as any).adBreak({
@@ -11217,19 +11470,19 @@ export default function App() {
                           <span className="text-[13px] md:text-[14px]"><Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /></span> <span className="text-[11px] md:text-[12px]">{keys || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.time_freeze || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.time_freeze || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.spy_lens || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.spy_lens || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.word_count || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.word_count || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.word_length || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.word_length || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.hint || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.hint || 0}</span>
                         </span>
                       </div>
                     </div>
@@ -12192,58 +12445,43 @@ export default function App() {
                     لاصحابك.
                   </div>
                 )}
-                
-                {(hasSeenPreGameAd || room.players.length < 2) ? (
-                  <div className="grid grid-cols-4 gap-2">
-                    {categories.map(cat => {
-                      const isMyChoice = me?.selectedCategory === cat.id;
-                      const isOpponentChoice = opponent?.selectedCategory === cat.id;
-                      const isAgreed = isMyChoice && isOpponentChoice;
-                      const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
-                      
-                      return (
-                        <button
-                          key={cat.id}
-                          onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
-                          className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
-                            ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
-                            ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
-                          `}
-                        >
-                          <span className="text-2xl md:text-3xl">{cat.icon}</span>
-                          <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
-                          {isNew && (
-                            <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
-                              جديد
-                            </div>
-                          )}
-                          {isOpponentChoice && !isMyChoice && (
-                            <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
-                              اقتراح!
-                            </div>
-                          )}
-                          {isAgreed && (
-                            <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
-                              متفق عليه!
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="py-2 flex flex-col items-center justify-center gap-4">
-                    <Loader2 className="w-12 h-12 animate-spin text-accent-orange" />
-                    <p className="font-black text-brown-muted text-lg">جاري تحضير فئات المسابقة...</p>
-                    <button 
-                      onClick={() => handleShowPreGameAd()}
-                      className="bg-accent-orange hover:bg-orange-600 text-white font-black px-6 py-3 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center gap-2"
-                    >
-                      <Play className="w-5 h-5 fill-current" />
-                      استكمال مشاهدة الاعلان
-                    </button>
-                  </div>
-                )}
+                <div className="grid grid-cols-4 gap-2">
+                  {categories.map(cat => {
+                    const isMyChoice = me?.selectedCategory === cat.id;
+                    const isOpponentChoice = opponent?.selectedCategory === cat.id;
+                    const isAgreed = isMyChoice && isOpponentChoice;
+                    const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
+                    
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
+                        className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
+                          ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
+                          ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
+                        `}
+                      >
+                        <span className="text-2xl md:text-3xl">{cat.icon}</span>
+                        <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
+                        {isNew && (
+                          <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
+                            جديد
+                          </div>
+                        )}
+                        {isOpponentChoice && !isMyChoice && (
+                          <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                            اقتراح!
+                          </div>
+                        )}
+                        {isAgreed && (
+                          <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                            متفق عليه!
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
 
                 {/* WhatsApp Style Chat Box - Hidden when consensus reached or waiting for opponent */}
                 {!consensusReached && room.players.length >= 2 && (
