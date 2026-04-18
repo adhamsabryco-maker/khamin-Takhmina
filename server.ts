@@ -1000,7 +1000,8 @@ const app = express();
     luckyWheelHelpers?: { [key: string]: number },
     lastLuckyWheelResetDay?: string,
     luckyWheelDaysUsed?: number,
-    citySearchRewards?: { type: 'token' | 'helper', id?: string, amount: number, timestamp: number }[]
+    citySearchRewards?: { type: 'token' | 'helper', id?: string, amount: number, timestamp: number }[],
+    keys?: number
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -6207,9 +6208,13 @@ io.on("connection", (socket) => {
       }
 
       if (r.gameState === "waiting") {
+        const isAnyAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+        
         if (r.timer > 0) {
-          r.timer--;
-          io.to(roomId).emit("timer_update", r.timer);
+          if (!isAnyAdPlaying) {
+            r.timer--;
+            io.to(roomId).emit("timer_update", r.timer);
+          }
         } else {
           clearInterval(interval);
           io.to(roomId).emit("game_stopped", { reason: "انتهى الوقت! لم يتم الاتفاق على فئة." });
