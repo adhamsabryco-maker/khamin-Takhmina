@@ -2168,6 +2168,8 @@ export default function App() {
   const [spinResult, setSpinResult] = useState<any>(null);
   const [rotation, setRotation] = useState(0);
   const [localIsSpinning, setLocalIsSpinning] = useState(false);
+  const [isSpinAdLoading, setIsSpinAdLoading] = useState(false);
+  const [isGlobalAdLoading, setIsGlobalAdLoading] = useState(false);
   const [showReward, setShowReward] = useState(false);
   const [showDailyQuestModal, setShowDailyQuestModal] = useState(false);
   const [spinCooldown, setSpinCooldown] = useState(() => {
@@ -2283,7 +2285,7 @@ export default function App() {
   }, [spinResult, localIsSpinning]);
 
   const handleSpinClick = () => {
-    if (isSpinning || localIsSpinning || spinCooldown > 0) return;
+    if (isSpinning || localIsSpinning || spinCooldown > 0 || isSpinAdLoading) return;
     
     const isAdSpin = !spinStatus.hasFreeSpin;
     
@@ -2293,12 +2295,14 @@ export default function App() {
         return;
       }
       
+      setIsSpinAdLoading(true);
       // Ad logic
       let adFinished = false;
       let adViewed = false;
       let adDismissed = false;
 
       const handleAdFailure = () => {
+        setIsSpinAdLoading(false);
         setMockAdProviderState({
           onComplete: () => {
             adFinished = true;
@@ -2316,7 +2320,7 @@ export default function App() {
       if (typeof (window as any).adBreak === 'function') {
         const adTimeout = setTimeout(() => {
           if (!adFinished) handleAdFailure();
-        }, 2000);
+        }, 4000);
 
         try {
           (window as any).adBreak({
@@ -2324,6 +2328,9 @@ export default function App() {
             name: 'lucky_wheel_spin',
             beforeAd: () => {
               clearTimeout(adTimeout);
+              if (adFinished) setMockAdProviderState(null);
+              adFinished = false;
+              setIsSpinAdLoading(false);
               Howler.mute(true);
             },
             afterAd: () => {
@@ -2338,12 +2345,14 @@ export default function App() {
               startSpin(true);
             },
             adDismissed: () => {
+              setIsSpinAdLoading(false);
               adFinished = true;
               adDismissed = true;
               Howler.mute(false);
               showAlert('يجب مشاهدة الإعلان بالكامل للحصول على المحاولة!', 'تنبيه');
             },
             adBreakDone: (placementInfo: any) => {
+              setIsSpinAdLoading(false);
               adFinished = true;
               clearTimeout(adTimeout);
               if (!adViewed && !adDismissed) {
@@ -4900,17 +4909,19 @@ export default function App() {
   }, [room?.gameState, room?.players?.length, hasWatchedCategoryAd, isWatchingCategoryAd, showCategoryAdButton, handleWatchCategoryAd]);
 
   const handleRewardAd = (categoryId: string, stage: number) => {
-    if (adTriggeredRef.current) return;
+    if (adTriggeredRef.current || isGlobalAdLoading) return;
     
     // Close confirmation modal immediately
     setPendingClaimReward(null);
 
-    adTriggeredRef.current = false;
+    adTriggeredRef.current = true;
+    setIsGlobalAdLoading(true);
     let localAdTriggered = false;
 
     const startAdProcess = () => {
       if (localAdTriggered) return;
       localAdTriggered = true;
+      setIsGlobalAdLoading(false);
       if (roomId) {
         socket?.emit('ad_started', { roomId, powerUpName: 'استلام مكافأة' });
       }
@@ -4922,6 +4933,7 @@ export default function App() {
     const onAdComplete = () => {
       clearTimeout(adSafetyTimeout);
       adTriggeredRef.current = false;
+      setIsGlobalAdLoading(false);
       
       if (roomId) {
         socket?.emit('ad_ended', { roomId });
@@ -4943,6 +4955,7 @@ export default function App() {
         onDismissed: () => {
           clearTimeout(adSafetyTimeout);
           adTriggeredRef.current = false;
+          setIsGlobalAdLoading(false);
           if (roomId) {
             socket?.emit('ad_ended', { roomId });
           }
@@ -4952,6 +4965,7 @@ export default function App() {
     };
 
     const handleAdUnavailable = () => {
+      setIsGlobalAdLoading(false);
       startMockAd();
     };
 
@@ -5503,9 +5517,9 @@ export default function App() {
                     </p>                  
                     <button 
                       onClick={handleSpinClick}
-                      disabled={isSpinning || localIsSpinning || spinCooldown > 0}
+                      disabled={isSpinning || localIsSpinning || spinCooldown > 0 || isSpinAdLoading}
                       className={`w-full py-2 rounded-2xl font-black text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black transition-all active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 ${
-                        isSpinning || localIsSpinning || spinCooldown > 0
+                        isSpinning || localIsSpinning || spinCooldown > 0 || isSpinAdLoading
                         ? 'bg-gray-300 cursor-not-allowed' 
                         : spinStatus.hasFreeSpin 
                           ? 'bg-accent-green text-white hover:brightness-110' 
@@ -5514,6 +5528,10 @@ export default function App() {
                     >
                       {isSpinning || localIsSpinning ? (
                         'جاري التدوير...'
+                      ) : isSpinAdLoading ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-5 h-5 animate-spin" /> تجهيز الإعلان...
+                        </div>
                       ) : spinCooldown > 0 ? (
                         <>انتظر {spinCooldown} ثانية...</>
                       ) : !hasUsedFreeSpin && spinStatus.hasFreeSpin ? (
@@ -6218,12 +6236,14 @@ export default function App() {
               <div className="flex gap-4">
                 <button 
                   onClick={() => handleRewardAd(pendingClaimReward.categoryId, pendingClaimReward.stage)}
-                  className="flex-1 bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black"
+                  disabled={isGlobalAdLoading}
+                  className={`flex-1 bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 ${isGlobalAdLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  نعم، شاهد الآن
+                  {isGlobalAdLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> جاري التحميل...</> : 'نعم، شاهد الآن'}
                 </button>
                 <button 
                   onClick={() => setPendingClaimReward(null)}
+                  disabled={isGlobalAdLoading}
                   className="flex-1 bg-gray-500 hover:brightness-110 text-white py-4 rounded-2xl font-black"
                 >
                   لا
@@ -10682,9 +10702,14 @@ export default function App() {
               {!citySearchState?.active ? (
                 <button 
                   onClick={handleStartCitySearch} 
-                  className="w-full py-4 bg-accent-blue hover:bg-blue-600 text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#1e3a8a] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2"
+                  disabled={isGlobalAdLoading}
+                  className={`w-full py-4 bg-accent-blue hover:bg-blue-600 text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#1e3a8a] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2 ${isGlobalAdLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <Tv className="w-6 h-6" /> ابدأ البحث (شاهد إعلان)
+                  {isGlobalAdLoading ? (
+                    <><Loader2 className="w-6 h-6 animate-spin" /> جاري التجهيز...</>
+                  ) : (
+                    <><Tv className="w-6 h-6" /> ابدأ البحث (شاهد إعلان)</>
+                  )}
                 </button>
               ) : !isCitySearchFinished ? (
                 <div className="text-center bg-gray-100 rounded-2xl p-4 border-2 border-gray-200">
