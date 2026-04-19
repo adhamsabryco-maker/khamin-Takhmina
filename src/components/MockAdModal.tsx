@@ -6,9 +6,10 @@ interface MockAdModalProps {
   imageUrl: string | null;
   targetUrl?: string | null;
   onComplete: () => void;
+  onDismissed?: () => void;
 }
 
-export const MockAdModal: React.FC<MockAdModalProps> = ({ imageUrl, targetUrl, onComplete }) => {
+export const MockAdModal: React.FC<MockAdModalProps> = ({ imageUrl, targetUrl, onComplete, onDismissed }) => {
   const [timeLeft, setTimeLeft] = useState(5);
   const [canClose, setCanClose] = useState(false);
 
@@ -24,6 +25,8 @@ export const MockAdModal: React.FC<MockAdModalProps> = ({ imageUrl, targetUrl, o
   const handleClose = () => {
     if (canClose) {
       onComplete();
+    } else if (onDismissed) {
+      onDismissed();
     }
   };
 
@@ -37,18 +40,19 @@ export const MockAdModal: React.FC<MockAdModalProps> = ({ imageUrl, targetUrl, o
       >
         {/* Top Bar */}
         <div className="absolute top-0 left-0 right-0 p-4 md:p-6 flex justify-between items-center z-10 w-full max-w-lg mx-auto">
-          {canClose ? (
+          <div className="flex items-center gap-2">
             <button 
               onClick={handleClose}
               className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white border border-white/20 transition-all shadow-lg backdrop-blur-md"
             >
               <X className="w-5 h-5" />
             </button>
-          ) : (
-            <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white font-black border border-white/20 backdrop-blur-md shadow-lg">
-              {timeLeft}
-            </div>
-          )}
+            {!canClose && (
+              <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white font-black border border-white/20 backdrop-blur-md shadow-lg">
+                {timeLeft}
+              </div>
+            )}
+          </div>
           <div className="bg-white/10 text-white/90 text-xs font-bold px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-md shadow-lg">
             إعلان ترويجي
           </div>

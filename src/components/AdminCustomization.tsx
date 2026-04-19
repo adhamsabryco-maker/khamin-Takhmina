@@ -421,11 +421,9 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
             {(config as any).mockAdImage ? (
               <div className="space-y-4">
                 <div className="relative aspect-square max-w-[250px] mx-auto border-4 border-gray-200 rounded-xl overflow-hidden bg-black/5">
-                  <img src={`/uploads/${(config as any).mockAdImage}`} className="w-full h-full object-contain" />
+                  <img src={(config as any).mockAdImage.startsWith('data:') ? (config as any).mockAdImage : `/uploads/${(config as any).mockAdImage}`} className="w-full h-full object-contain" />
                   <button onClick={async () => {
                      try {
-                        const filename = (config as any).mockAdImage;
-                        await fetch(`/api/upload/${filename}`, { method: 'DELETE' });
                         const newConfig = { ...config };
                         delete (newConfig as any).mockAdImage;
                         delete (newConfig as any).mockAdLink;
@@ -483,27 +481,30 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
                     const file = e.target.files?.[0];
                     if (!file) return;
                     setUploading(true);
-                    const formData = new FormData();
-                    formData.append('image', file);
-                    try {
-                      const response = await fetch('/api/upload', {
-                        method: 'POST',
-                        body: formData,
-                      });
-                      const data = await response.json();
-                      const newConfig = { ...config, mockAdImage: data.filename };
-                      await fetch('/api/config', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newConfig),
-                      });
-                      refreshConfig();
-                      showAlert('تم رفع الصورة بنجاح!', 'نجاح');
-                    } catch (error) {
-                      showAlert('حدث خطأ أثناء الرفع', 'خطأ');
-                    } finally {
+                    
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                      try {
+                        const base64String = event.target?.result as string;
+                        const newConfig = { ...config, mockAdImage: base64String };
+                        await fetch('/api/config', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(newConfig),
+                        });
+                        refreshConfig();
+                        showAlert('تم رفع الصورة بنجاح!', 'نجاح');
+                      } catch (error) {
+                        showAlert('حدث خطأ أثناء الرفع', 'خطأ');
+                      } finally {
+                        setUploading(false);
+                      }
+                    };
+                    reader.onerror = () => {
+                      showAlert('حدث خطأ أثناء قراءة الصورة', 'خطأ');
                       setUploading(false);
-                    }
+                    };
+                    reader.readAsDataURL(file);
                   }} disabled={uploading}/>
                 </label>
             )}
