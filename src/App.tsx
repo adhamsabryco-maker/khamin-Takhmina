@@ -337,6 +337,7 @@ interface Player {
   isPermanentBan?: number;
   ownedHelpers?: { [key: string]: number };
   lastRenameAt?: number;
+  keys?: number;
 }
 
 interface Room {
@@ -784,6 +785,9 @@ export default function App() {
   const [showTokenInfoModal, setShowTokenInfoModal] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [activePowerUp, setActivePowerUp] = useState<string | null>(null);
+  const [hasWatchedCategoryAd, setHasWatchedCategoryAd] = useState(false);
+  const [isWatchingCategoryAd, setIsWatchingCategoryAd] = useState(false);
+  const [showCategoryAdButton, setShowCategoryAdButton] = useState(false);
   const [isDocumentHidden, setIsDocumentHidden] = useState(document.hidden);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem('khamin_notifications_enabled');
@@ -1053,7 +1057,7 @@ export default function App() {
   });
   const [customAvatar, setCustomAvatar] = useState(() => localStorage.getItem('khamin_custom_avatar') || '');
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('khamin_is_admin') === 'true');
-  const [mockAdProviderState, setMockAdProviderState] = useState<{ onComplete: () => void } | null>(null);
+  const [mockAdProviderState, setMockAdProviderState] = useState<{ onComplete: () => void; onDismissed?: () => void; } | null>(null);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showPackageModal, setShowPackageModal] = useState(false);
@@ -2295,23 +2299,24 @@ export default function App() {
       let adDismissed = false;
 
       const handleAdFailure = () => {
-        if ((customConfig as any)?.mockAdImage) {
-          setMockAdProviderState({
-            onComplete: () => {
-              adFinished = true;
-              adViewed = true;
-              startSpin(true);
-            }
-          });
-        } else {
-          showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
-        }
+        setMockAdProviderState({
+          onComplete: () => {
+            adFinished = true;
+            adViewed = true;
+            startSpin(true);
+          },
+          onDismissed: () => {
+             adFinished = true;
+             setIsReelsSpinning(false);
+             showAlert("يجب مشاهدة الإعلان كاملاً للف الأسهم المجانية!", "تنبيه");
+          }
+        });
       };
 
       if (typeof (window as any).adBreak === 'function') {
         const adTimeout = setTimeout(() => {
           if (!adFinished) handleAdFailure();
-        }, 8000);
+        }, 2000);
 
         try {
           (window as any).adBreak({
@@ -3890,6 +3895,7 @@ export default function App() {
       setReadyPowerUps([]);
       setActivePowerUp(null);
       setShowAdConfirmation(false);
+      setHasWatchedCategoryAd(false);
       
       // Mark free quick guess as used after the first match finishes
       if (!hasUsedFreeQuickGuess) {
@@ -4680,7 +4686,18 @@ export default function App() {
     const startMockAd = () => {
       console.log('Falling back to mock ad');
       startAdProcess();
-      onAdComplete();
+      setMockAdProviderState({
+        onComplete: () => {
+          onAdComplete();
+        },
+        onDismissed: () => {
+          clearTimeout(adSafetyTimeout);
+          adTriggeredRef.current = false;
+          showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
+          if (roomId) socket?.emit('ad_ended', { roomId });
+          setActivePowerUp(null);
+        }
+      });
     };
 
     const handleAdUnavailable = () => {
@@ -4692,13 +4709,13 @@ export default function App() {
     if (typeof window.adBreak === 'function') {
       console.log('Calling Google AdSense adBreak');
       
-      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 2 seconds, use fallback
+      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 4 seconds, use fallback
       const adTimeout = setTimeout(() => {
         if (!localAdTriggered) {
           console.warn('AdSense adBreak timed out, using fallback');
           handleAdUnavailable();
         }
-      }, 2000);
+      }, 4000);
 
       try {
         window.adBreak({
@@ -4707,6 +4724,11 @@ export default function App() {
           beforeAd: () => {
             console.log('AdSense: beforeAd');
             clearTimeout(adTimeout);
+            if (localAdTriggered) {
+              console.log('AdSense started late, closing mock ad');
+              setMockAdProviderState(null);
+            }
+            localAdTriggered = false;
             startAdProcess();
             
             // Safety timeout: if ad doesn't finish or dismiss within 60 seconds, resume game
@@ -4764,6 +4786,119 @@ export default function App() {
     }
   };
 
+  const handleWatchCategoryAd = useCallback(() => {
+    if (adTriggeredRef.current) return;
+    adTriggeredRef.current = true;
+    let localAdTriggered = false;
+
+    const startAdProcess = () => {
+      if (localAdTriggered) return;
+      localAdTriggered = true;
+      setIsWatchingCategoryAd(true);
+      setShowCategoryAdButton(false);
+      if (roomId) {
+        socket?.emit('ad_started', { roomId, powerUpName: 'فتح فئات التخمين' });
+      }
+      socket?.emit('start_ad_watch', { serial: playerSerial });
+    };
+
+    let adSafetyTimeout: NodeJS.Timeout;
+
+    const onAdComplete = () => {
+      clearTimeout(adSafetyTimeout);
+      adTriggeredRef.current = false;
+      setIsWatchingCategoryAd(false);
+      setHasWatchedCategoryAd(true);
+      setShowCategoryAdButton(false);
+      
+      if (roomId) {
+        socket?.emit('ad_ended', { roomId });
+      }
+    };
+    
+    const onAdDismissed = () => {
+      clearTimeout(adSafetyTimeout);
+      adTriggeredRef.current = false;
+      setIsWatchingCategoryAd(false);
+      setShowCategoryAdButton(true);
+      showAlert('يجب استكمال مشاهدة الإعلان لفتح فئات التخمين.', 'تنبيه');
+      
+      if (roomId) {
+        socket?.emit('ad_ended', { roomId });
+      }
+    };
+
+    const startMockAd = () => {
+      console.log('Falling back to mock ad for category');
+      startAdProcess();
+      setMockAdProviderState({
+        onComplete: () => {
+          onAdComplete();
+        },
+        onDismissed: () => {
+          onAdDismissed();
+        }
+      });
+    };
+
+    const handleAdUnavailable = () => {
+      console.warn('Google Ads unavailable, falling back to mock ad temporarily');
+      startMockAd();
+    };
+
+    if (typeof window.adBreak === 'function') {
+      const adTimeout = setTimeout(() => {
+        if (!localAdTriggered) {
+          handleAdUnavailable();
+        }
+      }, 4000);
+
+      try {
+        window.adBreak({
+          type: 'reward',
+          name: 'category_selection',
+          beforeAd: () => {
+            clearTimeout(adTimeout);
+            if (localAdTriggered) {
+              setMockAdProviderState(null);
+            }
+            localAdTriggered = false;
+            startAdProcess();
+            adSafetyTimeout = setTimeout(() => {
+               if (roomId) socket?.emit('ad_ended', { roomId });
+               adTriggeredRef.current = false;
+               setIsWatchingCategoryAd(false);
+               setShowCategoryAdButton(true);
+            }, 60000);
+          },
+          beforeReward: (showAdFn: any) => showAdFn(),
+          adDismissed: () => onAdDismissed(),
+          adViewed: () => onAdComplete(),
+          adBreakDone: (placementInfo: any) => {
+            if (!localAdTriggered) {
+              clearTimeout(adTimeout);
+              console.warn('AdSense adBreakDone called without triggering ad, using fallback');
+              handleAdUnavailable();
+            } else {
+              adTriggeredRef.current = false;
+            }
+          }
+        });
+      } catch (error) {
+        clearTimeout(adTimeout);
+        handleAdUnavailable();
+      }
+    } else {
+      handleAdUnavailable();
+    }
+  }, [roomId, playerSerial, socket]);
+
+  useEffect(() => {
+    if (room?.gameState === 'waiting' && room.players.length === 2 && !hasWatchedCategoryAd && !isWatchingCategoryAd && !showCategoryAdButton && !adTriggeredRef.current) {
+      handleWatchCategoryAd();
+    }
+  }, [room?.gameState, room?.players?.length, hasWatchedCategoryAd, isWatchingCategoryAd, showCategoryAdButton, handleWatchCategoryAd]);
+
   const handleRewardAd = (categoryId: string, stage: number) => {
     if (adTriggeredRef.current) return;
     
@@ -4801,7 +4936,19 @@ export default function App() {
 
     const startMockAd = () => {
       startAdProcess();
-      onAdComplete();
+      setMockAdProviderState({
+        onComplete: () => {
+          onAdComplete();
+        },
+        onDismissed: () => {
+          clearTimeout(adSafetyTimeout);
+          adTriggeredRef.current = false;
+          if (roomId) {
+            socket?.emit('ad_ended', { roomId });
+          }
+          showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
+        }
+      });
     };
 
     const handleAdUnavailable = () => {
@@ -4813,7 +4960,7 @@ export default function App() {
         if (!localAdTriggered) {
           handleAdUnavailable();
         }
-      }, 2000);
+      }, 4000);
 
       try {
         window.adBreak({
@@ -4821,6 +4968,10 @@ export default function App() {
           name: 'claim_collection_reward',
           beforeAd: () => {
             clearTimeout(adTimeout);
+            if (localAdTriggered) {
+              setMockAdProviderState(null);
+            }
+            localAdTriggered = false;
             startAdProcess();
             adSafetyTimeout = setTimeout(() => {
               if (roomId) {
@@ -5042,21 +5193,24 @@ export default function App() {
 
     const handleAdFailure = () => {
       adTriggeredRef.current = false;
-      if ((customConfig as any)?.mockAdImage) {
-        setMockAdProviderState({
-          onComplete: () => {
-            onAdComplete();
-          }
-        });
-      } else {
-        showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
-      }
+      setMockAdProviderState({
+        onComplete: () => {
+          onAdComplete();
+        },
+        onDismissed: () => {
+          adFinished = true;
+          adDismissed = true;
+          clearTimeout(adSafetyTimeout);
+          adTriggeredRef.current = false;
+          showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
+        }
+      });
     };
 
     if (typeof (window as any).adBreak === 'function') {
       const adTimeout = setTimeout(() => {
         if (!adFinished) handleAdFailure();
-      }, 8000);
+      }, 4000);
 
       try {
         (window as any).adBreak({
@@ -5064,6 +5218,10 @@ export default function App() {
           name: 'city_search_ad',
           beforeAd: () => {
             clearTimeout(adTimeout);
+            if (adFinished) {
+              setMockAdProviderState(null);
+            }
+            adFinished = false;
             startAdProcess();
             Howler.mute(true);
             
@@ -5152,6 +5310,9 @@ export default function App() {
     setChatHistory([]);
     setChatInput('');
     setHint('');
+    setHasWatchedCategoryAd(false);
+    setIsWatchingCategoryAd(false);
+    setShowCategoryAdButton(false);
     setShowMatchIntro(false);
     setReadyPowerUps([]);
     setCooldowns({ quick_guess: 0, hint: 0, word_length: 0, word_count: 0, time_freeze: 0, spy_lens: 0 });
@@ -9561,23 +9722,23 @@ export default function App() {
                                     </div>
                                     <div className="bg-blue-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-blue-400">النصيحة</div>
-                                      <div className="text-sm font-black text-blue-500">{p.ownedHelpers.hint || 0}</div>
+                                      <div className="text-sm font-black text-blue-500">{p.ownedHelpers?.hint || 0}</div>
                                     </div>
                                     <div className="bg-green-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-green-400">كاشف الحروف</div>
-                                      <div className="text-sm font-black text-green-500">{p.ownedHelpers.word_length || 0}</div>
+                                      <div className="text-sm font-black text-green-500">{p.ownedHelpers?.word_length || 0}</div>
                                     </div>
                                     <div className="bg-indigo-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-indigo-400">عدد الكلمات</div>
-                                      <div className="text-sm font-black text-indigo-500">{p.ownedHelpers.word_count || 0}</div>
+                                      <div className="text-sm font-black text-indigo-500">{p.ownedHelpers?.word_count || 0}</div>
                                     </div>
                                     <div className="bg-purple-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-purple-400">الجاسوس</div>
-                                      <div className="text-sm font-black text-purple-500">{p.ownedHelpers.spy_lens || 0}</div>
+                                      <div className="text-sm font-black text-purple-500">{p.ownedHelpers?.spy_lens || 0}</div>
                                     </div>
                                     <div className="bg-cyan-100 p-1 rounded-xl text-center">
                                       <div className="text-[10px] font-bold text-cyan-400">تجميد الوقت</div>
-                                      <div className="text-sm font-black text-cyan-500">{p.ownedHelpers.time_freeze || 0}</div>
+                                      <div className="text-sm font-black text-cyan-500">{p.ownedHelpers?.time_freeze || 0}</div>
                                     </div>
                                   </div>
 
@@ -11220,15 +11381,14 @@ export default function App() {
               let adDismissed = false;
 
               const handleAdFailure = () => {
-                if ((customConfig as any)?.mockAdImage) {
-                  setMockAdProviderState({
-                    onComplete: () => {
-                      successReward();
-                    }
-                  });
-                } else {
-                  showAlert('عفواً، لم نتمكن من تحميل الإعلان بنجاح. يرجى التحقق من اتصالك بالإنترنت أو المحاولة مرة أخرى بعد قليل.', 'خطأ');
-                }
+                setMockAdProviderState({
+                  onComplete: () => {
+                    successReward();
+                  },
+                  onDismissed: () => {
+                    showAlert('يجب مشاهدة الإعلان كاملاً لمضاعفة المكافأة!', 'تنبيه');
+                  }
+                });
               };
               const successReward = () => {
                 socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
@@ -11241,7 +11401,7 @@ export default function App() {
               if (typeof (window as any).adBreak === 'function') {
                 const adTimeout = setTimeout(() => {
                   if (!adFinished) handleAdFailure();
-                }, 8000);
+                }, 2000);
 
                 try {
                   (window as any).adBreak({
@@ -11470,19 +11630,19 @@ export default function App() {
                           <span className="text-[13px] md:text-[14px]"><Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /></span> <span className="text-[11px] md:text-[12px]">{keys || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.time_freeze || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.time_freeze || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.spy_lens || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.spy_lens || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.word_count || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.word_count || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.word_length || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.word_length || 0}</span>
                         </span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers.hint || 0}</span>
+                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.hint || 0}</span>
                         </span>
                       </div>
                     </div>
@@ -12446,41 +12606,65 @@ export default function App() {
                   </div>
                 )}
                 <div className="grid grid-cols-4 gap-2">
-                  {categories.map(cat => {
-                    const isMyChoice = me?.selectedCategory === cat.id;
-                    const isOpponentChoice = opponent?.selectedCategory === cat.id;
-                    const isAgreed = isMyChoice && isOpponentChoice;
-                    const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
-                    
-                    return (
-                      <button
-                        key={cat.id}
-                        onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
-                        className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
-                          ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
-                          ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
-                        `}
-                      >
-                        <span className="text-2xl md:text-3xl">{cat.icon}</span>
-                        <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
-                        {isNew && (
-                          <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
-                            جديد
-                          </div>
-                        )}
-                        {isOpponentChoice && !isMyChoice && (
-                          <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
-                            اقتراح!
-                          </div>
-                        )}
-                        {isAgreed && (
-                          <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
-                            متفق عليه!
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                  {!hasWatchedCategoryAd && room.players.length >= 2 ? (
+                    <div className="col-span-4 flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
+                      {isWatchingCategoryAd ? (
+                        <div className="text-center space-y-3">
+                           <Loader2 className="w-8 h-8 animate-spin text-accent-orange mx-auto" />
+                           <p className="font-bold text-brown-muted">جاري مشاهدة الإعلان لفتح فئات التخمين...</p>
+                        </div>
+                      ) : showCategoryAdButton ? (
+                        <div className="text-center space-y-3">
+                          <p className="text-sm font-bold text-red-500">تم إغلاق الإعلان قبل اكتماله!</p>
+                          <button onClick={handleWatchCategoryAd} className="btn-game btn-primary flex flex-col items-center py-2 px-4 shadow-[0_4px_0_0_#9a3412] text-sm md:text-base gap-1 w-full justify-center group relative overflow-hidden">
+                            <span className="relative z-10 font-bold whitespace-nowrap">اضغط لاستكمال مشاهدة الاعلان</span>
+                            <span className="relative z-10 font-black text-white/90 text-[10px] md:text-xs">لفتح فئات التخمين</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-center space-y-3">
+                           <Loader2 className="w-8 h-8 animate-spin text-accent-orange mx-auto" />
+                           <p className="font-bold text-brown-muted">تجهيز فئات التخمين...</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    categories.map(cat => {
+                      const isMyChoice = me?.selectedCategory === cat.id;
+                      const isOpponentChoice = opponent?.selectedCategory === cat.id;
+                      const isAgreed = isMyChoice && isOpponentChoice;
+                      const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
+                      
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
+                          className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
+                            ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
+                            ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
+                          `}
+                        >
+                          <span className="text-2xl md:text-3xl">{cat.icon}</span>
+                          <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
+                          {isNew && (
+                            <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
+                              جديد
+                            </div>
+                          )}
+                          {isOpponentChoice && !isMyChoice && (
+                            <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                              اقتراح!
+                            </div>
+                          )}
+                          {isAgreed && (
+                            <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                              متفق عليه!
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
 
                 {/* WhatsApp Style Chat Box - Hidden when consensus reached or waiting for opponent */}
@@ -13075,7 +13259,7 @@ export default function App() {
               icon: Sparkles, 
               color: 'text-yellow-500', 
               bg: 'bg-white', 
-              disabled: room.timer > getQuickGuessThreshold(getLevel(me?.xp || xp)) || me?.quickGuessUsed,
+              disabled: room.timer > getQuickGuessThreshold(getLevel(me?.xp || xp)) || !!me?.quickGuessUsed,
               level: 1,
               hide: room.gameState === 'guessing'
             },
@@ -13086,7 +13270,7 @@ export default function App() {
               icon: HelpCircle, 
               color: 'text-blue-500', 
               bg: 'bg-white', 
-              disabled: me?.hintCount >= 2,
+              disabled: (me?.hintCount || 0) >= 2,
               level: 10
             },
             { 
@@ -13096,7 +13280,7 @@ export default function App() {
               icon: Type, 
               color: 'text-green-500', 
               bg: 'bg-white', 
-              disabled: me?.wordLengthUsed,
+              disabled: !!me?.wordLengthUsed,
               level: 20
             },
             { 
@@ -13106,7 +13290,7 @@ export default function App() {
               icon: Snowflake, 
               color: 'text-cyan-500', 
               bg: 'bg-white', 
-              disabled: me?.timeFreezeUsed || room.isFrozen,
+              disabled: !!me?.timeFreezeUsed || room.isFrozen,
               level: 30
             },
             { 
@@ -13116,7 +13300,7 @@ export default function App() {
               icon: Hash, 
               color: 'text-indigo-500', 
               bg: 'bg-white', 
-              disabled: me?.wordCountUsed,
+              disabled: !!me?.wordCountUsed,
               level: 40
             },
             { 
@@ -13126,7 +13310,7 @@ export default function App() {
               icon: Eye, 
               color: 'text-purple-500', 
               bg: 'bg-white', 
-              disabled: me?.spyLensUsed,
+              disabled: !!me?.spyLensUsed,
               level: 50
             }
           ].filter(card => !card.hide).map((card) => {
@@ -13533,10 +13717,16 @@ export default function App() {
       <AnimatePresence>
         {mockAdProviderState && (
           <MockAdModal
-            imageUrl={(customConfig as any)?.mockAdImage ? `/uploads/${(customConfig as any)?.mockAdImage}` : null}
+            imageUrl={(customConfig as any)?.mockAdImage ? ((customConfig as any).mockAdImage.startsWith('data:') ? (customConfig as any).mockAdImage : `/uploads/${(customConfig as any).mockAdImage}`) : null}
             targetUrl={(customConfig as any)?.mockAdLink || null}
             onComplete={() => {
               mockAdProviderState.onComplete();
+              setMockAdProviderState(null);
+            }}
+            onDismissed={() => {
+              if (mockAdProviderState.onDismissed) {
+                mockAdProviderState.onDismissed();
+              }
               setMockAdProviderState(null);
             }}
           />
