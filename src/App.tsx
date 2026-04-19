@@ -99,20 +99,27 @@ const SPIN_REWARDS_UI = [
 
 const CategoryPageAd = () => {
   useEffect(() => {
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (e) {
-      console.error('AdSense error:', e);
-    }
+    // ننتظر قليلاً حتى يستقر عرض الصفحة (DOM) لتجنب خطأ availableWidth=0
+    const timer = setTimeout(() => {
+      try {
+        if (typeof window !== 'undefined' && window.adsbygoogle) {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        }
+      } catch (e) {
+        console.error('AdSense initialization error:', e);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <div className="w-full mt-4 md:mt-8 flex flex-col items-center">
+    <div className="w-full mt-4 md:mt-8 min-h-[90px] max-h-[120px] flex flex-col items-center overflow-hidden">
       <ins className="adsbygoogle"
-           style={{ display: 'block' }}
+           style={{ display: 'block', width: '100%', height: '90px' }}
            data-ad-client="ca-pub-8026106142955130"
            data-ad-slot="9111492892"
-           data-ad-format="auto"
+           data-ad-format="horizontal"
            data-full-width-responsive="true"></ins>
     </div>
   );
