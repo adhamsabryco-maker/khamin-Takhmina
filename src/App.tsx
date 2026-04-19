@@ -97,6 +97,27 @@ const SPIN_REWARDS_UI = [
   { id: 'pro_30', type: 'pro', value: 30, label: 'باقة المحترفين', icon: <Crown className="w-6 h-6" />, color: '#ec4899' },
 ];
 
+const CategoryPageAd = () => {
+  useEffect(() => {
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {
+      console.error('AdSense error:', e);
+    }
+  }, []);
+
+  return (
+    <div className="w-full mt-4 md:mt-8 flex flex-col items-center">
+      <ins className="adsbygoogle"
+           style={{ display: 'block' }}
+           data-ad-client="ca-pub-8026106142955130"
+           data-ad-slot="9111492892"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+    </div>
+  );
+};
+
 const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
   const [displayXP, setDisplayXP] = useState(0);
 
@@ -4612,7 +4633,7 @@ export default function App() {
   const handleWatchAd = () => {
     console.log('handleWatchAd called. Current adStatus:', adStatus);
     
-    if (adTriggeredRef.current) return;
+    if (adTriggeredRef.current || isGlobalAdLoading) return;
     if (isCooldown) {
       showAlert('يرجى الانتظار 30 ثانية قبل مشاهدة الإعلان التالي!', 'تنبيه');
       return;
@@ -4638,12 +4659,14 @@ export default function App() {
 
     // Set triggered to true immediately to prevent double clicks
     adTriggeredRef.current = true;
+    setIsGlobalAdLoading(true);
 
     let localAdTriggered = false;
 
     const startAdProcess = () => {
       if (localAdTriggered) return;
       localAdTriggered = true;
+      setIsGlobalAdLoading(false);
       
       if (roomId && isPowerUp) {
         const powerUpName = {
@@ -4669,6 +4692,7 @@ export default function App() {
     const onAdComplete = () => {
       clearTimeout(adSafetyTimeout);
       adTriggeredRef.current = false;
+      setIsGlobalAdLoading(false);
       
       // Trigger cooldown after ad finishes
       setIsCooldown(true);
@@ -4702,6 +4726,7 @@ export default function App() {
         onDismissed: () => {
           clearTimeout(adSafetyTimeout);
           adTriggeredRef.current = false;
+          setIsGlobalAdLoading(false);
           showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
           if (roomId) socket?.emit('ad_ended', { roomId });
           setActivePowerUp(null);
@@ -4711,6 +4736,7 @@ export default function App() {
 
     const handleAdUnavailable = () => {
       console.warn('Google Ads unavailable, falling back to mock ad temporarily');
+      setIsGlobalAdLoading(false);
       startMockAd();
     };
 
@@ -4738,6 +4764,7 @@ export default function App() {
               setMockAdProviderState(null);
             }
             localAdTriggered = false;
+            setIsGlobalAdLoading(false);
             startAdProcess();
             
             // Safety timeout: if ad doesn't finish or dismiss within 60 seconds, resume game
@@ -4747,6 +4774,7 @@ export default function App() {
                 socket?.emit('ad_ended', { roomId });
               }
               setActivePowerUp(null);
+              setIsGlobalAdLoading(false);
               adTriggeredRef.current = false;
               showAlert('حدث خطأ أثناء تحميل الإعلان.', 'خطأ');
             }, 60000);
@@ -4762,6 +4790,7 @@ export default function App() {
             console.log('AdSense: adDismissed');
             clearTimeout(adSafetyTimeout);
             adTriggeredRef.current = false;
+            setIsGlobalAdLoading(false);
             showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
             if (roomId) {
               socket?.emit('ad_ended', { roomId });
@@ -4774,6 +4803,7 @@ export default function App() {
           },
           adBreakDone: (placementInfo: any) => {
             console.log('AdSense: adBreakDone', placementInfo);
+            setIsGlobalAdLoading(false);
             // If adBreakDone is called but ad was never triggered, it means no ad was available
             if (!localAdTriggered) {
               clearTimeout(adTimeout);
@@ -5186,8 +5216,9 @@ export default function App() {
   }, [citySearchState]);
 
   const handleShowAd = (onComplete: () => void) => {
-    if (adTriggeredRef.current) return;
+    if (adTriggeredRef.current || isGlobalAdLoading) return;
     adTriggeredRef.current = true;
+    setIsGlobalAdLoading(true);
     
     let adFinished = false;
     let adViewed = false;
@@ -5202,11 +5233,13 @@ export default function App() {
     const onAdComplete = () => {
       clearTimeout(adSafetyTimeout);
       adTriggeredRef.current = false;
+      setIsGlobalAdLoading(false);
       onComplete();
     };
 
     const handleAdFailure = () => {
       adTriggeredRef.current = false;
+      setIsGlobalAdLoading(false);
       setMockAdProviderState({
         onComplete: () => {
           onAdComplete();
@@ -5216,6 +5249,7 @@ export default function App() {
           adDismissed = true;
           clearTimeout(adSafetyTimeout);
           adTriggeredRef.current = false;
+          setIsGlobalAdLoading(false);
           showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
         }
       });
@@ -5223,7 +5257,9 @@ export default function App() {
 
     if (typeof (window as any).adBreak === 'function') {
       const adTimeout = setTimeout(() => {
-        if (!adFinished) handleAdFailure();
+        if (!adFinished) {
+          handleAdFailure();
+        }
       }, 4000);
 
       try {
@@ -5236,12 +5272,13 @@ export default function App() {
               setMockAdProviderState(null);
             }
             adFinished = false;
+            setIsGlobalAdLoading(false);
             startAdProcess();
             Howler.mute(true);
             
             adSafetyTimeout = setTimeout(() => {
               onAdComplete();
-            }, 30000);
+            }, 60000);
           },
           afterAd: () => {
             Howler.mute(false);
@@ -5252,6 +5289,7 @@ export default function App() {
             adDismissed = true;
             clearTimeout(adSafetyTimeout);
             adTriggeredRef.current = false;
+            setIsGlobalAdLoading(false);
             showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
           },
           adViewed: () => {
@@ -5262,11 +5300,14 @@ export default function App() {
           },
           adBreakDone: (placementInfo: any) => {
             adFinished = true;
+            setIsGlobalAdLoading(false);
             clearTimeout(adSafetyTimeout);
             clearTimeout(adTimeout);
             if (!adViewed && !adDismissed) {
               // Google AdSense had no ad to show (No Fill)
               handleAdFailure();
+            } else {
+              adTriggeredRef.current = false;
             }
           }
         });
@@ -6202,16 +6243,18 @@ export default function App() {
               <div className="flex gap-4">
                 <button 
                   onClick={handleWatchAd}
-                  className="flex-1 bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black"
+                  disabled={isGlobalAdLoading}
+                  className={`flex-1 bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 ${isGlobalAdLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  نعم، شاهد الآن
+                  {isGlobalAdLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> جاري التحميل...</> : 'نعم، شاهد الآن'}
                 </button>
                 <button 
                   onClick={() => {
                     setShowAdConfirmation(false);
                     setActivePowerUp(null);
                   }}
-                  className="flex-1 bg-gray-500 hover:brightness-110 text-white py-4 rounded-2xl font-black"
+                  disabled={isGlobalAdLoading}
+                  className={`flex-1 bg-gray-500 hover:brightness-110 text-white py-4 rounded-2xl font-black ${isGlobalAdLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   لا
                 </button>
@@ -6321,14 +6364,24 @@ export default function App() {
                       </div>
                       <button 
                         onClick={handleWatchAd}
-                        disabled={isCooldown || !adStatus.canWatch || getLevel(xp) < 50}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 ${
-                          !isCooldown && adStatus.canWatch && getLevel(xp) >= 50
+                        disabled={isCooldown || !adStatus.canWatch || getLevel(xp) < 50 || isGlobalAdLoading}
+                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 flex items-center justify-center gap-1 ${
+                          !isCooldown && adStatus.canWatch && getLevel(xp) >= 50 && !isGlobalAdLoading
                             ? 'bg-accent-green text-white hover:scale-105 active:scale-95'
                             : 'bg-gray-300 text-brown-muted cursor-not-allowed'
                         }`}
                       >
-                        {getLevel(xp) < 50 ? 'Level 50+' : isCooldown ? `${cooldownTime}s` : adStatus.canWatch ? 'مشاهدة' : 'انتهى اليوم'}
+                        {isGlobalAdLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : getLevel(xp) < 50 ? (
+                          'Level 50+'
+                        ) : isCooldown ? (
+                          `${cooldownTime}s`
+                        ) : adStatus.canWatch ? (
+                          'مشاهدة'
+                        ) : (
+                          'انتهى اليوم'
+                        )}
                       </button>
                     </div>
                   )}
@@ -12575,7 +12628,8 @@ export default function App() {
         {/* Center Content: Image or Waiting UI */}
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0 overflow-hidden">
           {room.gameState === 'waiting' ? (
-            <div className="w-full card-game p-3 md:p-6 text-center space-y-3 md:space-y-5 relative overflow-hidden">
+            <React.Fragment>
+              <div className="w-full card-game p-3 md:p-6 text-center space-y-3 md:space-y-5 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#F6E6CD]">
                 <div 
                   className="h-full bg-accent-orange transition-all duration-1000" 
@@ -12793,7 +12847,11 @@ export default function App() {
                 )}
               </div>
             </div>
-          ) : (
+
+            {/* Guess Category Page Static Ad - Outside the box */}
+            <CategoryPageAd />
+          </React.Fragment>
+        ) : (
             <div className="relative w-full flex flex-col items-center">
               {/* Quick Guess Overlay for the one guessing */}
               {room.isPaused && room.pausingPlayerId === me?.id && (
@@ -13378,6 +13436,8 @@ export default function App() {
                     <Lock className="w-4 h-4 md:w-5 md:h-5 mb-0.5" />
                     <span className="text-[8px] md:text-[9px] font-black">Lvl {card.level}</span>
                   </div>
+                ) : isGlobalAdLoading && activePowerUp === card.id ? (
+                  <Loader2 className={`w-5 h-5 md:w-8 md:h-8 animate-spin ${card.color}`} />
                 ) : (
                   <card.icon className={`w-5 h-5 md:w-8 md:h-8 ${card.color}`} />
                 )}
