@@ -5065,6 +5065,8 @@ io.on("connection", (socket) => {
               const verb = (sender.gender === 'girl' || sender.gender === 'female') ? 'تقوم' : 'يقوم';
               const actionText = powerUpName === 'استلام مكافأة' 
                 ? `بمشاهدة إعلان لاستلام مكافأة`
+                : powerUpName === 'فتح فئات التخمين'
+                ? `بمشاهدة إعلان لفتح فئات التخمين`
                 : `بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"`;
               io.to(roomId).emit("chat_bubble", { 
                 senderId: "system", 
