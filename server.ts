@@ -544,6 +544,17 @@ const app = express();
     console.log('[API] Received config update:', req.body);
     configCache = req.body;
     fs.writeFileSync(configPath, JSON.stringify(req.body, null, 2));
+
+    try {
+      if (req.body.mockAdImage !== undefined) {
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("mockAdImage", req.body.mockAdImage || "");
+      }
+      if (req.body.mockAdLink !== undefined) {
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("mockAdLink", req.body.mockAdLink || "");
+      }
+    } catch (dbErr) {
+      console.error("[Config DB] Failed to save mock ad to DB:", dbErr);
+    }
     
     if (USE_FIRESTORE_CONFIG && firestore) {
       try {
@@ -583,6 +594,17 @@ const app = express();
       const newConfig = JSON.parse(fs.readFileSync(req.file.path, 'utf-8'));
       configCache = newConfig;
       fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2));
+
+      try {
+        if (newConfig.mockAdImage !== undefined) {
+          db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("mockAdImage", newConfig.mockAdImage || "");
+        }
+        if (newConfig.mockAdLink !== undefined) {
+          db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("mockAdLink", newConfig.mockAdLink || "");
+        }
+      } catch (dbErr) {
+        console.error("[Config DB] Failed to save mock ad to DB from upload:", dbErr);
+      }
       
       if (USE_FIRESTORE_CONFIG && firestore) {
         try {
@@ -1774,6 +1796,16 @@ const app = express();
     
     const rainGiftRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('is_rain_gift_enabled') as any;
     if (rainGiftRow && rainGiftRow.value !== undefined) gamePolicies.isRainGiftEnabled = rainGiftRow.value === 'true';
+
+    // Load mock ad settings
+    const mockAdImageRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('mockAdImage') as any;
+    if (mockAdImageRow && mockAdImageRow.value) {
+      configCache.mockAdImage = mockAdImageRow.value;
+    }
+    const mockAdLinkRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('mockAdLink') as any;
+    if (mockAdLinkRow && mockAdLinkRow.value) {
+      configCache.mockAdLink = mockAdLinkRow.value;
+    }
   } catch (err) {
     console.error("Failed to load game policies:", err);
   }
