@@ -2039,7 +2039,18 @@ export default function App() {
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
   const [showFriendRequestsModal, setShowFriendRequestsModal] = useState(false);
   const [opponentFriendStatus, setOpponentFriendStatus] = useState<'none'|'pending_sent'|'pending_received'|'friends'>('none');
+  const currentOpponentSerialRef = useRef<string | null>(null);
   const [incomingChallenge, setIncomingChallenge] = useState<any>(null);
+
+  // Update currentOpponentSerialRef whenever room or playerSerial changes
+  useEffect(() => {
+    if (room && playerSerial) {
+      const opp = room.players.find((p: any) => p.serial !== playerSerial);
+      currentOpponentSerialRef.current = opp?.serial || null;
+    } else {
+      currentOpponentSerialRef.current = null;
+    }
+  }, [room, playerSerial]);
 
   // Load Friends Effect
   useEffect(() => {
@@ -3071,11 +3082,18 @@ export default function App() {
 
   const handleAcceptFriendRequest = (requestId: string) => {
     if (!socket || !playerSerial) return;
+    const request = friendRequests.find(r => r.id === requestId);
     socket.emit('accept_friend_request', { serial: playerSerial, requestId }, (res: any) => {
       if (res.success) {
         setFriendRequests(prev => prev.filter(r => r.id !== requestId));
         showAlert('تم قبول طلب الصداقة!', 'نجاح');
-        // Refresh friends list
+        
+        // Update in-game status if this request was from our current opponent
+        if (request && (request.sender === currentOpponentSerialRef.current || request.player1 === currentOpponentSerialRef.current || request.player2 === currentOpponentSerialRef.current)) {
+          setOpponentFriendStatus('friends');
+        }
+
+        // Refresh friends list/total immediately
         socket.emit('get_friends', { serial: playerSerial, page: friendsPage }, (friendsRes: any) => {
           if (friendsRes.success) {
             setFriendsList(friendsRes.friends);
@@ -3088,9 +3106,15 @@ export default function App() {
 
   const handleRejectFriendRequest = (requestId: string) => {
     if (!socket || !playerSerial) return;
+    const request = friendRequests.find(r => r.id === requestId);
     socket.emit('reject_friend_request', { serial: playerSerial, requestId }, (res: any) => {
       if (res.success) {
         setFriendRequests(prev => prev.filter(r => r.id !== requestId));
+        
+        // Update in-game status if this request was from our current opponent
+        if (request && (request.sender === currentOpponentSerialRef.current || request.player1 === currentOpponentSerialRef.current || request.player2 === currentOpponentSerialRef.current)) {
+          setOpponentFriendStatus('none');
+        }
       }
     });
   };
@@ -3101,6 +3125,12 @@ export default function App() {
       socket.emit('remove_friend', { serial: playerSerial, targetSerial: friendSerial }, (res: any) => {
         if (res.success) {
           setFriendsList(prev => prev.filter(f => f.serial !== friendSerial));
+          setFriendsTotal(prev => Math.max(0, prev - 1));
+          
+          // Update in-game status if this person is our current opponent
+          if (friendSerial === currentOpponentSerialRef.current) {
+            setOpponentFriendStatus('none');
+          }
         }
       });
     }, 'تأكيد الحذف');
@@ -4379,7 +4409,7 @@ export default function App() {
     });
 
     // Friend System Event Listeners
-    newSocket.on("friend_request_received", () => {
+    newSocket.on("friend_request_received", ({ senderSerial }: { senderSerial?: string } = {}) => {
       playSound('message');
       const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
@@ -4387,13 +4417,31 @@ export default function App() {
           if (res.success) setFriendRequests(res.requests);
         });
       }
+      // Update in-game button status if the sender is our current opponent
+      if (senderSerial && senderSerial === currentOpponentSerialRef.current) {
+        setOpponentFriendStatus('pending_received');
+      }
     });
 
-    newSocket.on("friend_request_accepted", () => {
+    newSocket.on("friend_request_accepted", ({ targetSerial }: { targetSerial?: string } = {}) => {
       showAlert("تم قبول طلب الصداقة الخاص بك! 🎉", "نجاح");
+      const currentSerial = localStorage.getItem('khamin_player_serial');
+      if (currentSerial) {
+        // Refresh friends list/total immediately
+        newSocket.emit('get_friends', { serial: currentSerial }, (res: any) => {
+          if (res.success) {
+            setFriendsList(res.friends);
+            setFriendsTotal(res.total);
+          }
+        });
+      }
+      // Update in-game button status to 'friends' if the person who accepted is our current opponent
+      if (targetSerial && targetSerial === currentOpponentSerialRef.current) {
+        setOpponentFriendStatus('friends');
+      }
     });
 
-    newSocket.on("friend_removed", () => {
+    newSocket.on("friend_removed", ({ targetSerial }: { targetSerial?: string } = {}) => {
       const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
         newSocket.emit('get_friends', { serial: currentSerial }, (res: any) => {
@@ -4402,6 +4450,10 @@ export default function App() {
             setFriendsTotal(res.total);
           }
         });
+      }
+      // Revert in-game button status if the removed person is our current opponent
+      if (targetSerial && targetSerial === currentOpponentSerialRef.current) {
+        setOpponentFriendStatus('none');
       }
     });
 
@@ -6521,7 +6573,7 @@ export default function App() {
                   <>
                     <div className="w-24 h-24 mx-auto relative mb-4">
                       {renderAvatarContent(avatar, level, false, false, frame)}
-                      <div className="absolute -bottom-2 -right-2 bg-blue-500 w-8 h-8 rounded-full border-2 border-white flex items-center justify-center animate-bounce">
+                      <div className="absolute -bottom-2 -right-2 bg-blue-500 w-8 h-8 rounded-full border-2 border-white flex z-[200] items-center justify-center animate-bounce">
                         <Gamepad2 className="w-4 h-4 text-white" />
                       </div>
                     </div>
@@ -12049,10 +12101,10 @@ export default function App() {
             <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center overflow-hidden">
               <img src="/icon-3.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 object-contain" />
             </div>
-            <div className="font-black text-lg md:text-xl text-accent-blue tracking-tight block">خمن تخمينة</div>
+            <div className="font-bold md:font-black text-xs md:text-xl text-accent-blue tracking-tight block">خمن تخمينة</div>
           </div>
           
-          <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
+          <div className="flex-1 flex items-center justify-end gap-1 md:gap-3">
             {/* Daily Quests Button */}
             <button 
               onClick={toggleDailyQuests}
@@ -12500,12 +12552,12 @@ export default function App() {
               <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[11px] text-accent-orange">مطر الهدايا 🎁 كل يوم الساعة 7 مساء بتوقيت مصر 🌧️</span>
               <span className="flex font-bold p-0.5 py-0.5 mb-1 items-center justify-center md:text-[13px] text-[12px] text-accent-purple">مدة الحدث 3 دقائق فقط! ⏰</span>
                 <div className="flex items-center mb-2 justify-between flex-row-reverse">
-                  <div className="flex items-center gap-2" dir="ltr">
+                  <div className="flex items-center gap-1" dir="ltr">
                     <div className="w-8 h-8 bg-accent-orange rounded-full flex items-center justify-center text-white shadow-sm">
                       <Clock className="w-6 h-6" />
                     </div>
                     <div className="text-right">
-                      <div className={`font-bold text-main ${isRainGiftActive ? 'text-base md:text-lg' : 'text-[21px]'}`}>{rainGiftCountdown}</div>
+                      <div className={`font-bold text-main ${isRainGiftActive ? 'text-base md:text-lg' : 'text-[19px]'}`}>{rainGiftCountdown}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -12560,7 +12612,7 @@ export default function App() {
                       }}
                       // Enabled for testing as requested
                       disabled={!(localStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0 || isAdmin || isRainGiftActive)}
-                      className={`px-2 md:px-6 py-2 rounded-xl font-black md:text-[13px] text-[10px] transition-all shadow-md ${
+                      className={`px-2 md:px-6 py-2 rounded-xl font-bold md:font-black md:text-[13px] text-[10px] transition-all shadow-md ${
                         (localStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0 || isAdmin || isRainGiftActive)
                         ? 'bg-accent-green text-white hover:scale-105 active:scale-95 event-glow' 
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -12964,7 +13016,7 @@ export default function App() {
 
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
-        <div className="flex-1 flex items-center gap-2 md:gap-3">
+        <div className="flex-1 flex items-center gap-1 md:gap-3">
           <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center overflow-hidden">
             <img src="/icon-3.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 object-contain" />
           </div>
