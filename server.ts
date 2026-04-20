@@ -3883,21 +3883,40 @@ io.on("connection", (socket) => {
       });
     });
 
+    socket.on("rain_gift_pay", ({ serial }, callback) => {
+      const player = allPlayers.get(serial);
+      if (!player) {
+        if (callback) callback({ success: false, error: 'لاعب غير موجود' });
+        return;
+      }
+
+      if (player.isAdmin) {
+        if (callback) callback({ success: true });
+        return;
+      }
+
+      if ((player.keys || 0) < 3) {
+        if (callback) callback({ success: false, error: 'لا تملك مفاتيح كافية!' });
+        return;
+      }
+
+      player.keys -= 3;
+      savePlayerData(serial);
+      
+      socket.emit("player_data_update", { 
+        serial, 
+        keys: player.keys
+      });
+
+      if (callback) callback({ success: true });
+    });
+
     socket.on("claim_rain_gift", ({ serial, rewards, isPro }) => {
       const player = allPlayers.get(serial);
       if (!player) return;
 
       // Check for daily reset
       checkDailyReset(player, serial, socket);
-
-      // Deduct keys
-      if (!player.isAdmin) {
-        if ((player.keys || 0) < 3) {
-          socket.emit("error", "لا تملك مفاتيح كافية!");
-          return;
-        }
-        player.keys -= 3;
-      }
 
       // Apply rewards
       if (rewards.xp) player.xp = (player.xp || 0) + rewards.xp;
@@ -6203,6 +6222,7 @@ io.on("connection", (socket) => {
           const senderSerial = row.sender;
           const player = allPlayers.get(senderSerial);
           return player ? {
+            id: row.id,
             serial: player.serial,
             name: player.name,
             avatar: player.avatar,
@@ -6218,75 +6238,116 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("get_friend_status", ({ mySerial, targetSerial }, callback) => {
-      if (!mySerial || !targetSerial) return callback({ status: 'none' });
-      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
-      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
+    const handleCheckFriendStatus = ({ serial, mySerial, targetSerial }: any, callback: any) => {
+      const actualMySerial = mySerial || serial;
+      if (!actualMySerial || !targetSerial) return callback({ status: 'none', success: true });
+      const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+      const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
       const row = db.prepare('SELECT status, sender FROM friends WHERE player1 = ? AND player2 = ?').get(p1, p2) as any;
-      if (!row) return callback({ status: 'none' });
-      if (row.status === 'accepted') return callback({ status: 'friends' });
+      if (!row) return callback({ status: 'none', success: true });
+      if (row.status === 'accepted') return callback({ status: 'friends', success: true });
       if (row.status === 'pending') {
-        return callback({ status: row.sender === mySerial ? 'pending_sent' : 'pending_received' });
+        return callback({ status: row.sender === actualMySerial ? 'pending_sent' : 'pending_received', success: true });
       }
-      callback({ status: 'none' });
-    });
+      callback({ status: 'none', success: true });
+    };
 
-    socket.on("send_friend_request", ({ mySerial, targetSerial }, callback) => {
-      if (!mySerial || !targetSerial || mySerial === targetSerial) return callback({ error: 'Invalid targets' });
-      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
-      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
+    socket.on("get_friend_status", handleCheckFriendStatus);
+    socket.on("check_friend_status", handleCheckFriendStatus);
+
+    const handleAddFriend = ({ serial, mySerial, targetSerial }: any, callback: any) => {
+      const actualMySerial = mySerial || serial;
+      if (!actualMySerial || !targetSerial || actualMySerial === targetSerial) return callback({ error: 'Invalid targets' });
+      const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+      const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
       try {
-        db.prepare('INSERT INTO friends (player1, player2, status, sender) VALUES (?, ?, ?, ?)').run(p1, p2, 'pending', mySerial);
+        db.prepare('INSERT INTO friends (player1, player2, status, sender) VALUES (?, ?, ?, ?)').run(p1, p2, 'pending', actualMySerial);
         const targetSocketId = playerSockets.get(targetSerial);
         if (targetSocketId) {
-           io.to(targetSocketId).emit("friend_request_received", { senderSerial: mySerial });
+           io.to(targetSocketId).emit("friend_request_received", { senderSerial: actualMySerial });
         }
         callback({ success: true });
       } catch (e) {
         callback({ error: 'Already sent or friends' });
       }
-    });
+    };
 
-    socket.on("accept_friend_request", ({ mySerial, targetSerial }, callback) => {
-      if (!mySerial || !targetSerial) return;
-      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
-      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
-      db.prepare('UPDATE friends SET status = ? WHERE player1 = ? AND player2 = ? AND status = ? AND sender = ?').run('accepted', p1, p2, 'pending', targetSerial);
-      const targetSocketId = playerSockets.get(targetSerial);
-      if (targetSocketId) {
-         io.to(targetSocketId).emit("friend_request_accepted", { targetSerial: mySerial });
+    socket.on("send_friend_request", handleAddFriend);
+    socket.on("add_friend", handleAddFriend);
+
+    socket.on("accept_friend_request", ({ serial, mySerial, targetSerial, requestId }: any, callback: any) => {
+      const actualMySerial = mySerial || serial;
+      if (!actualMySerial) return;
+      
+      try {
+        if (requestId) {
+          // Find the request by ID
+          const row = db.prepare('SELECT player1, player2, sender FROM friends WHERE id = ?').get(requestId) as any;
+          if (row) {
+            db.prepare('UPDATE friends SET status = ? WHERE id = ?').run('accepted', requestId);
+            const otherSerial = row.player1 === actualMySerial ? row.player2 : row.player1;
+            const targetSocketId = playerSockets.get(otherSerial);
+            if (targetSocketId) {
+               io.to(targetSocketId).emit("friend_request_accepted", { targetSerial: actualMySerial });
+            }
+          }
+        } else if (targetSerial) {
+          const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+          const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
+          db.prepare('UPDATE friends SET status = ? WHERE player1 = ? AND player2 = ? AND status = ? AND sender = ?').run('accepted', p1, p2, 'pending', targetSerial);
+          const targetSocketId = playerSockets.get(targetSerial);
+          if (targetSocketId) {
+             io.to(targetSocketId).emit("friend_request_accepted", { targetSerial: actualMySerial });
+          }
+        }
+        if (callback) callback({ success: true });
+      } catch (e) {
+        if (callback) callback({ error: 'Failed to accept' });
       }
-      if (callback) callback({ success: true });
     });
 
-    socket.on("reject_friend_request", ({ mySerial, targetSerial }, callback) => {
-      if (!mySerial || !targetSerial) return;
-      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
-      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
-      db.prepare('DELETE FROM friends WHERE player1 = ? AND player2 = ? AND status = ? AND sender = ?').run(p1, p2, 'pending', targetSerial);
-      if (callback) callback({ success: true });
+    socket.on("reject_friend_request", ({ serial, mySerial, targetSerial, requestId }: any, callback: any) => {
+      const actualMySerial = mySerial || serial;
+      if (!actualMySerial) return;
+      
+      try {
+        if (requestId) {
+          db.prepare('DELETE FROM friends WHERE id = ?').run(requestId);
+        } else if (targetSerial) {
+          const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+          const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
+          db.prepare('DELETE FROM friends WHERE player1 = ? AND player2 = ? AND status = ? AND sender = ?').run(p1, p2, 'pending', targetSerial);
+        }
+        if (callback) callback({ success: true });
+      } catch (e) {
+        if (callback) callback({ error: 'Failed to reject' });
+      }
     });
 
-    socket.on("remove_friend", ({ mySerial, targetSerial }, callback) => {
-      if (!mySerial || !targetSerial) return;
-      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
-      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
+    socket.on("remove_friend", ({ serial, mySerial, targetSerial }: any, callback: any) => {
+      const actualMySerial = mySerial || serial;
+      if (!actualMySerial || !targetSerial) return;
+      const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+      const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
       db.prepare('DELETE FROM friends WHERE player1 = ? AND player2 = ? AND status = ?').run(p1, p2, 'accepted');
       const targetSocketId = playerSockets.get(targetSerial);
       if (targetSocketId) {
-         io.to(targetSocketId).emit("friend_removed", { targetSerial: mySerial });
+         io.to(targetSocketId).emit("friend_removed", { targetSerial: actualMySerial });
       }
       if (callback) callback({ success: true });
     });
 
-    socket.on("challenge_friend", ({ mySerial, targetSerial }, callback) => {
-      const targetSocketId = playerSockets.get(targetSerial);
-      if (!targetSocketId) return callback({ error: 'Player is offline' });
+    const handleChallengeFriend = ({ serial, mySerial, targetSerial }: any, callback: any) => {
+      const actualMySerial = mySerial || serial;
+      if (!actualMySerial || !targetSerial) return callback({ error: 'بيانات ناقصة' });
       
-      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
-      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
+      const targetSocketId = playerSockets.get(targetSerial);
+      if (!targetSocketId) return callback({ error: 'اللاعب غير متصل الآن' });
+      
+      const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+      const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
       const statusCheck = db.prepare('SELECT status FROM friends WHERE player1 = ? AND player2 = ?').get(p1, p2) as any;
-      if (!statusCheck || statusCheck.status !== 'accepted') return callback({ error: 'You are not friends' });
+      if (!statusCheck || statusCheck.status !== 'accepted') return callback({ error: 'يجب أن تكونوا أصدقاء أولاً' });
 
       // Check if trying to match with someone returning from battle
       const isTargetInGame = Array.from(rooms.values()).some((r: any) => 
@@ -6297,41 +6358,63 @@ io.on("connection", (socket) => {
         return callback({ error: 'الصديق في مباراة حالياً' });
       }
 
-      const player = allPlayers.get(mySerial);
-      if (!player) return callback({ error: 'You are not connected' });
+      const player = allPlayers.get(actualMySerial);
+      if (!player) {
+        console.error(`[Challenge] Sender player ${actualMySerial} not found in allPlayers!`);
+        return callback({ error: 'حدث خطأ في الاتصال - لم يتم العثور على بيانات اللاعب' });
+      }
+
+      // Ensure we have correct names (fallback to playerName if name is missing)
+      const senderName = player.name || (player as any).playerName || "لاعب";
+      const senderAvatar = player.avatar || "boy_1";
+      const senderLevel = player.level || getLevel(player.xp || 0);
+      const senderFrame = player.selectedFrame || "";
+
+      console.log(`[Friend Challenge] "${senderName}" (${actualMySerial}) is challenging "${targetSerial}"`);
 
       io.to(targetSocketId).emit("friend_challenge_received", {
-        senderSerial: mySerial,
-        senderName: player.name,
-        senderAvatar: player.avatar,
-        senderLevel: getLevel(player.xp || 0),
-        senderFrame: player.selectedFrame
+        senderSerial: actualMySerial,
+        senderName: senderName,
+        senderAvatar: senderAvatar,
+        senderLevel: senderLevel,
+        senderFrame: senderFrame
       });
       callback({ success: true });
-    });
+    };
 
-    socket.on("cancel_friend_challenge", ({ targetSerial }) => {
+    socket.on("challenge_friend", handleChallengeFriend);
+    socket.on("send_friend_challenge", handleChallengeFriend);
+
+    socket.on("cancel_friend_challenge", ({ serial, mySerial, targetSerial }: any) => {
+      const actualMySerial = mySerial || serial;
       const targetSocketId = playerSockets.get(targetSerial);
       if (targetSocketId) {
-        io.to(targetSocketId).emit("friend_challenge_cancelled");
+        io.to(targetSocketId).emit("friend_challenge_cancelled", { senderSerial: actualMySerial });
       }
     });
 
-    socket.on("respond_to_friend_challenge", ({ mySerial, targetSerial, accept }) => {
+    socket.on("respond_to_friend_challenge", ({ serial, mySerial, targetSerial, accept }: any, callback: any) => {
+      const actualMySerial = mySerial || serial;
       const targetSocketId = playerSockets.get(targetSerial);
-      if (!targetSocketId) return; // Sender disconnected
+      
+      if (!targetSocketId) {
+        if (callback) callback({ success: false, message: 'اللاعب غير متصل حالياً' });
+        return;
+      }
 
       if (!accept) {
-        io.to(targetSocketId).emit("friend_challenge_rejected", { mySerial });
+        io.to(targetSocketId).emit("friend_challenge_rejected", { mySerial: actualMySerial });
+        if (callback) callback({ success: true });
         return;
       }
 
       const senderPlayerData = allPlayers.get(targetSerial);
-      const myPlayerData = allPlayers.get(mySerial);
+      const myPlayerData = allPlayers.get(actualMySerial);
       const senderSocket = io.sockets.sockets.get(targetSocketId);
-
+      
       if (!senderPlayerData || !myPlayerData || !senderSocket) {
-        io.to(targetSocketId).emit("friend_challenge_rejected", { mySerial });
+        io.to(targetSocketId).emit("friend_challenge_rejected", { mySerial: actualMySerial });
+        if (callback) callback({ success: false, message: 'فشل في بدء التحدي' });
         return;
       }
 
@@ -6339,7 +6422,7 @@ io.on("connection", (socket) => {
       const senderQIndex = matchmakingQueue.findIndex(p => p.serial === targetSerial);
       if (senderQIndex !== -1) matchmakingQueue.splice(senderQIndex, 1);
       
-      const myQIndex = matchmakingQueue.findIndex(p => p.serial === mySerial);
+      const myQIndex = matchmakingQueue.findIndex(p => p.serial === actualMySerial);
       if (myQIndex !== -1) matchmakingQueue.splice(myQIndex, 1);
       
       const roomId = `friend_room_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
@@ -6402,6 +6485,7 @@ io.on("connection", (socket) => {
       });
 
       io.to(roomId).emit("room_update", rooms.get(roomId));
+      if (callback) callback({ success: true, roomId });
     });
 
     socket.on("intentional_leave", ({ roomId }) => {
