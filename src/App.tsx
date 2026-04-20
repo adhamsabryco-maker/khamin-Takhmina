@@ -11486,15 +11486,15 @@ export default function App() {
       {renderUpdateBanner()}
       <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
           {/* Fixed Header */}
-          <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
-            <div className="flex-1 flex items-center gap-2 md:gap-3">
+          <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-1 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
+            <div className="flex-1 flex items-center gap-1 md:gap-3">
               <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center overflow-hidden">
                 <img src="/icon-3.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 object-contain" />
               </div>
-              <div className="font-black text-lg md:text-xl text-accent-blue tracking-tight hidden sm:block">خمن تخمينة</div>
+              <div className="font-bold md:font-black text-xs md:text-xl text-accent-blue tracking-tight hidden sm:block">خمن تخمينة</div>
             </div>
             
-            <div className="flex-1 flex items-center justify-end gap-1.5 md:gap-3">
+            <div className="flex-1 flex items-center justify-end gap-1 md:gap-3">
               {/* Home Button (Cancels Search) */}
               <button 
                 onClick={() => {
