@@ -1022,7 +1022,7 @@ const app = express();
     luckyWheelHelpers?: { [key: string]: number },
     lastLuckyWheelResetDay?: string,
     luckyWheelDaysUsed?: number,
-    citySearchRewards?: { type: 'token' | 'helper', id?: string, amount: number, timestamp: number }[],
+    citySearchRewards?: { type: 'token' | 'helper' | 'key', id?: string, amount: number, timestamp: number }[],
     keys?: number
   }>();
 
@@ -1243,6 +1243,18 @@ const app = express();
       serial TEXT,
       subscription TEXT,
       timestamp INTEGER
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS friends (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player1 TEXT NOT NULL,
+      player2 TEXT NOT NULL,
+      status TEXT NOT NULL,
+      sender TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(player1, player2)
     )
   `);
 
@@ -4200,13 +4212,14 @@ io.on("connection", (socket) => {
       let spy_lens = 0; for(let i=0; i<5; i++) if (Math.random() < 0.20) spy_lens++;
       let tokens = 0; for(let i=0; i<5; i++) if (Math.random() < 0.03) tokens++;
       let pro_package_days = 0; for(let i=0; i<5; i++) if (Math.random() < 0.000001) pro_package_days++;
+      let keys = 0; if (Math.random() < 0.45) keys = 1 + Math.floor(Math.random() * 2);
 
       const newState = {
         active: true,
         cityId,
         startTime: Date.now(),
         endTime: Date.now() + 60 * 60 * 1000, // 1 hour
-        rewards: { xp, time_freeze, word_count, word_length, hint, spy_lens, tokens, pro_package_days }
+        rewards: { xp, time_freeze, word_count, word_length, hint, spy_lens, tokens, pro_package_days, keys }
       };
 
       db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(`city_search_${serial}`, JSON.stringify(newState));
@@ -4244,6 +4257,11 @@ io.on("connection", (socket) => {
         const newExpiry = currentExpiry + (state.rewards.pro_package_days * 24 * 60 * 60 * 1000);
         db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(`pro_package_${serial}`, newExpiry.toString());
         player.proPackageExpiry = newExpiry;
+      }
+
+      if (state.rewards.keys && state.rewards.keys > 0) {
+        player.keys = (player.keys || 0) + state.rewards.keys;
+        player.citySearchRewards.push({ type: 'key', amount: state.rewards.keys, timestamp: now });
       }
 
       if (!player.ownedHelpers) player.ownedHelpers = {};
@@ -6139,6 +6157,251 @@ io.on("connection", (socket) => {
         playerSockets.set(serial, socket.id);
         broadcastOnlineCount();
       }
+    });
+
+    // --- Friend System Events ---
+    socket.on("get_friends", ({ serial, page = 1, limit = 10 }, callback) => {
+      if (!serial) return;
+      try {
+        const offset = (page - 1) * limit;
+        const friendsRows = db.prepare(`
+          SELECT * FROM friends 
+          WHERE (player1 = ? OR player2 = ?) AND status = 'accepted'
+          ORDER BY created_at DESC LIMIT ? OFFSET ?
+        `).all(serial, serial, limit, offset);
+        
+        const friendsList = friendsRows.map((row: any) => {
+          const friendSerial = row.player1 === serial ? row.player2 : row.player1;
+          const player = allPlayers.get(friendSerial);
+          return player ? {
+            serial: player.serial,
+            name: player.name,
+            avatar: player.avatar,
+            level: getLevel(player.xp || 0),
+            selectedFrame: player.selectedFrame,
+            isOnline: playerSockets.has(player.serial)
+          } : null;
+        }).filter(Boolean);
+
+        const totalRow = db.prepare(`SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = 'accepted'`).get(serial, serial) as any;
+        
+        callback({ success: true, friends: friendsList, total: totalRow.count });
+      } catch (e) {
+        callback({ error: 'Failed to fetch friends' });
+      }
+    });
+
+    socket.on("get_friend_requests", ({ serial }, callback) => {
+      if (!serial) return;
+      try {
+        const requestsRows = db.prepare(`
+          SELECT * FROM friends 
+          WHERE (player1 = ? OR player2 = ?) AND status = 'pending' AND sender != ?
+        `).all(serial, serial, serial);
+        
+        const requestsList = requestsRows.map((row: any) => {
+          const senderSerial = row.sender;
+          const player = allPlayers.get(senderSerial);
+          return player ? {
+            serial: player.serial,
+            name: player.name,
+            avatar: player.avatar,
+            level: getLevel(player.xp || 0),
+            selectedFrame: player.selectedFrame,
+            timestamp: row.created_at
+          } : null;
+        }).filter(Boolean);
+        
+        callback({ success: true, requests: requestsList });
+      } catch (e) {
+        callback({ error: 'Failed to fetch requests' });
+      }
+    });
+
+    socket.on("get_friend_status", ({ mySerial, targetSerial }, callback) => {
+      if (!mySerial || !targetSerial) return callback({ status: 'none' });
+      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
+      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
+      const row = db.prepare('SELECT status, sender FROM friends WHERE player1 = ? AND player2 = ?').get(p1, p2) as any;
+      if (!row) return callback({ status: 'none' });
+      if (row.status === 'accepted') return callback({ status: 'friends' });
+      if (row.status === 'pending') {
+        return callback({ status: row.sender === mySerial ? 'pending_sent' : 'pending_received' });
+      }
+      callback({ status: 'none' });
+    });
+
+    socket.on("send_friend_request", ({ mySerial, targetSerial }, callback) => {
+      if (!mySerial || !targetSerial || mySerial === targetSerial) return callback({ error: 'Invalid targets' });
+      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
+      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
+      try {
+        db.prepare('INSERT INTO friends (player1, player2, status, sender) VALUES (?, ?, ?, ?)').run(p1, p2, 'pending', mySerial);
+        const targetSocketId = playerSockets.get(targetSerial);
+        if (targetSocketId) {
+           io.to(targetSocketId).emit("friend_request_received", { senderSerial: mySerial });
+        }
+        callback({ success: true });
+      } catch (e) {
+        callback({ error: 'Already sent or friends' });
+      }
+    });
+
+    socket.on("accept_friend_request", ({ mySerial, targetSerial }, callback) => {
+      if (!mySerial || !targetSerial) return;
+      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
+      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
+      db.prepare('UPDATE friends SET status = ? WHERE player1 = ? AND player2 = ? AND status = ? AND sender = ?').run('accepted', p1, p2, 'pending', targetSerial);
+      const targetSocketId = playerSockets.get(targetSerial);
+      if (targetSocketId) {
+         io.to(targetSocketId).emit("friend_request_accepted", { targetSerial: mySerial });
+      }
+      if (callback) callback({ success: true });
+    });
+
+    socket.on("reject_friend_request", ({ mySerial, targetSerial }, callback) => {
+      if (!mySerial || !targetSerial) return;
+      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
+      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
+      db.prepare('DELETE FROM friends WHERE player1 = ? AND player2 = ? AND status = ? AND sender = ?').run(p1, p2, 'pending', targetSerial);
+      if (callback) callback({ success: true });
+    });
+
+    socket.on("remove_friend", ({ mySerial, targetSerial }, callback) => {
+      if (!mySerial || !targetSerial) return;
+      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
+      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
+      db.prepare('DELETE FROM friends WHERE player1 = ? AND player2 = ? AND status = ?').run(p1, p2, 'accepted');
+      const targetSocketId = playerSockets.get(targetSerial);
+      if (targetSocketId) {
+         io.to(targetSocketId).emit("friend_removed", { targetSerial: mySerial });
+      }
+      if (callback) callback({ success: true });
+    });
+
+    socket.on("challenge_friend", ({ mySerial, targetSerial }, callback) => {
+      const targetSocketId = playerSockets.get(targetSerial);
+      if (!targetSocketId) return callback({ error: 'Player is offline' });
+      
+      const p1 = mySerial < targetSerial ? mySerial : targetSerial;
+      const p2 = mySerial < targetSerial ? targetSerial : mySerial;
+      const statusCheck = db.prepare('SELECT status FROM friends WHERE player1 = ? AND player2 = ?').get(p1, p2) as any;
+      if (!statusCheck || statusCheck.status !== 'accepted') return callback({ error: 'You are not friends' });
+
+      // Check if trying to match with someone returning from battle
+      const isTargetInGame = Array.from(rooms.values()).some((r: any) => 
+        r.players.some((p: any) => p.serial === targetSerial)
+      );
+
+      if (isTargetInGame) {
+        return callback({ error: 'الصديق في مباراة حالياً' });
+      }
+
+      const player = allPlayers.get(mySerial);
+      if (!player) return callback({ error: 'You are not connected' });
+
+      io.to(targetSocketId).emit("friend_challenge_received", {
+        senderSerial: mySerial,
+        senderName: player.name,
+        senderAvatar: player.avatar,
+        senderLevel: getLevel(player.xp || 0),
+        senderFrame: player.selectedFrame
+      });
+      callback({ success: true });
+    });
+
+    socket.on("cancel_friend_challenge", ({ targetSerial }) => {
+      const targetSocketId = playerSockets.get(targetSerial);
+      if (targetSocketId) {
+        io.to(targetSocketId).emit("friend_challenge_cancelled");
+      }
+    });
+
+    socket.on("respond_to_friend_challenge", ({ mySerial, targetSerial, accept }) => {
+      const targetSocketId = playerSockets.get(targetSerial);
+      if (!targetSocketId) return; // Sender disconnected
+
+      if (!accept) {
+        io.to(targetSocketId).emit("friend_challenge_rejected", { mySerial });
+        return;
+      }
+
+      const senderPlayerData = allPlayers.get(targetSerial);
+      const myPlayerData = allPlayers.get(mySerial);
+      const senderSocket = io.sockets.sockets.get(targetSocketId);
+
+      if (!senderPlayerData || !myPlayerData || !senderSocket) {
+        io.to(targetSocketId).emit("friend_challenge_rejected", { mySerial });
+        return;
+      }
+
+      // Check for available matches first. If user is in matchQueue remove them.
+      const senderQIndex = matchmakingQueue.findIndex(p => p.serial === targetSerial);
+      if (senderQIndex !== -1) matchmakingQueue.splice(senderQIndex, 1);
+      
+      const myQIndex = matchmakingQueue.findIndex(p => p.serial === mySerial);
+      if (myQIndex !== -1) matchmakingQueue.splice(myQIndex, 1);
+      
+      const roomId = `friend_room_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      io.to(targetSocketId).emit("friend_challenge_accepted", { roomId });
+      socket.emit("friend_challenge_accepted", { roomId });
+      
+      // Auto-join them into a room
+      senderSocket.join(roomId);
+      socket.join(roomId);
+
+      rooms.set(roomId, {
+        id: roomId,
+        players: [
+          { 
+            id: senderSocket.id, 
+            name: senderPlayerData.name, 
+            xp: senderPlayerData.xp || 0,
+            avatar: senderPlayerData.avatar, 
+            tokens: senderPlayerData.tokens || 0,
+            keys: senderPlayerData.keys || 0,
+            gender: senderPlayerData.gender || 'boy',
+            isAdmin: senderPlayerData.isAdmin,
+            serial: senderPlayerData.serial,
+            blockedSerials: senderPlayerData.blockedSerials || [],
+            reports: senderPlayerData.reports || 0,
+            age: (senderPlayerData as any).age || null,
+            selectedFrame: senderPlayerData.selectedFrame,
+            score: 0, 
+            isReady: false, 
+            hasGuessedCurrent: false, 
+            targetImage: null, 
+            incorrectGuesses: 0, 
+            timeTaken: 0 
+          },
+          { 
+            id: socket.id, 
+            name: myPlayerData.name, 
+            xp: myPlayerData.xp || 0,
+            avatar: myPlayerData.avatar, 
+            tokens: myPlayerData.tokens || 0,
+            keys: myPlayerData.keys || 0,
+            gender: myPlayerData.gender || 'boy',
+            isAdmin: myPlayerData.isAdmin,
+            serial: myPlayerData.serial,
+            blockedSerials: myPlayerData.blockedSerials || [],
+            reports: myPlayerData.reports || 0,
+            age: (myPlayerData as any).age || null,
+            selectedFrame: myPlayerData.selectedFrame,
+            score: 0, 
+            isReady: false, 
+            hasGuessedCurrent: false, 
+            targetImage: null, 
+            incorrectGuesses: 0, 
+            timeTaken: 0 
+          }
+        ],
+        gameState: "waiting",
+        timer: 60,
+        createdAt: Date.now()
+      });
+
+      io.to(roomId).emit("room_update", rooms.get(roomId));
     });
 
     socket.on("intentional_leave", ({ roomId }) => {
