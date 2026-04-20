@@ -45,6 +45,7 @@ import {
   Search,
   UserMinus,
   UserPlus,
+  UserCheck,
   RefreshCw,
   Smile,
   Loader2,
@@ -956,6 +957,14 @@ export default function App() {
         const active = diffMinutes >= 0 && diffMinutes <= 3;
         
         setIsRainGiftActive(active);
+
+        // Clear unclaimed rewards 10 minutes before the next event (18:50 to 19:00)
+        if (diffMinutes >= -10 && diffMinutes < 0) {
+           if (localStorage.getItem('khamin_pending_rain_gift')) {
+             localStorage.removeItem('khamin_pending_rain_gift');
+             setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
+           }
+        }
         
         if (active) {
           setRainGiftCountdown('الحدث متاح الآن!');
@@ -972,9 +981,19 @@ export default function App() {
       } catch (e) {
         // Fallback if timezone not supported
         const utcHour = now.getUTCHours();
+        const utcMinutes = now.getUTCMinutes();
         const targetUTCHour = 17; // 7 PM Egypt is roughly 17:00 UTC
-        const active = utcHour === targetUTCHour && now.getUTCMinutes() <= 3;
+        const active = utcHour === targetUTCHour && utcMinutes <= 3;
         setIsRainGiftActive(active);
+
+        // Clear unclaimed rewards 10 minutes before the next event (16:50 UTC to 17:00 UTC)
+        if (utcHour === targetUTCHour - 1 && utcMinutes >= 50) {
+           if (localStorage.getItem('khamin_pending_rain_gift')) {
+             localStorage.removeItem('khamin_pending_rain_gift');
+             setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
+           }
+        }
+
         setRainGiftCountdown(active ? 'الحدث متاح الآن!' : 'قريباً...');
       }
     };
@@ -1999,6 +2018,55 @@ export default function App() {
   const [reportedSerials, setReportedSerials] = useState<string[]>([]);
   const [recentOpponents, setRecentOpponents] = useState<any[]>([]);
   const [showRecentOpponents, setShowRecentOpponents] = useState(false);
+
+  // Friend System State
+  const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [friendsList, setFriendsList] = useState<any[]>([]);
+  const [friendsTotal, setFriendsTotal] = useState(0);
+  const [friendsPage, setFriendsPage] = useState(1);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [friendRequests, setFriendRequests] = useState<any[]>([]);
+  const [showFriendRequestsModal, setShowFriendRequestsModal] = useState(false);
+  const [opponentFriendStatus, setOpponentFriendStatus] = useState<'none'|'pending_sent'|'pending_received'|'friends'>('none');
+  const [incomingChallenge, setIncomingChallenge] = useState<any>(null);
+
+  // Load Friends Effect
+  useEffect(() => {
+    if (socket && playerSerial && showFriendsModal && friendsList.length === (friendsPage - 1) * 10) {
+      setFriendsLoading(true);
+      socket.emit('get_friends', { serial: playerSerial, page: friendsPage }, (res: any) => {
+        if (res.success) {
+          if (friendsPage === 1) {
+            setFriendsList(res.friends || []);
+          } else {
+            setFriendsList(prev => {
+              const newFriends = (res.friends || []).filter((f: any) => !prev.some(p => p.serial === f.serial));
+              return [...prev, ...newFriends];
+            });
+          }
+          setFriendsTotal(res.total || 0);
+        }
+        setFriendsLoading(false);
+      });
+    }
+  }, [showFriendsModal, friendsPage, socket, playerSerial]);
+
+  // Check Opponent Friend Status when entering a match
+  useEffect(() => {
+    if (socket && playerSerial && room) {
+      const opp = room.players.find((p: any) => p.serial !== playerSerial);
+      if (opp && opp.serial) {
+        socket.emit('check_friend_status', { serial: playerSerial, targetSerial: opp.serial }, (res: any) => {
+          if (res.success) {
+            setOpponentFriendStatus(res.status);
+          }
+        });
+      }
+    } else {
+      setOpponentFriendStatus('none');
+    }
+  }, [room?.id, socket, playerSerial]);
+
   const [categories, setCategories] = useState<any[]>([]);
   const [confirmedAttributes, setConfirmedAttributes] = useState<string[]>([]);
   const lastInitializedQuickChatRef = useRef<string | null>(null);
@@ -2954,6 +3022,56 @@ export default function App() {
   const isOpponentBlockedRef = useRef(isOpponentBlocked);
   useEffect(() => { isOpponentBlockedRef.current = isOpponentBlocked; }, [isOpponentBlocked]);
   
+  // Friend System Functions
+  const handleAddFriend = (targetSerial: string) => {
+    if (!socket || !playerSerial) return;
+    socket.emit('add_friend', { serial: playerSerial, targetSerial: targetSerial }, (res: any) => {
+      if (res.success) {
+        showAlert('تم إرسال طلب الصداقة!', 'نجاح');
+        setOpponentFriendStatus('pending_sent'); // Optimistic update
+      } else {
+        showAlert(res.message || 'حدث خطأ أثناء الإرسال', 'خطأ');
+      }
+    });
+  };
+
+  const handleAcceptFriendRequest = (requestId: string) => {
+    if (!socket || !playerSerial) return;
+    socket.emit('accept_friend_request', { serial: playerSerial, requestId }, (res: any) => {
+      if (res.success) {
+        setFriendRequests(prev => prev.filter(r => r.id !== requestId));
+        showAlert('تم قبول طلب الصداقة!', 'نجاح');
+        // Refresh friends list
+        socket.emit('get_friends', { serial: playerSerial, page: friendsPage }, (friendsRes: any) => {
+          if (friendsRes.success) {
+            setFriendsList(friendsRes.friends);
+            setFriendsTotal(friendsRes.total);
+          }
+        });
+      }
+    });
+  };
+
+  const handleRejectFriendRequest = (requestId: string) => {
+    if (!socket || !playerSerial) return;
+    socket.emit('reject_friend_request', { serial: playerSerial, requestId }, (res: any) => {
+      if (res.success) {
+        setFriendRequests(prev => prev.filter(r => r.id !== requestId));
+      }
+    });
+  };
+
+  const handleRemoveFriend = (friendSerial: string) => {
+    if (!socket || !playerSerial) return;
+    showConfirm('هل أنت متأكد من حذف هذا الصديق؟', () => {
+      socket.emit('remove_friend', { serial: playerSerial, targetSerial: friendSerial }, (res: any) => {
+        if (res.success) {
+          setFriendsList(prev => prev.filter(f => f.serial !== friendSerial));
+        }
+      });
+    }, 'تأكيد الحذف');
+  };
+
   const audioRef = useRef<{ [key: string]: Howl }>({});
   const lobbyMusicRef = useRef<Howl | null>(null);
   const gameMusicRef = useRef<Howl | null>(null);
@@ -3542,6 +3660,19 @@ export default function App() {
         setTopPlayers(sortPlayers(players));
         localStorage.setItem('khamin_top_players', JSON.stringify(players));
       });
+
+      if (serial) {
+        newSocket.emit('get_friends', { serial }, (res: any) => {
+          if (res.success) {
+            setFriendsList(res.friends);
+            setFriendsTotal(res.total);
+          }
+        });
+        
+        newSocket.emit('get_friend_requests', { serial }, (res: any) => {
+          if (res.success) setFriendRequests(res.requests);
+        });
+      }
     });
 
     newSocket.on('connect_error', (err) => {
@@ -4189,6 +4320,7 @@ export default function App() {
       // Update state immediately for instant feedback
       if (rewards.xp) setXp(prev => prev + rewards.xp);
       if (rewards.tokens) setTokens(prev => prev + rewards.tokens);
+      if (rewards.keys) setKeys(prev => prev + rewards.keys);
       
       if (rewards.pro_package_days) {
         const currentExpiry = proPackageExpiry || Date.now();
@@ -4210,6 +4342,56 @@ export default function App() {
       });
 
       newSocket.emit("get_player_data", { serial: localStorage.getItem('khamin_player_serial'), fingerprint: localStorage.getItem('khamin_fingerprint') });
+    });
+
+    // Friend System Event Listeners
+    newSocket.on("friend_request_received", () => {
+      playSound('message');
+      const currentSerial = localStorage.getItem('khamin_player_serial');
+      if (currentSerial) {
+        newSocket.emit('get_friend_requests', { serial: currentSerial }, (res: any) => {
+          if (res.success) setFriendRequests(res.requests);
+        });
+      }
+    });
+
+    newSocket.on("friend_request_accepted", () => {
+      showAlert("تم قبول طلب الصداقة الخاص بك! 🎉", "نجاح");
+    });
+
+    newSocket.on("friend_removed", () => {
+      const currentSerial = localStorage.getItem('khamin_player_serial');
+      if (currentSerial) {
+        newSocket.emit('get_friends', { serial: currentSerial }, (res: any) => {
+          if (res.success) {
+            setFriendsList(res.friends);
+            setFriendsTotal(res.total);
+          }
+        });
+      }
+    });
+
+    newSocket.on("friend_challenge_received", (data) => {
+      setIncomingChallenge(data);
+      playSound('countdown');
+    });
+
+    newSocket.on("friend_challenge_cancelled", () => {
+      setIncomingChallenge(null);
+    });
+
+    newSocket.on("friend_challenge_rejected", () => {
+      showAlert("اللاعب غير مستعد حالياً أو رفض التحدي.", "تنبيه");
+      setIsSearching(false);
+    });
+
+    newSocket.on("friend_challenge_accepted", ({ roomId }) => {
+      setRoomId(roomId);
+      setIsPrivate(false);
+      setIsSearching(false);
+      setJoined(true);
+      setIncomingChallenge(null);
+      setShowFriendsModal(false);
     });
 
     return newSocket;
@@ -5205,6 +5387,7 @@ export default function App() {
           hint: Math.floor((citySearchState.rewards.hint || 0) * progress),
           spy_lens: Math.floor((citySearchState.rewards.spy_lens || 0) * progress),
           pro_package_days: Math.floor((citySearchState.rewards.pro_package_days || 0) * progress),
+          keys: Math.floor((citySearchState.rewards.keys || 0) * progress),
         });
       }
 
@@ -5969,8 +6152,166 @@ export default function App() {
     </AnimatePresence>
   );
 
+  const renderFriendsModal = () => (
+    <AnimatePresence>
+      {showFriendsModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            className="card-game p-4 w-full max-w-sm flex flex-col max-h-[80vh]"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-black text-main flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-500" />
+                الأصدقاء
+                <span className="text-sm bg-gray-100 px-2 py-0.5 rounded-full text-black">{friendsTotal}</span>
+              </h2>
+              <button onClick={() => setShowFriendsModal(false)} className="text-brown-light hover:text-red-500 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div 
+              className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar"
+              onScroll={(e) => {
+                const bottom = e.currentTarget.scrollHeight - e.currentTarget.scrollTop === e.currentTarget.clientHeight;
+                if (bottom && !friendsLoading && friendsList.length < friendsTotal) {
+                  setFriendsPage(prev => prev + 1);
+                }
+              }}
+            >
+              {friendsList.length === 0 && !friendsLoading ? (
+                <div className="text-center py-8 text-brown-muted font-bold">لا يوجد أصدقاء حالياً.</div>
+              ) : (
+                <>
+                  {friendsList.map(friend => (
+                     <div key={friend.serial} className="bg-gray-50 border-2 border-gray-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
+                       <div className="flex items-center gap-3">
+                         <div className="relative">
+                           <div className="w-10 h-10">
+                             {renderAvatarContent(friend.avatar, friend.level || 1, false, friend.isOnline, friend.selectedFrame)}
+                           </div>
+                         </div>
+                         <div>
+                           <div className="font-black text-sm text-main">{friend.name}</div>
+                           <div className="text-[10px] text-gray-500 bg-gray-200 px-1.5 rounded-full inline-block">Lvl {friend.level || 1}</div>
+                         </div>
+                       </div>
+                       
+                       <div className="flex gap-1">
+                         {friend.isOnline && (
+                           <button 
+                             onClick={() => {
+                               socket?.emit('send_friend_challenge', { targetSerial: friend.serial }, (res: any) => {
+                                 if (res.success) {
+                                   showAlert('تم إرسال دعوة التحدي', 'نجاح');
+                                   setIsSearching(true); // Put them in search UI
+                                   setRoomId('waiting_friend'); // Dummy room UI
+                                 } else {
+                                   showAlert(res.message, 'خطأ');
+                                 }
+                               });
+                             }}
+                             className="bg-accent-green hover:brightness-110 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                             title="تحدي"
+                           >
+                             <Gamepad2 className="w-4 h-4" />
+                           </button>
+                         )}
+                         <button 
+                           onClick={() => handleRemoveFriend(friend.serial)}
+                           className="bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50"
+                           title="حذف صديق"
+                         >
+                           <UserMinus className="w-4 h-4" />
+                         </button>
+                       </div>
+                     </div>
+                  ))}
+                  {friendsLoading && (
+                    <div className="flex justify-center py-4">
+                      <RefreshCw className="w-5 h-5 text-blue-500 animate-spin" />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  const renderFriendRequestsModal = () => (
+    <AnimatePresence>
+      {showFriendRequestsModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            className="card-game p-4 w-full max-w-sm flex flex-col max-h-[80vh]"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-black text-main flex items-center gap-2">
+                <Bell className="w-5 h-5 text-yellow-500" />
+                الإشعارات
+                {friendRequests.length > 0 && <span className="text-sm bg-red-500 text-white px-2 py-0.5 rounded-full">{friendRequests.length}</span>}
+              </h2>
+              <button onClick={() => setShowFriendRequestsModal(false)} className="text-brown-light hover:text-red-500 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {friendRequests.length === 0 ? (
+                <div className="text-center py-8 text-brown-muted font-bold">لا توجد إشعارات حالياً.</div>
+              ) : (
+                friendRequests.map(req => (
+                  <div key={req.id} className="bg-orange-50 border-2 border-orange-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10">
+                        {renderAvatarContent(req.senderAvatar, req.senderLevel || 1, false, false)}
+                      </div>
+                      <div>
+                        <div className="font-black text-sm text-main">{req.senderName}</div>
+                        <div className="text-[10px] text-gray-500">Lvl {req.senderLevel || 1}</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                       <button onClick={() => handleAcceptFriendRequest(req.id)} className="bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors">
+                         <Check className="w-4 h-4" />
+                       </button>
+                       <button onClick={() => handleRejectFriendRequest(req.id)} className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors">
+                         <X className="w-4 h-4" />
+                       </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   const renderModals = () => (
     <>
+      {renderFriendsModal()}
+      {renderFriendRequestsModal()}
       {/* Level Up Overlay */}
       <AnimatePresence>
         {showLevelUp !== null && (
@@ -6102,6 +6443,67 @@ export default function App() {
       {renderLuckyWheelModal()}
       {renderComplaintModal()}
       {renderContactModal()}
+      {/* Incoming Friend Challenge Modal */}
+      <AnimatePresence>
+        {incomingChallenge && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[20000] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="card-game p-6 w-full max-w-sm text-center border-4 border-blue-500 shadow-[0_0_50px_rgba(59,130,246,0.3)] space-y-6"
+            >
+              <div className="w-24 h-24 mx-auto relative mb-4">
+                {renderAvatarContent(incomingChallenge.challengerAvatar, incomingChallenge.challengerLevel || 1, false, false)}
+                <div className="absolute -bottom-2 -right-2 bg-blue-500 w-8 h-8 rounded-full border-2 border-white flex items-center justify-center animate-bounce">
+                  <Gamepad2 className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-2xl font-black text-main">{incomingChallenge.challengerName}</h3>
+                <p className="text-xl font-bold text-accent-orange mt-2">يتحداك الآن!</p>
+                <div className="text-sm text-gray-500 font-bold bg-gray-100 rounded-full inline-block px-3 py-1 mt-2">
+                  Lvl {incomingChallenge.challengerLevel || 1}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    socket?.emit('accept_friend_challenge', { challengeId: incomingChallenge.challengeId }, (res: any) => {
+                      if (!res.success) {
+                        showAlert(res.message, 'خطأ');
+                        setIncomingChallenge(null);
+                      }
+                    });
+                  }}
+                  className="flex-1 bg-accent-green hover:bg-green-500 text-white font-black py-4 rounded-xl text-xl shadow-[0_4px_0_rgb(21,128,61)] active:translate-y-1 active:shadow-none transition-all flex justify-center items-center gap-2"
+                >
+                  <Check className="w-6 h-6" />
+                  قبول
+                </button>
+                <button
+                  onClick={() => {
+                    socket?.emit('reject_friend_challenge', { challengeId: incomingChallenge.challengeId });
+                    setIncomingChallenge(null);
+                  }}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl text-xl shadow-[0_4px_0_rgb(185,28,28)] active:translate-y-1 active:shadow-none transition-all flex justify-center items-center gap-2"
+                >
+                  <X className="w-6 h-6" />
+                  رفض
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Custom Alert Modal */}
       <AnimatePresence>
         {customAlert.show && (
@@ -6805,6 +7207,11 @@ export default function App() {
                       {displayedRewards && (
                         <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-purple-400 flex items-center gap-0.5">
                           <Eye className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.spy_lens}
+                        </span>
+                      )}
+                      {displayedRewards && (
+                        <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-yellow-500 flex items-center gap-0.5">
+                          <Key className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.keys}
                         </span>
                       )}
                     </div>
@@ -9822,7 +10229,7 @@ export default function App() {
                                     </div>
                                   </div>
 
-                                  <div className="mt-4 flex gap-2">
+                                  <div className="mt-4 flex flex-wrap gap-2">
                                     <button 
                                       onClick={() => {
                                         showPrompt('ادخل الـ XP الجديد:', p.xp.toString(), (newXP) => {
@@ -9833,7 +10240,7 @@ export default function App() {
                                           }
                                         }, 'تعديل XP');
                                       }}
-                                      className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-xl text-[10px] font-black hover:bg-purple-600 hover:text-white transition-all"
+                                      className="flex-1 min-w-[70px] py-2 bg-purple-50 text-purple-600 rounded-xl text-[10px] font-black hover:bg-purple-600 hover:text-white transition-all"
                                     >
                                       تعديل XP
                                     </button>
@@ -9848,9 +10255,24 @@ export default function App() {
                                           }
                                         }, 'إعطاء Tokens');
                                       }}
-                                      className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black hover:bg-blue-600 hover:text-white transition-all"
+                                      className="flex-1 min-w-[70px] py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black hover:bg-blue-600 hover:text-white transition-all"
                                     >
                                       إعطاء Tokens
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        showPrompt('كم عدد المفاتيح التي تريد إضافتها؟', '1', (keysToAdd) => {
+                                          if (keysToAdd !== null && keysToAdd.trim() !== '' && !isNaN(parseInt(keysToAdd))) {
+                                            const currentKeys = p.keys || 0;
+                                            socket?.emit('admin_update_player', { serial: p.serial, updates: { keys: currentKeys + parseInt(keysToAdd) } }, (res: any) => {
+                                              if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
+                                            });
+                                          }
+                                        }, 'إعطاء مفاتيح');
+                                      }}
+                                      className="flex-1 min-w-[70px] py-2 bg-yellow-50 text-yellow-600 rounded-xl text-[10px] font-black hover:bg-yellow-600 hover:text-white transition-all"
+                                    >
+                                      إعطاء مفاتيح
                                     </button>
                                     <button 
                                       onClick={() => {
@@ -9865,7 +10287,7 @@ export default function App() {
                                           }
                                         }, 'إضافة باقة المحترفين');
                                       }}
-                                      className="flex-1 py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-black hover:bg-green-600 hover:text-white transition-all"
+                                      className="flex-1 min-w-[70px] py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-black hover:bg-green-600 hover:text-white transition-all"
                                     >
                                       باقة المحترفين
                                     </button>
@@ -9878,7 +10300,7 @@ export default function App() {
                                           });
                                         }, 'حظر مؤقت');
                                       }}
-                                      className="flex-1 py-2 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black hover:bg-orange-600 hover:text-white transition-all"
+                                      className="flex-1 min-w-[70px] py-2 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black hover:bg-orange-600 hover:text-white transition-all"
                                     >
                                       حظر 24س
                                     </button>
@@ -9891,7 +10313,7 @@ export default function App() {
                                             });
                                           }, 'إلغاء الحظر');
                                         }}
-                                        className="flex-1 py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-black hover:bg-green-600 hover:text-white transition-all"
+                                        className="flex-1 min-w-[70px] py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-black hover:bg-green-600 hover:text-white transition-all"
                                       >
                                         إلغاء الحظر
                                       </button>
@@ -9904,7 +10326,7 @@ export default function App() {
                                           });
                                         }, 'حظر نهائي');
                                       }}
-                                      className="flex-1 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black hover:bg-red-600 hover:text-white transition-all"
+                                      className="flex-1 min-w-[70px] py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black hover:bg-red-600 hover:text-white transition-all"
                                     >
                                       حظر نهائي
                                     </button>
@@ -10754,6 +11176,11 @@ export default function App() {
                         <Eye className="w-4 h-4" /> {displayedRewards.spy_lens}
                       </span>
                     )}
+                    {displayedRewards && (
+                      <span className="bg-white px-2 py-1 rounded-lg text-xs font-bold text-yellow-500 flex items-center gap-1 shadow-sm border border-gray-100">
+                        <Key className="w-4 h-4" /> {displayedRewards.keys}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -11104,6 +11531,20 @@ export default function App() {
                 <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
               </button>
 
+              {/* Notifications Button */}
+              <button 
+                onClick={() => setShowFriendRequestsModal(true)}
+                className="w-9 h-9 md:w-10 md:h-10 bg-green-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-green-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                title="الإشعارات"
+              >
+                <Bell className="w-4 h-4 md:w-5 md:h-5" />
+                {friendRequests.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm">
+                    {friendRequests.length}
+                  </span>
+                )}
+              </button>
+
               {/* City Search Button */}
               <button 
                 onClick={handleOpenCitySearch}
@@ -11212,11 +11653,11 @@ export default function App() {
               </div>
               <div className="space-y-2 md:space-y-3 relative z-10">
                 <h2 className="text-2xl md:text-3xl font-black text-main uppercase tracking-tight" style={{ textShadow: '2px 2px 0px #FFF, -1px -1px 0 #FFF, 1px -1px 0 #FFF, -1px 1px 0 #FFF, 1px 1px 0 #FFF' }}>
-                  جاري البحث عن منافس...
+                  {roomId === 'waiting_friend' ? 'جاري انتظار الصديق...' : 'جاري البحث عن منافس...'}
                 </h2>
                 <div className="flex justify-center">
                 </div>
-                {searchTimeLeft !== null && (
+                {searchTimeLeft !== null && roomId !== 'waiting_friend' && (
                   <div className="flex justify-center mt-2">
                     <div className="flex items-center gap-2 text-accent-blue font-black text-xl bg-white border-2 border-black inline-flex px-4 py-2 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                       <Timer className="w-6 h-6" />
@@ -11383,18 +11824,7 @@ export default function App() {
   };
 
   const handleCloseRainGiftSummary = () => {
-    showConfirm(
-      'هل أنت متأكد أنك تريد إغلاق النافذة؟ لن تحصل على الهدايا إذا قمت بالإغلاق.',
-      () => {
-        localStorage.removeItem('khamin_pending_rain_gift');
-        setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
-        setShowRainGiftSummary(false);
-      },
-      'تنبيه',
-      undefined,
-      'نعم، أغلق',
-      'إلغاء'
-    );
+    setShowRainGiftSummary(false);
   };
 
   const renderRainGiftSummary = () => {
@@ -11478,6 +11908,7 @@ export default function App() {
               const successReward = () => {
                 socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
                 localStorage.removeItem('khamin_pending_rain_gift');
+                setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
                 setShowRainGiftSummary(false);
                 showAlert("تم استلام المكافآت بنجاح! 🥳", "نجاح");
                 playSound('win');
@@ -11486,7 +11917,7 @@ export default function App() {
               if (typeof (window as any).adBreak === 'function') {
                 const adTimeout = setTimeout(() => {
                   if (!adFinished) handleAdFailure();
-                }, 2000);
+                }, 8000);
 
                 try {
                   (window as any).adBreak({
@@ -11627,6 +12058,21 @@ export default function App() {
               <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
             </button>
 
+            {/* Notifications Button */}
+            <button 
+              onClick={() => setShowFriendRequestsModal(true)}
+              className="w-9 h-9 md:w-10 md:h-10 bg-green-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-green-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              title="الإشعارات"
+            >
+              <Bell className="w-4 h-4 md:w-5 md:h-5" />
+              {friendRequests.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length}</span>
+                </span>
+              )}
+            </button>
+
             {/* Settings Button */}
             <button 
               onClick={toggleSettings}
@@ -11731,6 +12177,17 @@ export default function App() {
                         </span>
                       </div>
                     </div>
+                    
+                    {/* Friends Button */}
+                    <div className="w-full border-t border-black/20 my-2"></div>
+                    <button 
+                      onClick={() => setShowFriendsModal(true)}
+                      className="w-full px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black rounded-lg text-sm transition-colors border border-blue-200 flex items-center justify-center gap-2"
+                    >
+                      <Users className="w-4 h-4" />
+                      الأصدقاء ({friendsTotal})
+                    </button>
+                    
                   </div>
                 </div>
               )}
@@ -11997,6 +12454,18 @@ export default function App() {
                     </button>
                     <button
                       onClick={() => {
+                        const pendingGift = localStorage.getItem('khamin_pending_rain_gift');
+                        const hasPendingRewards = pendingGift || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0;
+                        if (hasPendingRewards) {
+                           if (pendingGift) {
+                              try {
+                                  setCollectedRewards(JSON.parse(pendingGift));
+                              } catch(e) {}
+                           }
+                           setShowRainGiftSummary(true);
+                           return;
+                        }
+
                         if (keys < 3 && !isAdmin) {
                           showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
                           return;
@@ -12008,14 +12477,19 @@ export default function App() {
                         playSound('clickOpen');
                       }}
                       // Enabled for testing as requested
-                      disabled={(!isAdmin && !isRainGiftActive)}
+                      disabled={!(localStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0 || isAdmin || isRainGiftActive)}
                       className={`px-2 md:px-6 py-2 rounded-xl font-black md:text-[13px] text-[10px] transition-all shadow-md ${
-                        (isAdmin || isRainGiftActive)
+                        (localStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0 || isAdmin || isRainGiftActive)
                         ? 'bg-accent-green text-white hover:scale-105 active:scale-95 event-glow' 
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                     >
-                      {(isAdmin || isRainGiftActive) ? 'اشترك في الحدث' : 'انتهي الحدث اليوم'}
+                      {(() => {
+                         const hasPendingRewards = localStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0;
+                         if (hasPendingRewards) return 'استلام الهدايا 🎁';
+                         if (isAdmin || isRainGiftActive) return 'اشترك في الحدث';
+                         return 'انتهي الحدث اليوم';
+                      })()}
                     </button>
                   </div>
                 </div>
@@ -12603,19 +13077,29 @@ export default function App() {
                     <Shield className="w-3 h-3 text-purple-500" />
                   ) : (
                     <>
-                      <button onClick={() => setShowReportModal(true)} className="text-red-500">
+                      <button onClick={() => setShowReportModal(true)} className="text-red-500 hover:scale-110 transition-transform">
                         <Flag className="w-3 h-3" fill={opponent.reports > 0 ? "currentColor" : "none"} />
                       </button>
-                      {/* <button 
-                        onClick={() => {
-                          const newBlockedState = !isOpponentBlocked;
-                          setIsOpponentBlocked(newBlockedState);
-                          socket?.emit('toggle_mute_opponent', { roomId, isMuted: newBlockedState });
-                        }}
-                        className={isOpponentBlocked ? 'text-red-500' : 'text-brown-light'}
-                      >
-                        <MessageSquareOff className="w-3 h-3" />
-                      </button> */}
+                      {opponentFriendStatus === 'none' && (
+                        <button onClick={() => handleAddFriend(opponent.serial)} className="text-blue-500 hover:scale-110 transition-transform" title="إضافة صديق">
+                          <UserPlus className="w-3 h-3" />
+                        </button>
+                      )}
+                      {opponentFriendStatus === 'pending_sent' && (
+                        <span className="text-yellow-500" title="طلب صداقة معلق">
+                          <UserCheck className="w-3 h-3" />
+                        </span>
+                      )}
+                      {opponentFriendStatus === 'pending_received' && (
+                        <span className="text-yellow-500 animate-pulse" title="لديك طلب صداقة من هذا اللاعب">
+                          <UserCheck className="w-3 h-3" />
+                        </span>
+                      )}
+                      {opponentFriendStatus === 'friends' && (
+                        <span className="text-green-500" title="أصدقاء">
+                          <Users className="w-3 h-3" />
+                        </span>
+                      )}
                     </>
                   )}
                 </div>
