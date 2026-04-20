@@ -421,7 +421,7 @@ const AVATARS = [
 // Get version from meta tag injected by server, fallback to hardcoded if not found
 const getAppVersion = () => {
   const metaVersion = document.querySelector('meta[name="app-version"]')?.getAttribute('content');
-  return (metaVersion && metaVersion !== '{{VERSION}}') ? metaVersion : '1.1.5';
+  return (metaVersion && metaVersion !== '{{VERSION}}') ? metaVersion : '1.1.6';
 };
 const APP_VERSION = getAppVersion(); // Version for cache clearing
 
@@ -944,6 +944,7 @@ export default function App() {
   const [collectedRewards, setCollectedRewards] = useState({ xp: 0, tokens: 0, helpers: {} as Record<string, number> });
   const [gameTimer, setGameTimer] = useState(180);
   const [showRainGiftSummary, setShowRainGiftSummary] = useState(false);
+  const [hasPaidForCurrentRainEvent, setHasPaidForCurrentRainEvent] = useState(false);
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -957,6 +958,11 @@ export default function App() {
         const active = diffMinutes >= 0 && diffMinutes <= 3;
         
         setIsRainGiftActive(active);
+
+        // Reset payment status when event is not active
+        if (!active && hasPaidForCurrentRainEvent) {
+          setHasPaidForCurrentRainEvent(false);
+        }
 
         // Clear unclaimed rewards 10 minutes before the next event (18:50 to 19:00)
         if (diffMinutes >= -10 && diffMinutes < 0) {
@@ -985,6 +991,11 @@ export default function App() {
         const targetUTCHour = 17; // 7 PM Egypt is roughly 17:00 UTC
         const active = utcHour === targetUTCHour && utcMinutes <= 3;
         setIsRainGiftActive(active);
+
+        // Reset payment status when event is not active
+        if (!active && hasPaidForCurrentRainEvent) {
+          setHasPaidForCurrentRainEvent(false);
+        }
 
         // Clear unclaimed rewards 10 minutes before the next event (16:50 UTC to 17:00 UTC)
         if (utcHour === targetUTCHour - 1 && utcMinutes >= 50) {
@@ -2079,21 +2090,44 @@ export default function App() {
       showConfirm(
         'بدأ حدث مطر الهدايا الآن! هل تريد الانضمام للحدث وجمع الهدايا؟',
         () => {
-          if (keys < 3 && !isAdmin) {
-            showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
-            return;
-          }
-          if (room) {
-            socket?.emit('leave_room', { roomId: room.id }, () => {
-              resetToHome();
-              setShowRainGiftGame(true);
-            });
-          } else if (isSearching) {
-            socket?.emit('leave_matchmaking');
-            resetToHome();
-            setShowRainGiftGame(true);
+          if (!hasPaidForCurrentRainEvent && !isAdmin) {
+             if (keys < 3) {
+               showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
+               return;
+             }
+             socket?.emit('rain_gift_pay', { serial: playerSerial }, (res: any) => {
+               if (res.success) {
+                  setHasPaidForCurrentRainEvent(true);
+                  if (room) {
+                    socket?.emit('leave_room', { roomId: room.id }, () => {
+                      resetToHome();
+                      setShowRainGiftGame(true);
+                    });
+                  } else if (isSearching) {
+                    socket?.emit('leave_matchmaking');
+                    resetToHome();
+                    setShowRainGiftGame(true);
+                  } else {
+                    setShowRainGiftGame(true);
+                  }
+               } else {
+                  showAlert(res.error || 'حدث خطأ أثناء الاشتراك', 'خطأ');
+               }
+             });
           } else {
-            setShowRainGiftGame(true);
+            // Already paid or admin
+            if (room) {
+                socket?.emit('leave_room', { roomId: room.id }, () => {
+                  resetToHome();
+                  setShowRainGiftGame(true);
+                });
+              } else if (isSearching) {
+                socket?.emit('leave_matchmaking');
+                resetToHome();
+                setShowRainGiftGame(true);
+              } else {
+                setShowRainGiftGame(true);
+              }
           }
         },
         'حدث مطر الهدايا 🎁',
@@ -6159,12 +6193,14 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          onClick={() => setShowFriendsModal(false)}
           className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
         >
           <motion.div
             initial={{ scale: 0.9, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
             className="card-game p-4 w-full max-w-sm flex flex-col max-h-[80vh]"
           >
             <div className="flex justify-between items-center mb-4">
@@ -6209,13 +6245,13 @@ export default function App() {
                          {friend.isOnline && (
                            <button 
                              onClick={() => {
-                               socket?.emit('send_friend_challenge', { targetSerial: friend.serial }, (res: any) => {
+                               socket?.emit('send_friend_challenge', { serial: playerSerial, targetSerial: friend.serial }, (res: any) => {
                                  if (res.success) {
                                    showAlert('تم إرسال دعوة التحدي', 'نجاح');
                                    setIsSearching(true); // Put them in search UI
                                    setRoomId('waiting_friend'); // Dummy room UI
                                  } else {
-                                   showAlert(res.message, 'خطأ');
+                                   showAlert(res.error || res.message || 'فشل إرسال التحدي', 'خطأ');
                                  }
                                });
                              }}
@@ -6256,12 +6292,14 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          onClick={() => setShowFriendRequestsModal(false)}
           className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
         >
           <motion.div
             initial={{ scale: 0.9, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
             className="card-game p-4 w-full max-w-sm flex flex-col max-h-[80vh]"
           >
             <div className="flex justify-between items-center mb-4">
@@ -6275,31 +6313,46 @@ export default function App() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
               {friendRequests.length === 0 ? (
                 <div className="text-center py-8 text-brown-muted font-bold">لا توجد إشعارات حالياً.</div>
               ) : (
-                friendRequests.map(req => (
-                  <div key={req.id} className="bg-orange-50 border-2 border-orange-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10">
-                        {renderAvatarContent(req.senderAvatar, req.senderLevel || 1, false, false)}
-                      </div>
-                      <div>
-                        <div className="font-black text-sm text-main">{req.senderName}</div>
-                        <div className="text-[10px] text-gray-500">Lvl {req.senderLevel || 1}</div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                       <button onClick={() => handleAcceptFriendRequest(req.id)} className="bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors">
-                         <Check className="w-4 h-4" />
-                       </button>
-                       <button onClick={() => handleRejectFriendRequest(req.id)} className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors">
-                         <X className="w-4 h-4" />
-                       </button>
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <UserPlus className="w-4 h-4 text-main" />
+                    <h3 className="font-black text-sm text-main">طلبات الصداقة</h3>
                   </div>
-                ))
+                  
+                  {friendRequests.map(req => (
+                    <div key={req.id} className="bg-orange-50 border-2 border-orange-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10">
+                          {renderAvatarContent(req.avatar, req.level || 1, false, false)}
+                        </div>
+                        <div>
+                          <div className="font-black text-sm text-main">{req.name}</div>
+                          <div className="text-[10px] text-gray-500">مستوى {req.level || 1}</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                         <button 
+                           onClick={() => handleAcceptFriendRequest(req.id)} 
+                           className="bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm active:scale-95"
+                           title="قبول"
+                         >
+                           <Check className="w-4 h-4" />
+                         </button>
+                         <button 
+                           onClick={() => handleRejectFriendRequest(req.id)} 
+                           className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm active:scale-95"
+                           title="رفض"
+                         >
+                           <X className="w-4 h-4" />
+                         </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </motion.div>
@@ -6458,27 +6511,39 @@ export default function App() {
               exit={{ scale: 0.9, y: 20 }}
               className="card-game p-6 w-full max-w-sm text-center border-4 border-blue-500 shadow-[0_0_50px_rgba(59,130,246,0.3)] space-y-6"
             >
-              <div className="w-24 h-24 mx-auto relative mb-4">
-                {renderAvatarContent(incomingChallenge.challengerAvatar, incomingChallenge.challengerLevel || 1, false, false)}
-                <div className="absolute -bottom-2 -right-2 bg-blue-500 w-8 h-8 rounded-full border-2 border-white flex items-center justify-center animate-bounce">
-                  <Gamepad2 className="w-4 h-4 text-white" />
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="text-2xl font-black text-main">{incomingChallenge.challengerName}</h3>
-                <p className="text-xl font-bold text-accent-orange mt-2">يتحداك الآن!</p>
-                <div className="text-sm text-gray-500 font-bold bg-gray-100 rounded-full inline-block px-3 py-1 mt-2">
-                  Lvl {incomingChallenge.challengerLevel || 1}
-                </div>
-              </div>
+              {(() => {
+                const name = incomingChallenge.senderName || incomingChallenge.name || incomingChallenge.challengerName || "لاعب مجهول";
+                const avatar = incomingChallenge.senderAvatar || incomingChallenge.avatar || incomingChallenge.challengerAvatar || "boy_1";
+                const level = incomingChallenge.senderLevel || incomingChallenge.level || incomingChallenge.challengerLevel || 1;
+                const frame = incomingChallenge.senderFrame || incomingChallenge.selectedFrame || incomingChallenge.challengerFrame || "";
+                
+                return (
+                  <>
+                    <div className="w-24 h-24 mx-auto relative mb-4">
+                      {renderAvatarContent(avatar, level, false, false, frame)}
+                      <div className="absolute -bottom-2 -right-2 bg-blue-500 w-8 h-8 rounded-full border-2 border-white flex items-center justify-center animate-bounce">
+                        <Gamepad2 className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-2xl font-black text-main">{name}</h3>
+                      <div className="text-sm text-gray-500 font-bold bg-gray-100 rounded-full inline-block px-3 py-1 mt-2">
+                        مستوى {level}
+                      </div>
+                      <p className="text-xl font-bold text-accent-orange mt-2">يتحداك الآن!</p>
+                    </div>
+                  </>
+                );
+              })()}
 
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => {
-                    socket?.emit('accept_friend_challenge', { challengeId: incomingChallenge.challengeId }, (res: any) => {
+                    const senderSerial = incomingChallenge.senderSerial || incomingChallenge.serial || incomingChallenge.challengerSerial;
+                    socket?.emit('respond_to_friend_challenge', { serial: playerSerial, targetSerial: senderSerial, accept: true }, (res: any) => {
                       if (!res.success) {
-                        showAlert(res.message, 'خطأ');
+                        showAlert(res.message || 'فشل قبول التحدي', 'خطأ');
                         setIncomingChallenge(null);
                       }
                     });
@@ -6490,7 +6555,8 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
-                    socket?.emit('reject_friend_challenge', { challengeId: incomingChallenge.challengeId });
+                    const senderSerial = incomingChallenge.senderSerial || incomingChallenge.serial || incomingChallenge.challengerSerial;
+                    socket?.emit('respond_to_friend_challenge', { serial: playerSerial, targetSerial: senderSerial, accept: false });
                     setIncomingChallenge(null);
                   }}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl text-xl shadow-[0_4px_0_rgb(185,28,28)] active:translate-y-1 active:shadow-none transition-all flex justify-center items-center gap-2"
@@ -12068,7 +12134,7 @@ export default function App() {
               {friendRequests.length > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length}</span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length}</span>
                 </span>
               )}
             </button>
@@ -12466,15 +12532,31 @@ export default function App() {
                            return;
                         }
 
-                        if (keys < 3 && !isAdmin) {
-                          showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
-                          return;
+                        if (!hasPaidForCurrentRainEvent && !isAdmin) {
+                          if (keys < 3) {
+                            showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
+                            return;
+                          }
+                          socket?.emit('rain_gift_pay', { serial: playerSerial }, (res: any) => {
+                            if (res.success) {
+                              setHasPaidForCurrentRainEvent(true);
+                              setGameTimer(180);
+                              setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
+                              setFallingItems([]);
+                              setShowRainGiftGame(true);
+                              playSound('clickOpen');
+                            } else {
+                              showAlert(res.error || 'حدث خطأ أثناء الاشتراك', 'خطأ');
+                            }
+                          });
+                        } else {
+                          // Already paid or admin
+                          setGameTimer(180);
+                          setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
+                          setFallingItems([]);
+                          setShowRainGiftGame(true);
+                          playSound('clickOpen');
                         }
-                        setGameTimer(180);
-                        setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
-                        setFallingItems([]);
-                        setShowRainGiftGame(true);
-                        playSound('clickOpen');
                       }}
                       // Enabled for testing as requested
                       disabled={!(localStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0 || isAdmin || isRainGiftActive)}
@@ -13037,9 +13119,9 @@ export default function App() {
                     </motion.div>
                   )}
                 </div>
-                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[80px] md:max-w-[90px] flex items-center gap-1" dir="ltr">
-                  {me.name}
-                  {reports > 0 && <Flag className="w-3 h-3 text-red-500" fill="currentColor" />}
+                <div className="mt-2 font-black text-[11px] md:text-sm text-main flex items-center gap-2" dir="ltr">
+                  <span className="truncate max-w-[60px] md:max-w-[100px]">{me.name}</span>
+                  {reports > 0 && <Flag className="w-3.5 h-3.5 text-red-500" fill="currentColor" />}
                 </div>
                 {me.age && <div className="text-[8px] text-brown-muted font-bold">({me.age} سنة)</div>}
               </>
@@ -13071,36 +13153,54 @@ export default function App() {
                     </motion.div>
                   )}
                 </div>
-                <div className="mt-2 font-black text-[10px] md:text-xs text-main truncate max-w-[70px] md:max-w-[90px] flex items-center gap-1" dir="ltr">
-                  {opponent.name}
+                <div className="mt-2 font-black text-[11px] md:text-sm text-main flex items-center gap-2" dir="ltr">
+                  <span className="truncate max-w-[60px] md:max-w-[100px]">{opponent.name}</span>
                   {opponent.isAdmin ? (
-                    <Shield className="w-3 h-3 text-purple-500" />
+                    <Shield className="w-3.5 h-3.5 text-purple-500" />
                   ) : (
-                    <>
-                      <button onClick={() => setShowReportModal(true)} className="text-red-500 hover:scale-110 transition-transform">
-                        <Flag className="w-3 h-3" fill={opponent.reports > 0 ? "currentColor" : "none"} />
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowReportModal(true);
+                        }} 
+                        className="text-red-500 hover:scale-125 transition-transform p-1 -m-1"
+                        title="إبلاغ"
+                      >
+                        <Flag className="w-4 h-4" fill={opponent.reports > 0 ? "currentColor" : "none"} />
                       </button>
+
                       {opponentFriendStatus === 'none' && (
-                        <button onClick={() => handleAddFriend(opponent.serial)} className="text-blue-500 hover:scale-110 transition-transform" title="إضافة صديق">
-                          <UserPlus className="w-3 h-3" />
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddFriend(opponent.serial);
+                          }} 
+                          className="text-blue-500 hover:scale-125 transition-transform p-1 -m-1" 
+                          title="إضافة صديق"
+                        >
+                          <UserPlus className="w-4 h-4" />
                         </button>
                       )}
+                      
                       {opponentFriendStatus === 'pending_sent' && (
-                        <span className="text-yellow-500" title="طلب صداقة معلق">
-                          <UserCheck className="w-3 h-3" />
+                        <span className="text-yellow-500 p-1 -m-1" title="طلب صداقة معلق">
+                          <UserCheck className="w-4 h-4" />
                         </span>
                       )}
+                      
                       {opponentFriendStatus === 'pending_received' && (
-                        <span className="text-yellow-500 animate-pulse" title="لديك طلب صداقة من هذا اللاعب">
-                          <UserCheck className="w-3 h-3" />
+                        <span className="text-yellow-500 animate-pulse p-1 -m-1" title="لديك طلب صداقة من هذا اللاعب">
+                          <UserCheck className="w-4 h-4" />
                         </span>
                       )}
+                      
                       {opponentFriendStatus === 'friends' && (
-                        <span className="text-green-500" title="أصدقاء">
-                          <Users className="w-3 h-3" />
+                        <span className="text-green-500 p-1 -m-1" title="أصدقاء">
+                          <Users className="w-4 h-4" />
                         </span>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
                 {opponent.age && <div className="text-[8px] text-brown-muted font-bold">({opponent.age} سنة)</div>}
