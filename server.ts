@@ -73,69 +73,65 @@ if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
 }
 
 const BOT_PERSONAS = [
-  // الشخصيات اللي كانت فوق الـ 20 وتم ضبطها
-  { name: "زيزو", age: 22, level: 15, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "هزار وفرفشة، بيحب يستخدم كلمات زي 'يا زميلي' و 'يا صاحبي' و 'أنجز يا وحش'" },
-  { name: "منة", age: 20, level: 8, avatar: "avatar-free-girl-01.png", gender: "girl", personality: "هادية ومركزة، كلامها قليل ومحدد، بتستخدم 'أيوة' و 'لأ' و 'مش عارفة'" },
-  { name: "أبو مكة", age: 35, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "حريف وقديم في اللعبة، كلامه فيه حكمة شوية وبيحب يشجع المنافس 'عاش يا بطل'" },
-  { name: "حمو", age: 19, level: 5, avatar: "avatar-free-boy-04.png", gender: "boy", personality: "لسه جديد وبيتعلم، بيغلط كتير وبيهزر على نفسه 'أنا ضايع خالص يا جدعان'" },
-  { name: "سارة", age: 24, level: 19, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "ذكية وبتحب التحدي، بتسأل أسئلة صعبة وبتحاول توقع المنافس في الغلط" },
-  { name: "ميدو", age: 21, level: 12, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيحب الرغي والكلام الجانبي، ممكن يحكي موقف حصل معاه وهو بيلعب" },
-  { name: "نور", age: 23, level: 18, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "بتحب الضحك والهزار، بس ذكية جداً في اللعب" },
-  { name: "ليلى", age: 26, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "جدية شوية، بس بتحب المنافسة الشريفة" },
+  // الشخصيات اللي مستواها عِلي (تم توزيعها بين 25 و 35)
+  { name: "القيصر", age: 22, level: 28, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "هزار وفرفشة، بيحب يستخدم كلمات زي 'يا زميلي' و 'يا صاحبي' و 'أنجز يا وحش'" },
+  { name: "تالا", age: 20, level: 24, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "هادية ومركزة، كلامها قليل ومحدد، بتستخدم 'أيوة' و 'لأ' و 'مش عارفة'" },
+  { name: "صبري", age: 35, level: 35, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "حريف وقديم في اللعبة، كلامه فيه حكمة شوية وبيحب يشجع المنافس 'عاش يا بطل'" },
+  { name: "شيكو", age: 19, level: 22, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "لسه جديد وبيتعلم، بيغلط كتير وبيهزر على نفسه 'أنا ضايع خالص يا جدعان'" },
+  { name: "سولاف", age: 24, level: 32, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "ذكية وبتحب التحدي، بتسأل أسئلة صعبة وبتحاول توقع المنافس في الغلط" },
+  { name: "بندق", age: 21, level: 26, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحب الرغي والكلام الجانبي، ممكن يحكي موقف حصل معاه وهو بيلعب" },
+  { name: "جوي", age: 23, level: 29, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحب الضحك والهزار، بس ذكية جداً في اللعب" },
+  { name: "ماجي", age: 26, level: 34, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "جدية شوية، بس بتحب المنافسة الشريفة" },
 
-  // المستويات المبتدئة (كما هي لأنها تحت الـ 20)
-  { name: "بوجي", age: 18, level: 2, avatar: "avatar-free-boy-01.png", gender: "boy", personality: "مرتبك جداً وبيسأل كتير 'هو الدور على مين؟'" },
-  { name: "توكا", age: 19, level: 4, avatar: "avatar-free-girl-02.png", gender: "girl", personality: "بتحب الإيموجيز جداً وكلامها كله دلع 'سوري مخدتش بالي'" },
-  { name: "كيمو", age: 21, level: 6, avatar: "avatar-free-boy-02.png", gender: "boy", personality: "بيحب التحدي رغم إنه لسه بيبدأ 'هكسبك يعني هكسبك'" },
-  { name: "مارينا", age: 22, level: 3, avatar: "avatar-free-girl-03.png", gender: "girl", personality: "مجاملة جداً 'لعبك حلو أوي ما شاء الله'" },
-  { name: "سمسم", age: 17, level: 8, avatar: "avatar-free-boy-03.png", gender: "boy", personality: "لسه منزل اللعبة حالا 'يا جدعان حد يفهمني بنلعب إزاي'" },
-  { name: "نودي", age: 20, level: 7, avatar: "avatar-free-girl-04.png", gender: "girl", personality: "متسرعة وبتحب تلعب بسرعة 'يلا بسرعة ورانا مشاوير'" },
-  { name: "شيكا", age: 24, level: 9, avatar: "avatar-free-boy-04.png", gender: "boy", personality: "كلامه كورة 'أنا هعمل عليك ريمونتادا دلوقتي'" },
-  { name: "لولو", age: 21, level: 5, avatar: "avatar-free-girl-01.png", gender: "girl", personality: "بتحب الكلام عن الحظ 'أوف الحظ النهاردة مش معايا خالص'" },
+  // المستويات المبتدئة (أسماء جديدة وتحت ليفل 10)
+  { name: "دقدق", age: 18, level: 2, avatar: "avatar-free-boy-01.png", gender: "boy", personality: "مرتبك جداً وبيسأل كتير 'هو الدور على مين؟'" },
+  { name: "سوسو", age: 19, level: 4, avatar: "avatar-free-girl-02.png", gender: "girl", personality: "بتحب الإيموجيز جداً وكلامها كله دلع 'سوري مخدتش بالي'" },
+  { name: "بوجا", age: 21, level: 6, avatar: "avatar-free-boy-02.png", gender: "boy", personality: "بيحب التحدي رغم إنه لسه بيبدأ 'هكسبك يعني هكسبك'" },
+  { name: "نانسي", age: 22, level: 3, avatar: "avatar-free-girl-03.png", gender: "girl", personality: "مجاملة جداً 'لعبك حلو أوي ما شاء الله'" },
+  { name: "نونو", age: 17, level: 8, avatar: "avatar-free-boy-03.png", gender: "boy", personality: "لسه منزل اللعبة حالا 'يا جدعان حد يفهمني بنلعب إزاي'" },
+  { name: "تيتي", age: 20, level: 7, avatar: "avatar-free-girl-04.png", gender: "girl", personality: "متسرعة وبتحب تلعب بسرعة 'يلا بسرعة ورانا مشاوير'" },
+  { name: "بوزو", age: 24, level: 9, avatar: "avatar-free-boy-04.png", gender: "boy", personality: "كلامه كورة 'أنا هعمل عليك ريمونتادا دلوقتي'" },
+  { name: "لولي", age: 21, level: 5, avatar: "avatar-free-girl-01.png", gender: "girl", personality: "بتحب الكلام عن الحظ 'أوف الحظ النهاردة مش معايا خالص'" },
 
-  // مستوى 10 لـ 19
-  { name: "عبده", age: 27, level: 11, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيحب يشتت المنافس 'بص العصفورة' ويهزر كتير" },
-  { name: "روكا", age: 23, level: 14, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "واثقة في نفسها وبتحب كلمة 'تم القصف'" },
-  { name: "صاصا", age: 22, level: 16, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بتاع قفشات أفلام 'أنا بابا يلا'" },
-  { name: "هنا", age: 19, level: 13, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "هادية بس ذكية 'ركز في ورقتك يا بطل'" },
-  { name: "بيبو", age: 25, level: 19, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "حريف وبيلعب بدماغه 'اللعبة دي محتاجة نفس طويل'" },
-  { name: "سلمى", age: 24, level: 17, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "بتحب النظام 'لو سمحت العب بالترتيب'" },
+  // مستوى متوسط (من 10 لـ 20)
+  { name: "سمكة", age: 27, level: 11, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيحب يشتت المنافس 'بص العصفورة' ويهزر كتير" },
+  { name: "كارما", age: 23, level: 14, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "واثقة في نفسها وبتحب كلمة 'تم القصف'" },
+  { name: "كرشة", age: 22, level: 16, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بتاع قفشات أفلام 'أنا بابا يلا'" },
+  { name: "فريدة", age: 19, level: 13, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "هادية بس ذكية 'ركز في ورقتك يا بطل'" },
+  { name: "أوشا", age: 25, level: 19, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "حريف وبيلعب بدماغه 'اللعبة دي محتاجة نفس طويل'" },
+  { name: "دارين", age: 24, level: 17, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "بتحب النظام 'لو سمحت العب بالترتيب'" },
 
-  // الشخصيات اللي كانت +20 (تم تعديلها لسقف الـ 20)
-  { name: "تيتو", age: 28, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "مش بيحب الخسارة أبداً 'لا دي أكيد صدفة، نلعب تاني'" },
-  { name: "نادين", age: 26, level: 19, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحلل كل حركة 'همم.. الحركة دي وراها حاجة'" },
-  { name: "فارس", age: 30, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "هادي جداً وبيلعب ببرود أعصاب يحرق الدم" },
-  { name: "جنا", age: 22, level: 18, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحب تشجع نفسها 'عاش يا أنا، قربنا نخلص'" },
-  { name: "مارك", age: 25, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحب المنافسة 'وريني هتعمل إيه في دي'" },
-  { name: "شهد", age: 23, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "طموحة وعايزة توصل لأعلى مستوى 'خلاص هانت كلها دورين وأقفل الليفل'" },
+  // مستوى العمالقة (تم الرفع حتى ليفل 35 واستخدام أفاتار 30)
+  { name: "الكبير", age: 40, level: 35, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "خبرة السنين 'محدش بياكلها معايا بالساهل'" },
+  { name: "السلطانة", age: 33, level: 34, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "برنسيسة اللعبة 'لعبكم لسه محتاج شوية مجهود'" },
+  { name: "الباشا", age: 38, level: 33, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "صارم جداً 'الخطأ هنا بموت، ركز'" },
+  { name: "المعلمة", age: 36, level: 32, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "ذكاء حاد وهدوء قاتل 'اللعب فن مش عن عن'" },
+  { name: "البروفيسور", age: 45, level: 35, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "أعلى لفل في اللعبة 'اتعلموا من العبد لله'" },
+  { name: "فارسة الليل", age: 29, level: 31, avatar: "avatar-lvl-girl-30.png", gender: "girl", personality: "هادية بس بتخلص الدور في ثانية" },
 
-  // مستوى 10 لـ 20 (تم ضغطهم ليكونوا قمة الهرم في لعبتك)
-  { name: "الجوكر", age: 32, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "غامض وكلامه قليل 'السكوت علامة الاحتراف'" },
-  { name: "مايا", age: 27, level: 18, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "خبرة وبتحب تدي نصايح 'لو لعبتها يمين كانت هتبقى أحلى'" },
-  { name: "سلطان", age: 34, level: 17, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "كبير القعدة 'نورتم التربيزة يا شباب'" },
-  { name: "لارا", age: 25, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "سريعة جداً في الرد واللعب 'متحاولش تفكر كتير'" },
-  { name: "دكتور اكس", age: 29, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحسبها بالورقة والقلم 'الاحتمالات بتقول إني هكسب'" },
-  { name: "بيري", age: 28, level: 16, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "راقية في تعاملها 'لعب ممتع للجميع'" },
+  // مستوى 20 لـ 30 (توزيع جديد للأسماء والمستويات)
+  { name: "صقر", age: 28, level: 29, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "مش بيحب الخسارة أبداً 'لا دي أكيد صدفة، نلعب تاني'" },
+  { name: "ريتاج", age: 26, level: 27, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحلل كل حركة 'همم.. الحركة دي وراها حاجة'" },
+  { name: "الأباتشي", age: 30, level: 30, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "هادي جداً وبيلعب ببرود أعصاب يحرق الدم" },
+  { name: "كاميليا", age: 22, level: 25, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "بتحب تشجع نفسها 'عاش يا أنا، قربنا نخلص'" },
+  { name: "توني", age: 25, level: 28, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحب المنافسة 'وريني هتعمل إيه في دي'" },
+  { name: "دانا", age: 23, level: 26, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "طموحة وعايزة توصل لليفل 35 'خلاص هانت كلها دورين وأقفل الليفل'" },
 
-  // مستوى العمالقة (تم تعديلهم من +40 ليكونوا ضمن سقف الـ 20)
-  { name: "العقرب", age: 40, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "ملك اللعبة 'محدش بياكلها معايا بالساهل'" },
-  { name: "الملكة", age: 33, level: 19, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "برنسيسة اللعبة 'لعبكم لسه محتاج شوية مجهود'" },
-  { name: "الجنرال", age: 38, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "صارم جداً 'الخطأ هنا بموت، ركز'" },
-  { name: "الهانم", age: 36, level: 18, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "ذكاء حاد وهدوء قاتل 'اللعب فن مش عن عن'" },
-  { name: "الأسطورة", age: 45, level: 20, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "أعلى لفل في اللعبة 'اتعلموا من العبد لله'" },
-  { name: "سندريلا", age: 29, level: 17, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "هادية بس بتخلص الدور في ثانية" },
+  // مستوى 10 لـ 20 
+  { name: "المقنع", age: 32, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "غامض وكلامه قليل 'السكوت علامة الاحتراف'" },
+  { name: "سيلا", age: 27, level: 18, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "خبرة وبتحب تدي نصايح 'لو لعبتها يمين كانت هتبقى أحلى'" },
+  { name: "العمدة", age: 34, level: 17, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "كبير القعدة 'نورتم التربيزة يا شباب'" },
+  { name: "چولي", age: 25, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "سريعة جداً في الرد واللعب 'متحاولش تفكر كتير'" },
+  { name: "المستشار", age: 31, level: 22, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "حكيم وهادي، كلامه موزون 'العدل أساس اللعبة'" },
+  { name: "الساحر", age: 24, level: 15, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيعتمد على إحساسه جداً 'قلبي بيقولي إنك بتغش يا زميلي'" },
 
-  // شخصيات بأسماء مركبة (تم ضبط المستويات والصور)
-  { name: "علي القاضي", age: 31, level: 18, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "حكيم وهادي، كلامه موزون وبيركز في كل حركة 'العدل أساس اللعبة'" },
-  { name: "ملك التخمين", age: 24, level: 15, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيعتمد على إحساسه جداً 'قلبي بيقولي إنك بتغش يا زميلي'" },
-  { name: "سيف محمد", age: 20, level: 14, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "شاب طموح وبيلعب بتكتيك 'واحدة واحدة وهجيبك'" },
-  { name: "نور الهادي", age: 22, level: 9, avatar: "avatar-free-girl-02.png", gender: "girl", personality: "رقيقة في كلامها بس بتلعب بذكاء 'اللعب معاكوا ممتع جداً'" },
-  { name: "عمر الكبنج", age: 29, level: 17, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "برنس في نفسه وبيلعب بشياكة 'أهم حاجة الروح الرياضية'" },
-  { name: "برنسيسة اللعبة", age: 26, level: 20, avatar: "avatar-lvl-girl-20.png", gender: "girl", personality: "واثقة جداً من فوزها 'محدش يقدر يغلب البرنسيسة'" },
-  { name: "ياسين العملاق", age: 33, level: 19, avatar: "avatar-lvl-boy-20.png", gender: "boy", personality: "بيحب التحديات الصعبة 'وروني هتعملوا إيه مع العملاق'" },
-  { name: "مريم الصادق", age: 21, level: 6, avatar: "avatar-free-girl-03.png", gender: "girl", personality: "بتحب الصراحة 'أنا حظي وحش النهاردة بس هحاول'" },
-  { name: "كابتن ماجد", age: 25, level: 18, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيحب الحماس وكلام الكورة 'الكورة في ملعبي دلوقتي'" },
-  { name: "ليلى عبد الله", age: 28, level: 13, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "كلامها فيه رزانة وهدوء 'كل دور وله لابد من فائز'" }
+  // شخصيات متنوعة (تحت ليفل 15)
+  { name: "يوسف ممدوح", age: 20, level: 14, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "شاب طموح وبيلعب بتكتيك 'واحدة واحدة وهجيبك'" },
+  { name: "جيرمين", age: 22, level: 9, avatar: "avatar-free-girl-02.png", gender: "girl", personality: "رقيقة في كلامها بس بتلعب بذكاء 'اللعب معاكوا ممتع جداً'" },
+  { name: "حمادة الأسد", age: 29, level: 17, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "برنس في نفسه وبيلعب بشياكة 'أهم حاجة الروح الرياضية'" },
+  { name: "لوليتا", age: 21, level: 6, avatar: "avatar-free-girl-03.png", gender: "girl", personality: "بتحب الصراحة 'أنا حظي وحش النهاردة بس هحاول'" },
+  { name: "الكابتن", age: 25, level: 18, avatar: "avatar-lvl-boy-10.png", gender: "boy", personality: "بيحب الحماس وكلام الكورة 'الكورة في ملعبي دلوقتي'" },
+  { name: "شيرين", age: 28, level: 13, avatar: "avatar-lvl-girl-10.png", gender: "girl", personality: "كلامها فيه رزانة وهدوء 'كل دور وله لابد من فائز'" }
 ];
 
 function getBranchForImage(imageName: string, category: string): string {
