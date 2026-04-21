@@ -1423,6 +1423,19 @@ const app = express();
       groupId TEXT
     )
   `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS collection_notifications (
+      id TEXT PRIMARY KEY,
+      sender_serial TEXT,
+      receiver_serial TEXT,
+      image_name TEXT,
+      category_id TEXT,
+      type TEXT, 
+      status TEXT, 
+      timestamp INTEGER
+    )
+  `);
   try {
     db.exec("ALTER TABLE scheduled_push_notifications ADD COLUMN groupId TEXT");
   } catch (e) {
@@ -6039,6 +6052,107 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("get_collection_notifications", ({ serial }, callback) => {
+      if (!serial) return callback({ notifications: [] });
+      try {
+        const notifications = db.prepare('SELECT cn.*, p.name as sender_name, p.avatar as sender_avatar, p.level as sender_level FROM collection_notifications cn LEFT JOIN players p ON cn.sender_serial = p.serial WHERE cn.receiver_serial = ? AND cn.status = ?').all(serial, 'pending');
+        callback({ notifications });
+      } catch (e) {
+        callback({ notifications: [] });
+      }
+    });
+
+    socket.on("send_collection_request", ({ serial, targetSerials, imageName, categoryId }, callback) => {
+      if (!serial || !targetSerials || !Array.isArray(targetSerials)) return callback({ error: "Invalid data" });
+      try {
+        for (const target of targetSerials) {
+          if (target === serial) continue;
+          
+          // Check if there is an existing pending request to avoid spamming
+          const existing = db.prepare('SELECT 1 FROM collection_notifications WHERE sender_serial = ? AND receiver_serial = ? AND image_name = ? AND type = ? AND status = ?').get(serial, target, imageName, 'request', 'pending');
+          if (existing) continue;
+
+          const id = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+          db.prepare(`
+            INSERT INTO collection_notifications (id, sender_serial, receiver_serial, image_name, category_id, type, status, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(id, serial, target, imageName, categoryId, 'request', 'pending', Date.now());
+          
+          const targetSocketId = playerSockets.get(target);
+          if (targetSocketId) {
+            io.to(targetSocketId).emit("new_collection_notification");
+          }
+        }
+        callback({ success: true });
+      } catch (e) {
+        callback({ error: "Failed to send request" });
+      }
+    });
+
+    socket.on("respond_collection_request", ({ serial, notificationId, action }, callback) => {
+      if (!serial || !notificationId || !action) return callback({ error: "Invalid data" });
+      try {
+        const notification = db.prepare('SELECT * FROM collection_notifications WHERE id = ? AND receiver_serial = ?').get(notificationId, serial) as any;
+        if (!notification) return callback({ error: "Not found" });
+        
+        if (action === 'delete') {
+          db.prepare("UPDATE collection_notifications SET status = 'deleted' WHERE id = ?").run(notificationId);
+          return callback({ success: true });
+        }
+        
+        if (action === 'send') {
+          const normalizedName = normalizeEgyptian(notification.image_name).toLowerCase();
+          // Check if user has > 5 copy
+          const collection = db.prepare(`SELECT count FROM player_collections WHERE player_serial = ? AND image_name = ?`).get(serial, normalizedName) as any;
+          if (!collection || collection.count <= 5) {
+            return callback({ error: "ليس لديك صور إضافية من هذه الصورة." });
+          }
+          
+          const decrease = db.prepare(`UPDATE player_collections SET count = count - 1 WHERE player_serial = ? AND image_name = ?`).run(serial, normalizedName);
+          
+          if (decrease.changes > 0) {
+            db.prepare("UPDATE collection_notifications SET status = 'completed' WHERE id = ?").run(notificationId);
+            
+            const newId = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+            db.prepare(`
+              INSERT INTO collection_notifications (id, sender_serial, receiver_serial, image_name, category_id, type, status, timestamp)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(newId, serial, notification.sender_serial, notification.image_name, notification.category_id, 'sent', 'pending', Date.now());
+            
+            const targetSocketId = playerSockets.get(notification.sender_serial);
+            if (targetSocketId) {
+              io.to(targetSocketId).emit("new_collection_notification");
+            }
+            return callback({ success: true });
+          }
+        }
+      } catch (e) {
+        callback({ error: "Failed to respond" });
+      }
+    });
+
+    socket.on("receive_collection_image", ({ serial, notificationId }, callback) => {
+      if (!serial || !notificationId) return callback({ error: "Invalid data" });
+      try {
+        const notification = db.prepare('SELECT * FROM collection_notifications WHERE id = ? AND receiver_serial = ? AND type = ? AND status = ?').get(notificationId, serial, 'sent', 'pending') as any;
+        if (!notification) return callback({ error: "Not found or already received" });
+        
+        const normalizedName = normalizeEgyptian(notification.image_name).toLowerCase();
+        
+        db.prepare(`
+          INSERT INTO player_collections (player_serial, image_name, count) 
+          VALUES (?, ?, 1) 
+          ON CONFLICT(player_serial, image_name) DO UPDATE SET count = MIN(count + 1, 15)
+        `).run(serial, normalizedName);
+        
+        db.prepare("UPDATE collection_notifications SET status = 'completed' WHERE id = ?").run(notificationId);
+        
+        callback({ success: true });
+      } catch (e) {
+        callback({ error: "Failed to receive" });
+      }
+    });
+
     socket.on("claim_collection_reward", ({ serial, categoryId, stage }, callback) => {
       const player = allPlayers.get(serial);
       if (!player) return;
@@ -6822,7 +6936,7 @@ io.on("connection", (socket) => {
       db.prepare(`
         INSERT INTO player_collections (player_serial, image_name, count)
         VALUES (?, ?, 1)
-        ON CONFLICT(player_serial, image_name) DO UPDATE SET count = count + 1
+        ON CONFLICT(player_serial, image_name) DO UPDATE SET count = MIN(count + 1, 15)
       `).run(playerSerial, normalizedName);
 
       // 2. Check for rewards
