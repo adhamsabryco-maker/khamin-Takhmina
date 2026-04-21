@@ -735,24 +735,15 @@ export default function App() {
   const playerNameRef = useRef(playerName);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
 
-  useEffect(() => {
-    fetch('/api/check-level-50-reward')
-      .then(res => res.json())
-      .then(data => setIsRewardClaimed(data.claimed))
-      .catch(err => console.error('Failed to check reward status', err));
-
-    if (socket) {
-      socket.on('reward_claimed', () => setIsRewardClaimed(true));
-      socket.on('collection_reward_claimed', (data: any) => {
-        showAlert(`مبروك! أكملت المرحلة ${data.stage} من فئة ${data.categoryName} وحصلت على ${data.xp} XP! 🏆`, 'مكافأة المجموعة');
-        setXp(prev => prev + data.xp);
-        if (playerSerial) fetchCollection(playerSerial);
-      });
-      return () => {
-        socket.off('reward_claimed');
-      };
-    }
-  }, [socket]);
+  const [xp, setXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0'));
+  const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0'));
+  const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0'));
+  const [tokens, setTokens] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
+  const [keys, setKeys] = useState(() => parseInt(localStorage.getItem('khamin_keys') || '0'));
+  const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
+  const [isRewardClaimed, setIsRewardClaimed] = useState(false);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [showKeyDrop, setShowKeyDrop] = useState(false);
 
   const [playerAge, setPlayerAge] = useState(() => {
     const storedAge = localStorage.getItem('khamin_player_age');
@@ -767,10 +758,6 @@ export default function App() {
     }
     return id;
   });
-  const [isRewardClaimed, setIsRewardClaimed] = useState(false);
-  const [showRewardModal, setShowRewardModal] = useState(false);
-  const [showKeyDrop, setShowKeyDrop] = useState(false);
-
   const [fingerprint, setFingerprint] = useState<string | null>(null);
   useEffect(() => {
     const setFp = async () => {
@@ -782,13 +769,6 @@ export default function App() {
     setFp();
   }, []);
 
-  const [xp, setXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0'));
-
-  const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0'));
-  const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0'));
-  const [tokens, setTokens] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
-  const [keys, setKeys] = useState(() => parseInt(localStorage.getItem('khamin_keys') || '0'));
-  const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [loginSerial, setLoginSerial] = useState('');
@@ -2037,6 +2017,9 @@ export default function App() {
   const [friendsPage, setFriendsPage] = useState(1);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
+  const [collectionNotifications, setCollectionNotifications] = useState<any[]>([]);
+  const [showAskFriendModal, setShowAskFriendModal] = useState<{imageName: string, categoryId: string} | null>(null);
+  const [selectedFriendsForRequest, setSelectedFriendsForRequest] = useState<string[]>([]);
   const [showFriendRequestsModal, setShowFriendRequestsModal] = useState(false);
   const [opponentFriendStatus, setOpponentFriendStatus] = useState<'none'|'pending_sent'|'pending_received'|'friends'>('none');
   const currentOpponentSerialRef = useRef<string | null>(null);
@@ -3080,6 +3063,36 @@ export default function App() {
     });
   };
 
+  const handleRespondCollectionRequest = (notificationId: string, action: 'send' | 'delete') => {
+    if (!socket || !playerSerial) return;
+    socket.emit('respond_collection_request', { serial: playerSerial, notificationId, action }, (res: any) => {
+      if (res.success) {
+        setCollectionNotifications(prev => prev.filter(n => n.id !== notificationId));
+        if (action === 'send') {
+           showAlert('تم إرسال الصورة بنجاح!', 'نجاح');
+           socket.emit("get_player_data", { serial: playerSerial, fingerprint: localStorage.getItem('khamin_fingerprint') }); // to refresh collection
+           fetchCollection(playerSerial);
+        }
+      } else {
+        showAlert(res.error || 'حدث خطأ', 'خطأ');
+      }
+    });
+  };
+
+  const handleReceiveCollectionImage = (notificationId: string) => {
+    if (!socket || !playerSerial) return;
+    socket.emit('receive_collection_image', { serial: playerSerial, notificationId }, (res: any) => {
+      if (res.success) {
+        setCollectionNotifications(prev => prev.filter(n => n.id !== notificationId));
+        showAlert('تم استلام الصورة بنجاح!', 'نجاح');
+        socket.emit("get_player_data", { serial: playerSerial, fingerprint: localStorage.getItem('khamin_fingerprint') }); // to refresh collection
+        fetchCollection(playerSerial);
+      } else {
+        showAlert(res.error || 'حدث خطأ', 'خطأ');
+      }
+    });
+  };
+
   const handleAcceptFriendRequest = (requestId: string) => {
     if (!socket || !playerSerial) return;
     const request = friendRequests.find(r => r.id === requestId);
@@ -3100,6 +3113,8 @@ export default function App() {
             setFriendsTotal(friendsRes.total);
           }
         });
+        const fingerprint = localStorage.getItem('khamin_fingerprint');
+        socket.emit("get_player_data", { serial: playerSerial, fingerprint });
       }
     });
   };
@@ -3437,6 +3452,30 @@ export default function App() {
   }, [playerSerial, fetchCollection]);
 
   useEffect(() => {
+    fetch('/api/check-level-50-reward')
+      .then(res => res.json())
+      .then(data => setIsRewardClaimed(data.claimed))
+      .catch(err => console.error('Failed to check reward status', err));
+
+    if (socket && playerSerial) {
+      socket.on('reward_claimed', () => setIsRewardClaimed(true));
+      socket.on('collection_reward_claimed', (data: any) => {
+        showAlert(`مبروك! أكملت المرحلة ${data.stage} من فئة ${data.categoryName} وحصلت على ${data.xp} XP! 🏆`, 'مكافأة المجموعة');
+        setXp(prev => prev + data.xp);
+        fetchCollection(playerSerial);
+        const fingerprint = localStorage.getItem('khamin_fingerprint');
+        if (fingerprint) {
+          socket.emit("get_player_data", { serial: playerSerial, fingerprint });
+        }
+      });
+      return () => {
+        socket.off('reward_claimed');
+        socket.off('collection_reward_claimed');
+      };
+    }
+  }, [socket, playerSerial, fetchCollection]);
+
+  useEffect(() => {
     if (showAdminDashboard && socket) {
       socket.emit('admin_get_players', (players: any) => {
         if (Array.isArray(players)) setAdminPlayers(players);
@@ -3657,6 +3696,8 @@ export default function App() {
               setTokensEarnedThisWeek(data.weeklyTokensClaimed);
               localStorage.setItem('khamin_tokens_earned_this_week', data.weeklyTokensClaimed.toString());
             }
+            
+            fetchCollection(serial);
 
             if (data.isPermanentBan) {
               setIsPermanentBan(true);
@@ -3735,6 +3776,10 @@ export default function App() {
         
         newSocket.emit('get_friend_requests', { serial }, (res: any) => {
           if (res.success) setFriendRequests(res.requests);
+        });
+
+        newSocket.emit('get_collection_notifications', { serial }, (res: any) => {
+          if (res.notifications) setCollectionNotifications(res.notifications);
         });
       }
     });
@@ -3871,6 +3916,14 @@ export default function App() {
       if (updatedRoom.gameState !== roomRef.current?.gameState) {
         setChatHistory([]);
         setChatInput('');
+        
+        if (updatedRoom.gameState === 'finished' || updatedRoom.gameState === 'waiting') {
+           const currentSerial = localStorage.getItem('khamin_player_serial');
+           const currentFingerprint = localStorage.getItem('khamin_fingerprint');
+           if (currentSerial && currentFingerprint) {
+             newSocket.emit("get_player_data", { serial: currentSerial, fingerprint: currentFingerprint });
+           }
+        }
       }
       
       if (updatedRoom.adCooldownTimer !== undefined) {
@@ -4409,6 +4462,17 @@ export default function App() {
     });
 
     // Friend System Event Listeners
+    newSocket.on("new_collection_notification", () => {
+      playSound('message');
+      const currentSerial = localStorage.getItem('khamin_player_serial');
+      if (currentSerial) {
+        newSocket.emit('get_collection_notifications', { serial: currentSerial }, (res: any) => {
+          if (res.notifications) setCollectionNotifications(res.notifications);
+        });
+        fetchCollection(currentSerial);
+      }
+    });
+
     newSocket.on("friend_request_received", ({ senderSerial }: { senderSerial?: string } = {}) => {
       playSound('message');
       const currentSerial = localStorage.getItem('khamin_player_serial');
@@ -4434,6 +4498,8 @@ export default function App() {
             setFriendsTotal(res.total);
           }
         });
+        const fingerprint = localStorage.getItem('khamin_fingerprint');
+        newSocket.emit("get_player_data", { serial: currentSerial, fingerprint });
       }
       // Update in-game button status to 'friends' if the person who accepted is our current opponent
       if (targetSerial && targetSerial === currentOpponentSerialRef.current) {
@@ -4852,6 +4918,8 @@ export default function App() {
         localStorage.setItem('khamin_xp', (player.xp || 0).toString());
         localStorage.setItem('khamin_tokens', (player.tokens || 0).toString());
         localStorage.setItem('khamin_streak', (player.streak || 0).toString());
+        
+        fetchCollection(player.serial);
         
         socket?.emit('set_player_serial_for_socket', player.serial);
         socket?.emit("get_city_search", { serial: player.serial });
@@ -6358,52 +6426,129 @@ export default function App() {
               <h2 className="text-xl font-black text-main flex items-center gap-2">
                 <Bell className="w-5 h-5 text-yellow-500" />
                 الإشعارات
-                {friendRequests.length > 0 && <span className="text-sm bg-red-500 text-white px-2 py-0.5 rounded-full">{friendRequests.length}</span>}
+                {(friendRequests.length + collectionNotifications.length) > 0 && <span className="text-sm bg-red-500 text-white px-2 py-0.5 rounded-full">{friendRequests.length + collectionNotifications.length}</span>}
               </h2>
               <button onClick={() => setShowFriendRequestsModal(false)} className="text-brown-light hover:text-red-500 transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
-              {friendRequests.length === 0 ? (
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar" dir="rtl">
+              {friendRequests.length === 0 && collectionNotifications.length === 0 ? (
                 <div className="text-center py-8 text-brown-muted font-bold">لا توجد إشعارات حالياً.</div>
               ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <UserPlus className="w-4 h-4 text-main" />
-                    <h3 className="font-black text-sm text-main">طلبات الصداقة</h3>
-                  </div>
-                  
-                  {friendRequests.map(req => (
-                    <div key={req.id} className="bg-orange-50 border-2 border-orange-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10">
-                          {renderAvatarContent(req.avatar, req.level || 1, false, false)}
-                        </div>
-                        <div>
-                          <div className="font-black text-sm text-main">{req.name}</div>
-                          <div className="text-[10px] text-gray-500">مستوى {req.level || 1}</div>
-                        </div>
+                <div className="space-y-4">
+                  {/* Friend Requests Section */}
+                  {friendRequests.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <UserPlus className="w-4 h-4 text-main" />
+                        <h3 className="font-black text-sm text-main">طلبات الصداقة</h3>
                       </div>
-                      <div className="flex gap-2">
-                         <button 
-                           onClick={() => handleAcceptFriendRequest(req.id)} 
-                           className="bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm active:scale-95"
-                           title="قبول"
-                         >
-                           <Check className="w-4 h-4" />
-                         </button>
-                         <button 
-                           onClick={() => handleRejectFriendRequest(req.id)} 
-                           className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm active:scale-95"
-                           title="رفض"
-                         >
-                           <X className="w-4 h-4" />
-                         </button>
-                      </div>
+                      
+                      {friendRequests.map(req => (
+                        <div key={req.id} className="bg-orange-50 border-2 border-orange-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10">
+                              {renderAvatarContent(req.avatar, req.level || 1, false, false)}
+                            </div>
+                            <div>
+                              <div className="font-black text-sm text-main">{req.name}</div>
+                              <div className="text-[10px] text-gray-500">مستوى {req.level || 1}</div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => handleAcceptFriendRequest(req.id)} 
+                              className="bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm active:scale-95"
+                              title="قبول"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleRejectFriendRequest(req.id)} 
+                              className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm active:scale-95"
+                              title="رفض"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+
+                  {/* Collection Notifications Section */}
+                  {collectionNotifications.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Gift className="w-4 h-4 text-main" />
+                        <h3 className="font-black text-sm text-main">مكافآت تجميع صور التخمين</h3>
+                      </div>
+
+                      {collectionNotifications.map(notification => {
+                        const found = adminImages.find(img => img.category === notification.category_id && img.name.trim() === notification.image_name.trim());
+                        const imageSrc = found?.data ? (found.data.startsWith('data:') ? found.data : `data:image/png;base64,${found.data}`) : `https://picsum.photos/seed/${notification.image_name}/200/200`;
+                        const normName = normalizeEgyptian(notification.image_name).toLowerCase();
+                        const myCount = playerCollection.find(c => c.image_name === normName)?.count || 0;
+
+                        return (
+                          <div key={notification.id} className="bg-blue-50 border-2 border-blue-100 p-3 rounded-xl flex flex-col gap-2 shadow-sm">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 shrink-0">
+                                {renderAvatarContent(notification.sender_avatar, notification.sender_level || 1, false, false)}
+                              </div>
+                              <div className="flex-1">
+                                {notification.type === 'request' ? (
+                                  <div className="text-sm font-bold text-main leading-tight">
+                                    <span className="text-blue-700">{notification.sender_name}</span> يسألك إذا كان لديك صورة <span className="text-accent-orange font-black">"{notification.image_name}"</span> إضافية.
+                                  </div>
+                                ) : (
+                                  <div className="text-sm font-bold text-main leading-tight">
+                                    <span className="text-green-700">{notification.sender_name}</span> أرسل لك صورة <span className="text-accent-orange font-black">"{notification.image_name}"</span>.
+                                  </div>
+                                )}
+                              </div>
+                              <div className="w-12 h-12 bg-white rounded-lg border-2 border-black overflow-hidden shrink-0 shadow-sm relative">
+                                <img src={imageSrc} alt={notification.image_name} className="w-full h-full object-cover" />
+                                {notification.type === 'request' && (
+                                  <div className="absolute bottom-0 right-0 bg-black/70 text-white text-[8px] px-1 rounded-tl-md font-black">
+                                    {myCount <= 5 ? `${myCount}/5` : `5/5+${myCount - 5}`}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="flex gap-2 justify-end mt-1">
+                              {notification.type === 'request' ? (
+                                <>
+                                  <button 
+                                    onClick={() => handleRespondCollectionRequest(notification.id, 'send')} 
+                                    className="bg-accent-blue text-white font-bold text-xs px-4 py-1.5 rounded-lg transition-colors hover:bg-blue-600 active:scale-95"
+                                  >
+                                    إرسال الصورة
+                                  </button>
+                                  <button 
+                                    onClick={() => handleRespondCollectionRequest(notification.id, 'delete')} 
+                                    className="bg-gray-200 text-gray-700 font-bold text-xs px-3 py-1.5 rounded-lg transition-colors hover:bg-gray-300 active:scale-95"
+                                  >
+                                    حذف
+                                  </button>
+                                </>
+                              ) : (
+                                <button 
+                                  onClick={() => handleReceiveCollectionImage(notification.id)} 
+                                  className="bg-green-500 text-white font-bold text-xs px-4 py-1.5 rounded-lg transition-colors hover:bg-green-600 active:scale-95"
+                                >
+                                  استلم الصورة
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -6417,6 +6562,7 @@ export default function App() {
     <>
       {renderFriendsModal()}
       {renderFriendRequestsModal()}
+      {renderAskFriendModal()}
       {/* Level Up Overlay */}
       <AnimatePresence>
         {showLevelUp !== null && (
@@ -7275,7 +7421,7 @@ export default function App() {
                 {!citySearchState?.active && (
                   <div className="text-center mb-2 px-2">
                     <p className="text-sm font-bold text-gray-600 bg-blue-50 p-3 rounded-xl border border-blue-100">
-                     ابحث في المدينة وجمع هدايا XP، Tokens، باقة المحترفين، ووسائل مساعدة!
+                     ابحث في المدينة وجمع هدايا XP، Tokens، باقة المحترفين، ووسائل مساعدة، ومفاتيح التخمين!
                     </p>
                   </div>
                 )}
@@ -10823,6 +10969,106 @@ export default function App() {
     </>
   );
 
+  const handleSendCollectionAskRequest = () => {
+    if (!socket || !playerSerial || !showAskFriendModal || selectedFriendsForRequest.length === 0) return;
+    
+    socket.emit('send_collection_request', {
+      serial: playerSerial,
+      targetSerials: selectedFriendsForRequest,
+      imageName: showAskFriendModal.imageName,
+      categoryId: showAskFriendModal.categoryId
+    }, (res: any) => {
+      if (res.success) {
+        showAlert('تم إرسال الطلبات بنجاح!', 'نجاح');
+        setShowAskFriendModal(null);
+        setSelectedFriendsForRequest([]);
+      } else {
+        showAlert(res.error || 'حدث خطأ', 'خطأ');
+      }
+    });
+  };
+
+  const renderAskFriendModal = () => {
+    if (!showAskFriendModal) return null;
+
+    return (
+      <AnimatePresence>
+        <div 
+          className="fixed inset-0 z-[11000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowAskFriendModal(null)}
+        >
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white border-8 border-black rounded-[2rem] w-full max-w-sm max-h-[80vh] overflow-hidden flex flex-col shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
+          >
+            <div className="p-4 border-b-4 border-black flex justify-between items-center bg-blue-50">
+              <button 
+                onClick={() => setShowAskFriendModal(null)} 
+                className="w-8 h-8 bg-white border-2 border-black rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors active:scale-95"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h2 className="text-xl font-bold text-main">اسأل صديق</h2>
+            </div>
+            
+            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-gray-50/50" dir="rtl">
+              <p className="text-sm font-bold text-gray-600 mb-4 text-center">
+                اطلب من أصدقائك إرسال صورة <span className="text-accent-orange">"{showAskFriendModal.imageName}"</span> إذا كان لديهم نسخ إضافية.
+              </p>
+              
+              {friendsList.length === 0 ? (
+                <div className="text-center py-6 text-gray-500 font-bold">لا يوجد لديك أصدقاء مضافين.</div>
+              ) : (
+                <div className="space-y-2">
+                  {friendsList.map(friend => {
+                    const isSelected = selectedFriendsForRequest.includes(friend.serial);
+                    return (
+                      <div 
+                        key={friend.serial} 
+                        onClick={() => {
+                          setSelectedFriendsForRequest(prev => 
+                            isSelected ? prev.filter(s => s !== friend.serial) : [...prev, friend.serial]
+                          );
+                        }}
+                        className={`flex items-center justify-between p-2 rounded-xl border-2 transition-colors cursor-pointer ${isSelected ? 'border-accent-blue bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10">
+                            {renderAvatarContent(friend.avatar, friend.level || 1, false, false)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-sm text-main">{friend.name}</div>
+                            <div className="text-[10px] text-gray-500">مستوى {friend.level || 1}</div>
+                          </div>
+                        </div>
+                        <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center ${isSelected ? 'bg-accent-blue border-accent-blue text-white' : 'border-gray-300'}`}>
+                          {isSelected && <Check className="w-4 h-4" />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t-4 border-black bg-white">
+              <button 
+                onClick={handleSendCollectionAskRequest}
+                disabled={selectedFriendsForRequest.length === 0}
+                className={`w-full py-3 rounded-xl font-black text-lg transition-all ${selectedFriendsForRequest.length > 0 ? 'bg-accent-blue text-white hover:bg-blue-600 active:scale-95 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+              >
+                إرسال الطلب {selectedFriendsForRequest.length > 0 ? `(${selectedFriendsForRequest.length})` : ''}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    );
+  };
+
   const renderCollectionModal = () => {
     if (!showCollectionModal) return null;
     const category = COLLECTION_DATA.find(c => c.id === showCollectionModal);
@@ -10912,10 +11158,22 @@ export default function App() {
                               )}
                               {count > 0 && (
                                 <div className={`absolute bottom-1 right-1 border-2 border-black rounded-lg px-1 text-[10px] font-black ${isUnlocked ? 'bg-green-400' : 'bg-accent-yellow'}`}>
-                                  {count}/5
+                                  {count <= 5 ? `${count}/5` : `5/5+${count - 5}`}
                                 </div>
                               )}
                             </div>
+                            {count > 0 && count < 5 && (
+                              <button 
+                                onClick={() => {
+                                  setShowAskFriendModal({ imageName: imgName, categoryId: category.id });
+                                  setSelectedFriendsForRequest([]);
+                                }} 
+                                className="mt-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md w-full flex items-center justify-center gap-1 transition-colors relative"
+                              >
+                                <Users className="w-3 h-3" />
+                                اسأل صديق
+                              </button>
+                            )}
                           </div>
                         );
                       })}
@@ -12183,10 +12441,10 @@ export default function App() {
               title="الإشعارات"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
-              {friendRequests.length > 0 && (
+              {(friendRequests.length + collectionNotifications.length) > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length}</span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length + collectionNotifications.length}</span>
                 </span>
               )}
             </button>
@@ -12295,21 +12553,19 @@ export default function App() {
                         </span>
                       </div>
                     </div>
-                    
-                    {/* Friends Button */}
-                    <div className="w-full border-t border-black/20 my-2"></div>
-                    <button 
-                      onClick={() => setShowFriendsModal(true)}
-                      className="w-full px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black rounded-lg text-sm transition-colors border border-blue-200 flex items-center justify-center gap-2"
-                    >
-                      <Users className="w-4 h-4" />
-                      الأصدقاء ({friendsTotal})
-                    </button>
-                    
                   </div>
                 </div>
               )}
             </AnimatedXp>
+            {/* Friends Button */}
+            <div className="w-full border-t border-black/20 my-2"></div>
+              <button 
+                onClick={() => setShowFriendsModal(true)}
+                className="w-full px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black rounded-lg text-sm transition-colors border border-blue-200 flex items-center justify-center gap-2"
+              >
+                <Users className="w-4 h-4" />
+                 الأصدقاء ({friendsTotal})
+              </button>
           </div>
             
           {/* Collection Icons - Moved outside player card */}
