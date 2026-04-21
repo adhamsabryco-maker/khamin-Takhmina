@@ -184,6 +184,7 @@ const SOUNDS = {
   luckyReels: '/sounds/lucky-reels-sound-effect.mp3',
   spinStart: '/sounds/lucky-reels-sound-effect.mp3',
   spinStop: '/sounds/bell.mp3',
+  notification: '/sounds/notification.mp3',
   lobbyBackground: '/sounds/lobby-background-music.mp3',
   gameBackground: '/sounds/start-game-background-music.mp3',
 };
@@ -6059,7 +6060,7 @@ export default function App() {
                           className="text-8xl cursor-pointer"
                           onClick={startCycling}
                         >
-                          📦
+                          🎁
                         </motion.div>
                       ) : (
                         <div className="w-40 h-40 bg-white rounded-[32px] border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center mx-auto mb-4">
@@ -11886,7 +11887,7 @@ export default function App() {
               {/* Info Button */}
               <button 
                 onClick={toggleLevelInfo}
-                className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                className="w-9 h-9 md:w-10 md:h-10 bg-red-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-red-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                 title="معلومات المستوى"
               >
                 <Info className="w-4 h-4 md:w-5 md:h-5" />
