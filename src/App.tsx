@@ -21,6 +21,7 @@ import {
   Gamepad2,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   HelpCircle,
   Snowflake,
   MessageSquare,
@@ -1420,6 +1421,9 @@ export default function App() {
   const [newCategory, setNewCategory] = useState({ id: '', name: '', icon: '' });
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [adminImageSearchQuery, setAdminImageSearchQuery] = useState('');
+  const [expandedAdminCategories, setExpandedAdminCategories] = useState<Record<string, boolean>>({});
+  const [visibleImagesCount, setVisibleImagesCount] = useState<Record<string, number>>({});
+  const [expandedUploadLevel, setExpandedUploadLevel] = useState<string>('مستوي مبتدئين التخمين');
   const [isUploading, setIsUploading] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -1792,7 +1796,25 @@ export default function App() {
     }
   }, [room?.gameState]);
 
+  // Scroll to top when entering waiting state
+  useEffect(() => {
+    if (room?.gameState === 'waiting') {
+      const scrollToTop = () => {
+        window.scrollTo({ top: 0 });
+        if (mainScrollRef.current) {
+          mainScrollRef.current.scrollTo({ top: 0 });
+        }
+      };
+
+      scrollToTop();
+      // Also try after a short delay in case content is still rendering
+      const timer = setTimeout(scrollToTop, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [room?.gameState]);
+
   const roomRef = useRef<Room | null>(null);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
   const isIntentionalLeaveRef = useRef(false);
   useEffect(() => { roomRef.current = room; }, [room]);
 
@@ -3592,12 +3614,15 @@ export default function App() {
     if (!newImage.name || !newImage.data) return;
     setIsUploading(true);
     try {
+      const targetLevel = expandedUploadLevel || 'مستوي مبتدئين التخمين';
       const response = await fetch('/api/admin/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newImage, addedBy: adminEmail })
+        body: JSON.stringify({ ...newImage, addedBy: adminEmail, level: targetLevel })
       });
       if (response.ok) {
+        // Auto-expand the category that was just uploaded to
+        setExpandedAdminCategories(prev => ({ ...prev, [newImage.category]: true }));
         setNewImage({ ...newImage, name: '', data: '' });
         fetchAdminImages();
         showAlert('تم رفع الصورة بنجاح', 'نجاح');
@@ -10680,225 +10705,288 @@ export default function App() {
                     /* Images Management Tab */
                     <div className="flex-1 overflow-y-auto p-6">
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Upload Form */}
-                        <div className="lg:col-span-1 space-y-6">
-                          <div className="box-game p-6 shadow-sm">
-                            <h3 className="text-lg font-black text-brown-dark mb-4 flex items-center gap-2">
-                              <Upload className="w-5 h-5 text-purple-600" />
-                              رفع صورة جديدة
-                            </h3>
-                            
-                            <div className="space-y-4">
-                              <div>
-                                <label className="block text-sm font-bold text-brown-dark mb-1">الفئة</label>
-                                <select 
-                                  value={newImage.category}
-                                  onChange={(e) => setNewImage({...newImage, category: e.target.value})}
-                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
-                                >
-                                  {categories.map(cat => (
-                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                  ))}
-                                </select>
-                              </div>
+                        <div className="lg:col-span-1 space-y-4">
+                          {['مستوي مبتدئين التخمين', 'مستوي ابطال التخمين', 'مستوي محترفين التخمين'].map(levelName => (
+                            <div key={levelName} className="box-game p-4 shadow-sm flex flex-col transition-all">
+                              <button 
+                                onClick={() => setExpandedUploadLevel(expandedUploadLevel === levelName ? '' : levelName)}
+                                className="flex items-center justify-between w-full font-black text-brown-dark text-lg"
+                              >
+                                <span>{levelName}</span>
+                                <ChevronDown className={`w-5 h-5 transition-transform ${expandedUploadLevel === levelName ? 'rotate-180' : ''}`} />
+                              </button>
 
-                              <div>
-                                <label className="block text-sm font-bold text-brown-dark mb-1">اسم الصورة (بالعربي)</label>
-                                <input 
-                                  type="text" 
-                                  value={newImage.name}
-                                  onChange={(e) => setNewImage({...newImage, name: e.target.value})}
-                                  placeholder="مثال: أسد"
-                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
-                                />
-                              </div>
+                              {expandedUploadLevel === levelName && (
+                                <div className="space-y-8 pt-4 mt-4 border-t-2 border-gray-100">
+                                  {/* Upload Form */}
+                                  <div>
+                                    <h3 className="text-lg font-black text-brown-dark mb-4 flex items-center gap-2">
+                                      <Upload className="w-5 h-5 text-purple-600" />
+                                      رفع صورة جديدة
+                                    </h3>
+                                    
+                                    <div className="space-y-4">
+                                      <div>
+                                        <label className="block text-sm font-bold text-brown-dark mb-1">الفئة</label>
+                                        <select 
+                                          value={newImage.category}
+                                          onChange={(e) => setNewImage({...newImage, category: e.target.value})}
+                                          className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
+                                        >
+                                          {categories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                          ))}
+                                        </select>
+                                      </div>
 
-                              <div>
-                                <label className="block text-sm font-bold text-brown-dark mb-1">الصورة</label>
-                                <div className="relative group cursor-pointer">
-                                  <input 
-                                    type="file" 
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        const reader = new FileReader();
-                                        reader.onloadend = () => {
-                                          setNewImage({...newImage, data: reader.result as string});
-                                        };
-                                        reader.readAsDataURL(file);
-                                      }
-                                    }}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                  />
-                                  <div className={`w-full h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-all ${newImage.data ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-gray-50 group-hover:border-purple-300'}`}>
-                                    {newImage.data ? (
-                                      <img src={newImage.data} alt="Preview" className="h-full w-full object-contain p-2" />
-                                    ) : (
-                                      <>
-                                        <ImageIcon className="w-8 h-8 text-brown-light" />
-                                        <span className="text-xs font-bold text-brown-light">اضغط لاختيار صورة</span>
-                                      </>
-                                    )}
+                                      <div>
+                                        <label className="block text-sm font-bold text-brown-dark mb-1">اسم الصورة (بالعربي)</label>
+                                        <input 
+                                          type="text" 
+                                          value={newImage.name}
+                                          onChange={(e) => setNewImage({...newImage, name: e.target.value})}
+                                          placeholder="مثال: أسد"
+                                          className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <label className="block text-sm font-bold text-brown-dark mb-1">الصورة</label>
+                                        <div className="relative group cursor-pointer">
+                                          <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0];
+                                              if (file) {
+                                                const reader = new FileReader();
+                                                reader.onloadend = () => {
+                                                  setNewImage({...newImage, data: reader.result as string});
+                                                };
+                                                reader.readAsDataURL(file);
+                                              }
+                                            }}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                          />
+                                          <div className={`w-full h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-all ${newImage.data ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-gray-50 group-hover:border-purple-300'}`}>
+                                            {newImage.data ? (
+                                              <img src={newImage.data} alt="Preview" className="h-full w-full object-contain p-2" />
+                                            ) : (
+                                              <>
+                                                <ImageIcon className="w-8 h-8 text-brown-light" />
+                                                <span className="text-xs font-bold text-brown-light">اضغط لاختيار صورة</span>
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <button 
+                                        onClick={handleImageUpload}
+                                        disabled={isUploading || !newImage.name || !newImage.data}
+                                        className="w-full py-3 bg-purple-600 text-white rounded-xl font-black hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                      >
+                                        {isUploading ? (
+                                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                          <>
+                                            <Upload className="w-5 h-5" />
+                                            رفع الصورة
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Category Management */}
+                                  <div className="pt-6 border-t-2 border-gray-100">
+                                    <h3 className="text-lg font-black text-brown-dark mb-4 flex items-center gap-2">
+                                      <Plus className="w-5 h-5 text-purple-600" />
+                                      إدارة الفئات
+                                    </h3>
+                                    
+                                    <div className="space-y-4">
+                                      <div>
+                                        <label className="block text-sm font-bold text-brown-dark mb-1">اسم الفئة</label>
+                                        <input 
+                                          type="text" 
+                                          value={newCategory.name}
+                                          onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                                          placeholder="مثال: سيارات"
+                                          className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-sm font-bold text-brown-dark mb-1">أيقونة الفئة (إيموجي)</label>
+                                        <input 
+                                          type="text" 
+                                          value={newCategory.icon}
+                                          onChange={(e) => setNewCategory({...newCategory, icon: e.target.value})}
+                                          placeholder="مثال: 🚗"
+                                          className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
+                                        />
+                                      </div>
+                                      <button 
+                                        onClick={handleAddCategory}
+                                        disabled={isAddingCategory || !newCategory.name || !newCategory.icon}
+                                        className="w-full py-3 bg-purple-600 text-white rounded-xl font-black hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                      >
+                                        {isAddingCategory ? (
+                                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                          <>
+                                            <Plus className="w-5 h-5" />
+                                            إضافة الفئة
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+
+                                    <div className="mt-6 space-y-2">
+                                      <label className="block text-sm font-bold text-brown-dark mb-2">الفئات الحالية</label>
+                                      <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                                        {categories.map(cat => (
+                                          <div key={cat.id} className="flex items-center justify-between p-2 box-game">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-xl">{cat.icon}</span>
+                                              <span className="font-bold text-sm text-brown-dark">{cat.name}</span>
+                                            </div>
+                                            <button 
+                                              onClick={() => handleDeleteCategory(cat.id)}
+                                              className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-
-                              <button 
-                                onClick={handleImageUpload}
-                                disabled={isUploading || !newImage.name || !newImage.data}
-                                className="w-full py-3 bg-purple-600 text-white rounded-xl font-black hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                              >
-                                {isUploading ? (
-                                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                  <>
-                                    <Upload className="w-5 h-5" />
-                                    رفع الصورة
-                                  </>
-                                )}
-                              </button>
+                              )}
                             </div>
-                          </div>
-
-                          {/* Category Management */}
-                          <div className="box-game p-6 shadow-sm">
-                            <h3 className="text-lg font-black text-brown-dark mb-4 flex items-center gap-2">
-                              <Plus className="w-5 h-5 text-purple-600" />
-                              إدارة الفئات
-                            </h3>
-                            
-                            <div className="space-y-4">
-                              <div>
-                                <label className="block text-sm font-bold text-brown-dark mb-1">اسم الفئة</label>
-                                <input 
-                                  type="text" 
-                                  value={newCategory.name}
-                                  onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
-                                  placeholder="مثال: سيارات"
-                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-bold text-brown-dark mb-1">أيقونة الفئة (إيموجي)</label>
-                                <input 
-                                  type="text" 
-                                  value={newCategory.icon}
-                                  onChange={(e) => setNewCategory({...newCategory, icon: e.target.value})}
-                                  placeholder="مثال: 🚗"
-                                  className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-brown-dark focus:border-purple-500 outline-none"
-                                />
-                              </div>
-                              <button 
-                                onClick={handleAddCategory}
-                                disabled={isAddingCategory || !newCategory.name || !newCategory.icon}
-                                className="w-full py-3 bg-purple-600 text-white rounded-xl font-black hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                              >
-                                {isAddingCategory ? (
-                                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                  <>
-                                    <Plus className="w-5 h-5" />
-                                    إضافة الفئة
-                                  </>
-                                )}
-                              </button>
-                            </div>
-
-                            <div className="mt-6 space-y-2">
-                              <label className="block text-sm font-bold text-brown-dark mb-2">الفئات الحالية</label>
-                              <div className="max-h-100 overflow-y-auto space-y-2 pr-2">
-                                {categories.map(cat => (
-                                  <div key={cat.id} className="flex items-center justify-between p-2 box-game">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xl">{cat.icon}</span>
-                                      <span className="font-bold text-sm text-brown-dark">{cat.name}</span>
-                                    </div>
-                                    <button 
-                                      onClick={() => handleDeleteCategory(cat.id)}
-                                      className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
+                          ))}
                         </div>
 
                         {/* Images List */}
                         <div className="lg:col-span-2 space-y-6">
                           <div className="bg-white p-6 rounded-3xl border-2 border-purple-100 shadow-sm min-h-[500px] flex flex-col">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                              <h3 className="text-lg font-black text-brown-dark flex items-center gap-2">
-                                <ImageIcon className="w-5 h-5 text-purple-600" />
-                                الصور المرفوعة ({adminImages.length})
-                              </h3>
-                              <div className="relative w-full md:w-64">
-                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-brown-light w-4 h-4" />
-                                <input 
-                                  type="text"
-                                  placeholder="ابحث عن صورة..."
-                                  value={adminImageSearchQuery}
-                                  onChange={(e) => setAdminImageSearchQuery(e.target.value)}
-                                  className="w-full pr-10 pl-4 py-2 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-purple-400 focus:bg-white transition-all font-bold text-sm"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto pr-2 space-y-8">
-                              {categories.map(category => {
-                                const categoryImages = adminImages.filter(img => 
-                                  img.category === category.id && 
-                                  img.name.toLowerCase().includes(adminImageSearchQuery.toLowerCase())
-                                );
-
-                                if (categoryImages.length === 0) return null;
-
-                                return (
-                                  <div key={category.id} className="space-y-4">
-                                    <h4 className="flex items-center gap-2 text-md font-bold text-brown-dark border-b-2 border-gray-100 pb-2">
-                                      <span className="text-2xl">{category.icon}</span>
-                                      {category.name}
-                                      <span className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full mr-auto">
-                                        {categoryImages.length} صور
-                                      </span>
-                                    </h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                      {categoryImages.map((img) => (
-                                        <div key={img.id} className="box-game overflow-hidden flex flex-col">
-                                          <img src={img.data || `/icon-3.png`} alt={img.name} className="w-full aspect-square object-cover" />
-                                          <div className="p-3 flex items-center justify-between gap-2 bg-white border-t border-game">
-                                            <span className="text-brown-dark font-bold text-sm truncate" title={img.name}>{img.name}</span>
-                                            <button 
-                                              onClick={() => handleDeleteImage(img.id)}
-                                              className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors flex-shrink-0"
-                                              title="حذف الصورة"
-                                            >
-                                              <Trash2 className="w-4 h-4" />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      ))}
+                            {(() => {
+                              const activeDisplayLevel = expandedUploadLevel || 'مستوي مبتدئين التخمين';
+                              const currentLevelImages = adminImages.filter(img => (img.level || 'مستوي مبتدئين التخمين') === activeDisplayLevel);
+                              return (
+                                <>
+                                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                    <h3 className="text-lg font-black text-brown-dark flex items-center gap-2">
+                                      <ImageIcon className="w-5 h-5 text-purple-600" />
+                                      الصور المرفوعة لـ ({activeDisplayLevel}) ({currentLevelImages.length})
+                                    </h3>
+                                    <div className="relative w-full md:w-64">
+                                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-brown-light w-4 h-4" />
+                                      <input 
+                                        type="text"
+                                        placeholder="ابحث عن صورة..."
+                                        value={adminImageSearchQuery}
+                                        onChange={(e) => setAdminImageSearchQuery(e.target.value)}
+                                        className="w-full pr-10 pl-4 py-2 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-purple-400 focus:bg-white transition-all font-bold text-sm"
+                                      />
                                     </div>
                                   </div>
-                                );
-                              })}
 
-                              {adminImages.length === 0 && (
-                                <div className="text-center py-12 text-brown-light font-bold">
-                                  لا توجد صور مرفوعة حالياً
-                                </div>
-                              )}
-                              {adminImages.length > 0 && categories.every(cat => 
-                                adminImages.filter(img => img.category === cat.id && img.name.toLowerCase().includes(adminImageSearchQuery.toLowerCase())).length === 0
-                              ) && (
-                                <div className="text-center py-12 text-brown-light font-bold">
-                                  لا توجد نتائج للبحث
-                                </div>
-                              )}
-                            </div>
+                                  <div 
+                                    className="flex-1 overflow-y-auto pr-2 space-y-8"
+                                    onScroll={(e) => {
+                                      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                                      if (scrollHeight - scrollTop - clientHeight < 100) {
+                                        setVisibleImagesCount(prev => {
+                                          let isUpdated = false;
+                                          const next = { ...prev };
+                                          Object.keys(expandedAdminCategories).forEach(catId => {
+                                            if (expandedAdminCategories[catId]) {
+                                              const currentCount = next[catId] || 20;
+                                              const categoryImages = currentLevelImages.filter(img => 
+                                                img.category === catId && 
+                                                img.name.toLowerCase().includes(adminImageSearchQuery.toLowerCase())
+                                              );
+                                              if (currentCount < categoryImages.length) {
+                                                next[catId] = currentCount + 20;
+                                                isUpdated = true;
+                                              }
+                                            }
+                                          });
+                                          return isUpdated ? next : prev;
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    {categories.map(category => {
+                                      const categoryImages = currentLevelImages.filter(img => 
+                                        img.category === category.id && 
+                                        img.name.toLowerCase().includes(adminImageSearchQuery.toLowerCase())
+                                      );
+
+                                      if (categoryImages.length === 0) return null;
+
+                                      const isExpanded = expandedAdminCategories[category.id] ?? false;
+                                      const visibleCount = visibleImagesCount[category.id] || 20;
+
+                                      return (
+                                        <div key={category.id} className="space-y-4">
+                                          <button 
+                                            onClick={() => setExpandedAdminCategories(prev => ({...prev, [category.id]: !prev[category.id]}))}
+                                            className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border-2 border-gray-100 hover:border-purple-300 transition-all shadow-sm"
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <span className="text-2xl">{category.icon}</span>
+                                              <span className="font-black text-brown-dark text-lg">{category.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                              <span className="text-sm font-bold bg-purple-100 text-purple-600 px-3 py-1 rounded-full">
+                                                {categoryImages.length} صور
+                                              </span>
+                                              <ChevronDown className={`w-5 h-5 text-brown-light transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                            </div>
+                                          </button>
+                                          
+                                          {isExpanded && (
+                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-2">
+                                              {categoryImages.slice(0, visibleCount).map((img) => (
+                                                <div key={img.id} className="box-game overflow-hidden flex flex-col">
+                                                  <img src={img.data || `/icon-3.png`} alt={img.name} className="w-full aspect-square object-cover" />
+                                                  <div className="p-3 flex items-center justify-between gap-2 bg-white border-t border-game">
+                                                    <span className="text-brown-dark font-bold text-sm truncate" title={img.name}>{img.name}</span>
+                                                    <button 
+                                                      onClick={() => handleDeleteImage(img.id)}
+                                                      className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors flex-shrink-0"
+                                                      title="حذف الصورة"
+                                                    >
+                                                      <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+
+                                    {currentLevelImages.length === 0 && (
+                                      <div className="text-center py-12 text-brown-light font-bold">
+                                        لا توجد صور مرفوعة في هذا المستوى حالياً
+                                      </div>
+                                    )}
+                                    {currentLevelImages.length > 0 && categories.every(cat => 
+                                      currentLevelImages.filter(img => img.category === cat.id && img.name.toLowerCase().includes(adminImageSearchQuery.toLowerCase())).length === 0
+                                    ) && (
+                                      <div className="text-center py-12 text-brown-light font-bold">
+                                        لا توجد نتائج للبحث
+                                      </div>
+                                    )}
+                                  </div>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -13300,7 +13388,7 @@ export default function App() {
     {renderRainGiftGame()}
     {renderRainGiftSummary()}
     {renderUpdateBanner()}
-    <div className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-16 md:pt-20">
+    <div ref={mainScrollRef} className="min-h-screen w-full font-sans flex flex-col relative overflow-y-auto pt-16 md:pt-20">
       {/* Install Modal */}
       {showInstallModal && deferredPrompt && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -13583,7 +13671,7 @@ export default function App() {
         </div>
 
         {/* Center Content: Image or Waiting UI */}
-        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0">
           {room.gameState === 'waiting' ? (
             <React.Fragment>
               <div className="w-full card-game p-3 md:p-6 text-center space-y-3 md:space-y-5 relative overflow-hidden">
@@ -13593,7 +13681,7 @@ export default function App() {
                   style={{ width: `${(room.timer / 60) * 100}%` }}
                 ></div>
               </div>
-              <div className="flex justify-between items-center bg-white/50 p-3 rounded-2xl border border-orange-100 shadow-sm">
+              <div className="flex justify-between items-center bg-white/50 p-3 py-0.5 mb-1 rounded-2xl border border-orange-100 shadow-sm">
                 <h2 className={`text-sm md:text-sm font-black text-accent-orange ${room.players.length < 2 ? 'animate-pulse' : ''}`}>
                   {room.players.length < 2 ? 'بانتظار المنافس...' : 'اتفقوا على فئة التخمين للبدء!'}
                 </h2>
@@ -13611,7 +13699,7 @@ export default function App() {
               
               <div className="space-y-4">
                 {isPrivate && room.players.length < 2 && (
-                  <div className="bg-blue-50 border-2 border-blue-200 p-3 rounded-2xl text-accent-blue font-black text-sm md:text-base">
+                  <div className="bg-blue-50 border-2 border-blue-200 p-3 py-0.5 mb-1 shadow-sm rounded-2xl text-accent-blue font-black text-sm md:text-base">
                     ابعت كود الغرفة 
                     <div className="relative inline-block">
                       <AnimatePresence>
@@ -13641,9 +13729,9 @@ export default function App() {
                     لاصحابك.
                   </div>
                 )}
-                <div className="grid grid-cols-4 gap-2">
+                <div className="space-y-6">
                   {!hasWatchedCategoryAd && room.players.length >= 2 ? (
-                    <div className="col-span-4 flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
+                    <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                       {isWatchingCategoryAd ? (
                         <div className="text-center space-y-3">
                            <Loader2 className="w-8 h-8 animate-spin text-accent-orange mx-auto" />
@@ -13665,41 +13753,83 @@ export default function App() {
                       )}
                     </div>
                   ) : (
-                    categories.map(cat => {
-                      const isMyChoice = me?.selectedCategory === cat.id;
-                      const isOpponentChoice = opponent?.selectedCategory === cat.id;
-                      const isAgreed = isMyChoice && isOpponentChoice;
-                      const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
-                      
-                      return (
-                        <button
-                          key={cat.id}
-                          onClick={() => socket?.emit('select_category', { roomId, category: cat.id })}
-                          className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
-                            ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
-                            ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
-                          `}
-                        >
-                          <span className="text-2xl md:text-3xl">{cat.icon}</span>
-                          <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
-                          {isNew && (
-                            <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
-                              جديد
+                    <>
+                      {/* المستوي الأول: مستوي مبتدئين التخمين */}
+                      <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-white border-2 border-game relative">
+                        <h3 className="text-center font-black text-brown-dark bg-yellow-100 rounded-lg py-2 mb-1 border-2 border-yellow-300">مستوي مبتدئين التخمين</h3>
+                        <div className="grid grid-cols-4 gap-2">
+                          {categories.map(cat => {
+                            const isMyChoice = me?.selectedCategory === cat.id;
+                            const isOpponentChoice = opponent?.selectedCategory === cat.id;
+                            const isAgreed = isMyChoice && isOpponentChoice;
+                            const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
+                            
+                            return (
+                              <button
+                                key={cat.id}
+                                onClick={() => socket?.emit('select_category', { roomId, category: cat.id, level: 'مستوي مبتدئين التخمين' })}
+                                className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
+                                  ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
+                                  ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
+                                `}
+                              >
+                                <span className="text-2xl md:text-3xl">{cat.icon}</span>
+                                <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
+                                {isNew && (
+                                  <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
+                                    جديد
+                                  </div>
+                                )}
+                                {isOpponentChoice && !isMyChoice && (
+                                  <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                                    اقتراح!
+                                  </div>
+                                )}
+                                {isAgreed && (
+                                  <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                                    متفق عليه!
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* المستوي الثاني: مستوي ابطال التخمين */}
+                      <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-gray-50 border-2 border-gray-200 relative overflow-hidden group">
+                        <h3 className="text-center font-black text-gray-400 bg-gray-200 rounded-lg py-2 mb-1 border-2 border-gray-300">مستوي ابطال التخمين</h3>
+                        <div className="grid grid-cols-4 gap-2 opacity-40 grayscale blur-[1px]">
+                          {Array.from({ length: 8 }).map((_, i) => (
+                            <div key={`level2-${i}`} className="bg-gray-200 p-2 rounded-xl flex flex-col items-center gap-1 border-b-4 border-gray-300">
+                              <span className="text-2xl md:text-3xl text-gray-400">❓</span>
+                              <span className="text-[10px] md:text-xs font-black text-gray-500">???</span>
                             </div>
-                          )}
-                          {isOpponentChoice && !isMyChoice && (
-                            <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
-                              اقتراح!
+                          ))}
+                        </div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl">
+                          <Lock className="w-10 h-10 text-gray-500 mb-2 drop-shadow-sm" />
+                          <span className="font-black text-2xl text-gray-700 drop-shadow-sm">قريباً</span>
+                        </div>
+                      </div>
+
+                      {/* المستوي الثالث: مستوي محترفين التخمين */}
+                      <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-gray-50 border-2 border-gray-200 relative overflow-hidden group">
+                        <h3 className="text-center font-black text-gray-400 bg-gray-200 rounded-lg py-2 mb-1 border-2 border-gray-300">مستوي محترفين التخمين</h3>
+                        <div className="grid grid-cols-4 gap-2 opacity-40 grayscale blur-[1px]">
+                          {Array.from({ length: 8 }).map((_, i) => (
+                            <div key={`level3-${i}`} className="bg-gray-200 p-2 rounded-xl flex flex-col items-center gap-1 border-b-4 border-gray-300">
+                              <span className="text-2xl md:text-3xl text-gray-400">❓</span>
+                              <span className="text-[10px] md:text-xs font-black text-gray-500">???</span>
                             </div>
-                          )}
-                          {isAgreed && (
-                            <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
-                              متفق عليه!
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })
+                          ))}
+                        </div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl">
+                          <Lock className="w-10 h-10 text-gray-500 mb-2 drop-shadow-sm" />
+                          <span className="font-black text-2xl text-gray-700 drop-shadow-sm">قريباً</span>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
 
