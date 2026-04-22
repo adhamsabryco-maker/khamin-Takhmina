@@ -635,6 +635,34 @@ const AnimatedXp = ({ xp, joined, children }: { xp: number, joined: boolean, chi
 
 const getLevel = (xp: number) => Math.floor(Math.sqrt(xp / 50)) + 1;
 
+interface CityImageProps {
+  id?: number | string;
+  src: string;
+  alt: string;
+  className?: string;
+  onClick?: () => void;
+  wrapperClassName?: string;
+}
+
+const CityImage = ({ src, alt, className, onClick, wrapperClassName = '' }: CityImageProps) => {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className={`relative ${wrapperClassName}`} onClick={onClick}>
+       {!loaded && (
+         <div className={`absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center rounded-xl`}>
+           <Search className="w-5 h-5 text-gray-400 opacity-50" />
+         </div>
+       )}
+       <img 
+         src={src} 
+         alt={alt} 
+         className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`} 
+         onLoad={() => setLoaded(true)}
+       />
+    </div>
+  );
+};
+
 export default function App() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const { customConfig, refreshConfig } = useAvatarConfig();
@@ -2897,7 +2925,7 @@ export default function App() {
 
   const showAlert = (message: string, title: string = 'تنبيه') => {
     setCustomAlert({ show: true, message, title });
-    playSound('notification');
+    playSound('clickOpen');
   };
 
   const showConfirm = (message: string, onConfirm: () => void, title: string = 'تأكيد', onCancel?: () => void, confirmText?: string, cancelText?: string) => {
@@ -4219,6 +4247,12 @@ export default function App() {
           localStorage.setItem('khamin_tokens', myUpdate.tokens.toString());
         }
       }
+      
+      // Auto-refresh collection data in background when game finishes
+      const currentSerial = localStorage.getItem('khamin_player_serial');
+      if (currentSerial) {
+        setTimeout(() => fetchCollection(currentSerial), 1500); // slight delay to ensure DB is written
+      }
     });
 
     newSocket.on('emote_received', ({ senderId, emote }) => {
@@ -4436,9 +4470,27 @@ export default function App() {
       setCitySearchState(null);
       
       // Update state immediately for instant feedback
-      if (rewards.xp) setXp(prev => prev + rewards.xp);
-      if (rewards.tokens) setTokens(prev => prev + rewards.tokens);
-      if (rewards.keys) setKeys(prev => prev + rewards.keys);
+      if (rewards.xp) {
+        setXp(prev => {
+          const newVal = prev + rewards.xp;
+          localStorage.setItem('khamin_xp', newVal.toString());
+          return newVal;
+        });
+      }
+      if (rewards.tokens) {
+        setTokens(prev => {
+          const newVal = prev + rewards.tokens;
+          localStorage.setItem('khamin_tokens', newVal.toString());
+          return newVal;
+        });
+      }
+      if (rewards.keys) {
+        setKeys(prev => {
+          const newVal = prev + rewards.keys;
+          localStorage.setItem('khamin_keys', newVal.toString());
+          return newVal;
+        });
+      }
       
       if (rewards.pro_package_days) {
         const currentExpiry = proPackageExpiry || Date.now();
@@ -4464,7 +4516,7 @@ export default function App() {
 
     // Friend System Event Listeners
     newSocket.on("new_collection_notification", () => {
-      playSound('message');
+      playSound('notification');
       const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
         newSocket.emit('get_collection_notifications', { serial: currentSerial }, (res: any) => {
@@ -4475,7 +4527,7 @@ export default function App() {
     });
 
     newSocket.on("friend_request_received", ({ senderSerial }: { senderSerial?: string } = {}) => {
-      playSound('message');
+      playSound('notification');
       const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
         newSocket.emit('get_friend_requests', { serial: currentSerial }, (res: any) => {
@@ -5720,6 +5772,9 @@ export default function App() {
     setSpectatorRoomData(null);
     spectatingRoomIdRef.current = null;
     isIntentionalLeaveRef.current = false;
+    if (playerSerial) {
+      fetchCollection(playerSerial);
+    }
   };
 
   const handleLeaveGame = () => {
@@ -6488,8 +6543,8 @@ export default function App() {
                       </div>
 
                       {collectionNotifications.map(notification => {
-                        const found = adminImages.find(img => img.category === notification.category_id && img.name.trim() === notification.image_name.trim());
-                        const imageSrc = found?.data ? (found.data.startsWith('data:') ? found.data : `data:image/png;base64,${found.data}`) : `https://picsum.photos/seed/${notification.image_name}/200/200`;
+                        const found = adminImages.find(img => img.category === notification.category_id && normalizeEgyptian(img.name).toLowerCase() === normalizeEgyptian(notification.image_name).toLowerCase());
+                        const imageSrc = found?.data ? (found.data.startsWith('data:') ? found.data : `data:image/png;base64,${found.data}`) : `/icon-3.png`;
                         const normName = normalizeEgyptian(notification.image_name).toLowerCase();
                         const myCount = playerCollection.find(c => c.image_name === normName)?.count || 0;
 
@@ -10813,7 +10868,7 @@ export default function App() {
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                       {categoryImages.map((img) => (
                                         <div key={img.id} className="box-game overflow-hidden flex flex-col">
-                                          <img src={img.data || `https://picsum.photos/seed/${img.name}/200/200`} alt={img.name} className="w-full aspect-square object-cover" />
+                                          <img src={img.data || `/icon-3.png`} alt={img.name} className="w-full aspect-square object-cover" />
                                           <div className="p-3 flex items-center justify-between gap-2 bg-white border-t border-game">
                                             <span className="text-brown-dark font-bold text-sm truncate" title={img.name}>{img.name}</span>
                                             <button 
@@ -11138,12 +11193,12 @@ export default function App() {
                                   {(() => {
                                     const found = adminImages.find(img => {
                                       const catMatch = img.category === category.id;
-                                      const nameMatch = img.name.trim() === imgName.trim();
+                                      const nameMatch = normalizeEgyptian(img.name).toLowerCase() === normalizeEgyptian(imgName).toLowerCase();
                                       return catMatch && nameMatch;
                                     });
                                     return (
                                       <img 
-                                        src={found?.data ? (found.data.startsWith('data:') ? found.data : `data:image/png;base64,${found.data}`) : `https://picsum.photos/seed/${imgName}/200/200`}
+                                        src={found?.data ? (found.data.startsWith('data:') ? found.data : `data:image/png;base64,${found.data}`) : `/icon-3.png`}
                                         alt={imgName} 
                                         className="w-full h-full object-cover"
                                         referrerPolicy="no-referrer"
@@ -11169,7 +11224,7 @@ export default function App() {
                                   setShowAskFriendModal({ imageName: imgName, categoryId: category.id });
                                   setSelectedFriendsForRequest([]);
                                 }} 
-                                className="mt-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md w-full flex items-center justify-center gap-1 transition-colors relative"
+                                className="btn-game btn-danger mt-1 text-[10px] font-bold px-2 py-0.5 rounded-md w-full flex items-center justify-center gap-1 transition-colors relative"
                               >
                                 <Users className="w-3 h-3" />
                                 اسأل صديق
@@ -11464,14 +11519,15 @@ export default function App() {
                   { id: 4, name: 'مدينة القدماء' }
                 ].map(city => (
                   <div key={city.id} className="flex flex-col items-center gap-1">
-                    <img 
+                    <CityImage 
                       src={`/city-gift-0${city.id}.jpg`}
                       alt={city.name}
-                      className={`w-16 h-16 rounded-xl object-cover cursor-pointer border-4 transition-all ${
+                      wrapperClassName={`w-16 h-16 rounded-xl cursor-pointer border-4 transition-all ${
                         (citySearchState?.active ? citySearchState.cityId === city.id : selectedCity === city.id) 
                           ? 'border-accent-blue scale-110 shadow-md' 
                           : 'border-transparent opacity-70 hover:opacity-100'
                       }`}
+                      className="w-full h-full object-cover rounded-[7px]"
                       onClick={() => !citySearchState?.active && setSelectedCity(city.id)}
                     />
                     <span className={`text-[10px] font-bold transition-all ${
@@ -11485,10 +11541,11 @@ export default function App() {
 
               {/* Main Image */}
               <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-6 bg-gray-900 shadow-inner border-2 border-gray-200">
-                <img 
+                <CityImage 
                   src={`/city-gift-0${citySearchState?.active ? citySearchState.cityId : selectedCity}.jpg`} 
                   className={`w-full h-full object-cover transition-opacity duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
                   alt="Selected City"
+                  wrapperClassName="w-full h-full"
                 />
                 
                 {citySearchState?.active && !isCitySearchFinished && (
@@ -12414,7 +12471,7 @@ export default function App() {
             {/* Info Button */}
             <button 
               onClick={toggleLevelInfo}
-              className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              className="w-9 h-9 md:w-10 md:h-10 bg-red-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-red-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               title="معلومات المستوى"
             >
               <Info className="w-4 h-4 md:w-5 md:h-5" />
@@ -13311,7 +13368,7 @@ export default function App() {
           {/* Info Button */}
           <button 
             onClick={toggleLevelInfo}
-            className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            className="w-9 h-9 md:w-10 md:h-10 bg-red-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-red-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
             title="معلومات المستوى"
           >
             <Info className="w-4 h-4 md:w-5 md:h-5" />
