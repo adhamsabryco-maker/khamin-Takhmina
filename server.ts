@@ -1775,7 +1775,8 @@ const app = express();
           luckyWheelHelpers: JSON.parse(row.luckyWheelHelpers || '{}'),
           lastLuckyWheelResetDay: row.lastLuckyWheelResetDay || null,
           luckyWheelDaysUsed: row.luckyWheelDaysUsed || 0,
-          citySearchRewards: JSON.parse(row.citySearchRewards || '[]')
+          citySearchRewards: JSON.parse(row.citySearchRewards || '[]'),
+          keys: row.keys || 0
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
