@@ -10895,29 +10895,6 @@ export default function App() {
 
                                   <div 
                                     className="flex-1 overflow-y-auto pr-2 space-y-8"
-                                    onScroll={(e) => {
-                                      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-                                      if (scrollHeight - scrollTop - clientHeight < 100) {
-                                        setVisibleImagesCount(prev => {
-                                          let isUpdated = false;
-                                          const next = { ...prev };
-                                          Object.keys(expandedAdminCategories).forEach(catId => {
-                                            if (expandedAdminCategories[catId]) {
-                                              const currentCount = next[catId] || 20;
-                                              const categoryImages = currentLevelImages.filter(img => 
-                                                img.category === catId && 
-                                                img.name.toLowerCase().includes(adminImageSearchQuery.toLowerCase())
-                                              );
-                                              if (currentCount < categoryImages.length) {
-                                                next[catId] = currentCount + 20;
-                                                isUpdated = true;
-                                              }
-                                            }
-                                          });
-                                          return isUpdated ? next : prev;
-                                        });
-                                      }
-                                    }}
                                   >
                                     {categories.map(category => {
                                       const categoryImages = currentLevelImages.filter(img => 
@@ -10965,6 +10942,24 @@ export default function App() {
                                                   </div>
                                                 </div>
                                               ))}
+
+                                              {/* Infinite Scroll Trigger for this category */}
+                                              {categoryImages.length > visibleCount && (
+                                                <motion.div 
+                                                  initial={{ opacity: 0 }}
+                                                  whileInView={{ opacity: 1 }}
+                                                  onViewportEnter={() => {
+                                                    setVisibleImagesCount(prev => ({
+                                                      ...prev,
+                                                      [category.id]: (prev[category.id] || 20) + 20
+                                                    }));
+                                                  }}
+                                                  className="col-span-full py-8 flex flex-col items-center justify-center gap-2"
+                                                >
+                                                  <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                                                  <span className="text-xs font-bold text-brown-muted">جاري تحميل المزيد من الصور...</span>
+                                                </motion.div>
+                                              )}
                                             </div>
                                           )}
                                         </div>
