@@ -1290,9 +1290,16 @@ const app = express();
       name TEXT,
       data TEXT,
       addedBy TEXT,
-      timestamp INTEGER
+      timestamp INTEGER,
+      level TEXT
     )
   `);
+
+  try {
+    db.exec(`ALTER TABLE custom_images ADD COLUMN level TEXT DEFAULT 'مستوي مبتدئين التخمين'`);
+  } catch (e: any) {
+    // Column might already exist
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS used_prizes (
@@ -2433,7 +2440,12 @@ const app = express();
 
   app.get("/api/admin/images", (req, res) => {
     try {
-      const images = db.prepare('SELECT id, category, name, data, timestamp, addedBy FROM custom_images ORDER BY timestamp DESC').all();
+      // First ensure the column exists, just in case
+      try {
+        db.exec(`ALTER TABLE custom_images ADD COLUMN level TEXT DEFAULT 'مستوي مبتدئين التخمين'`);
+      } catch(e) {}
+      
+      const images = db.prepare('SELECT * FROM custom_images ORDER BY timestamp DESC').all();
       console.log(`[API] Fetching images, found: ${images.length}`);
       res.json(images);
     } catch (error) {
@@ -2444,12 +2456,13 @@ const app = express();
 
   app.post("/api/admin/images", (req, res) => {
     try {
-      const { category, name, data, addedBy } = req.body;
+      const { category, name, data, addedBy, level } = req.body;
       if (!category || !name || !data) {
         return res.status(400).json({ error: "Missing fields" });
       }
       const id = Math.random().toString(36).substring(2, 15);
-      db.prepare('INSERT INTO custom_images (id, category, name, data, addedBy, timestamp) VALUES (?, ?, ?, ?, ?, ?)').run(id, category, name, data, addedBy || 'admin', Date.now());
+      const imgLevel = level || 'مستوي مبتدئين التخمين';
+      db.prepare('INSERT INTO custom_images (id, category, name, data, addedBy, timestamp, level) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, category, name, data, addedBy || 'admin', Date.now(), imgLevel);
       io.emit('categories_updated');
       res.json({ success: true, id });
     } catch (error) {
@@ -3273,13 +3286,15 @@ const app = express();
             if (rand < 0.3 && currentPlayer?.selectedCategory) {
               // 30% chance to agree immediately if player already selected
               botPlayer.selectedCategory = currentPlayer.selectedCategory;
+              botPlayer.selectedLevel = currentPlayer.selectedLevel || 'مستوي مبتدئين التخمين';
               currentRoom.category = currentPlayer.selectedCategory;
+              currentRoom.level = currentPlayer.selectedLevel || 'مستوي مبتدئين التخمين';
               io.to(currentRoom.id).emit("room_update", currentRoom);
               
               if (Math.random() < 0.5) {
                 setTimeout(() => {
                   const r = rooms.get(roomId);
-                  if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category)) {
+                  if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category && p.selectedLevel === r.level)) {
                     r.gameState = 'starting';
                     io.to(roomId).emit('match_intro_triggered');
                   }
@@ -3288,6 +3303,7 @@ const app = express();
             } else {
               // Pick a random category
               botPlayer.selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+              botPlayer.selectedLevel = 'مستوي مبتدئين التخمين';
               io.to(currentRoom.id).emit("room_update", currentRoom);
               
               // 3. Hesitate and change mind (40% chance)
@@ -3297,6 +3313,7 @@ const app = express();
                 if (!currentRoom || currentRoom.gameState !== 'waiting') return;
                 
                 botPlayer.selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+                botPlayer.selectedLevel = 'مستوي مبتدئين التخمين';
                 io.to(currentRoom.id).emit("room_update", currentRoom);
               }
               
@@ -3308,13 +3325,15 @@ const app = express();
               currentPlayer = currentRoom.players.find((p: any) => !p.isBot);
               if (currentPlayer?.selectedCategory) {
                 botPlayer.selectedCategory = currentPlayer.selectedCategory;
+                botPlayer.selectedLevel = currentPlayer.selectedLevel || 'مستوي مبتدئين التخمين';
                 currentRoom.category = currentPlayer.selectedCategory;
+                currentRoom.level = currentPlayer.selectedLevel || 'مستوي مبتدئين التخمين';
                 io.to(currentRoom.id).emit("room_update", currentRoom);
                 
                 if (Math.random() < 0.5) {
                   setTimeout(() => {
                     const r = rooms.get(roomId);
-                    if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category)) {
+                    if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category && p.selectedLevel === r.level)) {
                       r.gameState = 'starting';
                       io.to(roomId).emit('match_intro_triggered');
                     }
@@ -3328,7 +3347,7 @@ const app = express();
         } else {
           // If the initial sequence is done, but the player changes category again,
           // the bot should agree after a short delay to allow the game to start.
-          if (humanPlayer?.selectedCategory && botPlayer.selectedCategory !== humanPlayer.selectedCategory) {
+          if (humanPlayer?.selectedCategory && (botPlayer.selectedCategory !== humanPlayer.selectedCategory || botPlayer.selectedLevel !== humanPlayer.selectedLevel)) {
             if (!botTimeouts.has(roomId + '_agree_timeout')) {
               const timeout = setTimeout(() => {
                 const currentRoom = rooms.get(roomId);
@@ -3336,13 +3355,15 @@ const app = express();
                 const currentPlayer = currentRoom.players.find((p: any) => !p.isBot);
                 if (currentPlayer?.selectedCategory) {
                   botPlayer.selectedCategory = currentPlayer.selectedCategory;
+                  botPlayer.selectedLevel = currentPlayer.selectedLevel || 'مستوي مبتدئين التخمين';
                   currentRoom.category = currentPlayer.selectedCategory;
+                  currentRoom.level = currentPlayer.selectedLevel || 'مستوي مبتدئين التخمين';
                   io.to(currentRoom.id).emit("room_update", currentRoom);
                   
                   if (Math.random() < 0.5) {
                     setTimeout(() => {
                       const r = rooms.get(roomId);
-                      if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category)) {
+                      if (r && r.gameState === 'waiting' && r.players.every((p: any) => p.selectedCategory === r.category && p.selectedLevel === r.level)) {
                         r.gameState = 'starting';
                         io.to(roomId).emit('match_intro_triggered');
                       }
@@ -4737,19 +4758,21 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("select_category", ({ roomId, category }) => {
+    socket.on("select_category", ({ roomId, category, level = 'مستوي مبتدئين التخمين' }) => {
       const room = rooms.get(roomId);
       if (room && room.gameState === "waiting") {
         const player = room.players.find((p: any) => p.id === socket.id);
         if (player) {
           player.selectedCategory = category;
+          player.selectedLevel = level;
           
           // Check if both players selected the same category
           const allSelected = room.players.length === 2 && 
-                            room.players.every((p: any) => p.selectedCategory === category);
+                            room.players.every((p: any) => p.selectedCategory === category && p.selectedLevel === level);
           
           if (allSelected) {
             room.category = category;
+            room.level = level;
             // io.to(roomId).emit('match_intro_triggered'); // Removed automatic trigger
           }
           
@@ -4781,7 +4804,7 @@ io.on("connection", (socket) => {
       if (room && room.players.length === 2 && room.gameState === "waiting") {
         const p1 = room.players[0];
         const p2 = room.players[1];
-        if (p1.selectedCategory && p1.selectedCategory === p2.selectedCategory) {
+        if (p1.selectedCategory && p1.selectedCategory === p2.selectedCategory && p1.selectedLevel === p2.selectedLevel) {
           startGame(roomId);
         }
       }
@@ -5556,6 +5579,7 @@ io.on("connection", (socket) => {
           p.targetImage = null;
           p.hasGuessed = false;
           p.selectedCategory = null;
+          p.selectedLevel = null;
           p.hintCount = 0;
           p.quickGuessUsed = false;
           p.wordLengthUsed = false;
@@ -6720,9 +6744,9 @@ io.on("connection", (socket) => {
     intervals.set(roomId, interval);
   }
 
-  function getCategoryImages(category: string) {
+  function getCategoryImages(category: string, level: string = 'مستوي مبتدئين التخمين') {
     try {
-      const customImages = db.prepare('SELECT name, data as image, timestamp FROM custom_images WHERE category = ?').all(category);
+      const customImages = db.prepare('SELECT name, data as image, timestamp FROM custom_images WHERE category = ? AND (level = ? OR level IS NULL)').all(category, level);
       return customImages;
     } catch (err) {
       console.error("Error fetching custom images:", err);
@@ -6737,8 +6761,9 @@ io.on("connection", (socket) => {
     // Always ensure room.category matches the agreed category if players have agreed
     const p1 = room.players[0];
     const p2 = room.players[1];
-    if (p1.selectedCategory && p1.selectedCategory === p2.selectedCategory) {
+    if (p1.selectedCategory && p1.selectedCategory === p2.selectedCategory && p1.selectedLevel === p2.selectedLevel) {
       room.category = p1.selectedCategory;
+      room.level = p1.selectedLevel || 'مستوي مبتدئين التخمين';
     }
 
     if (!room.category) {
@@ -6748,8 +6773,8 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const categoryImages = getCategoryImages(room.category);
-    console.log(`[StartGame] Room ${roomId} category: ${room.category}, Found images: ${categoryImages.length}`);
+    const categoryImages = getCategoryImages(room.category, room.level || 'مستوي مبتدئين التخمين');
+    console.log(`[StartGame] Room ${roomId} category: ${room.category}, Level: ${room.level}, Found images: ${categoryImages.length}`);
     
     // Priority logic: images from last 3 days get 3x probability
     const pool: any[] = [];
