@@ -349,6 +349,7 @@ interface Player {
   isMuted: boolean;
   hasGuessed: boolean;
   selectedCategory: string | null;
+  selectedLevel?: string | null;
   hintCount: number;
   quickGuessUsed: boolean;
   wordLengthUsed?: boolean;
@@ -2124,6 +2125,7 @@ export default function App() {
   }, [room?.id, room?.players.length, socket, playerSerial]);
 
   const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategoryLevel, setSelectedCategoryLevel] = useState<string>('مستوي مبتدئين التخمين');
   const [confirmedAttributes, setConfirmedAttributes] = useState<string[]>([]);
   const lastInitializedQuickChatRef = useRef<string | null>(null);
 
@@ -5875,6 +5877,7 @@ export default function App() {
 
   const consensusReached = room?.players.length === 2 && 
                           room.players[0].selectedCategory === room.players[1].selectedCategory &&
+                          room.players[0].selectedLevel === room.players[1].selectedLevel &&
                           room.players[0].selectedCategory !== null;
 
   const renderLuckyWheelModal = () => {
@@ -7462,7 +7465,7 @@ export default function App() {
                       <img 
                         src={`/city-gift-0${city.id}.jpg`}
                         alt={city.name}
-                        className={`w-16 h-16 rounded-xl object-cover cursor-pointer border-4 transition-all ${
+                        className={`w-16 h-16 bg-gray-200 rounded-xl object-cover cursor-pointer border-4 transition-all ${
                           (citySearchState?.active ? citySearchState.cityId === city.id : selectedCity === city.id) 
                             ? 'border-accent-blue scale-103 shadow-md' 
                             : 'border-transparent opacity-70 hover:opacity-100'
@@ -7479,10 +7482,10 @@ export default function App() {
                 </div>
 
                 {/* Main Image */}
-                <div className="relative w-full flex justify-center items-center rounded-2xl mb-2 bg-gray-900 shadow-inner border-2 border-gray-200">
+                <div className="relative w-full aspect-video flex justify-center items-center rounded-2xl mb-2 bg-gray-200 overflow-hidden shadow-inner border-2 border-gray-200">
                   <img 
                     src={`/city-gift-0${citySearchState?.active ? citySearchState.cityId : selectedCity}.jpg`} 
-                    className={`flex justify-between items-center w-auto h-auto object-cover transition-opacity duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
+                    className={`w-full h-full object-cover transition-opacity duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
                     alt="Selected City"
                   />
                   
@@ -12886,6 +12889,10 @@ export default function App() {
                     </div>
                   )}
                 </div>
+                
+                <div className="text-center mt-3 mb-1">
+                  <p className="text-[9px] md:text-[10px] font-bold text-gray-400 bg-gray-50 border border-gray-100 rounded-lg py-1 px-2 inline-block">الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي ⭐</p>
+                </div>
 
                 {/* Player Rank Info */}
                 {(() => {
@@ -13774,81 +13781,150 @@ export default function App() {
                     </div>
                   ) : (
                     <>
-                      {/* المستوي الأول: مستوي مبتدئين التخمين */}
-                      <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-white border-2 border-game relative">
-                        {/* <h3 className="text-center font-black text-brown-dark bg-yellow-100 rounded-lg py-2 mb-1 border-2 border-yellow-300">مستوي مبتدئين التخمين</h3> */}
-                        <div className="grid grid-cols-4 gap-2">
-                          {categories.map(cat => {
-                            const isMyChoice = me?.selectedCategory === cat.id;
-                            const isOpponentChoice = opponent?.selectedCategory === cat.id;
-                            const isAgreed = isMyChoice && isOpponentChoice;
-                            const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
-                            
-                            return (
-                              <button
-                                key={cat.id}
-                                onClick={() => socket?.emit('select_category', { roomId, category: cat.id, level: 'مستوي مبتدئين التخمين' })}
-                                className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
-                                  ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
-                                  ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
-                                `}
-                              >
-                                <span className="text-2xl md:text-3xl">{cat.icon}</span>
-                                <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
-                                {isNew && (
-                                  <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
-                                    جديد
-                                  </div>
-                                )}
-                                {isOpponentChoice && !isMyChoice && (
-                                  <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
-                                    اقتراح!
-                                  </div>
-                                )}
-                                {isAgreed && (
-                                  <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
-                                    متفق عليه!
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
+                      <div className="flex justify-center gap-2 mb-4">
+                        <button
+                          onClick={() => {
+                            if (selectedCategoryLevel !== 'مستوي مبتدئين التخمين') {
+                              setSelectedCategoryLevel('مستوي مبتدئين التخمين');
+                              socket?.emit('select_category', { roomId, category: null, level: 'مستوي مبتدئين التخمين' });
+                            }
+                          }}
+                          className={`relative flex-1 py-2 px-1 rounded-xl font-black text-xs md:text-sm border-2 transition-all ${
+                            selectedCategoryLevel === 'مستوي مبتدئين التخمين' 
+                              ? 'bg-yellow-100 text-brown-dark border-yellow-400 shadow-[0_4px_0_0_#facc15]' 
+                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-brown-dark'
+                          } ${opponent?.selectedLevel === 'مستوي مبتدئين التخمين' && selectedCategoryLevel !== 'مستوي مبتدئين التخمين' ? 'hint-glow ring-2 ring-accent-orange' : ''}`}
+                        >
+                          مبتدئين 👶🏻
+                          {opponent?.selectedLevel === 'مستوي مبتدئين التخمين' && selectedCategoryLevel !== 'مستوي مبتدئين التخمين' && (
+                            <div className="absolute -top-3 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10 whitespace-nowrap">
+                              المنافس هنا!
+                            </div>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (selectedCategoryLevel !== 'مستوي ابطال التخمين') {
+                              setSelectedCategoryLevel('مستوي ابطال التخمين');
+                              socket?.emit('select_category', { roomId, category: null, level: 'مستوي ابطال التخمين' });
+                            }
+                          }}
+                          className={`relative flex-1 py-2 px-1 rounded-xl font-black text-xs md:text-sm border-2 transition-all ${
+                            selectedCategoryLevel === 'مستوي ابطال التخمين' 
+                              ? 'bg-blue-100 text-blue-900 border-blue-400 shadow-[0_4px_0_0_#60a5fa]' 
+                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-blue-900'
+                          } ${opponent?.selectedLevel === 'مستوي ابطال التخمين' && selectedCategoryLevel !== 'مستوي ابطال التخمين' ? 'hint-glow ring-2 ring-accent-orange' : ''}`}
+                        >
+                          ابطال 💪
+                          {opponent?.selectedLevel === 'مستوي ابطال التخمين' && selectedCategoryLevel !== 'مستوي ابطال التخمين' && (
+                            <div className="absolute -top-3 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10 whitespace-nowrap">
+                              المنافس هنا!
+                            </div>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (selectedCategoryLevel !== 'مستوي محترفين التخمين') {
+                              setSelectedCategoryLevel('مستوي محترفين التخمين');
+                              socket?.emit('select_category', { roomId, category: null, level: 'مستوي محترفين التخمين' });
+                            }
+                          }}
+                          className={`relative flex-1 py-2 px-1 rounded-xl font-black text-xs md:text-sm border-2 transition-all ${
+                            selectedCategoryLevel === 'مستوي محترفين التخمين' 
+                              ? 'bg-purple-100 text-purple-900 border-purple-400 shadow-[0_4px_0_0_#c084fc]' 
+                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-purple-900'
+                          } ${opponent?.selectedLevel === 'مستوي محترفين التخمين' && selectedCategoryLevel !== 'مستوي محترفين التخمين' ? 'hint-glow ring-2 ring-accent-orange' : ''}`}
+                        >
+                          محترفين 🕵
+                          {opponent?.selectedLevel === 'مستوي محترفين التخمين' && selectedCategoryLevel !== 'مستوي محترفين التخمين' && (
+                            <div className="absolute -top-3 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10 whitespace-nowrap">
+                              المنافس هنا!
+                            </div>
+                          )}
+                        </button>
                       </div>
 
-                      {/* المستوي الثاني: مستوي ابطال التخمين 
-                      <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-gray-50 border-2 border-gray-200 relative overflow-hidden group">
-                        <h3 className="text-center font-black text-gray-400 bg-gray-200 rounded-lg py-2 mb-1 border-2 border-gray-300">مستوي ابطال التخمين</h3>
-                        <div className="grid grid-cols-4 gap-2 opacity-40 grayscale blur-[1px]">
-                          {Array.from({ length: 8 }).map((_, i) => (
-                            <div key={`level2-${i}`} className="bg-gray-200 p-2 rounded-xl flex flex-col items-center gap-1 border-b-4 border-gray-300">
-                              <span className="text-2xl md:text-3xl text-gray-400">❓</span>
-                              <span className="text-[10px] md:text-xs font-black text-gray-500">???</span>
-                            </div>
-                          ))}
+                      {/* مستوي مبتدئين التخمين */}
+                      {selectedCategoryLevel === 'مستوي مبتدئين التخمين' && (
+                        <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-white border-2 border-game relative animate-in fade-in zoom-in duration-200">
+                          <h3 className="text-center font-black text-brown-dark bg-yellow-100 rounded-lg py-2 mb-1 border-2 border-yellow-300">مستوي مبتدئين التخمين</h3>
+                          <div className="grid grid-cols-4 gap-2">
+                            {categories.map(cat => {
+                              const isMyChoice = me?.selectedCategory === cat.id;
+                              const isOpponentChoice = opponent?.selectedCategory === cat.id;
+                              const isAgreed = isMyChoice && isOpponentChoice;
+                              const isNew = cat.latestImageTimestamp && (Date.now() - cat.latestImageTimestamp <= 48 * 60 * 60 * 1000);
+                              
+                              return (
+                                <button
+                                  key={cat.id}
+                                  onClick={() => socket?.emit('select_category', { roomId, category: cat.id, level: 'مستوي مبتدئين التخمين' })}
+                                  className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
+                                    ${isAgreed ? 'bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2' : isMyChoice ? 'bg-orange-100 text-accent-orange border-orange-300 scale-105' : isNew ? 'bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100' : 'bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark'}
+                                    ${isOpponentChoice && !isMyChoice ? 'hint-glow' : ''}
+                                  `}
+                                >
+                                  <span className="text-2xl md:text-3xl">{cat.icon}</span>
+                                  <span className="text-[10px] md:text-xs font-black truncate w-full">{cat.name}</span>
+                                  {isNew && (
+                                    <div className="absolute -top-2 -left-2 bg-yellow-400 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse z-10">
+                                      جديد
+                                    </div>
+                                  )}
+                                  {isOpponentChoice && !isMyChoice && (
+                                    <div className="absolute -top-2 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                                      اقتراح!
+                                    </div>
+                                  )}
+                                  {isAgreed && (
+                                    <div className="absolute -top-2 -right-2 bg-accent-green text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10">
+                                      متفق عليه!
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl">
-                          <Lock className="w-10 h-10 text-gray-500 mb-2 drop-shadow-sm" />
-                          <span className="font-black text-2xl text-gray-700 drop-shadow-sm">قريباً</span>
-                        </div>
-                      </div> */}
+                      )}
 
-                      {/* المستوي الثالث: مستوي محترفين التخمين 
-                      <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-gray-50 border-2 border-gray-200 relative overflow-hidden group">
-                        <h3 className="text-center font-black text-gray-400 bg-gray-200 rounded-lg py-2 mb-1 border-2 border-gray-300">مستوي محترفين التخمين</h3>
-                        <div className="grid grid-cols-4 gap-2 opacity-40 grayscale blur-[1px]">
-                          {Array.from({ length: 8 }).map((_, i) => (
-                            <div key={`level3-${i}`} className="bg-gray-200 p-2 rounded-xl flex flex-col items-center gap-1 border-b-4 border-gray-300">
-                              <span className="text-2xl md:text-3xl text-gray-400">❓</span>
-                              <span className="text-[10px] md:text-xs font-black text-gray-500">???</span>
-                            </div>
-                          ))}
+                      {/* مستوي ابطال التخمين */}
+                      {selectedCategoryLevel === 'مستوي ابطال التخمين' && (
+                        <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-gray-50 border-2 border-gray-200 relative overflow-hidden group animate-in fade-in zoom-in duration-200">
+                          <h3 className="text-center font-black text-gray-400 bg-gray-200 rounded-lg py-2 mb-1 border-2 border-gray-300">مستوي ابطال التخمين</h3>
+                          <div className="grid grid-cols-4 gap-2 opacity-40 grayscale blur-[1px]">
+                            {Array.from({ length: 8 }).map((_, i) => (
+                              <div key={`level2-${i}`} className="bg-gray-200 p-2 rounded-xl flex flex-col items-center gap-1 border-b-4 border-gray-300">
+                                <span className="text-2xl md:text-3xl text-gray-400">❓</span>
+                                <span className="text-[10px] md:text-xs font-black text-gray-500">???</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl">
+                            <Lock className="w-10 h-10 text-gray-500 mb-2 drop-shadow-sm" />
+                            <span className="font-black text-2xl text-gray-700 drop-shadow-sm">قريباً</span>
+                          </div>
                         </div>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl">
-                          <Lock className="w-10 h-10 text-gray-500 mb-2 drop-shadow-sm" />
-                          <span className="font-black text-2xl text-gray-700 drop-shadow-sm">قريباً</span>
+                      )}
+
+                      {/* مستوي محترفين التخمين */}
+                      {selectedCategoryLevel === 'مستوي محترفين التخمين' && (
+                        <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-gray-50 border-2 border-gray-200 relative overflow-hidden group animate-in fade-in zoom-in duration-200">
+                          <h3 className="text-center font-black text-gray-400 bg-gray-200 rounded-lg py-2 mb-1 border-2 border-gray-300">مستوي محترفين التخمين</h3>
+                          <div className="grid grid-cols-4 gap-2 opacity-40 grayscale blur-[1px]">
+                            {Array.from({ length: 8 }).map((_, i) => (
+                              <div key={`level3-${i}`} className="bg-gray-200 p-2 rounded-xl flex flex-col items-center gap-1 border-b-4 border-gray-300">
+                                <span className="text-2xl md:text-3xl text-gray-400">❓</span>
+                                <span className="text-[10px] md:text-xs font-black text-gray-500">???</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl">
+                            <Lock className="w-10 h-10 text-gray-500 mb-2 drop-shadow-sm" />
+                            <span className="font-black text-2xl text-gray-700 drop-shadow-sm">قريباً</span>
+                          </div>
                         </div>
-                      </div> */}
+                      )}
                     </>
                   )}
                 </div>
