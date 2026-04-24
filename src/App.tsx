@@ -2184,6 +2184,12 @@ export default function App() {
       );
     } else if (!isRainGiftActive) {
       hasShownRainGiftAlertRef.current = false;
+      setCustomConfirm(prev => {
+        if (prev.show && prev.title === 'حدث مطر الهدايا 🎁') {
+          return { ...prev, show: false };
+        }
+        return prev;
+      });
     }
   }, [isRainGiftActive, gamePolicies.isRainGiftEnabled, showRainGiftGame, showRainGiftSummary, room, isSearching, socket, keys, isAdmin]);
 
@@ -7111,7 +7117,7 @@ export default function App() {
                   {/* Free Ad Reward - Level 50+ Only */}
                   {getLevel(xp) >= 1 && (
                     <div className="flex items-center justify-between p-4 border-2 border-game box-game relative overflow-hidden mb-4">
-                      <div className="absolute top-0 right-0 bg-accent-green text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-sm z-10">
+                      <div className="absolute top-0 left-0 bg-accent-yellow text-black text-[10px] font-bold px-1 py-0.5 rounded-bl-xl shadow-sm z-10" dir="ltr">
                         مجاناً (Level 50+)
                       </div>
                       <div className="flex items-center gap-3 relative z-10">
@@ -7119,7 +7125,7 @@ export default function App() {
                           📺
                         </div>
                         <div>
-                          <div className="font-black text-brown-dark">شاهد إعلان = تخمينة واحدة</div>
+                          <div className="font-bold text-brown-dark">شاهد إعلان = 1 تخمينة</div>
                           <div className="text-xs font-bold text-brown-muted">
                             متبقي لك اليوم: <span className="text-accent-green">{5 - adStatus.adsWatched}/5</span>
                           </div>
@@ -13508,20 +13514,20 @@ export default function App() {
             <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
           </button>
 
-          {/* City Search Button */}
-          <button 
-            onClick={handleOpenCitySearch}
-            className="w-9 h-9 md:w-10 md:h-10 bg-blue-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-blue-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-            title="البحث في المدينة"
-          >
-            <Search className="w-4 h-4 md:w-5 md:h-5" />
-            {((citySearchState?.active && Date.now() >= citySearchState.endTime) || (!citySearchState?.active && !hasManuallyOpenedCitySearchToday)) && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
-              </span>
-            )}
-          </button>
+            {/* Notifications Button */}
+            <button 
+              onClick={() => setShowFriendRequestsModal(true)}
+              className="w-9 h-9 md:w-10 md:h-10 bg-green-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-green-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              title="الإشعارات"
+            >
+              <Bell className="w-4 h-4 md:w-5 md:h-5" />
+              {(friendRequests.length + collectionNotifications.length) > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length + collectionNotifications.length}</span>
+                </span>
+              )}
+            </button>
 
           {/* Settings Button */}
           <button 
@@ -13712,7 +13718,7 @@ export default function App() {
                   style={{ width: `${(room.timer / 60) * 100}%` }}
                 ></div>
               </div>
-              <div className="flex justify-between items-center bg-white/50 p-3 py-0.5 mb-1 rounded-2xl border border-orange-100 shadow-sm">
+              <div className="flex justify-between items-center bg-white/50 p-3 py-0.5 mb-2 rounded-2xl border border-orange-100 shadow-sm">
                 <h2 className={`text-sm md:text-sm font-black text-accent-orange ${room.players.length < 2 ? 'animate-pulse' : ''}`}>
                   {room.players.length < 2 ? 'بانتظار المنافس...' : 'اتفقوا على فئة التخمين للبدء!'}
                 </h2>
@@ -13730,7 +13736,7 @@ export default function App() {
               
               <div className="space-y-4">
                 {isPrivate && room.players.length < 2 && (
-                  <div className="bg-blue-50 border-2 border-blue-200 p-3 py-0.5 mb-1 shadow-sm rounded-2xl text-accent-blue font-black text-sm md:text-base">
+                  <div className="bg-blue-50 border-2 border-blue-200 p-3 py-0.5 mb-2 shadow-sm rounded-2xl text-accent-blue font-black text-sm md:text-base">
                     ابعت كود الغرفة 
                     <div className="relative inline-block">
                       <AnimatePresence>
