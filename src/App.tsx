@@ -5359,9 +5359,13 @@ export default function App() {
 
   useEffect(() => {
     if (room?.gameState === 'waiting' && room.players.length === 2 && !hasWatchedCategoryAd && !isWatchingCategoryAd && !showCategoryAdButton && !adTriggeredRef.current) {
-      handleWatchCategoryAd();
+      if (hasProPackage) {
+        setHasWatchedCategoryAd(true);
+      } else {
+        handleWatchCategoryAd();
+      }
     }
-  }, [room?.gameState, room?.players?.length, hasWatchedCategoryAd, isWatchingCategoryAd, showCategoryAdButton, handleWatchCategoryAd]);
+  }, [room?.gameState, room?.players?.length, hasWatchedCategoryAd, isWatchingCategoryAd, showCategoryAdButton, handleWatchCategoryAd, hasProPackage]);
 
   const handleRewardAd = (categoryId: string, stage: number) => {
     if (adTriggeredRef.current || isGlobalAdLoading) return;
@@ -12890,8 +12894,8 @@ export default function App() {
                   )}
                 </div>
                 
-                <div className="text-center mt-3 mb-1">
-                  <p className="text-[9px] md:text-[10px] font-bold text-gray-400 bg-gray-50 border border-gray-100 rounded-lg py-1 px-2 inline-block">الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي ⭐</p>
+                <div className="text-center mt-1 mb-1">
+                  <p className="text-[9px] md:text-[10px] font-bold text-black-400 bg-gray-300 border border-gray-100 rounded-lg py-1 px-2 inline-block">الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي ⭐</p>
                 </div>
 
                 {/* Player Rank Info */}
@@ -12902,7 +12906,7 @@ export default function App() {
                     return (
                       <button 
                         onClick={handleOpenshowLeaderboardModal}
-                        className={`mt-3 w-full group relative overflow-hidden ${isTop3 ? 'bg-yellow-500' : 'bg-orange-500'} rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all`}
+                        className={`mt-1 w-full group relative overflow-hidden ${isTop3 ? 'bg-yellow-500' : 'bg-orange-500'} rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all`}
                       >
                         <div className="bg-white h-10 rounded-[14px] py-3 px-4 flex items-center justify-between">
                           <div className="flex items-center gap-2 text-black">
@@ -12925,7 +12929,7 @@ export default function App() {
                     return (
                       <button 
                         onClick={handleOpenshowLeaderboardModal}
-                        className="mt-3 w-full h-10 group box-game hover:border-orange-200 py-3 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
+                        className="mt-1 w-full h-10 group box-game hover:border-orange-200 py-3 px-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-brown-muted font-bold text-xs md:text-sm">لست ضمن الـ Top 100..</span>
