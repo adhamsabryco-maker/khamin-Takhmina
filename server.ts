@@ -4516,6 +4516,7 @@ io.on("connection", (socket) => {
           clearInterval(intervals.get(roomId));
           intervals.delete(roomId);
         }
+        io.in(roomId).socketsLeave(roomId);
         rooms.delete(roomId);
       }
 
@@ -4785,6 +4786,7 @@ io.on("connection", (socket) => {
           
           // Check if both players selected the same category
           const allSelected = room.players.length === 2 && 
+                            category !== null &&
                             room.players.every((p: any) => p.selectedCategory === category && p.selectedLevel === level);
           
           if (allSelected) {
@@ -5537,6 +5539,7 @@ io.on("connection", (socket) => {
           }
           
           if (room.gameState !== "finished") {
+            io.in(roomId).socketsLeave(roomId);
             rooms.delete(roomId);
           } else {
             // Emit room update so the remaining player knows the opponent left
@@ -6721,6 +6724,7 @@ io.on("connection", (socket) => {
           }
           
           if (room.gameState !== "finished") {
+            io.in(roomId).socketsLeave(roomId);
             rooms.delete(roomId);
           } else {
             // Emit room update so the remaining player knows the opponent left
@@ -6758,6 +6762,7 @@ io.on("connection", (socket) => {
         } else {
           clearInterval(interval);
           io.to(roomId).emit("game_stopped", { reason: "انتهى الوقت! لم يتم الاتفاق على فئة." });
+          io.in(roomId).socketsLeave(roomId);
           rooms.delete(roomId);
         }
       } else {
@@ -6793,6 +6798,7 @@ io.on("connection", (socket) => {
     if (!room.category) {
       console.error(`[StartGame] No category selected for room ${roomId}`);
       io.to(roomId).emit("game_stopped", { reason: "لم يتم اختيار فئة للمباراة." });
+      io.in(roomId).socketsLeave(roomId);
       rooms.delete(roomId);
       return;
     }
@@ -6816,6 +6822,7 @@ io.on("connection", (socket) => {
     
     if (shuffled.length === 0) {
       io.to(roomId).emit("game_stopped", { reason: "لا توجد صور في هذه الفئة حالياً." });
+      io.in(roomId).socketsLeave(roomId);
       rooms.delete(roomId);
       return;
     }
