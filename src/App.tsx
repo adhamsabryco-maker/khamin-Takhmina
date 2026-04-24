@@ -82,12 +82,12 @@ const SPIN_REWARDS_UI = [
   { id: 'word_count', type: 'helper', value: 'word_count', label: 'عدد الكلمات', icon: <Hash className="w-6 h-6" />, color: '#6366f1' },
   { id: 'hint', type: 'helper', value: 'hint', label: 'تلميح', icon: <HelpCircle className="w-6 h-6" />, color: '#3b82f6' },
   { id: 'spy_lens', type: 'helper', value: 'spy_lens', label: 'الجاسوس', icon: <Eye className="w-6 h-6" />, color: '#a855f7' },
-  { id: 'token_1', type: 'token', value: 1, label: 'Token 1', icon: <Coins className="w-6 h-6" />, color: '#fbbf24' },
-  { id: 'token_2', type: 'token', value: 2, label: 'Token 2', icon: <Coins className="w-6 h-6" />, color: '#f59e0b' },
-  { id: 'token_3', type: 'token', value: 3, label: 'Token 3', icon: <Coins className="w-6 h-6" />, color: '#d97706' },
-  { id: 'token_4', type: 'token', value: 4, label: 'Token 4', icon: <Coins className="w-6 h-6" />, color: '#b45309' },
-  { id: 'token_5', type: 'token', value: 5, label: 'Token 5', icon: <Coins className="w-6 h-6" />, color: '#92400e' },
-  { id: 'token_10', type: 'token', value: 10, label: 'Token 10', icon: <Coins className="w-6 h-6" />, color: '#78350f' },
+  { id: 'token_1', type: 'token', value: 1, label: 'تخمينة واحدة', icon: <Coins className="w-6 h-6" />, color: '#fbbf24' },
+  { id: 'token_2', type: 'token', value: 2, label: '2 تخمينة', icon: <Coins className="w-6 h-6" />, color: '#f59e0b' },
+  { id: 'token_3', type: 'token', value: 3, label: '3 تخمينة', icon: <Coins className="w-6 h-6" />, color: '#d97706' },
+  { id: 'token_4', type: 'token', value: 4, label: '4 تخمينة', icon: <Coins className="w-6 h-6" />, color: '#b45309' },
+  { id: 'token_5', type: 'token', value: 5, label: '5 تخمينة', icon: <Coins className="w-6 h-6" />, color: '#92400e' },
+  { id: 'token_10', type: 'token', value: 10, label: 'تخمينة واحدة0', icon: <Coins className="w-6 h-6" />, color: '#78350f' },
   { id: 'xp_10', type: 'xp', value: 10, label: '10 XP', icon: <Star className="w-6 h-6" />, color: '#f97316' },
   { id: 'xp_20', type: 'xp', value: 20, label: '20 XP', icon: <Star className="w-6 h-6" />, color: '#ea580c' },
   { id: 'xp_30', type: 'xp', value: 30, label: '30 XP', icon: <Star className="w-6 h-6" />, color: '#c2410c' },
@@ -221,7 +221,7 @@ interface ThemeConfig {
   accentBlue: string;
   accentGreen: string;
   
-  // Shop & Token
+  // Shop & تخمينة
   shopHeaderStart: string;
   shopHeaderEnd: string;
   shopTokenText: string;
@@ -768,7 +768,7 @@ export default function App() {
   const [xp, setXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0'));
   const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0'));
   const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0'));
-  const [tokens, setTokens] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
+  const [tokens, setتخمينات] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
   const [keys, setKeys] = useState(() => parseInt(localStorage.getItem('khamin_keys') || '0'));
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
   const [isRewardClaimed, setIsRewardClaimed] = useState(false);
@@ -881,11 +881,11 @@ export default function App() {
       });
 
       socket.on('ad_success', (data) => {
-        setTokens(data.tokens);
+        setتخمينات(data.tokens);
         localStorage.setItem('khamin_tokens', data.tokens.toString());
         setAdStatus(prev => ({ ...prev, adsWatched: data.adsWatched, canWatch: data.adsWatched < data.maxAds }));
         playSound('win');
-        showAlert('تمت إضافة الـ Token بنجاح! 🎉', 'نجاح');
+        showAlert('تمت إضافة التخمينة بنجاح! 🎉', 'نجاح');
       });
 
       socket.on('ad_error', (msg) => {
@@ -1068,7 +1068,7 @@ export default function App() {
            else if (xpRand < 0.995) value = 50; // 1.5% chance
            else value = 100; // 0.5% chance
            icon = `${value}XP`;
-        } else if (rand < 0.82) { // 2% Token chance
+        } else if (rand < 0.82) { // 2% تخمينة chance
            type = 'token';
            value = 1;
            icon = '🪙';
@@ -2121,7 +2121,7 @@ export default function App() {
     } else {
       setOpponentFriendStatus('none');
     }
-  }, [room?.id, socket, playerSerial]);
+  }, [room?.id, room?.players.length, socket, playerSerial]);
 
   const [categories, setCategories] = useState<any[]>([]);
   const [confirmedAttributes, setConfirmedAttributes] = useState<string[]>([]);
@@ -2449,7 +2449,7 @@ export default function App() {
         
         // Update stats
         setXp(spinResult.newStats.xp);
-        setTokens(spinResult.newStats.tokens);
+        setتخمينات(spinResult.newStats.tokens);
         setOwnedHelpers(spinResult.newStats.ownedHelpers);
         setProPackageExpiry(spinResult.newStats.proPackageExpiry);
       }, 5000);
@@ -2595,7 +2595,7 @@ export default function App() {
   const [chestReward, setChestReward] = useState<any>(null);
   const [pendingDailyReward, setPendingDailyReward] = useState<any>(null);
   const [appOpenDate] = useState(Date.now());
-  const [tokensEarnedThisWeek, setTokensEarnedThisWeek] = useState(0);
+  const [tokensEarnedThisWeek, setتخميناتEarnedThisWeek] = useState(0);
   const [lastTokenEarnedDay, setLastTokenEarnedDay] = useState(0);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -2764,13 +2764,13 @@ export default function App() {
         
         // Apply rewards locally for immediate UI update
         setXp(pendingDailyReward.newXp);
-        setTokens(pendingDailyReward.newTokens);
+        setتخمينات(pendingDailyReward.newتخمينات);
         setOwnedHelpers(pendingDailyReward.newOwnedHelpers);
         setDailyQuestStreak(pendingDailyReward.newStreak);
         setLastDailyClaim(pendingDailyReward.newLastClaim);
-        if (pendingDailyReward.weeklyTokensClaimed !== undefined) {
-          setTokensEarnedThisWeek(pendingDailyReward.weeklyTokensClaimed);
-          localStorage.setItem('khamin_tokens_earned_this_week', pendingDailyReward.weeklyTokensClaimed.toString());
+        if (pendingDailyReward.weeklyتخميناتClaimed !== undefined) {
+          setتخميناتEarnedThisWeek(pendingDailyReward.weeklyتخميناتClaimed);
+          localStorage.setItem('khamin_tokens_earned_this_week', pendingDailyReward.weeklyتخميناتClaimed.toString());
         }
         
         // Sync local storage
@@ -3314,12 +3314,12 @@ export default function App() {
     setWins(0);
     setStreak(0);
     setReports(0);
-    setTokens(0);
+    setتخمينات(0);
     setOwnedHelpers({});
     setProPackageExpiry(null);
     setDailyQuestStreak(1);
     setLastDailyClaim(0);
-    setTokensEarnedThisWeek(0);
+    setتخميناتEarnedThisWeek(0);
     setLastTokenEarnedDay(0);
     setIsPermanentBan(false);
     setBanUntil(0);
@@ -3722,7 +3722,7 @@ export default function App() {
             prevLevelRef.current = getLevel(data.xp);
             setWins(data.wins || 0);
             setReports(data.reports || 0);
-            setTokens(data.tokens || 0);
+            setتخمينات(data.tokens || 0);
             setReportedSerials(data.reportedSerials || []);
             if (data.recentOpponents) {
               setRecentOpponents(data.recentOpponents);
@@ -3746,9 +3746,9 @@ export default function App() {
               localStorage.setItem('khamin_last_daily_claim', data.lastDailyClaim.toString());
             }
 
-            if (data.weeklyTokensClaimed !== undefined) {
-              setTokensEarnedThisWeek(data.weeklyTokensClaimed);
-              localStorage.setItem('khamin_tokens_earned_this_week', data.weeklyTokensClaimed.toString());
+            if (data.weeklyتخميناتClaimed !== undefined) {
+              setتخميناتEarnedThisWeek(data.weeklyتخميناتClaimed);
+              localStorage.setItem('khamin_tokens_earned_this_week', data.weeklyتخميناتClaimed.toString());
             }
             
             fetchCollection(serial);
@@ -3878,7 +3878,7 @@ export default function App() {
         localStorage.setItem('khamin_wins', data.wins.toString());
       }
       if (data.tokens !== undefined) {
-        setTokens(data.tokens);
+        setتخمينات(data.tokens);
         localStorage.setItem('khamin_tokens', data.tokens.toString());
       }
       if (data.keys !== undefined) {
@@ -4261,14 +4261,16 @@ export default function App() {
           localStorage.setItem('khamin_xp', newXp.toString());
           return newXp;
         });
-        setStreak(myUpdate.streak);
-        localStorage.setItem('khamin_streak', myUpdate.streak.toString());
+        if (myUpdate.streak !== undefined) {
+          setStreak(myUpdate.streak);
+          localStorage.setItem('khamin_streak', myUpdate.streak.toString());
+        }
         if (myUpdate.wins !== undefined) {
           setWins(myUpdate.wins);
           localStorage.setItem('khamin_wins', myUpdate.wins.toString());
         }
         if (myUpdate.tokens !== undefined) {
-          setTokens(myUpdate.tokens);
+          setتخمينات(myUpdate.tokens);
           localStorage.setItem('khamin_tokens', myUpdate.tokens.toString());
         }
       }
@@ -4503,7 +4505,7 @@ export default function App() {
         });
       }
       if (rewards.tokens) {
-        setTokens(prev => {
+        setتخمينات(prev => {
           const newVal = prev + rewards.tokens;
           localStorage.setItem('khamin_tokens', newVal.toString());
           return newVal;
@@ -4765,7 +4767,7 @@ export default function App() {
         
         const me = roomRef.current?.players.find((p: any) => p.id === newSocket.id);
         if (me?.useToken) {
-          return 'تحذير: إذا انسحبت الآن، ستخسر الـ Token المستخدمة! وتعتبر خاسر. هل تريد حقاً مغادرة اللعبة؟';
+          return 'تحذير: إذا انسحبت الآن، ستخسر التخمينة المستخدمة! وتعتبر خاسر. هل تريد حقاً مغادرة اللعبة؟';
         }
         return 'انسحابك من المبارة تعتبر خاسر. هل تريد حقاً مغادرة اللعبة؟';
       }
@@ -4979,7 +4981,7 @@ export default function App() {
         setXp(player.xp || 0);
         prevLevelRef.current = getLevel(player.xp || 0);
         setWins(player.wins || 0);
-        setTokens(player.tokens || 0);
+        setتخمينات(player.tokens || 0);
         setStreak(player.streak || 0);
         setOwnedHelpers(player.ownedHelpers || {});
         if (player.selectedFrame !== undefined) {
@@ -5811,7 +5813,7 @@ export default function App() {
     if (isGameActive) {
       let message = 'هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟';
       if (me?.useToken) {
-        message = 'تحذير: إذا انسحبت الآن، ستخسر الـ Token المستخدمة! وتعتبر خاسر. هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟';
+        message = 'تحذير: إذا انسحبت الآن، ستخسر التخمينة المستخدمة! وتعتبر خاسر. هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟';
       } else {
         message = 'انسحابك من المبارة تعتبر خاسر. هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟';
       }
@@ -6186,7 +6188,7 @@ export default function App() {
                         )}
                         {chestReward.tokens > 0 && (
                           <div className="bg-white p-4 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black">
-                            <div className="text-xl font-black">+{chestReward.tokens} Tokens</div>
+                            <div className="text-xl font-black">+{chestReward.tokens} تخمينات</div>
                           </div>
                         )}
                       </div>
@@ -6695,7 +6697,7 @@ export default function App() {
                   ) : (
                     <>
                       <Coins className="w-5 h-5 text-accent-yellow" />
-                      <span>{activeGlobalReward.tokenAmount} Tokens</span>
+                      <span>{activeGlobalReward.tokenAmount} تخمينات</span>
                     </>
                   )}
                 </div>
@@ -6720,7 +6722,7 @@ export default function App() {
                           localStorage.setItem('khamin_unlocked_helpers_expiry', res.player.unlockedHelpersExpiry.toString());
                         }
                         if (res.player.tokens !== undefined) {
-                          setTokens(res.player.tokens);
+                          setتخمينات(res.player.tokens);
                           localStorage.setItem('khamin_tokens', res.player.tokens.toString());
                         }
                       }
@@ -7080,7 +7082,7 @@ export default function App() {
                   <ShoppingCart className="w-8 h-8 text-brown-dark" />
                 </div>
                 <h2 className="text-2xl font-black text-light mb-1">المتجر</h2>
-                <p className="text-purple-100 text-sm font-bold">احصل على Tokens للعب مع المحترفين!</p>
+                <p className="text-purple-100 text-sm font-bold">احصل على تخمينات للعب مع المحترفين!</p>
               </div>
 
               <div className="p-6 overflow-y-auto flex-1 space-y-4">
@@ -7091,13 +7093,13 @@ export default function App() {
                     </div>
                     <div>
                       <div className="text-xs font-bold text-brown-muted">رصيدك الحالي</div>
-                      <div className="text-lg font-black" style={{ color: 'var(--shop-token-text)' }}>{tokens} Tokens</div>
+                      <div className="text-lg font-black" style={{ color: 'var(--shop-token-text)' }}>{tokens} تخمينات</div>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <h3 className="font-black text-brown-dark mb-2">باقات الـ Tokens</h3>
+                  <h3 className="font-black text-brown-dark mb-2">باقات التخمينات</h3>
 
                   {/* Free Ad Reward - Level 50+ Only */}
                   {getLevel(xp) >= 1 && (
@@ -7110,7 +7112,7 @@ export default function App() {
                           📺
                         </div>
                         <div>
-                          <div className="font-black text-brown-dark">شاهد إعلان = 1 Token</div>
+                          <div className="font-black text-brown-dark">شاهد إعلان = تخمينة واحدة</div>
                           <div className="text-xs font-bold text-brown-muted">
                             متبقي لك اليوم: <span className="text-accent-green">{5 - adStatus.adsWatched}/5</span>
                           </div>
@@ -7502,7 +7504,7 @@ export default function App() {
                 {!citySearchState?.active && (
                   <div className="text-center mb-2 px-2">
                     <p className="text-sm font-bold text-gray-600 bg-blue-50 p-3 rounded-xl border border-blue-100">
-                     ابحث في المدينة وجمع هدايا XP، Tokens، باقة المحترفين، ووسائل مساعدة، ومفاتيح التخمين!
+                     ابحث في المدينة وجمع هدايا XP، تخمينات، باقة المحترفين، ووسائل مساعدة، ومفاتيح التخمين!
                     </p>
                   </div>
                 )}
@@ -8649,7 +8651,7 @@ export default function App() {
                           }}
                           className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === 'shop' ? 'bg-accent-orange text-white' : 'bg-accent-orange-soft text-accent-orange hover:bg-accent-orange-soft'}`}
                         >
-                          المتجر والـ Tokens
+                          المتجر والتخمينات
                         </button>
                         <button 
                           onClick={() => setAdminTab('colors')}
@@ -8779,18 +8781,18 @@ export default function App() {
                         <div className="box-game p-6 shadow-sm">
                           <h3 className="text-xl font-black text-brown-dark mb-4 flex items-center gap-2">
                             <ShoppingCart className="w-6 h-6 text-orange-500" />
-                            إدارة المتجر والـ Tokens
+                            إدارة المتجر والتخمينات
                           </h3>
                           <p className="text-brown-muted mb-6 font-bold">
-                            من هنا يمكنك إدارة باقات الـ Tokens وإرسال Tokens مجانية للاعبين.
+                            من هنا يمكنك إدارة باقات التخمينات وإرسال تخمينات مجانية للاعبين.
                           </p>
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Send Tokens Form */}
+                            {/* Send تخمينات Form */}
                             <div className="box-game p-5">
                               <h4 className="font-black text-orange-800 mb-4 flex items-center gap-2">
                                 <Zap className="w-5 h-5" />
-                                إرسال Tokens للاعب
+                                إرسال تخمينات للاعب
                               </h4>
                               <div className="space-y-3">
                                 <div>
@@ -8802,7 +8804,7 @@ export default function App() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-bold text-orange-600 mb-1">عدد الـ Tokens</label>
+                                  <label className="block text-xs font-bold text-orange-600 mb-1">عدد التخمينات</label>
                                   <input 
                                     type="number" 
                                     min="1"
@@ -9002,7 +9004,7 @@ export default function App() {
                                   <input name="price" type="number" step="0.01" defaultValue={editingPackage?.price} required className="w-full p-3 rounded-xl border-2 border-gray-200" />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-bold text-brown-dark mb-1">الكمية (توكنز/أيام)</label>
+                                  <label className="block text-sm font-bold text-brown-dark mb-1">الكمية (تخمينات/أيام)</label>
                                   <input name="amount" type="number" defaultValue={editingPackage?.amount} required className="w-full p-3 rounded-xl border-2 border-gray-200" />
                                 </div>
                               </div>
@@ -9010,7 +9012,7 @@ export default function App() {
                                 <div>
                                   <label className="block text-sm font-bold text-brown-dark mb-1">النوع</label>
                                   <select name="type" defaultValue={editingPackage?.type || 'tokens'} className="w-full p-3 rounded-xl border-2 border-gray-200">
-                                    <option value="tokens">توكنز</option>
+                                    <option value="tokens">تخمينات</option>
                                     <option value="pro_pack">باقة Pro</option>
                                   </select>
                                 </div>
@@ -9435,7 +9437,7 @@ export default function App() {
                           </div>
 
                           <div className="mt-8 pt-6 border-t border-game">
-                            <h3 className="text-lg font-bold mb-4">ألوان المتجر والـ Tokens</h3>
+                            <h3 className="text-lg font-bold mb-4">ألوان المتجر والتخمينات</h3>
                             <div className="grid grid-cols-2 gap-4">
                               <div className="flex items-center justify-between">
                                 <label className="text-sm font-bold text-brown-muted">بداية تدرج المتجر</label>
@@ -9446,7 +9448,7 @@ export default function App() {
                                 <input type="color" value={themeConfig.shopHeaderEnd} onChange={(e) => setThemeConfig({...themeConfig, shopHeaderEnd: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
                               </div>
                               <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-brown-muted">لون نص الـ Token</label>
+                                <label className="text-sm font-bold text-brown-muted">لون نص التخمينة</label>
                                 <input type="color" value={themeConfig.shopTokenText} onChange={(e) => setThemeConfig({...themeConfig, shopTokenText: e.target.value})} className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200" />
                               </div>
                               <div className="flex items-center justify-between">
@@ -9610,7 +9612,7 @@ export default function App() {
                                       <td className="p-2 text-sm">
                                         {reward.type === 'pro_package' ? 'باقة المحترفين' : 
                                          reward.type === 'unlock_helpers' ? 'فتح المساعدات' : 
-                                         `توزيع ${reward.tokenAmount || 0} Tokens`}
+                                         `توزيع ${reward.tokenAmount || 0} تخمينات`}
                                       </td>
                                       <td className="p-2 text-sm text-accent-orange">
                                         {reward.durationHours} ساعة
@@ -9632,7 +9634,7 @@ export default function App() {
                         <div className="box-game p-6 shadow-sm border-4 border-accent-blue">
                           <h3 className="text-xl font-black mb-4 flex items-center gap-2">
                             <Coins className="w-6 h-6 text-accent-yellow" />
-                            توزيع Tokens للاعبين (مستوى 50+)
+                            توزيع تخمينات للاعبين (مستوى 50+)
                           </h3>
                           <p className="text-brown-muted font-bold mb-6">
                             هذه المكافأة مخصصة فقط للاعبين الذين وصلوا للمستوى 50 أو أعلى. ستكون متاحة للمطالبة بها خلال فترة زمنية محددة.
@@ -9641,7 +9643,7 @@ export default function App() {
                           <div className="space-y-4 mb-6">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-brown-dark font-bold mb-2">عدد الـ Tokens</label>
+                                <label className="block text-brown-dark font-bold mb-2">عدد التخمينات</label>
                                 <input 
                                   type="number" 
                                   min="1"
@@ -9694,7 +9696,7 @@ export default function App() {
                               }, (res: any) => {
                                 setConfirmTokenSend(false);
                                 if (res.success) {
-                                  showAlert(`تم تفعيل مكافأة الـ Tokens بنجاح!`, 'نجاح');
+                                  showAlert(`تم تفعيل مكافأة التخمينات بنجاح!`, 'نجاح');
                                   // Refresh history
                                   socket?.emit('admin_get_reward_history', (history: any[]) => {
                                     setRewardHistory(history);
@@ -9706,7 +9708,7 @@ export default function App() {
                             }}
                             className={`w-full py-4 text-white rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1 ${confirmTokenSend ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-accent-blue hover:bg-blue-600'}`}
                           >
-                            {confirmTokenSend ? `تأكيد تفعيل ${adminTokenRewardAmount} Tokens لمدة ${adminRewardDuration} ساعة؟` : 'تفعيل مكافأة الـ Tokens الآن 🪙'}
+                            {confirmTokenSend ? `تأكيد تفعيل ${adminTokenRewardAmount} تخمينات لمدة ${adminRewardDuration} ساعة؟` : 'تفعيل مكافأة التخمينات الآن 🪙'}
                           </button>
                         </div>
                       </div>
@@ -10541,7 +10543,7 @@ export default function App() {
                                       <div className="text-sm font-black text-brown-dark">{p.wins || 0}</div>
                                     </div>
                                     <div className="bg-purple-50 p-1 rounded-xl text-center">
-                                      <div className="text-[10px] font-bold text-purple-400">Tokens</div>
+                                      <div className="text-[10px] font-bold text-purple-400">تخمينات</div>
                                       <div className="text-sm font-black text-purple-600">{p.tokens || 0}</div>
                                     </div>
                                     <div className="bg-blue-50 p-1 rounded-xl text-center">
@@ -10591,18 +10593,18 @@ export default function App() {
                                     </button>
                                     <button 
                                       onClick={() => {
-                                        showPrompt('كم عدد الـ Tokens التي تريد إضافتها؟', '1', (tokensToAdd) => {
+                                        showPrompt('كم عدد التخمينات التي تريد إضافتها؟', '1', (tokensToAdd) => {
                                           if (tokensToAdd !== null && tokensToAdd.trim() !== '' && !isNaN(parseInt(tokensToAdd))) {
-                                            const currentTokens = p.tokens || 0;
-                                            socket?.emit('admin_update_player', { serial: p.serial, updates: { tokens: currentTokens + parseInt(tokensToAdd) } }, (res: any) => {
+                                            const currentتخمينات = p.tokens || 0;
+                                            socket?.emit('admin_update_player', { serial: p.serial, updates: { tokens: currentتخمينات + parseInt(tokensToAdd) } }, (res: any) => {
                                               if (res.success) socket.emit('admin_get_players', (players: any) => { if (Array.isArray(players)) setAdminPlayers(players); });
                                             });
                                           }
-                                        }, 'إعطاء Tokens');
+                                        }, 'إعطاء تخمينات');
                                       }}
                                       className="flex-1 min-w-[70px] py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black hover:bg-blue-600 hover:text-white transition-all"
                                     >
-                                      إعطاء Tokens
+                                      إعطاء تخمينات
                                     </button>
                                     <button 
                                       onClick={() => {
@@ -10895,6 +10897,29 @@ export default function App() {
 
                                   <div 
                                     className="flex-1 overflow-y-auto pr-2 space-y-8"
+                                    onScroll={(e) => {
+                                      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                                      if (scrollHeight - scrollTop - clientHeight < 100) {
+                                        setVisibleImagesCount(prev => {
+                                          let isUpdated = false;
+                                          const next = { ...prev };
+                                          Object.keys(expandedAdminCategories).forEach(catId => {
+                                            if (expandedAdminCategories[catId]) {
+                                              const currentCount = next[catId] || 20;
+                                              const categoryImages = currentLevelImages.filter(img => 
+                                                img.category === catId && 
+                                                img.name.toLowerCase().includes(adminImageSearchQuery.toLowerCase())
+                                              );
+                                              if (currentCount < categoryImages.length) {
+                                                next[catId] = currentCount + 20;
+                                                isUpdated = true;
+                                              }
+                                            }
+                                          });
+                                          return isUpdated ? next : prev;
+                                        });
+                                      }
+                                    }}
                                   >
                                     {categories.map(category => {
                                       const categoryImages = currentLevelImages.filter(img => 
@@ -10943,22 +10968,22 @@ export default function App() {
                                                 </div>
                                               ))}
 
-                                              {/* Infinite Scroll Trigger for this category */}
+                                              {/* Show load more button in case scroll doesn't catch it */}
                                               {categoryImages.length > visibleCount && (
-                                                <motion.div 
-                                                  initial={{ opacity: 0 }}
-                                                  whileInView={{ opacity: 1 }}
-                                                  onViewportEnter={() => {
-                                                    setVisibleImagesCount(prev => ({
-                                                      ...prev,
-                                                      [category.id]: (prev[category.id] || 20) + 20
-                                                    }));
-                                                  }}
-                                                  className="col-span-full py-8 flex flex-col items-center justify-center gap-2"
-                                                >
-                                                  <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
-                                                  <span className="text-xs font-bold text-brown-muted">جاري تحميل المزيد من الصور...</span>
-                                                </motion.div>
+                                                <div className="col-span-full py-8 flex items-center justify-center">
+                                                  <button
+                                                    onClick={() => {
+                                                      setVisibleImagesCount(prev => ({
+                                                        ...prev,
+                                                        [category.id]: (prev[category.id] || 20) + 20
+                                                      }));
+                                                    }}
+                                                    className="px-6 py-3 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-bold transition-colors flex items-center gap-2 border-2 border-purple-200"
+                                                  >
+                                                    <Loader2 className="w-4 h-4 animate-spin hidden" />
+                                                    عرض المزيد من الصور ({categoryImages.length - visibleCount} متبقية)
+                                                  </button>
+                                                </div>
                                               )}
                                             </div>
                                           )}
@@ -12374,7 +12399,7 @@ export default function App() {
             </div>
             <div className="bg-white/50 p-2 rounded-2xl border-2 border-yellow-500/20">
               <div className="text-2xl mb-1"><Coins className="w-8 h-8 text-purple-600" /></div>
-              <div className="text-xl font-black text-yellow-600">+{collectedRewards.tokens} Token</div>
+              <div className="text-xl font-black text-yellow-600">+{collectedRewards.tokens} تخمينة</div>
             </div>
             {Object.entries(collectedRewards.helpers || {}).map(([id, count]) => (
               <div key={id} className="bg-white/50 p-2 rounded-2xl border-2 border-accent-green/20 relative">
@@ -12403,7 +12428,7 @@ export default function App() {
             </p>
           )}
           <p className="text-[10px] md:text-xs text-red-500 font-bold mb-2 mt-2">
-            * يجب استخدام هدايا وسائل المساعدة والـ Tokens في نفس اليوم وإلا سيتم تصفيرها.
+            * يجب استخدام هدايا وسائل المساعدة والتخمينات في نفس اليوم وإلا سيتم تصفيرها.
           </p>
           
           <button
@@ -12652,7 +12677,7 @@ export default function App() {
                       </div>
                     </div>
                     
-                    {/* Tokens and Pro Package */}
+                    {/* تخمينات and Pro Package */}
                     <div className="flex flex-wrap justify-center gap-1">
                       <div className="mt-0.5 pt-0.5 flex flex-wrap justify-center gap-0.3 md:gap-0.5 text-xs font-bold text-brown-dark" dir="ltr">
                       <span 
@@ -12913,7 +12938,7 @@ export default function App() {
                   <div className="mt-2 p-2 justify-between items-center flex gap-2 md:gap-2 bg-gradient-to-br from-amber-50 to-yellow-100 border border-amber-300 rounded-lg shadow-sm">
                   <div className="items-center justify-between gap-2">
                     <h3 className="font-bold md:font-black md:text-sm text-xs text-amber-900">هدية أول لاعب يصل Lvl 50 🎁</h3>
-                    <span className="font-bold md:text-[12px] text-[10px] text-amber-800">10 Tokens + باقة المحترفين 7 أيام</span>
+                    <span className="font-bold md:text-[12px] text-[10px] text-amber-800">10 تخمينات + باقة المحترفين 7 أيام</span>
                   </div>  
                       <button 
                         onClick={async () => {
@@ -13136,7 +13161,7 @@ export default function App() {
                       className="checkbox-game disabled:opacity-50"
                     />
                     <label htmlFor="useToken" className={`cursor-pointer select-none flex items-center gap-1 ${getLevel(xp) < 50 ? 'pointer-events-none' : ''}`}>
-                      <button onClick={toggleTokenInfo} className="font-black text-accent-purple hover:underline text-sm truncate">Token</button>
+                      <button onClick={toggleTokenInfo} className="font-black text-accent-purple hover:underline text-sm truncate">تخمينة</button>
                       <span className="font-black text-main text-sm">({tokens})</span>
                     </label>
                   </div>
@@ -13265,7 +13290,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Token Info Modal */}
+      {/* تخمينة Info Modal */}
       <AnimatePresence>
         {showTokenInfoModal && (
           <motion.div
@@ -13293,7 +13318,7 @@ export default function App() {
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
                   <Coins className="w-8 h-8 text-accent-purple" />
                 </div>
-                <h2 className="text-2xl font-black text-light mb-1">ما هو الـ Token؟</h2>
+                <h2 className="text-2xl font-black text-light mb-1">ما هي التخمينة؟</h2>
               </div>
 
               <div className="p-6 overflow-y-auto flex-1 space-y-4 text-right" dir="rtl">
@@ -13301,20 +13326,20 @@ export default function App() {
                   <div className="box-game p-4">
                     <h3 className="font-black mb-2 flex items-center gap-2" style={{ color: 'var(--shop-info-title)' }}>
                       <Coins className="w-4 h-4" />
-                      ما فائدته؟
+                      ما فائدتها؟
                     </h3>
                     <p className="text-sm font-bold leading-relaxed">
-                      الـ Token هو تذكرتك للعب مع المحترفين! يسمح لك باللعب ضد لاعبين مستواهم 40 أو أعلى، والحصول على XP إضافي (500 XP) عند الفوز.
+                      التخمينة هي عملة للعب مع المحترفين! يسمح لك باللعب ضد لاعبين مستواهم 40 أو أعلى، والحصول على XP إضافي (500 XP) عند الفوز.
                     </p>
                   </div>
 
                   <div className="box-game p-4">
                     <h3 className="font-black mb-2 flex items-center gap-2" style={{ color: 'var(--shop-info-title)' }}>
                       <ShoppingCart className="w-4 h-4" />
-                      من أين أشتريه؟
+                      من أين أشتريها؟
                     </h3>
                     <p className="text-sm font-bold leading-relaxed">
-                      يمكنك شراء الـ Tokens من المتجر (أيقونة السلة في الأعلى) باستخدام رصيدك.
+                      يمكنك شراء التخمينات من المتجر (أيقونة السلة في الأعلى) باستخدام رصيدك.
                     </p>
                   </div>
 
@@ -13324,10 +13349,10 @@ export default function App() {
                       تحذير هام!
                     </h3>
                     <ul className="text-sm font-bold list-disc list-inside space-y-1">
-                      <li>يتم خصم الـ Token بمجرد بدء البحث.</li>
-                      <li>إذا انسحبت من المباراة (خرجت أو أغلقت اللعبة) ستخسر الـ Token.</li>
-                      <li>إذا خسرت المباراة، ستخسر الـ Token.</li>
-                      <li>إذا فزت، سيتم استهلاك الـ Token ولكن ستحصل على مكافأة XP ضخمة!</li>
+                      <li>يتم خصم التخمينة بمجرد بدء البحث.</li>
+                      <li>إذا انسحبت من المباراة (خرجت أو أغلقت اللعبة) ستخسر التخمينة.</li>
+                      <li>إذا خسرت المباراة، ستخسر التخمينة.</li>
+                      <li>إذا فزت، سيتم استهلاك التخمينة ولكن ستحصل على مكافأة XP ضخمة!</li>
                     </ul>
                   </div>
                 </div>
@@ -13751,7 +13776,7 @@ export default function App() {
                     <>
                       {/* المستوي الأول: مستوي مبتدئين التخمين */}
                       <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-white border-2 border-game relative">
-                        <h3 className="text-center font-black text-brown-dark bg-yellow-100 rounded-lg py-2 mb-1 border-2 border-yellow-300">مستوي مبتدئين التخمين</h3>
+                        {/* <h3 className="text-center font-black text-brown-dark bg-yellow-100 rounded-lg py-2 mb-1 border-2 border-yellow-300">مستوي مبتدئين التخمين</h3> */}
                         <div className="grid grid-cols-4 gap-2">
                           {categories.map(cat => {
                             const isMyChoice = me?.selectedCategory === cat.id;
@@ -13791,7 +13816,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* المستوي الثاني: مستوي ابطال التخمين */}
+                      {/* المستوي الثاني: مستوي ابطال التخمين 
                       <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-gray-50 border-2 border-gray-200 relative overflow-hidden group">
                         <h3 className="text-center font-black text-gray-400 bg-gray-200 rounded-lg py-2 mb-1 border-2 border-gray-300">مستوي ابطال التخمين</h3>
                         <div className="grid grid-cols-4 gap-2 opacity-40 grayscale blur-[1px]">
@@ -13806,9 +13831,9 @@ export default function App() {
                           <Lock className="w-10 h-10 text-gray-500 mb-2 drop-shadow-sm" />
                           <span className="font-black text-2xl text-gray-700 drop-shadow-sm">قريباً</span>
                         </div>
-                      </div>
+                      </div> */}
 
-                      {/* المستوي الثالث: مستوي محترفين التخمين */}
+                      {/* المستوي الثالث: مستوي محترفين التخمين 
                       <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-gray-50 border-2 border-gray-200 relative overflow-hidden group">
                         <h3 className="text-center font-black text-gray-400 bg-gray-200 rounded-lg py-2 mb-1 border-2 border-gray-300">مستوي محترفين التخمين</h3>
                         <div className="grid grid-cols-4 gap-2 opacity-40 grayscale blur-[1px]">
@@ -13823,7 +13848,7 @@ export default function App() {
                           <Lock className="w-10 h-10 text-gray-500 mb-2 drop-shadow-sm" />
                           <span className="font-black text-2xl text-gray-700 drop-shadow-sm">قريباً</span>
                         </div>
-                      </div>
+                      </div> */}
                     </>
                   )}
                 </div>
@@ -14665,10 +14690,10 @@ export default function App() {
                       transition={{ delay: 0.4 }}
                       className="text-2xl font-black text-white w-full text-center"
                     >
-                      {me.level >= 50 && !room.lastUpdates?.[me.id]?.useToken ? (
+                      {me.level >= 50 && !room.lastUpdates?.[me.id]?.useToken && room.matchType !== 'private' && room.matchType !== 'friend' ? (
                         <div className="flex flex-col items-center">
                           <span>XP: 0</span>
-                          <span className="text-[13px] text-yellow-400 mt-0.5">تحتاج Tokens لزيادة الـ XP</span>
+                          <span className="text-[13px] text-yellow-400 mt-0.5">تحتاج تخمينات لزيادة الـ XP</span>
                         </div>
                       ) : (
                         <div className="flex justify-center">
@@ -14712,10 +14737,10 @@ export default function App() {
                       transition={{ delay: 0.4 }}
                       className="text-2xl font-black text-white w-full text-center"
                     >
-                      {me.level >= 50 && !room.lastUpdates?.[me.id]?.useToken ? (
+                      {me.level >= 50 && !room.lastUpdates?.[me.id]?.useToken && room.matchType !== 'private' && room.matchType !== 'friend' ? (
                         <div className="flex flex-col items-center">
                           <span>XP: 0</span>
-                          <span className="text-[13px] text-yellow-400 mt-0.5">تحتاج Tokens لزيادة الـ XP</span>
+                          <span className="text-[13px] text-yellow-400 mt-0.5">تحتاج تخمينات لزيادة الـ XP</span>
                         </div>
                       ) : (
                         <div className="flex justify-center">
