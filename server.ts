@@ -973,7 +973,8 @@ const app = express();
     gender?: string, 
     fingerprint?: string,
     ip?: string,
-    xp: number, 
+    xp: number,
+    randomXp?: number, 
     streak: number,
     serial: string, 
     wins: number, 
@@ -1177,6 +1178,9 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN email TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN isAdmin INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN tokens INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0`); } catch (e) {}
+  // Initialize randomXp with current xp for existing players so they don't lose leaderboard position
+  try { db.exec(`UPDATE players SET randomXp = xp WHERE randomXp = 0 OR randomXp IS NULL`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN adsWatchedToday INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'`); } catch (e) {}
@@ -1446,8 +1450,8 @@ const app = express();
   }
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -1624,6 +1628,7 @@ const app = express();
         email: player.email || null,
         isAdmin: player.isAdmin ? 1 : 0,
         tokens: player.tokens || 0,
+        randomXp: player.randomXp !== undefined ? player.randomXp : (player.xp || 0),
         adsWatchedToday: player.adsWatchedToday || 0,
         lastAdWatchDate: player.lastAdWatchDate || null,
         ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
@@ -1676,6 +1681,7 @@ const app = express();
         email: player.email || null,
         isAdmin: player.isAdmin ? 1 : 0,
         tokens: player.tokens || 0,
+        randomXp: player.randomXp !== undefined ? player.randomXp : (player.xp || 0),
         adsWatchedToday: player.adsWatchedToday || 0,
         lastAdWatchDate: player.lastAdWatchDate || null,
         ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
@@ -1771,6 +1777,7 @@ const app = express();
           recentOpponents: JSON.parse(row.recentOpponents || '[]'),
           reportedSerials: JSON.parse(row.reportedSerials || '[]'),
           selectedFrame: row.selectedFrame || '',
+          randomXp: row.randomXp || row.xp || 0,
           lastRainGiftResetDay: row.lastRainGiftResetDay || null,
           rainGiftTokens: row.rainGiftTokens || 0,
           rainGiftHelpers: JSON.parse(row.rainGiftHelpers || '{}'),
@@ -1925,14 +1932,16 @@ const app = express();
       cachedTopPlayers = Array.from(allPlayers.values())
         .filter(p => !p.isAdmin) // Exclude admins from leaderboard
         .sort((a, b) => {
-          if (b.xp !== a.xp) return b.xp - a.xp;
+          const aXp = a.randomXp !== undefined ? a.randomXp : (a.xp || 0);
+          const bXp = b.randomXp !== undefined ? b.randomXp : (b.xp || 0);
+          if (bXp !== aXp) return bXp - aXp;
           return (b.wins || 0) - (a.wins || 0);
         })
         .slice(0, 100)
         .map((p, i) => ({ 
           name: p.name,
-          xp: p.xp,
-          level: p.level,
+          xp: p.randomXp !== undefined ? p.randomXp : (p.xp || 0),
+          level: getLevel(p.randomXp !== undefined ? p.randomXp : (p.xp || 0)),
           wins: p.wins,
           streak: p.streak || 0,
           avatar: p.avatar,
@@ -2575,6 +2584,11 @@ const app = express();
         // Check if blocked
         if (isBlocked(p1, p2)) continue;
 
+        // Prevent matching if they are from the same IP (unless one is a bot)
+        if (p1.ip && p2.ip && p1.ip === p2.ip && !p1.isBot && !p2.isBot) {
+          continue;
+        }
+
         // Check token constraints
         const p1Level = getLevel(p1.xp);
         const p2Level = getLevel(p2.xp);
@@ -2762,6 +2776,7 @@ const app = express();
       pausingPlayerId: null,
       quickGuessTimer: 0,
       adCooldownTimer: 0,
+      matchType: "random",
     };
 
     rooms.set(roomId, room);
@@ -4530,6 +4545,7 @@ io.on("connection", (socket) => {
           chatHistory: [],
           currentTurn: null,
           waitingForAnswerFrom: null,
+          matchType: "private",
         });
       }
 
@@ -4666,7 +4682,8 @@ io.on("connection", (socket) => {
         ownedHelpers: bannedPlayer.ownedHelpers || {},
         skipped: new Map(), // Initialize skipped map (playerId -> timestamp)
         joinedAt: Date.now(),
-        status: 'searching'
+        status: 'searching',
+        ip: socket.handshake.headers['x-forwarded-for'] || socket.handshake.address
       });
       socket.emit("waiting_for_match");
       processQueue();
@@ -6590,7 +6607,9 @@ io.on("connection", (socket) => {
             hasGuessedCurrent: false, 
             targetImage: null, 
             incorrectGuesses: 0, 
-            timeTaken: 0 
+            timeTaken: 0,
+            selectedCategory: null,
+            selectedLevel: null
           },
           { 
             id: socket.id, 
@@ -6611,15 +6630,20 @@ io.on("connection", (socket) => {
             hasGuessedCurrent: false, 
             targetImage: null, 
             incorrectGuesses: 0, 
-            timeTaken: 0 
+            timeTaken: 0,
+            selectedCategory: null,
+            selectedLevel: null
           }
         ],
         gameState: "waiting",
         timer: 60,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        matchType: "friend",
+        category: "animals" // Added fallback just in case
       });
 
       io.to(roomId).emit("room_update", rooms.get(roomId));
+      startWaitingInterval(roomId);
       if (callback) callback({ success: true, roomId });
     });
 
@@ -7020,10 +7044,16 @@ io.on("connection", (socket) => {
         // Draw
         room.players.forEach((p: any) => {
           let drawXP = (!shouldScale) ? 20 : Math.floor(20 * scale);
-          if (p.level >= 50 && !p.useToken) {
+          if (room.matchType === 'private' || room.matchType === 'friend') {
+             drawXP = 5;
+          }
+          if (p.level >= 50 && !p.useToken && room.matchType !== 'private' && room.matchType !== 'friend') {
             drawXP = 0;
           }
           p.xp = (p.xp || 0) + drawXP;
+          if (room.matchType === 'random' || room.matchType === undefined) {
+             p.randomXp = (p.randomXp !== undefined ? p.randomXp : (p.xp - drawXP)) + drawXP;
+          }
           p.level = getLevel(p.xp);
           p.streak = 0;
           updates[p.id] = { xp: drawXP, streak: 0, wins: p.wins || 0, won: false, level: p.level };
@@ -7031,6 +7061,9 @@ io.on("connection", (socket) => {
       } else {
         if (winner) {
           let baseXP = 100 + (winner.streak || 0) * 10;
+          if (room.matchType === 'private' || room.matchType === 'friend') {
+            baseXP = 20;
+          }
           let winnerXP = (!shouldScale) ? baseXP : Math.floor(baseXP * scale);
           
           // Level 50+ Logic:
@@ -7038,12 +7071,12 @@ io.on("connection", (socket) => {
           // If level >= 50 and token used -> Normal XP + 500 Bonus
           // If level < 50 -> Normal XP (and bonus if token used)
           
-          if (isEarlyForfeit && winner.level >= 50) {
+          if (isEarlyForfeit && winner.level >= 50 && room.matchType !== 'private' && room.matchType !== 'friend') {
              winnerXP = 0; // No XP gained on early forfeit for 50+
              if (winner.useToken) {
                  refundWinnerToken = true; // Refund token for level 50+
              }
-          } else if (winner.level >= 50 && !winner.useToken) {
+          } else if (winner.level >= 50 && !winner.useToken && room.matchType !== 'private' && room.matchType !== 'friend') {
              winnerXP = 0; // Cap progress if no token used at level 50+
           } else if (winner.useToken) {
              let bonus = (!shouldScale) ? 500 : Math.floor(500 * scale);
@@ -7051,6 +7084,9 @@ io.on("connection", (socket) => {
           }
 
           winner.xp = (winner.xp || 0) + winnerXP;
+          if (room.matchType === 'random' || room.matchType === undefined) {
+             winner.randomXp = (winner.randomXp !== undefined ? winner.randomXp : (winner.xp - winnerXP)) + winnerXP;
+          }
           winner.level = getLevel(winner.xp);
           
           if (isTrueWin) {
@@ -7062,18 +7098,24 @@ io.on("connection", (socket) => {
             }
           }
           
-          updates[winner.id] = { xp: winnerXP, streak: winner.streak, wins: winner.wins, won: true, level: winner.level, useToken: winner.useToken };
+          updates[winner.id] = { xp: winnerXP, streak: winner.streak || 0, wins: winner.wins || 0, won: true, level: winner.level, useToken: winner.useToken };
         }
         if (loser) {
           let loserXP = (!shouldScale) ? 20 : Math.floor(20 * scale);
+          if (room.matchType === 'private' || room.matchType === 'friend') {
+             loserXP = 10;
+          }
           
           // Level 50+ Logic for loser:
           // If level >= 50 and NO token used -> NO XP gain (even the small loser XP)
-          if (loser.level >= 50 && !loser.useToken) {
+          if (loser.level >= 50 && !loser.useToken && room.matchType !== 'private' && room.matchType !== 'friend') {
               loserXP = 0;
           }
 
           loser.xp = (loser.xp || 0) + loserXP;
+          if (room.matchType === 'random' || room.matchType === undefined) {
+             loser.randomXp = (loser.randomXp !== undefined ? loser.randomXp : (loser.xp - loserXP)) + loserXP;
+          }
           loser.level = getLevel(loser.xp);
           loser.streak = 0;
           updates[loser.id] = { xp: loserXP, streak: 0, wins: loser.wins || 0, won: false, level: loser.level, useToken: loser.useToken };
@@ -7105,6 +7147,7 @@ io.on("connection", (socket) => {
         const player = allPlayers.get(p.serial || "");
         if (player) {
           player.xp = p.xp;
+          if (p.randomXp !== undefined) player.randomXp = p.randomXp;
           player.level = getLevel(p.xp);
           player.wins = p.wins || 0;
           player.streak = p.streak || 0;
