@@ -2893,6 +2893,44 @@ export default function App() {
     setShowCheckoutPage(true);
   };
 
+  const handleBuyTokensWithKeys = () => {
+    playSound('clickOpen');
+    if ((keys || 0) < 25) {
+      showAlert('ليس لديك مفاتيح كافية!', 'المتجر');
+      return;
+    }
+    
+    showConfirm('هل تريد تحويل 25 مفتاح إلى 12 تخمينة؟', () => {
+      socket?.emit('buy_tokens_with_keys', { playerSerial: playerSerial }, (res: any) => {
+        if (res.success) {
+          showAlert('تم التحويل بنجاح! 🎉', 'المتجر');
+        } else {
+          showAlert(res.error || 'حدث خطأ، حاول مرة أخرى.', 'خطأ');
+        }
+      });
+    }, 'تبديل المفاتيح');
+  };
+
+  const handleBuyProWithKeys = () => {
+    playSound('clickOpen');
+    if ((keys || 0) < 100) {
+      showAlert('ليس لديك مفاتيح كافية!', 'المتجر');
+      return;
+    }
+    
+    showConfirm('هل تريد تفعيل باقة المحترفين لمدة 7 أيام مقابل 100 مفتاح؟', () => {
+      socket?.emit('buy_pro_with_keys', { playerSerial: playerSerial }, (res: any) => {
+        if (res.success) {
+          showAlert('تم تفعيل باقة المحترفين بنجاح! 🎉', 'المتجر');
+          setProPackageExpiry(res.proPackageExpiry);
+          localStorage.setItem('khamin_pro_package_expiry', res.proPackageExpiry.toString());
+        } else {
+          showAlert(res.error || 'حدث خطأ، حاول مرة أخرى.', 'خطأ');
+        }
+      });
+    }, 'تفعيل الباقة');
+  };
+
   const handleProcessPayment = async (paymentMethod: 'wallet' | 'card', details: any, quantity: number = 1) => {
     if (!selectedWalletItem) return;
     
@@ -7102,13 +7140,25 @@ export default function App() {
 
               <div className="p-6 overflow-y-auto flex-1 space-y-4">
                 <div className="flex items-center justify-between box-game p-4">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 w-1/2">
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
                       <img src="/Takhmina_coin_02.png" className="w-6 h-6 md:w-8 md:h-8" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-brown-muted">رصيدك الحالي</div>
-                      <div className="text-lg font-black" style={{ color: 'var(--shop-token-text)' }}>{tokens} تخمينات</div>
+                      <div className="text-[10px] md:text-xs font-bold text-brown-muted">رصيدك الحالي</div>
+                      <div className="text-sm md:text-lg font-black" style={{ color: 'var(--shop-token-text)' }}>{tokens} تخمينات</div>
+                    </div>
+                  </div>
+
+                  <div className="w-px h-10 bg-gray-200 mx-1"></div>
+
+                  <div className="flex items-center gap-3 w-1/2 justify-end">
+                    <div className="text-right">
+                      <div className="text-[10px] md:text-xs font-bold text-brown-muted">مفاتيحك</div>
+                      <div className="text-sm md:text-lg font-black text-yellow-600" dir="ltr">{keys || 0}</div>
+                    </div>
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-yellow-100">
+                      <Key className="w-6 h-6 text-yellow-500" />
                     </div>
                   </div>
                 </div>
@@ -7157,6 +7207,56 @@ export default function App() {
                     </div>
                   )}
                   
+                  {/* Keys Exchange Package */}
+                  <div className="flex items-center justify-between p-4 border-2 border-yellow-200 rounded-2xl bg-yellow-50 mb-4 transition-colors box-game relative">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-white border-2 border-yellow-200 rounded-xl flex items-center justify-center">
+                        <img src="/Takhmina_coin_02.png" className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="font-black text-brown-dark">12 تخمينة</div>
+                        <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
+                           مقابل 25 مفتاح <Key className="w-3 h-3" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <button
+                         onClick={handleBuyTokensWithKeys}
+                         disabled={(keys || 0) < 25}
+                         className={`px-3 py-2 rounded-xl font-black text-sm transition-all shadow-md flex items-center gap-1 ${(keys || 0) < 25 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-yellow-400 hover:bg-yellow-500 text-white active:scale-95'}`}
+                       >
+                         {(keys || 0) < 25 && <Lock className="w-4 h-4" />}
+                         تبديل
+                       </button>
+                    </div>
+                  </div>
+
+                  {/* Pro Pack for Keys */}
+                  <div className="flex items-center justify-between p-4 border-2 border-accent-orange rounded-2xl bg-orange-50 mb-4 transition-colors box-game relative">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-white border-2 border-accent-orange rounded-xl flex items-center justify-center text-2xl">
+                        👑
+                      </div>
+                      <div>
+                        <div className="font-black text-brown-dark">باقة المحترفين 7 أيام</div>
+                        <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
+                           مقابل 100 مفتاح <Key className="w-3 h-3 text-yellow-500" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <button
+                         onClick={handleBuyProWithKeys}
+                         disabled={(keys || 0) < 100 || hasProPackage}
+                         className={`px-3 py-2 rounded-xl font-black text-sm transition-all shadow-md flex items-center gap-1 ${(keys || 0) < 100 || hasProPackage ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-accent-orange hover:bg-orange-600 text-white active:scale-95'}`}
+                       >
+                         {hasProPackage ? 'مفعلة' : ((keys || 0) < 100 && <Lock className="w-4 h-4" />)}
+                         {hasProPackage ? '' : 'تفعيل'}
+                       </button>
+                    </div>
+                  </div>
+
                   {/* Dynamic Packages */}
                   {shopItems.length > 0 ? (
                     shopItems.filter(item => item.type !== 'pro_pack').map((item) => (
