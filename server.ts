@@ -5918,6 +5918,41 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("buy_tokens_with_keys", ({ playerSerial }, callback) => {
+      const player = allPlayers.get(playerSerial);
+      if (player) {
+         if ((player.keys || 0) >= 25) {
+           player.keys -= 25;
+           player.tokens = (player.tokens || 0) + 12;
+           savePlayerData(playerSerial);
+           io.to(socket.id).emit('player_data_update', player);
+           callback({ success: true });
+         } else {
+           callback({ success: false, error: 'ليس لديك مفاتيح كافية!' });
+         }
+      } else {
+         callback({ success: false, error: 'اللاعب غير موجود!' });
+      }
+    });
+
+    socket.on("buy_pro_with_keys", ({ playerSerial }, callback) => {
+      const player = allPlayers.get(playerSerial);
+      if (player) {
+         if ((player.keys || 0) >= 100) {
+           player.keys -= 100;
+           const now = Date.now();
+           player.proPackageExpiry = Math.max(player.proPackageExpiry || 0, now) + 7 * 24 * 60 * 60 * 1000;
+           savePlayerData(playerSerial);
+           io.to(socket.id).emit('player_data_update', player);
+           callback({ success: true, proPackageExpiry: player.proPackageExpiry });
+         } else {
+           callback({ success: false, error: 'ليس لديك مفاتيح كافية!' });
+         }
+      } else {
+         callback({ success: false, error: 'اللاعب غير موجود!' });
+      }
+    });
+
     socket.on("admin_get_contacts", (callback) => {
       const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
       if (admin?.isAdmin || socket.data?.isAdmin) {
