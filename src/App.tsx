@@ -82,12 +82,12 @@ const SPIN_REWARDS_UI = [
   { id: 'word_count', type: 'helper', value: 'word_count', label: 'عدد الكلمات', icon: <Hash className="w-6 h-6" />, color: '#6366f1' },
   { id: 'hint', type: 'helper', value: 'hint', label: 'تلميح', icon: <HelpCircle className="w-6 h-6" />, color: '#3b82f6' },
   { id: 'spy_lens', type: 'helper', value: 'spy_lens', label: 'الجاسوس', icon: <Eye className="w-6 h-6" />, color: '#a855f7' },
-  { id: 'token_1', type: 'token', value: 1, label: 'تخمينة واحدة', icon: <Coins className="w-6 h-6" />, color: '#fbbf24' },
-  { id: 'token_2', type: 'token', value: 2, label: '2 تخمينة', icon: <Coins className="w-6 h-6" />, color: '#f59e0b' },
-  { id: 'token_3', type: 'token', value: 3, label: '3 تخمينة', icon: <Coins className="w-6 h-6" />, color: '#d97706' },
-  { id: 'token_4', type: 'token', value: 4, label: '4 تخمينة', icon: <Coins className="w-6 h-6" />, color: '#b45309' },
-  { id: 'token_5', type: 'token', value: 5, label: '5 تخمينة', icon: <Coins className="w-6 h-6" />, color: '#92400e' },
-  { id: 'token_10', type: 'token', value: 10, label: 'تخمينة واحدة0', icon: <Coins className="w-6 h-6" />, color: '#78350f' },
+  { id: 'token_1', type: 'token', value: 1, label: 'تخمينة 1', icon: <img src="/Takhmina_coin_02.png" className="w-6 h-6" style={{ filter: 'brightness(0) invert(1)' }} />, color: '#fbbf24' },
+  { id: 'token_2', type: 'token', value: 2, label: '2 تخمينة', icon: <img src="/Takhmina_coin_02.png" className="w-6 h-6" style={{ filter: 'brightness(0) invert(1)' }} />, color: '#f59e0b' },
+  { id: 'token_3', type: 'token', value: 3, label: '3 تخمينة', icon: <img src="/Takhmina_coin_02.png" className="w-6 h-6" style={{ filter: 'brightness(0) invert(1)' }} />, color: '#d97706' },
+  { id: 'token_4', type: 'token', value: 4, label: '4 تخمينة', icon: <img src="/Takhmina_coin_02.png" className="w-6 h-6" style={{ filter: 'brightness(0) invert(1)' }} />, color: '#b45309' },
+  { id: 'token_5', type: 'token', value: 5, label: '5 تخمينة', icon: <img src="/Takhmina_coin_02.png" className="w-6 h-6" style={{ filter: 'brightness(0) invert(1)' }} />, color: '#92400e' },
+  { id: 'token_10', type: 'token', value: 10, label: 'تخمينة 10', icon: <img src="/Takhmina_coin_02.png" className="w-6 h-6" style={{ filter: 'brightness(0) invert(1)' }} />, color: '#78350f' },
   { id: 'xp_10', type: 'xp', value: 10, label: '10 XP', icon: <Star className="w-6 h-6" />, color: '#f97316' },
   { id: 'xp_20', type: 'xp', value: 20, label: '20 XP', icon: <Star className="w-6 h-6" />, color: '#ea580c' },
   { id: 'xp_30', type: 'xp', value: 30, label: '30 XP', icon: <Star className="w-6 h-6" />, color: '#c2410c' },
@@ -116,7 +116,7 @@ const CategoryPageAd = () => {
   }, []);
 
   return (
-    <div className="w-full mt-4 md:mt-8 min-h-[90px] max-h-[120px] flex flex-col items-center overflow-hidden">
+    <div className="w-full mt-4 md:mt-4 min-h-[90px] max-h-[120px] flex flex-col items-center overflow-hidden">
       <ins className="adsbygoogle"
            style={{ display: 'block', width: '100%', height: '90px' }}
            data-ad-client="ca-pub-8026106142955130"
@@ -5368,7 +5368,9 @@ export default function App() {
       if (hasProPackage) {
         setHasWatchedCategoryAd(true);
       } else {
-        handleWatchCategoryAd();
+        // [TEMP] Category Ad disabled temporarily
+        // handleWatchCategoryAd();
+        setHasWatchedCategoryAd(true);
       }
     }
   }, [room?.gameState, room?.players?.length, hasWatchedCategoryAd, isWatchingCategoryAd, showCategoryAdButton, handleWatchCategoryAd, hasProPackage]);
@@ -6709,7 +6711,7 @@ export default function App() {
                     </>
                   ) : (
                     <>
-                      <Coins className="w-5 h-5 text-accent-yellow" />
+                      <img src="/Takhmina_coin_02.png" className="w-5 h-5" />
                       <span>{activeGlobalReward.tokenAmount} تخمينات</span>
                     </>
                   )}
@@ -7102,7 +7104,7 @@ export default function App() {
                 <div className="flex items-center justify-between box-game p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                      <Coins className="w-6 h-6 text-purple-500" />
+                      <img src="/Takhmina_coin_02.png" className="w-6 h-6 md:w-8 md:h-8" />
                     </div>
                     <div>
                       <div className="text-xs font-bold text-brown-muted">رصيدك الحالي</div>
@@ -7536,7 +7538,7 @@ export default function App() {
                       )}
                       {displayedRewards && (
                         <span className="px-0.5 py-0.5 rounded-lg text-xs font-bold text-purple-600 flex items-center gap-0.5">
-                          <Coins className="w-3 h-3 md:w-4 md:h-4" /> {displayedRewards.tokens}
+                          <img src="/Takhmina_coin_02.png" className="w-3 h-3 md:w-4 md:h-4" style={{ filter: 'hue-rotate(225deg)' }} /> {displayedRewards.tokens}
                         </span>
                       )}
                       {displayedRewards && (
@@ -9646,7 +9648,7 @@ export default function App() {
 
                         <div className="box-game p-6 shadow-sm border-4 border-accent-blue">
                           <h3 className="text-xl font-black mb-4 flex items-center gap-2">
-                            <Coins className="w-6 h-6 text-accent-yellow" />
+                            <img src="/Takhmina_coin_02.png" className="w-6 h-6" />
                             توزيع تخمينات للاعبين (مستوى 50+)
                           </h3>
                           <p className="text-brown-muted font-bold mb-6">
@@ -11698,7 +11700,7 @@ export default function App() {
                     )}
                     {displayedRewards && (
                       <span className="bg-white px-2 py-1 rounded-lg text-xs font-bold text-purple-600 flex items-center gap-1 shadow-sm border border-gray-100">
-                        <Coins className="w-4 h-4" /> {displayedRewards.tokens}
+                        <img src="/Takhmina_coin_02.png" className="w-4 h-4" /> {displayedRewards.tokens}
                       </span>
                     )}
                     {displayedRewards && (
@@ -12411,7 +12413,7 @@ export default function App() {
               <div className="text-xl font-black text-accent-blue">+{collectedRewards.xp} XP</div>
             </div>
             <div className="bg-white/50 p-2 rounded-2xl border-2 border-yellow-500/20">
-              <div className="text-2xl mb-1"><Coins className="w-8 h-8 text-purple-600" /></div>
+              <div className="text-2xl mb-1"><img src="/Takhmina_coin_02.png" className="w-8 h-8" /></div>
               <div className="text-xl font-black text-yellow-600">+{collectedRewards.tokens} تخمينة</div>
             </div>
             {Object.entries(collectedRewards.helpers || {}).map(([id, count]) => (
@@ -12709,12 +12711,12 @@ export default function App() {
                         <span className="text-[11px] md:text-[12px]" dir="ltr">{proPackageDaysLeft}</span>
                       </span>                      
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Coins className="w-3 h-3 md:w-4 md:h-4 text-purple-600" /></span> <span className="text-[11px] md:text-[12px]">{tokens}</span>
+                          <span className="text-[13px] md:text-[14px]"><img src="/Takhmina_coin_02.png" className="w-3 h-3 md:w-4 md:h-4" /></span> <span className="text-[11px] md:text-[12px]">{tokens}</span>
                         </span>
-                        <span className="flex text-xs md:text-sm text-gray-400 px-0.5">|</span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
                           <span className="text-[13px] md:text-[14px]"><Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /></span> <span className="text-[11px] md:text-[12px]">{keys || 0}</span>
                         </span>
+                        <span className="flex text-xs md:text-sm text-gray-400 px-0.5">|</span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
                           <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.time_freeze || 0}</span>
                         </span>
@@ -12941,8 +12943,8 @@ export default function App() {
                           <span className="text-brown-muted font-bold text-xs md:text-sm">لست ضمن الـ Top 100..</span>
                           <span className="text-accent-orange font-black text-xs md:text-sm">شد حيلك! 🚀</span>
                         </div>
-                        <div className="w-8 h-8 bg-gray-50 group-hover:bg-accent-orange-light rounded-full flex items-center justify-center transition-colors shrink-0">
-                           <ChevronLeft className="w-4 h-4 text-brown-light group-hover:text-accent-orange transition-colors animate-pulse" />
+                        <div className="w-6 h-6 bg-gray-300 group-hover:bg-accent-orange-light rounded-full flex items-center justify-center transition-colors shrink-0">
+                           <ChevronLeft className="w-4 h-4 text-black-light group-hover:text-accent-black transition-colors animate-pulse" />
                         </div>
                       </button>
                     );
@@ -13333,7 +13335,7 @@ export default function App() {
                   <X className="w-5 h-5" />
                 </button>
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
-                  <Coins className="w-8 h-8 text-accent-purple" />
+                  <img src="/Takhmina_coin_02.png" className="w-8 h-8 md:w-10 md:h-10" />
                 </div>
                 <h2 className="text-2xl font-black text-light mb-1">ما هي التخمينة؟</h2>
               </div>
@@ -13342,7 +13344,7 @@ export default function App() {
                 <div className="space-y-4 text-brown-dark">
                   <div className="box-game p-4">
                     <h3 className="font-black mb-2 flex items-center gap-2" style={{ color: 'var(--shop-info-title)' }}>
-                      <Coins className="w-4 h-4" />
+                      <img src="/Takhmina_coin_02.png" className="w-4 h-4 md:w-6 md:h-6" />
                       ما فائدتها؟
                     </h3>
                     <p className="text-sm font-bold leading-relaxed">
@@ -13503,15 +13505,6 @@ export default function App() {
                 <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
               </span>
             )}
-          </button>
-
-          {/* Shop Button */}
-          <button 
-            onClick={toggleShop}
-            className="w-9 h-9 md:w-10 md:h-10 bg-orange-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-orange-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-            title="المتجر"
-          >
-            <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
           </button>
 
             {/* Notifications Button */}
@@ -13711,7 +13704,7 @@ export default function App() {
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0">
           {room.gameState === 'waiting' ? (
             <React.Fragment>
-              <div className="w-full card-game p-3 md:p-6 text-center space-y-3 md:space-y-5 relative overflow-hidden">
+              <div className="w-full card-game p-3 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#F6E6CD]">
                 <div 
                   className="h-full bg-accent-orange transition-all duration-1000" 
@@ -13757,7 +13750,7 @@ export default function App() {
                           setCopied(true);
                           setTimeout(() => setCopied(false), 2000);
                         }}
-                        className="bg-white px-3 py-1 rounded-xl border-2 border-accent-blue mx-2 text-accent-blue hover:bg-blue-50 transition-all flex items-center gap-2 shadow-sm active:scale-95"
+                        className="bg-white px-3 py-0.3 rounded-xl border-2 border-accent-blue mx-2 text-accent-blue hover:bg-blue-50 transition-all flex items-center gap-2 active:scale-95"
                       >
                         <span className="font-mono text-lg">{roomId}</span>
                         {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
@@ -13805,7 +13798,7 @@ export default function App() {
                               : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-brown-dark'
                           } ${opponent?.selectedLevel === 'مستوي مبتدئين التخمين' && selectedCategoryLevel !== 'مستوي مبتدئين التخمين' ? 'hint-glow ring-2 ring-accent-orange' : ''}`}
                         >
-                          مبتدئين 👶🏻
+                          مبتدئين <span className="text-[16px] md:text-[18px]">👶🏻</span>
                           {opponent?.selectedLevel === 'مستوي مبتدئين التخمين' && selectedCategoryLevel !== 'مستوي مبتدئين التخمين' && (
                             <div className="absolute -top-3 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10 whitespace-nowrap">
                               المنافس هنا!
@@ -13825,7 +13818,7 @@ export default function App() {
                               : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-blue-900'
                           } ${opponent?.selectedLevel === 'مستوي ابطال التخمين' && selectedCategoryLevel !== 'مستوي ابطال التخمين' ? 'hint-glow ring-2 ring-accent-orange' : ''}`}
                         >
-                          ابطال 💪
+                          ابطال <span className="text-[16px] md:text-[18px]">💪</span>
                           {opponent?.selectedLevel === 'مستوي ابطال التخمين' && selectedCategoryLevel !== 'مستوي ابطال التخمين' && (
                             <div className="absolute -top-3 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10 whitespace-nowrap">
                               المنافس هنا!
@@ -13845,7 +13838,7 @@ export default function App() {
                               : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-purple-900'
                           } ${opponent?.selectedLevel === 'مستوي محترفين التخمين' && selectedCategoryLevel !== 'مستوي محترفين التخمين' ? 'hint-glow ring-2 ring-accent-orange' : ''}`}
                         >
-                          محترفين 🕵
+                          محترفين <span className="text-[16px] md:text-[18px]">🕵</span>
                           {opponent?.selectedLevel === 'مستوي محترفين التخمين' && selectedCategoryLevel !== 'مستوي محترفين التخمين' && (
                             <div className="absolute -top-3 -right-2 bg-accent-orange text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce z-10 whitespace-nowrap">
                               المنافس هنا!
@@ -13857,7 +13850,7 @@ export default function App() {
                       {/* مستوي مبتدئين التخمين */}
                       {selectedCategoryLevel === 'مستوي مبتدئين التخمين' && (
                         <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-white border-2 border-game relative animate-in fade-in zoom-in duration-200">
-                          <h3 className="text-center font-black text-brown-dark bg-yellow-100 rounded-lg py-2 mb-1 border-2 border-yellow-300">مستوي مبتدئين التخمين</h3>
+                          <h3 className="text-center font-black text-brown-dark bg-yellow-100 rounded-lg py-2 mb-2 border-2 border-yellow-300">مستوي مبتدئين التخمين</h3>
                           <div className="grid grid-cols-4 gap-2">
                             {categories.map(cat => {
                               const isMyChoice = me?.selectedCategory === cat.id;
@@ -13902,7 +13895,7 @@ export default function App() {
                       {selectedCategoryLevel === 'مستوي ابطال التخمين' && (
                         <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-gray-50 border-2 border-gray-200 relative overflow-hidden group animate-in fade-in zoom-in duration-200">
                           <h3 className="text-center font-black text-gray-400 bg-gray-200 rounded-lg py-2 mb-1 border-2 border-gray-300">مستوي ابطال التخمين</h3>
-                          <div className="grid grid-cols-4 gap-2 opacity-40 grayscale blur-[1px]">
+                          <div className="grid grid-cols-4 gap-2 mb-1 opacity-40 grayscale blur-[1px]">
                             {Array.from({ length: 8 }).map((_, i) => (
                               <div key={`level2-${i}`} className="bg-gray-200 p-2 rounded-xl flex flex-col items-center gap-1 border-b-4 border-gray-300">
                                 <span className="text-2xl md:text-3xl text-gray-400">❓</span>
@@ -13921,7 +13914,7 @@ export default function App() {
                       {selectedCategoryLevel === 'مستوي محترفين التخمين' && (
                         <div className="box-game p-2 mb-2 space-y-4 shadow-sm bg-gray-50 border-2 border-gray-200 relative overflow-hidden group animate-in fade-in zoom-in duration-200">
                           <h3 className="text-center font-black text-gray-400 bg-gray-200 rounded-lg py-2 mb-1 border-2 border-gray-300">مستوي محترفين التخمين</h3>
-                          <div className="grid grid-cols-4 gap-2 opacity-40 grayscale blur-[1px]">
+                          <div className="grid grid-cols-4 gap-2 mb-1 opacity-40 grayscale blur-[1px]">
                             {Array.from({ length: 8 }).map((_, i) => (
                               <div key={`level3-${i}`} className="bg-gray-200 p-2 rounded-xl flex flex-col items-center gap-1 border-b-4 border-gray-300">
                                 <span className="text-2xl md:text-3xl text-gray-400">❓</span>
