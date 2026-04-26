@@ -1065,9 +1065,7 @@ export default function App() {
            if (xpRand < 0.4) value = 10;
            else if (xpRand < 0.7) value = 20;
            else if (xpRand < 0.95) value = 30;
-           else if (xpRand < 0.98) value = 40; // 3% chance
-           else if (xpRand < 0.995) value = 50; // 1.5% chance
-           else value = 100; // 0.5% chance
+           else value = 40; // 5% chance
            icon = `${value}XP`;
         } else if (rand < 0.82) { // 2% تخمينة chance
            type = 'token';
@@ -2138,8 +2136,8 @@ export default function App() {
         'بدأ حدث مطر الهدايا الآن! هل تريد الانضمام للحدث وجمع الهدايا؟',
         () => {
           if (!hasPaidForCurrentRainEvent && !isAdmin) {
-             if (keys < 3) {
-               showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
+             if (keys < 5) {
+               showAlert('تحتاج إلى 5 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
                return;
              }
              socket?.emit('rain_gift_pay', { serial: playerSerial }, (res: any) => {
@@ -5406,9 +5404,7 @@ export default function App() {
       if (hasProPackage) {
         setHasWatchedCategoryAd(true);
       } else {
-        // [TEMP] Category Ad disabled temporarily
-        // handleWatchCategoryAd();
-        setHasWatchedCategoryAd(true);
+        handleWatchCategoryAd();
       }
     }
   }, [room?.gameState, room?.players?.length, hasWatchedCategoryAd, isWatchingCategoryAd, showCategoryAdButton, handleWatchCategoryAd, hasProPackage]);
@@ -7370,6 +7366,38 @@ export default function App() {
               
               <div className="space-y-2 text-brown-muted font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                 <p>كلما فزت في مباريات أكثر، كلما حصلت على XP وارتفع مستواك!</p>
+                {/* Takhmina Coins */}
+                <div className="box-game p-3">
+                  <h3 className="text-lg font-black text-yellow-600 mb-2 flex items-center gap-2">
+                    <img src="/Takhmina_coin_02.png" className="w-6 h-6" alt="تخمينة" />
+                    عملة تخمينة
+                  </h3>
+                  <p className="text-sm leading-relaxed">
+                    عملة تخمينة هي عملة للعب مع المحترفين! يسمح لك باللعب ضد لاعبين مستواهم 40 أو أعلى، والحصول على XP إضافي (500 XP) عند الفوز, ولها استخدامات عديدة مميزة داخل اللعبة.
+                  </p>
+                </div>
+
+                {/* Keys */}
+                <div className="box-game p-3">
+                  <h3 className="text-lg font-black text-yellow-500 mb-2 flex items-center gap-2">
+                    <Key className="w-5 h-5" />
+                    مفاتيح التخمين
+                  </h3>
+                  <p className="text-sm leading-relaxed">
+                    يمكنك الحصول علي مفاتيح التخمين من خلال استخدامك لوسائل المساعدة اثناء لعب المباريات, ولها استخدامات كثيرة فى اللعبة لفتح اقفال اللعبة بسهولة.
+                  </p>
+                </div>
+
+                {/* Pro Package */}
+                <div className="box-game p-3">
+                  <h3 className="text-lg font-black text-accent-orange mb-2 flex items-center gap-2">
+                    <div className="text-xl relative top-0.5">👑</div>
+                    باقة المحترفين
+                  </h3>
+                  <p className="text-sm leading-relaxed">
+                    عند حصولك علي باقة المحترفين يمكنك استخدام جميع وسائل المساعدة بدون إعلانات حسب مدة تفعيل الباقة.
+                  </p>
+                </div>
                 
                 <div className="box-game p-3 space-y-4">
                   <h3 className="text-lg font-black text-accent-orange mb-2 flex items-center justify-between">
@@ -7530,7 +7558,7 @@ export default function App() {
                     </li>
                   </ul>
                 </div>
-                
+
                 <p className="text-sm text-center text-brown-light mt-4">استمر في اللعب لتصل إلى أعلى مستوى وتتفوق على أصدقائك!</p>
               </div>
             </motion.div>
@@ -12513,7 +12541,7 @@ export default function App() {
               <div className="text-xl font-black text-accent-blue">+{collectedRewards.xp} XP</div>
             </div>
             <div className="bg-white/50 p-2 rounded-2xl border-2 border-yellow-500/20">
-              <div className="text-2xl mb-1"><img src="/Takhmina_coin_02.png" className="w-8 h-8" /></div>
+              <div className="flex items-center justify-center text-2xl mb-1"><img src="/Takhmina_coin_02.png" className="w-8 h-8" /></div>
               <div className="text-xl font-black text-yellow-600">+{collectedRewards.tokens} تخمينة</div>
             </div>
             {Object.entries(collectedRewards.helpers || {}).map(([id, count]) => (
@@ -13108,7 +13136,7 @@ export default function App() {
                       }}
                       className="flex items-center gap-1 bg-white/80 px-2 py-0.5 rounded-lg border-2 border-2 hover:bg-white transition-colors"
                     >
-                      <span className="text-sm font-bold text-accent-orange">{keys}/3</span>
+                      <span className="text-sm font-bold text-accent-orange">{keys}/5</span>
                       <Key className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
                     </button>
                     <button
@@ -13126,8 +13154,8 @@ export default function App() {
                         }
 
                         if (!hasPaidForCurrentRainEvent && !isAdmin) {
-                          if (keys < 3) {
-                            showAlert('تحتاج إلى 3 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
+                          if (keys < 5) {
+                            showAlert('تحتاج إلى 5 مفاتيح 🗝️ للاشتراك في الحدث!', 'تنبيه');
                             return;
                           }
                           socket?.emit('rain_gift_pay', { serial: playerSerial }, (res: any) => {
