@@ -1921,7 +1921,7 @@ const app = express();
     const now = Date.now();
     if (force || now - topPlayersCacheTime > 60000) { // Cache for 1 minute unless forced
       cachedTopPlayers = Array.from(allPlayers.values())
-        .filter(p => !p.isAdmin) // Exclude admins from leaderboard
+        .filter(p => !p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= now)) // Exclude admins and banned players from leaderboard
         .sort((a, b) => {
           const aXp = a.randomXp !== undefined ? a.randomXp : (a.xp || 0);
           const bXp = b.randomXp !== undefined ? b.randomXp : (b.xp || 0);
