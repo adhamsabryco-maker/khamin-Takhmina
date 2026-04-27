@@ -1381,6 +1381,16 @@ const app = express();
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS admin_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      playerSerial TEXT NOT NULL,
+      message TEXT NOT NULL,
+      read INTEGER DEFAULT 0,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS contacts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       playerSerial TEXT,
@@ -4450,6 +4460,9 @@ io.on("connection", (socket) => {
         // Delete related reports
         db.prepare('DELETE FROM reports WHERE reporterSerial = ? OR reportedSerial = ?').run(playerSerial, playerSerial);
         
+        // Delete friends
+        db.prepare('DELETE FROM friends WHERE player1 = ? OR player2 = ?').run(playerSerial, playerSerial);
+        
         // Delete player
         db.prepare('DELETE FROM players WHERE serial = ?').run(playerSerial);
         allPlayers.delete(playerSerial);
@@ -5981,6 +5994,46 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("admin_reply_contact", ({ contactId, message, playerSerial }, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          db.prepare('INSERT INTO admin_messages (playerSerial, message, timestamp) VALUES (?, ?, ?)').run(playerSerial, message, Date.now());
+          db.prepare('DELETE FROM contacts WHERE id = ?').run(contactId);
+          
+          const targetSocketId = playerSockets.get(playerSerial);
+          if (targetSocketId) {
+             io.to(targetSocketId).emit("new_admin_message");
+          }
+          callback({ success: true });
+        } catch (err) {
+          callback({ error: "Failed to reply" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
+    socket.on("admin_reply_report", ({ reportId, message, playerSerial }, callback) => {
+      const admin = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
+      if (admin?.isAdmin || socket.data?.isAdmin) {
+        try {
+          db.prepare('INSERT INTO admin_messages (playerSerial, message, timestamp) VALUES (?, ?, ?)').run(playerSerial, message, Date.now());
+          db.prepare('DELETE FROM reports WHERE id = ?').run(reportId);
+          
+          const targetSocketId = playerSockets.get(playerSerial);
+          if (targetSocketId) {
+             io.to(targetSocketId).emit("new_admin_message");
+          }
+          callback({ success: true });
+        } catch (err) {
+          callback({ error: "Failed to reply" });
+        }
+      } else {
+        callback({ error: "Unauthorized" });
+      }
+    });
+
     socket.on("admin_get_reports", (callback) => {
       const player = Array.from(allPlayers.values()).find(p => p.serial === socket.data?.serial);
       if (player?.isAdmin || socket.data?.isAdmin) {
@@ -6126,6 +6179,26 @@ io.on("connection", (socket) => {
         callback({ notifications });
       } catch (e) {
         callback({ notifications: [] });
+      }
+    });
+
+    socket.on("get_admin_messages", ({ serial }, callback) => {
+      if (!serial) return callback({ messages: [] });
+      try {
+        const messages = db.prepare('SELECT * FROM admin_messages WHERE playerSerial = ? AND read = 0').all(serial);
+        callback({ messages });
+      } catch (e) {
+        callback({ messages: [] });
+      }
+    });
+
+    socket.on("mark_admin_message_read", ({ serial, messageId }, callback) => {
+      if (!serial || !messageId) return callback({ success: false });
+      try {
+        db.prepare('UPDATE admin_messages SET read = 1 WHERE id = ? AND playerSerial = ?').run(messageId, serial);
+        callback({ success: true });
+      } catch (e) {
+        callback({ success: false });
       }
     });
 
@@ -7065,6 +7138,21 @@ io.on("connection", (socket) => {
       
       room.winnerId = winner ? winner.id : null;
 
+      // --- Cheating Detection (Boosting) ---
+      if (winner && loser && winner.serial && loser.serial) {
+        const p1Data = allPlayers.get(winner.serial);
+        const p2Data = allPlayers.get(loser.serial);
+        if (p1Data && p2Data && p1Data.ip && p1Data.fingerprint) {
+          if (p1Data.ip === p2Data.ip && p1Data.fingerprint === p2Data.fingerprint) {
+             const existingReport = db.prepare('SELECT 1 FROM reports WHERE reporterSerial = ? AND reportedSerial = ? AND reason LIKE ?').get('SYSTEM', winner.serial, '%غش%');
+             if (!existingReport) {
+                 db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason) VALUES (?, ?, ?, ?, ?, ?, ?)').run(Math.random().toString(36).substr(2, 9), Date.now(), 'SYSTEM', 'نظام الحماية', winner.serial, winner.name, 'النظام يشتبه في ان اللاعب يغش أو يتلاعب بالنقاط (يلعب ضد حسابه الآخر في نفس الجهاز)');
+                 db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason) VALUES (?, ?, ?, ?, ?, ?, ?)').run(Math.random().toString(36).substr(2, 9), Date.now(), 'SYSTEM', 'نظام الحماية', loser.serial, loser.name, 'النظام يشتبه في ان اللاعب يغش أو يتلاعب بالنقاط (يلعب ضد حسابه الآخر في نفس الجهاز)');
+             }
+          }
+        }
+      }
+
       // Calculate updates
       const updates: any = {};
       const duration = room.startTime ? Date.now() - room.startTime : 0;
@@ -7128,6 +7216,15 @@ io.on("connection", (socket) => {
             // Record collection win
             if (winner.serial && winner.targetImage) {
               recordCollectionWin(winner.serial, winner.targetImage.name);
+            }
+            
+            // --- Cheating Detection (Boosting via Streak) ---
+            if (winner.streak > 20) {
+              const existingReport = db.prepare('SELECT 1 FROM reports WHERE reporterSerial = ? AND reportedSerial = ? AND reason LIKE ?').get('SYSTEM', winner.serial, '%كثرة الفوز%');
+              if (!existingReport) {
+                const reportId = Math.random().toString(36).substr(2, 9);
+                db.prepare('INSERT INTO reports (id, reporterSerial, reporterName, reportedSerial, reportedName, reason, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)').run(reportId, 'SYSTEM', 'نظام الحماية', winner.serial, winner.name, 'النظام يشتبه في ان اللاعب يغش (كثرة الفوز المتتالي بشكل غير طبيعي تجاوز 20 مباراة)', Date.now());
+              }
             }
           }
           
