@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { GoogleGenAI } from "@google/genai";
 import { io, Socket } from 'socket.io-client';
+import { Facebook, Youtube, Instagram } from 'lucide-react';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import { motion, AnimatePresence, animate } from 'motion/react';
 import { 
@@ -806,6 +807,10 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [pendingWelcomeModal, setPendingWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showLinkAccountModal, setShowLinkAccountModal] = useState(false);
+  const [showGenerateLinkCodeModal, setShowGenerateLinkCodeModal] = useState(false);
+  const [generatedLinkCode, setGeneratedLinkCode] = useState('');
+  const [linkCodeToEnter, setLinkCodeToEnter] = useState('');
   const [showCitySearch, setShowCitySearch] = useState(false);
   const [citySearchState, setCitySearchState] = useState<any>(null);
   const [isCitySearchLoaded, setIsCitySearchLoaded] = useState(false);
@@ -1229,6 +1234,10 @@ export default function App() {
   const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors' | 'announcements' | 'rewards' | 'policies' | 'avatar_review' | 'contacts' | 'live_matches' | 'quick_chat'>('players');
   const [rewardHistory, setRewardHistory] = useState<any[]>([]);
   const [adminContacts, setAdminContacts] = useState<any[]>([]);
+  const [replyingToContact, setReplyingToContact] = useState<number | null>(null);
+  const [replyingToReport, setReplyingToReport] = useState<string | null>(null);
+  const [contactReplyMessage, setContactReplyMessage] = useState("");
+  const [reportReplyMessage, setReportReplyMessage] = useState("");
   const [activeRooms, setActiveRooms] = useState<any[]>([]);
 
   const [spectatingRoomId, setSpectatingRoomId] = useState<string | null>(null);
@@ -2068,6 +2077,7 @@ export default function App() {
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
   const [collectionNotifications, setCollectionNotifications] = useState<any[]>([]);
+  const [systemMessages, setSystemMessages] = useState<any[]>([]);
   const [showAskFriendModal, setShowAskFriendModal] = useState<{imageName: string, categoryId: string} | null>(null);
   const [selectedFriendsForRequest, setSelectedFriendsForRequest] = useState<string[]>([]);
   const [showFriendRequestsModal, setShowFriendRequestsModal] = useState(false);
@@ -2621,7 +2631,9 @@ export default function App() {
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      if (!localStorage.getItem('khamin_install_dismissed')) {
+      const dismissedAt = localStorage.getItem('khamin_install_dismissed');
+      const isDismissedRecently = dismissedAt && (Date.now() - parseInt(dismissedAt)) < 7 * 24 * 60 * 60 * 1000;
+      if (!isDismissedRecently) {
         setShowInstallModal(true);
       }
     };
@@ -2641,11 +2653,13 @@ export default function App() {
 
   const handleCloseInstallModal = () => {
     setShowInstallModal(false);
-    localStorage.setItem('khamin_install_dismissed', 'true');
+    localStorage.setItem('khamin_install_dismissed', Date.now().toString());
   };
 
   useEffect(() => {
-    if (loadingProgress === 100 && deferredPrompt && !localStorage.getItem('khamin_install_dismissed')) {
+    const dismissedAt = localStorage.getItem('khamin_install_dismissed');
+    const isDismissedRecently = dismissedAt && (Date.now() - parseInt(dismissedAt)) < 7 * 24 * 60 * 60 * 1000;
+    if (loadingProgress === 100 && deferredPrompt && !isDismissedRecently) {
       setShowInstallModal(true);
     }
   }, [loadingProgress, deferredPrompt]);
@@ -3879,6 +3893,10 @@ export default function App() {
         newSocket.emit('get_collection_notifications', { serial }, (res: any) => {
           if (res.notifications) setCollectionNotifications(res.notifications);
         });
+        
+        newSocket.emit('get_admin_messages', { serial }, (res: any) => {
+          if (res.messages) setSystemMessages(res.messages);
+        });
       }
     });
 
@@ -4586,6 +4604,16 @@ export default function App() {
     });
 
     // Friend System Event Listeners
+    newSocket.on("new_admin_message", () => {
+      playSound('notification');
+      const currentSerial = localStorage.getItem('khamin_player_serial');
+      if (currentSerial) {
+        newSocket.emit('get_admin_messages', { serial: currentSerial }, (res: any) => {
+          if (res.messages) setSystemMessages(res.messages);
+        });
+      }
+    });
+
     newSocket.on("new_collection_notification", () => {
       playSound('notification');
       const currentSerial = localStorage.getItem('khamin_player_serial');
@@ -5404,7 +5432,9 @@ export default function App() {
       if (hasProPackage) {
         setHasWatchedCategoryAd(true);
       } else {
-        handleWatchCategoryAd();
+        // [TEMP] Category Ad disabled temporarily
+        // handleWatchCategoryAd();
+        setHasWatchedCategoryAd(true);
       }
     }
   }, [room?.gameState, room?.players?.length, hasWatchedCategoryAd, isWatchingCategoryAd, showCategoryAdButton, handleWatchCategoryAd, hasProPackage]);
@@ -6558,7 +6588,7 @@ export default function App() {
               <h2 className="text-xl font-black text-main flex items-center gap-2">
                 <Bell className="w-5 h-5 text-yellow-500" />
                 الإشعارات
-                {(friendRequests.length + collectionNotifications.length) > 0 && <span className="text-sm bg-red-500 text-white px-2 py-0.5 rounded-full">{friendRequests.length + collectionNotifications.length}</span>}
+                {(friendRequests.length + collectionNotifications.length + systemMessages.length) > 0 && <span className="text-sm bg-red-500 text-white px-2 py-0.5 rounded-full">{friendRequests.length + collectionNotifications.length + systemMessages.length}</span>}
               </h2>
               <button onClick={() => setShowFriendRequestsModal(false)} className="text-brown-light hover:text-red-500 transition-colors">
                 <X className="w-6 h-6" />
@@ -6566,10 +6596,39 @@ export default function App() {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar" dir="rtl">
-              {friendRequests.length === 0 && collectionNotifications.length === 0 ? (
+              {friendRequests.length === 0 && collectionNotifications.length === 0 && systemMessages.length === 0 ? (
                 <div className="text-center py-8 text-brown-muted font-bold">لا توجد إشعارات حالياً.</div>
               ) : (
                 <div className="space-y-4">
+                  
+                  {/* System Messages Section */}
+                  {systemMessages.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Mail className="w-4 h-4 text-main" />
+                        <h3 className="font-black text-sm text-main">ردود الدعم الفني</h3>
+                      </div>
+                      
+                      {systemMessages.map(msg => (
+                        <div key={msg.id} className="bg-yellow-50 border-2 border-yellow-200 p-3 rounded-xl flex flex-col gap-2 shadow-sm">
+                          <p className="text-sm font-bold text-gray-800 break-words whitespace-pre-wrap">{msg.message}</p>
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="text-xs text-brown-muted">{new Date(msg.timestamp).toLocaleString('ar-EG')}</span>
+                            <button
+                              onClick={() => {
+                                socket?.emit('mark_admin_message_read', { serial: playerSerial, messageId: msg.id }, () => {});
+                                setSystemMessages(prev => prev.filter(m => m.id !== msg.id));
+                              }}
+                              className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-3 py-1 font-bold rounded-lg transition-colors"
+                            >
+                              فهمت
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Friend Requests Section */}
                   {friendRequests.length > 0 && (
                     <div className="space-y-3">
@@ -8394,111 +8453,119 @@ export default function App() {
                 <div className="text-center space-y-2">
                   <img src="/icon-3.png" alt="Logo" className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-2 md:mb-4 object-contain" />
                   <h2 className="text-xl md:text-2xl font-black text-main">أهلاً بك في خمن تخمينة!</h2>
-                  <p className="text-brown-muted font-bold text-sm md:text-base">يرجى إكمال بياناتك للبدء</p>
+                  <p className="text-brown-muted font-bold text-sm md:text-base">
+                    {(window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone)) 
+                      ? 'أدخل رقم اللاعب الخاص بك (ID) للمتابعة' 
+                      : 'يرجى إكمال بياناتك للبدء'}
+                  </p>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-black text-brown-muted mb-1 text-right">اسم اللاعب</label>
-                    <input 
-                      type="text" 
-                      value={playerName}
-                      onChange={(e) => {
-                        const name = e.target.value;
-                        const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
-                        const cleanName = name.replace(emojiRegex, '');
-                        setPlayerName(filterProfanity(cleanName.slice(0, 15)));
-                      }}
-                      placeholder="ادخل اسمك..."
-                      className="input-game"
-                      maxLength={15}
-                    />
-                    <p className="text-[10px] text-red-500 mt-1 font-bold text-right">تنبيه: لن يتم تعديل الاسم مره آخري الا بعد 30 يوم</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-black text-brown-muted mb-1 text-right">عمر اللاعب</label>
-                    <input 
-                      type="text" 
-                      inputMode="numeric"
-                      value={playerAge}
-                      onChange={(e) => {
-                        const convertArabicNumbers = (str: string) => {
-                          return str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632))
-                                    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776));
-                        };
-                        const val = convertArabicNumbers(e.target.value);
-                        if (val === '') setPlayerAge('');
-                        else {
-                          const num = parseInt(val);
-                          if (!isNaN(num) && num <= 80) setPlayerAge(num);
-                        }
-                      }}
-                      placeholder="ادخل عمرك..."
-                      className="input-game"
-                      maxLength={2}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-black text-brown-muted mb-1 text-right">الجنس</label>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => { setGender('boy'); setHasSelectedAvatar(false); }}
-                        className={`flex-1 py-3 box-game font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'text-brown-light opacity-60'}`}
-                      >
-                        ولد 👦
-                      </button>
-                      <button
-                        onClick={() => { setGender('girl'); setHasSelectedAvatar(false); }}
-                        className={`flex-1 py-3 box-game font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-pink-200' : 'text-brown-light opacity-60'}`}
-                      >
-                        بنت 👧
-                      </button>
+                {!(window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone)) && (
+                  <>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-black text-brown-muted mb-1 text-right">اسم اللاعب</label>
+                        <input 
+                          type="text" 
+                          value={playerName}
+                          onChange={(e) => {
+                            const name = e.target.value;
+                            const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+                            const cleanName = name.replace(emojiRegex, '');
+                            setPlayerName(filterProfanity(cleanName.slice(0, 15)));
+                          }}
+                          placeholder="ادخل اسمك..."
+                          className="input-game"
+                          maxLength={15}
+                        />
+                        <p className="text-[10px] text-red-500 mt-1 font-bold text-right">تنبيه: لن يتم تعديل الاسم مره آخري الا بعد 30 يوم</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-black text-brown-muted mb-1 text-right">عمر اللاعب</label>
+                        <input 
+                          type="text" 
+                          inputMode="numeric"
+                          value={playerAge}
+                          onChange={(e) => {
+                            const convertArabicNumbers = (str: string) => {
+                              return str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632))
+                                        .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776));
+                            };
+                            const val = convertArabicNumbers(e.target.value);
+                            if (val === '') setPlayerAge('');
+                            else {
+                              const num = parseInt(val);
+                              if (!isNaN(num) && num <= 80) setPlayerAge(num);
+                            }
+                          }}
+                          placeholder="ادخل عمرك..."
+                          className="input-game"
+                          maxLength={2}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-black text-brown-muted mb-1 text-right">الجنس</label>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setGender('boy'); setHasSelectedAvatar(false); }}
+                            className={`flex-1 py-3 box-game font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'text-brown-light opacity-60'}`}
+                          >
+                            ولد 👦
+                          </button>
+                          <button
+                            onClick={() => { setGender('girl'); setHasSelectedAvatar(false); }}
+                            className={`flex-1 py-3 box-game font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-pink-200' : 'text-brown-light opacity-60'}`}
+                          >
+                            بنت 👧
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-black text-brown-muted mb-3 text-right">اختر أفاتار البداية</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {AVATARS.filter(av => av.gender === gender).slice(0, 4).map((av, index) => (
+                            <button
+                              key={`welcome-avatar-${av.id}-${index}`}
+                              onClick={() => { setAvatar(av.id); setHasSelectedAvatar(true); }}
+                              className={`w-full aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${hasSelectedAvatar && avatar === av.id ? '!bg-orange-100 !border-orange-400 scale-105' : ''}`}
+                            >
+                              <div className="w-full h-full p-1">
+                                {renderAvatarContent(av.id, 1)}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-black text-brown-muted mb-3 text-right">اختر أفاتار البداية</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {AVATARS.filter(av => av.gender === gender).slice(0, 4).map((av, index) => (
-                        <button
-                          key={`welcome-avatar-${av.id}-${index}`}
-                          onClick={() => { setAvatar(av.id); setHasSelectedAvatar(true); }}
-                          className={`w-full aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${hasSelectedAvatar && avatar === av.id ? '!bg-orange-100 !border-orange-400 scale-105' : ''}`}
-                        >
-                          <div className="w-full h-full p-1">
-                            {renderAvatarContent(av.id, 1)}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="space-y-3 bg-gray-50 p-4 rounded-xl border-2 border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox" 
-                      id="terms" 
-                      checked={acceptedTerms} 
-                      onChange={e => setAcceptedTerms(e.target.checked)} 
-                      className="w-5 h-5 accent-accent-blue rounded cursor-pointer" 
-                    />
-                    <label htmlFor="terms" className="text-sm font-bold text-brown-dark cursor-pointer select-none">
-                      أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-accent-blue hover:text-blue-600 underline">الشروط والأحكام</button>
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox" 
-                      id="privacy" 
-                      checked={acceptedPrivacy} 
-                      onChange={e => setAcceptedPrivacy(e.target.checked)} 
-                      className="w-5 h-5 accent-accent-blue rounded cursor-pointer" 
-                    />
-                    <label htmlFor="privacy" className="text-sm font-bold text-brown-dark cursor-pointer select-none">
-                      أوافق على <button type="button" onClick={() => setShowPrivacyModal(true)} className="text-accent-blue hover:text-blue-600 underline">سياسة الخصوصية</button>
-                    </label>
-                  </div>
-                </div>
+                    <div className="space-y-3 bg-gray-50 p-4 rounded-xl border-2 border-gray-100 my-4">
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="checkbox" 
+                          id="terms" 
+                          checked={acceptedTerms} 
+                          onChange={e => setAcceptedTerms(e.target.checked)} 
+                          className="w-5 h-5 accent-accent-blue rounded cursor-pointer" 
+                        />
+                        <label htmlFor="terms" className="text-sm font-bold text-brown-dark cursor-pointer select-none">
+                          أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-accent-blue hover:text-blue-600 underline">الشروط والأحكام</button>
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="checkbox" 
+                          id="privacy" 
+                          checked={acceptedPrivacy} 
+                          onChange={e => setAcceptedPrivacy(e.target.checked)} 
+                          className="w-5 h-5 accent-accent-blue rounded cursor-pointer" 
+                        />
+                        <label htmlFor="privacy" className="text-sm font-bold text-brown-dark cursor-pointer select-none">
+                          أوافق على <button type="button" onClick={() => setShowPrivacyModal(true)} className="text-accent-blue hover:text-blue-600 underline">سياسة الخصوصية</button>
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <AnimatePresence>
                   {registerError && (
@@ -8513,23 +8580,26 @@ export default function App() {
                   )}
                 </AnimatePresence>
 
-                <button 
-                  onClick={handleRegister}
-                  className="w-full btn-game btn-primary py-4 text-xl"
-                >
-                  حفظ البيانات والبدء
-                </button>
+                {!(window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone)) && (
+                  <button 
+                    onClick={handleRegister}
+                    className="w-full btn-game btn-primary py-4 text-xl"
+                  >
+                    حفظ البيانات والبدء
+                  </button>
+                )}
 
-                <div className="pt-6 mt-6 border-t-2 border-gray-100">
+                <div className={`pt-6 mt-6 ${!(window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone)) ? 'border-t-2 border-gray-100' : ''}`}>
                   <h3 className="text-center font-black text-brown-dark mb-4">لديك حساب بالفعل؟</h3>
+                  <p className="text-xs text-center text-brown-muted mb-3 font-bold">يمكنك نسخ رقم اللاعب (ID) الخاص بك من إعدادات حسابك في الجهاز الآخر ولصقه هنا.</p>
                   <div className="space-y-3">
                     <input
                       type="text"
                       value={loginSerial}
-                      onChange={(e) => setLoginSerial(e.target.value)}
+                      onChange={(e) => setLoginSerial(e.target.value.trim())}
                       placeholder="أدخل رقم ID اللاعب الخاص بك"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold font-mono"
-                      dir="rtl"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold tracking-widest"
+                      dir="ltr"
                     />
                     <AnimatePresence>
                       {loginError && (
@@ -10001,6 +10071,48 @@ export default function App() {
                                     {contact.message}
                                   </p>
                                 </div>
+                                {contact.playerSerial && (
+                                  <div className="mt-4 pt-4 border-t-2 border-gray-100">
+                                    {replyingToContact === contact.id ? (
+                                      <div className="flex flex-col gap-2">
+                                        <textarea 
+                                          value={contactReplyMessage}
+                                          onChange={(e) => setContactReplyMessage(e.target.value)}
+                                          className="w-full p-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 outline-none resize-none h-24 text-sm font-bold"
+                                          placeholder="اكتب ردك هنا ليرسل كإشعار للاعب..."
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                          <button 
+                                            onClick={() => {
+                                              if(!contactReplyMessage.trim()) return;
+                                              socket?.emit('admin_reply_contact', { contactId: contact.id, message: contactReplyMessage, playerSerial: contact.playerSerial }, (res: any) => {
+                                                if (res.success) {
+                                                  showAlert('تم إرسال الرد للاعب بنجاح', 'نجاح');
+                                                  setAdminContacts(prev => prev.filter(c => c.id !== contact.id));
+                                                  setReplyingToContact(null);
+                                                  setContactReplyMessage("");
+                                                } else {
+                                                  showAlert('فشل إرسال الرد', 'خطأ');
+                                                }
+                                              });
+                                            }}
+                                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-black transition-colors"
+                                          >
+                                            إرسال الرد
+                                          </button>
+                                          <button onClick={() => setReplyingToContact(null)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-black transition-colors">إلغاء</button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <button 
+                                        onClick={() => { setReplyingToContact(contact.id); setContactReplyMessage(`رداً على ${contact.subject}:\n`); }} 
+                                        className="text-blue-500 font-black text-sm underline flex items-center gap-1 hover:text-blue-600 transition-colors"
+                                      >
+                                        الرد على اللاعب
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -10548,46 +10660,98 @@ export default function App() {
                           {adminReports.length === 0 ? (
                             <div className="text-center py-8 text-brown-light font-bold text-sm">لا توجد بلاغات حالياً</div>
                           ) : (
-                            adminReports.map((report, index) => (
+                            adminReports.map((report, index) => {
+                              const isComplaint = !report.reportedName;
+                              return (
                               <div key={`admin-report-${report.id}-${index}`} className="box-game p-4 shadow-sm space-y-2">
                                 <div className="flex justify-between items-start">
                                   <span className="text-[10px] font-black text-brown-light">{new Date(report.timestamp).toLocaleString('ar-EG')}</span>
-                                  <div className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-black">بلاغ</div>
+                                  <div className={`px-2 py-0.5 rounded-full text-[10px] font-black ${isComplaint ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
+                                    {isComplaint ? 'شكوى/مقترح' : 'بلاغ'}
+                                  </div>
                                 </div>
                                 <div className="text-xs font-bold text-brown-dark">
-                                  <span className="text-purple-600">{report.reporterName}</span> أبلغ عن <span className="text-red-500">{report.reportedName}</span>
+                                  {isComplaint ? (
+                                    <span className="text-purple-600">{report.reporterName}</span>
+                                  ) : (
+                                    <><span className="text-purple-600">{report.reporterName}</span> أبلغ عن <span className="text-red-500">{report.reportedName}</span></>
+                                  )}
                                 </div>
                                 <div className="bg-gray-50 p-2 rounded-lg text-[10px] text-brown-muted font-medium italic">
                                   "{report.reason}"
                                 </div>
-                                <div className="flex gap-2">
-                                  <button 
-                                    onClick={() => {
-                                      const serialToSearch = report.reportedSerial || report.reporterSerial;
-                                      setAdminSearchQuery(serialToSearch);
-                                      setAdminTab('players');
-                                    }}
-                                    className="flex-1 py-1.5 bg-gray-100 hover:bg-purple-100 hover:text-purple-600 rounded-lg text-[10px] font-black transition-colors"
-                                  >
-                                    فحص اللاعب
-                                  </button>
-                                  <button 
-                                    onClick={() => {
-                                      showConfirm('هل أنت متأكد من حذف هذا البلاغ؟', () => {
-                                        socket?.emit('admin_delete_report', report.id, (res: any) => {
-                                          if (res.success) {
-                                            setAdminReports(prev => prev.filter(r => r.id !== report.id));
-                                          }
-                                        });
-                                      }, 'حذف البلاغ');
-                                    }}
-                                    className="py-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[10px] font-black transition-colors"
-                                  >
-                                    حذف
-                                  </button>
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex gap-2">
+                                    <button 
+                                      onClick={() => {
+                                        const serialToSearch = report.reportedSerial || report.reporterSerial;
+                                        setAdminSearchQuery(serialToSearch);
+                                        setAdminTab('players');
+                                      }}
+                                      className="flex-1 py-1.5 bg-gray-100 hover:bg-purple-100 hover:text-purple-600 rounded-lg text-[10px] font-black transition-colors"
+                                    >
+                                      فحص اللاعب
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        showConfirm('هل أنت متأكد من حذف هذا البلاغ؟', () => {
+                                          socket?.emit('admin_delete_report', report.id, (res: any) => {
+                                            if (res.success) {
+                                              setAdminReports(prev => prev.filter(r => r.id !== report.id));
+                                            }
+                                          });
+                                        }, 'حذف البلاغ');
+                                      }}
+                                      className="py-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[10px] font-black transition-colors"
+                                    >
+                                      حذف
+                                    </button>
+                                  </div>
+                                  
+                                  {/* Reply section */}
+                                  <div className="border-t-2 border-gray-100 pt-2 mt-1">
+                                    {replyingToReport === report.id ? (
+                                      <div className="flex flex-col gap-2">
+                                        <textarea 
+                                          value={reportReplyMessage}
+                                          onChange={(e) => setReportReplyMessage(e.target.value)}
+                                          className="w-full p-2 text-xs rounded-xl border-2 border-gray-200 focus:border-blue-500 outline-none resize-none h-20 font-bold"
+                                          placeholder="اكتب ردك هنا..."
+                                        />
+                                        <div className="flex justify-end gap-1">
+                                          <button 
+                                            onClick={() => {
+                                              if(!reportReplyMessage.trim()) return;
+                                              socket?.emit('admin_reply_report', { reportId: report.id, message: reportReplyMessage, playerSerial: report.reporterSerial }, (res: any) => {
+                                                if (res.success) {
+                                                  showAlert('تم إرسال الرد للاعب بنجاح', 'نجاح');
+                                                  setAdminReports(prev => prev.filter(r => r.id !== report.id));
+                                                  setReplyingToReport(null);
+                                                  setReportReplyMessage("");
+                                                } else {
+                                                  showAlert('فشل إرسال الرد', 'خطأ');
+                                                }
+                                              });
+                                            }}
+                                            className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 flex-1 rounded-lg text-[10px] font-black transition-colors"
+                                          >
+                                            إرسال الرد
+                                          </button>
+                                          <button onClick={() => setReplyingToReport(null)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-lg text-[10px] font-black transition-colors">إلغاء</button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <button 
+                                        onClick={() => { setReplyingToReport(report.id); setReportReplyMessage(`رداً على ${isComplaint ? 'شكواك/مقترحك' : 'بلاغك'}:\n`); }} 
+                                        className="text-blue-500 font-black text-[10px] underline flex items-center gap-1 hover:text-blue-600 transition-colors w-full justify-center py-1"
+                                      >
+                                        الرد على اللاعب
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            ))
+                            )})
                           )}
                         </div>
                       </div>
@@ -13533,6 +13697,30 @@ export default function App() {
             اتصل بنا
           </button>
         </div>
+        {customConfig?.socialLinks && Object.keys(customConfig.socialLinks).length > 0 && (
+          <div className="flex items-center justify-center gap-4 mt-2">
+            {(customConfig.socialLinks as any).facebook && (
+              <a href={(customConfig.socialLinks as any).facebook} target="_blank" rel="noopener noreferrer" className="text-black/60 hover:text-[#1877F2] transition-colors">
+                <Facebook className="w-5 h-5" />
+              </a>
+            )}
+            {(customConfig.socialLinks as any).instagram && (
+              <a href={(customConfig.socialLinks as any).instagram} target="_blank" rel="noopener noreferrer" className="text-black/60 hover:text-[#E4405F] transition-colors">
+                <Instagram className="w-5 h-5" />
+              </a>
+            )}
+            {(customConfig.socialLinks as any).youtube && (
+              <a href={(customConfig.socialLinks as any).youtube} target="_blank" rel="noopener noreferrer" className="text-black/60 hover:text-[#FF0000] transition-colors">
+                <Youtube className="w-5 h-5" />
+              </a>
+            )}
+            {(customConfig.socialLinks as any).tiktok && (
+              <a href={(customConfig.socialLinks as any).tiktok} target="_blank" rel="noopener noreferrer" className="text-black/60 hover:text-black transition-colors">
+                <svg viewBox="0 0 448 512" className="w-4 h-4 fill-current"><path d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z"/></svg>
+              </a>
+            )}
+          </div>
+        )}
         <p className="mt-2 text-[11px] font-bold text-black">
           جميع الحقوق محفوظة &copy; {new Date().getFullYear()} خمن تخمينة
         </p>
