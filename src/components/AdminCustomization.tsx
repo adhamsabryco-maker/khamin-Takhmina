@@ -413,6 +413,52 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
           </div>
         </div>
 
+        {/* Social Media Settings */}
+        <div className="box-game p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🌐 روابط السوشيال ميديا</h3>
+          <div className="space-y-4">
+            {['tiktok', 'facebook', 'youtube', 'instagram'].map((platform) => (
+              <div key={platform} className="flex gap-2 items-center">
+                <span className="w-20 font-bold capitalize">{platform}</span>
+                <input
+                  type="url"
+                  dir="ltr"
+                  className="input-game flex-1 text-left py-1 px-2 text-sm"
+                  placeholder={`https://${platform}.com/...`}
+                  defaultValue={(config as any).socialLinks?.[platform] || ''}
+                  id={`socialLinkInput_${platform}`}
+                />
+              </div>
+            ))}
+            <button
+              onClick={async () => {
+                const socialLinks: any = {};
+                ['tiktok', 'facebook', 'youtube', 'instagram'].map((platform) => {
+                  const val = (document.getElementById(`socialLinkInput_${platform}`) as HTMLInputElement)?.value;
+                  if (val) socialLinks[platform] = val;
+                });
+                
+                const newConfig = { ...config, socialLinks };
+                try {
+                  await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newConfig),
+                  });
+                  refreshConfig();
+                  showAlert('تم حفظ الروابط بنجاح', 'نجاح');
+                } catch(e) {
+                   showAlert('حدث خطأ أثناء حفظ الروابط', 'خطأ');
+                }
+              }}
+              className="btn-game btn-primary py-2 px-6 w-full"
+            >
+              حفظ الروابط
+            </button>
+            <p className="text-xs text-brown-muted">ستظهر هذه الروابط كأيقونات صغيرة أسفل الصفحة الرئيسية للعبة.</p>
+          </div>
+        </div>
+
         {/* Mock Ad Settings */}
         <div className="box-game p-6 shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">📺 الإعلان البديل (عند فشل إعلانات جوجل)</h3>
