@@ -2593,7 +2593,7 @@ export default function App() {
           const rewards = JSON.parse(pendingGift);
           if (rewards.xp > 0 || rewards.tokens > 0 || Object.keys(rewards.helpers || {}).length > 0) {
             setCollectedRewards(rewards);
-            setShowRainGiftSummary(true);
+            // Removed automatic trigger: setShowRainGiftSummary(true);
           } else {
             localStorage.removeItem('khamin_pending_rain_gift');
           }
@@ -12678,6 +12678,7 @@ export default function App() {
 
   const renderRainGiftSummary = () => {
     if (!showRainGiftSummary) return null;
+    if (room && (room.gameState === 'waiting' || room.gameState === 'guessing' || room.gameState === 'choosing' || room.gameState === 'evaluating')) return null;
     
     const level = getLevel(xp);
 
@@ -12914,10 +12915,10 @@ export default function App() {
               title="الإشعارات"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
-              {(friendRequests.length + collectionNotifications.length) > 0 && (
+              {(friendRequests.length + collectionNotifications.length + systemMessages.length) > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length + collectionNotifications.length}</span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length + collectionNotifications.length + systemMessages.length}</span>
                 </span>
               )}
             </button>
@@ -13830,10 +13831,10 @@ export default function App() {
               title="الإشعارات"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
-              {(friendRequests.length + collectionNotifications.length) > 0 && (
+              {(friendRequests.length + collectionNotifications.length + systemMessages.length) > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length + collectionNotifications.length}</span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length + collectionNotifications.length + systemMessages.length}</span>
                 </span>
               )}
             </button>
