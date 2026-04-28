@@ -542,14 +542,9 @@ const app = express();
     fs.writeFileSync(configPath, JSON.stringify(req.body, null, 2));
 
     try {
-      if (req.body.mockAdImage !== undefined) {
-        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("mockAdImage", req.body.mockAdImage || "");
-      }
-      if (req.body.mockAdLink !== undefined) {
-        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("mockAdLink", req.body.mockAdLink || "");
-      }
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("game_config", JSON.stringify(req.body));
     } catch (dbErr) {
-      console.error("[Config DB] Failed to save mock ad to DB:", dbErr);
+      console.error("[Config DB] Failed to save config to DB:", dbErr);
     }
     
     if (USE_FIRESTORE_CONFIG && firestore) {
@@ -1264,6 +1259,20 @@ const app = express();
     vapidKeys.publicKey,
     vapidKeys.privateKey
   );
+
+  // Load config from SQLite if exists
+  try {
+    const savedConfig = db.prepare('SELECT value FROM settings WHERE key = ?').get('game_config') as any;
+    if (savedConfig) {
+      const parsedConfig = JSON.parse(savedConfig.value);
+      configCache = { ...configCache, ...parsedConfig };
+      console.log("[Config] Loaded from SQLite database.");
+    } else {
+      console.log("[Config] No config found in SQLite, using file/defaults.");
+    }
+  } catch (e) {
+    console.error("[Config] Failed to load from SQLite:", e);
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS reward_history (
