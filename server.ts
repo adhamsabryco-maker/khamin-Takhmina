@@ -7153,10 +7153,18 @@ io.on("connection", (socket) => {
         const p2Data = allPlayers.get(loser.serial);
         if (p1Data && p2Data && p1Data.ip && p1Data.fingerprint) {
           if (p1Data.ip === p2Data.ip && p1Data.fingerprint === p2Data.fingerprint) {
-             const existingReport = db.prepare('SELECT 1 FROM reports WHERE reporterSerial = ? AND reportedSerial = ? AND reason LIKE ?').get('SYSTEM', winner.serial, '%غش%');
-             if (!existingReport) {
-                 db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason) VALUES (?, ?, ?, ?, ?, ?, ?)').run(Math.random().toString(36).substr(2, 9), Date.now(), 'SYSTEM', 'نظام الحماية', winner.serial, winner.name, 'النظام يشتبه في ان اللاعب يغش أو يتلاعب بالنقاط (يلعب ضد حسابه الآخر في نفس الجهاز)');
-                 db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason) VALUES (?, ?, ?, ?, ?, ?, ?)').run(Math.random().toString(36).substr(2, 9), Date.now(), 'SYSTEM', 'نظام الحماية', loser.serial, loser.name, 'النظام يشتبه في ان اللاعب يغش أو يتلاعب بالنقاط (يلعب ضد حسابه الآخر في نفس الجهاز)');
+             const yesterday = Date.now() - (24 * 60 * 60 * 1000);
+             
+             // Check winner
+             const winnerReported = db.prepare('SELECT 1 FROM reports WHERE reporterSerial = ? AND reportedSerial = ? AND timestamp > ?').get('SYSTEM', winner.serial, yesterday);
+             if (!winnerReported) {
+                db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason) VALUES (?, ?, ?, ?, ?, ?, ?)').run(Math.random().toString(36).substr(2, 9), Date.now(), 'SYSTEM', 'نظام الحماية', winner.serial, winner.name, 'النظام يشتبه في ان اللاعب يغش أو يتلاعب بالنقاط (يلعب ضد حسابه الآخر في نفس الجهاز)');
+             }
+             
+             // Check loser
+             const loserReported = db.prepare('SELECT 1 FROM reports WHERE reporterSerial = ? AND reportedSerial = ? AND timestamp > ?').get('SYSTEM', loser.serial, yesterday);
+             if (!loserReported) {
+                db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason) VALUES (?, ?, ?, ?, ?, ?, ?)').run(Math.random().toString(36).substr(2, 9), Date.now(), 'SYSTEM', 'نظام الحماية', loser.serial, loser.name, 'النظام يشتبه في ان اللاعب يغش أو يتلاعب بالنقاط (يلعب ضد حسابه الآخر في نفس الجهاز)');
              }
           }
         }
@@ -7229,8 +7237,11 @@ io.on("connection", (socket) => {
             
             // --- Cheating Detection (Boosting via Streak) ---
             if (winner.streak > 20) {
-              const existingReport = db.prepare('SELECT 1 FROM reports WHERE reporterSerial = ? AND reportedSerial = ? AND reason LIKE ?').get('SYSTEM', winner.serial, '%كثرة الفوز%');
-              if (!existingReport) {
+              // Check if a system report was already sent for this player in the last 24 hours
+              const yesterday = Date.now() - (24 * 60 * 60 * 1000);
+              const alreadyReportedToday = db.prepare('SELECT 1 FROM reports WHERE reporterSerial = ? AND reportedSerial = ? AND timestamp > ?').get('SYSTEM', winner.serial, yesterday);
+              
+              if (!alreadyReportedToday) {
                 const reportId = Math.random().toString(36).substr(2, 9);
                 db.prepare('INSERT INTO reports (id, reporterSerial, reporterName, reportedSerial, reportedName, reason, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)').run(reportId, 'SYSTEM', 'نظام الحماية', winner.serial, winner.name, 'النظام يشتبه في ان اللاعب يغش (كثرة الفوز المتتالي بشكل غير طبيعي تجاوز 20 مباراة)', Date.now());
               }
