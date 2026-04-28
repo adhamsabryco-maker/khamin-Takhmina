@@ -1269,6 +1269,7 @@ export default function App() {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [contactForm, setContactForm] = useState({ name: '', subject: '', message: '' });
   const [isSendingContact, setIsSendingContact] = useState(false);
   const [currentRoute, setCurrentRoute] = useState(() => window.location.pathname);
@@ -8453,172 +8454,205 @@ export default function App() {
                 <div className="text-center space-y-2">
                   <img src="/icon-3.png" alt="Logo" className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-2 md:mb-4 object-contain" />
                   <h2 className="text-xl md:text-2xl font-black text-main">أهلاً بك في خمن تخمينة!</h2>
-                  <p className="text-brown-muted font-bold text-sm md:text-base">
-                    {(window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone)) 
-                      ? 'أدخل رقم اللاعب الخاص بك (ID) للمتابعة' 
-                      : 'يرجى إكمال بياناتك للبدء'}
-                  </p>
+                <p className="text-brown-muted font-bold text-sm md:text-base">يرجى إكمال بياناتك للبدء أو الدخول لحسابك</p>
                 </div>
 
-                {!(window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone)) && (
-                  <>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-black text-brown-muted mb-1 text-right">اسم اللاعب</label>
-                        <input 
-                          type="text" 
-                          value={playerName}
-                          onChange={(e) => {
-                            const name = e.target.value;
-                            const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
-                            const cleanName = name.replace(emojiRegex, '');
-                            setPlayerName(filterProfanity(cleanName.slice(0, 15)));
-                          }}
-                          placeholder="ادخل اسمك..."
-                          className="input-game"
-                          maxLength={15}
-                        />
-                        <p className="text-[10px] text-red-500 mt-1 font-bold text-right">تنبيه: لن يتم تعديل الاسم مره آخري الا بعد 30 يوم</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-black text-brown-muted mb-1 text-right">عمر اللاعب</label>
-                        <input 
-                          type="text" 
-                          inputMode="numeric"
-                          value={playerAge}
-                          onChange={(e) => {
-                            const convertArabicNumbers = (str: string) => {
-                              return str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632))
-                                        .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776));
-                            };
-                            const val = convertArabicNumbers(e.target.value);
-                            if (val === '') setPlayerAge('');
-                            else {
-                              const num = parseInt(val);
-                              if (!isNaN(num) && num <= 80) setPlayerAge(num);
-                            }
-                          }}
-                          placeholder="ادخل عمرك..."
-                          className="input-game"
-                          maxLength={2}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-black text-brown-muted mb-1 text-right">الجنس</label>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => { setGender('boy'); setHasSelectedAvatar(false); }}
-                            className={`flex-1 py-3 box-game font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'text-brown-light opacity-60'}`}
-                          >
-                            ولد 👦
-                          </button>
-                          <button
-                            onClick={() => { setGender('girl'); setHasSelectedAvatar(false); }}
-                            className={`flex-1 py-3 box-game font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-pink-200' : 'text-brown-light opacity-60'}`}
-                          >
-                            بنت 👧
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-black text-brown-muted mb-3 text-right">اختر أفاتار البداية</label>
-                        <div className="grid grid-cols-4 gap-2">
-                          {AVATARS.filter(av => av.gender === gender).slice(0, 4).map((av, index) => (
-                            <button
-                              key={`welcome-avatar-${av.id}-${index}`}
-                              onClick={() => { setAvatar(av.id); setHasSelectedAvatar(true); }}
-                              className={`w-full aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${hasSelectedAvatar && avatar === av.id ? '!bg-orange-100 !border-orange-400 scale-105' : ''}`}
-                            >
-                              <div className="w-full h-full p-1">
-                                {renderAvatarContent(av.id, 1)}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 bg-gray-50 p-4 rounded-xl border-2 border-gray-100 my-4">
-                      <div className="flex items-center gap-3">
-                        <input 
-                          type="checkbox" 
-                          id="terms" 
-                          checked={acceptedTerms} 
-                          onChange={e => setAcceptedTerms(e.target.checked)} 
-                          className="w-5 h-5 accent-accent-blue rounded cursor-pointer" 
-                        />
-                        <label htmlFor="terms" className="text-sm font-bold text-brown-dark cursor-pointer select-none">
-                          أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-accent-blue hover:text-blue-600 underline">الشروط والأحكام</button>
-                        </label>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <input 
-                          type="checkbox" 
-                          id="privacy" 
-                          checked={acceptedPrivacy} 
-                          onChange={e => setAcceptedPrivacy(e.target.checked)} 
-                          className="w-5 h-5 accent-accent-blue rounded cursor-pointer" 
-                        />
-                        <label htmlFor="privacy" className="text-sm font-bold text-brown-dark cursor-pointer select-none">
-                          أوافق على <button type="button" onClick={() => setShowPrivacyModal(true)} className="text-accent-blue hover:text-blue-600 underline">سياسة الخصوصية</button>
-                        </label>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <AnimatePresence>
-                  {registerError && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="bg-red-100 border-2 border-red-200 p-3 text-red-600 text-sm font-black rounded-xl text-center"
-                    >
-                      {registerError}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {!(window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone)) && (
-                  <button 
-                    onClick={handleRegister}
-                    className="w-full btn-game btn-primary py-4 text-xl"
-                  >
-                    حفظ البيانات والبدء
-                  </button>
-                )}
-
-                <div className={`pt-6 mt-6 ${!(window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone)) ? 'border-t-2 border-gray-100' : ''}`}>
-                  <h3 className="text-center font-black text-brown-dark mb-4">لديك حساب بالفعل؟</h3>
-                  <p className="text-xs text-center text-brown-muted mb-3 font-bold">يمكنك نسخ رقم اللاعب (ID) الخاص بك من إعدادات حسابك في الجهاز الآخر ولصقه هنا.</p>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={loginSerial}
-                      onChange={(e) => setLoginSerial(e.target.value.trim())}
-                      placeholder="أدخل رقم ID اللاعب الخاص بك"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold tracking-widest"
-                      dir="rtl"
-                    />
-                    <AnimatePresence>
-                      {loginError && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="bg-red-100 border-2 border-red-200 p-3 text-red-600 text-sm font-black rounded-xl text-center"
-                        >
-                          {loginError}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                <div className="space-y-4">
+                  {/* Create New Account Expandable */}
+                  <div className="border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden bg-white">
                     <button 
-                      onClick={handleLogin}
-                      className="w-full btn-game btn-primary py-3 text-lg"
+                      onClick={() => setShowCreateAccount(!showCreateAccount)}
+                      className="w-full p-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-all group"
                     >
-                      تسجيل الدخول
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center">
+                          <UserPlus size={18} />
+                        </div>
+                        <span className="font-black text-main">إنشاء حساب جديد</span>
+                      </div>
+                      <motion.div
+                        animate={{ rotate: showCreateAccount ? 180 : 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <ChevronDown size={20} className="text-brown-light group-hover:text-main" />
+                      </motion.div>
                     </button>
+
+                    <motion.div
+                      initial={false}
+                      animate={{ 
+                        height: showCreateAccount ? "auto" : 0,
+                        opacity: showCreateAccount ? 1 : 0
+                      }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-4 space-y-4 border-t-2 border-dashed border-gray-200">
+                        {/* Player Name */}
+                        <div>
+                          <label className="block text-sm font-black text-brown-muted mb-1 text-right">اسم اللاعب</label>
+                          <input 
+                            type="text" 
+                            value={playerName}
+                            onChange={(e) => {
+                              const name = e.target.value;
+                              const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+                              const cleanName = name.replace(emojiRegex, '');
+                              setPlayerName(filterProfanity(cleanName.slice(0, 15)));
+                            }}
+                            placeholder="ادخل اسمك..."
+                            className="input-game"
+                            maxLength={15}
+                          />
+                          <p className="text-[10px] text-red-500 mt-1 font-bold text-right">تنبيه: لن يتم تعديل الاسم مره آخري الا بعد 30 يوم</p>
+                        </div>
+
+                        {/* Player Age */}
+                        <div>
+                          <label className="block text-sm font-black text-brown-muted mb-1 text-right">عمر اللاعب</label>
+                          <input 
+                            type="text" 
+                            inputMode="numeric"
+                            value={playerAge}
+                            onChange={(e) => {
+                              const convertArabicNumbers = (str: string) => {
+                                return str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632))
+                                          .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776));
+                              };
+                              const val = convertArabicNumbers(e.target.value);
+                              if (val === '') setPlayerAge('');
+                              else {
+                                const num = parseInt(val);
+                                if (!isNaN(num) && num <= 80) setPlayerAge(num);
+                              }
+                            }}
+                            placeholder="ادخل عمرك..."
+                            className="input-game"
+                            maxLength={2}
+                          />
+                        </div>
+
+                        {/* Gender */}
+                        <div>
+                          <label className="block text-sm font-black text-brown-muted mb-1 text-right">الجنس</label>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => { setGender('boy'); setHasSelectedAvatar(false); }}
+                              className={`flex-1 py-3 box-game font-black transition-all ${gender === 'boy' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'text-brown-light opacity-60'}`}
+                            >
+                              ولد 👦
+                            </button>
+                            <button
+                              onClick={() => { setGender('girl'); setHasSelectedAvatar(false); }}
+                              className={`flex-1 py-3 box-game font-black transition-all ${gender === 'girl' ? 'bg-pink-100 text-pink-600 border-pink-200' : 'text-brown-light opacity-60'}`}
+                            >
+                              بنت 👧
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Initial Avatar */}
+                        <div>
+                          <label className="block text-sm font-black text-brown-muted mb-3 text-right">اختر أفاتار البداية</label>
+                          <div className="grid grid-cols-4 gap-2">
+                            {AVATARS.filter(av => av.gender === gender).slice(0, 4).map((av, index) => (
+                              <button
+                                key={`welcome-avatar-${av.id}-${index}`}
+                                onClick={() => { setAvatar(av.id); setHasSelectedAvatar(true); }}
+                                className={`w-full aspect-square box-game flex items-center justify-center transition-all overflow-hidden ${hasSelectedAvatar && avatar === av.id ? '!bg-orange-100 !border-orange-400 scale-105' : ''}`}
+                              >
+                                <div className="w-full h-full p-1">
+                                  {renderAvatarContent(av.id, 1)}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Agreements */}
+                        <div className="space-y-3 bg-gray-50 p-4 rounded-xl border-2 border-gray-100 my-4">
+                          <div className="flex items-center gap-3">
+                            <input 
+                              type="checkbox" 
+                              id="terms" 
+                              checked={acceptedTerms} 
+                              onChange={e => setAcceptedTerms(e.target.checked)} 
+                              className="w-5 h-5 accent-accent-blue rounded cursor-pointer" 
+                            />
+                            <label htmlFor="terms" className="text-sm font-bold text-brown-dark cursor-pointer select-none text-right flex-1">
+                              أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-accent-blue hover:text-blue-600 underline">الشروط والأحكام</button>
+                            </label>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <input 
+                              type="checkbox" 
+                              id="privacy" 
+                              checked={acceptedPrivacy} 
+                              onChange={e => setAcceptedPrivacy(e.target.checked)} 
+                              className="w-5 h-5 accent-accent-blue rounded cursor-pointer" 
+                            />
+                            <label htmlFor="privacy" className="text-sm font-bold text-brown-dark cursor-pointer select-none text-right flex-1">
+                              أوافق على <button type="button" onClick={() => setShowPrivacyModal(true)} className="text-accent-blue hover:text-blue-600 underline">سياسة الخصوصية</button>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Register Button */}
+                        <button 
+                          onClick={handleRegister}
+                          className="w-full btn-game btn-primary py-4 text-xl"
+                        >
+                          إنشاء الحساب والبدء
+                        </button>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  <AnimatePresence>
+                    {registerError && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-red-100 border-2 border-red-200 p-3 text-red-600 text-sm font-black rounded-xl text-center"
+                      >
+                        {registerError}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Already have an account Section */}
+                  <div className="pt-6 mt-2 border-t-2 border-gray-100">
+                    <h3 className="text-center font-black text-brown-dark mb-4">لديك حساب بالفعل؟</h3>
+                    <p className="text-xs text-center text-brown-muted mb-3 font-bold px-2">يمكنك نسخ رقم اللاعب (ID) الخاص بك من إعدادات حسابك في الجهاز الآخر ولصقه هنا.</p>
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={loginSerial}
+                        onChange={(e) => setLoginSerial(e.target.value.trim())}
+                        placeholder="أدخل رقم ID اللاعب الخاص بك"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold tracking-widest"
+                        dir="rtl"
+                      />
+                      <AnimatePresence>
+                        {loginError && (
+                          <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="bg-red-100 border-2 border-red-200 p-3 text-red-600 text-sm font-black rounded-xl text-center"
+                          >
+                            {loginError}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      <button 
+                        onClick={handleLogin}
+                        className="w-full btn-game btn-primary py-3 text-lg shadow-md"
+                      >
+                        تسجيل الدخول
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
