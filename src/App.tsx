@@ -6343,13 +6343,13 @@ export default function App() {
                   });
                 }}
                 disabled={!canSendComplaint}
-                className={`flex-1 btn-game ${canSendComplaint ? 'btn-success' : 'btn-disabled'} py-3 text-lg`}
+                className={`flex-1 btn-game ${canSendComplaint ? 'btn-success' : 'btn-disabled'} py-3 text-sm`}
               >
                 {canSendComplaint ? 'إرسال' : 'تم الإرسال اليوم'}
               </button>
               <button
                 onClick={() => setShowComplaintModal(false)}
-                className="flex-1 btn-game btn-primary py-3 text-lg"
+                className="flex-1 btn-game btn-primary py-3 text-sm"
               >
                 إلغاء
               </button>
@@ -7193,15 +7193,15 @@ export default function App() {
                 <p className="text-purple-100 text-sm font-bold">احصل على تخمينات للعب مع المحترفين!</p>
               </div>
 
-              <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                <div className="flex items-center justify-between box-game p-4">
+              <div className="p-2 md:p-6 overflow-y-auto flex-1 space-y-4">
+                <div className="flex items-center justify-between bg-yellow-100 box-game p-2 md:p-4">
                   <div className="flex items-center gap-3 w-1/2">
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
                       <img src="/Takhmina_coin_02.png" className="w-6 h-6 md:w-8 md:h-8" />
                     </div>
                     <div>
                       <div className="text-[10px] md:text-xs font-bold text-brown-muted">رصيدك الحالي</div>
-                      <div className="text-sm md:text-lg font-black" style={{ color: 'var(--shop-token-text)' }}>{tokens} تخمينات</div>
+                      <div className="text-xs md:text-lg font-black" style={{ color: 'var(--shop-token-text)' }}>{tokens} تخمينات</div>
                     </div>
                   </div>
 
@@ -7212,27 +7212,27 @@ export default function App() {
                       <div className="text-[10px] md:text-xs font-bold text-brown-muted">مفاتيحك</div>
                       <div className="text-sm md:text-lg font-black text-yellow-600" dir="ltr">{keys || 0}</div>
                     </div>
-                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-yellow-100">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-yellow-200">
                       <Key className="w-6 h-6 text-yellow-500" />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <h3 className="font-black text-brown-dark mb-2">باقات التخمينات</h3>
+                  <h3 className="font-black text-brown-dark mb-2">باقات التخمينات والهدايا</h3>
 
                   {/* Free Ad Reward - Level 50+ Only */}
                   {getLevel(xp) >= 1 && (
-                    <div className="flex items-center justify-between p-4 border-2 border-game box-game relative overflow-hidden mb-4">
+                    <div className="flex items-center justify-between py-3 p-2 md:p-4 border-2 border-game box-game relative overflow-hidden mb-4">
                       <div className="absolute top-0 left-0 bg-accent-yellow text-black text-[10px] font-bold px-1 py-0.5 rounded-bl-xl shadow-sm z-10" dir="ltr">
                         مجاناً (Level 50+)
                       </div>
-                      <div className="flex items-center gap-3 relative z-10">
+                      <div className="flex items-center gap-1.5 relative z-10">
                         <div className="w-12 h-12 bg-accent-green-soft rounded-xl flex items-center justify-center text-2xl animate-pulse">
                           📺
                         </div>
                         <div>
-                          <div className="font-bold text-brown-dark">شاهد إعلان = 1 تخمينة</div>
+                          <div className="font-bold text-[13px] md:text-lg text-brown-dark">شاهد إعلان = 1 تخمينة</div>
                           <div className="text-xs font-bold text-brown-muted">
                             متبقي لك اليوم: <span className="text-accent-green">{5 - adStatus.adsWatched}/5</span>
                           </div>
@@ -7241,7 +7241,7 @@ export default function App() {
                       <button 
                         onClick={handleWatchAd}
                         disabled={isCooldown || !adStatus.canWatch || getLevel(xp) < 50 || isGlobalAdLoading}
-                        className={`px-4 py-2 rounded-xl font-black text-sm transition-all shadow-md relative z-10 flex items-center justify-center gap-1 ${
+                        className={`px-2 py-1 rounded-xl font-black text-sm transition-all shadow-md relative z-10 flex items-center justify-center gap-1 ${
                           !isCooldown && adStatus.canWatch && getLevel(xp) >= 50 && !isGlobalAdLoading
                             ? 'bg-accent-green text-white hover:scale-105 active:scale-95'
                             : 'bg-gray-300 text-brown-muted cursor-not-allowed'
@@ -7263,13 +7263,13 @@ export default function App() {
                   )}
                   
                   {/* Keys Exchange Package */}
-                  <div className="flex items-center justify-between p-4 border-2 border-yellow-200 rounded-2xl bg-yellow-50 mb-4 transition-colors box-game relative">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between p-2 md:p-4 border-2 border-yellow-200 rounded-2xl bg-yellow-50 mb-4 transition-colors box-game relative">
+                    <div className="flex items-center gap-1.5">
                       <div className="w-12 h-12 bg-white border-2 border-yellow-200 rounded-xl flex items-center justify-center">
                         <img src="/Takhmina_coin_02.png" className="w-6 h-6" />
                       </div>
                       <div>
-                        <div className="font-black text-brown-dark">12 تخمينة</div>
+                        <div className="font-bold text-[16px] md:text-lg text-brown-dark">12 تخمينة</div>
                         <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
                            مقابل 25 مفتاح <Key className="w-3 h-3" />
                         </div>
@@ -7288,13 +7288,13 @@ export default function App() {
                   </div>
 
                   {/* Pro Pack for Keys */}
-                  <div className="flex items-center justify-between p-4 border-2 border-accent-orange rounded-2xl bg-orange-50 mb-4 transition-colors box-game relative">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between p-2 md:p-4 border-2 border-accent-orange rounded-2xl bg-orange-50 mb-4 transition-colors box-game relative">
+                    <div className="flex items-center gap-1.5">
                       <div className="w-12 h-12 bg-white border-2 border-accent-orange rounded-xl flex items-center justify-center text-2xl">
                         👑
                       </div>
                       <div>
-                        <div className="font-black text-brown-dark">باقة المحترفين 7 أيام</div>
+                        <div className="font-bold text-[16px] md:text-lg text-brown-dark">باقة المحترفين 7 أيام</div>
                         <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
                            مقابل 100 مفتاح <Key className="w-3 h-3 text-yellow-500" />
                         </div>
@@ -8599,7 +8599,7 @@ export default function App() {
                       onChange={(e) => setLoginSerial(e.target.value.trim())}
                       placeholder="أدخل رقم ID اللاعب الخاص بك"
                       className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold tracking-widest"
-                      dir="ltr"
+                      dir="rtl"
                     />
                     <AnimatePresence>
                       {loginError && (
@@ -12951,7 +12951,7 @@ export default function App() {
           <div className="player-card flex flex-col p-3 md:p-4 mb-4 md:mb-4 w-full">
             <AnimatedXp xp={xp} joined={joined}>
               {(displayXp) => (
-                <div className="flex items-center gap-3 md:gap-4 flex-row-reverse w-full">
+                <div className="flex items-center gap-2 md:gap-4 flex-row-reverse w-full">
                   <div className="relative shrink-0 w-16 h-16 md:w-20 md:h-20">
                     {renderAvatarContent(avatar, getLevel(Math.floor(displayXp)), false, true, selectedFrame)}
                   </div>
@@ -13196,7 +13196,7 @@ export default function App() {
                 </div>
                 
                 <div className="text-center mt-1 mb-1">
-                  <p className="text-[9px] md:text-[10px] font-bold text-black-400 bg-gray-300 border border-gray-100 rounded-lg py-1 px-2 inline-block">الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي ⭐</p>
+                  <p className="text-[8px] md:text-[10px] font-bold text-black-400 bg-gray-300 border border-gray-100 rounded-lg py-1 px-2 inline-block">الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي ⭐</p>
                 </div>
 
                 {/* Player Rank Info */}
