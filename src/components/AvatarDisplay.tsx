@@ -68,34 +68,36 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
     const starsCount = Math.min(5, Math.floor(lvl / 10));
     if (starsCount === 0) return null;
     return (
-      <div className="absolute inset-0 z-30 pointer-events-none animate-[spin_15s_linear_infinite]">
-        {Array.from({ length: starsCount }).map((_, i) => {
-          const angle = (i * 360) / starsCount;
-          return (
-            <div 
-              key={i} 
-              className="absolute inset-0 flex items-start justify-center"
-              style={{ transform: `rotate(${angle}deg)` }}
-            >
-              <div className="-mt-2">
-                {displayStar ? (
-                  <img 
-                    src={displayStar} 
-                    crossOrigin="anonymous"
-                    className="w-3.5 h-3.5 object-contain drop-shadow-md" 
-                    style={{ transform: `rotate(-${angle}deg)` }} 
-                    alt="Star"
-                  />
-                ) : (
-                  <Star 
-                    className="w-3 h-3 drop-shadow-md" 
-                    style={{ transform: `rotate(-${angle}deg)`, color: '#eab308', fill: '#eab308' }} 
-                  />
-                )}
+      <div className="absolute -inset-4 z-30 pointer-events-none overflow-hidden rounded-full">
+        <div className="absolute inset-4 animate-[spin_15s_linear_infinite]">
+          {Array.from({ length: starsCount }).map((_, i) => {
+            const angle = (i * 360) / starsCount;
+            return (
+              <div 
+                key={i} 
+                className="absolute inset-0 flex items-start justify-center"
+                style={{ transform: `rotate(${angle}deg)` }}
+              >
+                <div className="-mt-2">
+                  {displayStar ? (
+                    <img 
+                      src={displayStar} 
+                      crossOrigin="anonymous"
+                      className="w-3.5 h-3.5 object-contain drop-shadow-md" 
+                      style={{ transform: `rotate(-${angle}deg)` }} 
+                      alt="Star"
+                    />
+                  ) : (
+                    <Star 
+                      className="w-3 h-3 drop-shadow-md" 
+                      style={{ transform: `rotate(-${angle}deg)`, color: '#eab308', fill: '#eab308' }} 
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     );
   };
