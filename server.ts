@@ -1498,8 +1498,8 @@ const app = express();
   }
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -1710,7 +1710,8 @@ const app = express();
         lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
         luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
         citySearchRewards: JSON.stringify(player.citySearchRewards || []),
-        keys: player.keys || 0
+        keys: player.keys || 0,
+        likes: player.likes || 0
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -1762,7 +1763,8 @@ const app = express();
         lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
         luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
         citySearchRewards: JSON.stringify(player.citySearchRewards || []),
-        keys: player.keys || 0
+        keys: player.keys || 0,
+        likes: player.likes || 0
       });
     }
   });
@@ -1838,7 +1840,8 @@ const app = express();
           lastLuckyWheelResetDay: row.lastLuckyWheelResetDay || null,
           luckyWheelDaysUsed: row.luckyWheelDaysUsed || 0,
           citySearchRewards: JSON.parse(row.citySearchRewards || '[]'),
-          keys: row.keys || 0
+          keys: row.keys || 0,
+          likes: row.likes || 0
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -1848,6 +1851,20 @@ const app = express();
   }
 
   loadPlayersData();
+
+  // Migration: Restore lost likes from player_likes_log
+  try {
+    const likesCounts = db.prepare('SELECT receiver_serial, COUNT(*) as count FROM player_likes_log GROUP BY receiver_serial').all() as { receiver_serial: string, count: number }[];
+    for (const row of likesCounts) {
+      const player = allPlayers.get(row.receiver_serial);
+      if (player && (player.likes || 0) < row.count) {
+        player.likes = row.count;
+        db.prepare('UPDATE players SET likes = ? WHERE serial = ?').run(row.count, row.receiver_serial);
+      }
+    }
+  } catch (err) {
+    console.error("Failed to restore likes:", err);
+  }
 
   // Load Global Reward
   try {
@@ -6762,8 +6779,11 @@ io.on("connection", (socket) => {
           // (They are already fetched earlier but let's be sure about targetSocketId again)
           if (targetSocketId) {
              io.to(targetSocketId).emit('show_alert', { title: 'محبة الجمهور ❤️', message: 'لقد حصلت على 20 إعجاب جديد وحصلت على مفتاح سحري 🔑!' });
-             io.to(targetSocketId).emit('update_player_data', { keys: targetPlayer.keys });
           }
+        }
+        
+        if (targetSocketId) {
+             io.to(targetSocketId).emit('player_data_update', { likes: targetPlayer.likes, keys: targetPlayer.keys });
         }
 
         callback({ success: true, newLikes, keysRewarded });
