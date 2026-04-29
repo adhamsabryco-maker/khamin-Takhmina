@@ -1201,6 +1201,16 @@ const app = express();
   try { db.exec(`ALTER TABLE players ADD COLUMN luckyWheelDaysUsed INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN citySearchRewards TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN keys INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN likes INTEGER DEFAULT 0`); } catch (e) {}
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS player_likes_log (
+      id TEXT PRIMARY KEY,
+      giver_serial TEXT,
+      receiver_serial TEXT,
+      timestamp INTEGER
+    )
+  `);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shop_items (
@@ -2741,7 +2751,8 @@ const app = express();
           profanityCount: 0,
           helpersUsedCount: 0,
           ownedHelpers: match.p1.ownedHelpers || {},
-          isAdmin: !!p1ServerPlayer?.isAdmin
+          isAdmin: !!p1ServerPlayer?.isAdmin,
+          isPro: !!p1ServerPlayer?.proPackageExpiry && p1ServerPlayer.proPackageExpiry > Date.now()
         },
         {
           id: match.p2.socket.id,
@@ -2776,7 +2787,8 @@ const app = express();
           profanityCount: 0,
           helpersUsedCount: 0,
           ownedHelpers: match.p2.ownedHelpers || {},
-          isAdmin: !!p2ServerPlayer?.isAdmin
+          isAdmin: !!p2ServerPlayer?.isAdmin,
+          isPro: !!p2ServerPlayer?.proPackageExpiry && p2ServerPlayer.proPackageExpiry > Date.now()
         }
       ],
       gameState: "waiting",
@@ -4604,7 +4616,8 @@ io.on("connection", (socket) => {
           profanityCount: 0,
           helpersUsedCount: 0,
           ownedHelpers: serverPlayer.ownedHelpers || {},
-          isAdmin: !!serverPlayer.isAdmin
+          isAdmin: !!serverPlayer.isAdmin,
+          isPro: !!serverPlayer.proPackageExpiry && serverPlayer.proPackageExpiry > Date.now()
         };
         room.players.push(player);
         
@@ -6517,6 +6530,107 @@ io.on("connection", (socket) => {
 
     socket.on("get_friend_status", handleCheckFriendStatus);
     socket.on("check_friend_status", handleCheckFriendStatus);
+
+    socket.on("get_player_profile", ({ targetSerial, requesterSerial }, callback) => {
+      try {
+        const targetPlayer = allPlayers.get(targetSerial);
+        if (!targetPlayer) {
+          callback({ error: 'اللاعب غير موجود' });
+          return;
+        }
+
+        const claimedRows = db.prepare("SELECT * FROM claimed_collection_rewards WHERE player_serial = ?").all(targetSerial);
+        const ownedFrames = claimedRows.filter((row: any) => row.stage >= 2).map((row: any) => row.category_id);
+
+        const now = Date.now();
+        const isPro = targetPlayer.proPackageExpiry && targetPlayer.proPackageExpiry > now ? true : false;
+        const activeProPackage = isPro ? {
+          type: 'pro',
+          expiresAt: targetPlayer.proPackageExpiry
+        } : null;
+
+        // Check if the requester has given a like today
+        let hasLikedToday = false;
+        if (requesterSerial) {
+          const yesterday = Date.now() - 24 * 60 * 60 * 1000;
+          const likeRecord = db.prepare('SELECT 1 FROM player_likes_log WHERE giver_serial = ? AND timestamp > ?').get(requesterSerial, yesterday);
+          hasLikedToday = !!likeRecord;
+        }
+
+        callback({
+          success: true,
+          profile: {
+            serial: targetPlayer.serial,
+            name: targetPlayer.name,
+            avatar: targetPlayer.avatar,
+            gender: targetPlayer.gender,
+            xp: targetPlayer.xp,
+            level: targetPlayer.level || 0, // App will use calc if 0 maybe? getLevel(xp) is better.
+            wins: targetPlayer.wins,
+            streak: targetPlayer.streak,
+            tokens: targetPlayer.tokens,
+            keys: targetPlayer.keys,
+            likes: targetPlayer.likes || 0,
+            hasLikedToday: !!hasLikedToday,
+            ownedHelpers: targetPlayer.ownedHelpers || {},
+            proPackageExpiry: targetPlayer.proPackageExpiry || 0,
+            activeProPackage: activeProPackage,
+            selectedFrame: targetPlayer.selectedFrame || '',
+            titles: [], // Future use
+            ownedFrames: ownedFrames
+          }
+        });
+      } catch (error) {
+        console.error("Error fetching player profile:", error);
+        callback({ error: 'فشل جلب بيانات اللاعب' });
+      }
+    });
+
+    socket.on("like_player", ({ targetSerial, giverSerial }, callback) => {
+      try {
+        if (!targetSerial || !giverSerial) return callback({ error: 'بيانات غير مكتملة' });
+        if (targetSerial === giverSerial) return callback({ error: 'لا يمكنك إرسال إعجاب لنفسك' });
+
+        const targetPlayer = allPlayers.get(targetSerial);
+        const giverPlayer = allPlayers.get(giverSerial);
+
+        if (!targetPlayer || !giverPlayer) return callback({ error: 'اللاعب غير موجود' });
+
+        const yesterday = Date.now() - 24 * 60 * 60 * 1000;
+        const alreadyLiked = db.prepare('SELECT 1 FROM player_likes_log WHERE giver_serial = ? AND timestamp > ?').get(giverSerial, yesterday);
+
+        if (alreadyLiked) {
+          return callback({ error: 'لقد قمت بإرسال إعجاب اليوم بالفعل. حاول غداً!' });
+        }
+
+        const logId = Math.random().toString(36).substr(2, 9);
+        db.prepare('INSERT INTO player_likes_log (id, giver_serial, receiver_serial, timestamp) VALUES (?, ?, ?, ?)').run(logId, giverSerial, targetSerial, Date.now());
+
+        const newLikes = (targetPlayer.likes || 0) + 1;
+        targetPlayer.likes = newLikes;
+        db.prepare('UPDATE players SET likes = ? WHERE serial = ?').run(newLikes, targetSerial);
+
+        // Check for reward (every 20 likes = 1 key)
+        let keysRewarded = 0;
+        if (newLikes % 20 === 0) {
+          targetPlayer.keys = (targetPlayer.keys || 0) + 1;
+          db.prepare('UPDATE players SET keys = ? WHERE serial = ?').run(targetPlayer.keys, targetSerial);
+          keysRewarded = 1;
+          
+          // Optionally send a notification to the target player if they are online
+          const targetSocketId = playerSockets ? playerSockets.get(targetSerial) : null;
+          if (targetSocketId) {
+             io.to(targetSocketId).emit('show_alert', { title: 'محبة الجمهور ❤️', message: 'لقد حصلت على 20 إعجاب جديد وحصلت على مفتاح سحري 🔑!' });
+             io.to(targetSocketId).emit('update_player_data', { keys: targetPlayer.keys });
+          }
+        }
+
+        callback({ success: true, newLikes, keysRewarded });
+      } catch (error) {
+        console.error("Error sending like:", error);
+        callback({ error: 'حدث خطأ غير متوقع' });
+      }
+    });
 
     const handleAddFriend = ({ serial, mySerial, targetSerial }: any, callback: any) => {
       const actualMySerial = mySerial || serial;
