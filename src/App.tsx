@@ -185,6 +185,7 @@ const SOUNDS = {
   tick: '/sounds/tick.mp3',
   luckyReels: '/sounds/lucky-reels-sound-effect.mp3',
   spinStart: '/sounds/lucky-reels-sound-effect.mp3',
+  proArrival: '/sounds/proArrival.mp3',
   spinStop: '/sounds/bell.mp3',
   notification: '/sounds/notification.mp3',
   lobbyBackground: '/sounds/lobby-background-music.mp3',
@@ -1824,7 +1825,7 @@ export default function App() {
               name: p.name, 
               type: room.matchType === 'random' ? 'found' : 'joined' 
             });
-            playSound('luckyReels'); // A nice sound for pro arrival
+            playSound('proArrival'); // A nice sound for pro arrival
             setTimeout(() => setProAnnouncement(null), 5000);
           }
         }
