@@ -1810,16 +1810,23 @@ export default function App() {
       if (room.gameState === 'finished') {
         setProAnnouncedFor([]);
       } else {
-        const newPros = room.players.filter(p => p.isPro && !proAnnouncedFor.includes(`${room.id}-${p.serial}`));
-        if (newPros.length > 0 && !proAnnouncement) {
-          const p = newPros[0];
-          setProAnnouncedFor(prev => [...prev, `${room.id}-${p.serial}`]);
-          setProAnnouncement({ 
-            name: p.name, 
-            type: room.matchType === 'random' ? 'found' : 'joined' 
-          });
-          playSound('luckyReels'); // A nice sound for pro arrival
-          setTimeout(() => setProAnnouncement(null), 5000);
+        // Trigger condition based on match type:
+        // - Random: show when found
+        // - Private/Code: show only when room is full (2/2)
+        const isReadyToAnnounce = room.matchType === 'random' || room.players.length === 2;
+
+        if (isReadyToAnnounce) {
+          const newPros = room.players.filter(p => p.isPro && !proAnnouncedFor.includes(`${room.id}-${p.serial}`));
+          if (newPros.length > 0 && !proAnnouncement) {
+            const p = newPros[0];
+            setProAnnouncedFor(prev => [...prev, `${room.id}-${p.serial}`]);
+            setProAnnouncement({ 
+              name: p.name, 
+              type: room.matchType === 'random' ? 'found' : 'joined' 
+            });
+            playSound('luckyReels'); // A nice sound for pro arrival
+            setTimeout(() => setProAnnouncement(null), 5000);
+          }
         }
       }
     }
@@ -5776,7 +5783,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [citySearchState]);
 
-  const handleShowAd = (onComplete: () => void) => {
+  const handleShowAd = (onComplete: () => void, onFailed?: () => void) => {
     if (adTriggeredRef.current || isGlobalAdLoading) return;
     adTriggeredRef.current = true;
     setIsGlobalAdLoading(true);
@@ -5812,6 +5819,7 @@ export default function App() {
           adTriggeredRef.current = false;
           setIsGlobalAdLoading(false);
           showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
+          if (onFailed) onFailed();
         }
       });
     };
@@ -5833,7 +5841,6 @@ export default function App() {
               setMockAdProviderState(null);
             }
             adFinished = false;
-            setIsGlobalAdLoading(false);
             startAdProcess();
             Howler.mute(true);
             
@@ -5851,7 +5858,8 @@ export default function App() {
             clearTimeout(adSafetyTimeout);
             adTriggeredRef.current = false;
             setIsGlobalAdLoading(false);
-            showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
+            showAlert("يجب مشاهدة الإعلان كاملًا لبدء البحث!", "تنبيه");
+            if (onFailed) onFailed();
           },
           adViewed: () => {
             adFinished = true;
@@ -5881,7 +5889,12 @@ export default function App() {
     }
   };
 
+  const [isCitySearchStarting, setIsCitySearchStarting] = useState(false);
+
   const handleStartCitySearch = () => {
+    if (isCitySearchStarting || isGlobalAdLoading) return;
+    setIsCitySearchStarting(true);
+    
     handleShowAd(() => {
       socket?.emit("start_city_search", { serial: playerSerial, cityId: selectedCity });
       // Optimistically update state so the button hides immediately
@@ -5893,6 +5906,9 @@ export default function App() {
         rewards: { xp: 0, tokens: 0, time_freeze: 0, word_count: 0, word_length: 0, hint: 0, spy_lens: 0, pro_package_days: 0 }
       });
       showAlert("ارجعوا بعد ساعة ولموا الهدايا والمكافآت 🤩 وابدأوا بحث جديد 🧐", "تم بدء البحث");
+      setIsCitySearchStarting(false);
+    }, () => {
+      setIsCitySearchStarting(false);
     });
   };
 
@@ -12345,10 +12361,10 @@ export default function App() {
               {!citySearchState?.active ? (
                 <button 
                   onClick={handleStartCitySearch} 
-                  disabled={isGlobalAdLoading}
-                  className={`w-full py-4 bg-accent-blue hover:bg-blue-600 text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#1e3a8a] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2 ${isGlobalAdLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={isGlobalAdLoading || isCitySearchStarting}
+                  className={`w-full py-4 bg-accent-blue hover:bg-blue-600 text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#1e3a8a] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2 ${(isGlobalAdLoading || isCitySearchStarting) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isGlobalAdLoading ? (
+                  {(isGlobalAdLoading || isCitySearchStarting) ? (
                     <><Loader2 className="w-6 h-6 animate-spin" /> جاري التجهيز...</>
                   ) : (
                     <><Tv className="w-6 h-6" /> ابدأ البحث (شاهد إعلان)</>
@@ -15545,25 +15561,51 @@ export default function App() {
       <AnimatePresence>
         {proAnnouncement && (
           <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.9, rotateX: -90 }}
-            animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
-            exit={{ opacity: 0, y: -50, scale: 0.9, pacity: 0 }}
-            transition={{ type: "spring", bounce: 0.5, duration: 0.8 }}
+            initial={{ x: "-100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 20, stiffness: 100 }}
             className="fixed top-24 left-0 right-0 z-[8000] flex justify-center pointer-events-none px-4"
           >
             <div className="relative">
-              {/* Magical sparkles behind */}
-              <motion.div 
-                animate={{ rotate: 360 }} 
-                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 bg-gradient-to-tr from-yellow-400 via-orange-500 to-purple-600 rounded-2xl blur-xl opacity-50"
-              />
+              {/* Magic Golden Sparkles/Particles effect */}
+              <div className="absolute inset-0 pointer-events-none">
+                {[...Array(12)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute w-1 h-1 bg-yellow-400 rounded-full shadow-[0_0_8px_#fbbf24]"
+                    initial={{ 
+                      x: Math.random() * 200 - 100, 
+                      y: Math.random() * 60 - 30,
+                      opacity: 0 
+                    }}
+                    animate={{ 
+                      x: Math.random() * 200 - 100, 
+                      y: Math.random() * 60 - 30,
+                      opacity: [0, 1, 0],
+                      scale: [0, 1.5, 0]
+                    }}
+                    transition={{ 
+                      duration: 1.5 + Math.random(), 
+                      repeat: Infinity,
+                      delay: Math.random() * 2
+                    }}
+                  />
+                ))}
+              </div>
               
-              <div className="relative box-game bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-900 p-4 border-2 border-yellow-400 rounded-2xl shadow-[0_0_20px_rgba(250,204,21,0.4)] flex items-center gap-4 text-center max-w-sm mx-auto">
-                <div className="text-yellow-400">
+              <div className="relative box-game bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-900 p-4 border-2 border-yellow-400 rounded-2xl shadow-[0_0_20px_rgba(250,204,21,0.6)] flex items-center gap-4 text-center max-w-sm mx-auto overflow-hidden">
+                {/* Internal shine sweep */}
+                <motion.div 
+                   animate={{ x: ['-100%', '200%'] }}
+                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
+                />
+                
+                <div className="text-yellow-400 z-10">
                   <Star className="w-8 h-8 fill-yellow-400 animate-pulse" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 z-10">
                   <h3 className="text-sm font-black text-yellow-300 mb-1">لاعب محترف! ⭐</h3>
                   <p className="text-xs font-bold text-white leading-tight">
                     {proAnnouncement.type === 'found' 
@@ -15571,8 +15613,8 @@ export default function App() {
                       : <>تم انضمام اللاعب المحترف <span className="text-yellow-400 font-black px-1">"{proAnnouncement.name}"</span> الي الغرفة</>}
                   </p>
                 </div>
-                <div className="text-yellow-400">
-                  <Sparkles className="w-6 h-6 animate-spin-slow" />
+                <div className="text-yellow-400 z-10">
+                  <Sparkles className="w-6 h-6 animate-pulse" />
                 </div>
               </div>
             </div>
