@@ -445,6 +445,17 @@ const app = express();
       if (doc.exists) {
         const remoteConfig = doc.data() as any;
         configCache = { ...configCache, ...remoteConfig };
+        
+        // Prioritize version from version.json (currentVersion) if it exists
+        if (currentVersion) {
+          configCache.version = currentVersion;
+          // Sync back to Firestore if different
+          if (remoteConfig.version !== currentVersion) {
+            await firestore.collection('settings').doc('gameConfig').update({ version: currentVersion });
+            console.log(`[Config] Synced version ${currentVersion} to Firestore`);
+          }
+        }
+        
         console.log("[Config] Loaded from Firestore successfully.");
       } else {
         await firestore.collection('settings').doc('gameConfig').set(configCache);
@@ -2920,8 +2931,22 @@ const app = express();
 
     // Bot watching ad logic (10% chance if level >= 10)
     if (bot.level >= 10 && Math.random() < 0.1) {
+      const botPlayerInRoom = currentRoom.players.find((p: any) => p.id === bot.id);
+      if (!botPlayerInRoom) return;
+
       const helpers = ['word_length', 'word_count', 'time_freeze', 'hint', 'spy_lens'];
-      const randomHelper = helpers[Math.floor(Math.random() * helpers.length)];
+      const availableHelpers = helpers.filter(h => {
+        if (h === 'word_length') return !botPlayerInRoom.wordLengthUsed;
+        if (h === 'word_count') return !botPlayerInRoom.wordCountUsed;
+        if (h === 'time_freeze') return !botPlayerInRoom.timeFreezeUsed;
+        if (h === 'hint') return (botPlayerInRoom.hintCount || 0) < 1; // Limit to 1 for bots per game
+        if (h === 'spy_lens') return !botPlayerInRoom.spyLensUsed;
+        return true;
+      });
+
+      if (availableHelpers.length === 0) return;
+
+      const randomHelper = availableHelpers[Math.floor(Math.random() * availableHelpers.length)];
       const helperNames: Record<string, string> = {
         'word_length': 'كاشف الحروف',
         'word_count': 'عدد الكلمات',
@@ -2940,6 +2965,16 @@ const app = express();
       const adDuration = 5000 + Math.random() * 10000;
       await new Promise(resolve => setTimeout(resolve, adDuration));
       
+      // Mark as used so it doesn't repeat
+      if (randomHelper === 'word_length') botPlayerInRoom.wordLengthUsed = true;
+      if (randomHelper === 'word_count') botPlayerInRoom.wordCountUsed = true;
+      if (randomHelper === 'time_freeze') botPlayerInRoom.timeFreezeUsed = true;
+      if (randomHelper === 'hint') botPlayerInRoom.hintCount = (botPlayerInRoom.hintCount || 0) + 1;
+      if (randomHelper === 'spy_lens') botPlayerInRoom.spyLensUsed = true;
+
+      // Update room to reflect helper use
+      io.to(roomId).emit("room_update", currentRoom);
+
       // Wait 1-2 seconds after ad finishes to simulate using the helper
       await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
       
@@ -6553,7 +6588,7 @@ io.on("connection", (socket) => {
         let hasLikedToday = false;
         if (requesterSerial) {
           const yesterday = Date.now() - 24 * 60 * 60 * 1000;
-          const likeRecord = db.prepare('SELECT 1 FROM player_likes_log WHERE giver_serial = ? AND timestamp > ?').get(requesterSerial, yesterday);
+          const likeRecord = db.prepare('SELECT 1 FROM player_likes_log WHERE giver_serial = ? AND receiver_serial = ? AND timestamp > ?').get(requesterSerial, targetSerial, yesterday);
           hasLikedToday = !!likeRecord;
         }
 
@@ -6597,10 +6632,10 @@ io.on("connection", (socket) => {
         if (!targetPlayer || !giverPlayer) return callback({ error: 'اللاعب غير موجود' });
 
         const yesterday = Date.now() - 24 * 60 * 60 * 1000;
-        const alreadyLiked = db.prepare('SELECT 1 FROM player_likes_log WHERE giver_serial = ? AND timestamp > ?').get(giverSerial, yesterday);
+        const alreadyLiked = db.prepare('SELECT 1 FROM player_likes_log WHERE giver_serial = ? AND receiver_serial = ? AND timestamp > ?').get(giverSerial, targetSerial, yesterday);
 
         if (alreadyLiked) {
-          return callback({ error: 'لقد قمت بإرسال إعجاب اليوم بالفعل. حاول غداً!' });
+          return callback({ error: 'لقد قمت بإرسال إعجاب لهذا اللاعب اليوم بالفعل. حاول غداً!' });
         }
 
         const logId = Math.random().toString(36).substr(2, 9);
