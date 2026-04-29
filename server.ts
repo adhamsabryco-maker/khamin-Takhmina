@@ -421,7 +421,10 @@ const app = express();
   if (fs.existsSync(configPath)) {
     try {
       configCache = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (!configCache.version) configCache.version = currentVersion;
+      // Prioritize version from version.json (currentVersion) if it exists
+      if (currentVersion) {
+        configCache.version = currentVersion;
+      }
     } catch (e) {
       console.error("Error reading config:", e);
     }
@@ -998,6 +1001,7 @@ const app = express();
     dailyQuestStreak?: number,
     lastDailyClaim?: number,
     weeklyTokensClaimed?: number,
+    likes?: number,
     lastWeeklyTokenReset?: number,
     lastGuess?: string,
     ownedHelpers?: { [key: string]: number },
@@ -1407,6 +1411,19 @@ const app = express();
       reportedName TEXT,
       reason TEXT,
       roomId TEXT
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS like_notifications (
+      id TEXT PRIMARY KEY,
+      receiverSerial TEXT NOT NULL,
+      senderSerial TEXT NOT NULL,
+      senderName TEXT,
+      senderAvatar TEXT,
+      senderLevel INTEGER,
+      timestamp INTEGER,
+      read INTEGER DEFAULT 0
     )
   `);
 
@@ -2936,17 +2953,25 @@ const app = express();
 
       const helpers = ['word_length', 'word_count', 'time_freeze', 'hint', 'spy_lens'];
       const availableHelpers = helpers.filter(h => {
-        if (h === 'word_length') return !botPlayerInRoom.wordLengthUsed;
-        if (h === 'word_count') return !botPlayerInRoom.wordCountUsed;
-        if (h === 'time_freeze') return !botPlayerInRoom.timeFreezeUsed;
-        if (h === 'hint') return (botPlayerInRoom.hintCount || 0) < 1; // Limit to 1 for bots per game
-        if (h === 'spy_lens') return !botPlayerInRoom.spyLensUsed;
+        if (h === 'word_length') return !botPlayerInRoom.wordLengthUsed && !botPlayerInRoom.wordLengthWatching;
+        if (h === 'word_count') return !botPlayerInRoom.wordCountUsed && !botPlayerInRoom.wordCountWatching;
+        if (h === 'time_freeze') return !botPlayerInRoom.timeFreezeUsed && !botPlayerInRoom.timeFreezeWatching;
+        if (h === 'hint') return (botPlayerInRoom.hintCount || 0) < 1 && !botPlayerInRoom.hintWatching; 
+        if (h === 'spy_lens') return !botPlayerInRoom.spyLensUsed && !botPlayerInRoom.spyLensWatching;
         return true;
       });
 
       if (availableHelpers.length === 0) return;
 
       const randomHelper = availableHelpers[Math.floor(Math.random() * availableHelpers.length)];
+      
+      // Mark as watching immediately to prevent repetition during ad duration
+      if (randomHelper === 'word_length') botPlayerInRoom.wordLengthWatching = true;
+      if (randomHelper === 'word_count') botPlayerInRoom.wordCountWatching = true;
+      if (randomHelper === 'time_freeze') botPlayerInRoom.timeFreezeWatching = true;
+      if (randomHelper === 'hint') botPlayerInRoom.hintWatching = true;
+      if (randomHelper === 'spy_lens') botPlayerInRoom.spyLensWatching = true;
+
       const helperNames: Record<string, string> = {
         'word_length': 'كاشف الحروف',
         'word_count': 'عدد الكلمات',
@@ -2965,15 +2990,21 @@ const app = express();
       const adDuration = 5000 + Math.random() * 10000;
       await new Promise(resolve => setTimeout(resolve, adDuration));
       
+      // Re-fetch in case room changed
+      const roomStillExists = rooms.get(roomId);
+      if (!roomStillExists) return;
+      const botStillInRoom = roomStillExists.players.find((p: any) => p.id === bot.id);
+      if (!botStillInRoom) return;
+
       // Mark as used so it doesn't repeat
-      if (randomHelper === 'word_length') botPlayerInRoom.wordLengthUsed = true;
-      if (randomHelper === 'word_count') botPlayerInRoom.wordCountUsed = true;
-      if (randomHelper === 'time_freeze') botPlayerInRoom.timeFreezeUsed = true;
-      if (randomHelper === 'hint') botPlayerInRoom.hintCount = (botPlayerInRoom.hintCount || 0) + 1;
-      if (randomHelper === 'spy_lens') botPlayerInRoom.spyLensUsed = true;
+      if (randomHelper === 'word_length') botStillInRoom.wordLengthUsed = true;
+      if (randomHelper === 'word_count') botStillInRoom.wordCountUsed = true;
+      if (randomHelper === 'time_freeze') botStillInRoom.timeFreezeUsed = true;
+      if (randomHelper === 'hint') botStillInRoom.hintCount = (botStillInRoom.hintCount || 0) + 1;
+      if (randomHelper === 'spy_lens') botStillInRoom.spyLensUsed = true;
 
       // Update room to reflect helper use
-      io.to(roomId).emit("room_update", currentRoom);
+      io.to(roomId).emit("room_update", roomStillExists);
 
       // Wait 1-2 seconds after ad finishes to simulate using the helper
       await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
@@ -5275,7 +5306,7 @@ io.on("connection", (socket) => {
         
         if (room.powerUpAdsInProgress && room.powerUpAdsInProgress.has(socket.id)) {
           room.powerUpAdsInProgress.delete(socket.id);
-          room.adCooldownTimer = 30; // Start 30s cooldown where game timer is paused
+          room.adCooldownTimer = 30; // 30s cooldown before resuming timer
         }
       }
     });
@@ -6239,6 +6270,26 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("get_like_notifications", ({ serial }, callback) => {
+      if (!serial) return callback({ notifications: [] });
+      try {
+        const notifications = db.prepare('SELECT * FROM like_notifications WHERE receiverSerial = ? AND read = 0 ORDER BY timestamp DESC').all(serial);
+        callback({ success: true, notifications });
+      } catch (e) {
+        callback({ success: false, notifications: [] });
+      }
+    });
+
+    socket.on("dismiss_like_notification", ({ serial, notificationId }, callback) => {
+      if (!serial || !notificationId) return callback({ success: false });
+      try {
+        db.prepare('UPDATE like_notifications SET read = 1 WHERE id = ? AND receiverSerial = ?').run(notificationId, serial);
+        callback({ success: true });
+      } catch (e) {
+        callback({ success: false });
+      }
+    });
+
     socket.on("get_admin_messages", ({ serial }, callback) => {
       if (!serial) return callback({ messages: [] });
       try {
@@ -6644,6 +6695,30 @@ io.on("connection", (socket) => {
         const newLikes = (targetPlayer.likes || 0) + 1;
         targetPlayer.likes = newLikes;
         db.prepare('UPDATE players SET likes = ? WHERE serial = ?').run(newLikes, targetSerial);
+
+        // Add notification for the like
+        const notificationId = Math.random().toString(36).substr(2, 9);
+        db.prepare('INSERT INTO like_notifications (id, receiverSerial, senderSerial, senderName, senderAvatar, senderLevel, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+          notificationId,
+          targetSerial,
+          giverSerial,
+          giverPlayer.name,
+          giverPlayer.avatar,
+          giverPlayer.level || 1,
+          Date.now()
+        );
+
+        const targetSocketId = playerSockets ? playerSockets.get(targetSerial) : null;
+        if (targetSocketId) {
+          io.to(targetSocketId).emit("new_like_notification", {
+            id: notificationId,
+            senderSerial: giverSerial,
+            senderName: giverPlayer.name,
+            senderAvatar: giverPlayer.avatar,
+            senderLevel: giverPlayer.level || 1,
+            timestamp: Date.now()
+          });
+        }
 
         // Check for reward (every 20 likes = 1 key)
         let keysRewarded = 0;
