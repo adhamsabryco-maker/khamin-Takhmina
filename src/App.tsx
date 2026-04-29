@@ -2147,6 +2147,20 @@ export default function App() {
     }
   }, [room, playerSerial]);
 
+  // App Badging API for PWA notification badge
+  useEffect(() => {
+    const unreadCount = friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length;
+    if ('setAppBadge' in navigator) {
+      if (unreadCount > 0) {
+        // @ts-ignore
+        navigator.setAppBadge(unreadCount).catch((e: any) => console.log('Badge error:', e));
+      } else {
+        // @ts-ignore
+        navigator.clearAppBadge().catch((e: any) => console.log('Badge error:', e));
+      }
+    }
+  }, [friendRequests.length, collectionNotifications.length, systemMessages.length, likeNotifications.length]);
+
   // Load Friends Effect
   useEffect(() => {
     if (socket && playerSerial && showFriendsModal && friendsList.length === (friendsPage - 1) * 10) {
@@ -6975,6 +6989,34 @@ export default function App() {
               
               <h2 className="text-xl font-black text-white flex items-center justify-center gap-2">
                 {data.name}
+                {data.serial !== playerSerial && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCustomConfirm({
+                        show: true,
+                        title: 'حظر اللاعب',
+                        message: `هل أنت متأكد من حظر ${data.name}؟ لن تتمكن من اللعب معه مرة أخرى.`,
+                        onConfirm: () => {
+                          socket?.emit('block_player_by_serial', { blockerSerial: playerSerial, blockedSerial: data.serial }, (res: any) => {
+                            if (res && res.success) {
+                              showAlert(`تم حظر ${data.name} بنجاح`, 'حظر');
+                              setSelectedProfileSerial(null);
+                              setBlockedPlayers(prev => [...prev, { serial: data.serial, name: data.name }]);
+                              setRecentOpponents(prev => prev.filter(op => op.serial !== data.serial));
+                            } else {
+                              showAlert(res.error || 'حدث خطأ أثناء الحظر', 'خطأ');
+                            }
+                          });
+                        }
+                      });
+                    }}
+                    className="p-1.5 rounded-full hover:bg-black/30 text-white/90 transition-colors shrink-0"
+                    title="حظر اللاعب"
+                  >
+                    <Ban className="w-5 h-5 text-red-400 hover:text-red-300" />
+                  </button>
+                )}
               </h2>
               <div className="text-white/90 text-sm font-bold flex items-center justify-center gap-2 mt-1 mb-3">
                 <span className="bg-black/20 px-2 py-0.5 rounded-md" dir="ltr">Lvl {data.level}</span>
@@ -12836,14 +12878,42 @@ export default function App() {
               className="space-y-2 md:space-y-4"
             >
               <h2 className="text-2xl md:text-3xl font-black text-main uppercase tracking-tight" style={{ textShadow: '2px 2px 0px #FFF, -1px -1px 0 #FFF, 1px -1px 0 #FFF, -1px 1px 0 #FFF, 1px 1px 0 #FFF' }}>تم العثور على منافس!</h2>
-              <div className="flex flex-col items-center p-3 md:p-4 bg-white rounded-3xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
-                <div className="relative mb-1 md:mb-2 w-20 h-20 md:w-24 md:h-24">
+              <div className={`flex flex-col items-center p-3 md:p-4 rounded-3xl border-4 relative ${
+                proposedMatch.opponent.proPackageExpiry && proposedMatch.opponent.proPackageExpiry > Date.now()
+                  ? 'bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-900 border-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.6)] overflow-hidden'
+                  : 'bg-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+              }`}>
+                {proposedMatch.opponent.proPackageExpiry && proposedMatch.opponent.proPackageExpiry > Date.now() && (
+                  <motion.div 
+                     animate={{ x: ['-200%', '200%'] }}
+                     transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                     className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-20 pointer-events-none"
+                  />
+                )}
+                <div className="relative mb-1 md:mb-2 w-20 h-20 md:w-24 md:h-24 z-10">
                   {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0), false, true, proposedMatch.opponent.selectedFrame)}
                 </div>
-                <div className="text-xl md:text-2xl font-black text-main mb-1">{proposedMatch.opponent.name}</div>
-                <div className="text-sm md:text-base font-bold text-black bg-gray-100 border-2 border-black px-3 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Level {proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0)}</div>
+                <div className={`text-xl md:text-2xl font-black mb-1 z-10 ${
+                  proposedMatch.opponent.proPackageExpiry && proposedMatch.opponent.proPackageExpiry > Date.now()
+                    ? 'text-yellow-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]'
+                    : 'text-main'
+                }`}>
+                  {proposedMatch.opponent.name}
+                  {proposedMatch.opponent.proPackageExpiry && proposedMatch.opponent.proPackageExpiry > Date.now() && (
+                    <Star className="inline-block w-5 h-5 md:w-6 md:h-6 ml-1 text-yellow-400 fill-yellow-400 drop-shadow-md" />
+                  )}
+                </div>
+                <div className={`text-sm md:text-base font-bold px-3 py-1 rounded-xl z-10 ${
+                  proposedMatch.opponent.proPackageExpiry && proposedMatch.opponent.proPackageExpiry > Date.now()
+                    ? 'text-white bg-purple-900/50 border-2 border-yellow-400 shadow-[0_2px_4px_rgba(0,0,0,0.3)]'
+                    : 'text-black bg-gray-100 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                }`}>Level {proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0)}</div>
                 {matchResponseTimeLeft !== null && (
-                  <div className="mt-2 text-accent-blue font-black text-lg flex items-center gap-2 bg-white border-2 border-black px-4 py-2 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <div className={`mt-2 font-black text-lg flex items-center gap-2 px-4 py-2 rounded-xl z-10 ${
+                    proposedMatch.opponent.proPackageExpiry && proposedMatch.opponent.proPackageExpiry > Date.now()
+                      ? 'bg-purple-900/50 text-yellow-400 border-2 border-yellow-400 shadow-[0_2px_4px_rgba(0,0,0,0.3)]'
+                      : 'bg-white text-accent-blue border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  }`}>
                     <Timer className="w-5 h-5" />
                     <span>{matchResponseTimeLeft} ثانية</span>
                   </div>
@@ -13774,7 +13844,7 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-                  <span className="flex font-bold p-0.5 py-0.5 pt-2 items-center justify-center md:text-[13px] text-[12px] text-accent-orange border-t-2 border-game">تحتاج 3 🗝️ مفاتيح للإشتراك فى حدث مطر الهدايا</span>
+                  <span className="flex font-bold p-0.5 py-0.5 pt-2 items-center justify-center md:text-[13px] text-[12px] text-accent-orange border-t-2 border-game">تحتاج 5 🗝️ مفاتيح للإشتراك فى حدث مطر الهدايا</span>
                   <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[10px] text-accent-purple">ابحث عن مفاتيح التخمين فى المباريات داخل وسائل المساعدة</span>
               </div>
               )}
