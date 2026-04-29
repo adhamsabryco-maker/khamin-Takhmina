@@ -775,6 +775,7 @@ export default function App() {
   const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0'));
   const [tokens, setتخمينات] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
   const [keys, setKeys] = useState(() => parseInt(localStorage.getItem('khamin_keys') || '0'));
+  const [likes, setLikes] = useState(() => parseInt(localStorage.getItem('khamin_likes') || '0'));
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
   const [isRewardClaimed, setIsRewardClaimed] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
@@ -3465,6 +3466,7 @@ export default function App() {
     setStreak(0);
     setReports(0);
     setتخمينات(0);
+    setLikes(0);
     setOwnedHelpers({});
     setProPackageExpiry(null);
     setDailyQuestStreak(1);
@@ -3952,6 +3954,11 @@ export default function App() {
               localStorage.setItem('khamin_player_frame', data.selectedFrame);
             }
 
+            if (data.likes !== undefined) {
+              setLikes(data.likes);
+              localStorage.setItem('khamin_likes', data.likes.toString());
+            }
+
             localStorage.setItem('khamin_xp', data.xp.toString());
             localStorage.setItem('khamin_wins', (data.wins || 0).toString());
           } else {
@@ -4052,6 +4059,10 @@ export default function App() {
       if (data.keys !== undefined) {
         setKeys(data.keys);
         localStorage.setItem('khamin_keys', data.keys.toString());
+      }
+      if (data.likes !== undefined) {
+        setLikes(data.likes);
+        localStorage.setItem('khamin_likes', data.likes.toString());
       }
       if (data.proPackageExpiry !== undefined) {
         setProPackageExpiry(data.proPackageExpiry);
@@ -5160,6 +5171,7 @@ export default function App() {
         prevLevelRef.current = getLevel(player.xp || 0);
         setWins(player.wins || 0);
         setتخمينات(player.tokens || 0);
+        setLikes(player.likes || 0);
         setStreak(player.streak || 0);
         setOwnedHelpers(player.ownedHelpers || {});
         if (player.selectedFrame !== undefined) {
@@ -5174,6 +5186,7 @@ export default function App() {
         localStorage.setItem('khamin_player_avatar', player.avatar);
         localStorage.setItem('khamin_wins', (player.wins || 0).toString());
         localStorage.setItem('khamin_xp', (player.xp || 0).toString());
+        localStorage.setItem('khamin_likes', (player.likes || 0).toString());
         localStorage.setItem('khamin_tokens', (player.tokens || 0).toString());
         localStorage.setItem('khamin_streak', (player.streak || 0).toString());
         
@@ -13458,7 +13471,11 @@ export default function App() {
                         </span>
                       </div>
                     </div>
-                    
+                  </div>
+                </div>
+              )}
+            </AnimatedXp>
+            <div className="w-full border-t border-black/20 my-2 mb-0.5"></div>
                     {/* تخمينات and Pro Package */}
                     <div className="flex flex-wrap justify-center gap-1">
                       <div className="mt-0.5 pt-0.5 flex flex-wrap justify-center gap-0.3 md:gap-0.5 text-xs font-bold text-brown-dark" dir="ltr">
@@ -13483,6 +13500,9 @@ export default function App() {
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
                           <span className="text-[13px] md:text-[14px]"><Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /></span> <span className="text-[11px] md:text-[12px]">{keys || 0}</span>
                         </span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                          <span className="text-[13px] md:text-[14px]"><Heart className="w-3 h-3 md:w-4 md:h-4 text-red-500 fill-red-500" /></span> <span className="text-[11px] md:text-[12px]">{likes || 0}</span>
+                        </span>
                         <span className="flex text-xs md:text-sm text-gray-400 px-0.5">|</span>
                         <span className="bg-white/50 px-1 flex items-center gap-0.5">
                           <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.time_freeze || 0}</span>
@@ -13501,12 +13521,9 @@ export default function App() {
                         </span>
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
-            </AnimatedXp>
+
             {/* Friends Button */}
-            <div className="w-full border-t border-black/20 my-2"></div>
+            <div className="w-full border-t border-black/20 my-2 mt-0.5"></div>
               <button 
                 onClick={() => setShowFriendsModal(true)}
                 className="w-full px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black rounded-lg text-sm transition-colors border border-blue-200 flex items-center justify-center gap-2"
