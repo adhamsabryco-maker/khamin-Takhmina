@@ -807,6 +807,7 @@ export default function App() {
 
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [showHowToOpenEasyGuess, setShowHowToOpenEasyGuess] = useState(false);
   const [loginSerial, setLoginSerial] = useState('');
   const [loginError, setLoginError] = useState('');
   const [pendingWelcomeModal, setPendingWelcomeModal] = useState(false);
@@ -3481,6 +3482,8 @@ export default function App() {
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
+    let imgTimeoutId: NodeJS.Timeout;
+
     if (room && (room.gameState === 'guessing' || room.gameState === 'discussion')) {
       const hasSeenRules = localStorage.getItem('khamin_rules_seen');
       if (!hasSeenRules) {
@@ -3488,11 +3491,26 @@ export default function App() {
           setShowRulesModal(true);
         }, 3000); // تأخير الظهور لمدة 3 ثواني
       }
+      
+      const easyGuessCount = parseInt(localStorage.getItem('khamin_easy_guess_answers_count') || '0');
+      const lastEasyGuessMatch = localStorage.getItem('khamin_easy_guess_last_match');
+      
+      // إذا لم يظهر من قبل 3 مرات، ولم يظهر في هذه المباراة، ونافذة القوانين غير ظاهرة
+      if (easyGuessCount < 3 && lastEasyGuessMatch !== room.id && !showRulesModal) {
+        imgTimeoutId = setTimeout(() => {
+          if (!showRulesModal) {
+            setShowHowToOpenEasyGuess(true);
+            localStorage.setItem('khamin_easy_guess_last_match', room.id);
+            localStorage.setItem('khamin_easy_guess_answers_count', (easyGuessCount + 1).toString());
+          }
+        }, 5000);
+      }
     }
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
+      if (imgTimeoutId) clearTimeout(imgTimeoutId);
     };
-  }, [room?.gameState]);
+  }, [room?.gameState, room?.id, showRulesModal]);
 
   const handleAcceptRules = () => {
     localStorage.setItem('khamin_rules_seen', 'true');
@@ -9116,6 +9134,44 @@ export default function App() {
                   className="w-full btn-game btn-primary py-3 text-lg mt-2"
                 >
                   حسنا
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* How to Open Easy Guess Modal */}
+        <AnimatePresence>
+          {showHowToOpenEasyGuess && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[6000] flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                className="card-game p-5 w-full max-w-sm space-y-4 flex flex-col items-center"
+              >
+                <h2 className="text-xl font-black text-main text-center border-b-2 border-gray-100 pb-3 w-full">
+                  💡 تلميح سري 🤫
+                </h2>
+                
+                <img 
+                   src="/how_to_open_easyGeuss_answers.jpg" 
+                   alt="كيفية إظهار الإجابات" 
+                   className="w-full rounded-xl object-contain shadow-sm border-2 border-gray-100"
+                />
+
+                <button
+                  onClick={() => {
+                    setShowHowToOpenEasyGuess(false);
+                    playSound('clickClose');
+                  }}
+                  className="w-full btn-game btn-secondary py-3 text-lg mt-2"
+                >
+                  حسناً، فهمت
                 </button>
               </motion.div>
             </motion.div>
