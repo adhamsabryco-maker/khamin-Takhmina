@@ -1817,7 +1817,8 @@ export default function App() {
         const isReadyToAnnounce = room.matchType === 'random' || room.players.length === 2;
 
         if (isReadyToAnnounce) {
-          const newPros = room.players.filter(p => p.isPro && !proAnnouncedFor.includes(`${room.id}-${p.serial}`));
+          // Filter to only announce OTHER players (opponents) who are Pro
+          const newPros = room.players.filter(p => p.id !== socket?.id && p.isPro && !proAnnouncedFor.includes(`${room.id}-${p.serial}`));
           if (newPros.length > 0 && !proAnnouncement) {
             const p = newPros[0];
             setProAnnouncedFor(prev => [...prev, `${room.id}-${p.serial}`]);
