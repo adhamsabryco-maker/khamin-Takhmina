@@ -15561,45 +15561,47 @@ export default function App() {
       <AnimatePresence>
         {proAnnouncement && (
           <motion.div
-            initial={{ x: "-100%", opacity: 0 }}
+            initial={{ x: "-100vw", opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 20, stiffness: 100 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ 
+              x: { type: "spring", damping: 15, stiffness: 80 },
+              opacity: { duration: 0.4 }
+            }}
             className="fixed top-24 left-0 right-0 z-[8000] flex justify-center pointer-events-none px-4"
           >
             <div className="relative">
-              {/* Magic Golden Sparkles/Particles effect */}
-              <div className="absolute inset-0 pointer-events-none">
-                {[...Array(12)].map((_, i) => (
+              {/* Enhanced Magical Gold Trail/Particles */}
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none">
+                {[...Array(20)].map((_, i) => (
                   <motion.div
                     key={i}
-                    className="absolute w-1 h-1 bg-yellow-400 rounded-full shadow-[0_0_8px_#fbbf24]"
-                    initial={{ 
-                      x: Math.random() * 200 - 100, 
-                      y: Math.random() * 60 - 30,
-                      opacity: 0 
-                    }}
+                    className="absolute w-1.5 h-1.5 bg-yellow-400 rounded-full"
+                    initial={{ opacity: 0, x: 0, y: 0 }}
                     animate={{ 
-                      x: Math.random() * 200 - 100, 
-                      y: Math.random() * 60 - 30,
                       opacity: [0, 1, 0],
-                      scale: [0, 1.5, 0]
+                      x: [-50, (Math.random() - 0.5) * 300],
+                      y: (Math.random() - 0.5) * 100,
+                      scale: [0, Math.random() * 1.5, 0],
                     }}
                     transition={{ 
                       duration: 1.5 + Math.random(), 
                       repeat: Infinity,
-                      delay: Math.random() * 2
+                      delay: Math.random() * 0.5
+                    }}
+                    style={{
+                      boxShadow: '0 0 10px #fbbf24, 0 0 20px #f59e0b',
                     }}
                   />
                 ))}
               </div>
               
-              <div className="relative box-game bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-900 p-4 border-2 border-yellow-400 rounded-2xl shadow-[0_0_20px_rgba(250,204,21,0.6)] flex items-center gap-4 text-center max-w-sm mx-auto overflow-hidden">
-                {/* Internal shine sweep */}
+              <div className="relative box-game bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-900 p-4 border-2 border-yellow-400 rounded-2xl shadow-[0_0_30px_rgba(250,204,21,0.5)] flex items-center gap-4 text-center max-w-sm mx-auto overflow-hidden">
+                {/* Gold Glossy Overlay */}
                 <motion.div 
-                   animate={{ x: ['-100%', '200%'] }}
-                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
+                   animate={{ x: ['-200%', '200%'] }}
+                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                   className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-400/20 to-transparent skew-x-20"
                 />
                 
                 <div className="text-yellow-400 z-10">
