@@ -2127,6 +2127,7 @@ export default function App() {
   const [friendsPage, setFriendsPage] = useState(1);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
+  const [likeNotifications, setLikeNotifications] = useState<any[]>([]);
   const [collectionNotifications, setCollectionNotifications] = useState<any[]>([]);
   const [systemMessages, setSystemMessages] = useState<any[]>([]);
   const [showAskFriendModal, setShowAskFriendModal] = useState<{imageName: string, categoryId: string} | null>(null);
@@ -3256,6 +3257,15 @@ export default function App() {
     });
   };
 
+  const handleReplyLike = (notification: any) => {
+    socket?.emit('dismiss_like_notification', { serial: playerSerial, notificationId: notification.id }, (res: any) => {
+      if (res.success) {
+        setLikeNotifications(prev => prev.filter(n => n.id !== notification.id));
+      }
+    });
+    openPlayerProfile(notification.senderSerial);
+  };
+
   const handleReceiveCollectionImage = (notificationId: string) => {
     if (!socket || !playerSerial) return;
     socket.emit('receive_collection_image', { serial: playerSerial, notificationId }, (res: any) => {
@@ -3965,6 +3975,10 @@ export default function App() {
         newSocket.emit('get_admin_messages', { serial }, (res: any) => {
           if (res.messages) setSystemMessages(res.messages);
         });
+
+        newSocket.emit('get_like_notifications', { serial }, (res: any) => {
+          if (res.notifications) setLikeNotifications(res.notifications);
+        });
       }
     });
 
@@ -3978,6 +3992,16 @@ export default function App() {
     newSocket.on('disconnect', (reason) => {
       console.log('Socket disconnected:', reason);
       setIsConnected(false);
+    });
+
+    newSocket.on('disconnected_error', (msg: string) => {
+      setError(msg);
+      setIsConnected(false);
+    });
+
+    newSocket.on('new_like_notification', (notification: any) => {
+      setLikeNotifications(prev => [notification, ...prev]);
+      playSound('message');
     });
 
     newSocket.on('online_count', (data) => {
@@ -6663,9 +6687,15 @@ export default function App() {
           >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-black text-main flex items-center gap-2">
-                <Bell className="w-5 h-5 text-yellow-500" />
-                الإشعارات
-                {(friendRequests.length + collectionNotifications.length + systemMessages.length) > 0 && <span className="text-sm bg-red-500 text-white px-2 py-0.5 rounded-full">{friendRequests.length + collectionNotifications.length + systemMessages.length}</span>}
+                <div className="relative">
+                  <Bell className="w-5 h-5 text-yellow-500" />
+                  {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length) > 0 && (
+                    <span className="absolute -top-2 -right-3 flex items-center justify-center bg-red-500 text-white min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black border-2 border-white shadow-md animate-bounce">
+                      {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length}
+                    </span>
+                  )}
+                  الإشعارات
+                </div>
               </h2>
               <button onClick={() => setShowFriendRequestsModal(false)} className="text-brown-light hover:text-red-500 transition-colors">
                 <X className="w-6 h-6" />
@@ -6673,11 +6703,58 @@ export default function App() {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar" dir="rtl">
-              {friendRequests.length === 0 && collectionNotifications.length === 0 && systemMessages.length === 0 ? (
+              {friendRequests.length === 0 && collectionNotifications.length === 0 && systemMessages.length === 0 && likeNotifications.length === 0 ? (
                 <div className="text-center py-8 text-brown-muted font-bold">لا توجد إشعارات حالياً.</div>
               ) : (
                 <div className="space-y-4">
                   
+                  {/* Like Notifications Section */}
+                  {likeNotifications.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Heart className="w-4 h-4 text-red-500 fill-red-500" />
+                        <h3 className="font-black text-sm text-main">الإعجابات</h3>
+                      </div>
+                      
+                      {likeNotifications.map(notification => (
+                        <div key={notification.id} className="bg-red-50 border-2 border-red-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10">
+                              {renderAvatarContent(notification.senderAvatar, notification.senderLevel || 1, false, false)}
+                            </div>
+                            <div>
+                              <div className="font-black text-sm text-main">{notification.senderName}</div>
+                              <div className="text-[10px] text-red-500 flex items-center gap-1">
+                                <Heart className="w-2 h-2 fill-red-500" /> أعجب ببروفايلك
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => handleReplyLike(notification)} 
+                              className="bg-red-500 hover:bg-red-600 text-white text-[10px] px-3 py-1.5 font-bold rounded-lg transition-colors shadow-sm active:scale-95"
+                            >
+                              رد الإعجاب
+                            </button>
+                            <button 
+                              onClick={() => {
+                                socket?.emit('dismiss_like_notification', { serial: playerSerial, notificationId: notification.id }, (res: any) => {
+                                  if (res.success) {
+                                    setLikeNotifications(prev => prev.filter(n => n.id !== notification.id));
+                                  }
+                                });
+                              }} 
+                              className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                              title="حذف"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* System Messages Section */}
                   {systemMessages.length > 0 && (
                     <div className="space-y-3">
@@ -12712,9 +12789,9 @@ export default function App() {
                 title="الإشعارات"
               >
                 <Bell className="w-4 h-4 md:w-5 md:h-5" />
-                {friendRequests.length > 0 && (
+                {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length) > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm">
-                    {friendRequests.length}
+                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length}
                   </span>
                 )}
               </button>
@@ -13240,14 +13317,16 @@ export default function App() {
               title="الإشعارات"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
-              {(friendRequests.length + collectionNotifications.length + systemMessages.length) > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length) > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length + collectionNotifications.length + systemMessages.length}</span>
+                  <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-[11px] text-white flex items-center justify-center font-black shadow-sm">
+                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length}
+                  </span>
                 </span>
               )}
             </button>
-
+            
             {/* Settings Button */}
             <button 
               onClick={toggleSettings}
@@ -14166,10 +14245,12 @@ export default function App() {
               title="الإشعارات"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
-              {(friendRequests.length + collectionNotifications.length + systemMessages.length) > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length) > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-5 w-5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{friendRequests.length + collectionNotifications.length + systemMessages.length}</span>
+                  <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-[11px] text-white flex items-center justify-center font-black shadow-sm">
+                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length}
+                  </span>
                 </span>
               )}
             </button>
@@ -15565,31 +15646,31 @@ export default function App() {
           <motion.div
             initial={{ x: "-100vw", opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
+            exit={{ opacity: 0, scale: 1.1 }}
             transition={{ 
-              x: { type: "spring", damping: 15, stiffness: 80 },
-              opacity: { duration: 0.4 }
+              x: { type: "spring", damping: 15, stiffness: 70 },
+              opacity: { duration: 0.5 }
             }}
-            className="fixed top-24 left-0 right-0 z-[8000] flex justify-center pointer-events-none px-4"
+            className="fixed top-28 left-0 right-0 z-[11000] flex justify-center pointer-events-none px-4"
           >
             <div className="relative">
-              {/* Enhanced Magical Gold Trail/Particles */}
-              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none">
-                {[...Array(20)].map((_, i) => (
+              {/* Magical Gold Particles Spraying Behind */}
+              <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 pointer-events-none overflow-visible">
+                {[...Array(30)].map((_, i) => (
                   <motion.div
                     key={i}
-                    className="absolute w-1.5 h-1.5 bg-yellow-400 rounded-full"
+                    className="absolute w-2 h-2 bg-yellow-400 rounded-full"
                     initial={{ opacity: 0, x: 0, y: 0 }}
                     animate={{ 
-                      opacity: [0, 1, 0],
-                      x: [-50, (Math.random() - 0.5) * 300],
-                      y: (Math.random() - 0.5) * 100,
-                      scale: [0, Math.random() * 1.5, 0],
+                      opacity: [0, 1, 1, 0],
+                      x: [-20, (Math.random() - 1) * 400],
+                      y: [(Math.random() - 0.5) * 60, (Math.random() - 0.5) * 160],
+                      scale: [0, Math.random() * 2, 0],
                     }}
                     transition={{ 
-                      duration: 1.5 + Math.random(), 
+                      duration: 1 + Math.random(), 
                       repeat: Infinity,
-                      delay: Math.random() * 0.5
+                      delay: Math.random() * 0.4
                     }}
                     style={{
                       boxShadow: '0 0 10px #fbbf24, 0 0 20px #f59e0b',
@@ -15598,27 +15679,35 @@ export default function App() {
                 ))}
               </div>
               
-              <div className="relative box-game bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-900 p-4 border-2 border-yellow-400 rounded-2xl shadow-[0_0_30px_rgba(250,204,21,0.5)] flex items-center gap-4 text-center max-w-sm mx-auto overflow-hidden">
-                {/* Gold Glossy Overlay */}
+              <div className="relative box-game bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-900 p-5 border-4 border-yellow-400 rounded-[2.5rem] shadow-[0_0_50px_rgba(250,204,21,0.7)] flex items-center gap-5 text-center max-w-sm mx-auto overflow-hidden">
                 <motion.div 
                    animate={{ x: ['-200%', '200%'] }}
-                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                   className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-400/20 to-transparent skew-x-20"
+                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-20"
                 />
                 
                 <div className="text-yellow-400 z-10">
-                  <Star className="w-8 h-8 fill-yellow-400 animate-pulse" />
+                  <div className="relative">
+                    <Star className="w-12 h-12 fill-yellow-400 animate-pulse drop-shadow-[0_0_15px_rgba(250,204,21,1)]" />
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <Sparkles className="w-14 h-14 text-white/30" />
+                    </motion.div>
+                  </div>
                 </div>
                 <div className="flex-1 z-10">
-                  <h3 className="text-sm font-black text-yellow-300 mb-1">لاعب محترف! ⭐</h3>
-                  <p className="text-xs font-bold text-white leading-tight">
+                  <h3 className="text-base font-black text-yellow-300 mb-1 drop-shadow-md">لاعب محترف! ⭐</h3>
+                  <p className="text-sm font-bold text-white leading-tight drop-shadow-sm">
                     {proAnnouncement.type === 'found' 
-                      ? <>تم العثور علي اللاعب المحترف <span className="text-yellow-400 font-black px-1">"{proAnnouncement.name}"</span> وجاهز للتحدي</>
-                      : <>تم انضمام اللاعب المحترف <span className="text-yellow-400 font-black px-1">"{proAnnouncement.name}"</span> الي الغرفة</>}
+                      ? <>تم العثور علي اللاعب المحترف <span className="text-yellow-400 font-black px-1 text-base">"{proAnnouncement.name}"</span></>
+                      : <>تم انضمام اللاعب المحترف <span className="text-yellow-400 font-black px-1 text-base">"{proAnnouncement.name}"</span></>}
                   </p>
                 </div>
                 <div className="text-yellow-400 z-10">
-                  <Sparkles className="w-6 h-6 animate-pulse" />
+                  <Sparkles className="w-10 h-10 animate-pulse drop-shadow-[0_0_15px_rgba(250,204,21,1)]" />
                 </div>
               </div>
             </div>
