@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { GoogleGenAI } from "@google/genai";
 import { io, Socket } from 'socket.io-client';
-import { Facebook, Youtube, Instagram } from 'lucide-react';
+import { Facebook, Youtube, Instagram, Heart } from 'lucide-react';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import { motion, AnimatePresence, animate } from 'motion/react';
 import { 
@@ -371,6 +371,7 @@ interface Player {
   ownedHelpers?: { [key: string]: number };
   lastRenameAt?: number;
   keys?: number;
+  isPro?: boolean;
 }
 
 interface Room {
@@ -387,6 +388,7 @@ interface Room {
   adCooldownTimer?: number;
   currentTurn?: string | null;
   waitingForAnswerFrom?: string | null;
+  matchType?: 'random' | 'private';
 }
 
 const findNodeByText = (text: string, nodes: any[]): any | null => {
@@ -1750,6 +1752,11 @@ export default function App() {
   const [selectedFrame, setSelectedFrame] = useState(() => localStorage.getItem('khamin_player_frame') || '');
   const [hasSelectedAvatar, setHasSelectedAvatar] = useState(false);
 
+  // Player Profile Modal State
+  const [selectedProfileSerial, setSelectedProfileSerial] = useState<string | null>(null);
+  const [selectedProfileData, setSelectedProfileData] = useState<any | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
   useEffect(() => {
     localStorage.setItem('khamin_player_avatar', avatar);
     if (socket) {
@@ -1774,6 +1781,8 @@ export default function App() {
 
   const [roomId, setRoomId] = useState('');
   const [room, setRoom] = useState<Room | null>(null);
+  const [proAnnouncedFor, setProAnnouncedFor] = useState<string[]>([]);
+  const [proAnnouncement, setProAnnouncement] = useState<{name: string, type: 'joined' | 'found'} | null>(null);
   const [clickedResponses, setClickedResponses] = useState<string[]>([]);
   const [isQuickResponseDisabled, setIsQuickResponseDisabled] = useState(false);
   const quickResponseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1788,11 +1797,43 @@ export default function App() {
   const askedQuickChatNodeRef = useRef<any | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [isSendingQuestion, setIsSendingQuestion] = useState(false);
+
+  useEffect(() => {
+    if (!room) {
+      setProAnnouncedFor([]);
+      setProAnnouncement(null);
+      return;
+    }
+
+    if (room && room.players) {
+      if (room.gameState === 'finished') {
+        setProAnnouncedFor([]);
+      } else {
+        const newPros = room.players.filter(p => p.isPro && !proAnnouncedFor.includes(`${room.id}-${p.serial}`));
+        if (newPros.length > 0 && !proAnnouncement) {
+          const p = newPros[0];
+          setProAnnouncedFor(prev => [...prev, `${room.id}-${p.serial}`]);
+          setProAnnouncement({ 
+            name: p.name, 
+            type: room.matchType === 'random' ? 'found' : 'joined' 
+          });
+          playSound('luckyReels'); // A nice sound for pro arrival
+          setTimeout(() => setProAnnouncement(null), 5000);
+        }
+      }
+    }
+  }, [room, proAnnouncedFor, proAnnouncement]);
+
   useEffect(() => {
     if (currentQuickChatNodes.length > 0 && quickChatOffset >= currentQuickChatNodes.length) {
       setQuickChatOffset(0);
     }
   }, [currentQuickChatNodes.length, quickChatOffset]);
+
+  useEffect(() => {
+    setIsSendingQuestion(false);
+  }, [room?.waitingForAnswerFrom, room?.currentTurn, room?.gameState]);
 
   useEffect(() => {
     if (room?.gameState === 'finished' || room?.gameState === 'waiting') {
@@ -2842,6 +2883,23 @@ export default function App() {
       closeAllModals();
       renderCollectionModal();
     }
+  };
+
+  const openPlayerProfile = (serial: string) => {
+    playSound('clickOpen');
+    setSelectedProfileSerial(serial);
+    setIsLoadingProfile(true);
+    socket?.emit("get_player_profile", { targetSerial: serial, requesterSerial: playerSerial }, (response: any) => {
+      setIsLoadingProfile(false);
+      if (response.success) {
+        socket?.emit("check_friend_status", { mySerial: playerSerial, targetSerial: serial }, (statusRes: any) => {
+           setSelectedProfileData({ ...response.profile, friendStatus: statusRes.status });
+        });
+      } else {
+        showAlert(response.error || 'حدث خطأ', 'خطأ');
+        setSelectedProfileSerial(null);
+      }
+    });
   };
 
   const handleOpenshowLeaderboardModal = () => {
@@ -6512,7 +6570,7 @@ export default function App() {
                 <>
                   {friendsList.map(friend => (
                      <div key={friend.serial} className="bg-gray-50 border-2 border-gray-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
-                       <div className="flex items-center gap-3">
+                       <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => openPlayerProfile(friend.serial)}>
                          <div className="relative">
                            <div className="w-10 h-10">
                              {renderAvatarContent(friend.avatar, friend.level || 1, false, friend.isOnline, friend.selectedFrame)}
@@ -6750,8 +6808,223 @@ export default function App() {
     </AnimatePresence>
   );
 
+  const renderPlayerProfileModal = () => {
+    if (!selectedProfileSerial || !selectedProfileData) return null;
+
+    const data = selectedProfileData;
+    const isPro = !!data.activeProPackage;
+    
+    // Check friend status
+    const friendStatus = data.friendStatus || 'none';
+
+    const handleLikePlayer = () => {
+      if (!socket || !selectedProfileSerial || !playerSerial) return;
+      if (data.serial === playerSerial) return;
+
+      socket.emit('like_player', { targetSerial: selectedProfileSerial, giverSerial: playerSerial }, (res: any) => {
+        if (res.success) {
+          playSound('clickOpen');
+          setSelectedProfileData((prev: any) => ({
+            ...prev, 
+            likes: res.newLikes,
+            hasLikedToday: true,
+            keys: prev.keys + res.keysRewarded
+          }));
+          
+          if (res.keysRewarded) {
+            showAlert(`أعطيت ${selectedProfileData.name} مفتاح 🔑!`, 'تم الإعجاب');
+          } else {
+            showAlert(`تم الإعجاب بـ ${selectedProfileData.name} ❤️`, 'تم الإعجاب');
+          }
+        } else {
+           showAlert(res.error, 'خطأ');
+        }
+      });
+    };
+
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-md z-[7000] flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              playSound('clickClose');
+              setSelectedProfileSerial(null);
+            }
+          }}
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            className="bg-modal-theme rounded-[2xl] w-full max-w-sm overflow-hidden shadow-2xl relative flex flex-col"
+            dir="rtl"
+          >
+            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-3 text-center relative shrink-0 border-b-4 border-black">
+              <button 
+                onClick={() => {
+                  playSound('clickClose');
+                  setSelectedProfileSerial(null);
+                }}
+                className="absolute top-4 right-4 w-8 h-8 bg-black/20 hover:bg-black/30 rounded-full flex items-center justify-center text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="relative w-24 h-24 mx-auto mb-2">
+                {renderAvatarContent(data.avatar, data.level, false, false, data.selectedFrame)}
+              </div>
+              
+              <h2 className="text-xl font-black text-white flex items-center justify-center gap-2">
+                {data.name}
+              </h2>
+              <div className="text-white/90 text-sm font-bold flex items-center justify-center gap-2 mt-1 mb-3">
+                <span className="bg-black/20 px-2 py-0.5 rounded-md" dir="ltr">Lvl {data.level}</span>
+                <span>•</span>
+                <span>{data.wins} فوز</span>
+                <span>•</span>
+                <span>{data.streak} 🔥</span>
+              </div>
+              
+               {/* Add Friend Button */}
+               {data.serial !== playerSerial && friendStatus !== 'friends' && (
+                  <button
+                    disabled={friendStatus !== 'none'}
+                    onClick={() => {
+                      if (friendStatus === 'none') {
+                        playSound('clickOpen');
+                        handleAddFriend(data.serial);
+                        setSelectedProfileSerial(null);
+                      }
+                    }}
+                    className={`w-full max-w-[200px] mx-auto py-2 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all ${
+                      friendStatus === 'pending_sent' ? 'bg-orange-100 text-orange-700 border-2 border-orange-200' :
+                      friendStatus === 'pending_received' ? 'bg-blue-100 text-blue-700 border-2 border-blue-200' :
+                      'bg-white text-purple-700 hover:bg-gray-100 shadow-md border-b-2 border-gray-300 active:translate-y-px active:border-b-0 target-add-btn'
+                    }`}
+                  >
+                    {friendStatus === 'pending_sent' ? (
+                      <><Clock className="w-4 h-4" /> طلب صداقة مرسل</>
+                    ) : friendStatus === 'pending_received' ? (
+                      <><Users className="w-4 h-4" /> لديه طلب لك بالصداقة</>
+                    ) : (
+                      <><UserPlus className="w-4 h-4" /> إضافة صديق</>
+                    )}
+                  </button>
+               )}
+            </div>
+
+            <div className="p-2 space-y-4 bg-gray-50 flex-1 overflow-y-auto max-h-[60vh]">
+               {/* Likes Feature */}
+               <div className="bg-white rounded-xl p-2 border-2 border-gray-100 shadow-sm flex items-center justify-between">
+                 <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+                      <span className="font-black text-main text-lg">{data.likes || 0}</span>
+                      <span className="text-sm font-bold text-gray-500">إعجاب</span>
+                    </div>
+                    <span className="text-[10px] sm:text-xs font-bold text-brown-muted mt-1">كل 20 لايك = مفتاح 🔑</span>
+                 </div>
+                 {data.serial !== playerSerial && (
+                   <button
+                     onClick={handleLikePlayer}
+                     disabled={data.hasLikedToday}
+                     className={`px-3 py-2 rounded-xl font-black text-sm flex items-center gap-2 shadow-sm transition-all border-b-4 ${
+                       data.hasLikedToday 
+                         ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                         : 'bg-red-500 text-white border-red-700 hover:bg-red-600 active:translate-y-1 active:border-b-0'
+                     }`}
+                   >
+                     <Heart className={`w-4 h-4 ${!data.hasLikedToday ? 'fill-current animate-pulse' : ''}`} />
+                     {data.hasLikedToday ? 'تم الإعجاب' : 'إعجاب'}
+                   </button>
+                 )}
+               </div>
+
+               {/* Helpers and Keys */}
+               <div className="bg-white rounded-xl p-2 mb-2 border-2 border-gray-100 shadow-sm">
+                  <h3 className="text-xs font-black text-brown-muted mb-1 text-center">المقتنيات والباقات</h3>
+                  <div className="flex flex-wrap justify-center gap-0.5" dir="ltr">
+                        <span 
+                          className={`gap-0.5 flex items-center justify-center transition-all px-1 py-1 rounded bg-gray-50 ${
+                            isPro ? 'text-yellow-600 bg-yellow-50' : 'text-gray-400 opacity-70'
+                          }`} 
+                          title="باقة المحترفين"
+                        >
+                          <Crown className={`w-3 h-3 md:w-4 md:h-4 transition-all ${
+                            isPro ? 'fill-yellow-500 text-yellow-500 animate-pulse' : 'fill-gray-400 text-gray-400'
+                          }`} />
+                        </span>                      
+                        <span className="bg-gray-50 px-1 py-1 rounded flex items-center gap-0.5">
+                          <img src="/Takhmina_coin_02.png" className="w-3 h-3 md:w-4 md:h-4" /> <span className="text-[11px] md:text-[12px] font-bold">{data.tokens}</span>
+                        </span>
+                        <span className="bg-gray-50 px-1 py-1 rounded flex items-center gap-0.5">
+                          <Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /> <span className="text-[11px] md:text-[12px] font-bold">{data.keys}</span>
+                        </span>
+                        <span className="bg-gray-50 px-1 py-1 rounded flex items-center gap-0.5">
+                          <Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /> <span className="text-[11px] md:text-[12px] font-bold">{data.ownedHelpers?.time_freeze || 0}</span>
+                        </span>
+                        <span className="bg-gray-50 px-1 py-1 rounded flex items-center gap-0.5">
+                          <Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /> <span className="text-[11px] md:text-[12px] font-bold">{data.ownedHelpers?.spy_lens || 0}</span>
+                        </span>
+                        <span className="bg-gray-50 px-1 py-1 rounded flex items-center gap-0.5">
+                          <Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /> <span className="text-[11px] md:text-[12px] font-bold">{data.ownedHelpers?.word_count || 0}</span>
+                        </span>
+                        <span className="bg-gray-50 px-1 py-1 rounded flex items-center gap-0.5">
+                          <Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /> <span className="text-[11px] md:text-[12px] font-bold">{data.ownedHelpers?.word_length || 0}</span>
+                        </span>
+                        <span className="bg-gray-50 px-1 py-1 rounded flex items-center gap-0.5">
+                          <HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /> <span className="text-[11px] md:text-[12px] font-bold">{data.ownedHelpers?.hint || 0}</span>
+                        </span>
+                  </div>
+               </div>
+
+               {/* Titles */}
+               <div className="bg-white rounded-xl p-2 mb-2 border-2 border-gray-100 shadow-sm">
+                  <h3 className="text-xs font-black text-brown-muted mb-2 text-center">الألقاب</h3>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {data.titles && data.titles.length > 0 ? (
+                      data.titles.map((title: string, i: number) => (
+                        <span key={i} className="text-xs font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md border border-indigo-100">{title}</span>
+                      ))
+                    ) : (
+                      <span className="text-[10px] font-bold text-gray-400">بدون لقب</span>
+                    )}
+                  </div>
+               </div>
+
+               {/* Frames */}
+               <div className="bg-white rounded-xl p-2 mb-2 border-2 border-gray-100 shadow-sm">
+                  <h3 className="text-xs font-black text-brown-muted mb-2 text-center">الإطارات (أبطال التخمين)</h3>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {data.ownedFrames && data.ownedFrames.length > 0 ? (
+                      data.ownedFrames.map((catId: string) => {
+                        const cat = COLLECTION_DATA.find(c => c.id === catId);
+                        if (!cat) return null;
+                        return (
+                          <div key={cat.id} className="w-12 h-12 rounded-xl border-2 border-black/10 overflow-hidden shadow-sm" title={cat.name}>
+                            <img src={`/frames/${cat.id}.png`} onError={(e) => { e.currentTarget.style.display = 'none'; }} className="w-full h-full object-cover" />
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <span className="text-[10px] font-bold text-gray-400">لا يوجد إطارات أبطال التخمين</span>
+                    )}
+                  </div>
+               </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
+
   const renderModals = () => (
     <>
+      {renderPlayerProfileModal()}
       {renderFriendsModal()}
       {renderFriendRequestsModal()}
       {renderAskFriendModal()}
@@ -13153,7 +13426,10 @@ export default function App() {
                   {/* Rank 2 */}
                   {topPlayers[1] && (
                     <div key={`${topPlayers[1].serial || 'unknown'}-rank-2`} className="flex flex-col items-center flex-1 z-10">
-                      <div className="relative mb-2 flex flex-col items-center">
+                      <div 
+                        className="relative mb-2 flex flex-col items-center cursor-pointer hover:scale-105 transition-transform" 
+                        onClick={() => openPlayerProfile(topPlayers[1].serial)}
+                      >
                         <div className="w-14 h-14 md:w-16 md:h-16">
                           {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0), false, topPlayers[1].isOnline, topPlayers[1].selectedFrame)}
                         </div>
@@ -13178,7 +13454,10 @@ export default function App() {
                   {/* Rank 1 */}
                   {topPlayers[0] && (
                     <div key={`${topPlayers[0].serial || 'unknown'}-rank-1`} className="flex flex-col items-center flex-1 z-20 -mt-8 md:-mt-12">
-                      <div className="relative mb-2 flex flex-col items-center scale-110 md:scale-125">
+                      <div 
+                        className="relative mb-2 flex flex-col items-center scale-110 md:scale-125 cursor-pointer hover:scale-[1.15] md:hover:scale-[1.3] transition-transform" 
+                        onClick={() => openPlayerProfile(topPlayers[0].serial)}
+                      >
                         <img src="/crown.gif" className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 drop-shadow-md z-[60]" />
                         {/* <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-[60]" /> */}
                         <div className="fire-glow-effect"></div>
@@ -13206,7 +13485,10 @@ export default function App() {
                   {/* Rank 3 */}
                   {topPlayers[2] && (
                     <div key={`${topPlayers[2].serial || 'unknown'}-rank-3`} className="flex flex-col items-center flex-1 z-10">
-                      <div className="relative mb-2 flex flex-col items-center">
+                      <div 
+                        className="relative mb-2 flex flex-col items-center cursor-pointer hover:scale-105 transition-transform" 
+                        onClick={() => openPlayerProfile(topPlayers[2].serial)}
+                      >
                         <div className="w-14 h-14 md:w-16 md:h-16">
                           {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level || getLevel(topPlayers[2].xp || 0), false, topPlayers[2].isOnline, topPlayers[2].selectedFrame)}
                         </div>
@@ -13589,9 +13871,10 @@ export default function App() {
                     return (
                       <div 
                         key={player.serial} 
+                        onClick={() => openPlayerProfile(player.serial)}
                         className={`
-                          flex items-center gap-3 p-3 rounded-xl border-2 transition-transform
-                          ${isMe ? 'bg-purple-50 border-purple-200 ring-2 ring-purple-100' : 'bg-white border-gray-100'}
+                          flex items-center gap-3 p-3 rounded-xl border-2 transition-transform cursor-pointer hover:scale-[1.02]
+                          ${isMe ? 'bg-purple-50 border-purple-200 ring-2 ring-purple-100' : 'bg-white border-gray-100 hover:border-orange-300'}
                         `}
                       >
                         <div className={`
@@ -13972,7 +14255,14 @@ export default function App() {
           <div className="flex flex-col items-center relative">
             {opponent ? (
               <>
-                <div className="relative w-14 h-14 md:w-20 md:h-20">
+                <div 
+                  className="relative w-14 h-14 md:w-20 md:h-20 cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => {
+                    if (opponent.serial) {
+                      openPlayerProfile(opponent.serial);
+                    }
+                  }}
+                >
                   {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false, true, opponent.selectedFrame)}
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[8px] md:text-[10px] font-black px-2 py-0.3 rounded-full border-1.5 border-black shadow-sm z-20 whitespace-nowrap">
                     Lvl {opponent.level || getLevel(opponent.xp || 0)}
@@ -14780,9 +15070,9 @@ export default function App() {
                             return (
                               <button
                                 key={node ? node.id : `empty-${i}`}
-                                disabled={!node || isReelsSpinning || isMutedByOpponent || !isMyTurn}
+                                disabled={!node || isReelsSpinning || isMutedByOpponent || !isMyTurn || isSendingQuestion}
                                 onClick={() => {
-                                  if (!node || isReelsSpinning || isMutedByOpponent || !isMyTurn) return;
+                                  if (!node || isReelsSpinning || isMutedByOpponent || !isMyTurn || isSendingQuestion) return;
                                   playSound('clickOpen');
                                   
                                   // Clear typing timeout and stop indicator immediately
@@ -14792,10 +15082,11 @@ export default function App() {
                                   }
                                   socket?.emit('stop_typing', { roomId: room!.id });
                                   
+                                  setIsSendingQuestion(true);
                                   socket?.emit('send_chat', { roomId: room!.id, text: node.text });
                                   askedQuickChatNodeRef.current = node;
                                 }}
-                                className={`rounded-xl p-0 text-center font-bold text-[13px] md:text-sm shadow-sm transition-all overflow-hidden relative h-10 md:h-12 flex items-center justify-center border-2 ${node && isMyTurn ? 'bg-white border-purple-300 text-purple-800 hover:bg-purple-50 active:scale-95' : 'bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed'}`}
+                                className={`rounded-xl p-0 text-center font-bold text-[13px] md:text-sm shadow-sm transition-all overflow-hidden relative h-10 md:h-12 flex items-center justify-center border-2 ${node && isMyTurn && !isSendingQuestion ? 'bg-white border-purple-300 text-purple-800 hover:bg-purple-50 active:scale-95' : 'bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed'}`}
                               >
                                 <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
                                   {spinningReels[i] && node ? (
@@ -15246,6 +15537,45 @@ export default function App() {
                 </button>
               </motion.div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pro Player Announcement */}
+      <AnimatePresence>
+        {proAnnouncement && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9, rotateX: -90 }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+            exit={{ opacity: 0, y: -50, scale: 0.9, pacity: 0 }}
+            transition={{ type: "spring", bounce: 0.5, duration: 0.8 }}
+            className="fixed top-24 left-0 right-0 z-[8000] flex justify-center pointer-events-none px-4"
+          >
+            <div className="relative">
+              {/* Magical sparkles behind */}
+              <motion.div 
+                animate={{ rotate: 360 }} 
+                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 bg-gradient-to-tr from-yellow-400 via-orange-500 to-purple-600 rounded-2xl blur-xl opacity-50"
+              />
+              
+              <div className="relative box-game bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-900 p-4 border-2 border-yellow-400 rounded-2xl shadow-[0_0_20px_rgba(250,204,21,0.4)] flex items-center gap-4 text-center max-w-sm mx-auto">
+                <div className="text-yellow-400">
+                  <Star className="w-8 h-8 fill-yellow-400 animate-pulse" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-black text-yellow-300 mb-1">لاعب محترف! ⭐</h3>
+                  <p className="text-xs font-bold text-white leading-tight">
+                    {proAnnouncement.type === 'found' 
+                      ? <>تم العثور علي اللاعب المحترف <span className="text-yellow-400 font-black px-1">"{proAnnouncement.name}"</span> وجاهز للتحدي</>
+                      : <>تم انضمام اللاعب المحترف <span className="text-yellow-400 font-black px-1">"{proAnnouncement.name}"</span> الي الغرفة</>}
+                  </p>
+                </div>
+                <div className="text-yellow-400">
+                  <Sparkles className="w-6 h-6 animate-spin-slow" />
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
