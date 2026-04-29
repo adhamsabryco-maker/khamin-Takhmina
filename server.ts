@@ -6672,7 +6672,7 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("like_player", ({ targetSerial, giverSerial }, callback) => {
+    socket.on("like_player", async ({ targetSerial, giverSerial }, callback) => {
       try {
         if (!targetSerial || !giverSerial) return callback({ error: 'بيانات غير مكتملة' });
         if (targetSerial === giverSerial) return callback({ error: 'لا يمكنك إرسال إعجاب لنفسك' });
@@ -6718,6 +6718,37 @@ io.on("connection", (socket) => {
             senderLevel: giverPlayer.level || 1,
             timestamp: Date.now()
           });
+        } else {
+          // Player is offline, send push notification
+          try {
+            const subscriptions = db.prepare(`
+              SELECT ps.subscription 
+              FROM push_subscriptions ps
+              LEFT JOIN players p ON ps.serial = p.serial
+              WHERE ps.serial = ? AND (p.notificationsEnabled = 1 OR ps.serial IS NULL)
+            `).all(targetSerial) as any[];
+
+            if (subscriptions.length > 0) {
+              const payload = JSON.stringify({ 
+                title: 'إعجاب جديد! ❤️', 
+                body: `${giverPlayer.name} أعجب ببروفايلك وينتظر منك رد الإعجاب 😍`, 
+                url: '/' 
+              });
+              
+              for (const sub of subscriptions) {
+                try {
+                  const subscription = JSON.parse(sub.subscription);
+                  await webpush.sendNotification(subscription, payload);
+                } catch (err: any) {
+                  if (err.statusCode === 410 || err.statusCode === 404) {
+                    db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error sending like push notification:", e);
+          }
         }
 
         // Check for reward (every 20 likes = 1 key)
@@ -6728,7 +6759,7 @@ io.on("connection", (socket) => {
           keysRewarded = 1;
           
           // Optionally send a notification to the target player if they are online
-          const targetSocketId = playerSockets ? playerSockets.get(targetSerial) : null;
+          // (They are already fetched earlier but let's be sure about targetSocketId again)
           if (targetSocketId) {
              io.to(targetSocketId).emit('show_alert', { title: 'محبة الجمهور ❤️', message: 'لقد حصلت على 20 إعجاب جديد وحصلت على مفتاح سحري 🔑!' });
              io.to(targetSocketId).emit('update_player_data', { keys: targetPlayer.keys });
@@ -6742,7 +6773,7 @@ io.on("connection", (socket) => {
       }
     });
 
-    const handleAddFriend = ({ serial, mySerial, targetSerial }: any, callback: any) => {
+    const handleAddFriend = async ({ serial, mySerial, targetSerial }: any, callback: any) => {
       const actualMySerial = mySerial || serial;
       if (!actualMySerial || !targetSerial || actualMySerial === targetSerial) return callback({ error: 'Invalid targets' });
       const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
@@ -6752,6 +6783,37 @@ io.on("connection", (socket) => {
         const targetSocketId = playerSockets.get(targetSerial);
         if (targetSocketId) {
            io.to(targetSocketId).emit("friend_request_received", { senderSerial: actualMySerial });
+        } else {
+          try {
+            const senderPlayer = db.prepare('SELECT name FROM players WHERE serial = ?').get(actualMySerial) as any;
+            const subscriptions = db.prepare(`
+              SELECT ps.subscription 
+              FROM push_subscriptions ps
+              LEFT JOIN players p ON ps.serial = p.serial
+              WHERE ps.serial = ? AND (p.notificationsEnabled = 1 OR ps.serial IS NULL)
+            `).all(targetSerial) as any[];
+
+            if (subscriptions.length > 0 && senderPlayer) {
+              const payload = JSON.stringify({ 
+                title: 'طلب صداقة جديد 👥', 
+                body: `${senderPlayer.name} أرسل لك طلب صداقة وينتظر الرد.`, 
+                url: '/' 
+              });
+              
+              for (const sub of subscriptions) {
+                try {
+                  const subscription = JSON.parse(sub.subscription);
+                  await webpush.sendNotification(subscription, payload);
+                } catch (err: any) {
+                  if (err.statusCode === 410 || err.statusCode === 404) {
+                    db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error sending friend request push notification:", e);
+          }
         }
         callback({ success: true });
       } catch (e) {
