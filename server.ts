@@ -310,6 +310,39 @@ function getClientIp(socket: any): string | null {
   const forwardedFor = socket.handshake.headers['x-forwarded-for'];
   return Array.isArray(forwardedFor) ? forwardedFor[0] : (forwardedFor ? forwardedFor.split(',')[0].trim() : socket.handshake.address);
 }
+
+function isSameNetwork(ip1: string | null | undefined, ip2: string | null | undefined): boolean {
+  if (!ip1 || !ip2) return false;
+  if (ip1 === ip2) return true;
+  
+  // Normalize mapped IPv4
+  const norm1 = ip1.replace(/^::ffff:/, '');
+  const norm2 = ip2.replace(/^::ffff:/, '');
+  
+  if (norm1 === norm2) return true;
+  
+  // If both are IPv4, check /24 subnet (first 3 octets)
+  if (norm1.includes('.') && norm2.includes('.')) {
+    const p1 = norm1.split('.');
+    const p2 = norm2.split('.');
+    if (p1.length === 4 && p2.length === 4 && p1[0] === p2[0] && p1[1] === p2[1] && p1[2] === p2[2]) {
+      return true;
+    }
+  }
+  
+  // If both are IPv6, check /64 subnet (first 4 blocks)
+  if (norm1.includes(':') && norm2.includes(':')) {
+    const p1 = norm1.split(':');
+    const p2 = norm2.split(':');
+    if (p1.length >= 4 && p2.length >= 4) {
+      if (p1[0] === p2[0] && p1[1] === p2[1] && p1[2] === p2[2] && p1[3] === p2[3]) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
   const httpServer = createServer(app);
   const io = new Server(httpServer, {
     cors: {
@@ -2654,8 +2687,8 @@ function getClientIp(socket: any): string | null {
         // Check if blocked
         if (isBlocked(p1, p2)) continue;
 
-        // Prevent matching if they are from the same IP (unless one is a bot)
-        if (p1.ip && p2.ip && p1.ip === p2.ip && !p1.isBot && !p2.isBot) {
+        // Prevent matching if they are from the same IP or network (unless one is a bot)
+        if (!p1.isBot && !p2.isBot && isSameNetwork(p1.ip, p2.ip)) {
           continue;
         }
 
