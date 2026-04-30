@@ -1329,6 +1329,9 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     if (savedConfig) {
       const parsedConfig = JSON.parse(savedConfig.value);
       configCache = { ...configCache, ...parsedConfig };
+      if (currentVersion) {
+        configCache.version = currentVersion;
+      }
       console.log("[Config] Loaded from SQLite database.");
     } else {
       console.log("[Config] No config found in SQLite, using file/defaults.");
