@@ -305,6 +305,11 @@ const getQuickGuessThreshold = (level: number) => {
 };
 
 const app = express();
+
+function getClientIp(socket: any): string | null {
+  const forwardedFor = socket.handshake.headers['x-forwarded-for'];
+  return Array.isArray(forwardedFor) ? forwardedFor[0] : (forwardedFor ? forwardedFor.split(',')[0].trim() : socket.handshake.address);
+}
   const httpServer = createServer(app);
   const io = new Server(httpServer, {
     cors: {
@@ -2711,11 +2716,11 @@ const app = express();
 
         p1.socket.emit("match_proposed", {
           matchId,
-          opponent: { name: p2.playerName, avatar: p2.avatar, gender: p2.gender, selectedFrame: p2.selectedFrame || '', age: p2.age, level: getLevel(p2.xp || 0) }
+          opponent: { name: p2.playerName, avatar: p2.avatar, gender: p2.gender, selectedFrame: p2.selectedFrame || '', age: p2.age, level: getLevel(p2.xp || 0), proPackageExpiry: p2.proPackageExpiry || null }
         });
         p2.socket.emit("match_proposed", {
           matchId,
-          opponent: { name: p1.playerName, avatar: p1.avatar, gender: p1.gender, selectedFrame: p1.selectedFrame || '', age: p1.age, level: getLevel(p1.xp || 0) }
+          opponent: { name: p1.playerName, avatar: p1.avatar, gender: p1.gender, selectedFrame: p1.selectedFrame || '', age: p1.age, level: getLevel(p1.xp || 0), proPackageExpiry: p1.proPackageExpiry || null }
         });
 
         break; // Found a match for p1, move to next available player
@@ -2937,7 +2942,7 @@ const app = express();
 
         p.socket.emit("match_proposed", {
           matchId,
-          opponent: { name: botPlayer.playerName, avatar: botPlayer.avatar, selectedFrame: botPlayer.selectedFrame || '', age: botPlayer.age, level: botPersona.level },
+          opponent: { name: botPlayer.playerName, avatar: botPlayer.avatar, selectedFrame: botPlayer.selectedFrame || '', age: botPlayer.age, level: botPersona.level, proPackageExpiry: null },
           opponentAccepted: false
         });
         
@@ -3666,8 +3671,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("register_player", ({ name, avatar, xp, gender, fingerprint }, callback) => {
-      const forwardedFor = socket.handshake.headers['x-forwarded-for'];
-      const ip = Array.isArray(forwardedFor) ? forwardedFor[0] : (forwardedFor ? forwardedFor.split(',')[0].trim() : socket.handshake.address);
+      const ip = getClientIp(socket);
       
       // Check if banned
       const banned = db.prepare('SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL)').get(fingerprint || null);
@@ -4468,8 +4472,7 @@ io.on("connection", (socket) => {
         checkDailyReset(player, serial, socket);
 
         // Update IP and fingerprint
-        const forwardedFor = socket.handshake.headers['x-forwarded-for'];
-        const ip = Array.isArray(forwardedFor) ? forwardedFor[0] : (forwardedFor ? forwardedFor.split(',')[0].trim() : socket.handshake.address);
+        const ip = getClientIp(socket);
         
         // Check if banned
         const banned = db.prepare('SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL)').get(fingerprint || null);
@@ -4775,6 +4778,8 @@ io.on("connection", (socket) => {
       const actualWins = bannedPlayer.wins;
       const actualName = bannedPlayer.name || filterProfanity(playerName);
 
+      const playerIp = getClientIp(socket);
+      
       matchmakingQueue.push({ 
         id: socket.id, 
         socket, 
@@ -4790,10 +4795,11 @@ io.on("connection", (socket) => {
         wins: actualWins,
         useToken: !!useToken,
         ownedHelpers: bannedPlayer.ownedHelpers || {},
+        proPackageExpiry: bannedPlayer.proPackageExpiry || null,
         skipped: new Map(), // Initialize skipped map (playerId -> timestamp)
         joinedAt: Date.now(),
         status: 'searching',
-        ip: socket.handshake.headers['x-forwarded-for'] || socket.handshake.address
+        ip: playerIp
       });
       socket.emit("waiting_for_match");
       processQueue();
