@@ -2330,7 +2330,7 @@ export default function App() {
   }, [room?.gameState, room?.category, room?.id, customConfig?.quickChat, categories]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [totalPlayersCount, setTotalPlayersCount] = useState(0);
-  const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, gender?: string, selectedFrame?: string, age: number, level?: number } } | null>(null);
+  const [proposedMatch, setProposedMatch] = useState<{ matchId: string, opponent: { name: string, avatar: string, gender?: string, selectedFrame?: string, age: number, level?: number, proPackageExpiry?: number | null } } | null>(null);
   const [hasResponded, setHasResponded] = useState(false);
   const [opponentAccepted, setOpponentAccepted] = useState(false);
   const [matchResponseTimeLeft, setMatchResponseTimeLeft] = useState<number | null>(null);
@@ -2913,6 +2913,7 @@ export default function App() {
 
   const openPlayerProfile = (serial: string) => {
     playSound('clickOpen');
+    setSelectedProfileData(null);
     setSelectedProfileSerial(serial);
     setIsLoadingProfile(true);
     socket?.emit("get_player_profile", { targetSerial: serial, requesterSerial: playerSerial }, (response: any) => {
