@@ -2635,41 +2635,6 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       p.socket.connected
     );
 
-    if (availablePlayers.length < 2) {
-      // Check if a human player is waiting for more than 5 seconds
-      if (configCache.aiBotEnabled && availablePlayers.length === 1 && Date.now() - availablePlayers[0].joinedAt > 5000) {
-        const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
-        
-        // Use the avatar defined in the persona
-        const botAvatar = botPersona.avatar;
-
-        const bot = {
-          id: 'bot_' + Date.now(),
-          playerId: 'bot_' + Date.now(),
-          playerName: botPersona.name,
-          avatar: botAvatar,
-          gender: botPersona.gender,
-          age: botPersona.age,
-          xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
-          streak: 0,
-          wins: 0,
-          serial: 'bot_' + Date.now(),
-          joinedAt: Date.now(),
-          status: 'searching',
-          isBot: true,
-          socket: {
-            id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
-            connected: true,
-            emit: (event: string, data: any) => {
-              console.log(`[Bot ${botPersona.name}] Received event ${event}:`, data);
-            }
-          }
-        };
-        matchmakingQueue.push(bot);
-      }
-      return;
-    }
-
     // Sort by joinedAt to be fair
     availablePlayers.sort((a, b) => a.joinedAt - b.joinedAt);
 
@@ -2757,6 +2722,40 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         });
 
         break; // Found a match for p1, move to next available player
+      }
+    }
+
+    if (configCache.aiBotEnabled) {
+      for (let i = 0; i < availablePlayers.length; i++) {
+        if (matchedIndices.has(i)) continue;
+        const p = availablePlayers[i];
+        
+        if (!p.isBot && Date.now() - p.joinedAt > 5000) {
+          const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
+          const bot = {
+            id: 'bot_' + Date.now() + Math.random().toString(36).substr(2, 5),
+            playerId: 'bot_' + Date.now() + Math.random().toString(36).substr(2, 5),
+            playerName: botPersona.name,
+            avatar: botPersona.avatar,
+            gender: botPersona.gender,
+            age: botPersona.age,
+            xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
+            streak: 0,
+            wins: 0,
+            serial: 'bot_' + Date.now() + Math.random().toString(36).substr(2, 5),
+            joinedAt: Date.now(),
+            status: 'searching',
+            isBot: true,
+            socket: {
+              id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
+              connected: true,
+              emit: (event: string, data: any) => {
+                console.log(`[Bot ${botPersona.name}] Received event ${event}:`, data);
+              }
+            }
+          };
+          matchmakingQueue.push(bot);
+        }
       }
     }
 
