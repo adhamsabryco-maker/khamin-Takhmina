@@ -12337,12 +12337,12 @@ export default function App() {
           </motion.h1>
 
           {/* Progress Section */}
-          <div className="w-full space-y-4">
+          <div className="w-full space-y-4 relative z-10">
             <div className="flex justify-between items-end mb-1">
-              <span className="text-sm font-black text-black bg-white border-2 border-black px-3 py-1 rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+              <span className="text-sm font-black text-black bg-white border-2 border-black px-3 py-1 rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] truncate max-w-[75%]">
                 {loadingStatus}
               </span>
-              <span className="text-2xl font-black text-accent-blue">
+              <span className="text-2xl font-black text-accent-blue tabular-nums">
                 {loadingProgress}%
               </span>
             </div>
@@ -12360,17 +12360,19 @@ export default function App() {
               </motion.div>
             </div>
           </div>
-
-          {/* Footer Info */}
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-12 text-xs font-bold text-gray-400 uppercase tracking-widest"
-          >
-            v{gameVersion} • All Systems Operational
-          </motion.p>
         </div>
+
+        {/* Footer Info */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="absolute bottom-8 left-0 right-0 text-center z-10 px-4"
+        >
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest truncate">
+            v{gameVersion} • All Systems Operational
+          </p>
+        </motion.div>
 
         <style dangerouslySetInnerHTML={{ __html: `
           @keyframes shimmer {
