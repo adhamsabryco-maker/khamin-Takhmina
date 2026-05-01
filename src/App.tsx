@@ -520,7 +520,7 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-const RewardCard = React.memo(({ playerName, level, avatar, selectedFrame, reward, categoryName, isClaimed, onClaim, isStageComplete, previewFrame, customConfig }: any) => {
+const RewardCard = React.memo(({ playerName, level, avatar, selectedFrame, reward, categoryName, isClaimed, onClaim, isStageComplete, previewFrame, customConfig, isHighestLikes }: any) => {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleShare = async () => {
@@ -577,7 +577,7 @@ const RewardCard = React.memo(({ playerName, level, avatar, selectedFrame, rewar
       <div ref={cardRef} className="p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-sm bg-[#fdfbf7]">
         <div className="flex flex-col items-center gap-2">
           <div className="relative w-24 h-24">
-            <AvatarDisplay avatar={avatar} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={false} isOnline={true} selectedFrame={frameToDisplay} />
+            <AvatarDisplay avatar={avatar} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={false} isOnline={true} selectedFrame={frameToDisplay} isHighestLikes={isHighestLikes} />
           </div>
           <h3 className="text-2xl font-black" style={{ color: '#4a3f35' }}>{playerName}</h3>
           <p className="text-sm font-bold" style={{ color: '#4b5563' }}>المستوى: {level}</p>
@@ -766,6 +766,8 @@ export default function App() {
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('khamin_player_name') || '');
+  const [isHighestLikes, setIsHighestLikes] = useState(false);
+  const [highestLikesSerial, setHighestLikesSerial] = useState<string>('');
   const [lastRenameAt, setLastRenameAt] = useState(() => parseInt(localStorage.getItem('khamin_last_rename_at') || '0'));
   const playerNameRef = useRef(playerName);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
@@ -1639,8 +1641,9 @@ export default function App() {
     }
   };
 
-  const renderAvatarContent = (avatarStr: string, level: number = 1, hideExtras: boolean = false, isOnline: boolean = false, frame?: string) => {
-    return <AvatarDisplay avatar={avatarStr} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={hideExtras} isOnline={isOnline} selectedFrame={frame} />;
+  const renderAvatarContent = (avatarStr: string, level: number = 1, hideExtras: boolean = false, isOnline: boolean = false, frame?: string, serial?: string) => {
+    const isHighest = serial ? serial === highestLikesSerial : false;
+    return <AvatarDisplay avatar={avatarStr} level={level} customConfig={customConfig} className="w-full h-full" hideExtras={hideExtras} isOnline={isOnline} selectedFrame={frame} isHighestLikes={isHighest} />;
   };
 
   const truncateName = (name: string, limit: number = 12) => {
@@ -2162,6 +2165,21 @@ export default function App() {
       }
     }
   }, [friendRequests.length, collectionNotifications.length, systemMessages.length, likeNotifications.length]);
+
+  // Poll friends list for online status
+  useEffect(() => {
+    if (socket && playerSerial) {
+      const interval = setInterval(() => {
+        socket.emit('get_friends', { serial: playerSerial, limit: Math.max(10, friendsList.length) }, (res: any) => {
+          if (res.success) {
+            setFriendsList(res.friends || []);
+            setFriendsTotal(res.total || 0);
+          }
+        });
+      }, 35000); // 35 seconds
+      return () => clearInterval(interval);
+    }
+  }, [socket, playerSerial, friendsList.length]);
 
   // Load Friends Effect
   useEffect(() => {
@@ -2998,7 +3016,7 @@ export default function App() {
       return;
     }
     
-    showConfirm('هل تريد تحويل 25 مفتاح إلى 12 تخمينة؟', () => {
+    showConfirm('هل تريد تحويل 25 مفتاح إلى 10 تخمينات؟', () => {
       socket?.emit('buy_tokens_with_keys', { playerSerial: playerSerial }, (res: any) => {
         if (res.success) {
           showAlert('تم التحويل بنجاح! 🎉', 'المتجر');
@@ -3016,7 +3034,7 @@ export default function App() {
       return;
     }
     
-    showConfirm('هل تريد تفعيل باقة المحترفين لمدة 7 أيام مقابل 100 مفتاح؟', () => {
+    showConfirm('هل تريد تفعيل باقة المحترفين لمدة 3 أيام مقابل 100 مفتاح؟', () => {
       socket?.emit('buy_pro_with_keys', { playerSerial: playerSerial }, (res: any) => {
         if (res.success) {
           showAlert('تم تفعيل باقة المحترفين بنجاح! 🎉', 'المتجر');
@@ -3996,6 +4014,14 @@ export default function App() {
         localStorage.setItem('khamin_top_players', JSON.stringify(players));
       });
 
+      newSocket.emit('get_highest_likes_serial', (serialStr: string) => {
+        if (serialStr) setHighestLikesSerial(serialStr);
+      });
+
+      newSocket.on('highest_likes_update', (serialStr: string) => {
+        if (serialStr) setHighestLikesSerial(serialStr);
+      });
+
       if (serial) {
         newSocket.emit('get_friends', { serial }, (res: any) => {
           if (res.success) {
@@ -4094,6 +4120,9 @@ export default function App() {
       if (data.name !== undefined) {
         setPlayerName(data.name);
         localStorage.setItem('khamin_player_name', data.name);
+      }
+      if (data.isHighestLikes !== undefined) {
+        setIsHighestLikes(data.isHighestLikes);
       }
       if (data.lastRenameAt !== undefined) {
         setLastRenameAt(data.lastRenameAt);
@@ -5183,6 +5212,7 @@ export default function App() {
       } else if (player) {
         setPlayerSerial(player.serial);
         setPlayerName(player.name);
+        setIsHighestLikes(player.isHighestLikes || false);
         setPlayerAge(player.age || 18);
         setGender(player.gender || 'boy');
         setAvatar(player.avatar);
@@ -6661,7 +6691,7 @@ export default function App() {
                        <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => openPlayerProfile(friend.serial)}>
                          <div className="relative">
                            <div className="w-10 h-10">
-                             {renderAvatarContent(friend.avatar, friend.level || 1, false, friend.isOnline, friend.selectedFrame)}
+                             {renderAvatarContent(friend.avatar, friend.level || 1, false, friend.isOnline, friend.selectedFrame, friend.serial)}
                            </div>
                          </div>
                          <div>
@@ -6766,7 +6796,7 @@ export default function App() {
                         <div key={notification.id} className="bg-red-50 border-2 border-red-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10">
-                              {renderAvatarContent(notification.senderAvatar, notification.senderLevel || 1, false, false)}
+                              {renderAvatarContent(notification.senderAvatar, notification.senderLevel || 1, false, false, undefined, notification.senderSerial)}
                             </div>
                             <div>
                               <div className="font-black text-sm text-main">{notification.senderName}</div>
@@ -6841,7 +6871,7 @@ export default function App() {
                         <div key={req.id} className="bg-orange-50 border-2 border-orange-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10">
-                              {renderAvatarContent(req.avatar, req.level || 1, false, false)}
+                              {renderAvatarContent(req.avatar, req.level || 1, false, false, undefined, req.serial)}
                             </div>
                             <div>
                               <div className="font-black text-sm text-main">{req.name}</div>
@@ -6887,7 +6917,7 @@ export default function App() {
                           <div key={notification.id} className="bg-blue-50 border-2 border-blue-100 p-3 rounded-xl flex flex-col gap-2 shadow-sm">
                             <div className="flex items-start gap-3">
                               <div className="w-10 h-10 shrink-0">
-                                {renderAvatarContent(notification.sender_avatar, notification.sender_level || 1, false, false)}
+                                {renderAvatarContent(notification.sender_avatar, notification.sender_level || 1, false, false, undefined, notification.sender_serial)}
                               </div>
                               <div className="flex-1">
                                 {notification.type === 'request' ? (
@@ -7016,7 +7046,7 @@ export default function App() {
               </button>
               
               <div className="relative w-24 h-24 mx-auto mb-2">
-                {renderAvatarContent(data.avatar, data.level, false, false, data.selectedFrame)}
+                {renderAvatarContent(data.avatar, data.level, false, false, data.selectedFrame, data.serial)}
               </div>
               
               <h2 className="text-xl font-black text-white flex items-center justify-center gap-2">
@@ -7204,6 +7234,8 @@ export default function App() {
             level={showLevelUp} 
             avatar={avatar} 
             customConfig={customConfig} 
+            isHighestLikes={isHighestLikes || (playerSerial && playerSerial === highestLikesSerial) || false}
+            selectedFrame={selectedFrame}
             onClose={() => {
               setShowLevelUp(null);
             }} 
@@ -7348,11 +7380,12 @@ export default function App() {
                 const avatar = incomingChallenge.senderAvatar || incomingChallenge.avatar || incomingChallenge.challengerAvatar || "boy_1";
                 const level = incomingChallenge.senderLevel || incomingChallenge.level || incomingChallenge.challengerLevel || 1;
                 const frame = incomingChallenge.senderFrame || incomingChallenge.selectedFrame || incomingChallenge.challengerFrame || "";
+                const challengeSerial = incomingChallenge.challenger || incomingChallenge.sender;
                 
                 return (
                   <>
                     <div className="w-24 h-24 mx-auto relative mb-4">
-                      {renderAvatarContent(avatar, level, false, false, frame)}
+                      {renderAvatarContent(avatar, level, false, false, frame, challengeSerial)}
                       <div className="absolute -bottom-2 -right-2 bg-blue-500 w-8 h-8 rounded-full border-2 border-white flex z-[200] items-center justify-center animate-bounce">
                         <Gamepad2 className="w-4 h-4 text-white" />
                       </div>
@@ -7712,7 +7745,7 @@ export default function App() {
                         <img src="/Takhmina_coin_02.png" className="w-6 h-6" />
                       </div>
                       <div>
-                        <div className="font-bold text-[16px] md:text-lg text-brown-dark">12 تخمينة</div>
+                        <div className="font-bold text-[16px] md:text-lg text-brown-dark">10 تخمينات</div>
                         <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
                            مقابل 25 مفتاح <Key className="w-3 h-3" />
                         </div>
@@ -7737,7 +7770,7 @@ export default function App() {
                         👑
                       </div>
                       <div>
-                        <div className="font-bold text-[16px] md:text-lg text-brown-dark">باقة المحترفين 7 أيام</div>
+                        <div className="font-bold text-[16px] md:text-lg text-brown-dark">باقة المحترفين 3 أيام</div>
                         <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
                            مقابل 100 مفتاح <Key className="w-3 h-3 text-yellow-500" />
                         </div>
@@ -8265,7 +8298,7 @@ export default function App() {
                 <div className="bg-orange-100 p-3 rounded-2xl border-4 border-black space-y-4">
                   <div className="flex items-center gap-4 flex-row-reverse">
                     <div className="relative w-16 h-16">
-                      {renderAvatarContent(avatar, getLevel(xp), false, true, selectedFrame)}
+                      {renderAvatarContent(avatar, getLevel(xp), false, true, selectedFrame, playerSerial)}
                     </div>
                     <div className="text-right flex-1">
                       <div className="font-black text-lg text-main">{playerName}</div>
@@ -8692,7 +8725,7 @@ export default function App() {
                                 <div key={index} className="flex items-center justify-between p-3 border-b border-gray-100 hover:bg-gray-50 flex-row-reverse">
                                   <div className="flex items-center gap-3 flex-row-reverse">
                                     <div className="w-8 h-8">
-                                      {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), true, false, opponent.selectedFrame)}
+                                      {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), true, false, opponent.selectedFrame, opponent.serial)}
                                     </div>
                                     <div className="flex flex-col items-end">
                                       <span className="text-sm font-black text-main">{opponent.name}</span>
@@ -11122,7 +11155,7 @@ export default function App() {
                               <div className="flex items-center justify-center gap-4 mb-6">
                                 <div className="flex flex-col items-center gap-2 flex-1">
                                   <div className="w-12 h-12">
-                                    {renderAvatarContent(room.players[0]?.avatar, getLevel(room.players[0]?.xp || 0), false, true, room.players[0]?.selectedFrame)}
+                                    {renderAvatarContent(room.players[0]?.avatar, getLevel(room.players[0]?.xp || 0), false, true, room.players[0]?.selectedFrame, room.players[0]?.serial)}
                                   </div>
                                   <span className="text-xs font-black text-brown-dark truncate w-full text-center">{room.players[0]?.name}</span>
                                 </div>
@@ -11131,7 +11164,7 @@ export default function App() {
 
                                 <div className="flex flex-col items-center gap-2 flex-1">
                                   <div className="w-12 h-12">
-                                    {renderAvatarContent(room.players[1]?.avatar, getLevel(room.players[1]?.xp || 0), false, true, room.players[1]?.selectedFrame)}
+                                    {renderAvatarContent(room.players[1]?.avatar, getLevel(room.players[1]?.xp || 0), false, true, room.players[1]?.selectedFrame, room.players[1]?.serial)}
                                   </div>
                                   <span className="text-xs font-black text-brown-dark truncate w-full text-center">{room.players[1]?.name || '...'}</span>
                                 </div>
@@ -11330,7 +11363,7 @@ export default function App() {
                                 <div key={`admin-player-${p.serial}-${index}`} className="box-game p-5 hover:border-purple-200 transition-all group relative">
                                   <div className="flex items-center gap-4 mb-4">
                                     <div className="w-14 h-14">
-                                      {renderAvatarContent(p.avatar, getLevel(p.xp), false, p.isOnline, p.selectedFrame)}
+                                      {renderAvatarContent(p.avatar, getLevel(p.xp), false, p.isOnline, p.selectedFrame, p.serial)}
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
@@ -12022,7 +12055,7 @@ export default function App() {
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10">
-                            {renderAvatarContent(friend.avatar, friend.level || 1, false, false)}
+                            {renderAvatarContent(friend.avatar, friend.level || 1, false, false, undefined, friend.serial)}
                           </div>
                           <div>
                             <div className="font-bold text-sm text-main">{friend.name}</div>
@@ -12171,6 +12204,7 @@ export default function App() {
                         level={getLevel(xp)}
                         avatar={avatar}
                         selectedFrame={selectedFrame}
+                        isHighestLikes={(playerSerial && playerSerial === highestLikesSerial) || false}
                         reward={stage.reward}
                         categoryName={category.name}
                         isClaimed={isClaimed}
@@ -12650,7 +12684,7 @@ export default function App() {
                   {spectatorRoomData.players.map((p: any) => (
                     <div key={p.serial} className="bg-white/5 rounded-2xl p-3 border border-white/10 flex items-center gap-3">
                       <div className="w-10 h-10">
-                        {renderAvatarContent(p.avatar, getLevel(p.xp), false, true, p.selectedFrame)}
+                        {renderAvatarContent(p.avatar, getLevel(p.xp), false, true, p.selectedFrame, p.serial)}
                       </div>
                       <div className="flex-1">
                         <div className="text-white font-black text-xs">{p.name}</div>
@@ -12963,7 +12997,7 @@ export default function App() {
                   />
                 )}
                 <div className="relative mb-1 md:mb-2 w-20 h-20 md:w-24 md:h-24 z-10">
-                  {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0), false, true, proposedMatch.opponent.selectedFrame)}
+                  {renderAvatarContent(proposedMatch.opponent.avatar, proposedMatch.opponent.level || getLevel(proposedMatch.opponent.xp || 0), false, true, proposedMatch.opponent.selectedFrame, proposedMatch.opponent.serial)}
                 </div>
                 <div className={`text-xl md:text-2xl font-black mb-1 z-10 ${
                   proposedMatch.opponent.proPackageExpiry && proposedMatch.opponent.proPackageExpiry > Date.now()
@@ -13499,7 +13533,7 @@ export default function App() {
               {(displayXp) => (
                 <div className="flex items-center gap-2 md:gap-4 flex-row-reverse w-full">
                   <div className="relative shrink-0 w-16 h-16 md:w-20 md:h-20">
-                    {renderAvatarContent(avatar, getLevel(Math.floor(displayXp)), false, true, selectedFrame)}
+                    {renderAvatarContent(avatar, getLevel(Math.floor(displayXp)), false, true, selectedFrame, playerSerial)}
                   </div>
                   <div className="flex flex-col justify-center flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1 flex-row-reverse">
@@ -13587,7 +13621,7 @@ export default function App() {
                 onClick={() => setShowFriendsModal(true)}
                 className="w-full px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black rounded-lg text-sm transition-colors border border-blue-200 flex items-center justify-center gap-2"
               >
-                <Users className="w-4 h-4" />
+                <Users className={`w-4 h-4 ${friendsList.some(f => f.isOnline) ? "text-green-500 fill-green-500" : ""}`} />
                  الأصدقاء ({friendsTotal})
               </button>
           </div>
@@ -13674,7 +13708,7 @@ export default function App() {
                         onClick={() => openPlayerProfile(topPlayers[1].serial)}
                       >
                         <div className="w-14 h-14 md:w-16 md:h-16">
-                          {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0), false, topPlayers[1].isOnline, topPlayers[1].selectedFrame)}
+                          {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0), false, topPlayers[1].isOnline, topPlayers[1].selectedFrame, topPlayers[1].serial)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-gray-300 text-brown-muted w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
                       </div>
@@ -13705,7 +13739,7 @@ export default function App() {
                         {/* <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-[60]" /> */}
                         <div className="fire-glow-effect"></div>
                         <div className="w-16 h-16 md:w-20 md:h-20 relative z-10">
-                          {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level || getLevel(topPlayers[0].xp || 0), false, topPlayers[0].isOnline, topPlayers[0].selectedFrame)}
+                          {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level || getLevel(topPlayers[0].xp || 0), false, topPlayers[0].isOnline, topPlayers[0].selectedFrame, topPlayers[0].serial)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-[60] animate-bounce">1</div>
                       </div>
@@ -13733,7 +13767,7 @@ export default function App() {
                         onClick={() => openPlayerProfile(topPlayers[2].serial)}
                       >
                         <div className="w-14 h-14 md:w-16 md:h-16">
-                          {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level || getLevel(topPlayers[2].xp || 0), false, topPlayers[2].isOnline, topPlayers[2].selectedFrame)}
+                          {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level || getLevel(topPlayers[2].xp || 0), false, topPlayers[2].isOnline, topPlayers[2].selectedFrame, topPlayers[2].serial)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
@@ -14091,7 +14125,7 @@ export default function App() {
                         #{topPlayers.findIndex(p => p.serial === playerSerial) + 1}
                       </div>
                       <div className="relative w-10 h-10">
-                        {renderAvatarContent(avatar, getLevel(xp), true, true, selectedFrame)}
+                        {renderAvatarContent(avatar, getLevel(xp), true, true, selectedFrame, playerSerial)}
                       </div>
                       <div className="flex-1 min-w-0 text-right">
                         <div className="font-black truncate">أنت ({playerName})</div>
@@ -14130,7 +14164,7 @@ export default function App() {
                         </div>
                         
                         <div className="relative w-10 h-10">
-                          {renderAvatarContent(player.avatar, player.level, true, player.isOnline, player.selectedFrame)}
+                          {renderAvatarContent(player.avatar, player.level, true, player.isOnline, player.selectedFrame, player.serial)}
                         </div>
 
                         <div className="flex-1 min-w-0 text-right">
@@ -14467,7 +14501,7 @@ export default function App() {
             {me && (
               <>
                 <div className="relative w-14 h-14 md:w-20 md:h-20">
-                  {renderAvatarContent(me.avatar, getLevel(xp), false, true, me.selectedFrame)}
+                  {renderAvatarContent(me.avatar, getLevel(xp), false, true, me.selectedFrame, me.serial)}
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[8px] md:text-[10px] font-black px-2 py-0.3 rounded-full border-1.5 border-black shadow-sm z-20 whitespace-nowrap">
                     Lvl {getLevel(xp)}
                   </div>
@@ -14508,7 +14542,7 @@ export default function App() {
                     }
                   }}
                 >
-                  {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false, true, opponent.selectedFrame)}
+                  {renderAvatarContent(opponent.avatar, opponent.level || getLevel(opponent.xp || 0), false, true, opponent.selectedFrame, opponent.serial)}
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[8px] md:text-[10px] font-black px-2 py-0.3 rounded-full border-1.5 border-black shadow-sm z-20 whitespace-nowrap">
                     Lvl {opponent.level || getLevel(opponent.xp || 0)}
                   </div>
@@ -15939,8 +15973,8 @@ export default function App() {
       <AnimatePresence>
         {showMatchIntro && room && room.players.length >= 2 && (
           <MatchIntro 
-            player1={{ id: room.players[0].id, name: room.players[0].name, level: room.players[0].level, avatar: room.players[0].avatar, selectedFrame: room.players[0].selectedFrame }}
-            player2={{ id: room.players[1].id, name: room.players[1].name, level: room.players[1].level, avatar: room.players[1].avatar, selectedFrame: room.players[1].selectedFrame }}
+            player1={{ id: room.players[0].id, name: room.players[0].name, level: room.players[0].level, avatar: room.players[0].avatar, selectedFrame: room.players[0].selectedFrame, isHighestLikes: room.players[0].serial === highestLikesSerial }}
+            player2={{ id: room.players[1].id, name: room.players[1].name, level: room.players[1].level, avatar: room.players[1].avatar, selectedFrame: room.players[1].selectedFrame, isHighestLikes: room.players[1].serial === highestLikesSerial }}
             customConfig={customConfig}
             onStartGame={handleMatchIntroStart}
             onComplete={handleMatchIntroComplete}
