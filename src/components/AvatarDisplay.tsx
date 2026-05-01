@@ -2,7 +2,7 @@ import React from 'react';
 import { Star } from 'lucide-react';
 import { STATIC_ASSETS } from '../constants';
 
-export const AvatarDisplay = React.memo(({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false, isOnline = false, selectedFrame }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean, isOnline?: boolean, selectedFrame?: string }) => {
+export const AvatarDisplay = React.memo(({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false, isOnline = false, selectedFrame, isHighestLikes = false }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean, isOnline?: boolean, selectedFrame?: string, isHighestLikes?: boolean }) => {
   const getMilestoneLevel = (lvl: number) => {
     if (lvl >= 50) return 50;
     if (lvl >= 40) return 40;
@@ -137,6 +137,29 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
       {/* Online Indicator - Bottom Right */}
       {isOnline && (
         <div className="absolute bottom-[5%] right-[5%] w-[11%] h-[11%] rounded-full z-40" style={{ backgroundColor: '#22c55e' }} />
+      )}
+
+      {/* Highest Likes Indicator - Bottom Left */}
+      {isHighestLikes && (
+        <div className="absolute -bottom-2 -left-2 z-[60] pointer-events-none w-8 h-8 flex items-end justify-start">
+          <div className="relative w-full h-full">
+            {[...Array(3)].map((_, i) => (
+              <div 
+                key={`heart-${i}`}
+                className="absolute text-red-500 heart-float"
+                style={{
+                  left: `${Math.random() * 6}px`,
+                  bottom: '0px',
+                  animationDelay: `${i * 0.6}s`,
+                  fontSize: `${10 + Math.random() * 4}px`,
+                  opacity: 0,
+                }}
+              >
+                ❤️
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

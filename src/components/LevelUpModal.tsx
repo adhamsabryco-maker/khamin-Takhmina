@@ -17,9 +17,11 @@ interface LevelUpModalProps {
   avatar: string;
   customConfig: any;
   onClose: () => void;
+  isHighestLikes?: boolean;
+  selectedFrame?: string;
 }
 
-export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpModalProps) => {
+export const LevelUpModal = ({ level, avatar, customConfig, onClose, isHighestLikes, selectedFrame }: LevelUpModalProps) => {
   const [progress, setProgress] = useState(0);
   const [showContent, setShowContent] = useState(false);
   const isMilestone = [10, 20, 30, 40, 50].includes(level);
@@ -191,6 +193,8 @@ export const LevelUpModal = ({ level, avatar, customConfig, onClose }: LevelUpMo
                     level={level} 
                     customConfig={customConfig} 
                     className="w-full h-full" 
+                    isHighestLikes={isHighestLikes}
+                    selectedFrame={selectedFrame}
                   />
                 </div>
                 
