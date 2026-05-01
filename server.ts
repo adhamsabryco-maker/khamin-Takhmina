@@ -2031,10 +2031,32 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
 
   let cachedTopPlayers: any[] = [];
   let topPlayersCacheTime = 0;
+  let highestLikesSerialStr = '';
+
+  function updateHighestLikesGlobal() {
+    let highestLikesPlayer = '';
+    let maxLikes = -1;
+    
+    for (const p of allPlayers.values()) {
+      if (!p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= Date.now())) {
+        if ((p.likes || 0) > maxLikes) {
+          maxLikes = p.likes || 0;
+          highestLikesPlayer = p.serial;
+        }
+      }
+    }
+    
+    if (highestLikesSerialStr !== highestLikesPlayer && maxLikes > 0) {
+      highestLikesSerialStr = highestLikesPlayer;
+      io.emit('highest_likes_update', highestLikesSerialStr);
+    }
+  }
 
   function getTopPlayers(force = false) {
     const now = Date.now();
     if (force || now - topPlayersCacheTime > 60000) { // Cache for 1 minute unless forced
+      updateHighestLikesGlobal();
+
       cachedTopPlayers = Array.from(allPlayers.values())
         .filter(p => !p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= now)) // Exclude admins and banned players from leaderboard
         .sort((a, b) => {
@@ -2050,6 +2072,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           level: getLevel(p.randomXp !== undefined ? p.randomXp : (p.xp || 0)),
           wins: p.wins,
           streak: p.streak || 0,
+          likes: p.likes || 0,
+          isHighestLikes: (p.serial === highestLikesSerialStr && (p.likes || 0) > 0),
           avatar: p.avatar,
           selectedFrame: p.selectedFrame,
           gender: p.gender,
@@ -4395,6 +4419,10 @@ io.on("connection", (socket) => {
       callback(getTopPlayers());
     });
     
+    socket.on("get_highest_likes_serial", (callback) => {
+      callback(highestLikesSerialStr);
+    });
+    
     socket.on("get_city_search", ({ serial }) => {
       if (!serial) return;
       const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(`city_search_${serial}`);
@@ -4555,7 +4583,11 @@ io.on("connection", (socket) => {
           }
         }
 
-        callback(player);
+        const enrichedPlayer = { 
+          ...player, 
+          isHighestLikes: (player.serial === highestLikesSerialStr && (player.likes || 0) > 0) 
+        };
+        callback(enrichedPlayer);
       } else if (callback) {
         callback(null);
       }
@@ -6082,7 +6114,7 @@ io.on("connection", (socket) => {
       if (player) {
          if ((player.keys || 0) >= 25) {
            player.keys -= 25;
-           player.tokens = (player.tokens || 0) + 12;
+           player.tokens = (player.tokens || 0) + 10;
            savePlayerData(playerSerial);
            io.to(socket.id).emit('player_data_update', player);
            callback({ success: true });
@@ -6100,7 +6132,7 @@ io.on("connection", (socket) => {
          if ((player.keys || 0) >= 100) {
            player.keys -= 100;
            const now = Date.now();
-           player.proPackageExpiry = Math.max(player.proPackageExpiry || 0, now) + 7 * 24 * 60 * 60 * 1000;
+           player.proPackageExpiry = Math.max(player.proPackageExpiry || 0, now) + 3 * 24 * 60 * 60 * 1000;
            savePlayerData(playerSerial);
            io.to(socket.id).emit('player_data_update', player);
            callback({ success: true, proPackageExpiry: player.proPackageExpiry });
@@ -6618,6 +6650,7 @@ io.on("connection", (socket) => {
             avatar: player.avatar,
             level: getLevel(player.xp || 0),
             selectedFrame: player.selectedFrame,
+            isHighestLikes: (player.serial === highestLikesSerialStr && (player.likes || 0) > 0),
             isOnline: playerSockets.has(player.serial)
           } : null;
         }).filter(Boolean);
@@ -6826,6 +6859,8 @@ io.on("connection", (socket) => {
         if (targetSocketId) {
              io.to(targetSocketId).emit('player_data_update', { likes: targetPlayer.likes, keys: targetPlayer.keys });
         }
+        
+        updateHighestLikesGlobal();
 
         callback({ success: true, newLikes, keysRewarded });
       } catch (error) {
