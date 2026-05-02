@@ -1230,6 +1230,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   try { db.exec(`ALTER TABLE players ADD COLUMN lastDailyClaim INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN weeklyTokensClaimed INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN streak INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN rainGiftClaimedDay TEXT DEFAULT NULL`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastWeeklyTokenReset INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN proPackageExpiry INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN unlockedHelpersExpiry INTEGER DEFAULT 0`); } catch (e) {}
@@ -1539,44 +1540,44 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   }
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
+  function getRainGiftEventDay() {
+    const parts = new Intl.DateTimeFormat('en-GB', { 
+      timeZone: 'Africa/Cairo', 
+      year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric', hour12: false 
+    }).formatToParts(new Date());
+    
+    let year = 0, month = 0, day = 0, hour = 0, minute = 0;
+    for (const part of parts) {
+      if (part.type === 'year') year = parseInt(part.value, 10);
+      if (part.type === 'month') month = parseInt(part.value, 10);
+      if (part.type === 'day') day = parseInt(part.value, 10);
+      if (part.type === 'hour') {
+        hour = parseInt(part.value, 10);
+        if (hour === 24) hour = 0; // Handle 24:00 as 00:00
+      }
+      if (part.type === 'minute') minute = parseInt(part.value, 10);
+    }
+    
+    // Event starts at 19:00 Egypt time. Reset at 18:50 Egypt time.
+    if (hour < 18 || (hour === 18 && minute < 50)) {
+      const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+      d.setUTCDate(d.getUTCDate() - 1);
+      year = d.getUTCFullYear();
+      month = d.getUTCMonth() + 1;
+      day = d.getUTCDate();
+    }
+    
+    return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+  }
+
   function checkDailyReset(player: any, serial: string, socket?: any) {
     if (!player) return;
-    
-    const getRainGiftEventDay = () => {
-      const parts = new Intl.DateTimeFormat('en-GB', { 
-        timeZone: 'Africa/Cairo', 
-        year: 'numeric', month: 'numeric', day: 'numeric',
-        hour: 'numeric', minute: 'numeric', hour12: false 
-      }).formatToParts(new Date());
-      
-      let year = 0, month = 0, day = 0, hour = 0, minute = 0;
-      for (const part of parts) {
-        if (part.type === 'year') year = parseInt(part.value, 10);
-        if (part.type === 'month') month = parseInt(part.value, 10);
-        if (part.type === 'day') day = parseInt(part.value, 10);
-        if (part.type === 'hour') {
-          hour = parseInt(part.value, 10);
-          if (hour === 24) hour = 0; // Handle 24:00 as 00:00
-        }
-        if (part.type === 'minute') minute = parseInt(part.value, 10);
-      }
-      
-      // Event starts at 19:00 Egypt time. Reset at 18:50 Egypt time.
-      if (hour < 18 || (hour === 18 && minute < 50)) {
-        const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-        d.setUTCDate(d.getUTCDate() - 1);
-        year = d.getUTCFullYear();
-        month = d.getUTCMonth() + 1;
-        day = d.getUTCDate();
-      }
-      
-      return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    };
     
     const getLuckyWheelResetDay = () => {
       const parts = new Intl.DateTimeFormat('en-GB', { 
@@ -1742,6 +1743,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         lastRainGiftResetDay: player.lastRainGiftResetDay || null,
         rainGiftTokens: player.rainGiftTokens || 0,
         rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
+        rainGiftClaimedDay: player.rainGiftClaimedDay || null,
         notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0,
         lastSpinDate: player.lastSpinDate || null,
         dailySpinCount: player.dailySpinCount || 0,
@@ -1795,6 +1797,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         lastRainGiftResetDay: player.lastRainGiftResetDay || null,
         rainGiftTokens: player.rainGiftTokens || 0,
         rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
+        rainGiftClaimedDay: player.rainGiftClaimedDay || null,
         notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0,
         lastSpinDate: player.lastSpinDate || null,
         dailySpinCount: player.dailySpinCount || 0,
@@ -1872,6 +1875,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           lastRainGiftResetDay: row.lastRainGiftResetDay || null,
           rainGiftTokens: row.rainGiftTokens || 0,
           rainGiftHelpers: JSON.parse(row.rainGiftHelpers || '{}'),
+          rainGiftClaimedDay: row.rainGiftClaimedDay || null,
           notificationsEnabled: row.notificationsEnabled !== undefined ? row.notificationsEnabled : 0,
           lastSpinDate: row.lastSpinDate || null,
           dailySpinCount: row.dailySpinCount || 0,
@@ -2032,6 +2036,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   let cachedTopPlayers: any[] = [];
   let topPlayersCacheTime = 0;
   let highestLikesSerialStr = '';
+  let highestStreakSerialStr = '';
 
   function updateHighestLikesGlobal() {
     let highestLikesPlayer = '';
@@ -2052,14 +2057,38 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     }
   }
 
+  function updateHighestStreakGlobal() {
+    let highestStreakPlayer = '';
+    let maxStreak = -1;
+    
+    for (const p of allPlayers.values()) {
+      if (!p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= Date.now())) {
+        if ((p.streak || 0) > maxStreak) {
+          maxStreak = p.streak || 0;
+          highestStreakPlayer = p.serial;
+        }
+      }
+    }
+    
+    if (highestStreakSerialStr !== highestStreakPlayer && maxStreak > 0) {
+      highestStreakSerialStr = highestStreakPlayer;
+      io.emit('highest_streak_update', highestStreakSerialStr);
+    }
+  }
+
   function getTopPlayers(force = false) {
     const now = Date.now();
     if (force || now - topPlayersCacheTime > 60000) { // Cache for 1 minute unless forced
       updateHighestLikesGlobal();
+      updateHighestStreakGlobal();
 
       cachedTopPlayers = Array.from(allPlayers.values())
         .filter(p => !p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= now)) // Exclude admins and banned players from leaderboard
         .sort((a, b) => {
+          const bStreak = b.streak || 0;
+          const aStreak = a.streak || 0;
+          if (bStreak !== aStreak) return bStreak - aStreak;
+          
           const aXp = a.randomXp !== undefined ? a.randomXp : (a.xp || 0);
           const bXp = b.randomXp !== undefined ? b.randomXp : (b.xp || 0);
           if (bXp !== aXp) return bXp - aXp;
@@ -2074,6 +2103,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           streak: p.streak || 0,
           likes: p.likes || 0,
           isHighestLikes: (p.serial === highestLikesSerialStr && (p.likes || 0) > 0),
+          isHighestStreak: (p.serial === highestStreakSerialStr && (p.streak || 0) > 0),
           avatar: p.avatar,
           selectedFrame: p.selectedFrame,
           gender: p.gender,
@@ -3702,6 +3732,8 @@ io.on("connection", (socket) => {
     socket.emit('theme_updated', themeConfig);
     socket.emit('top_players_update', getTopPlayers());
     socket.emit('policies_update', gamePolicies);
+    socket.emit('highest_likes_update', highestLikesSerialStr);
+    socket.emit('highest_streak_update', highestStreakSerialStr);
     
     try {
       const luckyWheelSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('lucky_wheel_enabled') as { value: string } | undefined;
@@ -4132,6 +4164,14 @@ io.on("connection", (socket) => {
       // Check for daily reset
       checkDailyReset(player, serial, socket);
 
+      // Prevent double claim
+      const currentDay = getRainGiftEventDay();
+      if (player.rainGiftClaimedDay === currentDay) {
+        console.log(`[Rain Gift] Prevented double claim for ${serial}`);
+        if (socket) socket.emit("rain_gift_error", "لقد استلمت هدية مطر الهدايا بالفعل اليوم!");
+        return;
+      }
+
       // Apply rewards
       if (rewards.xp) player.xp = (player.xp || 0) + rewards.xp;
       if (rewards.tokens) {
@@ -4157,6 +4197,7 @@ io.on("connection", (socket) => {
         });
       }
 
+      player.rainGiftClaimedDay = currentDay;
       player.level = getLevel(player.xp);
       savePlayerData(serial);
 
@@ -4421,6 +4462,10 @@ io.on("connection", (socket) => {
     
     socket.on("get_highest_likes_serial", (callback) => {
       callback(highestLikesSerialStr);
+    });
+
+    socket.on("get_highest_streak_serial", (callback) => {
+      callback(highestStreakSerialStr);
     });
     
     socket.on("get_city_search", ({ serial }) => {
@@ -7575,7 +7620,7 @@ io.on("connection", (socket) => {
              p.randomXp = (p.randomXp !== undefined ? p.randomXp : (p.xp - drawXP)) + drawXP;
           }
           p.level = getLevel(p.xp);
-          p.streak = 0;
+          p.streak = 0; // Draw breaks streak
           updates[p.id] = { xp: drawXP, streak: 0, wins: p.wins || 0, won: false, level: p.level };
         });
       } else {
@@ -7610,7 +7655,11 @@ io.on("connection", (socket) => {
           winner.level = getLevel(winner.xp);
           
           if (isTrueWin) {
-            winner.streak = (winner.streak || 0) + 1;
+            if (room.matchType === 'random' || room.matchType === undefined) {
+              winner.streak = (winner.streak || 0) + 1;
+            } else {
+              winner.streak = 0; // Participating in non-random matches resets random streak
+            }
             winner.wins = (winner.wins || 0) + 1;
             // Record collection win
             if (winner.serial && winner.targetImage) {
@@ -7806,6 +7855,9 @@ io.on("connection", (socket) => {
           }
         }
       });
+
+      updateHighestLikesGlobal();
+      updateHighestStreakGlobal();
 
       io.to(roomId).emit("game_finished", { 
         room, 
