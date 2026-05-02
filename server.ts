@@ -1059,6 +1059,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     lastRainGiftResetDay?: string,
     rainGiftTokens?: number,
     rainGiftHelpers?: { [key: string]: number },
+    rainGiftClaimedDay?: string | null,
     notificationsEnabled?: number,
     lastSpinDate?: string,
     dailySpinCount?: number,
@@ -1956,6 +1957,21 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     console.error("Failed to load game policies:", err);
   }
 
+  // Initial Streak Reset (One-time migration to clear legacy streaks)
+  try {
+    const streakResetRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('streak_reset_v5_random');
+    if (!streakResetRow) {
+      console.log("[Migration] Performing one-time streak reset to start fresh for Random Match competition...");
+      db.prepare('UPDATE players SET streak = 0').run();
+      for (const p of allPlayers.values()) {
+        p.streak = 0;
+      }
+      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('streak_reset_v5_random', 'true');
+    }
+  } catch (e) {
+    console.error("Streak reset migration failed:", e);
+  }
+
   // Load Theme Config
   let themeConfig = {
     bgBodyStart: '#FFD700',
@@ -2035,13 +2051,16 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
 
   let cachedTopPlayers: any[] = [];
   let topPlayersCacheTime = 0;
-  let highestLikesSerialStr = '';
-  let highestStreakSerialStr = '';
+  let highestLikesSerials: string[] = [];
+  let highestStreakSerials: string[] = [];
+  let globalMaxLikes = 0;
+  let globalMaxStreak = 0;
 
   function updateHighestLikesGlobal() {
     let highestLikesPlayer = '';
-    let maxLikes = -1;
+    let maxLikes = 0;
     
+    // Find max likes among non-admins
     for (const p of allPlayers.values()) {
       if (!p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= Date.now())) {
         if ((p.likes || 0) > maxLikes) {
@@ -2051,16 +2070,27 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       }
     }
     
-    if (highestLikesSerialStr !== highestLikesPlayer && maxLikes > 0) {
-      highestLikesSerialStr = highestLikesPlayer;
-      io.emit('highest_likes_update', highestLikesSerialStr);
+    globalMaxLikes = maxLikes;
+    
+    const rewardSerials = [];
+    if (highestLikesPlayer) rewardSerials.push(highestLikesPlayer);
+    
+    // Check if any admin qualifies (likes >= maxLikes AND maxLikes > 0)
+    for (const p of allPlayers.values()) {
+      if (p.isAdmin && (p.likes || 0) >= maxLikes && maxLikes > 0 && !rewardSerials.includes(p.serial)) {
+        rewardSerials.push(p.serial);
+      }
     }
+    
+    highestLikesSerials = rewardSerials;
+    io.emit('highest_likes_update', { serials: highestLikesSerials, value: globalMaxLikes });
   }
 
   function updateHighestStreakGlobal() {
     let highestStreakPlayer = '';
-    let maxStreak = -1;
+    let maxStreak = 0;
     
+    // Find max streak among non-admins
     for (const p of allPlayers.values()) {
       if (!p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= Date.now())) {
         if ((p.streak || 0) > maxStreak) {
@@ -2070,10 +2100,20 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       }
     }
     
-    if (highestStreakSerialStr !== highestStreakPlayer && maxStreak > 0) {
-      highestStreakSerialStr = highestStreakPlayer;
-      io.emit('highest_streak_update', highestStreakSerialStr);
+    globalMaxStreak = maxStreak;
+    
+    const rewardSerials = [];
+    if (highestStreakPlayer) rewardSerials.push(highestStreakPlayer);
+
+    // Check if any admin qualifies (streak >= maxStreak AND maxStreak > 0)
+    for (const p of allPlayers.values()) {
+      if (p.isAdmin && (p.streak || 0) >= maxStreak && maxStreak > 0 && !rewardSerials.includes(p.serial)) {
+        rewardSerials.push(p.serial);
+      }
     }
+    
+    highestStreakSerials = rewardSerials;
+    io.emit('highest_streak_update', { serials: highestStreakSerials, value: globalMaxStreak });
   }
 
   function getTopPlayers(force = false) {
@@ -2102,8 +2142,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           wins: p.wins,
           streak: p.streak || 0,
           likes: p.likes || 0,
-          isHighestLikes: (p.serial === highestLikesSerialStr && (p.likes || 0) > 0),
-          isHighestStreak: (p.serial === highestStreakSerialStr && (p.streak || 0) > 0),
+          isHighestLikes: (highestLikesSerials.includes(p.serial) && (p.likes || 0) > 0),
+          isHighestStreak: (highestStreakSerials.includes(p.serial) && (p.streak || 0) > 0),
           avatar: p.avatar,
           selectedFrame: p.selectedFrame,
           gender: p.gender,
@@ -3732,8 +3772,8 @@ io.on("connection", (socket) => {
     socket.emit('theme_updated', themeConfig);
     socket.emit('top_players_update', getTopPlayers());
     socket.emit('policies_update', gamePolicies);
-    socket.emit('highest_likes_update', highestLikesSerialStr);
-    socket.emit('highest_streak_update', highestStreakSerialStr);
+    socket.emit('highest_likes_update', { serials: highestLikesSerials, value: globalMaxLikes });
+    socket.emit('highest_streak_update', { serials: highestStreakSerials, value: globalMaxStreak });
     
     try {
       const luckyWheelSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('lucky_wheel_enabled') as { value: string } | undefined;
@@ -4461,11 +4501,11 @@ io.on("connection", (socket) => {
     });
     
     socket.on("get_highest_likes_serial", (callback) => {
-      callback(highestLikesSerialStr);
+      callback({ serials: highestLikesSerials, value: globalMaxLikes });
     });
 
     socket.on("get_highest_streak_serial", (callback) => {
-      callback(highestStreakSerialStr);
+      callback({ serials: highestStreakSerials, value: globalMaxStreak });
     });
     
     socket.on("get_city_search", ({ serial }) => {
@@ -4630,7 +4670,7 @@ io.on("connection", (socket) => {
 
         const enrichedPlayer = { 
           ...player, 
-          isHighestLikes: (player.serial === highestLikesSerialStr && (player.likes || 0) > 0) 
+          isHighestLikes: (highestLikesSerials.includes(player.serial) && (player.likes || 0) > 0) 
         };
         callback(enrichedPlayer);
       } else if (callback) {
@@ -6695,7 +6735,7 @@ io.on("connection", (socket) => {
             avatar: player.avatar,
             level: getLevel(player.xp || 0),
             selectedFrame: player.selectedFrame,
-            isHighestLikes: (player.serial === highestLikesSerialStr && (player.likes || 0) > 0),
+            isHighestLikes: (highestLikesSerials.includes(player.serial) && (player.likes || 0) > 0),
             isOnline: playerSockets.has(player.serial)
           } : null;
         }).filter(Boolean);
