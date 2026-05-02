@@ -2,7 +2,7 @@ import React from 'react';
 import { Star } from 'lucide-react';
 import { STATIC_ASSETS } from '../constants';
 
-export const AvatarDisplay = React.memo(({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false, isOnline = false, selectedFrame, isHighestLikes = false }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean, isOnline?: boolean, selectedFrame?: string, isHighestLikes?: boolean }) => {
+export const AvatarDisplay = React.memo(({ avatar, level, customConfig, className = "w-full h-full", hideExtras = false, isOnline = false, selectedFrame, isHighestLikes = false, isHighestStreak = false }: { avatar: string, level: number, customConfig: any, className?: string, hideExtras?: boolean, isOnline?: boolean, selectedFrame?: string, isHighestLikes?: boolean, isHighestStreak?: boolean }) => {
   const getMilestoneLevel = (lvl: number) => {
     if (lvl >= 50) return 50;
     if (lvl >= 40) return 40;
@@ -104,6 +104,15 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
+      {/* Highest Streak Fire Frame GIF Background */}
+      {isHighestStreak && (
+        <img 
+          src="/fire_frame_Higher_Streak_Number_Animation_02.gif"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[160%] h-[160%] max-w-none object-contain pointer-events-none z-0 opacity-90"
+          alt="Highest Streak Fire"
+        />
+      )}
+
       {/* Stars Animation Layer - Now on top of Frame */}
       {renderStarsFallback(level)}
 
