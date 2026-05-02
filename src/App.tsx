@@ -456,9 +456,14 @@ const enterFullscreen = () => {
   }
 };
 
-const TypingIndicator = ({ gender }: { gender?: string }) => (
+const TypingIndicator = ({ gender, type = 'changing_questions' }: { gender?: string, type?: 'changing_questions' | 'typing' }) => (
   <div className="flex items-center gap-1 px-3 py-2 bg-white rounded-xl rounded-tl-none shadow-sm w-fit border border-gray-100">
-    <span className="text-[10px] font-bold text-accent-blue mr-1">انتظر...! المنافس {gender === 'girl' ? 'تقوم' : 'يقوم'} بتغيير السؤال.</span>
+    <span className="text-[10px] font-bold text-accent-blue mr-1">
+      {type === 'changing_questions' ? 
+        `انتظر...! المنافس ${gender === 'girl' ? 'تقوم' : 'يقوم'} بتغيير السؤال.` :
+        `المنافس ${gender === 'girl' ? 'تكتب' : 'يكتب'}...`
+      }
+    </span>
     <div className="flex gap-0.5">
       <span className="w-1 h-1 bg-accent-blue rounded-full typing-dot"></span>
       <span className="w-1 h-1 bg-accent-blue rounded-full typing-dot"></span>
@@ -766,6 +771,8 @@ export default function App() {
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('khamin_player_name') || '');
+  const [isNameAvailable, setIsNameAvailable] = useState<boolean | null>(null);
+  const [isCheckingName, setIsCheckingName] = useState<boolean>(false);
   const [isHighestLikes, setIsHighestLikes] = useState(false);
   const [highestLikesSerials, setHighestLikesSerials] = useState<string[]>([]);
   const [highestStreakSerials, setHighestStreakSerials] = useState<string[]>([]);
@@ -775,13 +782,30 @@ export default function App() {
   const playerNameRef = useRef(playerName);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
 
-  const [xp, setXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0'));
-  const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0'));
-  const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0'));
-  const [tokens, setتخمينات] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0'));
-  const [keys, setKeys] = useState(() => parseInt(localStorage.getItem('khamin_keys') || '0'));
-  const [likes, setLikes] = useState(() => parseInt(localStorage.getItem('khamin_likes') || '0'));
+  const [xp, setXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0') || 0);
+  const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0') || 0);
+  const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0') || 0);
+  const [tokens, setتخمينات] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0') || 0);
+  const [keys, setKeys] = useState(() => parseInt(localStorage.getItem('khamin_keys') || '0') || 0);
+  const [likes, setLikes] = useState(() => parseInt(localStorage.getItem('khamin_likes') || '0') || 0);
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
+
+  useEffect(() => {
+    if (!playerName.trim() || !socket) {
+      setIsNameAvailable(null);
+      return;
+    }
+    
+    setIsCheckingName(true);
+    const timeoutId = setTimeout(() => {
+      socket.emit('check_name_availability', { name: playerName, playerSerial }, (res: any) => {
+        setIsNameAvailable(res.available);
+        setIsCheckingName(false);
+      });
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [playerName, socket, playerSerial]);
   const [isRewardClaimed, setIsRewardClaimed] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [showKeyDrop, setShowKeyDrop] = useState(false);
@@ -1518,7 +1542,7 @@ export default function App() {
         200
       );
 
-      return canvas.toDataURL('image/jpeg', 0.7);
+      return canvas.toDataURL('image/jpeg', 0.6);
     } catch (e) {
       console.error('Error creating cropped image:', e);
       return null;
@@ -1530,20 +1554,60 @@ export default function App() {
       const file = e.target.files[0];
       // Validate file type and size
       if (!file.type.startsWith('image/')) {
-        setError('يرجى اختيار ملف صورة صالح');
+        showAlert('يرجى اختيار ملف صورة صالح', 'خطأ');
         return;
       }
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setError('حجم الصورة كبير جداً (الحد الأقصى 5 ميجابايت)');
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        showAlert('حجم الصورة كبير جداً (الحد الأقصى 2 ميجابايت)', 'خطأ');
         return;
       }
 
-      const reader = new FileReader();
-      reader.addEventListener('load', () => {
-        setImageSrc(reader.result as string);
+      // Image compression system
+      const compressImage = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 800;
+              const MAX_HEIGHT = 800;
+              let width = img.width;
+              let height = img.height;
+
+              if (width > height) {
+                if (width > MAX_WIDTH) {
+                  height *= MAX_WIDTH / width;
+                  width = MAX_WIDTH;
+                }
+              } else {
+                if (height > MAX_HEIGHT) {
+                  width *= MAX_HEIGHT / height;
+                  height = MAX_HEIGHT;
+                }
+              }
+
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL('image/jpeg', 0.6));
+            };
+            img.onerror = (err) => reject(err);
+          };
+          reader.onerror = (err) => reject(err);
+        });
+      };
+
+      try {
+        const compressedDataUrl = await compressImage(file);
+        setImageSrc(compressedDataUrl);
         setShowCropper(true);
-      });
-      reader.readAsDataURL(file);
+      } catch (err) {
+        setError('حدث خطأ أثناء ضغط الصورة');
+      }
     }
   };
 
@@ -3239,6 +3303,7 @@ export default function App() {
   }, []);
 
   const [guess, setGuess] = useState('');
+  const [customChatInput, setCustomChatInput] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [isOpponentTyping, setIsOpponentTyping] = useState(false);
   const [showEmotes, setShowEmotes] = useState(false);
@@ -4139,15 +4204,15 @@ export default function App() {
         setWins(data.wins);
         localStorage.setItem('khamin_wins', data.wins.toString());
       }
-      if (data.tokens !== undefined) {
+      if (data.tokens != null) {
         setتخمينات(data.tokens);
         localStorage.setItem('khamin_tokens', data.tokens.toString());
       }
-      if (data.keys !== undefined) {
+      if (data.keys != null) {
         setKeys(data.keys);
         localStorage.setItem('khamin_keys', data.keys.toString());
       }
-      if (data.likes !== undefined) {
+      if (data.likes != null) {
         setLikes(data.likes);
         localStorage.setItem('khamin_likes', data.likes.toString());
       }
@@ -5767,6 +5832,23 @@ export default function App() {
     }
   };
 
+  const handleUnlockNameChange = () => {
+    if (!socket || !playerSerial) return;
+    socket.emit('unlock_name_change', { playerSerial }, (res: any) => {
+       if (res.success) {
+          showAlert('تم فتح إمكانية تغيير الاسم بنجاح!', 'نجاح');
+          setLastRenameAt(0);
+          localStorage.setItem('khamin_last_rename_at', '0');
+          if (res.keys !== undefined && res.keys !== null) {
+             setKeys(res.keys);
+             localStorage.setItem('khamin_keys', res.keys.toString());
+          }
+       } else {
+          showAlert(res.error || 'حدث خطأ غير متوقع.', 'خطأ');
+       }
+    });
+  };
+
   const handleProfileUpdate = () => {
     if (!socket) return;
 
@@ -5779,7 +5861,13 @@ export default function App() {
         avatar: avatar,
         gender: gender
       }, 
-      ({ topPlayers, name, lastRenameAt: updatedLastRenameAt }: { topPlayers: any[], name: string, lastRenameAt?: number }) => {
+      (response: any) => {
+        if (response.success === false) {
+           showAlert(response.error || 'حدث خطأ أثناء حفظ الملف الشخصي', 'خطأ');
+           return;
+        }
+        
+        const { topPlayers, name, lastRenameAt: updatedLastRenameAt } = response;
         // 2. In the callback, update with the authoritative list from the server
         if (topPlayers) {
           setTopPlayers(sortPlayers(topPlayers));
@@ -7093,7 +7181,8 @@ export default function App() {
               
               <h2 className="text-xl font-black text-white flex items-center justify-center gap-2">
                 {data.name}
-                {data.serial !== playerSerial && (
+                {!!data.isAdmin && <Shield className="w-5 h-5 text-purple-200 fill-purple-500" />}
+                {data.serial !== playerSerial && !data.isAdmin && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -7131,7 +7220,7 @@ export default function App() {
               </div>
               
                {/* Add Friend Button */}
-               {data.serial !== playerSerial && friendStatus !== 'friends' && (
+               {data.serial !== playerSerial && friendStatus !== 'friends' && !data.isAdmin && (
                   <button
                     disabled={friendStatus !== 'none'}
                     onClick={() => {
@@ -8415,11 +8504,28 @@ export default function App() {
                         </div>
                       )}
                     </div>
-                    <p className="text-[10px] text-red-500 mt-1 font-bold text-right">
-                      {lastRenameAt > 0 && (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) < 30 
-                        ? `متبقي ${Math.ceil(30 - (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24))} يوم لتتمكن من تغيير الاسم`
-                        : 'يتم تعديل الاسم كل 30 يوم'}
-                    </p>
+                    {isCheckingName ? (
+                      <p className="text-[10px] text-blue-500 mt-1 font-bold text-right">جاري التحقق من الاسم...</p>
+                    ) : isNameAvailable === false ? (
+                      <p className="text-[10px] text-red-500 mt-1 font-bold text-right">هذا الاسم مستخدم بالفعل❗</p>
+                    ) : isNameAvailable === true ? (
+                      <p className="text-[10px] text-green-500 mt-1 font-bold text-right">الاسم متاح ✅</p>
+                    ) : null}
+                    {lastRenameAt > 0 && (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) < 30 && (
+                      <div className="flex flex-col mt-2 items-end">
+                        <p className="text-[10px] text-red-500 font-bold text-right mb-1">
+                          {`متبقي ${Math.ceil(30 - (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24))} يوم لتتمكن من تغيير الاسم مرة أخرى`}
+                        </p>
+                        <button 
+                          onClick={handleUnlockNameChange}
+                          className="bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue font-bold rounded overflow-hidden text-xs px-2 py-1 flex items-center gap-1 transition-all"
+                        >
+                          فتح مرة أخرى 
+                          <span className="flex items-center gap-0.5"><Key className="w-3 h-3 text-yellow-500" /> 25</span>
+                        </button>
+                        <p className="text-[8px] text-gray-500 mt-0.5">يمكن استخدام هذه الميزة مرة واحدة شهرياً.</p>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-black text-brown-muted mb-1 text-right">العمر</label>
@@ -9021,7 +9127,15 @@ export default function App() {
                             className="input-game"
                             maxLength={15}
                           />
-                          <p className="text-[10px] text-red-500 mt-1 font-bold text-right">تنبيه: لن يتم تعديل الاسم مره آخري الا بعد 30 يوم</p>
+                          {isCheckingName ? (
+                            <p className="text-[10px] text-blue-500 mt-1 font-bold text-right">جاري التحقق من الاسم...</p>
+                          ) : isNameAvailable === false ? (
+                            <p className="text-[10px] text-red-500 mt-1 font-bold text-right">هذا الاسم مستخدم بالفعل❗</p>
+                          ) : isNameAvailable === true ? (
+                            <p className="text-[10px] text-green-500 mt-1 font-bold text-right">الاسم متاح ✅</p>
+                          ) : (
+                            <p className="text-[10px] text-red-500 mt-1 font-bold text-right">تنبيه: لن يتم تعديل الاسم مره آخري الا بعد 30 يوم</p>
+                          )}
                         </div>
 
                         {/* Player Age */}
@@ -11410,7 +11524,7 @@ export default function App() {
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
                                         <h4 className="font-black text-brown-dark">{p.name}</h4>
-                                        {p.isAdmin && <Shield className="w-3 h-3 text-purple-500" />}
+                                        {!!p.isAdmin && <Shield className="w-3 h-3 text-purple-500" />}
                                       </div>
                                       <div className="text-[10px] font-bold text-brown-light">ID: {p.serial}</div>
                                     </div>
@@ -14922,7 +15036,7 @@ export default function App() {
                       )}
                       {isOpponentTyping && (
                         <div className="flex justify-end">
-                          <TypingIndicator gender={opponent?.gender} />
+                          <TypingIndicator gender={opponent?.gender} type="typing" />
                         </div>
                       )}
                       <div ref={chatEndRef} />
@@ -15234,54 +15348,96 @@ export default function App() {
                       )}
                       {isOpponentTyping && (
                         <div className="flex justify-end">
-                          <TypingIndicator gender={opponent?.gender} />
+                          <TypingIndicator gender={opponent?.gender} type={room?.matchType === 'private' ? 'typing' : 'changing_questions'} />
                         </div>
                       )}
                       <div ref={chatEndRef} />
                     </div>
-                    <form onSubmit={(e) => e.preventDefault()} className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative items-center">
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      if (room?.matchType === 'private' && customChatInput.trim()) {
+                        playSound('clickOpen');
+                        socket?.emit('send_chat', { roomId: room!.id, text: customChatInput });
+                        setCustomChatInput('');
+                        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                        socket?.emit('stop_typing', { roomId: room!.id });
+                        typingTimeoutRef.current = null;
+                      }
+                    }} className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative items-center">
                       <div className="flex-1 flex gap-2 py-1">
-                        <button
-                          disabled={isMutedByOpponent || isQuickResponseDisabled || clickedResponses.includes('آه') || room?.waitingForAnswerFrom !== socket?.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isQuickResponseDisabled || clickedResponses.includes('آه') || room?.waitingForAnswerFrom !== socket?.id) return;
-                            playSound('clickOpen');
-                            socket?.emit('send_chat', { roomId: room!.id, text: 'آه', passTurn: currentQuickChatNodes.length === 0 });
-                            setClickedResponses(prev => [...prev, 'آه']);
-                            
-                            if (!quickResponseTimeoutRef.current) {
-                              quickResponseTimeoutRef.current = setTimeout(() => {
-                                setIsQuickResponseDisabled(true);
-                                quickResponseTimeoutRef.current = null;
-                              }, 3000);
-                            }
-                          }}
-                          className={`flex-1 py-1 md:py-1.5 px-4 rounded-xl font-black text-[13px] md:text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes('آه') ? 'bg-green-500 text-white border-green-600 scale-105' : 'bg-white text-green-600 border-green-500 hover:bg-green-50'}`}
-                        >
-                          آه
-                        </button>
+                        {room?.matchType === 'private' ? (
+                          <div className="flex-1 flex items-center gap-2">
+                            <button
+                              type="submit"
+                              disabled={!customChatInput.trim()}
+                              className="bg-purple-500 flex items-center justify-center w-10 h-10 text-white rounded-full border border-purple-600 shadow-sm active:scale-95 transition-transform disabled:opacity-50"
+                            >
+                              <Send className="w-5 h-5 ltr:-scale-x-100 -mt-0.5" />
+                            </button>
+                            <input
+                              type="text"
+                              value={customChatInput}
+                              onChange={(e) => {
+                                setCustomChatInput(e.target.value);
+                                if (!typingTimeoutRef.current) {
+                                  socket?.emit('typing', { roomId: room!.id });
+                                } else {
+                                  clearTimeout(typingTimeoutRef.current);
+                                }
+                                typingTimeoutRef.current = setTimeout(() => {
+                                  socket?.emit('stop_typing', { roomId: room!.id });
+                                  typingTimeoutRef.current = null;
+                                }, 1500);
+                              }}
+                              placeholder="اكتب هنا..."
+                              className="w-full bg-white border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-purple-400"
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              disabled={isMutedByOpponent || isQuickResponseDisabled || clickedResponses.includes('آه') || room?.waitingForAnswerFrom !== socket?.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isQuickResponseDisabled || clickedResponses.includes('آه') || room?.waitingForAnswerFrom !== socket?.id) return;
+                                playSound('clickOpen');
+                                socket?.emit('send_chat', { roomId: room!.id, text: 'آه', passTurn: currentQuickChatNodes.length === 0 });
+                                setClickedResponses(prev => [...prev, 'آه']);
+                                
+                                if (!quickResponseTimeoutRef.current) {
+                                  quickResponseTimeoutRef.current = setTimeout(() => {
+                                    setIsQuickResponseDisabled(true);
+                                    quickResponseTimeoutRef.current = null;
+                                  }, 3000);
+                                }
+                              }}
+                              className={`flex-1 py-1 md:py-1.5 px-4 rounded-xl font-black text-[13px] md:text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes('آه') ? 'bg-green-500 text-white border-green-600 scale-105' : 'bg-white text-green-600 border-green-500 hover:bg-green-50'}`}
+                            >
+                              آه
+                            </button>
 
-                        <button
-                          disabled={isMutedByOpponent || isQuickResponseDisabled || clickedResponses.includes('لأ') || room?.waitingForAnswerFrom !== socket?.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isQuickResponseDisabled || clickedResponses.includes('لأ') || room?.waitingForAnswerFrom !== socket?.id) return;
-                            playSound('clickOpen');
-                            socket?.emit('send_chat', { roomId: room!.id, text: 'لأ', passTurn: currentQuickChatNodes.length === 0 });
-                            setClickedResponses(prev => [...prev, 'لأ']);
-                            
-                            if (!quickResponseTimeoutRef.current) {
-                              quickResponseTimeoutRef.current = setTimeout(() => {
-                                setIsQuickResponseDisabled(true);
-                                quickResponseTimeoutRef.current = null;
-                              }, 3000);
-                            }
-                          }}
-                          className={`flex-1 py-1 md:py-1.5 px-4 rounded-xl font-black text-[13px] md:text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes('لأ') ? 'bg-red-500 text-white border-red-600 scale-105' : 'bg-white text-red-600 border-red-500 hover:bg-red-50'}`}
-                        >
-                          لأ
-                        </button>
+                            <button
+                              disabled={isMutedByOpponent || isQuickResponseDisabled || clickedResponses.includes('لأ') || room?.waitingForAnswerFrom !== socket?.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isQuickResponseDisabled || clickedResponses.includes('لأ') || room?.waitingForAnswerFrom !== socket?.id) return;
+                                playSound('clickOpen');
+                                socket?.emit('send_chat', { roomId: room!.id, text: 'لأ', passTurn: currentQuickChatNodes.length === 0 });
+                                setClickedResponses(prev => [...prev, 'لأ']);
+                                
+                                if (!quickResponseTimeoutRef.current) {
+                                  quickResponseTimeoutRef.current = setTimeout(() => {
+                                    setIsQuickResponseDisabled(true);
+                                    quickResponseTimeoutRef.current = null;
+                                  }, 3000);
+                                }
+                              }}
+                              className={`flex-1 py-1 md:py-1.5 px-4 rounded-xl font-black text-[13px] md:text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes('لأ') ? 'bg-red-500 text-white border-red-600 scale-105' : 'bg-white text-red-600 border-red-500 hover:bg-red-50'}`}
+                            >
+                              لأ
+                            </button>
+                          </>
+                        )}
                       </div>
                       <button 
                         type="button" 
@@ -15315,7 +15471,7 @@ export default function App() {
                   </div>
 
                   {/* Quick Chat Reels */}
-                  {room.gameState === 'discussion' && (
+                  {room.gameState === 'discussion' && room.matchType !== 'private' && (
                     <div className="w-[75%] md:w-full mt-2 flex flex-col gap-2 z-20">
                       {currentQuickChatNodes.length > 4 && (
                         <button
@@ -15680,7 +15836,7 @@ export default function App() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className={`fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-[55%] flex items-center justify-center p-6 px-6 py-3 rounded-full font-black shadow-[0_8px_0_rgba(0,0,0,0.2)] z-[500] flex items-center gap-4 border-4 ${error.includes('انضم') ? 'bg-green-500 border-green-400 text-white' : 'bg-red-500 border-red-400 text-white'}`}
+            className={`fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-[55%] flex items-center justify-center p-6 px-6 py-3 rounded-full font-black shadow-[0_8px_0_rgba(0,0,0,0.2)] z-[999999] flex items-center gap-4 border-4 ${error.includes('انضم') ? 'bg-green-500 border-green-400 text-white' : 'bg-red-500 border-red-400 text-white'}`}
           >
             {error}
             <button onClick={() => setError('')} className="bg-white/20 hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center text-sm transition-colors">X</button>
