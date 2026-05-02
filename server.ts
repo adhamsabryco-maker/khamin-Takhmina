@@ -2125,14 +2125,19 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       cachedTopPlayers = Array.from(allPlayers.values())
         .filter(p => !p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= now)) // Exclude admins and banned players from leaderboard
         .sort((a, b) => {
+          const aXp = a.randomXp !== undefined ? a.randomXp : (a.xp || 0);
+          const bXp = b.randomXp !== undefined ? b.randomXp : (b.xp || 0);
+          if (bXp !== aXp) return bXp - aXp;
+          
+          const winsA = a.wins || 0;
+          const winsB = b.wins || 0;
+          if (winsB !== winsA) return winsB - winsA;
+
           const bStreak = b.streak || 0;
           const aStreak = a.streak || 0;
           if (bStreak !== aStreak) return bStreak - aStreak;
           
-          const aXp = a.randomXp !== undefined ? a.randomXp : (a.xp || 0);
-          const bXp = b.randomXp !== undefined ? b.randomXp : (b.xp || 0);
-          if (bXp !== aXp) return bXp - aXp;
-          return (b.wins || 0) - (a.wins || 0);
+          return (a.serial || '').localeCompare(b.serial || '');
         })
         .slice(0, 100)
         .map((p, i) => ({ 
@@ -4181,12 +4186,12 @@ io.on("connection", (socket) => {
         return;
       }
 
-      if ((player.keys || 0) < 3) {
+      if ((player.keys || 0) < 5) {
         if (callback) callback({ success: false, error: 'لا تملك مفاتيح كافية!' });
         return;
       }
 
-      player.keys -= 3;
+      player.keys -= 5;
       savePlayerData(serial);
       
       socket.emit("player_data_update", { 
