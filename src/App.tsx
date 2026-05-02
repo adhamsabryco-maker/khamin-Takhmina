@@ -767,8 +767,10 @@ export default function App() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('khamin_player_name') || '');
   const [isHighestLikes, setIsHighestLikes] = useState(false);
-  const [highestLikesSerial, setHighestLikesSerial] = useState<string>('');
-  const [highestStreakSerial, setHighestStreakSerial] = useState<string>('');
+  const [highestLikesSerials, setHighestLikesSerials] = useState<string[]>([]);
+  const [highestStreakSerials, setHighestStreakSerials] = useState<string[]>([]);
+  const [highestLikesValue, setHighestLikesValue] = useState<number>(0);
+  const [highestStreakValue, setHighestStreakValue] = useState<number>(0);
   const [lastRenameAt, setLastRenameAt] = useState(() => parseInt(localStorage.getItem('khamin_last_rename_at') || '0'));
   const playerNameRef = useRef(playerName);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
@@ -1651,8 +1653,8 @@ export default function App() {
   };
 
   const renderAvatarContent = (avatarStr: string, level: number = 1, hideExtras: boolean = false, isOnline: boolean = false, frame?: string, serial?: string) => {
-    const isHighest = serial ? serial === highestLikesSerial : false;
-    const isHighestStreak = serial ? serial === highestStreakSerial : false;
+    const isHighest = serial ? highestLikesSerials.includes(serial) : false;
+    const isHighestStreak = serial ? highestStreakSerials.includes(serial) : false;
     const inRandomMatch = room?.category === 'random' || !!joined; // Broad check, joined usually means in a room
     
     return <AvatarDisplay 
@@ -1695,9 +1697,9 @@ export default function App() {
 
   const sortPlayers = (players: any[]) => {
     return [...players].sort((a, b) => {
-      const levelA = a.level || getLevel(a.xp || 0);
-      const levelB = b.level || getLevel(b.xp || 0);
-      if (levelB !== levelA) return levelB - levelA;
+      const bStreak = b.streak || 0;
+      const aStreak = a.streak || 0;
+      if (bStreak !== aStreak) return bStreak - aStreak;
       
       const xpA = a.xp || 0;
       const xpB = b.xp || 0;
@@ -1707,9 +1709,7 @@ export default function App() {
       const winsB = b.wins || 0;
       if (winsB !== winsA) return winsB - winsA;
       
-      const streakA = a.streak || 0;
-      const streakB = b.streak || 0;
-      return streakB - streakA;
+      return (a.serial || '').localeCompare(b.serial || '');
     });
   };
   const getXpProgress = (xp: number) => {
@@ -4036,20 +4036,32 @@ export default function App() {
         localStorage.setItem('khamin_top_players', JSON.stringify(players));
       });
 
-      newSocket.emit('get_highest_likes_serial', (serialStr: string) => {
-        if (serialStr) setHighestLikesSerial(serialStr);
+      newSocket.emit('get_highest_likes_serial', (data: any) => {
+        if (data && typeof data === 'object') {
+          if (data.serials) setHighestLikesSerials(data.serials);
+          if (data.value !== undefined) setHighestLikesValue(data.value);
+        }
       });
 
-      newSocket.emit('get_highest_streak_serial', (serialStr: string) => {
-        if (serialStr) setHighestStreakSerial(serialStr);
+      newSocket.emit('get_highest_streak_serial', (data: any) => {
+        if (data && typeof data === 'object') {
+          if (data.serials) setHighestStreakSerials(data.serials);
+          if (data.value !== undefined) setHighestStreakValue(data.value);
+        }
       });
 
-      newSocket.on('highest_likes_update', (serialStr: string) => {
-        if (serialStr) setHighestLikesSerial(serialStr);
+      newSocket.on('highest_likes_update', (data: any) => {
+        if (data && typeof data === 'object') {
+          if (data.serials) setHighestLikesSerials(data.serials);
+          if (data.value !== undefined) setHighestLikesValue(data.value);
+        }
       });
 
-      newSocket.on('highest_streak_update', (serialStr: string) => {
-        if (serialStr) setHighestStreakSerial(serialStr);
+      newSocket.on('highest_streak_update', (data: any) => {
+        if (data && typeof data === 'object') {
+          if (data.serials) setHighestStreakSerials(data.serials);
+          if (data.value !== undefined) setHighestStreakValue(data.value);
+        }
       });
 
       if (serial) {
@@ -7264,7 +7276,7 @@ export default function App() {
             level={showLevelUp} 
             avatar={avatar} 
             customConfig={customConfig} 
-            isHighestLikes={isHighestLikes || (playerSerial && playerSerial === highestLikesSerial) || false}
+            isHighestLikes={isHighestLikes || (playerSerial ? highestLikesSerials.includes(playerSerial) : false)}
             selectedFrame={selectedFrame}
             onClose={() => {
               setShowLevelUp(null);
@@ -12234,7 +12246,7 @@ export default function App() {
                         level={getLevel(xp)}
                         avatar={avatar}
                         selectedFrame={selectedFrame}
-                        isHighestLikes={(playerSerial && playerSerial === highestLikesSerial) || false}
+                        isHighestLikes={(playerSerial ? highestLikesSerials.includes(playerSerial) : false)}
                         reward={stage.reward}
                         categoryName={category.name}
                         isClaimed={isClaimed}
@@ -16003,8 +16015,8 @@ export default function App() {
       <AnimatePresence>
         {showMatchIntro && room && room.players.length >= 2 && (
           <MatchIntro 
-            player1={{ id: room.players[0].id, name: room.players[0].name, level: room.players[0].level, avatar: room.players[0].avatar, selectedFrame: room.players[0].selectedFrame, isHighestLikes: room.players[0].serial === highestLikesSerial, isHighestStreak: room.players[0].serial === highestStreakSerial }}
-            player2={{ id: room.players[1].id, name: room.players[1].name, level: room.players[1].level, avatar: room.players[1].avatar, selectedFrame: room.players[1].selectedFrame, isHighestLikes: room.players[1].serial === highestLikesSerial, isHighestStreak: room.players[1].serial === highestStreakSerial }}
+            player1={{ id: room.players[0].id, name: room.players[0].name, level: room.players[0].level, avatar: room.players[0].avatar, selectedFrame: room.players[0].selectedFrame, isHighestLikes: highestLikesSerials.includes(room.players[0].serial), isHighestStreak: highestStreakSerials.includes(room.players[0].serial) }}
+            player2={{ id: room.players[1].id, name: room.players[1].name, level: room.players[1].level, avatar: room.players[1].avatar, selectedFrame: room.players[1].selectedFrame, isHighestLikes: highestLikesSerials.includes(room.players[1].serial), isHighestStreak: highestStreakSerials.includes(room.players[1].serial) }}
             customConfig={customConfig}
             onStartGame={handleMatchIntroStart}
             onComplete={handleMatchIntroComplete}
