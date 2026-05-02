@@ -1047,6 +1047,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     unlockedHelpersExpiry?: number,
     claimedRewards?: string[],
     lastRenameAt?: number,
+    lastRenameUnlockMonth?: string | null,
     pendingAvatar?: string,
     avatarStatus?: 'approved' | 'pending' | 'rejected',
     lastComplaintAt?: number,
@@ -1257,6 +1258,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   try { db.exec(`ALTER TABLE players ADD COLUMN citySearchRewards TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN keys INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN likes INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastRenameUnlockMonth TEXT DEFAULT NULL`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS player_likes_log (
@@ -1541,8 +1543,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   }
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -1732,6 +1734,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         unlockedHelpersExpiry: player.unlockedHelpersExpiry || 0,
         claimedRewards: JSON.stringify(player.claimedRewards || []),
         lastRenameAt: player.lastRenameAt || 0,
+        lastRenameUnlockMonth: player.lastRenameUnlockMonth || null,
         pendingAvatar: player.pendingAvatar || null,
         avatarStatus: player.avatarStatus || 'approved',
         lastComplaintAt: player.lastComplaintAt || 0,
@@ -1786,6 +1789,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         unlockedHelpersExpiry: player.unlockedHelpersExpiry || 0,
         claimedRewards: JSON.stringify(player.claimedRewards || []),
         lastRenameAt: player.lastRenameAt || 0,
+        lastRenameUnlockMonth: player.lastRenameUnlockMonth || null,
         pendingAvatar: player.pendingAvatar || null,
         avatarStatus: player.avatarStatus || 'approved',
         lastComplaintAt: player.lastComplaintAt || 0,
@@ -1865,6 +1869,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           unlockedHelpersExpiry: row.unlockedHelpersExpiry || 0,
           claimedRewards: JSON.parse(row.claimedRewards || '[]'),
           lastRenameAt: row.lastRenameAt || 0,
+          lastRenameUnlockMonth: row.lastRenameUnlockMonth || null,
           pendingAvatar: row.pendingAvatar,
           avatarStatus: row.avatarStatus || 'approved',
           blockedSerials: JSON.parse(row.blockedSerials || '[]'),
@@ -3823,6 +3828,14 @@ io.on("connection", (socket) => {
       if (filteredName.length > 15) {
         filteredName = filteredName.substring(0, 15);
       }
+
+      // Check for name uniqueness
+      for (const p of allPlayers.values()) {
+        if (p.name.toLowerCase() === filteredName.toLowerCase()) {
+          callback({ error: 'هذا الاسم مستخدم بالفعل، يرجى اختيار اسم آخر.' });
+          return;
+        }
+      }
       
       allPlayers.set(serial, { 
         name: filteredName, 
@@ -4444,6 +4457,13 @@ io.on("connection", (socket) => {
         
         // Check if name is changing
         if (player.name !== filteredName) {
+          // Check for name uniqueness
+          for (const [s, p] of allPlayers.entries()) {
+            if (s !== playerSerial && p.name.toLowerCase() === filteredName.toLowerCase()) {
+              if (callback) callback({ success: false, error: 'هذا الاسم مستخدم بالفعل، يرجى اختيار اسم آخر.' });
+              return;
+            }
+          }
           player.name = filteredName;
           player.lastRenameAt = Date.now();
         }
@@ -4480,6 +4500,47 @@ io.on("connection", (socket) => {
         savePlayerData(playerSerial);
         if (callback) callback({ topPlayers: getTopPlayers(), name: player.name, lastRenameAt: player.lastRenameAt });
       }
+    });
+
+    socket.on("check_name_availability", ({ name, playerSerial }, callback) => {
+      let filteredName = filterProfanity(name);
+      if (filteredName.length > 15) {
+        filteredName = filteredName.substring(0, 15);
+      }
+      for (const [s, p] of allPlayers.entries()) {
+        if (s !== playerSerial && p.name.toLowerCase() === filteredName.toLowerCase()) {
+          callback({ available: false });
+          return;
+        }
+      }
+      callback({ available: true });
+    });
+
+    socket.on("unlock_name_change", ({ playerSerial }, callback) => {
+      const player = allPlayers.get(playerSerial);
+      if (!player) {
+         if (callback) callback({ success: false, error: "اللاعب غير موجود" });
+         return;
+      }
+      const currentMonth = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit' }).format(new Date());
+      if (player.lastRenameUnlockMonth === currentMonth) {
+         if (callback) callback({ success: false, error: "لقد استخدمت فرصة تغيير الاسم لهذا الشهر." });
+         return;
+      }
+      if ((player.keys || 0) < 25) {
+         if (callback) callback({ success: false, error: "لا تملك مفاتيح كافية (25 مفتاح مطلوب)." });
+         return;
+      }
+      
+      player.keys = (player.keys || 0) - 25;
+      player.lastRenameAt = 0; // Reset timer
+      player.lastRenameUnlockMonth = currentMonth;
+      savePlayerData(playerSerial);
+      socket.emit("player_data_update", {
+        keys: player.keys,
+        lastRenameAt: player.lastRenameAt
+      });
+      if (callback) callback({ success: true, keys: player.keys });
     });
 
     socket.on("update_selected_frame", ({ playerSerial, frame }, callback) => {
@@ -6841,6 +6902,7 @@ io.on("connection", (socket) => {
             tokens: targetPlayer.tokens,
             keys: targetPlayer.keys,
             likes: targetPlayer.likes || 0,
+            isAdmin: targetPlayer.isAdmin || 0,
             hasLikedToday: !!hasLikedToday,
             ownedHelpers: targetPlayer.ownedHelpers || {},
             proPackageExpiry: targetPlayer.proPackageExpiry || 0,
