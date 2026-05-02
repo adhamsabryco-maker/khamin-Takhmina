@@ -6816,12 +6816,15 @@ io.on("connection", (socket) => {
           expiresAt: targetPlayer.proPackageExpiry
         } : null;
 
-        // Check if the requester has given a like today
+        // Check if the requester has given a like today (Cairo calendar day)
         let hasLikedToday = false;
         if (requesterSerial) {
-          const yesterday = Date.now() - 24 * 60 * 60 * 1000;
-          const likeRecord = db.prepare('SELECT 1 FROM player_likes_log WHERE giver_serial = ? AND receiver_serial = ? AND timestamp > ?').get(requesterSerial, targetSerial, yesterday);
-          hasLikedToday = !!likeRecord;
+          const lastLike = db.prepare('SELECT timestamp FROM player_likes_log WHERE giver_serial = ? AND receiver_serial = ? ORDER BY timestamp DESC LIMIT 1').get(requesterSerial, targetSerial) as { timestamp: number } | undefined;
+          if (lastLike) {
+            const lastDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo' }).format(new Date(lastLike.timestamp));
+            const todayDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo' }).format(new Date());
+            hasLikedToday = (lastDate === todayDate);
+          }
         }
 
         callback({
@@ -6863,11 +6866,15 @@ io.on("connection", (socket) => {
 
         if (!targetPlayer || !giverPlayer) return callback({ error: 'اللاعب غير موجود' });
 
-        const yesterday = Date.now() - 24 * 60 * 60 * 1000;
-        const alreadyLiked = db.prepare('SELECT 1 FROM player_likes_log WHERE giver_serial = ? AND receiver_serial = ? AND timestamp > ?').get(giverSerial, targetSerial, yesterday);
-
-        if (alreadyLiked) {
-          return callback({ error: 'لقد قمت بإرسال إعجاب لهذا اللاعب اليوم بالفعل. حاول غداً!' });
+        // Check if already liked today (Cairo calendar day)
+        const lastLike = db.prepare('SELECT timestamp FROM player_likes_log WHERE giver_serial = ? AND receiver_serial = ? ORDER BY timestamp DESC LIMIT 1').get(giverSerial, targetSerial) as { timestamp: number } | undefined;
+        
+        if (lastLike) {
+          const lastDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo' }).format(new Date(lastLike.timestamp));
+          const todayDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo' }).format(new Date());
+          if (lastDate === todayDate) {
+            return callback({ error: 'لقد قمت بإرسال إعجاب لهذا اللاعب اليوم بالفعل. حاول غداً!' });
+          }
         }
 
         const logId = Math.random().toString(36).substr(2, 9);
