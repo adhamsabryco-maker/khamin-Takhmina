@@ -1697,10 +1697,6 @@ export default function App() {
 
   const sortPlayers = (players: any[]) => {
     return [...players].sort((a, b) => {
-      const bStreak = b.streak || 0;
-      const aStreak = a.streak || 0;
-      if (bStreak !== aStreak) return bStreak - aStreak;
-      
       const xpA = a.xp || 0;
       const xpB = b.xp || 0;
       if (xpB !== xpA) return xpB - xpA;
@@ -1708,6 +1704,10 @@ export default function App() {
       const winsA = a.wins || 0;
       const winsB = b.wins || 0;
       if (winsB !== winsA) return winsB - winsA;
+
+      const bStreak = b.streak || 0;
+      const aStreak = a.streak || 0;
+      if (bStreak !== aStreak) return bStreak - aStreak;
       
       return (a.serial || '').localeCompare(b.serial || '');
     });
