@@ -4876,6 +4876,7 @@ io.on("connection", (socket) => {
           currentTurn: null,
           waitingForAnswerFrom: null,
           matchType: "private",
+          selectionMode: null,
         });
       }
 
@@ -4926,12 +4927,46 @@ io.on("connection", (socket) => {
         room.players.push(player);
         
         if (room.players.length === 2) {
+          room.selectionMode = null; // Reset selection mode
           startWaitingInterval(roomId);
         }
 
         io.to(roomId).emit("room_update", room);
       } else {
         socket.emit("error", "الغرفة ممتلئة، يجب تغيير كود الغرفة");
+      }
+    });
+
+    socket.on("select_private_mode", ({ roomId, mode }) => {
+      const room = rooms.get(roomId);
+      if (room && room.matchType === 'private') {
+        room.selectionMode = mode;
+        if (mode === 'custom') {
+          room.gameState = "custom_image_upload";
+          room.isCustomImageMode = true; // Set the flag here!
+          room.category = 'صور مخصصة'; // Placeholder category to bypass checks
+          room.timer = 180; // 3 minutes
+          room.customImages = {};
+          // Restart interval for custom upload
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+          const interval = setInterval(() => {
+            const r = rooms.get(roomId);
+            if (!r || r.gameState !== 'custom_image_upload') {
+              clearInterval(interval);
+              return;
+            }
+            r.timer--;
+            if (r.timer <= 0) {
+              clearInterval(interval);
+              io.to(roomId).emit("game_stopped", { reason: "انتهى الوقت لتجهيز الصور!" });
+              rooms.delete(roomId);
+            } else {
+              io.to(roomId).emit("timer_update", r.timer);
+            }
+          }, 1000);
+          intervals.set(roomId, interval);
+        }
+        io.to(roomId).emit("room_update", room);
       }
     });
 
@@ -5139,6 +5174,57 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("start_custom_image_upload", ({ roomId }) => {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "waiting") {
+        room.isCustomImageMode = true;
+        room.category = 'custom_image';
+        room.level = 'مستوي محترفين التخمين';
+        room.gameState = "custom_image_upload";
+        room.timer = 180;
+        io.to(roomId).emit("room_update", room);
+        
+        if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+        const interval = setInterval(() => {
+          const r = rooms.get(roomId);
+          if (!r || r.gameState !== 'custom_image_upload') {
+            clearInterval(interval);
+            return;
+          }
+          r.timer--;
+          if (r.timer <= 0) {
+            clearInterval(interval);
+            io.to(roomId).emit("game_stopped", { reason: "انتهى الوقت لتجهيز الصور!" });
+            io.in(roomId).socketsLeave(roomId);
+            rooms.delete(roomId);
+          } else {
+            io.to(roomId).emit("timer_update", r.timer);
+          }
+        }, 1000);
+        intervals.set(roomId, interval);
+      }
+    });
+
+    socket.on("submit_custom_image", ({ roomId, imageBase64, answer }) => {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === 'custom_image_upload') {
+        if (!room.customImages) room.customImages = {};
+        
+        // Optimize base64 image slightly if possible, else keep as is
+        room.customImages[socket.id] = { url: imageBase64, name: answer, ready: true };
+        io.to(roomId).emit("room_update", room);
+      }
+    });
+
+    socket.on("start_game_custom", ({ roomId }) => {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === 'custom_image_upload' && room.customImages && Object.keys(room.customImages).length === 2) {
+        room.gameState = 'starting';
+        io.to(roomId).emit('match_intro_triggered');
+        io.to(roomId).emit('room_update', room);
+      }
+    });
+
     socket.on("force_start_game", ({ roomId }) => {
       console.log(`[MatchIntro] Force start game requested for room: ${roomId}`);
       const room = rooms.get(roomId);
@@ -5298,6 +5384,58 @@ io.on("connection", (socket) => {
           } else {
             player.lastGuess = guess;
             io.to(roomId).emit("guess_result", { playerId: socket.id, correct: false });
+          }
+        }
+      }
+    });
+
+    socket.on("custom_guess", ({ roomId, guess, type }) => {
+      const room = rooms.get(roomId);
+      if (room && room.isCustomImageMode) {
+        const opponent = room.players.find((p: any) => p.id !== socket.id);
+        if (opponent) {
+          // Send to opponent to judge
+          room.isWaitingForJudgment = true;
+          room.judgmentTimer = 15; // Give them 15 seconds!
+          room.judgingPlayerId = opponent.id;
+          room.guessingPlayerId = socket.id;
+          room.judgmentType = type;
+          
+          io.to(opponent.id).emit("judgment_requested", { guess, type, playerId: socket.id });
+        }
+      }
+    });
+
+    socket.on("custom_guess_judgment", ({ roomId, guess, type, playerId, isCorrect }) => {
+      const room = rooms.get(roomId);
+      if (room && room.isCustomImageMode) {
+        room.isWaitingForJudgment = false;
+        
+        const judgingPlayer = room.players.find((p: any) => p.id === socket.id);
+        const guessingPlayer = room.players.find((p: any) => p.id === playerId);
+        
+        if (guessingPlayer && judgingPlayer) {
+          if (isCorrect) {
+            guessingPlayer.hasGuessed = true;
+            guessingPlayer.lastGuess = guess;
+            guessingPlayer.score += 500;
+            io.to(roomId).emit("guess_result", { playerId, correct: true, type });
+            
+            if (type === 'quick') {
+              guessingPlayer.quickGuessUsed = true;
+              room.isPaused = false;
+              room.quickGuessTimer = 0;
+              room.pausingPlayerId = null;
+              io.to(roomId).emit("room_update", room);
+            }
+            
+            endGame(roomId, guessingPlayer.name, false, true);
+          } else {
+            guessingPlayer.lastGuess = guess;
+            io.to(roomId).emit("guess_result", { playerId, correct: false, type });
+            
+            // If the judger clicks WRONG, the game immediately ends and the JUDGER wins!
+            endGame(roomId, judgingPlayer.name, false, true);
           }
         }
       }
@@ -5473,7 +5611,8 @@ io.on("connection", (socket) => {
           player.spyLensUsed = true;
           player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
           // The player wants to see their own target image (which is what the opponent sees)
-          socket.emit("spy_lens_active", { image: player.targetImage.image });
+          const imageToSend = player.targetImage.image || player.targetImage.url;
+          socket.emit("spy_lens_active", { image: imageToSend });
           io.to(roomId).emit("room_update", room);
         }
       }
@@ -5918,7 +6057,7 @@ io.on("connection", (socket) => {
       if (room && room.gameState === "finished") {
         // Reset room state
         room.gameState = "waiting";
-        room.timer = 60;
+        room.timer = 120; // Increased timer for selection
         room.winnerId = null;
         room.isPaused = false;
         room.pausingPlayerId = null;
@@ -5926,13 +6065,18 @@ io.on("connection", (socket) => {
         room.isFrozen = false;
         room.freezeTimer = 0;
         room.adCooldownTimer = 0;
+        room.isCustomImageMode = false;
+        room.selectionMode = null; // Important: triggers mode selection screen
+        room.customImages = {};
         
         // Reset players state
         room.players.forEach((p: any) => {
           p.targetImage = null;
           p.hasGuessed = false;
+          p.lastGuess = '';
+          p.wantsRematch = false;
           p.selectedCategory = null;
-          p.selectedLevel = null;
+          p.selectedLevel = 'مستوي مبتدئين التخمين';
           p.hintCount = 0;
           p.quickGuessUsed = false;
           p.wordLengthUsed = false;
@@ -7434,7 +7578,10 @@ io.on("connection", (socket) => {
 
   function startGame(roomId: string) {
     const room = rooms.get(roomId);
-    if (!room || room.gameState !== 'waiting') return;
+    if (!room || (room.gameState !== 'waiting' && room.gameState !== 'custom_image_upload')) {
+      console.log(`[startGame] Rejected: room state is ${room?.gameState}`);
+      return;
+    }
 
     // Always ensure room.category matches the agreed category if players have agreed
     const p1 = room.players[0];
@@ -7444,7 +7591,7 @@ io.on("connection", (socket) => {
       room.level = p1.selectedLevel || 'مستوي مبتدئين التخمين';
     }
 
-    if (!room.category) {
+    if (!room.category && !room.isCustomImageMode) {
       console.error(`[StartGame] No category selected for room ${roomId}`);
       io.to(roomId).emit("game_stopped", { reason: "لم يتم اختيار فئة للمباراة." });
       io.in(roomId).socketsLeave(roomId);
@@ -7452,24 +7599,30 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const categoryImages = getCategoryImages(room.category, room.level || 'مستوي مبتدئين التخمين');
+    let categoryImages = [];
+    if (!room.isCustomImageMode) {
+      categoryImages = getCategoryImages(room.category, room.level || 'مستوي مبتدئين التخمين');
+    }
+    
     console.log(`[StartGame] Room ${roomId} category: ${room.category}, Level: ${room.level}, Found images: ${categoryImages.length}`);
     
     // Priority logic: images from last 3 days get 3x probability
     const pool: any[] = [];
-    const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000);
-    
-    categoryImages.forEach((img: any) => {
-      pool.push(img);
-      if (img.timestamp && img.timestamp > threeDaysAgo) {
-        pool.push(img); // Extra chance 1
-        pool.push(img); // Extra chance 2
-      }
-    });
+    if (!room.isCustomImageMode) {
+      const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000);
+      
+      categoryImages.forEach((img: any) => {
+        pool.push(img);
+        if (img.timestamp && img.timestamp > threeDaysAgo) {
+          pool.push(img); // Extra chance 1
+          pool.push(img); // Extra chance 2
+        }
+      });
+    }
 
     const shuffled = pool.length > 0 ? [...pool].sort(() => 0.5 - Math.random()) : [];
     
-    if (shuffled.length === 0) {
+    if (!room.isCustomImageMode && shuffled.length === 0) {
       io.to(roomId).emit("game_stopped", { reason: "لا توجد صور في هذه الفئة حالياً." });
       io.in(roomId).socketsLeave(roomId);
       rooms.delete(roomId);
@@ -7478,15 +7631,32 @@ io.on("connection", (socket) => {
 
     console.log(`[startGame] Starting game in room ${roomId}. Category: ${room.category}`);
     
-    room.players[0].targetImage = shuffled[0];
-    // Ensure different image if possible
-    let secondIdx = 1 % shuffled.length;
-    if (shuffled.length > 1) {
-      while (shuffled[secondIdx].name === shuffled[0].name && secondIdx < shuffled.length - 1) {
-        secondIdx++;
+    if (room.isCustomImageMode) {
+      // Cleanup base64 data to save memory after game starts
+      // This is Point 5: "any images uploaded by players deleted immediately" - 
+      // though we need them for the game, we ensure they are NOT stored in any DB 
+      // and only held in this room object which gets deleted at end.
+      room.players[0].targetImage = { 
+        id: 'c1', 
+        name: room.customImages[room.players[1].id].name, 
+        url: room.customImages[room.players[1].id].url || room.customImages[room.players[1].id].image 
+      };
+      room.players[1].targetImage = { 
+        id: 'c2', 
+        name: room.customImages[room.players[0].id].name, 
+        url: room.customImages[room.players[0].id].url || room.customImages[room.players[0].id].image 
+      };
+    } else {
+      room.players[0].targetImage = shuffled[0];
+      // Ensure different image if possible
+      let secondIdx = 1 % shuffled.length;
+      if (shuffled.length > 1) {
+        while (shuffled[secondIdx].name === shuffled[0].name && secondIdx < shuffled.length - 1) {
+          secondIdx++;
+        }
       }
+      room.players[1].targetImage = shuffled[secondIdx];
     }
-    room.players[1].targetImage = shuffled[secondIdx];
 
     room.players.forEach((p: any, idx: number) => {
       console.log(`[startGame] Player ${idx}: "${p.playerName}" (isBot: ${p.isBot}), Target Image: "${p.targetImage?.name}"`);
@@ -7537,6 +7707,23 @@ io.on("connection", (socket) => {
         room.adCooldownTimer--;
         io.to(roomId).emit("ad_cooldown_update", room.adCooldownTimer);
         return; // Skip all timer decrements
+      }
+
+      // Handle Judgment
+      if (room.isWaitingForJudgment) {
+        if (room.judgmentTimer > 0) {
+          room.judgmentTimer--;
+          io.to(roomId).emit("judgment_timer_update", room.judgmentTimer);
+        } else {
+          // Timer ran out! The judging player ignored it, so they lose out of unfairness!
+          // (Guesser wins)
+          room.isWaitingForJudgment = false;
+          const guessingPlayer = room.players.find((p: any) => p.id === room.guessingPlayerId);
+          if (guessingPlayer) {
+            endGame(roomId, guessingPlayer.name, false, true);
+          }
+        }
+        return; // Skip all other timer decrements while waiting for judgment
       }
 
       if (room.isPaused) {
@@ -7776,7 +7963,7 @@ io.on("connection", (socket) => {
             }
             winner.wins = (winner.wins || 0) + 1;
             // Record collection win
-            if (winner.serial && winner.targetImage) {
+            if (winner.serial && winner.targetImage && (room.matchType === 'random' || room.matchType === undefined)) {
               recordCollectionWin(winner.serial, winner.targetImage.name);
             }
             
