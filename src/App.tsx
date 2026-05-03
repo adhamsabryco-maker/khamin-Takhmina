@@ -378,7 +378,7 @@ interface Player {
 interface Room {
   id: string;
   players: Player[];
-  gameState: 'waiting' | 'discussion' | 'guessing' | 'finished';
+  gameState: 'waiting' | 'discussion' | 'guessing' | 'finished' | 'custom_image_upload';
   timer: number;
   category: string;
   isPaused: boolean;
@@ -387,9 +387,14 @@ interface Room {
   isFrozen?: boolean;
   freezeTimer?: number;
   adCooldownTimer?: number;
+  judgmentTimer?: number;
+  isWaitingForJudgment?: boolean;
+  judgingPlayerId?: string;
+  guessingPlayerId?: string;
   currentTurn?: string | null;
   waitingForAnswerFrom?: string | null;
   matchType?: 'random' | 'private';
+  selectionMode?: 'ready' | 'custom' | null;
 }
 
 const findNodeByText = (text: string, nodes: any[]): any | null => {
@@ -1873,6 +1878,13 @@ export default function App() {
 
   const [roomId, setRoomId] = useState('');
   const [room, setRoom] = useState<Room | null>(null);
+  const [privateCategoryMode, setPrivateCategoryMode] = useState<null | 'ready' | 'custom'>(null);
+  const [customImageBase64, setCustomImageBase64] = useState<string>('');
+  const [customImageAnswer, setCustomImageAnswer] = useState<string>('');
+  const [isCustomSubmitted, setIsCustomSubmitted] = useState<boolean>(false);
+  const [isCustomUploading, setIsCustomUploading] = useState<boolean>(false);
+  const [isWaitingForJudgment, setIsWaitingForJudgment] = useState<boolean>(false);
+  const [judgmentRequest, setJudgmentRequest] = useState<{ guess: string, type: 'quick' | 'final', playerId: string } | null>(null);
   const [proAnnouncedFor, setProAnnouncedFor] = useState<string[]>([]);
   const [proAnnouncement, setProAnnouncement] = useState<{name: string, type: 'joined' | 'found'} | null>(null);
   const [clickedResponses, setClickedResponses] = useState<string[]>([]);
@@ -3485,7 +3497,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const isGameActive = room?.gameState === 'guessing' || room?.gameState === 'discussion';
+    const isGameActive = room?.gameState === 'guessing' || room?.gameState === 'discussion' || room?.gameState === 'custom_image_upload';
     
     const activeMusic = isGameActive ? gameMusicRef.current : lobbyMusicRef.current;
     const inactiveMusic = isGameActive ? lobbyMusicRef.current : gameMusicRef.current;
@@ -4304,6 +4316,14 @@ export default function App() {
       if (updatedRoom.gameState !== roomRef.current?.gameState) {
         setChatHistory([]);
         setChatInput('');
+        setIsWaitingForJudgment(false); // Reset on room update
+        
+        // Reset custom upload states
+        if (updatedRoom.gameState !== 'custom_image_upload') {
+          setIsCustomSubmitted(false);
+          setCustomImageBase64('');
+          setCustomImageAnswer('');
+        }
         
         if (updatedRoom.gameState === 'finished' || updatedRoom.gameState === 'waiting') {
            const currentSerial = localStorage.getItem('khamin_player_serial');
@@ -4548,6 +4568,9 @@ export default function App() {
     });
 
     newSocket.on('guess_result', ({ playerId, correct }) => {
+      if (playerId === newSocket.id) {
+        setIsWaitingForJudgment(false);
+      }
       if (!correct) {
         playSound('hammer');
         setShowHammer(playerId);
@@ -4561,6 +4584,11 @@ export default function App() {
       }
     });
 
+    newSocket.on('judgment_requested', ({ guess, type, playerId }) => {
+      playSound('doorBell'); // nice sound to alert
+      setJudgmentRequest({ guess, type, playerId });
+    });
+
     newSocket.on('game_finished', ({ room, winnerId, updates }) => {
       if (isIntentionalLeaveRef.current) return;
       setRoom(room);
@@ -4569,6 +4597,8 @@ export default function App() {
       setActivePowerUp(null);
       setShowAdConfirmation(false);
       setHasWatchedCategoryAd(false);
+      setIsWaitingForJudgment(false);
+      setJudgmentRequest(null);
       
       // Mark free quick guess as used after the first match finishes
       if (!hasUsedFreeQuickGuess) {
@@ -4752,6 +4782,10 @@ export default function App() {
 
     newSocket.on('freeze_ended', () => {
       setRoom(prev => prev ? { ...prev, isFrozen: false, freezeTimer: 0 } : null);
+    });
+
+    newSocket.on('judgment_timer_update', (timer) => {
+      setRoom(prev => prev ? { ...prev, judgmentTimer: timer } : null);
     });
 
     newSocket.on('spy_lens_active', ({ image }) => {
@@ -5379,8 +5413,83 @@ export default function App() {
     e.preventDefault();
     if (!guess.trim()) return;
     playSound('clickOpen');
-    socket?.emit('submit_guess', { roomId, guess });
+    if (room?.isCustomImageMode) {
+      socket?.emit('custom_guess', { roomId: room!.id, guess, type: 'final' });
+      setIsWaitingForJudgment(true);
+    } else {
+      socket?.emit('submit_guess', { roomId, guess });
+    }
     setGuess('');
+  };
+
+  const handleCustomImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsCustomUploading(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        // compress with JPEG 0.7
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setCustomImageBase64(dataUrl);
+        setIsCustomUploading(false);
+      };
+      img.onerror = () => {
+        setIsCustomUploading(false);
+        showAlert('حدث خطأ أثناء تحميل الصورة.', 'خطأ');
+      };
+    };
+    reader.onerror = () => {
+      setIsCustomUploading(false);
+      showAlert('حدث خطأ أثناء قراءة الملف.', 'خطأ');
+    };
+  };
+
+  const handleCustomImageSubmit = () => {
+    if (!customImageBase64 || !customImageAnswer.trim() || !socket || !roomId) {
+      if (!customImageBase64) showAlert('برجاء رفع صورة أولاً.', 'تنبيه');
+      else if (!customImageAnswer.trim()) showAlert('برجاء كتابة اسم الصورة المفترض تخمينه.', 'تنبيه');
+      return;
+    }
+    setIsCustomSubmitted(true);
+    socket.emit("submit_custom_image", { roomId, imageBase64: customImageBase64, answer: customImageAnswer.trim() });
+  };
+
+  const submitJudgment = (isCorrect: boolean) => {
+    if (!judgmentRequest || !socket || !roomId) return;
+    socket.emit("custom_guess_judgment", { 
+      roomId, 
+      guess: judgmentRequest.guess, 
+      type: judgmentRequest.type, 
+      playerId: judgmentRequest.playerId, 
+      isCorrect 
+    });
+    setJudgmentRequest(null);
   };
 
   const handleSendChat = (e: React.FormEvent) => {
@@ -5394,7 +5503,12 @@ export default function App() {
   const handleQuickGuess = (e: React.FormEvent) => {
     e.preventDefault();
     if (!guess.trim()) return;
-    socket?.emit('submit_quick_guess', { roomId: room!.id, guess });
+    if (room?.isCustomImageMode) {
+      socket?.emit('custom_guess', { roomId: room!.id, guess, type: 'quick' });
+      setIsWaitingForJudgment(true);
+    } else {
+      socket?.emit('submit_quick_guess', { roomId: room!.id, guess });
+    }
     setGuess('');
   };
 
@@ -6191,7 +6305,7 @@ export default function App() {
 
   const handleLeaveGame = () => {
     playSound('clickOpen');
-    const isGameActive = room?.gameState === 'guessing' || room?.gameState === 'discussion';
+    const isGameActive = room?.gameState === 'guessing' || room?.gameState === 'discussion' || room?.gameState === 'custom_image_upload';
     const me = room?.players.find(p => p.id === socket?.id);
     
     // Only show confirmation if the game is active (playing)
@@ -14533,7 +14647,7 @@ export default function App() {
         
         {/* Game Info (Center) */}
         <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-2 mx-2">
-           {room.gameState !== 'waiting' && (
+           {room.gameState !== 'waiting' && room.gameState !== 'custom_image_upload' && room.gameState !== 'starting' && (
             <div className={`flex items-center justify-center min-w-[70px] md:min-w-[80px] gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-full text-sm md:text-base font-black transition-colors border-2 ${room.isFrozen ? 'bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse' : room.timer <= 10 && room.gameState === 'guessing' ? 'bg-red-100 text-red-600 border-red-200 animate-pulse' : 'bg-gray-100 text-brown-muted border-gray-200'}`}>
               {room.isFrozen ? <Snowflake className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Timer className="w-3.5 h-3.5 md:w-4 md:h-4" />}
               {room.isFrozen ? (
@@ -14776,9 +14890,247 @@ export default function App() {
           </div>
         </div>
 
+        {judgmentRequest && (
+          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border-4 border-purple-400 text-center space-y-6 relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100">
+                <div 
+                  className="h-full bg-red-500 transition-all duration-1000" 
+                  style={{ width: `${((room?.judgmentTimer || 15) / 15) * 100}%` }}
+                />
+              </div>
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto text-3xl mt-2">
+                🤔
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-black text-gray-800">بيقول إن الصورة هي:</h3>
+                <div className="bg-purple-50 border-2 border-purple-200 py-3 rounded-2xl text-2xl font-black text-purple-700 mx-4">
+                  {judgmentRequest.guess}
+                </div>
+                {room?.judgmentTimer !== undefined && (
+                  <div className="text-red-500 font-bold text-sm">لديك {room.judgmentTimer} ثانية للإجابة! لو لم تجب ستخسر!</div>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button 
+                  onClick={() => submitJudgment(true)}
+                  className="bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-2xl shadow-[0_4px_0_0_#15803d] active:shadow-none active:translate-y-1 transition-all text-lg"
+                >
+                  صح ✅
+                </button>
+                <button 
+                  onClick={() => submitJudgment(false)}
+                  className="bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-2xl shadow-[0_4px_0_0_#b91c1c] active:shadow-none active:translate-y-1 transition-all text-lg"
+                >
+                  غلط ❌
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-400">نعتمد على نزاهتك لأنكم تعرفون بعضكم! 😉</p>
+            </motion.div>
+          </div>
+        )}
+
         {/* Center Content: Image or Waiting UI */}
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0">
-          {room.gameState === 'waiting' ? (
+              {room.gameState === 'custom_image_upload' ? (
+                  <div className="w-full card-game p-3 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden flex flex-col min-h-[400px]">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-purple-200">
+                      <div 
+                        className="h-full bg-purple-500 transition-all duration-1000" 
+                        style={{ width: `${(room.timer / 180) * 100}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between items-center bg-white/50 p-3 py-0.5 mb-2 rounded-2xl border border-purple-100 shadow-sm">
+                      <h2 className="text-sm md:text-base font-black text-purple-600">
+                        ارفع صورة وخمنها 😎
+                      </h2>
+                      <div className="text-lg font-black font-mono px-3 py-1 rounded-lg text-purple-600 bg-purple-50">
+                        {Math.floor(room.timer / 60)}:{(room.timer % 60).toString().padStart(2, '0')}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto pb-4">
+                      {room.customImages && Object.keys(room.customImages).length === 2 ? (
+                        <div className="flex flex-col flex-1 items-center justify-center py-6 gap-4">
+                          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-5xl animate-bounce">
+                            🎮
+                          </div>
+                          <div className="space-y-1">
+                            <h3 className="text-xl font-black text-brown-dark">الكل جاهز للعب!</h3>
+                            <p className="text-xs text-brown-muted">الصور وصلت بسلام.. دوس ابدأ ومتسميش 😂</p>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              playSound('clickOpen');
+                              socket?.emit('start_game_custom', { roomId: room.id });
+                            }}
+                            className="bg-green-500 hover:bg-green-600 text-white rounded-2xl shadow-[0_6px_0_0_#15803d] active:shadow-none active:translate-y-1 transition-all py-5 px-12 text-2xl font-black w-full"
+                          >
+                            ابدأ اللعب الآن!
+                          </button>
+                        </div>
+                      ) : isCustomSubmitted ? (
+                        <div className="flex flex-col flex-1 items-center justify-center py-6">
+                          <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-4">
+                            <Check className="w-8 h-8" />
+                          </div>
+                          <p className="font-bold text-gray-600 text-lg">تم رفع صورتك!</p>
+                          <p className="text-sm text-gray-400 mt-2">في انتظار المنافس يقرر مصيرة...</p>
+                          <p className="text-[10px] text-gray-300 mt-4 italic">تقدر تدردش معاه لغاية ما يخلص</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[140px]">
+                            {isCustomUploading ? (
+                              <div className="flex flex-col items-center justify-center gap-2">
+                                <div className="w-10 h-10 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
+                                <span className="font-bold text-purple-600 animate-pulse text-xs">جاري الرفع...</span>
+                              </div>
+                            ) : customImageBase64 ? (
+                              <>
+                                <img src={customImageBase64} alt="Preview" className="max-h-[140px] rounded-xl object-contain" />
+                                <button 
+                                  onClick={() => setCustomImageBase64('')}
+                                  className="absolute top-2 right-2 bg-red-400 text-white rounded-full p-1 shadow-md hover:bg-red-500"
+                                >
+                                  <span className="w-5 h-5 flex items-center justify-center font-bold">✕</span>
+                                </button>
+                              </>
+                            ) : (
+                              <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer overflow-hidden p-4 gap-2">
+                                <div className="w-12 h-12 bg-purple-100 text-purple-500 rounded-full flex items-center justify-center mb-1 shadow-sm">
+                                  <span className="text-2xl">📷</span>
+                                </div>
+                                <span className="font-bold text-gray-500 text-xs text-center px-4">اضغط لرفع صورة المنافس يخمنها</span>
+                                <input type="file" accept="image/*" onChange={handleCustomImageUpload} className="hidden" />
+                              </label>
+                            )}
+                          </div>
+                          
+                          <div className="text-right">
+                            <label className="block text-xs font-bold text-purple-700 mb-1">اسم الصورة (الإجابة):</label>
+                            <input
+                              type="text"
+                              value={customImageAnswer}
+                              onChange={(e) => setCustomImageAnswer(e.target.value)}
+                              placeholder="مثال: ميسي، شاكوش، شاورما"
+                              className="w-full text-right bg-white border-2 border-purple-200 rounded-xl px-4 py-3 text-sm font-bold text-brown-dark focus:outline-none focus:border-purple-500 shadow-inner"
+                            />
+                          </div>
+
+                          <button 
+                            onClick={handleCustomImageSubmit}
+                            disabled={!customImageBase64 || !customImageAnswer.trim() || isCustomSubmitted || isCustomUploading}
+                            className="bg-purple-500 hover:bg-purple-600 text-white rounded-xl shadow-[0_6px_0_0_#7e22ce] active:shadow-none active:translate-y-1 transition-all py-4 text-xl font-black w-full flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isCustomSubmitted ? 'تم التأكيد ✅' : 'تأكيد الصورة'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Chat inside upload screen - Full Standard Chat */}
+                    {!(room.customImages && Object.keys(room.customImages).length === 2) && (
+                      <div className="mt-2 bg-[#E5DDD5] rounded-xl border-4 border-white shadow-inner flex flex-col h-56 md:h-64 relative overflow-hidden">
+                        <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+                        {chatHistory.length === 0 ? (
+                          <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic bg-white/40 rounded-lg">
+                            دردشوا مع بعض لغاية ما تخلصوا الرفع...
+                          </div>
+                        ) : (
+                          chatHistory.map((msg, index) => (
+                            <div key={`upload-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
+                              <div className={`max-w-[85%] p-1.5 px-2.5 rounded-xl text-xs font-bold shadow-sm relative break-words ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
+                                <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
+                                  {msg.playerName}
+                                </div>
+                                <div className={`leading-tight whitespace-pre-wrap ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                        {isOpponentTyping && (
+                          <div className="flex justify-end">
+                            <TypingIndicator gender={opponent?.gender} type="typing" />
+                          </div>
+                        )}
+                        <div ref={chatEndRef} />
+                      </div>
+                      
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        if (customChatInput.trim() && socket && room) {
+                          playSound('clickOpen');
+                          socket.emit('send_chat', { roomId: room.id, text: customChatInput });
+                          setCustomChatInput('');
+                          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                          socket.emit('stop_typing', { roomId: room.id });
+                          typingTimeoutRef.current = null;
+                        }
+                      }} className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 items-center">
+                        <div className="flex-1 flex gap-2 py-1 items-center">
+                          <button
+                            type="submit"
+                            disabled={!customChatInput.trim()}
+                            className="bg-purple-500 flex items-center justify-center w-11 h-11 text-white rounded-full border-2 border-purple-600 shadow-md active:scale-95 transition-transform disabled:opacity-50 shrink-0"
+                          >
+                            <Send className="w-5 h-5 ltr:-scale-x-100" />
+                          </button>
+                          <input
+                            type="text"
+                            value={customChatInput}
+                            onChange={(e) => {
+                              setCustomChatInput(e.target.value);
+                              if (!typingTimeoutRef.current) {
+                                socket?.emit('typing', { roomId: room!.id });
+                              } else {
+                                clearTimeout(typingTimeoutRef.current);
+                              }
+                              typingTimeoutRef.current = setTimeout(() => {
+                                socket?.emit('stop_typing', { roomId: room!.id });
+                                typingTimeoutRef.current = null;
+                              }, 1500);
+                            }}
+                            placeholder="اكتب هنا..."
+                            className="flex-1 bg-white border border-gray-300 rounded-full px-5 py-3 text-sm focus:outline-none focus:border-purple-400 font-bold shadow-inner"
+                          />
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setShowEmotes(!showEmotes)}
+                          className="bg-white text-brown-muted p-2 rounded-full shadow-sm w-11 h-11 flex items-center justify-center ml-1"
+                        >
+                          <Smile className="w-6 h-6" />
+                        </button>
+                      </form>
+
+                      {showEmotes && (
+                        <div className="absolute bottom-16 left-2 mb-2 bg-white p-2 rounded-xl shadow-xl border border-gray-200 grid grid-cols-4 gap-1 w-48 z-50">
+                          {EMOTES.slice(0, 12).map(emote => (
+                            <button
+                              key={`up-emote-${emote}`}
+                              type="button"
+                              onClick={() => {
+                                socket?.emit('send_emote', { roomId: room!.id, emote });
+                                setShowEmotes(false);
+                              }}
+                              className="text-2xl hover:scale-125 transition-transform p-1"
+                            >
+                              {emote}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  </div>
+              ) : room.gameState === 'waiting' ? (
+
             <React.Fragment>
               <div className="w-full card-game p-3 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#F6E6CD]">
@@ -14789,7 +15141,7 @@ export default function App() {
               </div>
               <div className="flex justify-between items-center bg-white/50 p-3 py-0.5 mb-2 rounded-2xl border border-orange-100 shadow-sm">
                 <h2 className={`text-sm md:text-sm font-black text-accent-orange ${room.players.length < 2 ? 'animate-pulse' : ''}`}>
-                  {room.players.length < 2 ? 'بانتظار المنافس...' : 'اتفقوا على فئة التخمين للبدء!'}
+                  {room.players.length < 2 ? 'بانتظار المنافس...' : (isPrivate && !room.selectionMode) ? 'اختاروا هتلعبوا ايه بسرعة!' : 'اتفقوا على فئة التخمين للبدء!'}
                 </h2>
                 <div className={`text-lg font-black font-mono px-3 py-1 rounded-lg ${room.isFrozen ? 'text-cyan-500 bg-cyan-50 animate-pulse' : 'text-red-500 bg-gray-100'}`}>
                   {room.isFrozen ? (
@@ -14836,7 +15188,36 @@ export default function App() {
                   </div>
                 )}
                 <div className="space-y-6">
-                  {!hasWatchedCategoryAd && room.players.length >= 2 ? (
+                  {isPrivate && (!room.selectionMode || room.selectionMode === null) ? (
+                    <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 pt-1">
+                      {room.players.length < 2 && (
+                        <div className="flex flex-col items-center justify-center p-4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl mb-2">
+                           <Loader2 className="w-8 h-8 animate-spin text-purple-500 mb-2" />
+                           <h3 className="font-black text-brown-dark text-lg">في انتظار اللاعب الثاني...</h3>
+                           <p className="text-sm text-brown-muted font-bold text-center">تقدر تختار طريقة اللعب أول ما اللاعب التاني يدخل 😉</p>
+                        </div>
+                      )}
+                      <button 
+                        disabled={room.players.length < 2}
+                        onClick={() => socket?.emit('select_private_mode', { roomId: room.id, mode: 'ready' })}
+                        className={`bg-white hover:bg-orange-50 border-4 border-accent-orange p-6 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? 'opacity-60 cursor-not-allowed shadow-none' : 'shadow-[0_8px_0_0_#ea580c] active:shadow-none active:translate-y-2'}`}
+                      >
+                        <span className={`text-4xl ${room.players.length >= 2 ? 'group-hover:scale-110 transition-transform' : ''}`}>😉</span>
+                        <span className="text-xl font-black text-accent-orange">فئات جاهزة للتخمين</span>
+                        <span className="text-xs text-brown-muted">(مبتدئين، أبطال، محترفين...)</span>
+                      </button>
+
+                      <button 
+                        disabled={room.players.length < 2}
+                        onClick={() => socket?.emit('select_private_mode', { roomId: room.id, mode: 'custom' })}
+                        className={`bg-white hover:bg-purple-50 border-4 border-purple-500 p-6 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? 'opacity-60 cursor-not-allowed shadow-none' : 'shadow-[0_8px_0_0_#7e22ce] active:shadow-none active:translate-y-2'}`}
+                      >
+                        <span className={`text-4xl ${room.players.length >= 2 ? 'group-hover:scale-110 transition-transform' : ''}`}>😎</span>
+                        <span className="text-xl font-black text-purple-600">ارفع صورة وخمنها</span>
+                        <span className="text-xs text-brown-muted">(كل لاعب يرفع صورة للآخر)</span>
+                      </button>
+                    </div>
+                  ) : !hasWatchedCategoryAd && room.players.length >= 2 && (room.selectionMode === 'ready' || !isPrivate) ? (
                     <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                       {isWatchingCategoryAd ? (
                         <div className="text-center space-y-3">
@@ -15008,25 +15389,25 @@ export default function App() {
                   )}
                 </div>
 
-                {/* WhatsApp Style Chat Box - Hidden when consensus reached or waiting for opponent */}
-                {!consensusReached && room.players.length >= 2 && (
-                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner flex flex-col h-46 mt-4 relative">
+                {/* Standard Unified Chat Box - Used in choice phase */}
+                {!consensusReached && room.players.length >= 2 && isPrivate && (
+                  <div className="w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner flex flex-col h-56 md:h-64 mt-4 relative overflow-hidden">
                     {isMutedByOpponent && (
                       <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                         <Lock className="w-12 h-12 mb-2 text-red-400" />
                         <span className="font-black text-lg text-center px-4">تم حظر الدردشة من قبل المنافس</span>
                       </div>
                     )}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
                       {chatHistory.length === 0 ? (
-                        <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic">
+                        <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic bg-white/40 rounded-lg">
                           ابدأ الدردشة مع منافسك...
                         </div>
                       ) : (
                         chatHistory.map((msg, index) => (
                           <div key={`waiting-chat-${msg.id}-${index}`} className={`flex ${msg.senderId === socket?.id ? 'justify-start' : 'justify-end'}`}>
-                            <div className={`max-w-[85%] p-2 px-3 rounded-xl text-sm font-bold shadow-sm relative break-words ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
-                              <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-accent-green text-right' : 'text-accent-blue text-left'}`}>
+                            <div className={`max-w-[85%] p-1.5 px-2.5 rounded-xl text-xs font-bold shadow-sm relative break-words ${msg.senderId === socket?.id ? 'bg-[#DCF8C6] text-brown-dark rounded-tr-none' : 'bg-white text-brown-dark rounded-tl-none'}`}>
+                              <div className={`text-[9px] mb-0.5 ${msg.senderId === socket?.id ? 'text-green-600 text-right' : 'text-blue-600 text-left'}`}>
                                 {msg.playerName}
                               </div>
                               <div className={`leading-tight whitespace-pre-wrap ${msg.senderId === socket?.id ? 'text-right' : 'text-left'}`}>{msg.text}</div>
@@ -15041,52 +15422,71 @@ export default function App() {
                       )}
                       <div ref={chatEndRef} />
                     </div>
-                    <form onSubmit={(e) => e.preventDefault()} className="p-2 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative items-center">
-                      <div className="flex-1 flex gap-0 overflow-x-auto no-scrollbar py-1">
-                        {['⚽', '🐞', '🌿', '📦', '👥', '🍕', '🦜', '🐘'].map(emote => (
+                    
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      if (customChatInput.trim() && socket && room) {
+                        playSound('clickOpen');
+                        socket.emit('send_chat', { roomId: room.id, text: customChatInput });
+                        setCustomChatInput('');
+                        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                        socket.emit('stop_typing', { roomId: room.id });
+                        typingTimeoutRef.current = null;
+                      }
+                    }} className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 items-center">
+                      <div className="flex-1 flex gap-2 py-1 items-center">
+                        <button
+                          type="submit"
+                          disabled={!customChatInput.trim()}
+                          className="bg-purple-500 flex items-center justify-center w-11 h-11 text-white rounded-full border-2 border-purple-600 shadow-md active:scale-95 transition-transform disabled:opacity-50 shrink-0"
+                        >
+                          <Send className="w-5 h-5 ltr:-scale-x-100" />
+                        </button>
+                        <input
+                          type="text"
+                          value={customChatInput}
+                          onChange={(e) => {
+                            setCustomChatInput(e.target.value);
+                            if (!typingTimeoutRef.current) {
+                              socket?.emit('typing', { roomId: room!.id });
+                            } else {
+                              clearTimeout(typingTimeoutRef.current);
+                            }
+                            typingTimeoutRef.current = setTimeout(() => {
+                              socket?.emit('stop_typing', { roomId: room!.id });
+                              typingTimeoutRef.current = null;
+                            }, 1500);
+                          }}
+                          placeholder="اكتب هنا..."
+                          className="flex-1 bg-white border border-gray-300 rounded-full px-5 py-3 text-sm focus:outline-none focus:border-purple-400 font-bold shadow-inner"
+                        />
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => setShowEmotes(!showEmotes)}
+                        className="bg-white text-brown-muted p-2 rounded-full shadow-sm w-11 h-11 flex items-center justify-center ml-1"
+                      >
+                        <Smile className="w-6 h-6" />
+                      </button>
+                    </form>
+
+                    {showEmotes && (
+                      <div className="absolute bottom-16 left-2 mb-2 bg-white p-2 rounded-xl shadow-xl border border-gray-200 grid grid-cols-4 gap-1 w-48 z-50">
+                        {EMOTES.slice(0, 12).map(emote => (
                           <button
-                            key={emote}
+                            key={`up-emote-${emote}`}
                             type="button"
-                            disabled={isMutedByOpponent}
                             onClick={() => {
-                              playSound('clickOpen');
                               socket?.emit('send_emote', { roomId: room!.id, emote });
+                              setShowEmotes(false);
                             }}
-                            className="bg-white text-xl p-2 rounded-xl shadow-sm hover:bg-gray-50 active:scale-95 transition-all min-w-[30px] min-h-[30px] flex items-center justify-center disabled:opacity-50"
+                            className="text-2xl hover:scale-125 transition-transform p-1"
                           >
                             {emote}
                           </button>
                         ))}
                       </div>
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          playSound('clickOpen');
-                          setShowEmotes(!showEmotes);
-                        }}
-                        className="bg-white text-brown-muted p-3 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
-                      >
-                        <Smile className="w-5 h-5" />
-                      </button>
-                      {showEmotes && (
-                        <div className="absolute bottom-full left-2 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-1 w-48 z-50">
-                          {EMOTES.map(emote => (
-                            <button
-                              key={emote}
-                              type="button"
-                              onClick={() => {
-                                playSound('clickOpen');
-                                socket?.emit('send_emote', { roomId: room!.id, emote });
-                                setShowEmotes(false);
-                              }}
-                              className="text-1xl hover:scale-125 transition-transform p-1"
-                            >
-                              {emote}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </form>
+                    )}
                   </div>
                 )}
 
@@ -15124,68 +15524,77 @@ export default function App() {
                     <div className="text-6xl font-black text-red-500 mb-4 drop-shadow-md">{room.quickGuessTimer}</div>
                     <h3 className="text-2xl font-black text-main mb-6">تخمين سريع!</h3>
                       <form onSubmit={handleQuickGuess} className="flex flex-col gap-3">
-                        <input 
-                          autoFocus
-                          type="text" 
-                          value={guess}
-                          onChange={(e) => setGuess(e.target.value)}
-                          placeholder="ما هي الصورة؟"
-                          className="input-game text-center text-2xl"
-                        />
-                        
-                        {/* Easy Guess Options */}
-                        {getEasyGuessOptions() && (() => {
-                          const isQuickGuessLocked = hasUsedFreeQuickGuess && (me?.helpersUsedCount || 0) < 3;
-                          return (
-                          <div className="flex flex-col items-center gap-1 mt-2">
-                            <span className="text-[13px] text-brown-muted font-bold">اختار اجابة او خمن بنفسك</span>
-                            <div className="relative w-full">
-                              {/* Blur Overlay */}
-                              {isQuickGuessLocked && (
-                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
-                                  <span className="text-[12px] font-bold text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
-                                    يجب استخدام على الاقل 3 وسائل مساعدة لفتح اختيارات الإجابات السريعة
-                                  </span>
-                                </div>
-                              )}
-                              <div className={`flex flex-wrap justify-center gap-2 p-1 ${isQuickGuessLocked ? 'blur-xl select-none pointer-events-none' : ''}`}>
-                                {getEasyGuessOptions()?.map((option: string, idx: number) => (
-                                  <button
-                                    key={`quick-easy-${idx}`}
-                                    type="button"
-                                    onClick={() => {
-                                      if (!isQuickGuessLocked) {
-                                        playSound('clickOpen');
-                                        setGuess(option);
-                                      }
-                                    }}
-                                    className="px-4 py-2 bg-accent-orange text-white rounded-xl font-black text-sm hover:brightness-110 active:scale-95 transition-all shadow-md border-b-4 border-orange-600"
-                                  >
-                                    {isQuickGuessLocked ? '???' : option}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
+                        {isWaitingForJudgment ? (
+                          <div className="flex flex-col items-center justify-center py-10 gap-3">
+                            <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
+                            <h3 className="font-black text-orange-600 text-xl animate-pulse">انتظر الإجابة من المنافس...</h3>
                           </div>
-                          );
-                        })()}
+                        ) : (
+                          <>
+                            <input 
+                              autoFocus
+                              type="text" 
+                              value={guess}
+                              onChange={(e) => setGuess(e.target.value)}
+                              placeholder="ما هي الصورة؟"
+                              className="input-game text-center text-2xl"
+                            />
+                            
+                            {/* Easy Guess Options */}
+                            {getEasyGuessOptions() && (() => {
+                              const isQuickGuessLocked = hasUsedFreeQuickGuess && (me?.helpersUsedCount || 0) < 3;
+                              return (
+                              <div className="flex flex-col items-center gap-1 mt-2">
+                                <span className="text-[13px] text-brown-muted font-bold">اختار اجابة او خمن بنفسك</span>
+                                <div className="relative w-full">
+                                  {/* Blur Overlay */}
+                                  {isQuickGuessLocked && (
+                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
+                                      <span className="text-[12px] font-bold text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
+                                        يجب استخدام على الاقل 3 وسائل مساعدة لفتح اختيارات الإجابات السريعة
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className={`flex flex-wrap justify-center gap-2 p-1 ${isQuickGuessLocked ? 'blur-xl select-none pointer-events-none' : ''}`}>
+                                    {getEasyGuessOptions()?.map((option: string, idx: number) => (
+                                      <button
+                                        key={`quick-easy-${idx}`}
+                                        type="button"
+                                        onClick={() => {
+                                          if (!isQuickGuessLocked) {
+                                            playSound('clickOpen');
+                                            setGuess(option);
+                                          }
+                                        }}
+                                        className="px-4 py-2 bg-accent-orange text-white rounded-xl font-black text-sm hover:brightness-110 active:scale-95 transition-all shadow-md border-b-4 border-orange-600"
+                                      >
+                                        {isQuickGuessLocked ? '???' : option}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              );
+                            })()}
 
-                        <button className={`btn-game btn-primary py-4 text-xl transition-all ${guess.trim() ? 'button-glow scale-105' : ''}`}>إرسال</button>
-                      
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          if (getLevel(xp) >= 20) {
-                            socket?.emit('cancel_quick_guess', { roomId });
-                          }
-                        }}
-                        disabled={getLevel(xp) < 20}
-                        className={`btn-game py-3 text-lg flex items-center justify-center gap-2 ${getLevel(xp) >= 20 ? 'bg-brown-muted hover:bg-brown-dark text-white' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
-                      >
-                        {getLevel(xp) < 20 && <Lock className="w-4 h-4" />}
-                        {getLevel(xp) < 20 ? 'تراجع (Lvl 20)' : 'تراجع'}
-                      </button>
-                    </form>
+                            <button className={`btn-game btn-primary py-4 text-xl transition-all ${guess.trim() ? 'button-glow scale-105' : ''}`}>إرسال</button>
+                          
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                if (getLevel(xp) >= 20) {
+                                  socket?.emit('cancel_quick_guess', { roomId });
+                                }
+                              }}
+                              disabled={getLevel(xp) < 20}
+                              className={`btn-game py-3 text-lg flex items-center justify-center gap-2 ${getLevel(xp) >= 20 ? 'bg-brown-muted hover:bg-brown-dark text-white' : 'bg-gray-300 text-brown-muted cursor-not-allowed'}`}
+                            >
+                              {getLevel(xp) < 20 && <Lock className="w-4 h-4" />}
+                              {getLevel(xp) < 20 ? 'تراجع (Lvl 20)' : 'تراجع'}
+                            </button>
+                          </>
+                        )}
+                      </form>
                   </div>
                 </div>
               )}
@@ -15216,32 +15625,34 @@ export default function App() {
                     className="relative z-10 flex flex-row items-center justify-center gap-3 md:gap-6 w-full px-4"
                   >
                     {/* Confirmed Attributes Box on the left (User's Right) */}
-                    <div className="flex-1 max-w-[9rem] md:max-w-[14rem] h-[9rem] md:h-[12rem] bg-white backdrop-blur-[2px] rounded-[20px] border border-black p-2 shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-y-auto flex flex-col gap-1 custom-scrollbar">
-                      {confirmedAttributes.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center text-[12px] text-gray-500 font-bold text-center px-1">
-                          التخمينات الصح هتظهر هنا
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-1">
-                          {confirmedAttributes.map((attr, idx) => (
-                            <motion.div 
-                              key={idx}
-                              initial={{ x: -10, opacity: 0 }}
-                              animate={{ x: 0, opacity: 1 }}
-                              className="text-[10px] md:text-[11px] font-black text-purple-900 flex items-center gap-1 py-0.5 px-1 border-b border-purple-50/30 last:border-0"
-                            >
-                              <span className="text-purple-500 text-[8px]">●</span>
-                              {attr}
-                            </motion.div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    {room.matchType !== 'private' && (
+                      <div className="flex-1 max-w-[9rem] md:max-w-[14rem] h-[9rem] md:h-[12rem] bg-white backdrop-blur-[2px] rounded-[20px] border border-black p-2 shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-y-auto flex flex-col gap-1 custom-scrollbar">
+                        {confirmedAttributes.length === 0 ? (
+                          <div className="flex-1 flex items-center justify-center text-[12px] text-gray-500 font-bold text-center px-1">
+                            التخمينات الصح هتظهر هنا
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {confirmedAttributes.map((attr, idx) => (
+                              <motion.div 
+                                key={idx}
+                                initial={{ x: -10, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                className="text-[10px] md:text-[11px] font-black text-purple-900 flex items-center gap-1 py-0.5 px-1 border-b border-purple-50/30 last:border-0"
+                              >
+                                <span className="text-purple-500 text-[8px]">●</span>
+                                {attr}
+                              </motion.div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Target Image on the right (User's Left) */}
                     <div className="relative w-full max-w-[9rem] md:max-w-[12rem] aspect-square bg-white p-1.5 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden border-2 border-white flex items-center justify-center">
                       <img 
-                        src={opponent?.targetImage?.image} 
+                        src={opponent?.targetImage?.url || opponent?.targetImage?.image || me?.targetImage?.url || me?.targetImage?.image} 
                         className={`w-full h-full object-cover rounded-xl ${funnyFilter === opponent?.id ? 'invert sepia hue-rotate-90 scale-110' : ''}`}
                         alt="Target"
                       />
@@ -15262,58 +15673,73 @@ export default function App() {
                     className="relative z-[150] w-full max-w-md px-2 flex flex-col items-center mt-1"
                   >
                     <form onSubmit={handleGuess} className="w-full flex flex-col gap-2 card-game p-2 md:p-4 guess-glow border-orange-200">
-                      <div className="text-center font-black text-orange-500 animate-pulse mb-0.5 text-lg md:text-2xl">
-                        أسرع! خمن الآن ({room.isFrozen ? room.freezeTimer : room.timer}s)
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <input 
-                          autoFocus
-                          type="text" 
-                          value={guess}
-                          onChange={(e) => setGuess(e.target.value)}
-                          placeholder="ما هي الصورة؟"
-                          className="input-game flex-1 py-2 text-center"
-                        />
-
-                        {/* Easy Guess Options */}
-                        {getEasyGuessOptions() && (() => {
-                          const isQuickGuessLocked = hasUsedFreeQuickGuess && (me?.helpersUsedCount || 0) < 3;
-                          return (
-                          <div className="flex flex-col items-center gap-1 mt-1">
-                            <span className="text-[13px] text-brown-muted font-bold">اختار اجابة او خمن بنفسك</span>
-                            <div className="relative w-full">
-                              {/* Blur Overlay */}
-                              {isQuickGuessLocked && (
-                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
-                                  <span className="text-[12px] font-bold text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
-                                    يجب استخدام على الاقل 3 وسائل مساعدة لفتح اختيارات الإجابات السريعة
-                                  </span>
-                                </div>
-                              )}
-                              <div className={`flex flex-wrap justify-center gap-2 p-1 ${isQuickGuessLocked ? 'blur-xl select-none pointer-events-none' : ''}`}>
-                                {getEasyGuessOptions()?.map((option: string, idx: number) => (
-                                  <button
-                                    key={`final-easy-${idx}`}
-                                    type="button"
-                                    onClick={() => {
-                                      if (!isQuickGuessLocked) {
-                                        playSound('clickOpen');
-                                        setGuess(option);
-                                      }
-                                    }}
-                                    className="px-3 py-1.5 bg-accent-orange text-white rounded-xl font-black text-xs md:text-sm hover:brightness-110 active:scale-95 transition-all shadow-md border-b-4 border-orange-600"
-                                  >
-                                    {isQuickGuessLocked ? '???' : option}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
+                      {isWaitingForJudgment ? (
+                        <div className="flex flex-col items-center justify-center py-10 gap-4 animate-in fade-in zoom-in">
+                          <div className="relative">
+                            <div className="w-20 h-20 border-4 border-orange-100 border-t-orange-500 rounded-full animate-spin"></div>
+                            <div className="absolute inset-0 flex items-center justify-center text-3xl">🤔</div>
                           </div>
-                          );
-                        })()}
+                          <div className="text-center">
+                            <h3 className="font-black text-orange-600 text-xl md:text-2xl animate-pulse">انتظر الإجابة من المنافس...</h3>
+                            <p className="text-brown-muted font-bold text-sm mt-1">المنافس بيفكر فى إجابتك دلوقتي 😂</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-center font-black text-orange-500 animate-pulse mb-0.5 text-lg md:text-2xl">
+                            أسرع! خمن الآن ({room.isFrozen ? room.freezeTimer : room.timer}s)
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <input 
+                              autoFocus
+                              type="text" 
+                              value={guess}
+                              onChange={(e) => setGuess(e.target.value)}
+                              placeholder="ما هي الصورة؟"
+                              className="input-game flex-1 py-2 text-center"
+                            />
 
-                        <button className={`btn-game btn-primary w-full py-2.5 text-base md:text-lg transition-all ${guess.trim() ? 'button-glow scale-105' : ''}`}>إرسال</button>
-                      </div>
+                            {/* Easy Guess Options */}
+                            {getEasyGuessOptions() && (() => {
+                              const isQuickGuessLocked = hasUsedFreeQuickGuess && (me?.helpersUsedCount || 0) < 3;
+                              return (
+                              <div className="flex flex-col items-center gap-1 mt-1">
+                                <span className="text-[13px] text-brown-muted font-bold">اختار اجابة او خمن بنفسك</span>
+                                <div className="relative w-full">
+                                  {/* Blur Overlay */}
+                                  {isQuickGuessLocked && (
+                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
+                                      <span className="text-[12px] font-bold text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
+                                        يجب استخدام على الاقل 3 وسائل مساعدة لفتح اختيارات الإجابات السريعة
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className={`flex flex-wrap justify-center gap-2 p-1 ${isQuickGuessLocked ? 'blur-xl select-none pointer-events-none' : ''}`}>
+                                    {getEasyGuessOptions()?.map((option: string, idx: number) => (
+                                      <button
+                                        key={`final-easy-${idx}`}
+                                        type="button"
+                                        onClick={() => {
+                                          if (!isQuickGuessLocked) {
+                                            playSound('clickOpen');
+                                            setGuess(option);
+                                          }
+                                        }}
+                                        className="px-3 py-1.5 bg-accent-orange text-white rounded-xl font-black text-xs md:text-sm hover:brightness-110 active:scale-95 transition-all shadow-md border-b-4 border-orange-600"
+                                      >
+                                        {isQuickGuessLocked ? '???' : option}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              );
+                            })()}
+
+                            <button className={`btn-game btn-primary w-full py-2.5 text-base md:text-lg transition-all ${guess.trim() ? 'button-glow scale-105' : ''}`}>إرسال</button>
+                          </div>
+                        </>
+                      )}
                     </form>
                   </motion.div>
                 )}
@@ -15370,9 +15796,9 @@ export default function App() {
                             <button
                               type="submit"
                               disabled={!customChatInput.trim()}
-                              className="bg-purple-500 flex items-center justify-center w-10 h-10 text-white rounded-full border border-purple-600 shadow-sm active:scale-95 transition-transform disabled:opacity-50"
+                              className="bg-purple-500 flex items-center justify-center w-11 h-11 text-white rounded-full border-2 border-purple-600 shadow-md active:scale-95 transition-transform disabled:opacity-50 shrink-0"
                             >
-                              <Send className="w-5 h-5 ltr:-scale-x-100 -mt-0.5" />
+                              <Send className="w-5 h-5 ltr:-scale-x-100" />
                             </button>
                             <input
                               type="text"
@@ -15390,7 +15816,7 @@ export default function App() {
                                 }, 1500);
                               }}
                               placeholder="اكتب هنا..."
-                              className="w-full bg-white border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-purple-400"
+                              className="flex-1 bg-white border border-gray-300 rounded-full px-5 py-3 text-sm focus:outline-none focus:border-purple-400 font-bold shadow-inner"
                             />
                           </div>
                         ) : (
@@ -15638,7 +16064,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Help Cards (Bottom Left) - Vertical Stack */}
-      {room.gameState !== 'waiting' && (
+      {room.gameState !== 'waiting' && room.gameState !== 'custom_image_upload' && room.gameState !== 'starting' && (
         <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
           {[
             { 
@@ -15957,7 +16383,7 @@ export default function App() {
                 className="flex flex-col items-center mb-6"
               >
                 <div className="w-21 h-21 rounded-2xl overflow-hidden shadow-lg">
-                  <img src={me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
+                  <img src={me?.targetImage?.url || me?.targetImage?.image} className="w-full h-full object-cover" alt={me?.targetImage?.name} />
                 </div>
                 <div className="font-black text-lg text-white mt-2 px-3 py-0.5 backdrop-blur-sm">{me?.targetImage?.name}</div>
               </motion.div>
