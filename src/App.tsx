@@ -14930,7 +14930,7 @@ export default function App() {
                   غلط ❌
                 </button>
               </div>
-              <p className="text-[10px] text-gray-400">نعتمد على نزاهتك لأنكم تعرفون بعضكم! 😉</p>
+              <p className="text-[11px] text-gray-400">نعتمد على نزاهتك بقي! 😉</p>
             </motion.div>
           </div>
         )}
@@ -14947,22 +14947,22 @@ export default function App() {
                     </div>
                     <div className="flex justify-between items-center bg-white/50 p-3 py-0.5 mb-2 rounded-2xl border border-purple-100 shadow-sm">
                       <h2 className="text-sm md:text-base font-black text-purple-600">
-                        ارفع صورة وخمنها 😎
+                        ارفع صورة واخمنها 😎
                       </h2>
                       <div className="text-lg font-black font-mono px-3 py-1 rounded-lg text-purple-600 bg-purple-50">
                         {Math.floor(room.timer / 60)}:{(room.timer % 60).toString().padStart(2, '0')}
                       </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto pb-4">
+                    <div className="flex-1 flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4 mb-1">
                       {room.customImages && Object.keys(room.customImages).length === 2 ? (
-                        <div className="flex flex-col flex-1 items-center justify-center py-6 gap-4">
+                        <div className="flex flex-col flex-1 items-center justify-center py-3 gap-2">
                           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-5xl animate-bounce">
                             🎮
                           </div>
                           <div className="space-y-1">
                             <h3 className="text-xl font-black text-brown-dark">الكل جاهز للعب!</h3>
-                            <p className="text-xs text-brown-muted">الصور وصلت بسلام.. دوس ابدأ ومتسميش 😂</p>
+                            <p className="text-xs text-brown-muted">الصور وصلت بسلام.. دوس ابدأ اللعب بسرعة 😂</p>
                           </div>
                           <button 
                             onClick={() => {
@@ -14975,17 +14975,16 @@ export default function App() {
                           </button>
                         </div>
                       ) : isCustomSubmitted ? (
-                        <div className="flex flex-col flex-1 items-center justify-center py-6">
-                          <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-4">
+                        <div className="flex flex-col flex-1 items-center justify-center py-2">
+                          <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-2">
                             <Check className="w-8 h-8" />
                           </div>
                           <p className="font-bold text-gray-600 text-lg">تم رفع صورتك!</p>
                           <p className="text-sm text-gray-400 mt-2">في انتظار المنافس يقرر مصيرة...</p>
-                          <p className="text-[10px] text-gray-300 mt-4 italic">تقدر تدردش معاه لغاية ما يخلص</p>
                         </div>
                       ) : (
                         <>
-                          <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[140px]">
+                          <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-3 flex flex-col items-center justify-center relative min-h-[140px]">
                             {isCustomUploading ? (
                               <div className="flex flex-col items-center justify-center gap-2">
                                 <div className="w-10 h-10 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
@@ -15002,7 +15001,7 @@ export default function App() {
                                 </button>
                               </>
                             ) : (
-                              <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer overflow-hidden p-4 gap-2">
+                              <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer overflow-hidden p-3 gap-2">
                                 <div className="w-12 h-12 bg-purple-100 text-purple-500 rounded-full flex items-center justify-center mb-1 shadow-sm">
                                   <span className="text-2xl">📷</span>
                                 </div>
@@ -15189,18 +15188,18 @@ export default function App() {
                 )}
                 <div className="space-y-6">
                   {isPrivate && (!room.selectionMode || room.selectionMode === null) ? (
-                    <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 pt-1">
+                    <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4 pt-1">
                       {room.players.length < 2 && (
-                        <div className="flex flex-col items-center justify-center p-4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl mb-2">
+                        <div className="flex flex-col items-center justify-center p-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl">
                            <Loader2 className="w-8 h-8 animate-spin text-purple-500 mb-2" />
                            <h3 className="font-black text-brown-dark text-lg">في انتظار اللاعب الثاني...</h3>
-                           <p className="text-sm text-brown-muted font-bold text-center">تقدر تختار طريقة اللعب أول ما اللاعب التاني يدخل 😉</p>
+                           <p className="text-sm text-brown-muted font-bold text-center">تقدر تختار طريقة اللعب أول ما اللاعب التاني يدخل 🤪</p>
                         </div>
                       )}
                       <button 
                         disabled={room.players.length < 2}
                         onClick={() => socket?.emit('select_private_mode', { roomId: room.id, mode: 'ready' })}
-                        className={`bg-white hover:bg-orange-50 border-4 border-accent-orange p-6 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? 'opacity-60 cursor-not-allowed shadow-none' : 'shadow-[0_8px_0_0_#ea580c] active:shadow-none active:translate-y-2'}`}
+                        className={`bg-white hover:bg-orange-50 border-4 border-accent-orange p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? 'opacity-60 cursor-not-allowed shadow-none' : 'shadow-[0_8px_0_0_#ea580c] active:shadow-none active:translate-y-2'}`}
                       >
                         <span className={`text-4xl ${room.players.length >= 2 ? 'group-hover:scale-110 transition-transform' : ''}`}>😉</span>
                         <span className="text-xl font-black text-accent-orange">فئات جاهزة للتخمين</span>
@@ -15210,11 +15209,11 @@ export default function App() {
                       <button 
                         disabled={room.players.length < 2}
                         onClick={() => socket?.emit('select_private_mode', { roomId: room.id, mode: 'custom' })}
-                        className={`bg-white hover:bg-purple-50 border-4 border-purple-500 p-6 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? 'opacity-60 cursor-not-allowed shadow-none' : 'shadow-[0_8px_0_0_#7e22ce] active:shadow-none active:translate-y-2'}`}
+                        className={`bg-white hover:bg-purple-50 border-4 border-purple-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? 'opacity-60 cursor-not-allowed shadow-none' : 'shadow-[0_8px_0_0_#7e22ce] active:shadow-none active:translate-y-2'}`}
                       >
                         <span className={`text-4xl ${room.players.length >= 2 ? 'group-hover:scale-110 transition-transform' : ''}`}>😎</span>
-                        <span className="text-xl font-black text-purple-600">ارفع صورة وخمنها</span>
-                        <span className="text-xs text-brown-muted">(كل لاعب يرفع صورة للآخر)</span>
+                        <span className="text-xl font-black text-purple-600">ارفع صورة واخمنها</span>
+                        <span className="text-xs text-brown-muted">(كل لاعب يرفع صورة للتاني يخمنها)</span>
                       </button>
                     </div>
                   ) : !hasWatchedCategoryAd && room.players.length >= 2 && (room.selectionMode === 'ready' || !isPrivate) ? (
