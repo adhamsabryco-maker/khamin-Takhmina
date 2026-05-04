@@ -14947,7 +14947,7 @@ export default function App() {
                     </div>
                     <div className="flex justify-between items-center bg-white/50 p-3 py-0.5 mb-2 rounded-2xl border border-purple-100 shadow-sm">
                       <h2 className="text-sm md:text-base font-black text-purple-600">
-                        ارفع صورة واخمنها 😎
+                        ارفع صورة يخمنها 😎
                       </h2>
                       <div className="text-lg font-black font-mono px-3 py-1 rounded-lg text-purple-600 bg-purple-50">
                         {Math.floor(room.timer / 60)}:{(room.timer % 60).toString().padStart(2, '0')}
@@ -15212,7 +15212,7 @@ export default function App() {
                         className={`bg-white hover:bg-purple-50 border-4 border-purple-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? 'opacity-60 cursor-not-allowed shadow-none' : 'shadow-[0_8px_0_0_#7e22ce] active:shadow-none active:translate-y-2'}`}
                       >
                         <span className={`text-4xl ${room.players.length >= 2 ? 'group-hover:scale-110 transition-transform' : ''}`}>😎</span>
-                        <span className="text-xl font-black text-purple-600">ارفع صورة واخمنها</span>
+                        <span className="text-xl font-black text-purple-600">ارفع صورة يخمنها</span>
                         <span className="text-xs text-brown-muted">(كل لاعب يرفع صورة للتاني يخمنها)</span>
                       </button>
                     </div>
