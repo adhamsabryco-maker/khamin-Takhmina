@@ -1312,7 +1312,17 @@ export default function App() {
   const [adminTokenRewardAmount, setAdminTokenRewardAmount] = useState<number>(100);
   const [adminTokenRewardMessage, setAdminTokenRewardMessage] = useState('هدية خاصة للاعبين المميزين (مستوى 50+) 🎁');
   const [confirmTokenSend, setConfirmTokenSend] = useState(false);
-  const [gamePolicies, setGamePolicies] = useState({ termsAr: '', termsEn: '', privacyAr: '', privacyEn: '', isRainGiftEnabled: true });
+  const [gamePolicies, setGamePolicies] = useState(() => {
+    const saved = localStorage.getItem('khamin_game_policies');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.isRainGiftEnabled === undefined) parsed.isRainGiftEnabled = true;
+        return parsed;
+      } catch(e) {}
+    }
+    return { termsAr: '', termsEn: '', privacyAr: '', privacyEn: '', isRainGiftEnabled: true };
+  });
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -1342,7 +1352,19 @@ export default function App() {
     paymob_iframe_id: '1013400',
     paymob_hmac: 'A2DBAF7F92579F5B6CE8687D60BE29BA'
   });
-  const [luckyWheelEnabled, setLuckyWheelEnabled] = useState(true);
+  const [luckyWheelEnabled, setLuckyWheelEnabled] = useState(() => {
+    const saved = localStorage.getItem('khamin_lucky_wheel_enabled');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('khamin_game_policies', JSON.stringify(gamePolicies));
+  }, [gamePolicies]);
+
+  useEffect(() => {
+    localStorage.setItem('khamin_lucky_wheel_enabled', luckyWheelEnabled.toString());
+  }, [luckyWheelEnabled]);
+
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => {
     const saved = localStorage.getItem('khamin_theme_config');
     if (saved) {
@@ -2871,7 +2893,7 @@ export default function App() {
     }
 
     // 2. Lucky Wheel
-    if (!hasSeenLuckyWheelThisSession && spinStatus.hasFreeSpin && (luckyWheelEnabled || isAdmin)) {
+    if (!hasSeenLuckyWheelThisSession && spinStatus.hasFreeSpin && luckyWheelEnabled) {
       setShowLuckyWheelModal(true);
       updateHasSeenLuckyWheelThisSession(true);
       return;
@@ -4619,24 +4641,8 @@ export default function App() {
       }
 
       if (updates && updates[newSocket.id]) {
-        const myUpdate = updates[newSocket.id];
-        setXp(prev => {
-          const newXp = prev + myUpdate.xp;
-          localStorage.setItem('khamin_xp', newXp.toString());
-          return newXp;
-        });
-        if (myUpdate.streak !== undefined) {
-          setStreak(myUpdate.streak);
-          localStorage.setItem('khamin_streak', myUpdate.streak.toString());
-        }
-        if (myUpdate.wins !== undefined) {
-          setWins(myUpdate.wins);
-          localStorage.setItem('khamin_wins', myUpdate.wins.toString());
-        }
-        if (myUpdate.tokens !== undefined) {
-          setتخمينات(myUpdate.tokens);
-          localStorage.setItem('khamin_tokens', myUpdate.tokens.toString());
-        }
+        // UI uses room.lastUpdates for the game finished screen
+        // do not update React state logic here since player_data_update sends absolute values. 
       }
       
       // Auto-refresh collection data in background when game finishes
@@ -13716,7 +13722,7 @@ export default function App() {
             </button>
 
             {/* Lucky Wheel Button */}
-            {(luckyWheelEnabled || isAdmin) && (
+            {luckyWheelEnabled && (
               <button 
                 onClick={toggleLuckyWheel}
                 className="w-9 h-9 md:w-10 md:h-10 bg-pink-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-pink-200 transition-colors relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
