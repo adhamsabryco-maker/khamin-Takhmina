@@ -7884,15 +7884,17 @@ io.on("connection", (socket) => {
              const yesterday = Date.now() - (24 * 60 * 60 * 1000);
              
              // Check winner
-             const winnerReported = db.prepare('SELECT 1 FROM reports WHERE reporterSerial = ? AND reportedSerial = ? AND timestamp > ?').get('SYSTEM', winner.serial, yesterday);
-             if (!winnerReported) {
-                db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason) VALUES (?, ?, ?, ?, ?, ?, ?)').run(Math.random().toString(36).substr(2, 9), Date.now(), 'SYSTEM', 'نظام الحماية', winner.serial, winner.name, 'النظام يشتبه في ان اللاعب يغش أو يتلاعب بالنقاط (يلعب ضد حسابه الآخر في نفس الجهاز)');
+             if (!p1Data.lastSystemReportAt || p1Data.lastSystemReportAt <= yesterday) {
+                db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason, roomId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(Math.random().toString(36).substr(2, 9), Date.now(), 'SYSTEM', 'نظام الحماية', winner.serial, winner.name, 'النظام يشتبه في ان اللاعب يغش أو يتلاعب بالنقاط (يلعب ضد حسابه الآخر في نفس الجهاز)', room.id);
+                p1Data.lastSystemReportAt = Date.now();
+                savePlayerData(winner.serial);
              }
              
              // Check loser
-             const loserReported = db.prepare('SELECT 1 FROM reports WHERE reporterSerial = ? AND reportedSerial = ? AND timestamp > ?').get('SYSTEM', loser.serial, yesterday);
-             if (!loserReported) {
-                db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason) VALUES (?, ?, ?, ?, ?, ?, ?)').run(Math.random().toString(36).substr(2, 9), Date.now(), 'SYSTEM', 'نظام الحماية', loser.serial, loser.name, 'النظام يشتبه في ان اللاعب يغش أو يتلاعب بالنقاط (يلعب ضد حسابه الآخر في نفس الجهاز)');
+             if (!p2Data.lastSystemReportAt || p2Data.lastSystemReportAt <= yesterday) {
+                db.prepare('INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason, roomId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(Math.random().toString(36).substr(2, 9), Date.now(), 'SYSTEM', 'نظام الحماية', loser.serial, loser.name, 'النظام يشتبه في ان اللاعب يغش أو يتلاعب بالنقاط (يلعب ضد حسابه الآخر في نفس الجهاز)', room.id);
+                p2Data.lastSystemReportAt = Date.now();
+                savePlayerData(loser.serial);
              }
           }
         }
@@ -7969,13 +7971,15 @@ io.on("connection", (socket) => {
             
             // --- Cheating Detection (Boosting via Streak) ---
             if (winner.streak > 20) {
-              // Check if a system report was already sent for this player in the last 24 hours
-              const yesterday = Date.now() - (24 * 60 * 60 * 1000);
-              const alreadyReportedToday = db.prepare('SELECT 1 FROM reports WHERE reporterSerial = ? AND reportedSerial = ? AND timestamp > ?').get('SYSTEM', winner.serial, yesterday);
-              
-              if (!alreadyReportedToday) {
-                const reportId = Math.random().toString(36).substr(2, 9);
-                db.prepare('INSERT INTO reports (id, reporterSerial, reporterName, reportedSerial, reportedName, reason, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)').run(reportId, 'SYSTEM', 'نظام الحماية', winner.serial, winner.name, 'النظام يشتبه في ان اللاعب يغش (كثرة الفوز المتتالي بشكل غير طبيعي تجاوز 20 مباراة)', Date.now());
+              const p1Data = allPlayers.get(winner.serial);
+              if (p1Data) {
+                const yesterday = Date.now() - (24 * 60 * 60 * 1000);
+                if (!p1Data.lastSystemReportAt || p1Data.lastSystemReportAt <= yesterday) {
+                  const reportId = Math.random().toString(36).substr(2, 9);
+                  db.prepare('INSERT INTO reports (id, reporterSerial, reporterName, reportedSerial, reportedName, reason, timestamp, roomId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(reportId, 'SYSTEM', 'نظام الحماية', winner.serial, winner.name, 'النظام يشتبه في ان اللاعب يغش (كثرة الفوز المتتالي بشكل غير طبيعي تجاوز 20 مباراة)', Date.now(), room.id);
+                  p1Data.lastSystemReportAt = Date.now();
+                  savePlayerData(winner.serial);
+                }
               }
             }
           }
