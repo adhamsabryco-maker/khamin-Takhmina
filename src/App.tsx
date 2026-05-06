@@ -7013,21 +7013,21 @@ export default function App() {
           >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-black text-main flex items-center gap-2">
-                <div className="relative">
+                <div className="flex gap-1 items-center relative">
                   <Bell className="w-5 h-5 text-yellow-500" />
+                  الإشعارات
                   {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length) > 0 && (
-                    <span className="absolute -top-2 -right-3 flex items-center justify-center bg-red-500 text-white min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black border-2 border-white shadow-md animate-bounce">
+                    <span className="flex items-center justify-center bg-red-500 text-white min-w-[20px] h-5 px-1.5 mx-2 rounded-full text-[11px] font-black shadow-md">
                       {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length}
                     </span>
                   )}
-                  الإشعارات
                 </div>
               </h2>
               <button onClick={() => setShowFriendRequestsModal(false)} className="text-brown-light hover:text-red-500 transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
-
+            <div className="w-full border-t border-black/20 my-2 mt-0.5"></div>
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar" dir="rtl">
               {friendRequests.length === 0 && collectionNotifications.length === 0 && systemMessages.length === 0 && likeNotifications.length === 0 ? (
                 <div className="text-center py-8 text-brown-muted font-bold">لا توجد إشعارات حالياً.</div>
@@ -16137,6 +16137,23 @@ export default function App() {
             const hasFreeUse = (ownedHelpers[card.id] || 0) > 0;
             const isLocked = !hasUnlockedHelpers && isLevelLocked && !hasFreeUse;
             
+            const helperCharge = me?.helperCharge || 0;
+            const pointsRequiredForBar: Record<string, number> = {
+              hint: 1,
+              word_length: 2,
+              word_count: 3,
+              time_freeze: 4,
+              spy_lens: 5
+            };
+            const reqPerBar = pointsRequiredForBar[card.id] || 0;
+            
+            let barsFilled = 6;
+            let isChargeLocked = false;
+            if (room.matchType === 'random' && card.id !== 'quick_guess') {
+              barsFilled = Math.min(6, Math.floor(helperCharge / reqPerBar));
+              isChargeLocked = barsFilled < 6;
+            }
+
             // Calculate dynamic cooldown for quick_guess based on room.timer
             let cardCooldown = cooldowns[card.id] || 0;
             if (card.id === 'quick_guess') {
@@ -16153,20 +16170,22 @@ export default function App() {
             const isCardDisabled = isLocked || card.disabled || cardCooldown > 0 || room.gameState === 'finished' || (room.isPaused && card.id === 'quick_guess') || (requiresAd && isCooldown);
             
             return (
-              <button 
-                key={card.id}
-                onClick={() => {
-                  if (!isLocked) {
-                    useCard(card.id as any);
-                  } else {
-                    setActiveTooltip(card.id);
-                    setTimeout(() => setActiveTooltip(null), 4000);
-                  }
-                }}
-                disabled={isCardDisabled && !isLocked}
-                className={`relative w-10 h-10 md:w-16 md:h-16 rounded-full ${card.bg} flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)] border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-80 disabled:grayscale disabled:cursor-not-allowed group ${isReady ? 'ring-4 ring-accent-green ring-offset-2 animate-pulse' : ''} ${hasFreeUse && isLevelLocked ? 'ring-4 ring-yellow-400 animate-pulse' : ''}`}
-                title={card.name}
-              >
+              <div key={card.id} className="relative flex items-center justify-center md:gap-2">
+                <button 
+                  onClick={() => {
+                    if (isChargeLocked) {
+                      showAlert('اشحن البطارية لتفعيل هذه الوسيلة! اسأل وأجب في ساحة اللعب أولاً.', 'البطارية غير مكتملة');
+                    } else if (!isLocked) {
+                      useCard(card.id as any);
+                    } else {
+                      setActiveTooltip(card.id);
+                      setTimeout(() => setActiveTooltip(null), 4000);
+                    }
+                  }}
+                  disabled={(isCardDisabled && !isLocked) && !isChargeLocked}
+                  className={`relative w-10 h-10 md:w-16 md:h-16 rounded-full ${card.bg} flex items-center justify-center border-b-4 border-gray-200 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-80 disabled:grayscale disabled:cursor-not-allowed group ${isReady ? 'ring-4 ring-accent-green ring-offset-2 animate-pulse' : ''} ${hasFreeUse && isLevelLocked ? 'ring-4 ring-yellow-400 animate-pulse' : ''} ${isChargeLocked ? 'opacity-80 grayscale cursor-not-allowed' : ''}`}
+                  title={card.name}
+                >
                 {isLocked ? (
                   <div className="flex flex-col items-center justify-center text-brown-light">
                     <Lock className="w-4 h-4 md:w-5 md:h-5 mb-0.5" />
@@ -16222,6 +16241,22 @@ export default function App() {
                   )}
                 </div>
               </button>
+              {(room.matchType === 'random' && card.id !== 'quick_guess') ? (
+                <div className={`absolute justify-center -right-1 flex flex-col-reverse h-9 w-4 md:h-13 md:w-5 bg-gray-200 Battery-border-2 border-gray-600 rounded-[3px] p-[1px] gap-[1px] z-10 pointer-events-none ${barsFilled === 6 ? 'animate-battery-flash-fade' : ''}`} title={`البطارية: ${barsFilled}/6`}>
+                  <div className="absolute -top-[3px] md:-top-[4px] left-1/2 -translate-x-1/2 w-2 md:w-2.5 h-[3px] md:h-[4px] bg-gray-600 rounded-t-[2px]"></div>
+                  {Array.from({ length: 6 }).map((_, i) => {
+                    const activeColor = i < 2 ? 'bg-red-500' : i < 4 ? 'bg-orange-500' : 'bg-green-500';
+                    const emptyColor = i < 2 ? 'bg-red-900/30' : i < 4 ? 'bg-orange-900/30' : 'bg-green-900/30';
+                    return (
+                      <div 
+                        key={i} 
+                        className={`flex-1 rounded-[1px] transition-all duration-300 ${i < barsFilled ? activeColor : emptyColor}`}
+                      ></div>
+                    );
+                  })}
+                </div>
+              ) : null}
+              </div>
             );
           })}
         </div>

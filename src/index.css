@@ -274,6 +274,23 @@ body::after {
   border-width: 4px !important;
 }
 
+/* Battery borders */
+.Battery-border-2 {
+  border-width: 2px !important;
+}
+
+@keyframes battery-flash-fade {
+  0% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 0px rgba(34, 197, 94, 0)); }
+  20% { opacity: 1; transform: scale(1.1); filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.8)); }
+  40% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 0px rgba(34, 197, 94, 0)); }
+  60% { opacity: 1; transform: scale(1.1); filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.8)); }
+  80% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 0px rgba(34, 197, 94, 0)); }
+  100% { opacity: 0; transform: scale(1); visibility: hidden; }
+}
+.animate-battery-flash-fade {
+  animation: battery-flash-fade 2s ease-in-out forwards;
+}
+
 [class*="border-gray-"], 
 [class*="border-orange-100"],
 [class*="border-orange-200"],
