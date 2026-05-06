@@ -2919,6 +2919,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           gender: match.p1.gender || 'boy',
           selectedFrame: match.p1.selectedFrame || '',
           score: 1000,
+          helperCharge: 0,
           targetImage: null,
           isMuted: false,
           hasGuessed: false,
@@ -2953,6 +2954,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           gender: match.p2.gender || 'boy',
           selectedFrame: match.p2.selectedFrame || '',
           score: 1000,
+          helperCharge: 0,
           targetImage: null,
           isMuted: false,
           hasGuessed: false,
@@ -4900,6 +4902,7 @@ io.on("connection", (socket) => {
           gender: serverPlayer.gender || 'boy',
           selectedFrame: serverPlayer.selectedFrame || '',
           score: 1000,
+          helperCharge: 0,
           targetImage: null,
           isMuted: false,
           hasGuessed: false,
@@ -5286,6 +5289,10 @@ io.on("connection", (socket) => {
           const isEmoji = emojiRegex.test(messageToSend.trim());
 
           if (!isEmoji) {
+            if (room.matchType === 'random') {
+              sender.helperCharge = (sender.helperCharge || 0) + 1;
+            }
+
             if (messageToSend === 'آه' || messageToSend === 'لأ') {
               if (messageToSend === 'آه') {
                 if (!room.confirmedAnswers) room.confirmedAnswers = [];
@@ -5293,6 +5300,12 @@ io.on("connection", (socket) => {
                 const lastQuestion = room.chatHistory?.slice().reverse().find((m: any) => m.senderId !== socket.id && m.text !== 'آه' && m.text !== 'لأ');
                 if (lastQuestion) {
                   room.confirmedAnswers.push(lastQuestion.text);
+                  if (room.matchType === 'random') {
+                    const askingPlayer = room.players.find((p: any) => p.id === lastQuestion.senderId);
+                    if (askingPlayer) {
+                      askingPlayer.helperCharge = (askingPlayer.helperCharge || 0) + 2;
+                    }
+                  }
                 }
               }
               if (passTurn && opponent) {
@@ -7399,6 +7412,7 @@ io.on("connection", (socket) => {
             age: (senderPlayerData as any).age || null,
             selectedFrame: senderPlayerData.selectedFrame,
             score: 0, 
+            helperCharge: 0, 
             isReady: false, 
             hasGuessedCurrent: false, 
             targetImage: null, 
@@ -7422,6 +7436,7 @@ io.on("connection", (socket) => {
             age: (myPlayerData as any).age || null,
             selectedFrame: myPlayerData.selectedFrame,
             score: 0, 
+            helperCharge: 0, 
             isReady: false, 
             hasGuessedCurrent: false, 
             targetImage: null, 
