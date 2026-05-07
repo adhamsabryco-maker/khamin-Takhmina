@@ -6990,7 +6990,7 @@ export default function App() {
                          )}
                          <button 
                            onClick={() => setShowGiftModal({serial: friend.serial, name: friend.name, avatar: friend.avatar, level: friend.level || 1, selectedFrame: friend.selectedFrame})}
-                           className="bg-pink-50 hover:bg-pink-100 text-pink-500 border border-pink-200 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50"
+                           className="bg-pink-50 hover:bg-pink-100 text-pink-500 border border-pink-400 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50"
                            title="إرسال هدايا"
                          >
                            <Gift className="w-4 h-4" />
@@ -8622,39 +8622,40 @@ export default function App() {
               <div className="space-y-4">
                 {/* Stats Section */}
                 <div className="bg-orange-100 p-3 rounded-2xl border-4 border-black space-y-4">
-                  <div className="flex items-center gap-4 flex-row-reverse">
+                  <div className="flex items-center gap-4 flex-row-reverse mb-2">
                     <div className="relative w-16 h-16">
                       {renderAvatarContent(avatar, getLevel(xp), false, true, selectedFrame, playerSerial)}
                     </div>
                     <div className="text-right flex-1">
                       <div className="font-black text-lg text-main">{playerName}</div>
-                      <div className="flex flex-col items-end gap-1 mt-2">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setIsIdVisible(!isIdVisible)}
-                            className={`bg-white border-2 border-accent-blue px-4 py-2 rounded-xl font-mono text-accent-blue font-black cursor-pointer hover:bg-blue-50 transition-colors shadow-inner flex items-center justify-center gap-2 active:scale-95 ${isIdVisible ? 'text-lg md:text-xl' : 'text-sm md:text-base'}`}
-                            dir="ltr"
-                          >
-                            {isIdVisible ? <EyeOff className="w-5 h-5 text-accent-blue opacity-50" /> : <Eye className="w-4 h-4 text-accent-blue opacity-50" />}
-                            <span>{isIdVisible ? `ID: ${playerSerial}` : 'Show ID'}</span>
-                          </button>
-                          
-                          {isIdVisible && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(playerSerial);
-                                setCopied(true);
-                                setTimeout(() => setCopied(false), 2000);
-                              }}
-                              className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-xl hover:bg-blue-200 transition-colors active:scale-95"
-                              title="نسخ رقم اللاعب"
-                            >
-                              {copied ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-accent-blue" />}
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-start gap-1 mt-1 mb-1">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsIdVisible(!isIdVisible)}
+                        className={`bg-white border-2 border-accent-blue px-2 py-1 rounded-xl font-bold text-accent-blue cursor-pointer hover:bg-blue-50 transition-colors shadow-inner flex items-center justify-center gap-2 active:scale-95 ${isIdVisible ? 'text-sm md:text-sm' : 'text-sm md:text-sm'}`}
+                        dir="rtl"
+                      >
+                        {isIdVisible ? <EyeOff className="w-5 h-5 text-accent-blue opacity-50" /> : <Eye className="w-4 h-4 text-accent-blue opacity-50" />}
+                        <span>{isIdVisible ? `ID: ${playerSerial}` : 'أظهار الـ ID'}</span>
+                      </button>
+                      
+                      {isIdVisible && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(playerSerial);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }}
+                          className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-xl hover:bg-blue-200 transition-colors active:scale-95"
+                          title="نسخ رقم اللاعب"
+                        >
+                          {copied ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-accent-blue" />}
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -14314,8 +14315,8 @@ export default function App() {
                   )}
                 </div>
                 
-                <div className="text-center mt-1 mb-1">
-                  <p className="text-[8px] md:text-[10px] font-bold text-black-400 bg-gray-300 border border-gray-100 rounded-lg py-1 px-2 inline-block">الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي ⭐</p>
+                <div className="text-center">
+                  <p className="text-[8px] md:text-[10px] font-bold text-black-400 py-1 px-1 inline-block">الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي 📊</p>
                 </div>
 
                 {/* Player Rank Info */}
@@ -14326,7 +14327,7 @@ export default function App() {
                     return (
                       <button 
                         onClick={handleOpenshowLeaderboardModal}
-                        className={`mt-1 w-full group relative overflow-hidden ${isTop3 ? 'bg-yellow-500' : 'bg-orange-500'} rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all`}
+                        className={`w-full group relative overflow-hidden ${isTop3 ? 'bg-yellow-500' : 'bg-orange-500'} rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all`}
                       >
                         <div className="bg-white h-10 rounded-[14px] py-3 px-4 flex items-center justify-between">
                           <div className="flex items-center gap-2 text-black">
