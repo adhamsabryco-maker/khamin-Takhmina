@@ -43,6 +43,7 @@ import {
   AlertTriangle,
   Type,
   Eye,
+  EyeOff,
   Shield,
   Search,
   UserMinus,
@@ -2238,6 +2239,7 @@ export default function App() {
   const isSearchingRef = useRef(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isIdVisible, setIsIdVisible] = useState(false);
   const [banUntil, setBanUntil] = useState<number | null>(null);
   const [isPermanentBan, setIsPermanentBan] = useState(false);
   const [reports, setReports] = useState(0);
@@ -2254,6 +2256,9 @@ export default function App() {
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
   const [likeNotifications, setLikeNotifications] = useState<any[]>([]);
   const [collectionNotifications, setCollectionNotifications] = useState<any[]>([]);
+  const [giftNotifications, setGiftNotifications] = useState<any[]>([]);
+  const [showGiftModal, setShowGiftModal] = useState<{serial: string, name: string, avatar: string, level: number, selectedFrame?: string} | null>(null);
+  const [giftAmounts, setGiftAmounts] = useState<{keys: string, tokens: string, helpers: Record<string, string>}>({keys: '', tokens: '', helpers: {}});
   const [systemMessages, setSystemMessages] = useState<any[]>([]);
   const [showAskFriendModal, setShowAskFriendModal] = useState<{imageName: string, categoryId: string} | null>(null);
   const [selectedFriendsForRequest, setSelectedFriendsForRequest] = useState<string[]>([]);
@@ -2274,7 +2279,7 @@ export default function App() {
 
   // App Badging API for PWA notification badge
   useEffect(() => {
-    const unreadCount = friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length;
+    const unreadCount = friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length;
     if ('setAppBadge' in navigator) {
       if (unreadCount > 0) {
         // @ts-ignore
@@ -2284,7 +2289,7 @@ export default function App() {
         navigator.clearAppBadge().catch((e: any) => console.log('Badge error:', e));
       }
     }
-  }, [friendRequests.length, collectionNotifications.length, systemMessages.length, likeNotifications.length]);
+  }, [friendRequests.length, collectionNotifications.length, systemMessages.length, likeNotifications.length, giftNotifications.length]);
 
   // Poll friends list for online status
   useEffect(() => {
@@ -4186,7 +4191,16 @@ export default function App() {
         newSocket.emit('get_like_notifications', { serial }, (res: any) => {
           if (res.notifications) setLikeNotifications(res.notifications);
         });
+        
+        newSocket.emit('get_gift_notifications', { serial }, (res: any) => {
+          if (res.success && res.notifications) setGiftNotifications(res.notifications);
+        });
       }
+    });
+
+    newSocket.on('new_gift_notification', (notif: any) => {
+      playSound('notification');
+      setGiftNotifications(prev => [notif, ...prev]);
     });
 
     newSocket.on('connect_error', (err) => {
@@ -4237,6 +4251,10 @@ export default function App() {
       if (data.wins !== undefined) {
         setWins(data.wins);
         localStorage.setItem('khamin_wins', data.wins.toString());
+      }
+      if (data.streak !== undefined) {
+        setStreak(data.streak);
+        localStorage.setItem('khamin_streak', data.streak.toString());
       }
       if (data.tokens != null) {
         setتخمينات(data.tokens);
@@ -6971,6 +6989,13 @@ export default function App() {
                            </button>
                          )}
                          <button 
+                           onClick={() => setShowGiftModal({serial: friend.serial, name: friend.name, avatar: friend.avatar, level: friend.level || 1, selectedFrame: friend.selectedFrame})}
+                           className="bg-pink-50 hover:bg-pink-100 text-pink-500 border border-pink-200 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50"
+                           title="إرسال هدايا"
+                         >
+                           <Gift className="w-4 h-4" />
+                         </button>
+                         <button 
                            onClick={() => handleRemoveFriend(friend.serial)}
                            className="bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50"
                            title="حذف صديق"
@@ -7016,9 +7041,9 @@ export default function App() {
                 <div className="flex gap-1 items-center relative">
                   <Bell className="w-5 h-5 text-yellow-500" />
                   الإشعارات
-                  {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length) > 0 && (
+                  {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length) > 0 && (
                     <span className="flex items-center justify-center bg-red-500 text-white min-w-[20px] h-5 px-1.5 mx-2 rounded-full text-[11px] font-black shadow-md">
-                      {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length}
+                      {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length}
                     </span>
                   )}
                 </div>
@@ -7029,7 +7054,7 @@ export default function App() {
             </div>
             <div className="w-full border-t border-black/20 my-2 mt-0.5"></div>
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar" dir="rtl">
-              {friendRequests.length === 0 && collectionNotifications.length === 0 && systemMessages.length === 0 && likeNotifications.length === 0 ? (
+              {friendRequests.length === 0 && collectionNotifications.length === 0 && systemMessages.length === 0 && likeNotifications.length === 0 && giftNotifications.length === 0 ? (
                 <div className="text-center py-8 text-brown-muted font-bold">لا توجد إشعارات حالياً.</div>
               ) : (
                 <div className="space-y-4">
@@ -7110,6 +7135,55 @@ export default function App() {
                   )}
 
                   {/* Friend Requests Section */}
+                  {giftNotifications.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Gift className="w-4 h-4 text-pink-500" />
+                        <h3 className="font-black text-sm text-main">هدايا مرسلة لك</h3>
+                      </div>
+                      
+                      {giftNotifications.map(notif => {
+                        const helpersArray = Object.entries(notif.gifts?.helpers || {}).map(([id, amount]) => {
+                          const h = HELPER_ITEMS.find(item => item.id === id);
+                          return h ? `${amount} ${h.name}` : null;
+                        }).filter(Boolean);
+                        
+                        const itemsString = [
+                          notif.gifts?.keys ? `${notif.gifts.keys} مفاتيح` : null,
+                          notif.gifts?.tokens ? `${notif.gifts.tokens} تخمينات` : null,
+                          ...helpersArray
+                        ].filter(Boolean).join(" | ");
+
+                        return (
+                        <div key={notif.id} className="bg-pink-50 border-2 border-pink-100 p-2 rounded-xl flex flex-col justify-between shadow-sm gap-2 mt-2">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10">
+                              {renderAvatarContent(notif.senderAvatar, 1, false, false, undefined, notif.senderSerial)}
+                            </div>
+                            <div>
+                              <div className="font-black text-sm text-main">{notif.senderName} أرسل لك هدايا:</div>
+                              <div className="text-xs text-pink-600 font-bold mt-1">🎁 ({itemsString})</div>
+                            </div>
+                          </div>
+                          <div className="flex justify-end">
+                            <button 
+                              onClick={() => {
+                                socket?.emit("receive_gift", { serial: playerSerial, notificationId: notif.id }, (res: any) => {
+                                  if (res.success) {
+                                    setGiftNotifications(prev => prev.filter(n => n.id !== notif.id));
+                                  }
+                                });
+                              }}
+                              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors shadow-sm active:scale-95 text-xs font-bold w-full"
+                            >
+                              إستلام الهدايا
+                            </button>
+                          </div>
+                        </div>
+                      )})}
+                    </div>
+                  )}
+
                   {friendRequests.length > 0 && (
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 mb-2">
@@ -7478,6 +7552,7 @@ export default function App() {
       {renderFriendsModal()}
       {renderFriendRequestsModal()}
       {renderAskFriendModal()}
+      {renderGiftModal()}
       {/* Level Up Overlay */}
       <AnimatePresence>
         {showLevelUp !== null && (
@@ -8553,17 +8628,32 @@ export default function App() {
                     </div>
                     <div className="text-right flex-1">
                       <div className="font-black text-lg text-main">{playerName}</div>
-                      <div 
-                        className="text-[10px] font-mono text-brown-muted mt-1 cursor-pointer hover:text-accent-blue flex items-center justify-end gap-1" dir="ltr"
-                        onClick={() => {
-                          navigator.clipboard.writeText(playerSerial);
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        }}
-                        title="نسخ رقم اللاعب"
-                      >
-                        {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                        ID: {playerSerial}
+                      <div className="flex flex-col items-end gap-1 mt-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setIsIdVisible(!isIdVisible)}
+                            className={`bg-white border-2 border-accent-blue px-4 py-2 rounded-xl font-mono text-accent-blue font-black cursor-pointer hover:bg-blue-50 transition-colors shadow-inner flex items-center justify-center gap-2 active:scale-95 ${isIdVisible ? 'text-lg md:text-xl' : 'text-sm md:text-base'}`}
+                            dir="ltr"
+                          >
+                            {isIdVisible ? <EyeOff className="w-5 h-5 text-accent-blue opacity-50" /> : <Eye className="w-4 h-4 text-accent-blue opacity-50" />}
+                            <span>{isIdVisible ? `ID: ${playerSerial}` : 'Show ID'}</span>
+                          </button>
+                          
+                          {isIdVisible && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(playerSerial);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                              }}
+                              className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-xl hover:bg-blue-200 transition-colors active:scale-95"
+                              title="نسخ رقم اللاعب"
+                            >
+                              {copied ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-accent-blue" />}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -12282,6 +12372,166 @@ export default function App() {
     });
   };
 
+  const renderGiftModal = () => {
+    if (!showGiftModal) return null;
+
+    const handleAmountChange = (key: string, value: string, max: number) => {
+      let num = parseInt(value) || 0;
+      if (num > max) num = max;
+      if (num < 0) num = 0;
+      setGiftAmounts(prev => {
+        if (key === 'keys') return { ...prev, keys: num === 0 ? '' : num.toString() };
+        if (key === 'tokens') return { ...prev, tokens: num === 0 ? '' : num.toString() };
+        return { ...prev, helpers: { ...prev.helpers, [key]: num === 0 ? '' : num.toString() } };
+      });
+    };
+
+    const handleSendGift = () => {
+      let gifts = {
+        keys: parseInt(giftAmounts.keys) || 0,
+        tokens: parseInt(giftAmounts.tokens) || 0,
+        helpers: Object.fromEntries(
+          Object.entries(giftAmounts.helpers).map(([k, v]) => [k, parseInt(v as string) || 0])
+        )
+      };
+      
+      socket?.emit("send_gift", { serial: playerSerial, targetSerial: showGiftModal.serial, gifts }, (res: any) => {
+        if (res.success) {
+          showAlert(`تم إرسال الهدايا إلى ${showGiftModal.name} بنجاح!`, 'نجاح');
+          setShowGiftModal(null);
+          setGiftAmounts({keys: '', tokens: '', helpers: {}});
+        } else {
+          showAlert(res.error || 'حدث خطأ أثناء الإرسال', 'خطأ');
+        }
+      });
+    };
+
+    return (
+      <AnimatePresence>
+        {showGiftModal && (
+          <div className="fixed inset-0 z-[7000] flex justify-center items-end md:items-center p-0 md:p-4 pb-0 bg-black/60 backdrop-blur-sm" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, y: "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="w-full max-w-md bg-[#FFF9F0] md:rounded-[2rem] rounded-t-[2rem] shadow-2xl border-4 border-[#8B4513]/20 overflow-hidden"
+          >
+            <div className="bg-[#8B4513] text-white p-4 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] mix-blend-overlay"></div>
+              <div className="relative flex justify-between items-center z-10">
+                <div className="flex items-center gap-3">
+                  <Gift className="w-6 h-6 md:w-8 md:h-8 text-yellow-400 drop-shadow-md" />
+                  <h2 className="text-xl md:text-2xl font-black drop-shadow-md">إرسال هدايا</h2>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowGiftModal(null);
+                    setGiftAmounts({keys: '', tokens: '', helpers: {}});
+                  }} 
+                  className="bg-white/20 hover:bg-white/30 text-white rounded-full p-2 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 md:p-6 overflow-y-auto max-h-[60vh]">
+              <div className="flex flex-col items-center mb-6">
+                <div className="w-20 h-20 mb-3">
+                  {renderAvatarContent(showGiftModal.avatar, showGiftModal.level, false, false, showGiftModal.selectedFrame, showGiftModal.serial)}
+                </div>
+                <div className="text-lg font-black text-main">{showGiftModal.name}</div>
+                <div className="text-sm text-gray-500">مستوى {showGiftModal.level}</div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Keys and Tokens */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white border-2 border-gray-100 rounded-xl p-3 flex flex-col items-center">
+                    <div className="flex items-center gap-2 mb-2 w-full justify-center">
+                      <Key className="w-5 h-5 text-yellow-500" />
+                      <span className="font-bold text-sm">المفاتيح</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {keys}</span>
+                    </div>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max={keys} 
+                      value={giftAmounts.keys}
+                      onChange={(e) => handleAmountChange('keys', e.target.value, keys)}
+                      className="w-full text-center border-2 border-gray-200 rounded-lg py-1 focus:border-yellow-500 focus:outline-none"
+                      placeholder="الكمية"
+                    />
+                  </div>
+                  <div className="bg-white border-2 border-gray-100 rounded-xl p-3 flex flex-col items-center">
+                    <div className="flex items-center gap-2 mb-2 w-full justify-center">
+                      <Coins className="w-5 h-5 text-blue-500" />
+                      <span className="font-bold text-sm">تخمينات</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {tokens}</span>
+                    </div>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max={tokens} 
+                      value={giftAmounts.tokens}
+                      onChange={(e) => handleAmountChange('tokens', e.target.value, tokens)}
+                      className="w-full text-center border-2 border-gray-200 rounded-lg py-1 focus:border-blue-500 focus:outline-none"
+                      placeholder="الكمية"
+                    />
+                  </div>
+                </div>
+
+                {/* Helpers */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  {HELPER_ITEMS.map((item) => {
+                    const owned = ownedHelpers[item.id] || 0;
+                    return (
+                      <div key={item.id} className="bg-white border-2 border-gray-100 rounded-xl p-2 flex flex-col items-center">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {owned}</span>
+                        </div>
+                        <div className="w-8 h-8 flex items-center justify-center mb-1">
+                          {item.id === 'word_length' && <Type className="w-6 h-6 text-blue-500" />}
+                          {item.id === 'word_count' && <Hash className="w-6 h-6 text-green-500" />}
+                          {item.id === 'time_freeze' && <Snowflake className="w-6 h-6 text-cyan-500" />}
+                          {item.id === 'hint' && <HelpCircle className="w-6 h-6 text-orange-500" />}
+                          {item.id === 'spy_lens' && <Eye className="w-6 h-6 text-purple-500" />}
+                        </div>
+                        <span className="font-bold text-[10px] text-center mb-2 line-clamp-1">{item.name}</span>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max={owned} 
+                          value={giftAmounts.helpers[item.id] || ''}
+                          onChange={(e) => handleAmountChange(item.id, e.target.value, owned)}
+                          className="w-full text-center border-2 border-gray-200 rounded-lg py-1 focus:border-pink-500 focus:outline-none text-xs"
+                          placeholder="الكمية"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t border-gray-200">
+              <button
+                disabled={!giftAmounts.keys && !giftAmounts.tokens && Object.values(giftAmounts.helpers).every(v => !v)}
+                onClick={handleSendGift}
+                className="w-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-black py-4 rounded-xl shadow-sm transition-colors text-lg active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Gift className="w-5 h-5" />
+                إرسال الهدايا الآن
+              </button>
+            </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    );
+  };
+
   const renderAskFriendModal = () => {
     if (!showAskFriendModal) return null;
 
@@ -13213,9 +13463,9 @@ export default function App() {
                 title="الإشعارات"
               >
                 <Bell className="w-4 h-4 md:w-5 md:h-5" />
-                {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length) > 0 && (
+                {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length) > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm">
-                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length}
+                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length}
                   </span>
                 )}
               </button>
@@ -13769,11 +14019,11 @@ export default function App() {
               title="الإشعارات"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
-              {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length) > 0 && (
+              {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length) > 0 && (
                 <span className="absolute -top-2 -right-2 flex h-5 w-5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-[11px] text-white flex items-center justify-center font-black shadow-sm">
-                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length}
+                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length}
                   </span>
                 </span>
               )}
@@ -14701,11 +14951,11 @@ export default function App() {
               title="الإشعارات"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
-              {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length) > 0 && (
+              {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length) > 0 && (
                 <span className="absolute -top-2 -right-2 flex h-5 w-5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-[11px] text-white flex items-center justify-center font-black shadow-sm">
-                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length}
+                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length}
                   </span>
                 </span>
               )}
