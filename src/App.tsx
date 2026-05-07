@@ -12410,8 +12410,16 @@ export default function App() {
     return (
       <AnimatePresence>
         {showGiftModal && (
-          <div className="fixed inset-0 z-[7000] flex justify-center items-end md:items-center p-0 md:p-4 pb-0 bg-black/60 backdrop-blur-sm" dir="rtl">
+          <div 
+            className="fixed inset-0 z-[7000] flex justify-center items-end md:items-center p-0 md:p-4 pb-0 bg-black/60 backdrop-blur-sm" 
+            dir="rtl"
+            onClick={() => {
+              setShowGiftModal(null);
+              setGiftAmounts({keys: '', tokens: '', helpers: {}});
+            }}
+          >
             <motion.div
+              onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, y: "100%" }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: "100%" }}
@@ -12453,7 +12461,7 @@ export default function App() {
                     <div className="flex items-center gap-2 mb-2 w-full justify-center">
                       <Key className="w-5 h-5 text-yellow-500" />
                       <span className="font-bold text-sm">المفاتيح</span>
-                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {keys}</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {keys - (parseInt(giftAmounts.keys) || 0)}</span>
                     </div>
                     <input 
                       type="number" 
@@ -12467,9 +12475,9 @@ export default function App() {
                   </div>
                   <div className="bg-white border-2 border-gray-100 rounded-xl p-3 flex flex-col items-center">
                     <div className="flex items-center gap-2 mb-2 w-full justify-center">
-                      <Coins className="w-5 h-5 text-blue-500" />
+                      <img src="/Takhmina_coin_02.png" className="w-5 h-5 drop-shadow-sm" />
                       <span className="font-bold text-sm">تخمينات</span>
-                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {tokens}</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {tokens - (parseInt(giftAmounts.tokens) || 0)}</span>
                     </div>
                     <input 
                       type="number" 
@@ -12490,7 +12498,7 @@ export default function App() {
                     return (
                       <div key={item.id} className="bg-white border-2 border-gray-100 rounded-xl p-2 flex flex-col items-center">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {owned}</span>
+                          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {owned - (parseInt(giftAmounts.helpers[item.id]) || 0)}</span>
                         </div>
                         <div className="w-8 h-8 flex items-center justify-center mb-1">
                           {item.id === 'word_length' && <Type className="w-6 h-6 text-blue-500" />}
