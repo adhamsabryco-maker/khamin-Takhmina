@@ -1030,6 +1030,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     banCount: number,
     isPermanentBan: number,
     reportedBy: { reporterSerial: string, timestamp: number }[],
+    lastSystemReportAt?: number,
     email?: string,
     isAdmin?: boolean,
     tokens?: number,
@@ -1479,6 +1480,19 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       message TEXT NOT NULL,
       read INTEGER DEFAULT 0,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS gift_notifications (
+      id TEXT PRIMARY KEY,
+      senderSerial TEXT NOT NULL,
+      receiverSerial TEXT NOT NULL,
+      senderName TEXT,
+      senderAvatar TEXT,
+      gifts TEXT NOT NULL,
+      timestamp INTEGER,
+      read INTEGER DEFAULT 0
     )
   `);
 
@@ -4916,7 +4930,7 @@ io.on("connection", (socket) => {
           reported: false,
           xp: actualXp,
           level: getLevel(actualXp),
-          streak: streak || 0,
+          streak: serverPlayer.streak || 0,
           wins: actualWins,
           reports: actualReports,
           reportedBy: actualReportedBy,
@@ -5046,7 +5060,7 @@ io.on("connection", (socket) => {
         selectedFrame: bannedPlayer.selectedFrame || '',
         age: validAge,
         xp: actualXp,
-        streak: streak || 0,
+        streak: bannedPlayer.streak || 0,
         serial: serial,
         wins: actualWins,
         useToken: !!useToken,
@@ -6708,6 +6722,132 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("send_gift", ({ serial, targetSerial, gifts }, callback) => {
+      if (!serial || !targetSerial || !gifts) return callback({ error: "Missing parameters" });
+      const sender = allPlayers.get(serial);
+      if (!sender) return callback({ error: "Sender not found" });
+      if (serial === targetSerial) return callback({ error: "لا بمكنك ارسال الهدايا لنفسك" });
+
+      try {
+        let keysToSend = Math.max(0, parseInt(gifts.keys) || 0);
+        let tokensToSend = Math.max(0, parseInt(gifts.tokens) || 0);
+        let helpersToSend = gifts.helpers || {};
+
+        if (keysToSend === 0 && tokensToSend === 0 && Object.keys(helpersToSend).length === 0) {
+          return callback({ error: "يجب اختيار هدايا للارسال" });
+        }
+
+        // Validate sender has enough resources
+        if ((sender.keys || 0) < keysToSend) return callback({ error: "لا تمتلك مفاتيح كافية" });
+        if ((sender.tokens || 0) < tokensToSend) return callback({ error: "لا تمتلك تخمينات كافية" });
+        
+        let validHelpers: Record<string, number> = {};
+        for (const [helperId, amount] of Object.entries(helpersToSend)) {
+          let numAmount = Math.max(0, parseInt(amount as string) || 0);
+          if (numAmount > 0) {
+            if ((sender.ownedHelpers?.[helperId] || 0) < numAmount) {
+              return callback({ error: `لا تمتلك عدد كافي من وسيلة المساعدة المختارة` });
+            }
+            validHelpers[helperId] = numAmount;
+          }
+        }
+
+        // Deduct from sender
+        if (keysToSend > 0) sender.keys -= keysToSend;
+        if (tokensToSend > 0) sender.tokens -= tokensToSend;
+        for (const [helperId, amount] of Object.entries(validHelpers)) {
+             sender.ownedHelpers[helperId] -= amount;
+        }
+
+        savePlayerData(serial);
+
+        socket.emit("player_data_update", {
+             serial,
+             keys: sender.keys,
+             tokens: sender.tokens,
+             ownedHelpers: sender.ownedHelpers
+        });
+
+        // Create gift notification
+        const notificationId = Math.random().toString(36).substr(2, 9);
+        const giftsJson = JSON.stringify({ keys: keysToSend, tokens: tokensToSend, helpers: validHelpers });
+        
+        db.prepare('INSERT INTO gift_notifications (id, senderSerial, receiverSerial, senderName, senderAvatar, gifts, timestamp, read) VALUES (?, ?, ?, ?, ?, ?, ?, 0)')
+          .run(notificationId, serial, targetSerial, sender.name, sender.avatar, giftsJson, Date.now());
+
+        // Notify target if online
+        for (const [socketId, s] of io.sockets.sockets) {
+          if (s.data?.serial === targetSerial) {
+             io.to(socketId).emit("new_gift_notification", {
+                 id: notificationId,
+                 senderName: sender.name,
+                 senderAvatar: sender.avatar,
+                 gifts: { keys: keysToSend, tokens: tokensToSend, helpers: validHelpers }
+             });
+             break;
+          }
+        }
+
+        callback({ success: true });
+      } catch (e) {
+        console.error("send_gift error", e);
+        callback({ error: "Internal server error" });
+      }
+    });
+
+    socket.on("get_gift_notifications", ({ serial }, callback) => {
+      if (!serial) return callback({ notifications: [] });
+      try {
+        const rows = db.prepare('SELECT * FROM gift_notifications WHERE receiverSerial = ? AND read = 0 ORDER BY timestamp DESC').all(serial);
+        const notifications = rows.map((r: any) => ({
+             ...r,
+             gifts: JSON.parse(r.gifts)
+        }));
+        callback({ success: true, notifications });
+      } catch (e) {
+        callback({ success: false, notifications: [] });
+      }
+    });
+
+    socket.on("receive_gift", ({ serial, notificationId }, callback) => {
+      if (!serial || !notificationId) return callback({ error: "Missing parameters" });
+      const receiver = allPlayers.get(serial);
+      if (!receiver) return callback({ error: "Player not found" });
+
+      try {
+        const notif = db.prepare('SELECT * FROM gift_notifications WHERE id = ? AND receiverSerial = ? AND read = 0').get(notificationId, serial) as any;
+        if (!notif) return callback({ error: "الإشعار غير موجود أو تم إستلامه مسبقاً" });
+
+        const gifts = JSON.parse(notif.gifts);
+        
+        let keysReceived = gifts.keys || 0;
+        let tokensReceived = gifts.tokens || 0;
+        let helpersReceived = gifts.helpers || {};
+
+        receiver.keys = (receiver.keys || 0) + keysReceived;
+        receiver.tokens = (receiver.tokens || 0) + tokensReceived;
+        
+        if (!receiver.ownedHelpers) receiver.ownedHelpers = {};
+        for (const [helperId, amount] of Object.entries(helpersReceived)) {
+             receiver.ownedHelpers[helperId] = (receiver.ownedHelpers[helperId] || 0) + (amount as number);
+        }
+
+        db.prepare('UPDATE gift_notifications SET read = 1 WHERE id = ?').run(notificationId);
+        savePlayerData(serial);
+
+        socket.emit("player_data_update", {
+             serial,
+             keys: receiver.keys,
+             tokens: receiver.tokens,
+             ownedHelpers: receiver.ownedHelpers
+        });
+
+        callback({ success: true });
+      } catch (e) {
+        callback({ error: "Internal server error" });
+      }
+    });
+
     socket.on("send_collection_request", ({ serial, targetSerials, imageName, categoryId }, callback) => {
       if (!serial || !targetSerials || !Array.isArray(targetSerials)) return callback({ error: "Invalid data" });
       try {
@@ -7943,7 +8083,8 @@ io.on("connection", (socket) => {
         });
       } else {
         if (winner) {
-          let baseXP = 100 + (winner.streak || 0) * 10;
+          let effectiveStreak = Math.min(winner.streak || 0, 20);
+          let baseXP = 100 + (effectiveStreak * 2); // Capped at 20 streak, 2 XP per streak
           if (room.matchType === 'private' || room.matchType === 'friend') {
             baseXP = 20;
           }
@@ -8112,6 +8253,7 @@ io.on("connection", (socket) => {
                 xp: player.xp,
                 level: player.level,
                 wins: player.wins,
+                streak: player.streak || 0,
                 tokens: player.tokens,
                 recentOpponents: player.recentOpponents
               });
@@ -8164,6 +8306,7 @@ io.on("connection", (socket) => {
                     xp: data.xp,
                     level: data.level,
                     wins: data.wins,
+                    streak: data.streak || 0,
                     tokens: data.tokens,
                     recentOpponents: data.recentOpponents
                   });
