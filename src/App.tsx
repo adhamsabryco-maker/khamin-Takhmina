@@ -12515,15 +12515,15 @@ export default function App() {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {owned - (parseInt(giftAmounts.helpers[item.id]) || 0)}</span>
                         </div>
-                        <div class="flex items-center gap-2 mb-2 w-full justify-center">
+                        <div class="flex gap-1 mb-1 w-full justify-center">
                         <div className="w-5 h-5">
-                          {item.id === 'word_length' && <Type className="w-6 h-6 text-green-500" />}
-                          {item.id === 'word_count' && <Hash className="w-6 h-6 text-indigo-500" />}
-                          {item.id === 'time_freeze' && <Snowflake className="w-6 h-6 text-cyan-500" />}
-                          {item.id === 'hint' && <HelpCircle className="w-6 h-6 text-blue-500" />}
-                          {item.id === 'spy_lens' && <Eye className="w-6 h-6 text-purple-500" />}
+                          {item.id === 'word_length' && <Type className="w-4 h-4 text-green-500" />}
+                          {item.id === 'word_count' && <Hash className="w-4 h-4 text-indigo-500" />}
+                          {item.id === 'time_freeze' && <Snowflake className="w-4 h-4 text-cyan-500" />}
+                          {item.id === 'hint' && <HelpCircle className="w-4 h-4 text-blue-500" />}
+                          {item.id === 'spy_lens' && <Eye className="w-4 h-4 text-purple-500" />}
                         </div>
-                        <span className="font-bold text-[10px] text-center mb-2 line-clamp-1">{item.name}</span>
+                        <span className="font-bold text-[10px]">{item.name}</span>
                         </div>
                         <input 
                           type="number" 
@@ -14170,7 +14170,7 @@ export default function App() {
             {/* Friends Button */}
             <div className="w-full border-t border-black/20 my-2 mt-0.5"></div>
               <button 
-                onClick={() => setShowFriendsModal(true)}
+                onClick={() => { playSound('clickOpen'); setShowFriendsModal(true); }}
                 className="w-full px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black rounded-lg text-sm transition-colors border border-blue-200 flex items-center justify-center gap-2"
               >
                 <Users className={`w-4 h-4 ${friendsList.some(f => f.isOnline) ? "text-green-500 fill-green-500" : ""}`} />
