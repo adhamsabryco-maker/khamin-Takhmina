@@ -58,6 +58,7 @@ import {
   ShoppingCart,
   Hash,
   Copy,
+  Swords,
   Volume2,
   VolumeX,
   Music,
@@ -2249,6 +2250,7 @@ export default function App() {
 
   // Friend System State
   const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [friendsList, setFriendsList] = useState<any[]>([]);
   const [friendsTotal, setFriendsTotal] = useState(0);
   const [friendsPage, setFriendsPage] = useState(1);
@@ -2294,6 +2296,7 @@ export default function App() {
   // Poll friends list for online status
   useEffect(() => {
     if (socket && playerSerial) {
+      const pollRate = showFriendsModal ? 5000 : 35000;
       const interval = setInterval(() => {
         socket.emit('get_friends', { serial: playerSerial, limit: Math.max(10, friendsList.length) }, (res: any) => {
           if (res.success) {
@@ -2301,10 +2304,10 @@ export default function App() {
             setFriendsTotal(res.total || 0);
           }
         });
-      }, 35000); // 35 seconds
+      }, pollRate);
       return () => clearInterval(interval);
     }
-  }, [socket, playerSerial, friendsList.length]);
+  }, [socket, playerSerial, friendsList.length, showFriendsModal]);
 
   // Load Friends Effect
   useEffect(() => {
@@ -3037,6 +3040,16 @@ export default function App() {
       playSound('clickOpen');
       closeAllModals();
       setShowFriendsModal(true);
+      if (socket && playerSerial) {
+        setFriendsLoading(true);
+        socket.emit('get_friends', { serial: playerSerial, limit: Math.max(10, friendsList.length) }, (res: any) => {
+          setFriendsLoading(false);
+          if (res.success) {
+            setFriendsList(res.friends || []);
+            setFriendsTotal(res.total || 0);
+          }
+        });
+      }
     }
   };
 
@@ -6926,7 +6939,20 @@ export default function App() {
     </AnimatePresence>
   );
 
-  const renderFriendsModal = () => (
+  const renderFriendsModal = () => {
+    const sortedFriends = [...friendsList].sort((a, b) => {
+      if (a.isOnline && !b.isOnline) return -1;
+      if (!a.isOnline && b.isOnline) return 1;
+      return (b.level || 1) - (a.level || 1);
+    });
+
+    const filteredFriends = sortedFriends.filter(f => {
+      const name = (f.name || '').toLowerCase();
+      const query = friendSearchQuery.toLowerCase();
+      return name.includes(query) || normalizeEgyptian(name).includes(normalizeEgyptian(query));
+    });
+
+    return (
     <AnimatePresence>
       {showFriendsModal && (
         <motion.div
@@ -6934,7 +6960,7 @@ export default function App() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={handleshowFriendsModal}
-          className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[8000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
         >
           <motion.div
             initial={{ scale: 0.9, y: 20 }}
@@ -6954,6 +6980,17 @@ export default function App() {
               </button>
             </div>
 
+            <div className="mb-3 relative">
+              <input
+                type="text"
+                placeholder="ابحث بالاسم..."
+                value={friendSearchQuery}
+                onChange={(e) => setFriendSearchQuery(e.target.value)}
+                className="w-full bg-white border-2 border-gray-200 rounded-xl py-2 pl-3 pr-10 text-sm font-bold text-black placeholder-gray-500 focus:outline-none focus:border-blue-400"
+              />
+              <Search className="w-5 h-5 text-gray-500 absolute right-3 top-2.5" />
+            </div>
+
             <div 
               className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar"
               onScroll={(e) => {
@@ -6963,11 +7000,11 @@ export default function App() {
                 }
               }}
             >
-              {friendsList.length === 0 && !friendsLoading ? (
-                <div className="text-center py-8 text-brown-muted font-bold">لا يوجد أصدقاء حالياً.</div>
+              {filteredFriends.length === 0 && !friendsLoading ? (
+                <div className="text-center py-8 text-brown-muted font-bold">لا يوجد أصدقاء.</div>
               ) : (
                 <>
-                  {friendsList.map(friend => (
+                  {filteredFriends.map(friend => (
                      <div key={friend.serial} className="bg-gray-50 border-2 border-gray-100 p-2 rounded-xl flex items-center justify-between shadow-sm">
                        <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => openPlayerProfile(friend.serial)}>
                          <div className="relative">
@@ -6992,13 +7029,17 @@ export default function App() {
                                    setRoomId('waiting_friend'); // Dummy room UI
                                  } else {
                                    showAlert(res.error || res.message || 'فشل إرسال التحدي', 'خطأ');
+                                   if (res.error === 'الصديق في مباراة حالياً') {
+                                      setFriendsList(prev => prev.map(f => f.serial === friend.serial ? { ...f, isInMatch: true } : f));
+                                   }
                                  }
                                });
                              }}
-                             className="bg-accent-green hover:brightness-110 text-white w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-                             title="تحدي"
+                             className={`${friend.isInMatch ? 'bg-orange-500 hover:bg-orange-600 cursor-not-allowed' : 'bg-accent-green hover:brightness-110'} text-white w-8 h-8 rounded-lg flex items-center justify-center transition-all`}
+                             title={friend.isInMatch ? "في مباراة" : "تحدي"}
+                             disabled={friend.isInMatch}
                            >
-                             <Gamepad2 className="w-4 h-4" />
+                             {friend.isInMatch ? <Swords className="w-4 h-4 text-white animate-pulse" /> : <Gamepad2 className="w-4 h-4" />}
                            </button>
                          )}
                          <button 
@@ -7030,7 +7071,8 @@ export default function App() {
         </motion.div>
       )}
     </AnimatePresence>
-  );
+    );
+  };
 
   const renderFriendRequestsModal = () => (
     <AnimatePresence>
@@ -12390,7 +12432,8 @@ export default function App() {
     if (!showGiftModal) return null;
 
     const handleAmountChange = (key: string, value: string, max: number) => {
-      let num = parseInt(value) || 0;
+      const englishValue = value.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]);
+      let num = parseInt(englishValue) || 0;
       if (num > max) num = max;
       if (num < 0) num = 0;
       setGiftAmounts(prev => {
@@ -12425,7 +12468,7 @@ export default function App() {
       <AnimatePresence>
         {showGiftModal && (
           <div 
-            className="fixed inset-0 z-[7000] flex justify-center items-center md:items-center p-4 md:p-4 pb-0 bg-black/60 backdrop-blur-sm" 
+            className="fixed inset-0 z-[9000] flex justify-center items-center md:items-center p-4 md:p-4 pb-0 bg-black/60 backdrop-blur-sm" 
             dir="rtl"
             onClick={() => {
               playSound('clickClose');
@@ -12479,9 +12522,9 @@ export default function App() {
                       <span className="text-xs text-gray-400 bg-gray-100 px-1 rounded-md">معك: {keys - (parseInt(giftAmounts.keys) || 0)}</span>
                     </div>
                     <input 
-                      type="number" 
-                      min="0" 
-                      max={keys} 
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9٠-٩]*"
                       value={giftAmounts.keys}
                       onChange={(e) => handleAmountChange('keys', e.target.value, keys)}
                       className="w-full text-center border-2 border-gray-200 rounded-lg py-1 focus:border-yellow-500 focus:outline-none"
@@ -12495,9 +12538,9 @@ export default function App() {
                       <span className="text-xs text-gray-400 bg-gray-100 px-1 rounded-md">معك: {tokens - (parseInt(giftAmounts.tokens) || 0)}</span>
                     </div>
                     <input 
-                      type="number" 
-                      min="0" 
-                      max={tokens} 
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9٠-٩]*"
                       value={giftAmounts.tokens}
                       onChange={(e) => handleAmountChange('tokens', e.target.value, tokens)}
                       className="w-full text-center border-2 border-gray-200 rounded-lg py-1 focus:border-blue-500 focus:outline-none"
@@ -12526,9 +12569,9 @@ export default function App() {
                         <span className="font-bold text-[10px]">{item.name}</span>
                         </div>
                         <input 
-                          type="number" 
-                          min="0" 
-                          max={owned} 
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9٠-٩]*"
                           value={giftAmounts.helpers[item.id] || ''}
                           onChange={(e) => handleAmountChange(item.id, e.target.value, owned)}
                           className="w-full text-center border-2 border-gray-200 rounded-lg py-1 focus:border-pink-500 focus:outline-none text-xs"
