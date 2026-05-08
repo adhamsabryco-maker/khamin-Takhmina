@@ -24,6 +24,7 @@ export default defineConfig(({mode}) => {
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone', // خليها standalone أحسن للتوافق
+          orientation: 'portrait',
           icons: [
             {
               src: 'icon-3.png',
