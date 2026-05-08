@@ -523,6 +523,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       "description": "لعبة خمن تخمينة هي لعبة تخمين صور، وكلمات، واسئلة سريعة، جوائز يومية قيمة، ممتعة جدا وتناسب جميع الاعمار",
       "start_url": "/",
       "display": "standalone",
+      "orientation": "portrait",
       "background_color": "#ffffff",
       "theme_color": "#ffffff",
       "icons": [
