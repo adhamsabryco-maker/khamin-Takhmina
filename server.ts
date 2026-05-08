@@ -523,7 +523,6 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       "description": "لعبة خمن تخمينة هي لعبة تخمين صور، وكلمات، واسئلة سريعة، جوائز يومية قيمة، ممتعة جدا وتناسب جميع الاعمار",
       "start_url": "/",
       "display": "standalone",
-      "orientation": "portrait",
       "background_color": "#ffffff",
       "theme_color": "#ffffff",
       "icons": [
@@ -6756,8 +6755,62 @@ io.on("connection", (socket) => {
         // Deduct from sender
         if (keysToSend > 0) sender.keys -= keysToSend;
         if (tokensToSend > 0) sender.tokens -= tokensToSend;
+
+        let tempTokensToSend = 0;
+        let remainingTokensToDeduct = tokensToSend;
+        
+        if (remainingTokensToDeduct > 0 && sender.rainGiftTokens && sender.rainGiftTokens > 0) {
+          let deduct = Math.min(sender.rainGiftTokens, remainingTokensToDeduct);
+          sender.rainGiftTokens -= deduct;
+          remainingTokensToDeduct -= deduct;
+          tempTokensToSend += deduct;
+        }
+        if (remainingTokensToDeduct > 0 && sender.luckyWheelTokens && sender.luckyWheelTokens > 0) {
+          let deduct = Math.min(sender.luckyWheelTokens, remainingTokensToDeduct);
+          sender.luckyWheelTokens -= deduct;
+          remainingTokensToDeduct -= deduct;
+          tempTokensToSend += deduct;
+        }
+        if (remainingTokensToDeduct > 0 && sender.citySearchRewards) {
+          for (let r of sender.citySearchRewards) {
+             if (r.type === 'token' && r.amount > 0) {
+                 let deduct = Math.min(r.amount, remainingTokensToDeduct);
+                 r.amount -= deduct;
+                 remainingTokensToDeduct -= deduct;
+                 tempTokensToSend += deduct;
+                 if (remainingTokensToDeduct === 0) break;
+             }
+          }
+        }
+
+        let tempHelpersToSend: Record<string, number> = {};
         for (const [helperId, amount] of Object.entries(validHelpers)) {
              sender.ownedHelpers[helperId] -= amount;
+             
+             let remainingHelperToDeduct = amount as number;
+             if (remainingHelperToDeduct > 0 && sender.rainGiftHelpers && sender.rainGiftHelpers[helperId] > 0) {
+                let deduct = Math.min(sender.rainGiftHelpers[helperId], remainingHelperToDeduct);
+                sender.rainGiftHelpers[helperId] -= deduct;
+                remainingHelperToDeduct -= deduct;
+                tempHelpersToSend[helperId] = (tempHelpersToSend[helperId] || 0) + deduct;
+             }
+             if (remainingHelperToDeduct > 0 && sender.luckyWheelHelpers && sender.luckyWheelHelpers[helperId] > 0) {
+                let deduct = Math.min(sender.luckyWheelHelpers[helperId], remainingHelperToDeduct);
+                sender.luckyWheelHelpers[helperId] -= deduct;
+                remainingHelperToDeduct -= deduct;
+                tempHelpersToSend[helperId] = (tempHelpersToSend[helperId] || 0) + deduct;
+             }
+             if (remainingHelperToDeduct > 0 && sender.citySearchRewards) {
+               for (let r of sender.citySearchRewards) {
+                   if (r.type === 'helper' && r.id === helperId && r.amount > 0) {
+                       let deduct = Math.min(r.amount, remainingHelperToDeduct);
+                       r.amount -= deduct;
+                       remainingHelperToDeduct -= deduct;
+                       tempHelpersToSend[helperId] = (tempHelpersToSend[helperId] || 0) + deduct;
+                       if (remainingHelperToDeduct === 0) break;
+                   }
+               }
+             }
         }
 
         savePlayerData(serial);
@@ -6771,7 +6824,7 @@ io.on("connection", (socket) => {
 
         // Create gift notification
         const notificationId = Math.random().toString(36).substr(2, 9);
-        const giftsJson = JSON.stringify({ keys: keysToSend, tokens: tokensToSend, helpers: validHelpers });
+        const giftsJson = JSON.stringify({ keys: keysToSend, tokens: tokensToSend, helpers: validHelpers, tempTokens: tempTokensToSend, tempHelpers: tempHelpersToSend });
         
         db.prepare('INSERT INTO gift_notifications (id, senderSerial, receiverSerial, senderName, senderAvatar, gifts, timestamp, read) VALUES (?, ?, ?, ?, ?, ?, ?, 0)')
           .run(notificationId, serial, targetSerial, sender.name, sender.avatar, giftsJson, Date.now());
@@ -6783,7 +6836,7 @@ io.on("connection", (socket) => {
                  id: notificationId,
                  senderName: sender.name,
                  senderAvatar: sender.avatar,
-                 gifts: { keys: keysToSend, tokens: tokensToSend, helpers: validHelpers }
+                 gifts: { keys: keysToSend, tokens: tokensToSend, helpers: validHelpers, tempTokens: tempTokensToSend, tempHelpers: tempHelpersToSend }
              });
              break;
           }
@@ -6824,13 +6877,22 @@ io.on("connection", (socket) => {
         let keysReceived = gifts.keys || 0;
         let tokensReceived = gifts.tokens || 0;
         let helpersReceived = gifts.helpers || {};
+        let tempTokensReceived = gifts.tempTokens || 0;
+        let tempHelpersReceived = gifts.tempHelpers || {};
 
         receiver.keys = (receiver.keys || 0) + keysReceived;
         receiver.tokens = (receiver.tokens || 0) + tokensReceived;
+        if (tempTokensReceived > 0) {
+            receiver.rainGiftTokens = (receiver.rainGiftTokens || 0) + tempTokensReceived;
+        }
         
         if (!receiver.ownedHelpers) receiver.ownedHelpers = {};
+        if (!receiver.rainGiftHelpers) receiver.rainGiftHelpers = {};
         for (const [helperId, amount] of Object.entries(helpersReceived)) {
              receiver.ownedHelpers[helperId] = (receiver.ownedHelpers[helperId] || 0) + (amount as number);
+        }
+        for (const [helperId, amount] of Object.entries(tempHelpersReceived)) {
+             receiver.rainGiftHelpers[helperId] = (receiver.rainGiftHelpers[helperId] || 0) + (amount as number);
         }
 
         db.prepare('UPDATE gift_notifications SET read = 1 WHERE id = ?').run(notificationId);
@@ -7093,6 +7155,28 @@ io.on("connection", (socket) => {
         const friendsList = friendsRows.map((row: any) => {
           const friendSerial = row.player1 === serial ? row.player2 : row.player1;
           const player = allPlayers.get(friendSerial);
+          
+          let isInMatch = false;
+          if (player) {
+              for (const room of rooms.values()) {
+                  if (room.players && room.players.some((p: any) => p.serial === friendSerial)) {
+                      isInMatch = true;
+                      break;
+                  }
+              }
+              if (!isInMatch && matchmakingQueue.some(p => p.serial === friendSerial)) {
+                  isInMatch = true;
+              }
+              if (!isInMatch) {
+                  for (const match of pendingMatches.values()) {
+                      if (match.p1.serial === friendSerial || match.p2.serial === friendSerial) {
+                          isInMatch = true;
+                          break;
+                      }
+                  }
+              }
+          }
+          
           return player ? {
             serial: player.serial,
             name: player.name,
@@ -7100,7 +7184,8 @@ io.on("connection", (socket) => {
             level: getLevel(player.xp || 0),
             selectedFrame: player.selectedFrame,
             isHighestLikes: (highestLikesSerials.includes(player.serial) && (player.likes || 0) > 0),
-            isOnline: playerSockets.has(player.serial)
+            isOnline: playerSockets.has(player.serial),
+            isInMatch
           } : null;
         }).filter(Boolean);
 
