@@ -3027,6 +3027,19 @@ export default function App() {
     }
   };
 
+    const handleshowFriendsModal = () => {
+    if (showFriendsModal) {
+      playSound('clickClose');
+      setShowFriendsModal(false);
+      // Sequence will continue via useEffect or manual call
+      setTimeout(checkAndShowNextModal, 300);
+    } else {
+      playSound('clickOpen');
+      closeAllModals();
+      setShowFriendsModal(true);
+    }
+  };
+
   const handleOpenCitySearch = () => {
     if (showCitySearch) {
       playSound('clickClose');
@@ -6574,7 +6587,7 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/85 backdrop-blur-md z-[6000] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-md z-[6000] flex items-center justify-center p-4"
           onClick={toggleDailyQuests}
         >
           <motion.div
@@ -6920,7 +6933,7 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={() => setShowFriendsModal(false)}
+          onClick={handleshowFriendsModal}
           className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
         >
           <motion.div
@@ -6936,7 +6949,7 @@ export default function App() {
                 الأصدقاء
                 <span className="text-sm bg-gray-100 px-2 py-0.5 rounded-full text-black">{friendsTotal}</span>
               </h2>
-              <button onClick={() => setShowFriendsModal(false)} className="text-brown-light hover:text-red-500 transition-colors">
+              <button onClick={handleshowFriendsModal} className="text-brown-light hover:text-red-500 transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -6964,7 +6977,7 @@ export default function App() {
                          </div>
                          <div>
                            <div className="font-black text-sm text-main">{friend.name}</div>
-                           <div className="text-[10px] text-gray-500 bg-gray-200 px-1.5 rounded-full inline-block">Lvl {friend.level || 1}</div>
+                           <div className="text-[10px] text-gray-500 bg-gray-200 px-1.5 rounded-full">Lvl {friend.level || 1}</div>
                          </div>
                        </div>
                        
@@ -6989,7 +7002,7 @@ export default function App() {
                            </button>
                          )}
                          <button 
-                           onClick={() => setShowGiftModal({serial: friend.serial, name: friend.name, avatar: friend.avatar, level: friend.level || 1, selectedFrame: friend.selectedFrame})}
+                           onClick={() => { playSound('clickOpen'); setShowGiftModal({serial: friend.serial, name: friend.name, avatar: friend.avatar, level: friend.level || 1, selectedFrame: friend.selectedFrame}); }}
                            className="bg-pink-50 hover:bg-pink-100 text-pink-500 border border-pink-400 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50"
                            title="إرسال هدايا"
                          >
@@ -8434,7 +8447,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[2000] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4"
             onClick={handleOpenCitySearch}
           >
             <motion.div 
@@ -8635,7 +8648,7 @@ export default function App() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setIsIdVisible(!isIdVisible)}
-                        className={`bg-white border-2 border-accent-blue px-2 py-1 rounded-xl font-bold text-accent-blue cursor-pointer hover:bg-blue-50 transition-colors shadow-inner flex items-center justify-center gap-2 active:scale-95 ${isIdVisible ? 'text-sm md:text-sm' : 'text-sm md:text-sm'}`}
+                        className={`bg-white border-2 border-accent-blue px-2 py-1 rounded-xl font-bold text-accent-blue cursor-pointer hover:bg-blue-50 transition-colors shadow-inner flex items-center justify-center gap-2 active:scale-95 ${isIdVisible ? 'text-xs md:text-sm' : 'text-xs md:text-sm'}`}
                         dir="rtl"
                       >
                         {isIdVisible ? <EyeOff className="w-5 h-5 text-accent-blue opacity-50" /> : <Eye className="w-4 h-4 text-accent-blue opacity-50" />}
@@ -12399,6 +12412,7 @@ export default function App() {
       socket?.emit("send_gift", { serial: playerSerial, targetSerial: showGiftModal.serial, gifts }, (res: any) => {
         if (res.success) {
           showAlert(`تم إرسال الهدايا إلى ${showGiftModal.name} بنجاح!`, 'نجاح');
+          playSound('correct');
           setShowGiftModal(null);
           setGiftAmounts({keys: '', tokens: '', helpers: {}});
         } else {
@@ -12411,23 +12425,23 @@ export default function App() {
       <AnimatePresence>
         {showGiftModal && (
           <div 
-            className="fixed inset-0 z-[7000] flex justify-center items-end md:items-center p-0 md:p-4 pb-0 bg-black/60 backdrop-blur-sm" 
+            className="fixed inset-0 z-[7000] flex justify-center items-center md:items-center p-4 md:p-4 pb-0 bg-black/60 backdrop-blur-sm" 
             dir="rtl"
             onClick={() => {
+              playSound('clickClose');
               setShowGiftModal(null);
               setGiftAmounts({keys: '', tokens: '', helpers: {}});
             }}
           >
             <motion.div
               onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, y: "100%" }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
             className="w-full max-w-md bg-[#FFF9F0] md:rounded-[2rem] rounded-t-[2rem] shadow-2xl border-4 border-[#8B4513]/20 overflow-hidden"
           >
-            <div className="bg-[#8B4513] text-white p-4 relative overflow-hidden">
-              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] mix-blend-overlay"></div>
+            <div className="bg-[#8B4513] text-white p-2 relative overflow-hidden">
+              <div className="absolute inset-0 bg-accent-brown"></div>
               <div className="relative flex justify-between items-center z-10">
                 <div className="flex items-center gap-3">
                   <Gift className="w-6 h-6 md:w-8 md:h-8 text-yellow-400 drop-shadow-md" />
@@ -12435,6 +12449,7 @@ export default function App() {
                 </div>
                 <button 
                   onClick={() => {
+                    playSound('clickClose');
                     setShowGiftModal(null);
                     setGiftAmounts({keys: '', tokens: '', helpers: {}});
                   }} 
@@ -12445,23 +12460,23 @@ export default function App() {
               </div>
             </div>
 
-            <div className="p-4 md:p-6 overflow-y-auto max-h-[60vh]">
-              <div className="flex flex-col items-center mb-6">
-                <div className="w-20 h-20 mb-3">
+            <div className="p-2 md:p-2 overflow-y-auto max-h-[60vh]">
+              <div className="flex flex-col items-center mb-3">
+                <div className="w-20 h-20 mb-2">
                   {renderAvatarContent(showGiftModal.avatar, showGiftModal.level, false, false, showGiftModal.selectedFrame, showGiftModal.serial)}
                 </div>
                 <div className="text-lg font-black text-main">{showGiftModal.name}</div>
-                <div className="text-sm text-gray-500">مستوى {showGiftModal.level}</div>
+                <div className="text-sm text-gray-500">Lvl {showGiftModal.level}</div>
               </div>
 
               <div className="space-y-4">
                 {/* Keys and Tokens */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white border-2 border-gray-100 rounded-xl p-3 flex flex-col items-center">
-                    <div className="flex items-center gap-2 mb-2 w-full justify-center">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white border-2 border-gray-100 rounded-xl p-1 flex flex-col items-center">
+                    <div className="flex items-center gap-1 mb-2 w-full justify-center">
                       <Key className="w-5 h-5 text-yellow-500" />
-                      <span className="font-bold text-sm">المفاتيح</span>
-                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {keys - (parseInt(giftAmounts.keys) || 0)}</span>
+                      <span className="font-bold text-xs md:text-sm">مفاتيح</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1 rounded-md">معك: {keys - (parseInt(giftAmounts.keys) || 0)}</span>
                     </div>
                     <input 
                       type="number" 
@@ -12473,11 +12488,11 @@ export default function App() {
                       placeholder="الكمية"
                     />
                   </div>
-                  <div className="bg-white border-2 border-gray-100 rounded-xl p-3 flex flex-col items-center">
-                    <div className="flex items-center gap-2 mb-2 w-full justify-center">
+                  <div className="bg-white border-2 border-gray-100 rounded-xl p-1 flex flex-col items-center">
+                    <div className="flex items-center gap-1 mb-2 w-full justify-center">
                       <img src="/Takhmina_coin_02.png" className="w-5 h-5 drop-shadow-sm" />
-                      <span className="font-bold text-sm">تخمينات</span>
-                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {tokens - (parseInt(giftAmounts.tokens) || 0)}</span>
+                      <span className="font-bold text-xs md:text-sm">تخمينات</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1 rounded-md">معك: {tokens - (parseInt(giftAmounts.tokens) || 0)}</span>
                     </div>
                     <input 
                       type="number" 
@@ -12492,22 +12507,24 @@ export default function App() {
                 </div>
 
                 {/* Helpers */}
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
                   {HELPER_ITEMS.map((item) => {
                     const owned = ownedHelpers[item.id] || 0;
                     return (
-                      <div key={item.id} className="bg-white border-2 border-gray-100 rounded-xl p-2 flex flex-col items-center">
+                      <div key={item.id} className="bg-white border-2 border-gray-100 rounded-xl p-1 flex flex-col items-center">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {owned - (parseInt(giftAmounts.helpers[item.id]) || 0)}</span>
                         </div>
-                        <div className="w-8 h-8 flex items-center justify-center mb-1">
-                          {item.id === 'word_length' && <Type className="w-6 h-6 text-blue-500" />}
-                          {item.id === 'word_count' && <Hash className="w-6 h-6 text-green-500" />}
+                        <div class="flex items-center gap-2 mb-2 w-full justify-center">
+                        <div className="w-5 h-5">
+                          {item.id === 'word_length' && <Type className="w-6 h-6 text-green-500" />}
+                          {item.id === 'word_count' && <Hash className="w-6 h-6 text-indigo-500" />}
                           {item.id === 'time_freeze' && <Snowflake className="w-6 h-6 text-cyan-500" />}
-                          {item.id === 'hint' && <HelpCircle className="w-6 h-6 text-orange-500" />}
+                          {item.id === 'hint' && <HelpCircle className="w-6 h-6 text-blue-500" />}
                           {item.id === 'spy_lens' && <Eye className="w-6 h-6 text-purple-500" />}
                         </div>
                         <span className="font-bold text-[10px] text-center mb-2 line-clamp-1">{item.name}</span>
+                        </div>
                         <input 
                           type="number" 
                           min="0" 
@@ -12524,11 +12541,11 @@ export default function App() {
               </div>
             </div>
 
-            <div className="p-4 bg-gray-50 border-t border-gray-200">
+            <div className="p-2 bg-gray-50 border-t border-gray-200">
               <button
                 disabled={!giftAmounts.keys && !giftAmounts.tokens && Object.values(giftAmounts.helpers).every(v => !v)}
                 onClick={handleSendGift}
-                className="w-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-black py-4 rounded-xl shadow-sm transition-colors text-lg active:scale-95 flex items-center justify-center gap-2"
+                className="w-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-black py-2 rounded-xl shadow-sm transition-colors text-lg active:scale-95 flex items-center justify-center gap-2"
               >
                 <Gift className="w-5 h-5" />
                 إرسال الهدايا الآن
@@ -12641,18 +12658,18 @@ export default function App() {
             className="bg-white border-8 border-black rounded-[2rem] w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
           >
             {/* Header */}
-            <div className="p-6 border-b-4 border-black flex justify-between items-center bg-accent-blue/10">
+            <div className="p-3 md:p-6 border-b-4 border-black flex justify-between items-center bg-accent-blue/10">
               <button onClick={handleOpenshowCollectionModal} className="w-10 h-10 bg-white border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
                 <X className="w-6 h-6" />
               </button>
               <div className="flex items-center gap-3 flex-row-reverse">
                 <span className="text-3xl">{category.icon}</span>
-                <h2 className="text-2xl font-bold text-main uppercase tracking-tighter">مكافآت {category.name}</h2>
+                <h2 className="text-sm md:text-2xl font-bold text-main uppercase tracking-tighter">مكافآت {category.name}</h2>
               </div>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-8 custom-scrollbar">
               {category.stages.map((stage, sIdx) => {
                 const prevStageComplete = sIdx === 0 || category.stages[sIdx - 1].images.every(img => {
                   const norm = normalizeEgyptian(img).toLowerCase();
@@ -12668,7 +12685,7 @@ export default function App() {
                 });
 
                 return (
-                  <div key={stage.stage} className={`relative ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div key={stage.stage} className={`relative mb-3 ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                     <div className="flex items-center justify-between mb-4 flex-row-reverse" dir="ltr">
                       <h3 className="text-xl font-black text-main">المرحلة {stage.stage}</h3>
                       {isLocked && <Lock className="w-5 h-5 text-gray-400" />}
@@ -12721,7 +12738,7 @@ export default function App() {
                                   setShowAskFriendModal({ imageName: imgName, categoryId: category.id });
                                   setSelectedFriendsForRequest([]);
                                 }} 
-                                className="btn-game btn-danger mt-1 text-[10px] font-bold px-2 py-0.5 rounded-md w-full flex items-center justify-center gap-1 transition-colors relative"
+                                className="btn-game btn-danger mt-1 text-[8px] md:text-[10px] font-bold px-1 md:px-2 py-0.5 rounded-md w-full flex items-center justify-center gap-0.5 md:gap-1 transition-colors relative"
                               >
                                 <Users className="w-3 h-3" />
                                 اسأل صديق
