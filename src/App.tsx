@@ -7398,7 +7398,7 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-md z-[7000] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-md z-[9000] flex items-center justify-center p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               playSound('clickClose');
@@ -8268,16 +8268,16 @@ export default function App() {
             >
               <button 
                 onClick={toggleLevelInfo}
-                className="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-brown-muted hover:bg-gray-200 transition-colors z-10"
+                className="absolute w-8 h-8 top-2 right-2 bg-white border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none z-10"
               >
                 <X className="w-5 h-5" />
               </button>
               
               <div className="flex items-center justify-center gap-2 mb-4 mt-6">
-                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                <div className="w-6 h-6 bg-orange-100 rounded-xl flex items-center justify-center">
                   <Star className="w-5 h-5 text-accent-orange fill-accent-orange" />
                 </div>
-                <h2 className="text-xl font-black text-main">نظام المستويات (Levels)</h2>
+                <h2 className="text-sm font-black text-main">معلومات ونظام المستويات</h2>
               </div>
               
               <div className="space-y-2 text-brown-muted font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -8499,18 +8499,18 @@ export default function App() {
               className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-accent-blue p-4 flex justify-between items-center text-white" dir="ltr">
+              <div className="bg-accent-blue p-3 flex justify-between items-center text-white" dir="ltr">
                 <h3 className="font-black text-[14px] flex items-center gap-2">
                   <Search className="w-6 h-6" /> ابحث في المدينة عن الهدايا
                 </h3>
-                <button onClick={handleOpenCitySearch} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
-                  <X className="w-6 h-6" />
+                <button onClick={handleOpenCitySearch} className="w-8 h-8 bg-white text-black border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
+                  <X className="w-8 h-8" />
                 </button>
               </div>
 
               <div className="p-4">
                 {/* City Selection */}
-                <div className="flex gap-3 justify-center mb-2">
+                <div className="flex gap-3 justify-center mb-3">
                   {[
                     { id: 1, name: 'مدينة الأحلام' },
                     { id: 2, name: 'مدينة الظلام' },
@@ -8538,10 +8538,10 @@ export default function App() {
                 </div>
 
                 {/* Main Image */}
-                <div className="relative w-full aspect-video flex justify-center items-center rounded-2xl mb-2 bg-gray-200 overflow-hidden shadow-inner border-2 border-gray-200">
+                <div className="relative w-full h-full aspect-video p-2 flex justify-center items-center rounded-2xl mb-2 bg-gray-300 overflow-hidden shadow-inner">
                   <img 
                     src={`/city-gift-0${citySearchState?.active ? citySearchState.cityId : selectedCity}.jpg`} 
-                    className={`w-full h-full object-cover transition-opacity duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
+                    className={`w-100 h-full object-cover transition-opacity border-2 border-gray-200 duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
                     alt="Selected City"
                   />
                   
@@ -8562,7 +8562,7 @@ export default function App() {
 
                 {!citySearchState?.active && (
                   <div className="text-center mb-2 px-2">
-                    <p className="text-sm font-bold text-gray-600 bg-blue-50 p-3 rounded-xl border border-blue-100">
+                    <p className="text-xs md:text-sm font-bold text-gray-600 bg-blue-50 p-3 rounded-xl border border-blue-100">
                      ابحث في المدينة وجمع هدايا XP، تخمينات، باقة المحترفين، ووسائل مساعدة، ومفاتيح التخمين!
                     </p>
                   </div>
@@ -12707,7 +12707,7 @@ export default function App() {
               </button>
               <div className="flex items-center gap-3 flex-row-reverse">
                 <span className="text-3xl">{category.icon}</span>
-                <h2 className="text-sm md:text-2xl font-bold text-main uppercase tracking-tighter">مكافآت {category.name}</h2>
+                <h2 className="text-mm md:text-2xl font-bold text-main uppercase tracking-tighter">مكافآت {category.name}</h2>
               </div>
             </div>
 
@@ -14587,9 +14587,9 @@ export default function App() {
             <div className="pt-3 md:pt-3 border-t-2 border-game space-y-3 md:space-y-4">
                 <div className="flex items-center font-bold md:text-sm text-xs gap-1">
                 <Users className="w-4 h-4" />
-                 إجمالي عدد اللاعبين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{totalPlayersCount}</span>
+                 إجمالي اللاعبين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{totalPlayersCount}</span>
                 <span className="text-green-600 bg-green-100 px-2 py-0.5 rounded-full md:text-sm text-xs mr-2">
-                  متصل الآن: {onlineCount > 1000 ? '1000+' : onlineCount}
+                  متصل: {onlineCount > 1000 ? '1000+' : onlineCount}
                 </span>
                 </div>            
               <div className="pt-2 md:pt-3 border-t-2 border-game">
