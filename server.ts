@@ -1712,7 +1712,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     if (needsSave) {
       savePlayerData(serial);
       if (socket) {
-        socket.emit("player_data_update", { 
+        emitPlayerDataUpdate(socket, serial, { 
           serial, 
           tokens: player.tokens, 
           ownedHelpers: player.ownedHelpers 
@@ -3790,6 +3790,54 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
 
   const CATEGORIES = {};
 
+  function getTempItemsSum(player: any) {
+    let tempKeys = 0;
+    let tempTokens = (player.luckyWheelTokens || 0) + (player.rainGiftTokens || 0);
+    let tempHelpersObj: Record<string, number> = {};
+    
+    if (player.citySearchRewards && Array.isArray(player.citySearchRewards)) {
+      player.citySearchRewards.forEach((r: any) => {
+        if (r.type === 'key') tempKeys += r.amount;
+        else if (r.type === 'token') tempTokens += r.amount;
+        else if (r.type === 'helper' && r.helperId) {
+          tempHelpersObj[r.helperId] = (tempHelpersObj[r.helperId] || 0) + r.amount;
+        }
+      });
+    } else if (typeof player.citySearchRewards === 'string') {
+      try {
+        const parsed = JSON.parse(player.citySearchRewards);
+        parsed.forEach((r: any) => {
+           if (r.type === 'key') tempKeys += r.amount;
+           else if (r.type === 'token') tempTokens += r.amount;
+           else if (r.type === 'helper' && r.helperId) {
+             tempHelpersObj[r.helperId] = (tempHelpersObj[r.helperId] || 0) + r.amount;
+           }
+        });
+      } catch (e) {}
+    }
+
+    if (player.luckyWheelHelpers) {
+      const h = typeof player.luckyWheelHelpers === 'string' ? JSON.parse(player.luckyWheelHelpers) : player.luckyWheelHelpers;
+      Object.entries(h).forEach(([key, val]) => {
+        tempHelpersObj[key] = (tempHelpersObj[key] || 0) + Number(val);
+      });
+    }
+    if (player.rainGiftHelpers) {
+      const h = typeof player.rainGiftHelpers === 'string' ? JSON.parse(player.rainGiftHelpers) : player.rainGiftHelpers;
+      Object.entries(h).forEach(([key, val]) => {
+        tempHelpersObj[key] = (tempHelpersObj[key] || 0) + Number(val);
+      });
+    }
+    
+    return { keys: tempKeys, tokens: tempTokens, helpers: tempHelpersObj };
+  }
+
+  function emitPlayerDataUpdate(target: any, serial: string, data: any) {
+    const player = allPlayers.get(serial);
+    const tempItems = player ? getTempItemsSum(player) : undefined;
+    target.emit('player_data_update', { ...data, tempItems });
+  }
+
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
     broadcastOnlineCount();
@@ -4076,7 +4124,8 @@ io.on("connection", (socket) => {
           xp: player.xp,
           tokens: player.tokens,
           ownedHelpers: player.ownedHelpers || {},
-          proPackageExpiry: player.proPackageExpiry
+          proPackageExpiry: player.proPackageExpiry,
+          tempItems: getTempItemsSum(player)
         }
       });
     });
@@ -4223,7 +4272,7 @@ io.on("connection", (socket) => {
       player.keys -= 5;
       savePlayerData(serial);
       
-      socket.emit("player_data_update", { 
+      emitPlayerDataUpdate(socket, serial, { 
         serial, 
         keys: player.keys
       });
@@ -4275,7 +4324,7 @@ io.on("connection", (socket) => {
       player.level = getLevel(player.xp);
       savePlayerData(serial);
 
-      socket.emit("player_data_update", { 
+      emitPlayerDataUpdate(socket, serial, { 
         serial, 
         xp: player.xp, 
         tokens: player.tokens, 
@@ -4308,7 +4357,7 @@ io.on("connection", (socket) => {
         if (Object.keys(safeUpdates).length > 0) {
           Object.assign(player, safeUpdates);
           savePlayerData(serial);
-          socket.emit("player_data_update", player);
+          emitPlayerDataUpdate(socket, player.serial, player);
           
           // Update in active rooms
           for (const room of rooms.values()) {
@@ -4362,7 +4411,7 @@ io.on("connection", (socket) => {
       }
 
       savePlayerData(serial);
-      socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers, keys: dbPlayer.keys });
+      emitPlayerDataUpdate(socket, serial, { serial, ownedHelpers: dbPlayer.ownedHelpers, keys: dbPlayer.keys });
       
       if (foundKey) {
         socket.emit("key_found", { keys: dbPlayer.keys });
@@ -4752,7 +4801,8 @@ io.on("connection", (socket) => {
 
         const enrichedPlayer = { 
           ...player, 
-          isHighestLikes: (highestLikesSerials.includes(player.serial) && (player.likes || 0) > 0) 
+          isHighestLikes: (highestLikesSerials.includes(player.serial) && (player.likes || 0) > 0),
+          tempItems: getTempItemsSum(player)
         };
         callback(enrichedPlayer);
       } else if (callback) {
@@ -5524,7 +5574,7 @@ io.on("connection", (socket) => {
               delete dbPlayer.ownedHelpers[cardType];
             }
             savePlayerData(serial);
-            socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers });
+            emitPlayerDataUpdate(socket, serial, { serial, ownedHelpers: dbPlayer.ownedHelpers });
             
             // Update room player
             player.ownedHelpers = dbPlayer.ownedHelpers;
@@ -5551,7 +5601,7 @@ io.on("connection", (socket) => {
             delete dbPlayer.ownedHelpers[cardType];
           }
           savePlayerData(serial);
-          socket.emit("player_data_update", { serial, ownedHelpers: dbPlayer.ownedHelpers });
+          emitPlayerDataUpdate(socket, serial, { serial, ownedHelpers: dbPlayer.ownedHelpers });
           
           // Update room player
           player.ownedHelpers = dbPlayer.ownedHelpers;
@@ -5563,7 +5613,7 @@ io.on("connection", (socket) => {
         if (dbPlayer && Math.random() < 0.15) {
           dbPlayer.keys = (dbPlayer.keys || 0) + 1;
           savePlayerData(serial);
-          socket.emit("player_data_update", { serial, keys: dbPlayer.keys });
+          emitPlayerDataUpdate(socket, serial, { serial, keys: dbPlayer.keys });
           socket.emit("key_found", { keys: dbPlayer.keys });
         }
       };
@@ -5774,7 +5824,7 @@ io.on("connection", (socket) => {
           // Notify the reported player if online
           for (const [socketId, s] of io.sockets.sockets) {
             if (s.data?.serial === serverReportedPlayer.serial) {
-              io.to(socketId).emit("player_data_update", { reports: serverReportedPlayer.reports });
+              emitPlayerDataUpdate(io.to(socketId), serverReportedPlayer.serial, { reports: serverReportedPlayer.reports });
               break;
             }
           }
@@ -5866,7 +5916,7 @@ io.on("connection", (socket) => {
               }
               
               // Notify the reported player so their profile updates
-              io.to(reportedPlayer.id).emit("player_data_update", { reports: serverReportedPlayer.reports });
+              emitPlayerDataUpdate(io.to(reportedPlayer.id), serverReportedPlayer.serial, { reports: serverReportedPlayer.reports });
               
               if (serverReportedPlayer.reports >= 10) {
                 serverReportedPlayer.reports = 0; // Reset reports after ban
@@ -6438,7 +6488,7 @@ io.on("connection", (socket) => {
            player.keys -= 25;
            player.tokens = (player.tokens || 0) + 10;
            savePlayerData(playerSerial);
-           io.to(socket.id).emit('player_data_update', player);
+           emitPlayerDataUpdate(io.to(socket.id), player.serial, player);
            callback({ success: true });
          } else {
            callback({ success: false, error: 'ليس لديك مفاتيح كافية!' });
@@ -6456,7 +6506,7 @@ io.on("connection", (socket) => {
            const now = Date.now();
            player.proPackageExpiry = Math.max(player.proPackageExpiry || 0, now) + 3 * 24 * 60 * 60 * 1000;
            savePlayerData(playerSerial);
-           io.to(socket.id).emit('player_data_update', player);
+           emitPlayerDataUpdate(io.to(socket.id), player.serial, player);
            callback({ success: true, proPackageExpiry: player.proPackageExpiry });
          } else {
            callback({ success: false, error: 'ليس لديك مفاتيح كافية!' });
@@ -6629,7 +6679,7 @@ io.on("connection", (socket) => {
           // Find socket ID for this player serial to send direct update
           for (const [socketId, s] of io.sockets.sockets) {
             if (s.data?.serial === serial) {
-              io.to(socketId).emit("player_data_update", player);
+              emitPlayerDataUpdate(io.to(socketId), player.serial, player);
               if (updates.isPermanentBan === 1) {
                 io.to(socketId).emit("banned_status", { isPermanent: true });
               } else if (updates.banUntil && updates.banUntil > Date.now()) {
@@ -6756,6 +6806,20 @@ io.on("connection", (socket) => {
         if (keysToSend > 0) sender.keys -= keysToSend;
         if (tokensToSend > 0) sender.tokens -= tokensToSend;
 
+        let tempKeysToSend = 0;
+        let remainingKeysToDeduct = keysToSend;
+        if (remainingKeysToDeduct > 0 && sender.citySearchRewards) {
+          for (let r of sender.citySearchRewards) {
+             if (r.type === 'key' && r.amount > 0) {
+                 let deduct = Math.min(r.amount, remainingKeysToDeduct);
+                 r.amount -= deduct;
+                 remainingKeysToDeduct -= deduct;
+                 tempKeysToSend += deduct;
+                 if (remainingKeysToDeduct === 0) break;
+             }
+          }
+        }
+
         let tempTokensToSend = 0;
         let remainingTokensToDeduct = tokensToSend;
         
@@ -6815,7 +6879,7 @@ io.on("connection", (socket) => {
 
         savePlayerData(serial);
 
-        socket.emit("player_data_update", {
+        emitPlayerDataUpdate(socket, serial, {
              serial,
              keys: sender.keys,
              tokens: sender.tokens,
@@ -6824,7 +6888,7 @@ io.on("connection", (socket) => {
 
         // Create gift notification
         const notificationId = Math.random().toString(36).substr(2, 9);
-        const giftsJson = JSON.stringify({ keys: keysToSend, tokens: tokensToSend, helpers: validHelpers, tempTokens: tempTokensToSend, tempHelpers: tempHelpersToSend });
+        const giftsJson = JSON.stringify({ keys: keysToSend, tokens: tokensToSend, helpers: validHelpers, tempKeys: tempKeysToSend, tempTokens: tempTokensToSend, tempHelpers: tempHelpersToSend });
         
         db.prepare('INSERT INTO gift_notifications (id, senderSerial, receiverSerial, senderName, senderAvatar, gifts, timestamp, read) VALUES (?, ?, ?, ?, ?, ?, ?, 0)')
           .run(notificationId, serial, targetSerial, sender.name, sender.avatar, giftsJson, Date.now());
@@ -6836,7 +6900,7 @@ io.on("connection", (socket) => {
                  id: notificationId,
                  senderName: sender.name,
                  senderAvatar: sender.avatar,
-                 gifts: { keys: keysToSend, tokens: tokensToSend, helpers: validHelpers, tempTokens: tempTokensToSend, tempHelpers: tempHelpersToSend }
+                 gifts: { keys: keysToSend, tokens: tokensToSend, helpers: validHelpers, tempKeys: tempKeysToSend, tempTokens: tempTokensToSend, tempHelpers: tempHelpersToSend }
              });
              break;
           }
@@ -6877,6 +6941,7 @@ io.on("connection", (socket) => {
         let keysReceived = gifts.keys || 0;
         let tokensReceived = gifts.tokens || 0;
         let helpersReceived = gifts.helpers || {};
+        let tempKeysReceived = gifts.tempKeys || 0;
         let tempTokensReceived = gifts.tempTokens || 0;
         let tempHelpersReceived = gifts.tempHelpers || {};
 
@@ -6884,6 +6949,14 @@ io.on("connection", (socket) => {
         receiver.tokens = (receiver.tokens || 0) + tokensReceived;
         if (tempTokensReceived > 0) {
             receiver.rainGiftTokens = (receiver.rainGiftTokens || 0) + tempTokensReceived;
+        }
+        if (tempKeysReceived > 0) {
+            if (!receiver.citySearchRewards) receiver.citySearchRewards = [];
+            else if (typeof receiver.citySearchRewards === 'string') {
+               try { receiver.citySearchRewards = JSON.parse(receiver.citySearchRewards); } 
+               catch(e) { receiver.citySearchRewards = []; }
+            }
+            receiver.citySearchRewards.push({ type: 'key', amount: tempKeysReceived, timestamp: Date.now() });
         }
         
         if (!receiver.ownedHelpers) receiver.ownedHelpers = {};
@@ -6898,7 +6971,7 @@ io.on("connection", (socket) => {
         db.prepare('UPDATE gift_notifications SET read = 1 WHERE id = ?').run(notificationId);
         savePlayerData(serial);
 
-        socket.emit("player_data_update", {
+        emitPlayerDataUpdate(socket, serial, {
              serial,
              keys: receiver.keys,
              tokens: receiver.tokens,
@@ -7399,7 +7472,7 @@ io.on("connection", (socket) => {
         }
         
         if (targetSocketId) {
-             io.to(targetSocketId).emit('player_data_update', { likes: targetPlayer.likes, keys: targetPlayer.keys });
+             emitPlayerDataUpdate(io.to(targetSocketId), targetPlayer.serial, { likes: targetPlayer.likes, keys: targetPlayer.keys });
         }
         
         updateHighestLikesGlobal();
@@ -8333,7 +8406,7 @@ io.on("connection", (socket) => {
           // Emit updated data to the player
           for (const [socketId, s] of io.sockets.sockets) {
             if (s.data?.serial === player.serial) {
-              io.to(socketId).emit("player_data_update", { 
+              emitPlayerDataUpdate(io.to(socketId), player.serial, { 
                 serial: player.serial, 
                 ownedHelpers: player.ownedHelpers,
                 xp: player.xp,
@@ -8386,7 +8459,7 @@ io.on("connection", (socket) => {
               // Emit updated data to the player
               for (const [socketId, s] of io.sockets.sockets) {
                 if (s.data?.serial === serial) {
-                  io.to(socketId).emit("player_data_update", { 
+                  emitPlayerDataUpdate(io.to(socketId), serial, { 
                     serial: serial, 
                     ownedHelpers: data.ownedHelpers,
                     xp: data.xp,
