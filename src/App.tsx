@@ -813,8 +813,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
 
   useEffect(() => {
-    if (!playerName.trim() || !socket) {
+    if (!playerName.trim() || !socket || playerName.trim() === (localStorage.getItem('khamin_player_name') || '')) {
       setIsNameAvailable(null);
+      setIsCheckingName(false);
       return;
     }
     
@@ -828,6 +829,18 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
     return () => clearTimeout(timeoutId);
   }, [playerName, socket, playerSerial]);
+  useEffect(() => {
+    let timer: any;
+    if (isNameAvailable === true) {
+      timer = setTimeout(() => {
+        setIsNameAvailable(null);
+      }, 3000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    }
+  }, [isNameAvailable]);
+
   const [isRewardClaimed, setIsRewardClaimed] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [showKeyDrop, setShowKeyDrop] = useState(false);
@@ -8810,7 +8823,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     ) : null}
                     {lastRenameAt > 0 && (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) < 30 && (
                       <div className="flex flex-col">
-                        <p className="text-[10px] text-red-500 font-bold text-right mb-1">
+                        <p className="text-[10px] text-red-500 font-bold text-right mt-1">
                           {`متبقي ${Math.ceil(30 - (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24))} يوم لتتمكن من تغيير الاسم مرة أخرى`}
                         </p>
                       </div>
