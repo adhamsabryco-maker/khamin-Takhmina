@@ -8266,7 +8266,7 @@ export default function App() {
               className="card-game max-w-md w-full relative overflow-hidden text-right"
               onClick={e => e.stopPropagation()}
             >
-              <div className="bg-gray-300 p-4 border-b-4 border-black flex justify-between items-center" dir="ltr">
+              <div className="bg-gray-300 p-5 border-b-4 border-black flex justify-between items-center" dir="ltr">
                 <h2 className="font-black text-1xl flex items-center gap-2">
                   <Star className="w-6 h-6 text-accent-black fill-accent-yellow gap-2" />
                   معلومات ونظام المستويات
@@ -8315,7 +8315,7 @@ export default function App() {
                 </div>
                 
                 <div className="box-game p-3 space-y-4">
-                  <h3 className="text-lg font-black text-accent-orange mb-2 flex items-center justify-between">
+                  <h3 className="text-sm md:text-lg font-black text-accent-orange mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Zap className="w-5 h-5" />
                     التخمين السريع
@@ -8344,7 +8344,7 @@ export default function App() {
 
                 {/* Hint */}
                 <div className="box-game p-3">
-                  <h3 className="text-lg font-black text-accent-blue mb-2 flex items-center justify-between">
+                  <h3 className="text-sm md:text-lg font-black text-accent-blue mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 relative">
                       <HelpCircle className="w-5 h-5" />
                       النصيحة
@@ -8361,7 +8361,7 @@ export default function App() {
 
                 {/* Letter Revealer */}
                 <div className="box-game p-3">
-                  <h3 className="text-lg font-black text-accent-green mb-2 flex items-center justify-between">
+                  <h3 className="text-sm md:text-lg font-black text-accent-green mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 relative">
                       <Type className="w-5 h-5" />
                       كاشف الحروف
@@ -8378,7 +8378,7 @@ export default function App() {
 
                 {/* Time Freeze */}
                 <div className="box-game p-3">
-                  <h3 className="text-lg font-black text-cyan-600 mb-2 flex items-center justify-between">
+                  <h3 className="text-sm md:text-lg font-black text-cyan-600 mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 relative">
                       <Snowflake className="w-5 h-5" />
                       تجميد الوقت
@@ -8395,7 +8395,7 @@ export default function App() {
 
                 {/* Word Count */}
                 <div className="box-game p-3">
-                  <h3 className="text-lg font-black text-indigo-600 mb-2 flex items-center justify-between">
+                  <h3 className="text-sm md:text-lg font-black text-indigo-600 mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 relative">
                       <Hash className="w-5 h-5" />
                       عدد الكلمات
@@ -8412,7 +8412,7 @@ export default function App() {
 
                 {/* Spy */}
                 <div className="box-game p-3">
-                  <h3 className="text-lg font-black text-accent-purple mb-2 flex items-center justify-between">
+                  <h3 className="text-sm md:text-lg font-black text-accent-purple mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 relative">
                       <Eye className="w-5 h-5" />
                       الجاسوس
@@ -8440,41 +8440,41 @@ export default function App() {
                       <div className="w-10 h-10">
                         {renderAvatarContent(avatar, 10)}
                       </div>
-                      <span className="flex-1">المستوى 10</span>
-                      <span className="text-blue-500">إطار فضي + نجمة</span>
+                      <span className="text-xs md:text-sm flex-1">المستوى 10</span>
+                      <span className="text-xs md:text-sm text-blue-500">إطار فضي + نجمة</span>
                     </li>
                     <li className="flex items-center gap-3 box-game p-2">
                       <div className="w-10 h-10">
                         {renderAvatarContent(avatar, 20)}
                       </div>
-                      <span className="flex-1">المستوى 20</span>
-                      <span className="text-blue-500">إطار ذهبي + نجمتين</span>
+                      <span className="text-xs md:text-sm flex-1">المستوى 20</span>
+                      <span className="text-xs md:text-sm text-blue-500">إطار ذهبي + نجمتين</span>
                     </li>
                     <li className="flex items-center gap-3 box-game p-2">
                       <div className="w-10 h-10">
                         {renderAvatarContent(avatar, 30)}
                       </div>
-                      <span className="flex-1">المستوى 30</span>
-                      <span className="text-blue-500">إطار زمردي + 3 نجوم</span>
+                      <span className="text-xs md:text-sm flex-1">المستوى 30</span>
+                      <span className="text-xs md:text-sm text-blue-500">إطار زمردي + 3 نجوم</span>
                     </li>
                     <li className="flex items-center gap-3 box-game p-2">
                       <div className="w-10 h-10">
                         {renderAvatarContent(avatar, 40)}
                       </div>
-                      <span className="flex-1">المستوى 40</span>
-                      <span className="text-blue-500">إطار أسطوري + 4 نجوم</span>
+                      <span className="text-xs md:text-sm flex-1">المستوى 40</span>
+                      <span className="text-xs md:text-sm text-blue-500">إطار أسطوري + 4 نجوم</span>
                     </li>
                     <li className="flex items-center gap-3 box-game p-2">
                       <div className="w-10 h-10">
                         {renderAvatarContent(avatar, 50)}
                       </div>
-                      <span className="flex-1">المستوى 50</span>
-                      <span className="text-blue-500 font-black">إطار ناري + 5 نجوم!</span>
+                      <span className="text-xs md:text-sm flex-1">المستوى 50</span>
+                      <span className="text-xs md:text-sm text-blue-500 font-black">إطار ناري + 5 نجوم!</span>
                     </li>
                   </ul>
                 </div>
 
-                <p className="text-sm text-center text-brown-light mt-4">استمر في اللعب لتصل إلى أعلى مستوى وتتفوق على أصدقائك!</p>
+                <p className="text-[10px] md:text-sm text-center text-black mb-1 mt-4">استمر في اللعب لتصل إلى أعلى مستوى وتتفوق على أصدقائك!</p>
               </div>
             </motion.div>
           </motion.div>
