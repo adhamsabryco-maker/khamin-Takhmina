@@ -8789,11 +8789,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                       />
                       {lastRenameAt > 0 && (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) < 30 && (
                         <div className="flex flex-col absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">
-                          <Lock className="w-4 h-4" />
                         <button 
                           onClick={handleUnlockNameChange}
                           className="bg-gray-600 hover:bg-gray-400 text-white font-bold rounded overflow-hidden text-xs px-2 py-1 flex items-center justify-center gap-1 transition-all"
                         >
+                          <Lock className="w-4 h-4" />
                           = 
                           <span className="flex items-center gap-0.5" dir="ltr"><Key className="w-4 h-4 text-yellow-500" /> 25</span>
                         </button>
@@ -8809,7 +8809,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                       <p className="text-[10px] text-green-500 mt-1 font-bold text-right">الاسم متاح ✅</p>
                     ) : null}
                     {lastRenameAt > 0 && (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) < 30 && (
-                      <div className="flex flex-col mt-2 items-end">
+                      <div className="flex flex-col">
                         <p className="text-[10px] text-red-500 font-bold text-right mb-1">
                           {`متبقي ${Math.ceil(30 - (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24))} يوم لتتمكن من تغيير الاسم مرة أخرى`}
                         </p>
