@@ -8538,10 +8538,10 @@ export default function App() {
                 </div>
 
                 {/* Main Image */}
-                <div className="relative w-full h-full aspect-video p-2 flex justify-center items-center rounded-2xl mb-2 bg-gray-300 overflow-hidden shadow-inner">
+                <div className="relative w-full h-full p-2 flex justify-center items-center rounded-2xl mb-2 bg-gray-300 overflow-hidden shadow-inner">
                   <img 
                     src={`/city-gift-0${citySearchState?.active ? citySearchState.cityId : selectedCity}.jpg`} 
-                    className={`w-100 h-full object-cover transition-opacity border-2 border-gray-200 duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
+                    className={`object-cover transition-opacity border-2 border-gray-200 duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
                     alt="Selected City"
                   />
                   
