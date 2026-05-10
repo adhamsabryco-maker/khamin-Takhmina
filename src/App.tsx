@@ -2522,7 +2522,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     }
   }, [error]);
 
-  const [customAlert, setCustomAlert] = useState<{ show: boolean, message: string, title?: string }>({ show: false, message: '' });
+  const [customAlert, setCustomAlert] = useState<{ show: boolean, message: string, title?: string, onClose?: () => void }>({ show: false, message: '' });
   const [customConfirm, setCustomConfirm] = useState<{ show: boolean, message: string, title?: string, onConfirm: () => void, onCancel?: () => void, confirmText?: string, cancelText?: string }>({ show: false, message: '', onConfirm: () => {} });
   const [customPrompt, setCustomPrompt] = useState<{ show: boolean, message: string, defaultValue?: string, title?: string, onConfirm: (value: string) => void }>({ show: false, message: '', onConfirm: () => {} });
   const [hasSeenLevelInfo, setHasSeenLevelInfo] = useState(() => {
@@ -3289,8 +3289,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     }
   };
 
-  const showAlert = (message: string, title: string = 'تنبيه') => {
-    setCustomAlert({ show: true, message, title });
+  const showAlert = (message: string, title: string = 'تنبيه', onClose?: () => void) => {
+    setCustomAlert({ show: true, message, title, onClose });
     playSound('clickOpen');
   };
 
@@ -6053,6 +6053,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const handleProfileUpdate = () => {
     if (!socket) return;
 
+    // Close the modal first (current behavior to mask delay)
+    closeAllModals();
+
     // 1. Emit the update to the server with the persistent serial
     socket.emit('update_profile', 
       { 
@@ -6064,7 +6067,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       }, 
       (response: any) => {
         if (response.success === false) {
-           showAlert(response.error || 'حدث خطأ أثناء حفظ الملف الشخصي', 'خطأ');
+           // Revert localStorage name if it was cached prematurely
+           const oldName = localStorage.getItem('khamin_player_name') || playerName;
+           if (oldName !== playerName) {
+               setPlayerName(oldName);
+           }
+           showAlert(response.error || 'حدث خطأ أثناء حفظ الملف الشخصي', 'خطأ', () => {
+               setShowSettingsModal(true);
+           });
            return;
         }
         
@@ -6081,16 +6091,12 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           setLastRenameAt(updatedLastRenameAt);
           localStorage.setItem('khamin_last_rename_at', updatedLastRenameAt.toString());
         }
+        
+        // Update local storage for other fields on success
+        localStorage.setItem('khamin_player_avatar', avatar);
+        localStorage.setItem('khamin_player_gender', gender);
       }
     );
-
-    // Update local storage
-    localStorage.setItem('khamin_player_name', playerName);
-    localStorage.setItem('khamin_player_avatar', avatar);
-    localStorage.setItem('khamin_player_gender', gender);
-
-    // 3. Close the modal
-    closeAllModals();
   };
 
   const handleDeleteAccount = () => {
@@ -7874,7 +7880,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               <h2 className="text-2xl font-black text-main">{customAlert.title}</h2>
               <p className="text-brown-muted font-bold text-lg whitespace-pre-wrap">{customAlert.message}</p>
               <button 
-                onClick={() => setCustomAlert({ ...customAlert, show: false })}
+                onClick={() => {
+                  setCustomAlert({ ...customAlert, show: false });
+                  if (customAlert.onClose) customAlert.onClose();
+                }}
                 className="w-full btn-game btn-primary py-3 text-lg"
               >
                 حسناً
@@ -8574,10 +8583,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 </div>
 
                 {/* Main Image */}
-                <div className="relative w-full aspect-video flex justify-center items-center rounded-2xl mb-2 bg-gray-200 overflow-hidden shadow-inner border-2 border-gray-200">
+                <div className="relative w-full aspect-video flex justify-center items-center rounded-2xl mb-2 bg-accent-blue/10 overflow-hidden shadow-inner p-2">
                   <img 
                     src={`/city-gift-0${citySearchState?.active ? citySearchState.cityId : selectedCity}.jpg`} 
-                    className={`w-full h-full object-cover transition-opacity duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
+                    className={`h-full aspect-square object-cover rounded-xl transition-opacity duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
                     alt="Selected City"
                   />
                   
