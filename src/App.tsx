@@ -727,6 +727,20 @@ export default function App() {
     }
   }, [customConfig.version, initialVersion]);
 
+const renderQuantity = (total: number, tempCount: number, tempColorClass: string = "text-purple-500") => {
+  if (!total) return "0";
+  const actualTemp = Math.min(total, tempCount || 0);
+  const perm = total - actualTemp;
+  if (actualTemp > 0) {
+    return (
+      <span dir="ltr">
+        {perm}<span className={tempColorClass}>+{actualTemp}</span>
+      </span>
+    );
+  }
+  return String(total);
+};
+
   // Re-enabled version check but without forcing reloads
   useEffect(() => {
     if (initialVersion && appVersion !== '1.1.1' && appVersion !== initialVersion) {
@@ -794,6 +808,7 @@ export default function App() {
   const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0') || 0);
   const [tokens, setتخمينات] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0') || 0);
   const [keys, setKeys] = useState(() => parseInt(localStorage.getItem('khamin_keys') || '0') || 0);
+  const [tempItems, setTempItems] = useState<{keys: number, tokens: number, helpers: Record<string, number>}>({ keys: 0, tokens: 0, helpers: {} });
   const [likes, setLikes] = useState(() => parseInt(localStorage.getItem('khamin_likes') || '0') || 0);
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
 
@@ -2682,6 +2697,9 @@ export default function App() {
         setتخمينات(spinResult.newStats.tokens);
         setOwnedHelpers(spinResult.newStats.ownedHelpers);
         setProPackageExpiry(spinResult.newStats.proPackageExpiry);
+        if (spinResult.newStats.tempItems) {
+          setTempItems(spinResult.newStats.tempItems);
+        }
       }, 5000);
     }
     return () => {
@@ -4070,6 +4088,9 @@ export default function App() {
             }
             localStorage.setItem('khamin_tokens', (data.tokens || 0).toString());
             
+            if (data.tempItems) {
+              setTempItems(data.tempItems);
+            }
             if (data.ownedHelpers) {
               setOwnedHelpers(data.ownedHelpers);
               localStorage.setItem('khamin_owned_helpers', JSON.stringify(data.ownedHelpers));
@@ -4308,6 +4329,9 @@ export default function App() {
       }
       if (data.isHighestLikes !== undefined) {
         setIsHighestLikes(data.isHighestLikes);
+      }
+      if (data.tempItems) {
+        setTempItems(data.tempItems);
       }
       if (data.lastRenameAt !== undefined) {
         setLastRenameAt(data.lastRenameAt);
@@ -8058,7 +8082,7 @@ export default function App() {
                     </div>
                     <div>
                       <div className="text-[10px] md:text-xs font-bold text-brown-muted">رصيدك الحالي</div>
-                      <div className="text-xs md:text-lg font-black" style={{ color: 'var(--shop-token-text)' }}>{tokens} تخمينات</div>
+                      <div className="text-xs md:text-lg font-black" style={{ color: 'var(--shop-token-text)' }}>{renderQuantity(tokens, tempItems?.tokens || 0, 'text-accent-purple')} تخمينات</div>
                     </div>
                   </div>
 
@@ -8067,7 +8091,7 @@ export default function App() {
                   <div className="flex items-center gap-3 w-1/2 justify-end">
                     <div className="text-right">
                       <div className="text-[10px] md:text-xs font-bold text-brown-muted">مفاتيحك</div>
-                      <div className="text-sm md:text-lg font-black text-yellow-600" dir="ltr">{keys || 0}</div>
+                      <div className="text-sm md:text-lg font-black text-yellow-600" dir="ltr">{renderQuantity(keys || 0, tempItems?.keys || 0, 'text-accent-purple')}</div>
                     </div>
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-yellow-200">
                       <Key className="w-6 h-6 text-yellow-500" />
@@ -12467,7 +12491,7 @@ export default function App() {
       <AnimatePresence>
         {showGiftModal && (
           <div 
-            className="fixed inset-0 z-[9000] flex justify-center items-center md:items-center p-4 md:p-4 pb-0 bg-black/60 backdrop-blur-sm" 
+            className="fixed inset-0 z-[99999] flex justify-center items-center md:items-center p-4 md:p-4 pb-0 bg-black/60 backdrop-blur-sm" 
             dir="rtl"
             onClick={() => {
               playSound('clickClose');
@@ -12518,7 +12542,7 @@ export default function App() {
                     <div className="flex items-center gap-1 mb-2 w-full justify-center">
                       <Key className="w-5 h-5 text-yellow-500" />
                       <span className="font-bold text-xs md:text-sm">مفاتيح</span>
-                      <span className="text-xs text-gray-400 bg-gray-100 px-1 rounded-md">معك: {keys - (parseInt(giftAmounts.keys) || 0)}</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1 rounded-md" dir="ltr">معك: {renderQuantity(keys - (parseInt(giftAmounts.keys) || 0), Math.max(0, (tempItems?.keys || 0) - (parseInt(giftAmounts.keys) || 0)), 'text-accent-purple')}</span>
                     </div>
                     <input 
                       type="text"
@@ -12534,7 +12558,7 @@ export default function App() {
                     <div className="flex items-center gap-1 mb-2 w-full justify-center">
                       <img src="/Takhmina_coin_02.png" className="w-5 h-5 drop-shadow-sm" />
                       <span className="font-bold text-xs md:text-sm">تخمينات</span>
-                      <span className="text-xs text-gray-400 bg-gray-100 px-1 rounded-md">معك: {tokens - (parseInt(giftAmounts.tokens) || 0)}</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1 rounded-md" dir="ltr">معك: {renderQuantity(tokens - (parseInt(giftAmounts.tokens) || 0), Math.max(0, (tempItems?.tokens || 0) - (parseInt(giftAmounts.tokens) || 0)), 'text-accent-purple')}</span>
                     </div>
                     <input 
                       type="text"
@@ -12555,7 +12579,7 @@ export default function App() {
                     return (
                       <div key={item.id} className="bg-white border-2 border-gray-100 rounded-xl p-1 flex flex-col items-center">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md">معك: {owned - (parseInt(giftAmounts.helpers[item.id]) || 0)}</span>
+                          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 rounded-md" dir="ltr">معك: {renderQuantity(owned - (parseInt(giftAmounts.helpers[item.id]) || 0), Math.max(0, (tempItems?.helpers?.[item.id] || 0) - (parseInt(giftAmounts.helpers[item.id]) || 0)), 'text-accent-purple')}</span>
                         </div>
                         <div class="flex gap-1 mb-1 w-full justify-center">
                         <div className="w-5 h-5">
@@ -14181,30 +14205,30 @@ export default function App() {
                         }`} />
                         <span className="text-[11px] md:text-[12px]" dir="ltr">{proPackageDaysLeft}</span>
                       </span>                      
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><img src="/Takhmina_coin_02.png" className="w-3 h-3 md:w-4 md:h-4" /></span> <span className="text-[11px] md:text-[12px]">{tokens}</span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="تخمينات">
+                          <span className="text-[13px] md:text-[14px]"><img src="/Takhmina_coin_02.png" className="w-3 h-3 md:w-4 md:h-4" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(tokens, tempItems?.tokens || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /></span> <span className="text-[11px] md:text-[12px]">{keys || 0}</span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="مفاتيح">
+                          <span className="text-[13px] md:text-[14px]"><Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(keys || 0, tempItems?.keys || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="إعجابات">
                           <span className="text-[13px] md:text-[14px]"><Heart className="w-3 h-3 md:w-4 md:h-4 text-red-500 fill-red-500" /></span> <span className="text-[11px] md:text-[12px]">{likes || 0}</span>
                         </span>
                         <span className="flex text-xs md:text-sm text-gray-400 px-0.5">|</span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.time_freeze || 0}</span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="تجميد الوقت">
+                          <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.time_freeze || 0, tempItems?.helpers?.time_freeze || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.spy_lens || 0}</span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="الجاسوس">
+                          <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.spy_lens || 0, tempItems?.helpers?.spy_lens || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.word_count || 0}</span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="عدد الكلمات">
+                          <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.word_count || 0, tempItems?.helpers?.word_count || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.word_length || 0}</span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="طول الكلمة">
+                          <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.word_length || 0, tempItems?.helpers?.word_length || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5">
-                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{ownedHelpers?.hint || 0}</span>
+                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="تلميح">
+                          <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.hint || 0, tempItems?.helpers?.hint || 0, 'text-accent-purple')}</span>
                         </span>
                       </div>
                     </div>
