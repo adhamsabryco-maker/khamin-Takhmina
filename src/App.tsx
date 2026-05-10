@@ -8266,18 +8266,17 @@ export default function App() {
               className="card-game p-4 max-w-md w-full relative overflow-hidden text-right"
               onClick={e => e.stopPropagation()}
             >
+              <div className="bg-gray-400 p-4 border-b-4 border-black flex justify-between items-center">
+                <h2 className="text-sm font-black text-main">
+                  <Star className="w-6 h-6 text-accent-orange fill-accent-orange gap-2" />
+                  معلومات ونظام المستويات
+                </h2>
               <button 
                 onClick={toggleLevelInfo}
                 className="absolute w-8 h-8 top-2 right-2 bg-white border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none z-10"
               >
                 <X className="w-5 h-5" />
               </button>
-              
-              <div className="flex items-center justify-center gap-2 mb-4 mt-6">
-                <div className="w-6 h-6 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <Star className="w-5 h-5 text-accent-orange fill-accent-orange" />
-                </div>
-                <h2 className="text-sm font-black text-main">معلومات ونظام المستويات</h2>
               </div>
               
               <div className="space-y-2 text-brown-muted font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -8538,10 +8537,10 @@ export default function App() {
                 </div>
 
                 {/* Main Image */}
-                <div className="relative w-full h-full p-2 flex justify-center items-center rounded-2xl mb-2 bg-gray-300 overflow-hidden shadow-inner">
+                <div className="relative w-full aspect-video flex justify-center items-center rounded-2xl mb-2 bg-gray-200 overflow-hidden shadow-inner border-2 border-gray-200">
                   <img 
                     src={`/city-gift-0${citySearchState?.active ? citySearchState.cityId : selectedCity}.jpg`} 
-                    className={`w-100 h-100 object-cover transition-opacity border-2 border-gray-200 duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
+                    className={`w-full h-full object-cover transition-opacity duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
                     alt="Selected City"
                   />
                   
