@@ -6450,7 +6450,7 @@ export default function App() {
                   <Disc className="w-6 h-6 animate-spin-slow" />
                   عجلة الحظ
                 </h2>
-                <button onClick={toggleLuckyWheel} className="text-white hover:text-pink-200"><X className="w-6 h-6" /></button>
+                <button onClick={toggleLuckyWheel} className="absolute top-3 right-3 w-8 h-8 bg-white text-black border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none"><X className="w-6 h-6" /></button>
               </div>
 
               <div className="p-4 flex flex-col items-center gap-4">
@@ -6610,10 +6610,10 @@ export default function App() {
             className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh] border-4 border-black"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 text-center relative shrink-0 bg-accent-yellow border-b-4 border-black">
+            <div className="p-3 text-center relative shrink-0 bg-accent-yellow border-b-4 border-black">
               <button 
                 onClick={toggleDailyQuests}
-                className="absolute top-4 right-4 w-8 h-8 bg-black/10 hover:bg-black/20 rounded-full flex items-center justify-center text-black transition-colors"
+                className="absolute top-3 right-3 w-8 h-8 bg-white text-black border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -6975,7 +6975,7 @@ export default function App() {
                 الأصدقاء
                 <span className="text-sm bg-gray-100 px-2 py-0.5 rounded-full text-black">{friendsTotal}</span>
               </h2>
-              <button onClick={handleshowFriendsModal} className="text-brown-light hover:text-red-500 transition-colors">
+              <button onClick={handleshowFriendsModal} className="w-7 h-7 bg-white text-black border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -7103,7 +7103,7 @@ export default function App() {
                   )}
                 </div>
               </h2>
-              <button onClick={() => setShowFriendRequestsModal(false)} className="text-brown-light hover:text-red-500 transition-colors">
+              <button onClick={() => setShowFriendRequestsModal(false)} className="w-8 h-8 bg-white text-black border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -8039,7 +8039,7 @@ export default function App() {
               <div className="p-6 text-center relative shrink-0" style={{ background: `linear-gradient(to right, var(--shop-header-start), var(--shop-header-end))` }}>
                 <button 
                   onClick={toggleShop}
-                  className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
+                  className="absolute top-3 right-3 w-8 h-8 bg-white text-black border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -8541,7 +8541,7 @@ export default function App() {
                 <div className="relative w-full h-full p-2 flex justify-center items-center rounded-2xl mb-2 bg-gray-300 overflow-hidden shadow-inner">
                   <img 
                     src={`/city-gift-0${citySearchState?.active ? citySearchState.cityId : selectedCity}.jpg`} 
-                    className={`object-cover transition-opacity border-2 border-gray-200 duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
+                    className={`w-100 h-100 object-cover transition-opacity border-2 border-gray-200 duration-500 ${citySearchState?.active && !isCitySearchFinished ? 'opacity-50' : 'opacity-100'}`} 
                     alt="Selected City"
                   />
                   
@@ -8671,7 +8671,7 @@ export default function App() {
             >
               <div className="flex justify-between items-center flex-row-reverse">
                 <h2 className="text-2xl font-black text-main">ملف اللاعب</h2>
-                <button onClick={toggleSettings} className="text-brown-light hover:text-red-500"><X className="w-6 h-6" /></button>
+                <button onClick={toggleSettings} className="w-8 h-8 bg-white text-black border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none"><X className="w-6 h-6" /></button>
               </div>
 
               <div className="space-y-4">
@@ -12496,7 +12496,7 @@ export default function App() {
                     setShowGiftModal(null);
                     setGiftAmounts({keys: '', tokens: '', helpers: {}});
                   }} 
-                  className="bg-white/20 hover:bg-white/30 text-white rounded-full p-2 transition-colors"
+                  className="w-8 h-8 bg-white text-black border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none"
                 >
                   <X className="w-5 h-5" />
                 </button>
