@@ -8263,12 +8263,12 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="card-game p-4 max-w-md w-full relative overflow-hidden text-right"
+              className="card-game max-w-md w-full relative overflow-hidden text-right"
               onClick={e => e.stopPropagation()}
             >
-              <div className="bg-gray-400 p-4 border-b-4 border-black flex justify-between items-center">
-                <h2 className="text-sm font-black text-main">
-                  <Star className="w-6 h-6 text-accent-orange fill-accent-orange gap-2" />
+              <div className="bg-gray-300 p-4 border-b-4 border-black flex justify-between items-center" dir="ltr">
+                <h2 className="font-black text-1xl flex items-center gap-2">
+                  <Star className="w-6 h-6 text-accent-black fill-accent-yellow gap-2" />
                   معلومات ونظام المستويات
                 </h2>
               <button 
@@ -8279,8 +8279,8 @@ export default function App() {
               </button>
               </div>
               
-              <div className="space-y-2 text-brown-muted font-bold max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                <p>كلما فزت في مباريات أكثر، كلما حصلت على XP وارتفع مستواك!</p>
+              <div className="space-y-2 text-brown-muted font-bold max-h-[60vh] overflow-y-auto p-2 pr-2 custom-scrollbar">
+                <p className="flex text-center items-center justify-center">كلما فزت في مباريات أكثر، كلما حصلت على XP وارتفع مستواك!</p>
                 {/* Takhmina Coins */}
                 <div className="box-game p-3">
                   <h3 className="text-lg font-black text-yellow-600 mb-2 flex items-center gap-2">
