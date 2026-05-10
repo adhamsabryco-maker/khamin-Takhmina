@@ -8788,8 +8788,16 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         disabled={lastRenameAt > 0 && (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) < 30}
                       />
                       {lastRenameAt > 0 && (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24) < 30 && (
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                          <Lock className="w-5 h-5" />
+                        <div className="flex flex-col absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">
+                          <Lock className="w-4 h-4" />
+                        <button 
+                          onClick={handleUnlockNameChange}
+                          className="bg-gray-600 hover:bg-gray-400 text-white font-bold rounded overflow-hidden text-xs px-2 py-1 flex items-center justify-center gap-1 transition-all"
+                        >
+                          = 
+                          <span className="flex items-center gap-0.5" dir="ltr"><Key className="w-4 h-4 text-yellow-500" /> 25</span>
+                        </button>
+                        <p className="text-[8px] text-gray-600 mt-0.5">يمكن استخدام هذه الميزة مرة واحدة شهرياً.</p>
                         </div>
                       )}
                     </div>
@@ -8805,14 +8813,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <p className="text-[10px] text-red-500 font-bold text-right mb-1">
                           {`متبقي ${Math.ceil(30 - (Date.now() - lastRenameAt) / (1000 * 60 * 60 * 24))} يوم لتتمكن من تغيير الاسم مرة أخرى`}
                         </p>
-                        <button 
-                          onClick={handleUnlockNameChange}
-                          className="bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue font-bold rounded overflow-hidden text-xs px-2 py-1 flex items-center gap-1 transition-all"
-                        >
-                          فتح مرة أخرى 
-                          <span className="flex items-center gap-0.5"><Key className="w-3 h-3 text-yellow-500" /> 25</span>
-                        </button>
-                        <p className="text-[8px] text-gray-500 mt-0.5">يمكن استخدام هذه الميزة مرة واحدة شهرياً.</p>
                       </div>
                     )}
                   </div>
