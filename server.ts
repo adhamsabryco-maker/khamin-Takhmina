@@ -76,11 +76,11 @@ const BOT_PERSONAS = [
   // --- مستوى القمة (36 - 40) - Avatar 40 ---
   { name: "العقيد", age: 45, level: 40, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "أعلى لفل في اللعبة 'اتعلموا من العبد لله'" },
   { name: "لؤلؤة", age: 36, level: 41, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "ذكاء حاد وهدوء قاتل 'اللعب فن مش عن عن'" },
-  { name: "الكابو", age: 40, level: 38, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "ملك اللعبة 'محدش بياكلها معايا بالساهل'" },
+  { name: "الكابو", age: 40, level: 45, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "ملك اللعبة 'محدش بياكلها معايا بالساهل'" },
   { name: "الأسطورة", age: 33, level: 43, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "برنسيسة اللعبة 'لعبكم لسه محتاج شوية مجهود'" },
   { name: "الهضبة", age: 38, level: 44, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "صارم جداً 'الخطأ هنا بموت، ركز'" },
   { name: "البرنسيسة", age: 35, level: 40, avatar: "avatar-lvl-girl-40.png", gender: "girl", personality: "راقية جداً بس بتخلص الدور في ثانية" },
-  { name: "العالمي", age: 42, level: 39, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "بيحسبها بالورقة والقلم 'الاحتمالات بتقول إني هكسب'" },
+  { name: "العالمي", age: 42, level: 42, avatar: "avatar-lvl-boy-40.png", gender: "boy", personality: "بيحسبها بالورقة والقلم 'الاحتمالات بتقول إني هكسب'" },
 
   // --- مستوى الخبراء (30 - 35) - Avatar 30 ---
   { name: "الحريف", age: 35, level: 35, avatar: "avatar-lvl-boy-30.png", gender: "boy", personality: "حريف وقديم في اللعبة، كلامه فيه حكمة شوية" },
