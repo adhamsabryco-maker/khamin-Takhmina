@@ -12757,7 +12757,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             </div>
             
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-3space-y-8 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 space-y-8 custom-scrollbar">
             <div className="flex flex-col items-center bg-yellow-200 justify-center p-2 gap-2 mb-2 border-2">
                 <span className="text-[11px] md:text-sm font-bold text-main">التحدي والغموض والهدايا ليفل الوحش 💪.</span>
                 <span className="text-[11px] md:text-sm font-bold text-main">جمع صور التخمين من اللعب فى البحث العشوائي 🔍.</span>
