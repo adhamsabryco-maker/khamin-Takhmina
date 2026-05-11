@@ -12755,9 +12755,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 <h2 className="text-mm md:text-2xl font-bold text-main uppercase tracking-tighter">مكافآت {category.name}</h2>
               </div>
             </div>
-
+            
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-8 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3space-y-8 custom-scrollbar">
+            <div className="flex flex-col items-center bg-yellow-200 justify-center p-2 gap-2 mb-2 border-2">
+                <span className="text-[11px] md:text-sm font-bold text-main">التحدي والغموض والهدايا ليفل الوحش 💪.</span>
+                <span className="text-[11px] md:text-sm font-bold text-main">جمع صور التخمين من اللعب فى البحث العشوائي 🔍.</span>
+                <span className="text-[11px] md:text-sm font-bold text-main">وخليك ديما مميز لما تكسب الإطار فى آخر كل مرحلة 🤯</span>
+            </div>
               {category.stages.map((stage, sIdx) => {
                 const prevStageComplete = sIdx === 0 || category.stages[sIdx - 1].images.every(img => {
                   const norm = normalizeEgyptian(img).toLowerCase();
