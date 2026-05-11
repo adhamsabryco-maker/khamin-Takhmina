@@ -7478,28 +7478,47 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setCustomConfirm({
-                        show: true,
-                        title: 'حظر اللاعب',
-                        message: `هل أنت متأكد من حظر ${data.name}؟ لن تتمكن من اللعب معه مرة أخرى.`,
-                        onConfirm: () => {
-                          socket?.emit('block_player_by_serial', { blockerSerial: playerSerial, blockedSerial: data.serial }, (res: any) => {
-                            if (res && res.success) {
-                              showAlert(`تم حظر ${data.name} بنجاح`, 'حظر');
-                              setSelectedProfileSerial(null);
-                              setBlockedPlayers(prev => [...prev, { serial: data.serial, name: data.name }]);
-                              setRecentOpponents(prev => prev.filter(op => op.serial !== data.serial));
-                            } else {
-                              showAlert(res.error || 'حدث خطأ أثناء الحظر', 'خطأ');
-                            }
-                          });
-                        }
-                      });
+                      if (data.isBlocked) {
+                         setCustomConfirm({
+                           show: true,
+                           title: 'إلغاء حظر اللاعب',
+                           message: `هل أنت متأكد من إلغاء حظر ${data.name}؟`,
+                           onConfirm: () => {
+                             socket?.emit('unblock_player', { serial: playerSerial, blockedSerial: data.serial }, (res: any) => {
+                               if (res && res.success) {
+                                 showAlert(`تم إلغاء حظر ${data.name} بنجاح`, 'إلغاء الحظر');
+                                 setSelectedProfileData((prev: any) => ({ ...prev, isBlocked: false }));
+                                 setBlockedPlayers(prev => prev.filter(p => p.serial !== data.serial));
+                               } else {
+                                 showAlert('حدث خطأ أثناء إلغاء الحظر', 'خطأ');
+                               }
+                             });
+                           }
+                         });
+                      } else {
+                         setCustomConfirm({
+                           show: true,
+                           title: 'حظر اللاعب',
+                           message: `هل أنت متأكد من حظر ${data.name}؟ لن تتمكن من اللعب معه مرة أخرى وسيتم إزالته من الأصدقاء.`,
+                           onConfirm: () => {
+                             socket?.emit('block_player_by_serial', { blockerSerial: playerSerial, blockedSerial: data.serial }, (res: any) => {
+                               if (res && res.success) {
+                                 showAlert(`تم حظر ${data.name} بنجاح`, 'حظر');
+                                 setSelectedProfileData((prev: any) => ({ ...prev, isBlocked: true }));
+                                 setBlockedPlayers(prev => [...prev, { serial: data.serial, name: data.name }]);
+                                 setRecentOpponents(prev => prev.filter(op => op.serial !== data.serial));
+                               } else {
+                                 showAlert(res.error || 'حدث خطأ أثناء الحظر', 'خطأ');
+                               }
+                             });
+                           }
+                         });
+                      }
                     }}
-                    className="p-1.5 rounded-full hover:bg-black/30 text-white/90 transition-colors shrink-0"
-                    title="حظر اللاعب"
+                    className={`p-1.5 rounded-full transition-colors shrink-0 ${data.isBlocked ? 'bg-gray-700/50 hover:bg-gray-700 text-white' : 'hover:bg-black/30 text-white/90'}`}
+                    title={data.isBlocked ? "إلغاء حظر اللاعب" : "حظر اللاعب"}
                   >
-                    <Ban className="w-5 h-5 text-red-400 hover:text-red-300" />
+                    {data.isBlocked ? <Unlock className="w-5 h-5 text-gray-300 hover:text-white" /> : <Ban className="w-5 h-5 text-red-400 hover:text-red-300" />}
                   </button>
                 )}
               </h2>
@@ -7512,7 +7531,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               </div>
               
                {/* Add Friend Button */}
-               {data.serial !== playerSerial && friendStatus !== 'friends' && !data.isAdmin && (
+               {data.serial !== playerSerial && friendStatus !== 'friends' && !data.isAdmin && !data.isBlocked && !data.hasBlockedMe && (
                   <button
                     disabled={friendStatus !== 'none'}
                     onClick={() => {
@@ -7550,7 +7569,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     </div>
                     <span className="text-[10px] sm:text-xs font-bold text-brown-muted mt-1">كل 20 لايك = مفتاح 🔑</span>
                  </div>
-                 {data.serial !== playerSerial && (
+                 {data.serial !== playerSerial && !data.isBlocked && !data.hasBlockedMe && (
                    <button
                      onClick={handleLikePlayer}
                      disabled={data.hasLikedToday}
@@ -12755,14 +12774,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 <h2 className="text-mm md:text-2xl font-bold text-main uppercase tracking-tighter">مكافآت {category.name}</h2>
               </div>
             </div>
-            
+
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-8 custom-scrollbar">
-            <div className="flex flex-col items-center bg-yellow-200 justify-center p-2 gap-2 mb-2 border-2">
-                <span className="text-[11px] md:text-sm font-bold text-main">التحدي والغموض والهدايا ليفل الوحش 💪.</span>
-                <span className="text-[11px] md:text-sm font-bold text-main">جمع صور التخمين من اللعب فى البحث العشوائي 🔍.</span>
-                <span className="text-[11px] md:text-sm font-bold text-main">وخليك ديما مميز لما تكسب الإطار فى آخر كل مرحلة 🤯</span>
-            </div>
+            <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-8 custom-scrollbar">
               {category.stages.map((stage, sIdx) => {
                 const prevStageComplete = sIdx === 0 || category.stages[sIdx - 1].images.every(img => {
                   const norm = normalizeEgyptian(img).toLowerCase();
