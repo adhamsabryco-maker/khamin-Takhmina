@@ -808,7 +808,18 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0') || 0);
   const [tokens, setتخمينات] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0') || 0);
   const [keys, setKeys] = useState(() => parseInt(localStorage.getItem('khamin_keys') || '0') || 0);
-  const [tempItems, setTempItems] = useState<{keys: number, tokens: number, helpers: Record<string, number>}>({ keys: 0, tokens: 0, helpers: {} });
+  const [tempItems, setTempItems] = useState<{keys: number, tokens: number, helpers: Record<string, number>}>(() => {
+    try {
+      const saved = localStorage.getItem('khamin_temp_items');
+      return saved ? JSON.parse(saved) : { keys: 0, tokens: 0, helpers: {} };
+    } catch {
+      return { keys: 0, tokens: 0, helpers: {} };
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('khamin_temp_items', JSON.stringify(tempItems));
+  }, [tempItems]);
   const [likes, setLikes] = useState(() => parseInt(localStorage.getItem('khamin_likes') || '0') || 0);
   const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
 
@@ -14389,21 +14400,22 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         onClick={() => openPlayerProfile(topPlayers[1].serial)}
                       >
                         <div className="w-14 h-14 md:w-16 md:h-16">
-                          {renderAvatarContent(topPlayers[1].avatar, topPlayers[1].level || getLevel(topPlayers[1].xp || 0), false, topPlayers[1].isOnline, topPlayers[1].selectedFrame, topPlayers[1].serial)}
+                          {renderAvatarContent(topPlayers[1].avatar, getLevel(topPlayers[1].xp || 0), false, topPlayers[1].isOnline, topPlayers[1].selectedFrame, topPlayers[1].serial)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-gray-300 text-brown-muted w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">2</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[1].name)}</div>
                       <div className="w-full rank-2-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
                         <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5">
-                          Lvl {topPlayers[1].level || getLevel(topPlayers[1].xp || 0)}
+                          Lvl {getLevel(topPlayers[1].xp || 0)}
                         </div>
                         <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5 flex items-center gap-1">
                           <Trophy className="w-2 h-2" />
                           {topPlayers[1].wins || 0} فوز
                         </div>
-                        <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5">
-                          {topPlayers[1].streak || 0} 🔥
+                        <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5 flex items-center justify-center gap-1">
+                          <span>{topPlayers[1].streak || 0} 🔥</span>
+                          <span>{topPlayers[1].likes || 0} 👍</span>
                         </div>
                       </div>
                     </div>
@@ -14420,21 +14432,22 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         {/* <Crown className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500 drop-shadow-md z-[60]" /> */}
                         <div className="fire-glow-effect"></div>
                         <div className="w-16 h-16 md:w-20 md:h-20 relative z-10">
-                          {renderAvatarContent(topPlayers[0].avatar, topPlayers[0].level || getLevel(topPlayers[0].xp || 0), false, topPlayers[0].isOnline, topPlayers[0].selectedFrame, topPlayers[0].serial)}
+                          {renderAvatarContent(topPlayers[0].avatar, getLevel(topPlayers[0].xp || 0), false, topPlayers[0].isOnline, topPlayers[0].selectedFrame, topPlayers[0].serial)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-black border-2 border-white shadow-md z-[60] animate-bounce">1</div>
                       </div>
                       <div className="text-xs md:text-sm font-black text-main truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{truncateName(topPlayers[0].name)}</div>
                       <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-2">
                         <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1 ">
-                          Lvl {topPlayers[0].level || getLevel(topPlayers[0].xp || 0)}
+                          Lvl {getLevel(topPlayers[0].xp || 0)}
                         </div>
                         <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1 flex items-center gap-1">
                           <Trophy className="w-3 h-3" />
                           {topPlayers[0].wins || 0} فوز
                         </div>
-                        <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1">
-                          {topPlayers[0].streak || 0} 🔥
+                        <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1 flex items-center justify-center gap-1">
+                          <span>{topPlayers[0].streak || 0} 🔥</span>
+                          <span>{topPlayers[0].likes || 0} 👍</span>
                         </div>
                       </div>
                     </div>
@@ -14448,21 +14461,22 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         onClick={() => openPlayerProfile(topPlayers[2].serial)}
                       >
                         <div className="w-14 h-14 md:w-16 md:h-16">
-                          {renderAvatarContent(topPlayers[2].avatar, topPlayers[2].level || getLevel(topPlayers[2].xp || 0), false, topPlayers[2].isOnline, topPlayers[2].selectedFrame, topPlayers[2].serial)}
+                          {renderAvatarContent(topPlayers[2].avatar, getLevel(topPlayers[2].xp || 0), false, topPlayers[2].isOnline, topPlayers[2].selectedFrame, topPlayers[2].serial)}
                         </div>
                         <div className="absolute -top-2 -right-2 bg-orange-200 text-orange-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border-2 border-white shadow-sm z-[60]">3</div>
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[2].name)}</div>
                       <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0 md:gap-0.2">
                         <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
-                          Lvl {topPlayers[2].level || getLevel(topPlayers[2].xp || 0)}
+                          Lvl {getLevel(topPlayers[2].xp || 0)}
                         </div>
                         <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center gap-1">
                           <Trophy className="w-2 h-2" />
                           {topPlayers[2].wins || 0} فوز
                         </div>
-                        <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
-                          {topPlayers[2].streak || 0} 🔥
+                        <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center justify-center gap-1">
+                          <span>{topPlayers[2].streak || 0} 🔥</span>
+                          <span>{topPlayers[2].likes || 0} 👍</span>
                         </div>
                       </div>
                     </div>
@@ -14816,6 +14830,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                           <span>{wins} فوز</span>
                           <span>•</span>
                           <span>{streak} 🔥</span>
+                          <span>•</span>
+                          <span>{likes} 👍</span>
                         </div>
                       </div>
                     </div>
@@ -14845,7 +14861,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         </div>
                         
                         <div className="relative w-10 h-10">
-                          {renderAvatarContent(player.avatar, player.level, true, player.isOnline, player.selectedFrame, player.serial)}
+                          {renderAvatarContent(player.avatar, getLevel(player.xp || 0), true, player.isOnline, player.selectedFrame, player.serial)}
                         </div>
 
                         <div className="flex-1 min-w-0 text-right">
@@ -14853,11 +14869,13 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                             {player.name} {isMe && '(أنت)'}
                           </div>
                           <div className="text-xs text-brown-muted font-bold flex items-center gap-2">
-                            <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="ltr">Lvl {player.level}</span>
+                            <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="ltr">Lvl {getLevel(player.xp || 0)}</span>
                             <span className="text-brown-light">•</span>
                             <span className="text-green-600">{player.wins} فوز</span>
                             <span className="text-brown-light">•</span>
                             <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="rtl">{player.streak || 0} 🔥</span>
+                            <span className="text-brown-light">•</span>
+                            <span className="bg-blue-50 text-blue-600 px-1.5 rounded" dir="rtl">{player.likes || 0} 👍</span>
                           </div>
                         </div>
 
