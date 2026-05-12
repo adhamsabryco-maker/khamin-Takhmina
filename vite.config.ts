@@ -23,39 +23,39 @@ export default defineConfig(({mode}) => {
           description: 'لعبة خمن تخمينة هي لعبة تخمين صور، وكلمات، واسئلة سريعة، جوائز يومية قيمة، ممتعة جدا وتناسب جميع الاعمار',
           theme_color: '#ffffff',
           background_color: '#ffffff',
-          display: 'standalone', 
+          display: 'standalone', // خليها standalone أحسن للتوافق
           orientation: 'portrait',
           icons: [
             {
               src: 'icon-3.png',
-              sizes: '144x144', 
+              sizes: '144x144', // الـ SVG يفضل يكون any
               type: 'image/png',
               purpose: 'any' 
             },
             {
-              src: 'icon-192.png', 
+              src: 'icon-192.png', // لازم تضيف نسخة PNG
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any'
             },
             {
-              src: 'icon-512.png', 
+              src: 'icon-512.png', // لازم تضيف نسخة PNG
               sizes: '512x512',
               type: 'image/png',
-              purpose: 'maskable' 
+              purpose: 'maskable' // عشان تملأ الأيقونة في أندرويد
             }
           ],
           screenshots: [
             {
               src: 'screenshot-mobile.png',
-              sizes: '1080x1920', 
+              sizes: '1080x1920', // اتأكد من مقاس الصورة اللي صورتها
               type: 'image/png',
               form_factor: 'narrow',
               label: 'Game Play on Mobile'
             },
             {
               src: 'screenshot-desktop.png',
-              sizes: '1920x1080', 
+              sizes: '1920x1080', // اتأكد من مقاس الصورة اللي صورتها
               type: 'image/png',
               form_factor: 'wide',
               label: 'Game Play on Desktop'
