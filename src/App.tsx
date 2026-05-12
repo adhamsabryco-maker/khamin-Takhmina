@@ -14868,14 +14868,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                           <div className={`font-black truncate ${isMe ? 'text-purple-700' : 'text-brown-dark'}`}>
                             {player.name} {isMe && '(أنت)'}
                           </div>
-                          <div className="text-xs text-brown-muted font-bold flex items-center gap-2">
+                          <div className="text-xs text-brown-muted font-bold flex items-center gap-0.5 md:gap-2">
                             <span className="bg-gray-100 md:px-1.5 rounded text-brown-muted" dir="ltr">Lvl {getLevel(player.xp || 0)}</span>
                             <span className="text-brown-light">•</span>
                             <span className="text-green-600">{player.wins} فوز</span>
                             <span className="text-brown-light">•</span>
                             <span className="bg-gray-100 md:px-1.5 rounded text-brown-muted" dir="rtl">{player.streak || 0} 🔥</span>
                             <span className="text-brown-light">•</span>
-                            <span className="bg-blue-50 text-blue-600 md:px-1.5 rounded" dir="rtl">{player.likes || 0} ❤️</span>
+                            <span className="bg-red-50 text-red-600 md:px-1.5 rounded" dir="rtl">{player.likes || 0} ❤️</span>
                           </div>
                         </div>
 
