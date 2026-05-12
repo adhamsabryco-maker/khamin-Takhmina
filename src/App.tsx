@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { safeStorage } from './lib/safeStorage';
 import html2canvas from 'html2canvas';
 import { createPortal } from 'react-dom';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import { GoogleGenAI } from "@google/genai";
 import { io, Socket } from 'socket.io-client';
 import { Facebook, Youtube, Instagram, Heart } from 'lucide-react';
@@ -76,24 +76,8 @@ import {
   Disc,
   Key,
 } from 'lucide-react';
+
 import easyGuessData from './data/easyGuess.json';
-import confetti from 'canvas-confetti';
-import { COLLECTION_DATA } from '../collectionData';
-import { AdminCustomization } from './components/AdminCustomization';
-import { MockAdModal } from './components/MockAdModal';
-import { AdminLogin } from './components/AdminLogin';
-import { QuickChatManager } from './components/QuickChatManager';
-import { AvatarDisplay } from './components/AvatarDisplay';
-import { LevelUpModal } from './components/LevelUpModal';
-import { MatchIntro } from './components/MatchIntro';
-import { useAvatarConfig } from './contexts/AvatarContext';
-import { STATIC_ASSETS } from './constants';
-import Cropper from 'react-easy-crop';
-import { Howl, Howler } from 'howler';
-import { filterProfanity } from './profanityFilter';
-import { CheckoutPage } from './components/CheckoutPage';
-
-
 
 const SPIN_REWARDS_UI = [
   { id: 'time_freeze', type: 'helper', value: 'time_freeze', label: 'تجميد الوقت', icon: <Snowflake className="w-6 h-6" />, color: '#06b6d4' },
@@ -160,6 +144,20 @@ const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
 
   return <span className="flex items-center justify-center gap-2" dir="ltr">XP: <span className="text-yellow-400">{displayXP}</span></span>;
 };
+import confetti from 'canvas-confetti';
+import { COLLECTION_DATA } from '../collectionData';
+import { AdminCustomization } from './components/AdminCustomization';
+import { MockAdModal } from './components/MockAdModal';
+import { AdminLogin } from './components/AdminLogin';
+import { QuickChatManager } from './components/QuickChatManager';
+import { AvatarDisplay } from './components/AvatarDisplay';
+import { LevelUpModal } from './components/LevelUpModal';
+import { MatchIntro } from './components/MatchIntro';
+import { useAvatarConfig } from './contexts/AvatarContext';
+import { STATIC_ASSETS } from './constants';
+import Cropper from 'react-easy-crop';
+import { Howl, Howler } from 'howler';
+import { filterProfanity } from './profanityFilter';
 
 declare global {
   interface Window {
@@ -499,6 +497,7 @@ const isSameWeek = (d1: number, d2: number) => {
          firstDayOfWeek.getDate() === firstDayOfWeek2.getDate();
 };
 
+import { CheckoutPage } from './components/CheckoutPage';
 
 function normalizeEgyptian(text: string): string {
   if (!text) return "";
@@ -682,55 +681,28 @@ const CityImage = ({ src, alt, className, onClick, wrapperClassName = '' }: City
   );
 };
 
-import { ErrorBoundary } from 'react-error-boundary';
-
-function ErrorFallback({error, resetErrorBoundary}: any) {
-  return (
-    <div role="alert" style={{color: 'red', padding: '20px', backgroundColor: 'white'}}>
-      <p>Something went wrong:</p>
-      <pre>{error.message}</pre>
-    </div>
-  )
-}
-
-export default function AppWrapper() {
-  return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <App />
-    </ErrorBoundary>
-  );
-}
-
-function App() {
+export default function App() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const { customConfig, refreshConfig } = useAvatarConfig();
   const appVersion = customConfig.version || '1.1.1';
   const [initialVersion, setInitialVersion] = useState<string | null>(null);
   const [needsUpdate, setNeedsUpdate] = useState(false);
-  const [needRefresh, setNeedRefresh] = useState(false);
-  const updateServiceWorkerRef = useRef<((reloadPage?: boolean) => Promise<void>) | undefined>();
-
-  useEffect(() => {
-    try {
-      if ('serviceWorker' in navigator) {
-        updateServiceWorkerRef.current = registerSW({
-          onRegistered(r) {
-            console.log('SW Registered: ' + r);
-          },
-          onRegisterError(error) {
-            console.log('SW registration error', error);
-          },
-          onNeedRefresh() {
-            console.log('[DEBUG] New SW available, updating...');
-            setNeedRefresh(true);
-            updateServiceWorkerRef.current?.(true);
-          }
-        });
-      }
-    } catch (e) {
-      console.warn('Failed to register service worker (possibly in cross-origin iframe):', e);
+  const {
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r) {
+      console.log('SW Registered: ' + r);
+    },
+    onRegisterError(error) {
+      console.log('SW registration error', error);
+    },
+    onNeedRefresh() {
+      // Automatically update when a new SW is available
+      console.log('[DEBUG] New SW available, updating...');
+      updateServiceWorker(true);
     }
-  }, []);
+  });
 
   useEffect(() => {
     if (typeof window.adConfig === 'function') {
@@ -819,7 +791,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [playerName, setPlayerName] = useState(() => safeStorage.getItem('khamin_player_name') || '');
+  const [playerName, setPlayerName] = useState(() => localStorage.getItem('khamin_player_name') || '');
   const [isNameAvailable, setIsNameAvailable] = useState<boolean | null>(null);
   const [isCheckingName, setIsCheckingName] = useState<boolean>(false);
   const [isHighestLikes, setIsHighestLikes] = useState(false);
@@ -827,21 +799,21 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [highestStreakSerials, setHighestStreakSerials] = useState<string[]>([]);
   const [highestLikesValue, setHighestLikesValue] = useState<number>(0);
   const [highestStreakValue, setHighestStreakValue] = useState<number>(0);
-  const [lastRenameAt, setLastRenameAt] = useState(() => parseInt(safeStorage.getItem('khamin_last_rename_at') || '0'));
+  const [lastRenameAt, setLastRenameAt] = useState(() => parseInt(localStorage.getItem('khamin_last_rename_at') || '0'));
   const playerNameRef = useRef(playerName);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
 
-  const [xp, setXp] = useState(() => parseInt(safeStorage.getItem('khamin_xp') || '0') || 0);
-  const [streak, setStreak] = useState(() => parseInt(safeStorage.getItem('khamin_streak') || '0') || 0);
-  const [wins, setWins] = useState(() => parseInt(safeStorage.getItem('khamin_wins') || '0') || 0);
-  const [tokens, setتخمينات] = useState(() => parseInt(safeStorage.getItem('khamin_tokens') || '0') || 0);
-  const [keys, setKeys] = useState(() => parseInt(safeStorage.getItem('khamin_keys') || '0') || 0);
+  const [xp, setXp] = useState(() => parseInt(localStorage.getItem('khamin_xp') || '0') || 0);
+  const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('khamin_streak') || '0') || 0);
+  const [wins, setWins] = useState(() => parseInt(localStorage.getItem('khamin_wins') || '0') || 0);
+  const [tokens, setتخمينات] = useState(() => parseInt(localStorage.getItem('khamin_tokens') || '0') || 0);
+  const [keys, setKeys] = useState(() => parseInt(localStorage.getItem('khamin_keys') || '0') || 0);
   const [tempItems, setTempItems] = useState<{keys: number, tokens: number, helpers: Record<string, number>}>({ keys: 0, tokens: 0, helpers: {} });
-  const [likes, setLikes] = useState(() => parseInt(safeStorage.getItem('khamin_likes') || '0') || 0);
-  const [playerSerial, setPlayerSerial] = useState(() => safeStorage.getItem('khamin_player_serial') || '');
+  const [likes, setLikes] = useState(() => parseInt(localStorage.getItem('khamin_likes') || '0') || 0);
+  const [playerSerial, setPlayerSerial] = useState(() => localStorage.getItem('khamin_player_serial') || '');
 
   useEffect(() => {
-    if (!playerName.trim() || !socket || playerName.trim() === (safeStorage.getItem('khamin_player_name') || '')) {
+    if (!playerName.trim() || !socket || playerName.trim() === (localStorage.getItem('khamin_player_name') || '')) {
       setIsNameAvailable(null);
       setIsCheckingName(false);
       return;
@@ -874,15 +846,15 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [showKeyDrop, setShowKeyDrop] = useState(false);
 
   const [playerAge, setPlayerAge] = useState(() => {
-    const storedAge = safeStorage.getItem('khamin_player_age');
+    const storedAge = localStorage.getItem('khamin_player_age');
     return storedAge ? parseInt(storedAge) : '';
   });
-  const [gender, setGender] = useState<'boy' | 'girl'>(() => (safeStorage.getItem('khamin_player_gender') as 'boy' | 'girl') || 'boy');
+  const [gender, setGender] = useState<'boy' | 'girl'>(() => (localStorage.getItem('khamin_player_gender') as 'boy' | 'girl') || 'boy');
   const [playerId] = useState(() => {
-    let id = safeStorage.getItem('khamin_player_id');
+    let id = localStorage.getItem('khamin_player_id');
     if (!id) {
       id = Math.random().toString(36).substr(2, 9);
-      safeStorage.setItem('khamin_player_id', id);
+      localStorage.setItem('khamin_player_id', id);
     }
     return id;
   });
@@ -932,7 +904,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [showCategoryAdButton, setShowCategoryAdButton] = useState(false);
   const [isDocumentHidden, setIsDocumentHidden] = useState(document.hidden);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    const saved = safeStorage.getItem('khamin_notifications_enabled');
+    const saved = localStorage.getItem('khamin_notifications_enabled');
     return saved !== null ? saved === 'true' : true;
   });
 
@@ -985,7 +957,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
       socket.on('ad_success', (data) => {
         setتخمينات(data.tokens);
-        safeStorage.setItem('khamin_tokens', data.tokens.toString());
+        localStorage.setItem('khamin_tokens', data.tokens.toString());
         setAdStatus(prev => ({ ...prev, adsWatched: data.adsWatched, canWatch: data.adsWatched < data.maxAds }));
         playSound('win');
         showAlert('تمت إضافة التخمينة بنجاح! 🎉', 'نجاح');
@@ -997,7 +969,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
       socket.on('rain_gift_error', (msg) => {
         showAlert(msg, 'تنبيه');
-        safeStorage.removeItem('khamin_pending_rain_gift');
+        localStorage.removeItem('khamin_pending_rain_gift');
         setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
         setShowRainGiftSummary(false);
       });
@@ -1015,18 +987,18 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   }, [socket, isConnected, playerSerial, notificationsEnabled]);
 
   const [proPackageExpiry, setProPackageExpiry] = useState<number | null>(() => {
-    const saved = safeStorage.getItem('khamin_pro_package_expiry');
+    const saved = localStorage.getItem('khamin_pro_package_expiry');
     if (saved) return parseInt(saved);
-    if (safeStorage.getItem('khamin_pro_package') === 'true') {
+    if (localStorage.getItem('khamin_pro_package') === 'true') {
       const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
-      safeStorage.setItem('khamin_pro_package_expiry', expiry.toString());
-      safeStorage.removeItem('khamin_pro_package');
+      localStorage.setItem('khamin_pro_package_expiry', expiry.toString());
+      localStorage.removeItem('khamin_pro_package');
       return expiry;
     }
     return null;
   });
   const [unlockedHelpersExpiry, setUnlockedHelpersExpiry] = useState<number | null>(() => {
-    const saved = safeStorage.getItem('khamin_unlocked_helpers_expiry');
+    const saved = localStorage.getItem('khamin_unlocked_helpers_expiry');
     if (saved) return parseInt(saved);
     return null;
   });
@@ -1087,8 +1059,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
         // Clear unclaimed rewards 10 minutes before the next event (18:50 to 19:00)
         if (diffMinutes >= -10 && diffMinutes < 0) {
-           if (safeStorage.getItem('khamin_pending_rain_gift')) {
-             safeStorage.removeItem('khamin_pending_rain_gift');
+           if (localStorage.getItem('khamin_pending_rain_gift')) {
+             localStorage.removeItem('khamin_pending_rain_gift');
              setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
            }
         }
@@ -1120,8 +1092,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
         // Clear unclaimed rewards 10 minutes before the next event (16:50 UTC to 17:00 UTC)
         if (utcHour === targetUTCHour - 1 && utcMinutes >= 50) {
-           if (safeStorage.getItem('khamin_pending_rain_gift')) {
-             safeStorage.removeItem('khamin_pending_rain_gift');
+           if (localStorage.getItem('khamin_pending_rain_gift')) {
+             localStorage.removeItem('khamin_pending_rain_gift');
              setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
            }
         }
@@ -1226,14 +1198,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [topPlayers, setTopPlayers] = useState<any[]>(() => {
     try {
-      const cached = safeStorage.getItem('khamin_top_players');
+      const cached = localStorage.getItem('khamin_top_players');
       return cached ? JSON.parse(cached) : [];
     } catch (e) {
       return [];
     }
   });
-  const [customAvatar, setCustomAvatar] = useState(() => safeStorage.getItem('khamin_custom_avatar') || '');
-  const [isAdmin, setIsAdmin] = useState(() => safeStorage.getItem('khamin_is_admin') === 'true');
+  const [customAvatar, setCustomAvatar] = useState(() => localStorage.getItem('khamin_custom_avatar') || '');
+  const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('khamin_is_admin') === 'true');
   const [mockAdProviderState, setMockAdProviderState] = useState<{ onComplete: () => void; onDismissed?: () => void; } | null>(null);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -1245,10 +1217,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     if (params.get('admin_auth') === 'success') {
       const isAdminParam = params.get('isAdmin') === 'true';
       setIsAdmin(isAdminParam);
-      safeStorage.setItem('khamin_is_admin', isAdminParam.toString());
+      localStorage.setItem('khamin_is_admin', isAdminParam.toString());
       if (isAdminParam) {
-        safeStorage.setItem('khamin_admin_email', params.get('email') || '');
-        safeStorage.setItem('khamin_admin_token', params.get('adminToken') || '');
+        localStorage.setItem('khamin_admin_email', params.get('email') || '');
+        localStorage.setItem('khamin_admin_token', params.get('adminToken') || '');
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
       }
@@ -1257,8 +1229,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
   useEffect(() => {
     if (socket && isConnected && isAdmin) {
-      const adminToken = safeStorage.getItem('khamin_admin_token');
-      const adminEmail = safeStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
+      const adminToken = localStorage.getItem('khamin_admin_token');
+      const adminEmail = localStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
       socket.emit('admin_set_admin_status', { 
         serial: playerSerial, 
         isAdmin: true, 
@@ -1267,7 +1239,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       }, (res: any) => {
         if (res?.success) {
           if (res.adminToken) {
-            safeStorage.setItem('khamin_admin_token', res.adminToken);
+            localStorage.setItem('khamin_admin_token', res.adminToken);
           }
           if (Array.isArray(res.players)) setAdminPlayers(res.players);
           if (Array.isArray(res.reports)) setAdminReports(res.reports);
@@ -1335,7 +1307,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   useEffect(() => {
     setAdminVisiblePlayersCount(10);
   }, [adminSearchQuery, adminPlayerFilter]);
-  const [adminEmail, setAdminEmail] = useState(() => safeStorage.getItem('khamin_admin_email') || '');
+  const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('khamin_admin_email') || '');
   const [adminTab, setAdminTab] = useState<'players' | 'images' | 'customization' | 'shop' | 'colors' | 'announcements' | 'rewards' | 'policies' | 'avatar_review' | 'contacts' | 'live_matches' | 'quick_chat'>('players');
   const [rewardHistory, setRewardHistory] = useState<any[]>([]);
   const [adminContacts, setAdminContacts] = useState<any[]>([]);
@@ -1371,7 +1343,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [adminTokenRewardMessage, setAdminTokenRewardMessage] = useState('هدية خاصة للاعبين المميزين (مستوى 50+) 🎁');
   const [confirmTokenSend, setConfirmTokenSend] = useState(false);
   const [gamePolicies, setGamePolicies] = useState(() => {
-    const saved = safeStorage.getItem('khamin_game_policies');
+    const saved = localStorage.getItem('khamin_game_policies');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -1411,20 +1383,20 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     paymob_hmac: 'A2DBAF7F92579F5B6CE8687D60BE29BA'
   });
   const [luckyWheelEnabled, setLuckyWheelEnabled] = useState(() => {
-    const saved = safeStorage.getItem('khamin_lucky_wheel_enabled');
+    const saved = localStorage.getItem('khamin_lucky_wheel_enabled');
     return saved !== null ? saved === 'true' : true;
   });
 
   useEffect(() => {
-    safeStorage.setItem('khamin_game_policies', JSON.stringify(gamePolicies));
+    localStorage.setItem('khamin_game_policies', JSON.stringify(gamePolicies));
   }, [gamePolicies]);
 
   useEffect(() => {
-    safeStorage.setItem('khamin_lucky_wheel_enabled', luckyWheelEnabled.toString());
+    localStorage.setItem('khamin_lucky_wheel_enabled', luckyWheelEnabled.toString());
   }, [luckyWheelEnabled]);
 
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => {
-    const saved = safeStorage.getItem('khamin_theme_config');
+    const saved = localStorage.getItem('khamin_theme_config');
     if (saved) {
       try {
         return { ...DEFAULT_THEME, ...JSON.parse(saved) };
@@ -1460,7 +1432,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   }, [currentPath, isAdmin]);
 
   useEffect(() => {
-    safeStorage.setItem('khamin_theme_config', JSON.stringify(themeConfig));
+    localStorage.setItem('khamin_theme_config', JSON.stringify(themeConfig));
     const root = document.documentElement;
     root.style.setProperty('--bg-body-start', themeConfig.bgBodyStart);
     root.style.setProperty('--bg-body-end', themeConfig.bgBodyEnd);
@@ -1568,25 +1540,25 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   
   // Sound Settings
-  const [sfxVolume, setSfxVolume] = useState(() => parseFloat(safeStorage.getItem('khamin_sfx_volume') || '1'));
-  const [musicVolume, setMusicVolume] = useState(() => parseFloat(safeStorage.getItem('khamin_music_volume') || '0.5'));
-  const [isSfxMuted, setIsSfxMuted] = useState(() => safeStorage.getItem('khamin_sfx_muted') === 'true');
-  const [isMusicMuted, setIsMusicMuted] = useState(() => safeStorage.getItem('khamin_music_muted') === 'true');
+  const [sfxVolume, setSfxVolume] = useState(() => parseFloat(localStorage.getItem('khamin_sfx_volume') || '1'));
+  const [musicVolume, setMusicVolume] = useState(() => parseFloat(localStorage.getItem('khamin_music_volume') || '0.5'));
+  const [isSfxMuted, setIsSfxMuted] = useState(() => localStorage.getItem('khamin_sfx_muted') === 'true');
+  const [isMusicMuted, setIsMusicMuted] = useState(() => localStorage.getItem('khamin_music_muted') === 'true');
 
   useEffect(() => {
-    safeStorage.setItem('khamin_sfx_volume', sfxVolume.toString());
+    localStorage.setItem('khamin_sfx_volume', sfxVolume.toString());
   }, [sfxVolume]);
 
   useEffect(() => {
-    safeStorage.setItem('khamin_music_volume', musicVolume.toString());
+    localStorage.setItem('khamin_music_volume', musicVolume.toString());
   }, [musicVolume]);
 
   useEffect(() => {
-    safeStorage.setItem('khamin_sfx_muted', isSfxMuted.toString());
+    localStorage.setItem('khamin_sfx_muted', isSfxMuted.toString());
   }, [isSfxMuted]);
 
   useEffect(() => {
-    safeStorage.setItem('khamin_music_muted', isMusicMuted.toString());
+    localStorage.setItem('khamin_music_muted', isMusicMuted.toString());
   }, [isMusicMuted]);
 
   const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
@@ -1775,7 +1747,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               if (newStatus === 'approved') {
                 setAvatar(croppedImage);
                 setCustomAvatar(croppedImage);
-                safeStorage.setItem('khamin_custom_avatar', croppedImage);
+                localStorage.setItem('khamin_custom_avatar', croppedImage);
               } else {
                 // If pending, we don't save to localStorage yet
                 // We just show it in the UI if needed, but don't "apply" it
@@ -1826,9 +1798,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
   // Cache clearing logic
   useEffect(() => {
-    const lastVersion = safeStorage.getItem('khamin_app_version');
+    const lastVersion = localStorage.getItem('khamin_app_version');
     if (lastVersion && lastVersion !== APP_VERSION) {
-      // DO NOT use safeStorage.clear() here! It wipes the player's ID and logs them out.
+      // DO NOT use localStorage.clear() here! It wipes the player's ID and logs them out.
       // We only want to clear the service worker caches.
       if ('caches' in window) {
         caches.keys().then(names => {
@@ -1837,10 +1809,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           }
         });
       }
-      safeStorage.setItem('khamin_app_version', APP_VERSION);
+      localStorage.setItem('khamin_app_version', APP_VERSION);
       window.location.reload();
     } else if (!lastVersion) {
-      safeStorage.setItem('khamin_app_version', APP_VERSION);
+      localStorage.setItem('khamin_app_version', APP_VERSION);
     }
   }, []);
 
@@ -1921,12 +1893,12 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   };
 
   useEffect(() => {
-    safeStorage.setItem('khamin_xp', xp.toString());
-    safeStorage.setItem('khamin_streak', streak.toString());
+    localStorage.setItem('khamin_xp', xp.toString());
+    localStorage.setItem('khamin_streak', streak.toString());
   }, [xp, streak]);
 
-  const [avatar, setAvatar] = useState(() => safeStorage.getItem('khamin_player_avatar') || AVATARS[0].id);
-  const [selectedFrame, setSelectedFrame] = useState(() => safeStorage.getItem('khamin_player_frame') || '');
+  const [avatar, setAvatar] = useState(() => localStorage.getItem('khamin_player_avatar') || AVATARS[0].id);
+  const [selectedFrame, setSelectedFrame] = useState(() => localStorage.getItem('khamin_player_frame') || '');
   const [hasSelectedAvatar, setHasSelectedAvatar] = useState(false);
 
   // Player Profile Modal State
@@ -1935,25 +1907,25 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   useEffect(() => {
-    safeStorage.setItem('khamin_player_avatar', avatar);
+    localStorage.setItem('khamin_player_avatar', avatar);
     if (socket) {
       socket.emit('update_avatar', { avatar });
     }
   }, [avatar, socket]);
 
   useEffect(() => {
-    safeStorage.setItem('khamin_player_frame', selectedFrame);
+    localStorage.setItem('khamin_player_frame', selectedFrame);
     if (socket && playerSerial) {
       socket.emit('update_selected_frame', { playerSerial, frame: selectedFrame });
     }
   }, [selectedFrame, socket, playerSerial]);
 
   useEffect(() => {
-    safeStorage.setItem('khamin_player_name', playerName);
+    localStorage.setItem('khamin_player_name', playerName);
   }, [playerName]);
 
   useEffect(() => {
-    safeStorage.setItem('khamin_player_age', playerAge.toString());
+    localStorage.setItem('khamin_player_age', playerAge.toString());
   }, [playerAge]);
 
   const [roomId, setRoomId] = useState('');
@@ -2068,7 +2040,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     if (isAdmin) {
       const fetchPushStats = async () => {
         try {
-          const token = safeStorage.getItem('khamin_admin_token');
+          const token = localStorage.getItem('khamin_admin_token');
           if (!token) {
             console.log("No admin token found in localStorage");
             return;
@@ -2113,7 +2085,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [pushStatsError, setPushStatsError] = useState<string | null>(null);
 
   const fetchScheduledPushes = async () => {
-    const adminToken = safeStorage.getItem('khamin_admin_token');
+    const adminToken = localStorage.getItem('khamin_admin_token');
     if (!adminToken) return;
     try {
       const res = await fetch(`/api/push/scheduled?adminToken=${adminToken}&t=${Date.now()}`, {
@@ -2151,7 +2123,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     
     // If permission is default and not forced, show our custom prompt
     if (!force && Notification.permission === 'default') {
-      const isDismissed = safeStorage.getItem('khamin_push_prompt_dismissed') === 'true';
+      const isDismissed = localStorage.getItem('khamin_push_prompt_dismissed') === 'true';
       console.log('[Push] Prompt dismissed:', isDismissed);
       
       if (!isDismissed) {
@@ -2191,7 +2163,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
       // If we got here, subscription was successful (user clicked "Allow" in browser prompt)
       setNotificationsEnabled(true);
-      safeStorage.setItem('khamin_notifications_enabled', 'true');
+      localStorage.setItem('khamin_notifications_enabled', 'true');
 
       // Send subscription to server
       await fetch('/api/push/subscribe', {
@@ -2253,7 +2225,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     const newValue = !notificationsEnabled;
     setNotificationsEnabled(newValue);
     playSound('clickOpen');
-    safeStorage.setItem('khamin_notifications_enabled', newValue.toString());
+    localStorage.setItem('khamin_notifications_enabled', newValue.toString());
     
     if (newValue) {
       await subscribeToPush(true);
@@ -2269,11 +2241,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [playerCollection, setPlayerCollection] = useState<any[]>([]);
   const [claimedCollectionRewards, setClaimedCollectionRewards] = useState<any[]>([]);
   const [seenCategoryCounts, setSeenCategoryCounts] = useState<Record<string, number>>(() => {
-    const saved = safeStorage.getItem('khamin_seen_category_counts');
+    const saved = localStorage.getItem('khamin_seen_category_counts');
     return saved ? JSON.parse(saved) : {};
   });
   const [seenFrames, setSeenFrames] = useState<string[]>(() => {
-    const saved = safeStorage.getItem('khamin_seen_frames');
+    const saved = localStorage.getItem('khamin_seen_frames');
     return saved ? JSON.parse(saved) : [];
   });
   const [showCollectionModal, setShowCollectionModal] = useState<string | null>(null);
@@ -2282,7 +2254,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [activeGlobalReward, setActiveGlobalReward] = useState<any | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStatus, setLoadingStatus] = useState('جاري التحقق من التحديثات...');
-  const [gameVersion, setGameVersion] = useState(safeStorage.getItem('khamin_game_version') || '1.1.1');
+  const [gameVersion, setGameVersion] = useState(localStorage.getItem('khamin_game_version') || '1.1.1');
 
   const unlockedFrames = useMemo(() => {
     return COLLECTION_DATA.filter(cat => {
@@ -2554,35 +2526,31 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [customConfirm, setCustomConfirm] = useState<{ show: boolean, message: string, title?: string, onConfirm: () => void, onCancel?: () => void, confirmText?: string, cancelText?: string }>({ show: false, message: '', onConfirm: () => {} });
   const [customPrompt, setCustomPrompt] = useState<{ show: boolean, message: string, defaultValue?: string, title?: string, onConfirm: (value: string) => void }>({ show: false, message: '', onConfirm: () => {} });
   const [hasSeenLevelInfo, setHasSeenLevelInfo] = useState(() => {
-    return safeStorage.getItem('khamin_seen_level_info') === 'true';
+    return localStorage.getItem('khamin_seen_level_info') === 'true';
   });
   const [lastSeenPowerUpLevel, setLastSeenPowerUpLevel] = useState(() => {
-    const saved = safeStorage.getItem('khamin_last_seen_powerup_level');
+    const saved = localStorage.getItem('khamin_last_seen_powerup_level');
     if (saved) return parseInt(saved);
     return 1;
   });
   const [lastSeenAvatarLevel, setLastSeenAvatarLevel] = useState(() => {
-    const saved = safeStorage.getItem('khamin_last_seen_avatar_level');
+    const saved = localStorage.getItem('khamin_last_seen_avatar_level');
     if (saved) return parseInt(saved);
     return 1;
   });
   const [showLevelInfo, setShowLevelInfo] = useState(false);
   const [showLuckyWheelModal, setShowLuckyWheelModal] = useState(false);
   const [hasSeenLuckyWheelThisSession, setHasSeenLuckyWheelThisSession] = useState(() => {
-    try {
-      return sessionStorage.getItem('khamin_has_seen_lucky_wheel_session') === 'true';
-    } catch { return false; }
+    return sessionStorage.getItem('khamin_has_seen_lucky_wheel_session') === 'true';
   });
 
   const updateHasSeenLuckyWheelThisSession = (value: boolean) => {
     setHasSeenLuckyWheelThisSession(value);
-    try {
-      sessionStorage.setItem('khamin_has_seen_lucky_wheel_session', value.toString());
-    } catch {}
+    sessionStorage.setItem('khamin_has_seen_lucky_wheel_session', value.toString());
   };
 
   const [hasSeenCitySearchToday, setHasSeenCitySearchToday] = useState(() => {
-    const saved = safeStorage.getItem('khamin_has_seen_city_search_today');
+    const saved = localStorage.getItem('khamin_has_seen_city_search_today');
     if (saved) {
       try {
         const { date } = JSON.parse(saved);
@@ -2596,11 +2564,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
   const updateHasSeenCitySearchToday = () => {
     setHasSeenCitySearchToday(true);
-    safeStorage.setItem('khamin_has_seen_city_search_today', JSON.stringify({ date: Date.now() }));
+    localStorage.setItem('khamin_has_seen_city_search_today', JSON.stringify({ date: Date.now() }));
   };
 
   const [hasManuallyOpenedCitySearchToday, setHasManuallyOpenedCitySearchToday] = useState(() => {
-    const saved = safeStorage.getItem('khamin_has_manually_opened_city_search_today');
+    const saved = localStorage.getItem('khamin_has_manually_opened_city_search_today');
     if (saved) {
       try {
         const { date } = JSON.parse(saved);
@@ -2614,11 +2582,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
   const updateHasManuallyOpenedCitySearchToday = () => {
     setHasManuallyOpenedCitySearchToday(true);
-    safeStorage.setItem('khamin_has_manually_opened_city_search_today', JSON.stringify({ date: Date.now() }));
+    localStorage.setItem('khamin_has_manually_opened_city_search_today', JSON.stringify({ date: Date.now() }));
   };
   const [spinStatus, setSpinStatus] = useState(() => {
-    const saved = safeStorage.getItem('khamin_has_used_free_spin');
-    const lastUsed = safeStorage.getItem('khamin_last_free_spin_date');
+    const saved = localStorage.getItem('khamin_has_used_free_spin');
+    const lastUsed = localStorage.getItem('khamin_last_free_spin_date');
     let hasFreeSpin = true;
     if (saved === 'true' && lastUsed) {
       const d1 = new Date();
@@ -2638,7 +2606,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [showReward, setShowReward] = useState(false);
   const [showDailyQuestModal, setShowDailyQuestModal] = useState(false);
   const [spinCooldown, setSpinCooldown] = useState(() => {
-    const savedEnd = safeStorage.getItem('khamin_spin_cooldown_end');
+    const savedEnd = localStorage.getItem('khamin_spin_cooldown_end');
     if (savedEnd) {
       const end = parseInt(savedEnd);
       const now = Date.now();
@@ -2655,7 +2623,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         setSpinCooldown(prev => {
           const next = prev - 1;
           if (next <= 0) {
-            safeStorage.removeItem('khamin_spin_cooldown_end');
+            localStorage.removeItem('khamin_spin_cooldown_end');
           }
           return next;
         });
@@ -2665,17 +2633,17 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   }, [spinCooldown]);
 
   const [hasUsedFreeQuickGuess, setHasUsedFreeQuickGuess] = useState(() => {
-    return safeStorage.getItem('khamin_has_used_free_quick_guess') === 'true';
+    return localStorage.getItem('khamin_has_used_free_quick_guess') === 'true';
   });
 
   const updateHasUsedFreeQuickGuess = (value: boolean) => {
     setHasUsedFreeQuickGuess(value);
-    safeStorage.setItem('khamin_has_used_free_quick_guess', value.toString());
+    localStorage.setItem('khamin_has_used_free_quick_guess', value.toString());
   };
 
   const [hasUsedFreeSpin, setHasUsedFreeSpin] = useState(() => {
-    const saved = safeStorage.getItem('khamin_has_used_free_spin');
-    const lastUsed = safeStorage.getItem('khamin_last_free_spin_date');
+    const saved = localStorage.getItem('khamin_has_used_free_spin');
+    const lastUsed = localStorage.getItem('khamin_last_free_spin_date');
     if (saved === 'true' && lastUsed) {
       const d1 = new Date();
       const d2 = new Date(parseInt(lastUsed));
@@ -2688,15 +2656,15 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
   const updateHasUsedFreeSpin = (value: boolean) => {
     setHasUsedFreeSpin(value);
-    safeStorage.setItem('khamin_has_used_free_spin', value.toString());
-    safeStorage.setItem('khamin_last_free_spin_date', Date.now().toString());
+    localStorage.setItem('khamin_has_used_free_spin', value.toString());
+    localStorage.setItem('khamin_last_free_spin_date', Date.now().toString());
   };
   const [dailyQuestStreak, setDailyQuestStreak] = useState(() => {
-    const saved = safeStorage.getItem('khamin_daily_streak');
+    const saved = localStorage.getItem('khamin_daily_streak');
     return saved ? parseInt(saved) : 1;
   });
   const [lastDailyClaim, setLastDailyClaim] = useState(() => {
-    const saved = safeStorage.getItem('khamin_last_daily_claim');
+    const saved = localStorage.getItem('khamin_last_daily_claim');
     return saved ? parseInt(saved) : 0;
   });
   const [hasSeenDailyToday, setHasSeenDailyToday] = useState(false);
@@ -2734,7 +2702,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         // Since freeSpinUsed is 1 after the first spin, any spin where dailySpinCount > 1 is an ad spin.
         if (spinResult.dailySpinCount > 1) {
           setSpinCooldown(30);
-          safeStorage.setItem('khamin_spin_cooldown_end', (Date.now() + 30000).toString());
+          localStorage.setItem('khamin_spin_cooldown_end', (Date.now() + 30000).toString());
         }
         
         // Update stats
@@ -2858,13 +2826,13 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     }, 50);
   };
   const [ownedHelpers, setOwnedHelpers] = useState<{ [key: string]: number }>(() => {
-    const saved = safeStorage.getItem('khamin_owned_helpers');
+    const saved = localStorage.getItem('khamin_owned_helpers');
     return saved ? JSON.parse(saved) : {};
   });
 
   useEffect(() => {
     if (joined && playerSerial) {
-      const pendingGift = safeStorage.getItem('khamin_pending_rain_gift');
+      const pendingGift = localStorage.getItem('khamin_pending_rain_gift');
       if (pendingGift) {
         try {
           const rewards = JSON.parse(pendingGift);
@@ -2872,10 +2840,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             setCollectedRewards(rewards);
             // Removed automatic trigger: setShowRainGiftSummary(true);
           } else {
-            safeStorage.removeItem('khamin_pending_rain_gift');
+            localStorage.removeItem('khamin_pending_rain_gift');
           }
         } catch (e) {
-          safeStorage.removeItem('khamin_pending_rain_gift');
+          localStorage.removeItem('khamin_pending_rain_gift');
         }
       }
     }
@@ -2908,7 +2876,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      const dismissedAt = safeStorage.getItem('khamin_install_dismissed');
+      const dismissedAt = localStorage.getItem('khamin_install_dismissed');
       const isDismissedRecently = dismissedAt && (Date.now() - parseInt(dismissedAt)) < 7 * 24 * 60 * 60 * 1000;
       if (!isDismissedRecently) {
         setShowInstallModal(true);
@@ -2930,11 +2898,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
   const handleCloseInstallModal = () => {
     setShowInstallModal(false);
-    safeStorage.setItem('khamin_install_dismissed', Date.now().toString());
+    localStorage.setItem('khamin_install_dismissed', Date.now().toString());
   };
 
   useEffect(() => {
-    const dismissedAt = safeStorage.getItem('khamin_install_dismissed');
+    const dismissedAt = localStorage.getItem('khamin_install_dismissed');
     const isDismissedRecently = dismissedAt && (Date.now() - parseInt(dismissedAt)) < 7 * 24 * 60 * 60 * 1000;
     if (loadingProgress === 100 && deferredPrompt && !isDismissedRecently) {
       setShowInstallModal(true);
@@ -2991,16 +2959,16 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         // Sync local storage with server status
         if (status.freeSpinUsed > 0) {
           setHasUsedFreeSpin(true);
-          safeStorage.setItem('khamin_has_used_free_spin', 'true');
+          localStorage.setItem('khamin_has_used_free_spin', 'true');
           // We don't necessarily know the exact date from the server here, 
           // but setting it to now is a safe bet for "today"
-          if (!safeStorage.getItem('khamin_last_free_spin_date')) {
-            safeStorage.setItem('khamin_last_free_spin_date', Date.now().toString());
+          if (!localStorage.getItem('khamin_last_free_spin_date')) {
+            localStorage.setItem('khamin_last_free_spin_date', Date.now().toString());
           }
         } else {
           setHasUsedFreeSpin(false);
-          safeStorage.removeItem('khamin_has_used_free_spin');
-          safeStorage.removeItem('khamin_last_free_spin_date');
+          localStorage.removeItem('khamin_has_used_free_spin');
+          localStorage.removeItem('khamin_last_free_spin_date');
         }
       });
       socket.on('spin_result', (data) => {
@@ -3067,13 +3035,13 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         setLastDailyClaim(pendingDailyReward.newLastClaim);
         if (pendingDailyReward.weeklyتخميناتClaimed !== undefined) {
           setتخميناتEarnedThisWeek(pendingDailyReward.weeklyتخميناتClaimed);
-          safeStorage.setItem('khamin_tokens_earned_this_week', pendingDailyReward.weeklyتخميناتClaimed.toString());
+          localStorage.setItem('khamin_tokens_earned_this_week', pendingDailyReward.weeklyتخميناتClaimed.toString());
         }
         
         // Sync local storage
-        safeStorage.setItem('khamin_daily_streak', pendingDailyReward.newStreak.toString());
-        safeStorage.setItem('khamin_last_daily_claim', pendingDailyReward.newLastClaim.toString());
-        safeStorage.setItem('khamin_owned_helpers', JSON.stringify(pendingDailyReward.newOwnedHelpers));
+        localStorage.setItem('khamin_daily_streak', pendingDailyReward.newStreak.toString());
+        localStorage.setItem('khamin_last_daily_claim', pendingDailyReward.newLastClaim.toString());
+        localStorage.setItem('khamin_owned_helpers', JSON.stringify(pendingDailyReward.newOwnedHelpers));
         
         setPendingDailyReward(null);
       }
@@ -3191,12 +3159,12 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     if (showSettingsModal) {
       const currentLevel = getLevel(xp);
       setLastSeenAvatarLevel(currentLevel);
-      safeStorage.setItem('khamin_last_seen_avatar_level', currentLevel.toString());
+      localStorage.setItem('khamin_last_seen_avatar_level', currentLevel.toString());
     }
     if (showLevelInfo) {
       const currentLevel = getLevel(xp);
       setLastSeenPowerUpLevel(currentLevel);
-      safeStorage.setItem('khamin_last_seen_powerup_level', currentLevel.toString());
+      localStorage.setItem('khamin_last_seen_powerup_level', currentLevel.toString());
     }
     setShowSettingsModal(false);
     setShowLevelInfo(false);
@@ -3253,7 +3221,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (res.success) {
           showAlert('تم تفعيل باقة المحترفين بنجاح! 🎉', 'المتجر');
           setProPackageExpiry(res.proPackageExpiry);
-          safeStorage.setItem('khamin_pro_package_expiry', res.proPackageExpiry.toString());
+          localStorage.setItem('khamin_pro_package_expiry', res.proPackageExpiry.toString());
         } else {
           showAlert(res.error || 'حدث خطأ، حاول مرة أخرى.', 'خطأ');
         }
@@ -3315,7 +3283,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       closeAllModals();
       if (!hasSeenLevelInfo) {
         setHasSeenLevelInfo(true);
-        safeStorage.setItem('khamin_seen_level_info', 'true');
+        localStorage.setItem('khamin_seen_level_info', 'true');
       }
       setShowLevelInfo(true);
     }
@@ -3498,7 +3466,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         setCollectionNotifications(prev => prev.filter(n => n.id !== notificationId));
         if (action === 'send') {
            showAlert('تم إرسال الصورة بنجاح!', 'نجاح');
-           socket.emit("get_player_data", { serial: playerSerial, fingerprint: safeStorage.getItem('khamin_fingerprint') }); // to refresh collection
+           socket.emit("get_player_data", { serial: playerSerial, fingerprint: localStorage.getItem('khamin_fingerprint') }); // to refresh collection
            fetchCollection(playerSerial);
         }
       } else {
@@ -3522,7 +3490,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       if (res.success) {
         setCollectionNotifications(prev => prev.filter(n => n.id !== notificationId));
         showAlert('تم استلام الصورة بنجاح!', 'نجاح');
-        socket.emit("get_player_data", { serial: playerSerial, fingerprint: safeStorage.getItem('khamin_fingerprint') }); // to refresh collection
+        socket.emit("get_player_data", { serial: playerSerial, fingerprint: localStorage.getItem('khamin_fingerprint') }); // to refresh collection
         fetchCollection(playerSerial);
       } else {
         showAlert(res.error || 'حدث خطأ', 'خطأ');
@@ -3550,7 +3518,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             setFriendsTotal(friendsRes.total);
           }
         });
-        const fingerprint = safeStorage.getItem('khamin_fingerprint');
+        const fingerprint = localStorage.getItem('khamin_fingerprint');
         socket.emit("get_player_data", { serial: playerSerial, fingerprint });
       }
     });
@@ -3667,13 +3635,13 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const clearPlayerData = () => {
     // Clear all localStorage items related to the game
     const keysToRemove = [];
-    for (let i = 0; i < safeStorage.length; i++) {
-      const key = safeStorage.key(i);
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
       if (key && key.startsWith('khamin_')) {
         keysToRemove.push(key);
       }
     }
-    keysToRemove.forEach(key => safeStorage.removeItem(key));
+    keysToRemove.forEach(key => localStorage.removeItem(key));
 
     // Clear caches if any exist
     if ('caches' in window) {
@@ -3719,23 +3687,23 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     let imgTimeoutId: NodeJS.Timeout;
 
     if (room && (room.gameState === 'guessing' || room.gameState === 'discussion')) {
-      const hasSeenRules = safeStorage.getItem('khamin_rules_seen');
+      const hasSeenRules = localStorage.getItem('khamin_rules_seen');
       if (!hasSeenRules) {
         timeoutId = setTimeout(() => {
           setShowRulesModal(true);
         }, 3000); // تأخير الظهور لمدة 3 ثواني
       }
       
-      const easyGuessCount = parseInt(safeStorage.getItem('khamin_easy_guess_answers_count') || '0');
-      const lastEasyGuessMatch = safeStorage.getItem('khamin_easy_guess_last_match');
+      const easyGuessCount = parseInt(localStorage.getItem('khamin_easy_guess_answers_count') || '0');
+      const lastEasyGuessMatch = localStorage.getItem('khamin_easy_guess_last_match');
       
       // إذا لم يظهر من قبل 3 مرات، ولم يظهر في هذه المباراة، ونافذة القوانين غير ظاهرة
       if (easyGuessCount < 3 && lastEasyGuessMatch !== room.id && !showRulesModal) {
         imgTimeoutId = setTimeout(() => {
           if (!showRulesModal) {
             setShowHowToOpenEasyGuess(true);
-            safeStorage.setItem('khamin_easy_guess_last_match', room.id);
-            safeStorage.setItem('khamin_easy_guess_answers_count', (easyGuessCount + 1).toString());
+            localStorage.setItem('khamin_easy_guess_last_match', room.id);
+            localStorage.setItem('khamin_easy_guess_answers_count', (easyGuessCount + 1).toString());
           }
         }, 5000);
       }
@@ -3747,7 +3715,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   }, [room?.gameState, room?.id, showRulesModal]);
 
   const handleAcceptRules = () => {
-    safeStorage.setItem('khamin_rules_seen', 'true');
+    localStorage.setItem('khamin_rules_seen', 'true');
     setShowRulesModal(false);
     playSound('clickClose');
   };
@@ -3765,10 +3733,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         
         setIsAdmin(true);
         setAdminEmail(userData.email);
-        safeStorage.setItem('khamin_is_admin', 'true');
-        safeStorage.setItem('khamin_admin_email', userData.email);
+        localStorage.setItem('khamin_is_admin', 'true');
+        localStorage.setItem('khamin_admin_email', userData.email);
         if (userData.adminToken) {
-          safeStorage.setItem('khamin_admin_token', userData.adminToken);
+          localStorage.setItem('khamin_admin_token', userData.adminToken);
         }
         socket.emit('admin_set_admin_status', { 
           serial: playerSerial, 
@@ -3779,7 +3747,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           console.log('Admin status set response:', res);
           if (res.success) {
             if (res.adminToken) {
-              safeStorage.setItem('khamin_admin_token', res.adminToken);
+              localStorage.setItem('khamin_admin_token', res.adminToken);
             }
             closeAllModals();
             setShowAdminDashboard(true);
@@ -3839,7 +3807,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         // If we don't have a serial yet, use this one
         if (!playerSerial) {
           setPlayerSerial(serialParam);
-          safeStorage.setItem('khamin_player_serial', serialParam);
+          localStorage.setItem('khamin_player_serial', serialParam);
         }
 
         const claimPrize = () => {
@@ -3918,7 +3886,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         showAlert(`مبروك! أكملت المرحلة ${data.stage} من فئة ${data.categoryName} وحصلت على ${data.xp} XP! 🏆`, 'مكافأة المجموعة');
         setXp(prev => prev + data.xp);
         fetchCollection(playerSerial);
-        const fingerprint = safeStorage.getItem('khamin_fingerprint');
+        const fingerprint = localStorage.getItem('khamin_fingerprint');
         if (fingerprint) {
           socket.emit("get_player_data", { serial: playerSerial, fingerprint });
         }
@@ -4101,16 +4069,16 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         showAlert(data.message, data.title);
       });
       
-      const serial = safeStorage.getItem('khamin_player_serial');
+      const serial = localStorage.getItem('khamin_player_serial');
       if (serial) {
         newSocket.emit('set_player_serial_for_socket', serial);
-        const isAdmin = safeStorage.getItem('khamin_is_admin') === 'true';
-        const adminEmail = safeStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
-        const adminToken = safeStorage.getItem('khamin_admin_token');
+        const isAdmin = localStorage.getItem('khamin_is_admin') === 'true';
+        const adminEmail = localStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
+        const adminToken = localStorage.getItem('khamin_admin_token');
         if (isAdmin) {
           newSocket.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail, adminToken }, (res: any) => {
             if (res?.success && res.adminToken) {
-              safeStorage.setItem('khamin_admin_token', res.adminToken);
+              localStorage.setItem('khamin_admin_token', res.adminToken);
             }
           });
         }
@@ -4131,31 +4099,31 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             if (data.recentOpponents) {
               setRecentOpponents(data.recentOpponents);
             }
-            safeStorage.setItem('khamin_tokens', (data.tokens || 0).toString());
+            localStorage.setItem('khamin_tokens', (data.tokens || 0).toString());
             
             if (data.tempItems) {
               setTempItems(data.tempItems);
             }
             if (data.ownedHelpers) {
               setOwnedHelpers(data.ownedHelpers);
-              safeStorage.setItem('khamin_owned_helpers', JSON.stringify(data.ownedHelpers));
+              localStorage.setItem('khamin_owned_helpers', JSON.stringify(data.ownedHelpers));
             }
 
             newSocket.emit("get_city_search", { serial });
 
             if (data.dailyQuestStreak) {
               setDailyQuestStreak(data.dailyQuestStreak);
-              safeStorage.setItem('khamin_daily_streak', data.dailyQuestStreak.toString());
+              localStorage.setItem('khamin_daily_streak', data.dailyQuestStreak.toString());
             }
 
             if (data.lastDailyClaim) {
               setLastDailyClaim(data.lastDailyClaim);
-              safeStorage.setItem('khamin_last_daily_claim', data.lastDailyClaim.toString());
+              localStorage.setItem('khamin_last_daily_claim', data.lastDailyClaim.toString());
             }
 
             if (data.weeklyتخميناتClaimed !== undefined) {
               setتخميناتEarnedThisWeek(data.weeklyتخميناتClaimed);
-              safeStorage.setItem('khamin_tokens_earned_this_week', data.weeklyتخميناتClaimed.toString());
+              localStorage.setItem('khamin_tokens_earned_this_week', data.weeklyتخميناتClaimed.toString());
             }
             
             fetchCollection(serial);
@@ -4170,26 +4138,26 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
             if (data.proPackageExpiry) {
               setProPackageExpiry(data.proPackageExpiry);
-              safeStorage.setItem('khamin_pro_package_expiry', data.proPackageExpiry.toString());
+              localStorage.setItem('khamin_pro_package_expiry', data.proPackageExpiry.toString());
             }
             if (data.unlockedHelpersExpiry) {
               setUnlockedHelpersExpiry(data.unlockedHelpersExpiry);
-              safeStorage.setItem('khamin_unlocked_helpers_expiry', data.unlockedHelpersExpiry.toString());
+              localStorage.setItem('khamin_unlocked_helpers_expiry', data.unlockedHelpersExpiry.toString());
             }
 
             // Sync Avatar State from Server
             if (data.avatar) {
               setAvatar(data.avatar);
-              safeStorage.setItem('khamin_player_avatar', data.avatar);
+              localStorage.setItem('khamin_player_avatar', data.avatar);
               if (data.avatar.startsWith('data:image/')) {
                 setCustomAvatar(data.avatar);
-                safeStorage.setItem('khamin_custom_avatar', data.avatar);
+                localStorage.setItem('khamin_custom_avatar', data.avatar);
               } else if (data.avatarStatus !== 'pending') {
                 // If the current avatar is NOT a custom one, and we don't have a pending one,
                 // we should probably clear the customAvatar state unless it's actually pending
                 if (!data.pendingAvatar) {
                   setCustomAvatar('');
-                  safeStorage.removeItem('khamin_custom_avatar');
+                  localStorage.removeItem('khamin_custom_avatar');
                 }
               }
             }
@@ -4197,7 +4165,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               setAvatarStatus(data.avatarStatus);
               if (data.avatarStatus === 'rejected') {
                 setCustomAvatar('');
-                safeStorage.removeItem('khamin_custom_avatar');
+                localStorage.removeItem('khamin_custom_avatar');
               }
             }
             if (data.pendingAvatar) {
@@ -4206,16 +4174,16 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             }
             if (data.selectedFrame !== undefined) {
               setSelectedFrame(data.selectedFrame);
-              safeStorage.setItem('khamin_player_frame', data.selectedFrame);
+              localStorage.setItem('khamin_player_frame', data.selectedFrame);
             }
 
             if (data.likes !== undefined) {
               setLikes(data.likes);
-              safeStorage.setItem('khamin_likes', data.likes.toString());
+              localStorage.setItem('khamin_likes', data.likes.toString());
             }
 
-            safeStorage.setItem('khamin_xp', data.xp.toString());
-            safeStorage.setItem('khamin_wins', (data.wins || 0).toString());
+            localStorage.setItem('khamin_xp', data.xp.toString());
+            localStorage.setItem('khamin_wins', (data.wins || 0).toString());
           } else {
             // We DO NOT call clearPlayerData() here anymore to prevent permanent account loss
             // if the server database is temporarily empty or unavailable.
@@ -4229,7 +4197,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
       newSocket.emit('get_top_players', (players: any[]) => {
         setTopPlayers(sortPlayers(players));
-        safeStorage.setItem('khamin_top_players', JSON.stringify(players));
+        localStorage.setItem('khamin_top_players', JSON.stringify(players));
       });
 
       newSocket.emit('get_highest_likes_serial', (data: any) => {
@@ -4328,7 +4296,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
     newSocket.on('key_found', (data: any) => {
       setKeys(data.keys);
-      safeStorage.setItem('khamin_keys', data.keys.toString());
+      localStorage.setItem('khamin_keys', data.keys.toString());
       setShowKeyDrop(true);
       setTimeout(() => setShowKeyDrop(false), 3000);
       playSound('prize'); // Using a milder drop sound instead of the loud win sound
@@ -4338,39 +4306,39 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       if (data.reports !== undefined) setReports(data.reports);
       if (data.xp !== undefined) {
         setXp(data.xp);
-        safeStorage.setItem('khamin_xp', data.xp.toString());
+        localStorage.setItem('khamin_xp', data.xp.toString());
       }
       if (data.wins !== undefined) {
         setWins(data.wins);
-        safeStorage.setItem('khamin_wins', data.wins.toString());
+        localStorage.setItem('khamin_wins', data.wins.toString());
       }
       if (data.streak !== undefined) {
         setStreak(data.streak);
-        safeStorage.setItem('khamin_streak', data.streak.toString());
+        localStorage.setItem('khamin_streak', data.streak.toString());
       }
       if (data.tokens != null) {
         setتخمينات(data.tokens);
-        safeStorage.setItem('khamin_tokens', data.tokens.toString());
+        localStorage.setItem('khamin_tokens', data.tokens.toString());
       }
       if (data.keys != null) {
         setKeys(data.keys);
-        safeStorage.setItem('khamin_keys', data.keys.toString());
+        localStorage.setItem('khamin_keys', data.keys.toString());
       }
       if (data.likes != null) {
         setLikes(data.likes);
-        safeStorage.setItem('khamin_likes', data.likes.toString());
+        localStorage.setItem('khamin_likes', data.likes.toString());
       }
       if (data.proPackageExpiry !== undefined) {
         setProPackageExpiry(data.proPackageExpiry);
-        safeStorage.setItem('khamin_pro_package_expiry', data.proPackageExpiry.toString());
+        localStorage.setItem('khamin_pro_package_expiry', data.proPackageExpiry.toString());
       }
       if (data.unlockedHelpersExpiry !== undefined) {
         setUnlockedHelpersExpiry(data.unlockedHelpersExpiry);
-        safeStorage.setItem('khamin_unlocked_helpers_expiry', data.unlockedHelpersExpiry.toString());
+        localStorage.setItem('khamin_unlocked_helpers_expiry', data.unlockedHelpersExpiry.toString());
       }
       if (data.name !== undefined) {
         setPlayerName(data.name);
-        safeStorage.setItem('khamin_player_name', data.name);
+        localStorage.setItem('khamin_player_name', data.name);
       }
       if (data.isHighestLikes !== undefined) {
         setIsHighestLikes(data.isHighestLikes);
@@ -4380,21 +4348,21 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       }
       if (data.lastRenameAt !== undefined) {
         setLastRenameAt(data.lastRenameAt);
-        safeStorage.setItem('khamin_last_rename_at', data.lastRenameAt.toString());
+        localStorage.setItem('khamin_last_rename_at', data.lastRenameAt.toString());
       }
       if (data.banUntil !== undefined) setBanUntil(data.banUntil);
       if (data.isPermanentBan !== undefined) setIsPermanentBan(data.isPermanentBan);
       if (data.ownedHelpers !== undefined) {
         setOwnedHelpers(data.ownedHelpers);
-        safeStorage.setItem('khamin_owned_helpers', JSON.stringify(data.ownedHelpers));
+        localStorage.setItem('khamin_owned_helpers', JSON.stringify(data.ownedHelpers));
       }
       if (data.dailyQuestStreak !== undefined) {
         setDailyQuestStreak(data.dailyQuestStreak);
-        safeStorage.setItem('khamin_daily_streak', data.dailyQuestStreak.toString());
+        localStorage.setItem('khamin_daily_streak', data.dailyQuestStreak.toString());
       }
       if (data.lastDailyClaim !== undefined) {
         setLastDailyClaim(data.lastDailyClaim);
-        safeStorage.setItem('khamin_last_daily_claim', data.lastDailyClaim.toString());
+        localStorage.setItem('khamin_last_daily_claim', data.lastDailyClaim.toString());
       }
       if (data.recentOpponents !== undefined) {
         setRecentOpponents(data.recentOpponents);
@@ -4412,7 +4380,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
     newSocket.on('top_players_update', (players: any[]) => {
       setTopPlayers(sortPlayers(players));
-      safeStorage.setItem('khamin_top_players', JSON.stringify(players));
+      localStorage.setItem('khamin_top_players', JSON.stringify(players));
     });
 
     newSocket.on('opponent_muted_you', (isMuted: boolean) => {
@@ -4461,8 +4429,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         }
         
         if (updatedRoom.gameState === 'finished' || updatedRoom.gameState === 'waiting') {
-           const currentSerial = safeStorage.getItem('khamin_player_serial');
-           const currentFingerprint = safeStorage.getItem('khamin_fingerprint');
+           const currentSerial = localStorage.getItem('khamin_player_serial');
+           const currentFingerprint = localStorage.getItem('khamin_fingerprint');
            if (currentSerial && currentFingerprint) {
              newSocket.emit("get_player_data", { serial: currentSerial, fingerprint: currentFingerprint });
            }
@@ -4495,7 +4463,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       const me = updatedRoom.players.find(p => p.id === newSocket.id);
       if (me && me.ownedHelpers) {
         setOwnedHelpers(me.ownedHelpers);
-        safeStorage.setItem('khamin_owned_helpers', JSON.stringify(me.ownedHelpers));
+        localStorage.setItem('khamin_owned_helpers', JSON.stringify(me.ownedHelpers));
       }
     });
 
@@ -4516,20 +4484,20 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           if (newAvatar) {
             setAvatar(newAvatar);
             setCustomAvatar(newAvatar);
-            safeStorage.setItem('khamin_player_avatar', newAvatar);
-            safeStorage.setItem('khamin_custom_avatar', newAvatar);
+            localStorage.setItem('khamin_player_avatar', newAvatar);
+            localStorage.setItem('khamin_custom_avatar', newAvatar);
           }
         } else if (status === 'rejected') {
           // If rejected, revert to what the server says is our current avatar
           if (newAvatar) {
             setAvatar(newAvatar);
-            safeStorage.setItem('khamin_player_avatar', newAvatar);
+            localStorage.setItem('khamin_player_avatar', newAvatar);
             if (newAvatar.startsWith('data:image/')) {
               setCustomAvatar(newAvatar);
-              safeStorage.setItem('khamin_custom_avatar', newAvatar);
+              localStorage.setItem('khamin_custom_avatar', newAvatar);
             } else {
               setCustomAvatar(null);
-              safeStorage.removeItem('khamin_custom_avatar');
+              localStorage.removeItem('khamin_custom_avatar');
             }
           }
         }
@@ -4759,7 +4727,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       }
       
       // Auto-refresh collection data in background when game finishes
-      const currentSerial = safeStorage.getItem('khamin_player_serial');
+      const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
         setTimeout(() => fetchCollection(currentSerial), 1500); // slight delay to ensure DB is written
       }
@@ -4987,21 +4955,21 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       if (rewards.xp) {
         setXp(prev => {
           const newVal = prev + rewards.xp;
-          safeStorage.setItem('khamin_xp', newVal.toString());
+          localStorage.setItem('khamin_xp', newVal.toString());
           return newVal;
         });
       }
       if (rewards.tokens) {
         setتخمينات(prev => {
           const newVal = prev + rewards.tokens;
-          safeStorage.setItem('khamin_tokens', newVal.toString());
+          localStorage.setItem('khamin_tokens', newVal.toString());
           return newVal;
         });
       }
       if (rewards.keys) {
         setKeys(prev => {
           const newVal = prev + rewards.keys;
-          safeStorage.setItem('khamin_keys', newVal.toString());
+          localStorage.setItem('khamin_keys', newVal.toString());
           return newVal;
         });
       }
@@ -5011,7 +4979,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         const base = currentExpiry < Date.now() ? Date.now() : currentExpiry;
         const newExpiry = base + (rewards.pro_package_days * 24 * 60 * 60 * 1000);
         setProPackageExpiry(newExpiry);
-        safeStorage.setItem('khamin_pro_package_expiry', newExpiry.toString());
+        localStorage.setItem('khamin_pro_package_expiry', newExpiry.toString());
       }
       
       setOwnedHelpers(prev => {
@@ -5021,17 +4989,17 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (rewards.word_length) next.word_length = (next.word_length || 0) + rewards.word_length;
         if (rewards.hint) next.hint = (next.hint || 0) + rewards.hint;
         if (rewards.spy_lens) next.spy_lens = (next.spy_lens || 0) + rewards.spy_lens;
-        safeStorage.setItem('khamin_owned_helpers', JSON.stringify(next));
+        localStorage.setItem('khamin_owned_helpers', JSON.stringify(next));
         return next;
       });
 
-      newSocket.emit("get_player_data", { serial: safeStorage.getItem('khamin_player_serial'), fingerprint: safeStorage.getItem('khamin_fingerprint') });
+      newSocket.emit("get_player_data", { serial: localStorage.getItem('khamin_player_serial'), fingerprint: localStorage.getItem('khamin_fingerprint') });
     });
 
     // Friend System Event Listeners
     newSocket.on("new_admin_message", () => {
       playSound('notification');
-      const currentSerial = safeStorage.getItem('khamin_player_serial');
+      const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
         newSocket.emit('get_admin_messages', { serial: currentSerial }, (res: any) => {
           if (res.messages) setSystemMessages(res.messages);
@@ -5041,7 +5009,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
     newSocket.on("new_collection_notification", () => {
       playSound('notification');
-      const currentSerial = safeStorage.getItem('khamin_player_serial');
+      const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
         newSocket.emit('get_collection_notifications', { serial: currentSerial }, (res: any) => {
           if (res.notifications) setCollectionNotifications(res.notifications);
@@ -5052,7 +5020,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
     newSocket.on("friend_request_received", ({ senderSerial }: { senderSerial?: string } = {}) => {
       playSound('notification');
-      const currentSerial = safeStorage.getItem('khamin_player_serial');
+      const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
         newSocket.emit('get_friend_requests', { serial: currentSerial }, (res: any) => {
           if (res.success) setFriendRequests(res.requests);
@@ -5066,7 +5034,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
     newSocket.on("friend_request_accepted", ({ targetSerial }: { targetSerial?: string } = {}) => {
       showAlert("تم قبول طلب الصداقة الخاص بك! 🎉", "نجاح");
-      const currentSerial = safeStorage.getItem('khamin_player_serial');
+      const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
         // Refresh friends list/total immediately
         newSocket.emit('get_friends', { serial: currentSerial }, (res: any) => {
@@ -5075,7 +5043,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             setFriendsTotal(res.total);
           }
         });
-        const fingerprint = safeStorage.getItem('khamin_fingerprint');
+        const fingerprint = localStorage.getItem('khamin_fingerprint');
         newSocket.emit("get_player_data", { serial: currentSerial, fingerprint });
       }
       // Update in-game button status to 'friends' if the person who accepted is our current opponent
@@ -5085,7 +5053,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     });
 
     newSocket.on("friend_removed", ({ targetSerial }: { targetSerial?: string } = {}) => {
-      const currentSerial = safeStorage.getItem('khamin_player_serial');
+      const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
         newSocket.emit('get_friends', { serial: currentSerial }, (res: any) => {
           if (res.success) {
@@ -5177,7 +5145,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         }
         
         // Check if we need to force update (reload)
-        const localVersion = safeStorage.getItem('khamin_game_version');
+        const localVersion = localStorage.getItem('khamin_game_version');
         
         console.log('[DEBUG] Version Check:', { localVersion, serverVersion });
 
@@ -5187,7 +5155,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           console.log('[DEBUG] Needs refresh. Version mismatch:', localVersion !== serverVersion);
           setLoadingStatus('جاري تهيئة الملفات وضمان أحدث نسخة...');
           setLoadingProgress(100);
-          safeStorage.setItem('khamin_game_version', serverVersion);
+          localStorage.setItem('khamin_game_version', serverVersion);
           
           // Unregister all service workers to force fetching new files
           if ('serviceWorker' in navigator) {
@@ -5220,7 +5188,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           window.location.href = url.toString();
           return;
         }
-        safeStorage.setItem('khamin_game_version', serverVersion);
+        localStorage.setItem('khamin_game_version', serverVersion);
 
         setLoadingProgress(100);
         setLoadingStatus('تم التحديث بنجاح!');
@@ -5376,8 +5344,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     }
     setError('');
     
-    safeStorage.setItem('khamin_player_name', playerName);
-    safeStorage.setItem('khamin_player_age', playerAge.toString());
+    localStorage.setItem('khamin_player_name', playerName);
+    localStorage.setItem('khamin_player_age', playerAge.toString());
     setIsPrivate(true);
     socket?.emit('join_room', { roomId, playerName, avatar, age: playerAge, gender, xp, streak, wins, serial: playerSerial });
     setIsOpponentBlocked(false);
@@ -5399,8 +5367,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     }
     setError('');
     
-    safeStorage.setItem('khamin_player_name', playerName);
-    safeStorage.setItem('khamin_player_age', playerAge.toString());
+    localStorage.setItem('khamin_player_name', playerName);
+    localStorage.setItem('khamin_player_age', playerAge.toString());
     setIsPrivate(false);
     socket?.emit('find_random_match', { playerId, playerName, avatar, age: playerAge, gender, xp, streak, wins, serial: playerSerial, useToken: (getLevel(xp) >= 50 && useToken) });
     setIsOpponentBlocked(false);
@@ -5434,19 +5402,19 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       if (serial) {
         setPlayerSerial(serial);
         setPlayerName(name); // Update with filtered name
-        safeStorage.setItem('khamin_player_serial', serial);
-        safeStorage.setItem('khamin_player_name', name);
-        safeStorage.setItem('khamin_player_age', playerAge.toString());
-        safeStorage.setItem('khamin_player_gender', gender);
-        safeStorage.setItem('khamin_player_avatar', avatar);
-        safeStorage.setItem('khamin_wins', '0');
+        localStorage.setItem('khamin_player_serial', serial);
+        localStorage.setItem('khamin_player_name', name);
+        localStorage.setItem('khamin_player_age', playerAge.toString());
+        localStorage.setItem('khamin_player_gender', gender);
+        localStorage.setItem('khamin_player_avatar', avatar);
+        localStorage.setItem('khamin_wins', '0');
         
-        const isAdmin = safeStorage.getItem('khamin_is_admin') === 'true';
-        const adminEmail = safeStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
+        const isAdmin = localStorage.getItem('khamin_is_admin') === 'true';
+        const adminEmail = localStorage.getItem('khamin_admin_email') || 'adhamsabry.co@gmail.com';
         if (isAdmin) {
           socket?.emit('admin_set_admin_status', { serial, isAdmin: true, email: adminEmail }, (res: any) => {
             if (res?.success && res.adminToken) {
-              safeStorage.setItem('khamin_admin_token', res.adminToken);
+              localStorage.setItem('khamin_admin_token', res.adminToken);
             }
           });
         }
@@ -5489,19 +5457,19 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         setOwnedHelpers(player.ownedHelpers || {});
         if (player.selectedFrame !== undefined) {
           setSelectedFrame(player.selectedFrame);
-          safeStorage.setItem('khamin_player_frame', player.selectedFrame);
+          localStorage.setItem('khamin_player_frame', player.selectedFrame);
         }
         
-        safeStorage.setItem('khamin_player_serial', player.serial);
-        safeStorage.setItem('khamin_player_name', player.name);
-        safeStorage.setItem('khamin_player_age', (player.age || 18).toString());
-        safeStorage.setItem('khamin_player_gender', player.gender || 'boy');
-        safeStorage.setItem('khamin_player_avatar', player.avatar);
-        safeStorage.setItem('khamin_wins', (player.wins || 0).toString());
-        safeStorage.setItem('khamin_xp', (player.xp || 0).toString());
-        safeStorage.setItem('khamin_likes', (player.likes || 0).toString());
-        safeStorage.setItem('khamin_tokens', (player.tokens || 0).toString());
-        safeStorage.setItem('khamin_streak', (player.streak || 0).toString());
+        localStorage.setItem('khamin_player_serial', player.serial);
+        localStorage.setItem('khamin_player_name', player.name);
+        localStorage.setItem('khamin_player_age', (player.age || 18).toString());
+        localStorage.setItem('khamin_player_gender', player.gender || 'boy');
+        localStorage.setItem('khamin_player_avatar', player.avatar);
+        localStorage.setItem('khamin_wins', (player.wins || 0).toString());
+        localStorage.setItem('khamin_xp', (player.xp || 0).toString());
+        localStorage.setItem('khamin_likes', (player.likes || 0).toString());
+        localStorage.setItem('khamin_tokens', (player.tokens || 0).toString());
+        localStorage.setItem('khamin_streak', (player.streak || 0).toString());
         
         fetchCollection(player.serial);
         
@@ -6075,10 +6043,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
        if (res.success) {
           showAlert('تم فتح إمكانية تغيير الاسم بنجاح!', 'نجاح');
           setLastRenameAt(0);
-          safeStorage.setItem('khamin_last_rename_at', '0');
+          localStorage.setItem('khamin_last_rename_at', '0');
           if (res.keys !== undefined && res.keys !== null) {
              setKeys(res.keys);
-             safeStorage.setItem('khamin_keys', res.keys.toString());
+             localStorage.setItem('khamin_keys', res.keys.toString());
           }
        } else {
           showAlert(res.error || 'حدث خطأ غير متوقع.', 'خطأ');
@@ -6104,7 +6072,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       (response: any) => {
         if (response.success === false) {
            // Revert localStorage name if it was cached prematurely
-           const oldName = safeStorage.getItem('khamin_player_name') || playerName;
+           const oldName = localStorage.getItem('khamin_player_name') || playerName;
            if (oldName !== playerName) {
                setPlayerName(oldName);
            }
@@ -6121,16 +6089,16 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         }
         if (name) {
           setPlayerName(name);
-          safeStorage.setItem('khamin_player_name', name);
+          localStorage.setItem('khamin_player_name', name);
         }
         if (updatedLastRenameAt !== undefined) {
           setLastRenameAt(updatedLastRenameAt);
-          safeStorage.setItem('khamin_last_rename_at', updatedLastRenameAt.toString());
+          localStorage.setItem('khamin_last_rename_at', updatedLastRenameAt.toString());
         }
         
         // Update local storage for other fields on success
-        safeStorage.setItem('khamin_player_avatar', avatar);
-        safeStorage.setItem('khamin_player_gender', gender);
+        localStorage.setItem('khamin_player_avatar', avatar);
+        localStorage.setItem('khamin_player_gender', gender);
       }
     );
   };
@@ -7777,15 +7745,15 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                       if (res.player) {
                         if (res.player.proPackageExpiry) {
                           setProPackageExpiry(res.player.proPackageExpiry);
-                          safeStorage.setItem('khamin_pro_package_expiry', res.player.proPackageExpiry.toString());
+                          localStorage.setItem('khamin_pro_package_expiry', res.player.proPackageExpiry.toString());
                         }
                         if (res.player.unlockedHelpersExpiry) {
                           setUnlockedHelpersExpiry(res.player.unlockedHelpersExpiry);
-                          safeStorage.setItem('khamin_unlocked_helpers_expiry', res.player.unlockedHelpersExpiry.toString());
+                          localStorage.setItem('khamin_unlocked_helpers_expiry', res.player.unlockedHelpersExpiry.toString());
                         }
                         if (res.player.tokens !== undefined) {
                           setتخمينات(res.player.tokens);
-                          safeStorage.setItem('khamin_tokens', res.player.tokens.toString());
+                          localStorage.setItem('khamin_tokens', res.player.tokens.toString());
                         }
                       }
                     } else {
@@ -9052,7 +9020,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                 if (!seenFrames.includes(cat.id)) {
                                   const newSeen = [...seenFrames, cat.id];
                                   setSeenFrames(newSeen);
-                                  safeStorage.setItem('khamin_seen_frames', JSON.stringify(newSeen));
+                                  localStorage.setItem('khamin_seen_frames', JSON.stringify(newSeen));
                                 }
                               }
                             }}
@@ -10054,9 +10022,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     </button>
                     <button 
                       onClick={() => {
-                        safeStorage.removeItem('khamin_is_admin');
-                        safeStorage.removeItem('khamin_admin_token');
-                        safeStorage.removeItem('khamin_admin_email');
+                        localStorage.removeItem('khamin_is_admin');
+                        localStorage.removeItem('khamin_admin_token');
+                        localStorage.removeItem('khamin_admin_email');
                         setIsAdmin(false);
                         setShowAdminDashboard(false);
                         showAlert('تم تسجيل الخروج من لوحة التحكم بنجاح', 'نجاح');
@@ -11336,7 +11304,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                     <p className="text-sm font-bold text-gray-500">جاري جلب الإحصائيات...</p>
                                   </>
                                 )}
-                                {!safeStorage.getItem('khamin_admin_token') && (
+                                {!localStorage.getItem('khamin_admin_token') && (
                                   <p className="text-xs text-red-500 font-bold"> (يرجى تسجيل الدخول مجدداً لتفعيل الإحصائيات)</p>
                                 )}
                               </div>
@@ -11379,7 +11347,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => {
-                                    safeStorage.removeItem('khamin_push_prompt_dismissed');
+                                    localStorage.removeItem('khamin_push_prompt_dismissed');
                                     showAlert('تم إعادة تعيين رسالة الترحيب. ستظهر بعد دقيقة من تحديث الصفحة.', 'نجاح');
                                   }}
                                   className="text-xs bg-gray-300 p-2 rounded-lg font-bold text-brown-muted hover:bg-gray-200 rounded-xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-1"
@@ -11497,7 +11465,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                         body: pushBody,
                                         url: pushUrl,
                                         scheduledTimes,
-                                        adminToken: safeStorage.getItem('khamin_admin_token')
+                                        adminToken: localStorage.getItem('khamin_admin_token')
                                       })
                                     });
                                     const res = await response.json();
@@ -11582,7 +11550,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                               : 'هل أنت متأكد من إيقاف وحذف هذا الإشعار المجدول؟';
                                             if (window.confirm(msg)) {
                                               try {
-                                                const adminToken = safeStorage.getItem('khamin_admin_token');
+                                                const adminToken = localStorage.getItem('khamin_admin_token');
                                                 const res = await fetch(`/api/push/scheduled/${group.id}?adminToken=${adminToken}`, {
                                                   method: 'DELETE'
                                                 });
@@ -13543,7 +13511,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               </div>
               <button 
                 onClick={() => {
-                  const serial = safeStorage.getItem('khamin_player_serial');
+                  const serial = localStorage.getItem('khamin_player_serial');
                   if (serial) {
                     const handleReload = () => {
                       clearPlayerData();
@@ -13902,7 +13870,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 if (collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers).length > 0) {
                   setShowRainGiftSummary(true);
                 } else {
-                  safeStorage.removeItem('khamin_pending_rain_gift');
+                  localStorage.removeItem('khamin_pending_rain_gift');
                   setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
                 }
               }}
@@ -13942,7 +13910,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   else if (item.type === 'helper') {
                     next.helpers[item.value] = (next.helpers[item.value] || 0) + 1;
                   }
-                  safeStorage.setItem('khamin_pending_rain_gift', JSON.stringify(next));
+                  localStorage.setItem('khamin_pending_rain_gift', JSON.stringify(next));
                   return next;
                 });
                 setFallingItems(prev => prev.filter(i => i.id !== item.id));
@@ -14048,7 +14016,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               };
               const successReward = () => {
                 socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
-                safeStorage.removeItem('khamin_pending_rain_gift');
+                localStorage.removeItem('khamin_pending_rain_gift');
                 setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
                 setShowRainGiftSummary(false);
                 showAlert("تم استلام المكافآت بنجاح! 🥳", "نجاح");
@@ -14377,7 +14345,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     if (hasNewImage) {
                       const newCounts = { ...seenCategoryCounts, [cat.id]: currentCount };
                       setSeenCategoryCounts(newCounts);
-                      safeStorage.setItem('khamin_seen_category_counts', JSON.stringify(newCounts));
+                      localStorage.setItem('khamin_seen_category_counts', JSON.stringify(newCounts));
                     }
                   }}
                   className={`relative w-9 h-9 md:w-11 md:h-11 rounded-xl border-2 border-black flex items-center justify-center text-lg md:text-xl transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none ${
@@ -14612,7 +14580,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     </button>
                     <button
                       onClick={() => {
-                        const pendingGift = safeStorage.getItem('khamin_pending_rain_gift');
+                        const pendingGift = localStorage.getItem('khamin_pending_rain_gift');
                         const hasPendingRewards = pendingGift || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0;
                         if (hasPendingRewards) {
                            if (pendingGift) {
@@ -14651,15 +14619,15 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         }
                       }}
                       // Enabled for testing as requested
-                      disabled={!(safeStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0 || isAdmin || isRainGiftActive)}
+                      disabled={!(localStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0 || isAdmin || isRainGiftActive)}
                       className={`px-2 md:px-6 py-2 rounded-xl font-bold md:font-black md:text-[13px] text-[10px] transition-all shadow-md ${
-                        (safeStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0 || isAdmin || isRainGiftActive)
+                        (localStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0 || isAdmin || isRainGiftActive)
                         ? 'bg-accent-green text-white hover:scale-105 active:scale-95 event-glow' 
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                     >
                       {(() => {
-                         const hasPendingRewards = safeStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0;
+                         const hasPendingRewards = localStorage.getItem('khamin_pending_rain_gift') || collectedRewards.xp > 0 || collectedRewards.tokens > 0 || Object.keys(collectedRewards.helpers || {}).length > 0;
                          if (hasPendingRewards) return 'استلام الهدايا 🎁';
                          if (isAdmin || isRainGiftActive) return 'اشترك في الحدث';
                          return 'انتهي الحدث اليوم';
@@ -17020,7 +16988,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    safeStorage.setItem('khamin_push_prompt_dismissed', 'true');
+                    localStorage.setItem('khamin_push_prompt_dismissed', 'true');
                     setShowPushPrompt(false);
                   }}
                   className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-brown-dark rounded-xl font-black text-sm transition-all border-2 border-black"
