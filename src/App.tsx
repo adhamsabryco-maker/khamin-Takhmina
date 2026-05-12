@@ -14415,7 +14415,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         </div>
                         <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5 flex items-center justify-center gap-1">
                           <span>{topPlayers[1].streak || 0} 🔥</span>
-                          <span>{topPlayers[1].likes || 0} 👍</span>
+                          <span>{topPlayers[1].likes || 0} ❤️</span>
                         </div>
                       </div>
                     </div>
@@ -14447,7 +14447,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         </div>
                         <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1 flex items-center justify-center gap-1">
                           <span>{topPlayers[0].streak || 0} 🔥</span>
-                          <span>{topPlayers[0].likes || 0} 👍</span>
+                          <span>{topPlayers[0].likes || 0} ❤️</span>
                         </div>
                       </div>
                     </div>
@@ -14476,7 +14476,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         </div>
                         <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center justify-center gap-1">
                           <span>{topPlayers[2].streak || 0} 🔥</span>
-                          <span>{topPlayers[2].likes || 0} 👍</span>
+                          <span>{topPlayers[2].likes || 0} ❤️</span>
                         </div>
                       </div>
                     </div>
@@ -14831,7 +14831,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                           <span>•</span>
                           <span>{streak} 🔥</span>
                           <span>•</span>
-                          <span>{likes} 👍</span>
+                          <span>{likes} ❤️</span>
                         </div>
                       </div>
                     </div>
@@ -14839,7 +14839,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 )}
 
                 {/* List of Players */}
-                <div className="p-4 space-y-2">
+                <div className="p-2 space-y-2">
                   {topPlayers.map((player, index) => {
                     const isMe = player.serial === playerSerial;
                     return (
@@ -14847,7 +14847,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         key={player.serial} 
                         onClick={() => openPlayerProfile(player.serial)}
                         className={`
-                          flex items-center gap-3 p-3 rounded-xl border-2 transition-transform cursor-pointer hover:scale-[1.02]
+                          flex items-center gap-2 p-1 md:p-0.5 rounded-xl border-2 transition-transform cursor-pointer hover:scale-[1.02]
                           ${isMe ? 'bg-purple-50 border-purple-200 ring-2 ring-purple-100' : 'bg-white border-gray-100 hover:border-orange-300'}
                         `}
                       >
@@ -14869,13 +14869,13 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                             {player.name} {isMe && '(أنت)'}
                           </div>
                           <div className="text-xs text-brown-muted font-bold flex items-center gap-2">
-                            <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="ltr">Lvl {getLevel(player.xp || 0)}</span>
+                            <span className="bg-gray-100 md:px-1.5 rounded text-brown-muted" dir="ltr">Lvl {getLevel(player.xp || 0)}</span>
                             <span className="text-brown-light">•</span>
                             <span className="text-green-600">{player.wins} فوز</span>
                             <span className="text-brown-light">•</span>
-                            <span className="bg-gray-100 px-1.5 rounded text-brown-muted" dir="rtl">{player.streak || 0} 🔥</span>
+                            <span className="bg-gray-100 md:px-1.5 rounded text-brown-muted" dir="rtl">{player.streak || 0} 🔥</span>
                             <span className="text-brown-light">•</span>
-                            <span className="bg-blue-50 text-blue-600 px-1.5 rounded" dir="rtl">{player.likes || 0} 👍</span>
+                            <span className="bg-blue-50 text-blue-600 md:px-1.5 rounded" dir="rtl">{player.likes || 0} ❤️</span>
                           </div>
                         </div>
 
