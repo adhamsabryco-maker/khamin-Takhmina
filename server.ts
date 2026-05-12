@@ -1015,6 +1015,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   const reportsList: any[] = [];
   const blocks = new Map<string, { blockedId: string, expiresAt: number }[]>();
   const pendingMatches = new Map<string, any>();
+  const friendChallengeCooldowns = new Map<string, number>();
   const allPlayers = new Map<string, { 
     name: string, 
     level: number, 
@@ -2187,6 +2188,14 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   setInterval(() => {
     const topPlayers = getTopPlayers(true);
     io.emit("top_players_update", topPlayers);
+    
+    // Clean up expired friend challenge cooldowns
+    const now = Date.now();
+    for (const [key, expiresAt] of friendChallengeCooldowns.entries()) {
+      if (now > expiresAt) {
+        friendChallengeCooldowns.delete(key);
+      }
+    }
   }, 60000);
 
   function invalidateTopPlayersCache() {
@@ -7631,6 +7640,11 @@ io.on("connection", (socket) => {
       const actualMySerial = mySerial || serial;
       if (!actualMySerial || !targetSerial) return callback({ error: 'بيانات ناقصة' });
       
+      const sendKey = `${actualMySerial}_${targetSerial}`;
+      if (friendChallengeCooldowns.has(sendKey) && friendChallengeCooldowns.get(sendKey)! > Date.now()) {
+         return callback({ error: 'اللاعب مشغول حالياً، يرجى المحاولة بعد قليل' });
+      }
+
       const targetSocketId = playerSockets.get(targetSerial);
       if (!targetSocketId) return callback({ error: 'اللاعب غير متصل الآن' });
       
@@ -7683,8 +7697,9 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("respond_to_friend_challenge", ({ serial, mySerial, targetSerial, accept }: any, callback: any) => {
+    socket.on("respond_to_friend_challenge", ({ serial, mySerial, targetSerial, accept, response }: any, callback: any) => {
       const actualMySerial = mySerial || serial;
+      const actualResponse = response || (accept ? 'accept' : 'reject');
       const targetSocketId = playerSockets.get(targetSerial);
       
       if (!targetSocketId) {
@@ -7692,8 +7707,16 @@ io.on("connection", (socket) => {
         return;
       }
 
-      if (!accept) {
-        io.to(targetSocketId).emit("friend_challenge_rejected", { mySerial: actualMySerial });
+      if (actualResponse === 'later') {
+        const sendKey = `${targetSerial}_${actualMySerial}`;
+        friendChallengeCooldowns.set(sendKey, Date.now() + 10000); // 10 seconds cooldown
+        io.to(targetSocketId).emit("friend_challenge_rejected", { mySerial: actualMySerial, reason: 'later' });
+        if (callback) callback({ success: true });
+        return;
+      }
+
+      if (actualResponse === 'reject') {
+        io.to(targetSocketId).emit("friend_challenge_rejected", { mySerial: actualMySerial, reason: 'rejected' });
         if (callback) callback({ success: true });
         return;
       }
@@ -8265,10 +8288,10 @@ io.on("connection", (socket) => {
           p.xp = (p.xp || 0) + drawXP;
           if (room.matchType === 'random' || room.matchType === undefined) {
              p.randomXp = (p.randomXp !== undefined ? p.randomXp : (p.xp - drawXP)) + drawXP;
+             p.streak = 0; // Draw breaks streak only in random match
           }
           p.level = getLevel(p.xp);
-          p.streak = 0; // Draw breaks streak
-          updates[p.id] = { xp: drawXP, streak: 0, wins: p.wins || 0, won: false, level: p.level };
+          updates[p.id] = { xp: drawXP, streak: p.streak || 0, wins: p.wins || 0, won: false, level: p.level };
         });
       } else {
         if (winner) {
@@ -8305,8 +8328,6 @@ io.on("connection", (socket) => {
           if (isTrueWin) {
             if (room.matchType === 'random' || room.matchType === undefined) {
               winner.streak = (winner.streak || 0) + 1;
-            } else {
-              winner.streak = 0; // Participating in non-random matches resets random streak
             }
             winner.wins = (winner.wins || 0) + 1;
             // Record collection win
@@ -8346,10 +8367,10 @@ io.on("connection", (socket) => {
           loser.xp = (loser.xp || 0) + loserXP;
           if (room.matchType === 'random' || room.matchType === undefined) {
              loser.randomXp = (loser.randomXp !== undefined ? loser.randomXp : (loser.xp - loserXP)) + loserXP;
+             loser.streak = 0;
           }
           loser.level = getLevel(loser.xp);
-          loser.streak = 0;
-          updates[loser.id] = { xp: loserXP, streak: 0, wins: loser.wins || 0, won: false, level: loser.level, useToken: loser.useToken };
+          updates[loser.id] = { xp: loserXP, streak: loser.streak || 0, wins: loser.wins || 0, won: false, level: loser.level, useToken: loser.useToken };
         }
       }
 
