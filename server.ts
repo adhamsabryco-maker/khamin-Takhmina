@@ -7759,6 +7759,8 @@ io.on("connection", (socket) => {
             gender: senderPlayerData.gender || 'boy',
             isAdmin: senderPlayerData.isAdmin,
             serial: senderPlayerData.serial,
+            streak: senderPlayerData.streak || 0,
+            wins: senderPlayerData.wins || 0,
             blockedSerials: senderPlayerData.blockedSerials || [],
             reports: senderPlayerData.reports || 0,
             age: (senderPlayerData as any).age || null,
@@ -7783,6 +7785,8 @@ io.on("connection", (socket) => {
             gender: myPlayerData.gender || 'boy',
             isAdmin: myPlayerData.isAdmin,
             serial: myPlayerData.serial,
+            streak: myPlayerData.streak || 0,
+            wins: myPlayerData.wins || 0,
             blockedSerials: myPlayerData.blockedSerials || [],
             reports: myPlayerData.reports || 0,
             age: (myPlayerData as any).age || null,
@@ -8328,11 +8332,12 @@ io.on("connection", (socket) => {
           if (isTrueWin) {
             if (room.matchType === 'random' || room.matchType === undefined) {
               winner.streak = (winner.streak || 0) + 1;
-            }
-            winner.wins = (winner.wins || 0) + 1;
-            // Record collection win
-            if (winner.serial && winner.targetImage && (room.matchType === 'random' || room.matchType === undefined)) {
-              recordCollectionWin(winner.serial, winner.targetImage.name);
+              winner.wins = (winner.wins || 0) + 1;
+              
+              // Record collection win
+              if (winner.serial && winner.targetImage) {
+                recordCollectionWin(winner.serial, winner.targetImage.name);
+              }
             }
             
             // --- Cheating Detection (Boosting via Streak) ---
@@ -8401,8 +8406,13 @@ io.on("connection", (socket) => {
           player.xp = p.xp;
           if (p.randomXp !== undefined) player.randomXp = p.randomXp;
           player.level = getLevel(p.xp);
-          player.wins = p.wins || 0;
-          player.streak = p.streak || 0;
+          
+          if (p.wins !== undefined) {
+            player.wins = p.wins;
+          }
+          if (p.streak !== undefined) {
+            player.streak = p.streak;
+          }
           
           if (opponent && !opponent.isBot && opponent.serial) {
             if (!player.recentOpponents) {
