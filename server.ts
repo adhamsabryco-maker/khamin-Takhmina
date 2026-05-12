@@ -3139,8 +3139,31 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       const botPlayerInRoom = currentRoom.players.find((p: any) => p.id === bot.id);
       if (!botPlayerInRoom) return;
 
+      const helperRequiredPoints: Record<string, number> = {
+        'hint': 6,
+        'word_length': 12,
+        'word_count': 18,
+        'time_freeze': 24,
+        'spy_lens': 30
+      };
+
       const helpers = ['word_length', 'word_count', 'time_freeze', 'hint', 'spy_lens'];
       const availableHelpers = helpers.filter(h => {
+        // Check if level requirement met
+        const requiredLevels: Record<string, number> = {
+          'hint': 10,
+          'word_length': 20,
+          'time_freeze': 30,
+          'word_count': 40,
+          'spy_lens': 50
+        };
+        if (bot.level < (requiredLevels[h] || 0)) return false;
+
+        // Check helper charge (battery)
+        const currentCharge = botPlayerInRoom.helperCharge || 0;
+        const requiredCharge = helperRequiredPoints[h] || 0;
+        if (currentCharge < requiredCharge) return false;
+
         if (h === 'word_length') return !botPlayerInRoom.wordLengthUsed && !botPlayerInRoom.wordLengthWatching;
         if (h === 'word_count') return !botPlayerInRoom.wordCountUsed && !botPlayerInRoom.wordCountWatching;
         if (h === 'time_freeze') return !botPlayerInRoom.timeFreezeUsed && !botPlayerInRoom.timeFreezeWatching;
@@ -3463,6 +3486,25 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   function handleBotChat(roomId: string, bot: any, text: string) {
     const room = rooms.get(roomId);
     if (!room) return;
+
+    // Battery system for bot
+    if (room.matchType === 'random') {
+      const botInRoom = room.players.find((p: any) => p.id === bot.id);
+      if (botInRoom) {
+        botInRoom.helperCharge = (botInRoom.helperCharge || 0) + 1;
+        
+        // If bot answers "آه", increment charge for the asking player (human)
+        if (text === 'آه' || text === 'أيوة' || text === 'فعلا' || text === 'صح') {
+          const lastQuestion = room.chatHistory?.slice().reverse().find((m: any) => m.senderId !== bot.id && m.text !== 'آه' && m.text !== 'لأ');
+          if (lastQuestion) {
+            const askingPlayer = room.players.find((p: any) => p.id === lastQuestion.senderId);
+            if (askingPlayer && !askingPlayer.isBot) {
+              askingPlayer.helperCharge = (askingPlayer.helperCharge || 0) + 2;
+            }
+          }
+        }
+      }
+    }
 
     const messageObj = { senderId: bot.id, text: text };
     if (!room.chatHistory) room.chatHistory = [];
