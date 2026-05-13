@@ -798,8 +798,17 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [highestLikesSerials, setHighestLikesSerials] = useState<string[]>([]);
   const [highestStreakSerials, setHighestStreakSerials] = useState<string[]>([]);
   const [highestLikesValue, setHighestLikesValue] = useState<number>(0);
-  const [highestStreakValue, setHighestStreakValue] = useState<number>(0);
-  const [highestStreakPlayers, setHighestStreakPlayers] = useState<any[]>([]);
+  const [highestStreakValue, setHighestStreakValue] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('khamin_highest_streak_value') || '0');
+    } catch { return 0; }
+  });
+  const [highestStreakPlayers, setHighestStreakPlayers] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('khamin_highest_streak_players');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [lastRenameAt, setLastRenameAt] = useState(() => parseInt(localStorage.getItem('khamin_last_rename_at') || '0'));
   const playerNameRef = useRef(playerName);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
@@ -4233,8 +4242,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       newSocket.emit('get_highest_streak_serial', (data: any) => {
         if (data && typeof data === 'object') {
           if (data.serials) setHighestStreakSerials(data.serials);
-          if (data.value !== undefined) setHighestStreakValue(data.value);
-          if (data.players) setHighestStreakPlayers(data.players);
+          if (data.value !== undefined) {
+             setHighestStreakValue(data.value);
+             localStorage.setItem('khamin_highest_streak_value', data.value.toString());
+          }
+          if (data.players) {
+             setHighestStreakPlayers(data.players);
+             localStorage.setItem('khamin_highest_streak_players', JSON.stringify(data.players));
+          }
         }
       });
 
@@ -4248,8 +4263,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       newSocket.on('highest_streak_update', (data: any) => {
         if (data && typeof data === 'object') {
           if (data.serials) setHighestStreakSerials(data.serials);
-          if (data.value !== undefined) setHighestStreakValue(data.value);
-          if (data.players) setHighestStreakPlayers(data.players);
+          if (data.value !== undefined) {
+             setHighestStreakValue(data.value);
+             localStorage.setItem('khamin_highest_streak_value', data.value.toString());
+          }
+          if (data.players) {
+             setHighestStreakPlayers(data.players);
+             localStorage.setItem('khamin_highest_streak_players', JSON.stringify(data.players));
+          }
         }
       });
 
