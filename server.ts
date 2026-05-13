@@ -1074,7 +1074,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     lastLuckyWheelResetDay?: string,
     luckyWheelDaysUsed?: number,
     citySearchRewards?: { type: 'token' | 'helper' | 'key', id?: string, amount: number, timestamp: number }[],
-    keys?: number
+    keys?: number,
+    lastActiveAt?: number
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -1248,6 +1249,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   try { db.exec(`ALTER TABLE players ADD COLUMN lastComplaintAt INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastContactAt INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN blockedSerials TEXT DEFAULT '[]'`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN lastActiveAt INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`UPDATE players SET lastActiveAt = ${Date.now()} WHERE lastActiveAt = 0 OR lastActiveAt IS NULL`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN blockedFingerprints TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''`); } catch (e) {}
@@ -1560,8 +1563,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   }
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -1775,7 +1778,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
         citySearchRewards: JSON.stringify(player.citySearchRewards || []),
         keys: player.keys || 0,
-        likes: player.likes || 0
+        likes: player.likes || 0,
+        lastActiveAt: player.lastActiveAt || 0
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -1830,7 +1834,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
         citySearchRewards: JSON.stringify(player.citySearchRewards || []),
         keys: player.keys || 0,
-        likes: player.likes || 0
+        likes: player.likes || 0,
+        lastActiveAt: player.lastActiveAt || 0
       });
     }
   });
@@ -1909,7 +1914,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           luckyWheelDaysUsed: row.luckyWheelDaysUsed || 0,
           citySearchRewards: JSON.parse(row.citySearchRewards || '[]'),
           keys: row.keys || 0,
-          likes: row.likes || 0
+          likes: row.likes || 0,
+          lastActiveAt: row.lastActiveAt || 0
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -2078,13 +2084,20 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   let globalMaxLikes = 0;
   let globalMaxStreak = 0;
 
+  function isPlayerActiveForLeaderboard(p: any, now: number) {
+    if (p.isAdmin || p.isPermanentBan || (p.banUntil && p.banUntil > now)) return false;
+    if (!p.lastActiveAt) return false;
+    return (now - p.lastActiveAt <= 72 * 60 * 60 * 1000);
+  }
+
   function updateHighestLikesGlobal() {
     let highestLikesPlayer = '';
     let maxLikes = 0;
+    const now = Date.now();
     
     // Find max likes among non-admins
     for (const p of allPlayers.values()) {
-      if (!p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= Date.now())) {
+      if (isPlayerActiveForLeaderboard(p, now)) {
         if ((p.likes || 0) > maxLikes) {
           maxLikes = p.likes || 0;
           highestLikesPlayer = p.serial;
@@ -2111,10 +2124,11 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   function updateHighestStreakGlobal() {
     let highestStreakPlayer = '';
     let maxStreak = 0;
+    const now = Date.now();
     
     // Find max streak among non-admins
     for (const p of allPlayers.values()) {
-      if (!p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= Date.now())) {
+      if (isPlayerActiveForLeaderboard(p, now)) {
         if ((p.streak || 0) > maxStreak) {
           maxStreak = p.streak || 0;
           highestStreakPlayer = p.serial;
@@ -2161,7 +2175,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       updateHighestStreakGlobal();
 
       cachedTopPlayers = Array.from(allPlayers.values())
-        .filter(p => !p.isAdmin && !p.isPermanentBan && (!p.banUntil || p.banUntil <= now)) // Exclude admins and banned players from leaderboard
+        .filter(p => isPlayerActiveForLeaderboard(p, now)) // Exclude admins, banned, and inactive players
         .sort((a, b) => {
           const aXp = a.randomXp !== undefined ? a.randomXp : (a.xp || 0);
           const bXp = b.randomXp !== undefined ? b.randomXp : (b.xp || 0);
@@ -4004,7 +4018,8 @@ io.on("connection", (socket) => {
         tokens: 0,
         keys: 0,
         adsWatchedToday: 0,
-        lastAdWatchDate: null
+        lastAdWatchDate: null,
+        lastActiveAt: Date.now()
       });
       savePlayerData(serial);
       callback({ serial, name: filteredName });
@@ -7285,6 +7300,10 @@ io.on("connection", (socket) => {
       socket.data = { ...socket.data, serial };
       if (serial) {
         const serverPlayer = allPlayers.get(serial);
+        if (serverPlayer) {
+          serverPlayer.lastActiveAt = Date.now();
+          savePlayerData(serial);
+        }
         const isAdmin = (serverPlayer && serverPlayer.isAdmin === true) || !!socket.data?.isAdmin;
 
         if (!isAdmin) {
