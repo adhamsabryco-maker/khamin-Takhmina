@@ -14512,13 +14512,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     if (foundPlayer) {
                       return (
                         <div 
-                          className="mt-2 bg-gradient-to-r from-red-500/10 to-orange-500/10 border-2 border-red-200/50 rounded-xl p-2 flex items-center justify-between cursor-pointer hover:bg-red-500/20 transition-all shadow-sm"
+                          className="mt-0.5 mb-2 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-xl p-2 flex items-center justify-center gap-6 md:gap-6 cursor-pointer hover:bg-red-500/20 transition-all shadow-sm box-game"
                           onClick={() => openPlayerProfile(foundPlayer.serial)}
                         >
-                           <div className="text-[11px] md:text-xs font-black text-red-600 bg-red-100 px-2 py-1 rounded-lg">
-                             أعلي فوز متتالي
-                           </div>
-                           <div className="flex items-center gap-2 flex-col">
+                        <div class="flex flex-col text-[11px] md:text-sm items-center justify-between font-black text-red-600 gap-2 rounded-lg">
+                          <span>الأعلي</span>
+                          <span>فوز متتالي</span>
+                        </div>
+                           <div className="flex items-center gap-1 flex-col">
                              <div className="w-10 h-10 md:w-12 md:h-12 relative flex items-center justify-center">
                                {renderAvatarContent(foundPlayer.avatar, getLevel(foundPlayer.xp), false, foundPlayer.isOnline, foundPlayer.selectedFrame, foundPlayer.serial)}
                              </div>
