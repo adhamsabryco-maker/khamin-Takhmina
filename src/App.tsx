@@ -75,6 +75,7 @@ import {
   CloudRain,
   Disc,
   Key,
+  LogIn,
 } from 'lucide-react';
 
 import easyGuessData from './data/easyGuess.json';
@@ -895,6 +896,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [showHowToOpenEasyGuess, setShowHowToOpenEasyGuess] = useState(false);
   const [loginSerial, setLoginSerial] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [showProfileLoginModal, setShowProfileLoginModal] = useState(false);
+  const [profileLoginSerial, setProfileLoginSerial] = useState('');
+  const [profileLoginError, setProfileLoginError] = useState('');
   const [pendingWelcomeModal, setPendingWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showLinkAccountModal, setShowLinkAccountModal] = useState(false);
@@ -1146,7 +1150,32 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     let spawnInterval: NodeJS.Timeout;
     
     if (showRainGiftGame) {
-      setGameTimer(180);
+      const calculateRemainingTime = () => {
+        if (!isRainGiftActive) return 180; // Allow admin testing outside window
+        try {
+          const now = new Date();
+          const egyptTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+          const target = new Date(egyptTime);
+          target.setHours(19, 0, 0, 0);
+          
+          const elapsedSeconds = Math.floor((egyptTime.getTime() - target.getTime()) / 1000);
+          const remainingSeconds = 180 - elapsedSeconds;
+          return Math.max(0, Math.min(180, remainingSeconds));
+        } catch (e) {
+          const now = new Date();
+          const utcHour = now.getUTCHours();
+          const utcMinutes = now.getUTCMinutes();
+          const utcSeconds = now.getUTCSeconds();
+          const targetUTCHour = 17; // 7 PM Egypt is 17:00 UTC
+          if (utcHour === targetUTCHour && utcMinutes <= 3) {
+            const elapsed = utcMinutes * 60 + utcSeconds;
+            return Math.max(0, 180 - elapsed);
+          }
+          return 180;
+        }
+      };
+
+      setGameTimer(calculateRemainingTime());
       setCollectedRewards({ xp: 0, tokens: 0, helpers: {} });
       setFallingItems([]);
       
@@ -5531,6 +5560,64 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     });
   };
 
+  const handleProfileLogin = () => {
+    playSound('clickOpen');
+    setProfileLoginError('');
+    if (!profileLoginSerial.trim()) {
+      setProfileLoginError('يرجى إدخال رقم ID اللاعب');
+      return;
+    }
+    
+    socket?.emit('get_player_data', { serial: profileLoginSerial.trim(), fingerprint }, (player: any) => {
+      if (player && player.error) {
+        setProfileLoginError(player.error);
+      } else if (player) {
+        setPlayerSerial(player.serial);
+        setPlayerName(player.name);
+        setIsHighestLikes(player.isHighestLikes || false);
+        setPlayerAge(player.age || 18);
+        setGender(player.gender || 'boy');
+        setAvatar(player.avatar);
+        setXp(player.xp || 0);
+        prevLevelRef.current = getLevel(player.xp || 0);
+        setWins(player.wins || 0);
+        setتخمينات(player.tokens || 0);
+        setLikes(player.likes || 0);
+        setStreak(player.streak || 0);
+        setOwnedHelpers(player.ownedHelpers || {});
+        if (player.selectedFrame !== undefined) {
+          setSelectedFrame(player.selectedFrame);
+          localStorage.setItem('khamin_player_frame', player.selectedFrame);
+        }
+        
+        localStorage.setItem('khamin_player_serial', player.serial);
+        localStorage.setItem('khamin_player_name', player.name);
+        localStorage.setItem('khamin_player_age', (player.age || 18).toString());
+        localStorage.setItem('khamin_player_gender', player.gender || 'boy');
+        localStorage.setItem('khamin_player_avatar', player.avatar);
+        localStorage.setItem('khamin_wins', (player.wins || 0).toString());
+        localStorage.setItem('khamin_xp', (player.xp || 0).toString());
+        localStorage.setItem('khamin_likes', (player.likes || 0).toString());
+        localStorage.setItem('khamin_tokens', (player.tokens || 0).toString());
+        localStorage.setItem('khamin_streak', (player.streak || 0).toString());
+        
+        fetchCollection(player.serial);
+        
+        socket?.emit('set_player_serial_for_socket', player.serial);
+        socket?.emit("get_city_search", { serial: player.serial });
+        
+        setShowProfileLoginModal(false);
+        setProfileLoginSerial('');
+        closeAllModals();
+        playSound('clickClose');
+        setError('');
+        showAlert('تم تسجيل الدخول بنجاح!', 'تسجيل الدخول');
+      } else {
+        setProfileLoginError('رقم ID غير صحيح أو الحساب غير موجود');
+      }
+    });
+  };
+
   const getEasyGuessOptions = () => {
     if (!room || !room.category || !me?.targetImage?.name) return null;
     const categoryObj = categories.find(c => c.id === room.category);
@@ -9352,7 +9439,17 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 حفظ التعديلات
               </button>
 
-              <div className="pt-2 border-t border-game">
+              <button 
+                onClick={() => {
+                  setShowProfileLoginModal(true);
+                }}
+                className="w-full btn-game btn-primary mt-2 py-2 text-sm flex items-center justify-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                تسجيل دخول بـ ID لحساب آخر
+              </button>
+
+              <div className="pt-2 border-t border-game mt-2">
                 <button 
                   onClick={() => setShowDeleteConfirm(true)}
                   className="w-full btn-game btn-danger gap-2 py-2 text-sm mb-2"
@@ -9452,6 +9549,79 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             </motion.div>
           </motion.div>
         )}
+
+        {/* Profile Login Modal */}
+        <AnimatePresence>
+          {showProfileLoginModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4"
+              onClick={() => {
+                setShowProfileLoginModal(false);
+                setProfileLoginSerial('');
+                setProfileLoginError('');
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                className="card-game p-4 w-full max-w-sm space-y-3 relative"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button 
+                  onClick={() => {
+                    setShowProfileLoginModal(false);
+                    setProfileLoginSerial('');
+                    setProfileLoginError('');
+                  }}
+                  className="absolute top-4 right-4 w-8 h-8 bg-black/10 hover:bg-black/20 rounded-full flex items-center justify-center transition-colors border-2 border-transparent hover:border-black/10"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="text-center pt-2">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-blue-200">
+                    <LogIn className="w-8 h-8 text-blue-500" />
+                  </div>
+                  <h2 className="text-2xl font-black text-brown-dark mb-2">تسجيل الدخول</h2>
+                  <p className="text-sm font-bold text-brown-muted px-2 mb-4">
+                    أدخل رقم اللاعب (ID) الخاص بحسابك الآخر لتسجيل الدخول إليه الآن.
+                  </p>
+                </div>
+                
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={profileLoginSerial}
+                    onChange={(e) => setProfileLoginSerial(e.target.value.trim())}
+                    placeholder="أدخل رقم ID اللاعب الخاص بك"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold tracking-widest"
+                    dir="rtl"
+                  />
+                  <AnimatePresence>
+                    {profileLoginError && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-red-100 border-2 border-red-200 p-3 text-red-600 text-sm font-black rounded-xl text-center"
+                      >
+                        {profileLoginError}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <button 
+                    onClick={handleProfileLogin}
+                    className="w-full btn-game btn-primary py-3 text-lg shadow-md"
+                  >
+                    دخول
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Welcome Modal */}
         <AnimatePresence>
@@ -14718,12 +14888,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     </button>
                   </div>
                 </div>
-                  {isRainGiftActive ? (
-                    <span className="flex font-bold p-0.5 py-0.5 pt-2 gap-1 items-center justify-center md:text-[13px] text-[12px] text-accent-green border-t-2 border-game">
-                      <Users className="w-4 h-4 md:w-5 md:h-5" />
-                      {rainGiftParticipants} مشترك في الحدث الآن
-                    </span>
-                  ) : (
+                  {!isRainGiftActive && (
                     <>
                       <span className="flex font-bold p-0.5 py-0.5 pt-2 items-center justify-center md:text-[13px] text-[12px] text-accent-orange border-t-2 border-game">تحتاج 5 🗝️ مفاتيح للإشتراك فى حدث مطر الهدايا</span>
                       <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[10px] text-accent-purple">ابحث عن مفاتيح التخمين فى المباريات داخل وسائل المساعدة</span>
