@@ -799,6 +799,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [highestStreakSerials, setHighestStreakSerials] = useState<string[]>([]);
   const [highestLikesValue, setHighestLikesValue] = useState<number>(0);
   const [highestStreakValue, setHighestStreakValue] = useState<number>(0);
+  const [highestStreakPlayers, setHighestStreakPlayers] = useState<any[]>([]);
   const [lastRenameAt, setLastRenameAt] = useState(() => parseInt(localStorage.getItem('khamin_last_rename_at') || '0'));
   const playerNameRef = useRef(playerName);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
@@ -1044,6 +1045,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [showRainGiftGame, setShowRainGiftGame] = useState(false);
   const [isRainGiftActive, setIsRainGiftActive] = useState(false);
   const [rainGiftCountdown, setRainGiftCountdown] = useState<string>('');
+  const [rainGiftParticipants, setRainGiftParticipants] = useState<number>(0);
   const [fallingItems, setFallingItems] = useState<any[]>([]);
   const [collectedRewards, setCollectedRewards] = useState({ xp: 0, tokens: 0, helpers: {} as Record<string, number> });
   const [gameTimer, setGameTimer] = useState(180);
@@ -1119,6 +1121,18 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   }, []);
 
   useEffect(() => {
+    if (isRainGiftActive) {
+      setRainGiftParticipants(prev => prev === 0 ? Math.floor(Math.random() * 50) + 120 : prev);
+      const participantInterval = setInterval(() => {
+        setRainGiftParticipants(prev => prev + Math.floor(Math.random() * 2) + 1); // increment 1-2
+      }, 3000 + Math.random() * 4000);
+      return () => clearInterval(participantInterval);
+    } else {
+      setRainGiftParticipants(0);
+    }
+  }, [isRainGiftActive]);
+
+  useEffect(() => {
     let interval: NodeJS.Timeout;
     let spawnInterval: NodeJS.Timeout;
     
@@ -1155,10 +1169,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (rand < 0.80) { // 80% XP chance
            type = 'xp';
            const xpRand = Math.random();
-           if (xpRand < 0.4) value = 10;
-           else if (xpRand < 0.7) value = 20;
-           else if (xpRand < 0.95) value = 30;
-           else value = 40; // 5% chance
+           if (xpRand < 0.6) value = 10;
+           else value = 20;
            icon = `${value}XP`;
         } else if (rand < 0.82) { // 2% تخمينة chance
            type = 'token';
@@ -4222,6 +4234,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (data && typeof data === 'object') {
           if (data.serials) setHighestStreakSerials(data.serials);
           if (data.value !== undefined) setHighestStreakValue(data.value);
+          if (data.players) setHighestStreakPlayers(data.players);
         }
       });
 
@@ -4236,6 +4249,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (data && typeof data === 'object') {
           if (data.serials) setHighestStreakSerials(data.serials);
           if (data.value !== undefined) setHighestStreakValue(data.value);
+          if (data.players) setHighestStreakPlayers(data.players);
         }
       });
 
@@ -14487,6 +14501,39 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   <p className="text-[8px] md:text-[10px] font-bold text-black-400 py-1 px-1 inline-block">الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي 📊</p>
                 </div>
 
+                {/* Highest Streak Banner (Not Top 3) */}
+                {(() => {
+                  if (highestStreakPlayers && highestStreakPlayers.length > 0 && highestStreakValue > 0) {
+                    const top1 = topPlayers[0]?.serial;
+                    const top2 = topPlayers[1]?.serial;
+                    const top3 = topPlayers[2]?.serial;
+                    const foundPlayer = highestStreakPlayers.find(p => p.serial !== top1 && p.serial !== top2 && p.serial !== top3);
+                    
+                    if (foundPlayer) {
+                      return (
+                        <div 
+                          className="mt-2 bg-gradient-to-r from-red-500/10 to-orange-500/10 border-2 border-red-200/50 rounded-xl p-2 flex items-center justify-between cursor-pointer hover:bg-red-500/20 transition-all shadow-sm"
+                          onClick={() => openPlayerProfile(foundPlayer.serial)}
+                        >
+                           <div className="text-[11px] md:text-xs font-black text-red-600 bg-red-100 px-2 py-1 rounded-lg">
+                             أعلي فوز متتالي
+                           </div>
+                           <div className="flex items-center gap-2 flex-col">
+                             <div className="w-10 h-10 md:w-12 md:h-12 relative flex items-center justify-center">
+                               {renderAvatarContent(foundPlayer.avatar, getLevel(foundPlayer.xp), false, foundPlayer.isOnline, foundPlayer.selectedFrame, foundPlayer.serial)}
+                             </div>
+                             <span className="text-[10px] md:text-xs font-black text-main">{truncateName(foundPlayer.name)}</span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <span className="text-2xl md:text-3xl font-black text-red-500 drop-shadow-sm flex items-center">{foundPlayer.streak || highestStreakValue} 🔥</span>
+                           </div>
+                        </div>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+
                 {/* Player Rank Info */}
                 {(() => {
                   const myRankIndex = topPlayers.findIndex(p => p.serial === playerSerial);
@@ -14649,8 +14696,17 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     </button>
                   </div>
                 </div>
-                  <span className="flex font-bold p-0.5 py-0.5 pt-2 items-center justify-center md:text-[13px] text-[12px] text-accent-orange border-t-2 border-game">تحتاج 5 🗝️ مفاتيح للإشتراك فى حدث مطر الهدايا</span>
-                  <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[10px] text-accent-purple">ابحث عن مفاتيح التخمين فى المباريات داخل وسائل المساعدة</span>
+                  {isRainGiftActive ? (
+                    <span className="flex font-bold p-0.5 py-0.5 pt-2 gap-1 items-center justify-center md:text-[13px] text-[12px] text-accent-green border-t-2 border-game">
+                      <Users className="w-4 h-4 md:w-5 md:h-5" />
+                      {rainGiftParticipants} مشترك في الحدث الآن
+                    </span>
+                  ) : (
+                    <>
+                      <span className="flex font-bold p-0.5 py-0.5 pt-2 items-center justify-center md:text-[13px] text-[12px] text-accent-orange border-t-2 border-game">تحتاج 5 🗝️ مفاتيح للإشتراك فى حدث مطر الهدايا</span>
+                      <span className="flex font-bold p-0.5 py-0.5 items-center justify-center md:text-[13px] text-[10px] text-accent-purple">ابحث عن مفاتيح التخمين فى المباريات داخل وسائل المساعدة</span>
+                    </>
+                  )}
               </div>
               )}
             </div>
