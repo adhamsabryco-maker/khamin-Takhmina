@@ -3202,57 +3202,57 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         return true;
       });
 
-      if (availableHelpers.length === 0) return;
+      if (availableHelpers.length > 0) {
+        const randomHelper = availableHelpers[Math.floor(Math.random() * availableHelpers.length)];
+        
+        // Mark as watching immediately to prevent repetition during ad duration
+        if (randomHelper === 'word_length') botPlayerInRoom.wordLengthWatching = true;
+        if (randomHelper === 'word_count') botPlayerInRoom.wordCountWatching = true;
+        if (randomHelper === 'time_freeze') botPlayerInRoom.timeFreezeWatching = true;
+        if (randomHelper === 'hint') botPlayerInRoom.hintWatching = true;
+        if (randomHelper === 'spy_lens') botPlayerInRoom.spyLensWatching = true;
 
-      const randomHelper = availableHelpers[Math.floor(Math.random() * availableHelpers.length)];
-      
-      // Mark as watching immediately to prevent repetition during ad duration
-      if (randomHelper === 'word_length') botPlayerInRoom.wordLengthWatching = true;
-      if (randomHelper === 'word_count') botPlayerInRoom.wordCountWatching = true;
-      if (randomHelper === 'time_freeze') botPlayerInRoom.timeFreezeWatching = true;
-      if (randomHelper === 'hint') botPlayerInRoom.hintWatching = true;
-      if (randomHelper === 'spy_lens') botPlayerInRoom.spyLensWatching = true;
+        const helperNames: Record<string, string> = {
+          'word_length': 'كاشف الحروف',
+          'word_count': 'عدد الكلمات',
+          'time_freeze': 'تجميد الوقت',
+          'hint': 'تلميح',
+          'spy_lens': 'الجاسوس'
+        };
+        
+        const verb = (bot.gender === 'girl' || bot.gender === 'female') ? 'تقوم' : 'يقوم';
+        io.to(roomId).emit("chat_bubble", { 
+          senderId: "system", 
+          text: `${verb} ${bot.name} بمشاهدة إعلان لفتح وسيلة مساعدة "${helperNames[randomHelper]}"، انتظر قليلاً.` 
+        });
 
-      const helperNames: Record<string, string> = {
-        'word_length': 'كاشف الحروف',
-        'word_count': 'عدد الكلمات',
-        'time_freeze': 'تجميد الوقت',
-        'hint': 'تلميح',
-        'spy_lens': 'الجاسوس'
-      };
-      
-      const verb = (bot.gender === 'girl' || bot.gender === 'female') ? 'تقوم' : 'يقوم';
-      io.to(roomId).emit("chat_bubble", { 
-        senderId: "system", 
-        text: `${verb} ${bot.name} بمشاهدة إعلان لفتح وسيلة مساعدة "${helperNames[randomHelper]}"، انتظر قليلاً.` 
-      });
+        // Wait for ad to finish (5 to 15 seconds)
+        const adDuration = 5000 + Math.random() * 10000;
+        await new Promise(resolve => setTimeout(resolve, adDuration));
+        
+        // Re-fetch in case room changed
+        const roomStillExists = rooms.get(roomId);
+        if (!roomStillExists) return;
+        const botStillInRoom = roomStillExists.players.find((p: any) => p.id === bot.id);
+        if (!botStillInRoom) return;
 
-      // Wait for ad to finish (5 to 15 seconds)
-      const adDuration = 5000 + Math.random() * 10000;
-      await new Promise(resolve => setTimeout(resolve, adDuration));
-      
-      // Re-fetch in case room changed
-      const roomStillExists = rooms.get(roomId);
-      if (!roomStillExists) return;
-      const botStillInRoom = roomStillExists.players.find((p: any) => p.id === bot.id);
-      if (!botStillInRoom) return;
+        // Mark as used so it doesn't repeat
+        if (randomHelper === 'word_length') botStillInRoom.wordLengthUsed = true;
+        if (randomHelper === 'word_count') botStillInRoom.wordCountUsed = true;
+        if (randomHelper === 'time_freeze') botStillInRoom.timeFreezeUsed = true;
+        if (randomHelper === 'hint') botStillInRoom.hintCount = (botStillInRoom.hintCount || 0) + 1;
+        if (randomHelper === 'spy_lens') botStillInRoom.spyLensUsed = true;
 
-      // Mark as used so it doesn't repeat
-      if (randomHelper === 'word_length') botStillInRoom.wordLengthUsed = true;
-      if (randomHelper === 'word_count') botStillInRoom.wordCountUsed = true;
-      if (randomHelper === 'time_freeze') botStillInRoom.timeFreezeUsed = true;
-      if (randomHelper === 'hint') botStillInRoom.hintCount = (botStillInRoom.hintCount || 0) + 1;
-      if (randomHelper === 'spy_lens') botStillInRoom.spyLensUsed = true;
+        // Update room to reflect helper use
+        io.to(roomId).emit("room_update", roomStillExists);
 
-      // Update room to reflect helper use
-      io.to(roomId).emit("room_update", roomStillExists);
-
-      // Wait 1-2 seconds after ad finishes to simulate using the helper
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-      
-      // Re-fetch room state after waiting
-      const updatedRoom = rooms.get(roomId);
-      if (!updatedRoom || updatedRoom.gameState !== 'discussion' || updatedRoom.currentTurn !== bot.id) return;
+        // Wait 1-2 seconds after ad finishes to simulate using the helper
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+        
+        // Re-fetch room state after waiting
+        const updatedRoom = rooms.get(roomId);
+        if (!updatedRoom || updatedRoom.gameState !== 'discussion' || updatedRoom.currentTurn !== bot.id) return;
+      }
     }
 
     try {
@@ -6263,6 +6263,7 @@ io.on("connection", (socket) => {
           p.timeFreezeUsed = false;
           p.wordCountUsed = false;
           p.spyLensUsed = false;
+          p.helperCharge = 0;
           p.chatBuffer = "";
           p.engChatBuffer = "";
         });
