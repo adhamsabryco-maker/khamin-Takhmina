@@ -2134,8 +2134,24 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       }
     }
     
+    const highestStreakPlayersData = rewardSerials.map(serial => {
+      const p = allPlayers.get(serial);
+      if (p) {
+        return {
+          serial: p.serial,
+          name: p.name,
+          avatar: p.avatar,
+          xp: p.xp,
+          selectedFrame: p.selectedFrame,
+          isOnline: playerSockets.has(p.serial),
+          streak: p.streak
+        };
+      }
+      return null;
+    }).filter(p => p !== null);
+
     highestStreakSerials = rewardSerials;
-    io.emit('highest_streak_update', { serials: highestStreakSerials, value: globalMaxStreak });
+    io.emit('highest_streak_update', { serials: highestStreakSerials, value: globalMaxStreak, players: highestStreakPlayersData });
   }
 
   function getTopPlayers(force = false) {
@@ -3900,7 +3916,22 @@ io.on("connection", (socket) => {
     socket.emit('top_players_update', getTopPlayers());
     socket.emit('policies_update', gamePolicies);
     socket.emit('highest_likes_update', { serials: highestLikesSerials, value: globalMaxLikes });
-    socket.emit('highest_streak_update', { serials: highestStreakSerials, value: globalMaxStreak });
+    const highestStreakPlayersDataForNewUser = highestStreakSerials.map(serial => {
+      const p = allPlayers.get(serial);
+      if (p) {
+        return {
+          serial: p.serial,
+          name: p.name,
+          avatar: p.avatar,
+          xp: p.xp,
+          selectedFrame: p.selectedFrame,
+          isOnline: playerSockets.has(p.serial),
+          streak: p.streak
+        };
+      }
+      return null;
+    }).filter(p => p !== null);
+    socket.emit('highest_streak_update', { serials: highestStreakSerials, value: globalMaxStreak, players: highestStreakPlayersDataForNewUser });
     
     try {
       const luckyWheelSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('lucky_wheel_enabled') as { value: string } | undefined;
@@ -4689,7 +4720,11 @@ io.on("connection", (socket) => {
     });
 
     socket.on("get_highest_streak_serial", (callback) => {
-      callback({ serials: highestStreakSerials, value: globalMaxStreak });
+      const highestStreakPlayersData = highestStreakSerials.map(serial => {
+        const p = allPlayers.get(serial);
+        return p ? { serial: p.serial, name: p.name, avatar: p.avatar, xp: p.xp, selectedFrame: p.selectedFrame, isOnline: playerSockets.has(p.serial), streak: p.streak } : null;
+      }).filter(p => p !== null);
+      callback({ serials: highestStreakSerials, value: globalMaxStreak, players: highestStreakPlayersData });
     });
     
     socket.on("get_city_search", ({ serial }) => {
