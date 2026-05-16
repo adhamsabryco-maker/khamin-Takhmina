@@ -7208,7 +7208,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                        </div>
                        
                        <div className="flex gap-1">
-                         {friend.isOnline && (
+                         {friend.isOnline && !friend.isAdmin && (
                            <button 
                              onClick={() => {
                                socket?.emit('send_friend_challenge', { serial: playerSerial, targetSerial: friend.serial }, (res: any) => {
@@ -7231,13 +7231,15 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                              {friend.isInMatch ? <Swords className="w-4 h-4 text-white animate-pulse" /> : <Gamepad2 className="w-4 h-4" />}
                            </button>
                          )}
-                         <button 
-                           onClick={() => { playSound('clickOpen'); setShowGiftModal({serial: friend.serial, name: friend.name, avatar: friend.avatar, level: friend.level || 1, selectedFrame: friend.selectedFrame}); }}
-                           className="bg-pink-50 hover:bg-pink-100 text-pink-500 border border-pink-400 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50"
-                           title="إرسال هدايا"
-                         >
-                           <Gift className="w-4 h-4" />
-                         </button>
+                         {!friend.isAdmin && (
+                           <button 
+                             onClick={() => { playSound('clickOpen'); setShowGiftModal({serial: friend.serial, name: friend.name, avatar: friend.avatar, level: friend.level || 1, selectedFrame: friend.selectedFrame}); }}
+                             className="bg-pink-50 hover:bg-pink-100 text-pink-500 border border-pink-400 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50"
+                             title="إرسال هدايا"
+                           >
+                             <Gift className="w-4 h-4" />
+                           </button>
+                         )}
                          <button 
                            onClick={() => handleRemoveFriend(friend.serial)}
                            className="bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50"
