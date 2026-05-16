@@ -7320,9 +7320,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                             className="bg-white border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden"
                           >
                             <div className="flex items-center gap-3 relative z-10 w-full">
-                              <div className="relative">
-                                <img src={notification.senderAvatar || '/avatars/boy.png'} alt="Avatar" className="w-10 h-10 rounded-full border-2 border-black bg-blue-100 object-cover" />
-                                <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-black text-[10px] font-black px-1.5 py-0.5 rounded-full border border-black min-w-[20px] text-center">
+                              <div className="relative w-10 h-10 rounded-full border-2 border-black bg-blue-100 object-cover">
+                                {renderAvatarContent(notification.senderAvatar, notification.senderLevel || 1, false, false, undefined, notification.senderSerial)}
+                                <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full border-b-2 border-black min-w-[20px] text-center">
                                   {notification.senderLevel || 1}
                                 </div>
                               </div>
@@ -7348,7 +7348,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                   });
                                 }}
                                 className="w-7 h-7 bg-red-100 text-red-600 border border-red-200 rounded-lg flex items-center justify-center hover:bg-red-200 active:scale-95 transition-all shrink-0 ml-1"
-                                title="إخفاء"
+                                title="حذف"
                               >
                                 <X className="w-4 h-4" />
                               </button>
@@ -7631,7 +7631,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           }));
           
           if (res.keysRewarded) {
-            showAlert(`أعطيت ${selectedProfileData.name} مفتاح 🔑!`, 'تم الإعجاب');
+            showAlert(`أعطيت ${selectedProfileData.name} مفتاح 🗝️!`, 'تم الإعجاب');
           }
         } else {
            showAlert(res.error, 'خطأ');
@@ -7771,7 +7771,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                       <span className="font-black text-main text-lg">{data.likes || 0}</span>
                       <span className="text-sm font-bold text-gray-500">إعجاب</span>
                     </div>
-                    <span className="text-[10px] sm:text-xs font-bold text-brown-muted mt-1">كل 20 لايك = مفتاح 🔑</span>
+                    <span className="text-[10px] sm:text-xs font-bold text-brown-muted mt-1">كل 20 لايك = مفتاح 🗝️</span>
                  </div>
                  {data.serial !== playerSerial && !data.isBlocked && !data.hasBlockedMe && (
                    <button
