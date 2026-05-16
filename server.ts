@@ -6998,7 +6998,8 @@ io.on("connection", (socket) => {
     socket.on("get_collection_notifications", ({ serial }, callback) => {
       if (!serial) return callback({ notifications: [] });
       try {
-        const notifications = db.prepare('SELECT cn.*, p.name as sender_name, p.avatar as sender_avatar, p.level as sender_level FROM collection_notifications cn LEFT JOIN players p ON cn.sender_serial = p.serial WHERE cn.receiver_serial = ? AND cn.status = ?').all(serial, 'pending');
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const notifications = db.prepare('SELECT cn.*, p.name as sender_name, p.avatar as sender_avatar, p.level as sender_level FROM collection_notifications cn LEFT JOIN players p ON cn.sender_serial = p.serial WHERE cn.receiver_serial = ? AND cn.status = ? AND cn.timestamp > ?').all(serial, 'pending', sevenDaysAgo);
         callback({ notifications });
       } catch (e) {
         callback({ notifications: [] });
@@ -7008,7 +7009,8 @@ io.on("connection", (socket) => {
     socket.on("get_like_notifications", ({ serial }, callback) => {
       if (!serial) return callback({ notifications: [] });
       try {
-        const notifications = db.prepare('SELECT * FROM like_notifications WHERE receiverSerial = ? AND read = 0 ORDER BY timestamp DESC').all(serial);
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const notifications = db.prepare('SELECT * FROM like_notifications WHERE receiverSerial = ? AND read = 0 AND timestamp > ? ORDER BY timestamp DESC').all(serial, sevenDaysAgo);
         callback({ success: true, notifications });
       } catch (e) {
         callback({ success: false, notifications: [] });
@@ -7028,7 +7030,8 @@ io.on("connection", (socket) => {
     socket.on("get_friend_accepted_notifications", ({ serial }, callback) => {
       if (!serial) return callback({ notifications: [] });
       try {
-        const notifications = db.prepare('SELECT * FROM friend_accepted_notifications WHERE receiverSerial = ? AND read = 0 ORDER BY timestamp DESC').all(serial);
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const notifications = db.prepare('SELECT * FROM friend_accepted_notifications WHERE receiverSerial = ? AND read = 0 AND timestamp > ? ORDER BY timestamp DESC').all(serial, sevenDaysAgo);
         callback({ success: true, notifications });
       } catch (e) {
         callback({ success: false, notifications: [] });
@@ -7048,7 +7051,8 @@ io.on("connection", (socket) => {
     socket.on("get_admin_messages", ({ serial }, callback) => {
       if (!serial) return callback({ messages: [] });
       try {
-        const messages = db.prepare('SELECT * FROM admin_messages WHERE playerSerial = ? AND read = 0').all(serial);
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const messages = db.prepare('SELECT * FROM admin_messages WHERE playerSerial = ? AND read = 0 AND timestamp > ?').all(serial, sevenDaysAgo);
         callback({ messages });
       } catch (e) {
         callback({ messages: [] });
@@ -7209,7 +7213,8 @@ io.on("connection", (socket) => {
     socket.on("get_gift_notifications", ({ serial }, callback) => {
       if (!serial) return callback({ notifications: [] });
       try {
-        const rows = db.prepare('SELECT * FROM gift_notifications WHERE receiverSerial = ? AND read = 0 ORDER BY timestamp DESC').all(serial);
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const rows = db.prepare('SELECT * FROM gift_notifications WHERE receiverSerial = ? AND read = 0 AND timestamp > ? ORDER BY timestamp DESC').all(serial, sevenDaysAgo);
         const notifications = rows.map((r: any) => ({
              ...r,
              gifts: JSON.parse(r.gifts)
@@ -7570,6 +7575,7 @@ io.on("connection", (socket) => {
             level: getLevel(player.xp || 0),
             selectedFrame: player.selectedFrame,
             isHighestLikes: (highestLikesSerials.includes(player.serial) && (player.likes || 0) > 0),
+            isAdmin: player.isAdmin ? 1 : 0,
             isOnline: playerSockets.has(player.serial),
             isInMatch
           } : null;
