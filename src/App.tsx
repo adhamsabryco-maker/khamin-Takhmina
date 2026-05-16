@@ -2137,6 +2137,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [pushTitle, setPushTitle] = useState('');
   const [pushBody, setPushBody] = useState('');
   const [pushUrl, setPushUrl] = useState('/');
+  const [pushSendToBell, setPushSendToBell] = useState(false);
   const [pushStartDate, setPushStartDate] = useState('');
   const [pushEndDate, setPushEndDate] = useState('');
   const [pushTime, setPushTime] = useState('');
@@ -2346,6 +2347,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
   const [likeNotifications, setLikeNotifications] = useState<any[]>([]);
+  const [friendAcceptedNotifications, setFriendAcceptedNotifications] = useState<any[]>([]);
   const [collectionNotifications, setCollectionNotifications] = useState<any[]>([]);
   const [giftNotifications, setGiftNotifications] = useState<any[]>([]);
   const [showGiftModal, setShowGiftModal] = useState<{serial: string, name: string, avatar: string, level: number, selectedFrame?: string} | null>(null);
@@ -2370,7 +2372,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
   // App Badging API for PWA notification badge
   useEffect(() => {
-    const unreadCount = friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length;
+    const unreadCount = friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length + friendAcceptedNotifications.length;
     if ('setAppBadge' in navigator) {
       if (unreadCount > 0) {
         // @ts-ignore
@@ -3512,7 +3514,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     if (!socket || !playerSerial) return;
     socket.emit('add_friend', { serial: playerSerial, targetSerial: targetSerial }, (res: any) => {
       if (res.success) {
-        showAlert('تم إرسال طلب الصداقة!', 'نجاح');
         setOpponentFriendStatus('pending_sent'); // Optimistic update
       } else {
         showAlert(res.message || 'حدث خطأ أثناء الإرسال', 'خطأ');
@@ -3565,7 +3566,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     socket.emit('accept_friend_request', { serial: playerSerial, requestId }, (res: any) => {
       if (res.success) {
         setFriendRequests(prev => prev.filter(r => r.id !== requestId));
-        showAlert('تم قبول طلب الصداقة!', 'نجاح');
         
         // Update in-game status if this request was from our current opponent
         if (request && (request.sender === currentOpponentSerialRef.current || request.player1 === currentOpponentSerialRef.current || request.player2 === currentOpponentSerialRef.current)) {
@@ -4325,6 +4325,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
         newSocket.emit('get_like_notifications', { serial }, (res: any) => {
           if (res.notifications) setLikeNotifications(res.notifications);
+        });
+
+        newSocket.emit('get_friend_accepted_notifications', { serial }, (res: any) => {
+          if (res.notifications) setFriendAcceptedNotifications(res.notifications);
         });
         
         newSocket.emit('get_gift_notifications', { serial }, (res: any) => {
@@ -5107,8 +5111,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       }
     });
 
-    newSocket.on("friend_request_accepted", ({ targetSerial }: { targetSerial?: string } = {}) => {
-      showAlert("تم قبول طلب الصداقة الخاص بك! 🎉", "نجاح");
+    newSocket.on("friend_request_accepted", ({ targetSerial, senderName }: { targetSerial?: string, senderName?: string } = {}) => {
+      showAlert(`${senderName || 'صديق جديد'} وافق علي طلب الصداقة! 🤝`, "نجاح");
       const currentSerial = localStorage.getItem('khamin_player_serial');
       if (currentSerial) {
         // Refresh friends list/total immediately
@@ -5118,6 +5122,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             setFriendsTotal(res.total);
           }
         });
+        
+        newSocket.emit('get_friend_accepted_notifications', { serial: currentSerial }, (res: any) => {
+          if (res.notifications) setFriendAcceptedNotifications(res.notifications);
+        });
+
         const fingerprint = localStorage.getItem('khamin_fingerprint');
         newSocket.emit("get_player_data", { serial: currentSerial, fingerprint });
       }
@@ -7276,9 +7285,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 <div className="flex gap-1 items-center relative">
                   <Bell className="w-5 h-5 text-yellow-500" />
                   الإشعارات
-                  {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length) > 0 && (
+                  {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length + friendAcceptedNotifications.length) > 0 && (
                     <span className="flex items-center justify-center bg-red-500 text-white min-w-[20px] h-5 px-1.5 mx-2 rounded-full text-[11px] font-black shadow-md">
-                      {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length}
+                      {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length + friendAcceptedNotifications.length}
                     </span>
                   )}
                 </div>
@@ -7289,11 +7298,67 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             </div>
             <div className="w-full border-t border-black/20 my-2 mt-0.5"></div>
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar" dir="rtl">
-              {friendRequests.length === 0 && collectionNotifications.length === 0 && systemMessages.length === 0 && likeNotifications.length === 0 && giftNotifications.length === 0 ? (
+              {friendRequests.length === 0 && collectionNotifications.length === 0 && systemMessages.length === 0 && likeNotifications.length === 0 && giftNotifications.length === 0 && friendAcceptedNotifications.length === 0 ? (
                 <div className="text-center py-8 text-brown-muted font-bold">لا توجد إشعارات حالياً.</div>
               ) : (
                 <div className="space-y-4">
                   
+                  {/* Friend Accepted Notifications Section */}
+                  {friendAcceptedNotifications.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="w-4 h-4 text-blue-500" />
+                        <h3 className="font-black text-sm text-main">أصدقاء جدد</h3>
+                      </div>
+                      <AnimatePresence>
+                        {friendAcceptedNotifications.map((notification) => (
+                          <motion.div
+                            key={notification.id}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="bg-white border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden"
+                          >
+                            <div className="flex items-center gap-3 relative z-10 w-full">
+                              <div className="relative">
+                                <img src={notification.senderAvatar || '/avatars/boy.png'} alt="Avatar" className="w-10 h-10 rounded-full border-2 border-black bg-blue-100 object-cover" />
+                                <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-black text-[10px] font-black px-1.5 py-0.5 rounded-full border border-black min-w-[20px] text-center">
+                                  {notification.senderLevel || 1}
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0 pr-2">
+                                <div className="font-black text-sm text-main truncate leading-tight mb-0.5">
+                                  {notification.senderName}
+                                </div>
+                                <div className="text-xs font-bold text-green-600 truncate">
+                                  وافق علي طلب الصداقة! 🤝
+                                </div>
+                                <div className="text-[10px] text-brown-muted mt-1 font-bold">
+                                  {new Date(notification.timestamp).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playSound('clickClose');
+                                  socket?.emit('dismiss_friend_accepted_notification', { serial: playerSerial, notificationId: notification.id }, (res: any) => {
+                                    if (res.success) {
+                                      setFriendAcceptedNotifications(prev => prev.filter(n => n.id !== notification.id));
+                                    }
+                                  });
+                                }}
+                                className="w-7 h-7 bg-red-100 text-red-600 border border-red-200 rounded-lg flex items-center justify-center hover:bg-red-200 active:scale-95 transition-all shrink-0 ml-1"
+                                title="إخفاء"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
+
                   {/* Like Notifications Section */}
                   {likeNotifications.length > 0 && (
                     <div className="space-y-3">
@@ -7396,7 +7461,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                               {renderAvatarContent(notif.senderAvatar, 1, false, false, undefined, notif.senderSerial)}
                             </div>
                             <div>
-                              <div className="font-black text-sm text-main">{notif.senderName} أرسل لك هدايا:</div>
+                              {notif.gifts?.message ? (
+                                <div className="font-black text-sm text-main leading-tight mb-1">{notif.gifts.message}</div>
+                              ) : (
+                                <div className="font-black text-sm text-main">{notif.senderName} أرسل لك هدايا:</div>
+                              )}
                               <div className="text-xs text-pink-600 font-bold mt-1">🎁 ({itemsString})</div>
                             </div>
                           </div>
@@ -7563,8 +7632,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           
           if (res.keysRewarded) {
             showAlert(`أعطيت ${selectedProfileData.name} مفتاح 🔑!`, 'تم الإعجاب');
-          } else {
-            showAlert(`تم الإعجاب بـ ${selectedProfileData.name} ❤️`, 'تم الإعجاب');
           }
         } else {
            showAlert(res.error, 'خطأ');
@@ -11635,6 +11702,18 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                   />
                                 </div>
                               </div>
+                              <div className="flex items-center gap-2 mt-4 bg-gray-50 border-2 border-gray-200 p-3 rounded-xl">
+                                <input
+                                  type="checkbox"
+                                  id="sendToBell"
+                                  checked={pushSendToBell}
+                                  onChange={(e) => setPushSendToBell(e.target.checked)}
+                                  className="w-5 h-5 accent-accent-purple"
+                                />
+                                <label htmlFor="sendToBell" className="text-sm font-black text-brown-dark cursor-pointer flex items-center gap-2">
+                                  <Bell className="w-4 h-4 text-accent-purple" /> إرسال نسخة لصندوق الإشعارات (الجرس) لجميع اللاعبين
+                                </label>
+                              </div>
                               <button
                                 disabled={isSendingPush || !pushTitle || !pushBody}
                                 onClick={async () => {
@@ -11680,6 +11759,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                         title: pushTitle,
                                         body: pushBody,
                                         url: pushUrl,
+                                        sendToBell: pushSendToBell,
                                         scheduledTimes,
                                         adminToken: localStorage.getItem('khamin_admin_token')
                                       })
@@ -11690,10 +11770,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                         showAlert('تم جدولة الإشعار بنجاح! 📅', 'نجاح');
                                         fetchScheduledPushes();
                                       } else {
-                                        const msg = res.sentCount === res.totalAttempted 
-                                          ? `تم إرسال الإشعار لـ ${res.sentCount} جهاز بنجاح! 🔔`
-                                          : `تم إرسال الإشعار لـ ${res.sentCount} من أصل ${res.totalAttempted} جهاز بنجاح! (تم تنظيف الاشتراكات القديمة)`;
-                                        showAlert(msg, 'نجاح');
+                                        showAlert(`بدأ إرسال الإشعار لـ ${res.totalAttempted} جهاز تدريجياً في الخلفية بنجاح! 🔔`, 'نجاح');
                                       }
                                       setPushTitle('');
                                       setPushBody('');
@@ -13834,9 +13911,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 title="الإشعارات"
               >
                 <Bell className="w-4 h-4 md:w-5 md:h-5" />
-                {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length) > 0 && (
+                {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length + friendAcceptedNotifications.length) > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm">
-                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length}
+                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length + friendAcceptedNotifications.length}
                   </span>
                 )}
               </button>
@@ -14390,11 +14467,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               title="الإشعارات"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
-              {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length) > 0 && (
+              {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length + friendAcceptedNotifications.length) > 0 && (
                 <span className="absolute -top-2 -right-2 flex h-5 w-5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-[11px] text-white flex items-center justify-center font-black shadow-sm">
-                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length}
+                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length + friendAcceptedNotifications.length}
                   </span>
                 </span>
               )}
@@ -15367,11 +15444,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               title="الإشعارات"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
-              {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length) > 0 && (
+              {(friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length + friendAcceptedNotifications.length) > 0 && (
                 <span className="absolute -top-2 -right-2 flex h-5 w-5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-[11px] text-white flex items-center justify-center font-black shadow-sm">
-                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length}
+                    {friendRequests.length + collectionNotifications.length + systemMessages.length + likeNotifications.length + giftNotifications.length + friendAcceptedNotifications.length}
                   </span>
                 </span>
               )}
