@@ -773,7 +773,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   });
 
   app.post("/api/push/send", express.json(), async (req, res) => {
-    const { title, body, url, adminToken } = req.body;
+    const { title, body, url, sendToBell, adminToken } = req.body;
     if (!adminTokens.has(adminToken)) return res.status(403).json({ error: "Unauthorized" });
     
     // Only send to subscriptions where the player has notificationsEnabled = 1
@@ -788,31 +788,63 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     const payload = JSON.stringify({ title, body, url: url || '/' });
     
     console.log(`[Push] Sending notification to ${subscriptions.length} devices...`);
-    
-    const sendPromises = subscriptions.map(async (sub) => {
-      try {
-        const subscription = JSON.parse(sub.subscription);
-        await webpush.sendNotification(subscription, payload);
-        return true; // Success
-      } catch (err: any) {
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          // Subscription expired or no longer valid, remove it
-          db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
-        } else {
-          console.error("Error sending push notification:", err);
-        }
-        return false; // Failure
-      }
-    });
 
-    const results = await Promise.all(sendPromises);
-    const successfulCount = results.filter(r => r === true).length;
-
+    // Reply immediately to prevent timeout
     res.json({ 
       success: true, 
-      sentCount: successfulCount,
-      totalAttempted: subscriptions.length 
+      sentCount: subscriptions.length,
+      totalAttempted: subscriptions.length,
+      isBackground: true
     });
+    
+    // Background sending
+    setTimeout(async () => {
+      const BATCH_SIZE = 50;
+      const DELAY_MS = 1000;
+      
+      for (let i = 0; i < subscriptions.length; i += BATCH_SIZE) {
+        const batch = subscriptions.slice(i, i + BATCH_SIZE);
+        
+        await Promise.all(batch.map(async (sub) => {
+          try {
+            const subscription = JSON.parse(sub.subscription);
+            await webpush.sendNotification(subscription, payload);
+          } catch (err: any) {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
+            }
+          }
+        }));
+        
+        if (i + BATCH_SIZE < subscriptions.length) {
+          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+        }
+      }
+      
+      if (sendToBell) {
+        // Get all players and insert admin message for each
+        const allPlayerRecords = db.prepare('SELECT serial FROM players').all() as any[];
+        const insertMessage = db.prepare('INSERT INTO admin_messages (playerSerial, message, timestamp) VALUES (?, ?, ?)');
+        const now = Date.now();
+        const messageWithTitle = title + "\n\n" + body;
+        
+        const transaction = db.transaction(() => {
+          for (const p of allPlayerRecords) {
+             if (p.serial) {
+               insertMessage.run(p.serial, messageWithTitle, now);
+             }
+          }
+        });
+        try {
+           transaction();
+           io.emit("new_admin_message"); // Broadcast to currently online users to refresh their bell
+        } catch (e) {
+           console.error("Failed to send to bell:", e);
+        }
+      }
+      
+      console.log(`[Push] Finished background sending to ${subscriptions.length} devices.`);
+    }, 0);
   });
 
   app.get("/api/push/scheduled", express.json(), (req, res) => {
@@ -824,21 +856,21 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   });
 
   app.post("/api/push/schedule", express.json(), (req, res) => {
-    const { title, body, url, scheduledTimes, adminToken } = req.body;
+    const { title, body, url, scheduledTimes, sendToBell, adminToken } = req.body;
     if (!adminTokens.has(adminToken)) return res.status(403).json({ error: "Unauthorized" });
     
     const groupId = Math.random().toString(36).substring(2, 15);
     const createdAt = Date.now();
     
     const insert = db.prepare(`
-      INSERT INTO scheduled_push_notifications (id, title, body, url, scheduledAt, createdAt, status, groupId)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+      INSERT INTO scheduled_push_notifications (id, title, body, url, scheduledAt, createdAt, status, groupId, sendToBell)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
     `);
     
     const transaction = db.transaction((times: number[]) => {
       for (const time of times) {
         const id = Math.random().toString(36).substring(2, 15);
-        insert.run(id, title, body, url || '/', time, createdAt, groupId);
+        insert.run(id, title, body, url || '/', time, createdAt, groupId, sendToBell ? 1 : 0);
       }
     });
     
@@ -854,6 +886,100 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     res.json({ success: true });
   });
 
+  // Weekly Top Player Reward Worker
+  setInterval(() => {
+    try {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo' }).format(new Date());
+      let lastCheckDaySetting = db.prepare("SELECT value FROM settings WHERE key = 'last_top_player_check_day'").get() as {value: string} | undefined;
+      let lastCheckDay = lastCheckDaySetting?.value;
+
+      if (lastCheckDay === today) return; // Already checked today
+
+      const topPlayers = getTopPlayers();
+      if (topPlayers.length === 0) return;
+      const currentTopPlayer = topPlayers[0];
+      
+      let currentTopSerialSetting = db.prepare("SELECT value FROM settings WHERE key = 'current_top_player_serial'").get() as {value: string} | undefined;
+      let topPlayerStreakSetting = db.prepare("SELECT value FROM settings WHERE key = 'top_player_days_streak'").get() as {value: string} | undefined;
+      
+      const currentTopSerial = currentTopSerialSetting?.value;
+      let streak = topPlayerStreakSetting ? parseInt(topPlayerStreakSetting.value, 10) : 0;
+      
+      const now = Date.now();
+
+      // If the top player changed or we don't have a record yet
+      if (!currentTopSerial || currentTopSerial !== currentTopPlayer.serial) {
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('current_top_player_serial', ?)").run(currentTopPlayer.serial);
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('top_player_days_streak', '1')").run();
+      } else {
+        // Still the same top player
+        streak += 1;
+        
+        if (streak >= 7) {
+          const playerRecord = allPlayers.get(currentTopPlayer.serial);
+          if (playerRecord) {
+            // Reward: 10 tokens, 50 keys, 1 day pro package
+            playerRecord.tokens = (playerRecord.tokens || 0) + 10;
+            playerRecord.keys = (playerRecord.keys || 0) + 50;
+            playerRecord.proPackageExpiry = Math.max(playerRecord.proPackageExpiry || now, now) + 24 * 60 * 60 * 1000;
+            
+            db.prepare('UPDATE players SET tokens = ?, keys = ?, proPackageExpiry = ? WHERE serial = ?')
+              .run(playerRecord.tokens, playerRecord.keys, playerRecord.proPackageExpiry, playerRecord.serial);
+              
+            // Send Bell Notification (Admin message)
+            const notificationId = Math.random().toString(36).substring(2, 11);
+            const msgTitle = "هدية مجانية لحفاظك علي الترتيب الاول لمدة اسبوع 😍.";
+            const msgBody = "( 10 تخمينات, 1 يوم باقة المحترفين, 50 مفتاح )\nحافظ علي ترتيبك الأول, لتحصل علي هدية 🎁 كل اسبوع.";
+            const fullMsg = msgTitle + "\n\n" + msgBody;
+            
+            try {
+              // Note: admin_messages table check
+              db.prepare('INSERT INTO admin_messages (id, playerSerial, message, timestamp) VALUES (?, ?, ?, ?)').run(notificationId, playerRecord.serial, fullMsg, now);
+              io.emit("new_admin_message");
+            } catch(e) {
+               // Fallback if id doesn't exist etc.
+               db.prepare('INSERT INTO admin_messages (playerSerial, message, timestamp) VALUES (?, ?, ?)').run(playerRecord.serial, fullMsg, now);
+               io.emit("new_admin_message");
+            }
+
+            // Send Push Notification
+            const subscriptions = db.prepare(`
+              SELECT ps.subscription 
+              FROM push_subscriptions ps
+              LEFT JOIN players p ON ps.serial = p.serial
+              WHERE ps.serial = ? AND (p.notificationsEnabled = 1 OR ps.serial IS NULL)
+            `).all(playerRecord.serial) as any[];
+            
+            if (subscriptions.length > 0) {
+              const payload = JSON.stringify({ 
+                title: 'مبروك بطل الترتيب! 🏆', 
+                body: msgTitle, 
+                url: '/' 
+              });
+              
+              subscriptions.forEach(sub => {
+                try {
+                  const subscription = JSON.parse(sub.subscription);
+                  webpush.sendNotification(subscription, payload).catch((err: any) => {
+                    if (err.statusCode === 410 || err.statusCode === 404) {
+                      db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
+                    }
+                  });
+                } catch(e) {}
+              });
+            }
+          }
+          streak = 0; // Reset streak since they got the reward
+        }
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('top_player_days_streak', ?)").run(streak.toString());
+      }
+      
+      // Mark today as checked
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('last_top_player_check_day', ?)").run(today);
+    } catch (err) {
+      console.error("Error in weekly top player reward worker:", err);
+    }
+  }, 60 * 60 * 1000); // Check every hour
   // Background worker for scheduled push notifications
   setInterval(async () => {
     const now = Date.now();
@@ -875,23 +1001,50 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       
       const payload = JSON.stringify({ title: notification.title, body: notification.body, url: notification.url || '/' });
       
-      console.log(`[Push] Sending scheduled notification "${notification.title}" to ${subscriptions.length} devices...`);
+      console.log(`[Push] Sending scheduled notification "${notification.title}" to ${subscriptions.length} devices in batches...`);
       
-      const sendPromises = subscriptions.map(async (sub) => {
-        try {
-          const subscription = JSON.parse(sub.subscription);
-          await webpush.sendNotification(subscription, payload);
-          return true;
-        } catch (err: any) {
-          if (err.statusCode === 410 || err.statusCode === 404) {
-            db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
+      const BATCH_SIZE = 50;
+      const DELAY_MS = 1000;
+      
+      for (let i = 0; i < subscriptions.length; i += BATCH_SIZE) {
+        const batch = subscriptions.slice(i, i + BATCH_SIZE);
+        
+        await Promise.all(batch.map(async (sub) => {
+          try {
+            const subscription = JSON.parse(sub.subscription);
+            await webpush.sendNotification(subscription, payload);
+          } catch (err: any) {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              db.prepare('DELETE FROM push_subscriptions WHERE subscription = ?').run(sub.subscription);
+            }
           }
-          return false;
+        }));
+        
+        if (i + BATCH_SIZE < subscriptions.length) {
+          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
         }
-      });
-
-      await Promise.all(sendPromises);
+      }
       
+      if (notification.sendToBell) {
+        try {
+          const allPlayerRecords = db.prepare('SELECT serial FROM players').all() as any[];
+          const insertMessage = db.prepare('INSERT INTO admin_messages (playerSerial, message, timestamp) VALUES (?, ?, ?)');
+          const nowTime = Date.now();
+          const messageWithTitle = notification.title + "\n\n" + notification.body;
+          
+          db.transaction(() => {
+            for (const p of allPlayerRecords) {
+               if (p.serial) {
+                 insertMessage.run(p.serial, messageWithTitle, nowTime);
+               }
+            }
+          })();
+          io.emit("new_admin_message"); // Broadcast
+        } catch (e) {
+          console.error("Failed to send scheduled push to bell:", e);
+        }
+      }
+
       // Mark as sent
       db.prepare("UPDATE scheduled_push_notifications SET status = 'sent' WHERE id = ?").run(notification.id);
     }
@@ -1480,6 +1633,19 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS friend_accepted_notifications (
+      id TEXT PRIMARY KEY,
+      receiverSerial TEXT NOT NULL,
+      senderSerial TEXT NOT NULL,
+      senderName TEXT,
+      senderAvatar TEXT,
+      senderLevel INTEGER,
+      timestamp INTEGER,
+      read INTEGER DEFAULT 0
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS admin_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       playerSerial TEXT NOT NULL,
@@ -1540,9 +1706,12 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       scheduledAt INTEGER NOT NULL,
       createdAt INTEGER NOT NULL,
       status TEXT DEFAULT 'pending',
-      groupId TEXT
+      groupId TEXT,
+      sendToBell INTEGER DEFAULT 0
     )
   `);
+  
+  try { db.exec("ALTER TABLE scheduled_push_notifications ADD COLUMN sendToBell INTEGER DEFAULT 0;"); } catch(e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS collection_notifications (
@@ -6856,6 +7025,26 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("get_friend_accepted_notifications", ({ serial }, callback) => {
+      if (!serial) return callback({ notifications: [] });
+      try {
+        const notifications = db.prepare('SELECT * FROM friend_accepted_notifications WHERE receiverSerial = ? AND read = 0 ORDER BY timestamp DESC').all(serial);
+        callback({ success: true, notifications });
+      } catch (e) {
+        callback({ success: false, notifications: [] });
+      }
+    });
+
+    socket.on("dismiss_friend_accepted_notification", ({ serial, notificationId }, callback) => {
+      if (!serial || !notificationId) return callback({ success: false });
+      try {
+        db.prepare('UPDATE friend_accepted_notifications SET read = 1 WHERE id = ? AND receiverSerial = ?').run(notificationId, serial);
+        callback({ success: true });
+      } catch (e) {
+        callback({ success: false });
+      }
+    });
+
     socket.on("get_admin_messages", ({ serial }, callback) => {
       if (!serial) return callback({ messages: [] });
       try {
@@ -7595,20 +7784,25 @@ io.on("connection", (socket) => {
 
         // Check for reward (every 20 likes = 1 key)
         let keysRewarded = 0;
-        if (newLikes % 20 === 0) {
-          targetPlayer.keys = (targetPlayer.keys || 0) + 1;
-          db.prepare('UPDATE players SET keys = ? WHERE serial = ?').run(targetPlayer.keys, targetSerial);
+        if (newLikes % 20 === 0 && newLikes > 0) {
           keysRewarded = 1;
           
-          // Optionally send a notification to the target player if they are online
-          // (They are already fetched earlier but let's be sure about targetSocketId again)
+          const notificationId = Math.random().toString(36).substr(2, 9);
+          const message = `ربحت هدية مفتاح 🗝️ وذلك لوصول عدد القلوب الي ${newLikes}، ومع كل 20 قلب زيادة تحصل علي 🗝️، استلم هديتك`;
+          const giftsJson = JSON.stringify({ keys: 1, message });
+          const senderName = `النظام`;
+          
+          db.prepare('INSERT INTO gift_notifications (id, senderSerial, receiverSerial, senderName, senderAvatar, gifts, timestamp, read) VALUES (?, ?, ?, ?, ?, ?, ?, 0)')
+            .run(notificationId, 'SYSTEM', targetSerial, senderName, '', giftsJson, Date.now());
+          
           if (targetSocketId) {
-             io.to(targetSocketId).emit('show_alert', { title: 'محبة الجمهور ❤️', message: 'لقد حصلت على 20 إعجاب جديد وحصلت على مفتاح سحري 🔑!' });
+             io.to(targetSocketId).emit('new_gift_notification', { id: notificationId, senderSerial: 'SYSTEM', receiverSerial: targetSerial, senderName, senderAvatar: '', gifts: { keys: 1, message }, timestamp: Date.now() });
+             io.to(targetSocketId).emit('show_alert', { title: 'محبة الجمهور ❤️', message: 'لقد حصلت على 20 إعجاب جديد وحصلت على هدية! افتح الإشعارات لاستلامها.' });
           }
         }
         
         if (targetSocketId) {
-             emitPlayerDataUpdate(io.to(targetSocketId), targetPlayer.serial, { likes: targetPlayer.likes, keys: targetPlayer.keys });
+             emitPlayerDataUpdate(io.to(targetSocketId), targetPlayer.serial, { likes: targetPlayer.likes });
         }
         
         updateHighestLikesGlobal();
@@ -7676,25 +7870,40 @@ io.on("connection", (socket) => {
       if (!actualMySerial) return;
       
       try {
+        let otherSerial = null;
         if (requestId) {
           // Find the request by ID
           const row = db.prepare('SELECT player1, player2, sender FROM friends WHERE id = ?').get(requestId) as any;
           if (row) {
             db.prepare('UPDATE friends SET status = ? WHERE id = ?').run('accepted', requestId);
-            const otherSerial = row.player1 === actualMySerial ? row.player2 : row.player1;
-            const targetSocketId = playerSockets.get(otherSerial);
-            if (targetSocketId) {
-               io.to(targetSocketId).emit("friend_request_accepted", { targetSerial: actualMySerial });
-            }
+            otherSerial = row.player1 === actualMySerial ? row.player2 : row.player1;
           }
         } else if (targetSerial) {
           const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
           const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
           db.prepare('UPDATE friends SET status = ? WHERE player1 = ? AND player2 = ? AND status = ? AND sender = ?').run('accepted', p1, p2, 'pending', targetSerial);
-          const targetSocketId = playerSockets.get(targetSerial);
-          if (targetSocketId) {
-             io.to(targetSocketId).emit("friend_request_accepted", { targetSerial: actualMySerial });
-          }
+          otherSerial = targetSerial;
+        }
+
+        if (otherSerial) {
+            const senderPlayer = allPlayers.get(actualMySerial);
+            if (senderPlayer) {
+              const notificationId = Math.random().toString(36).substr(2, 9);
+              db.prepare('INSERT INTO friend_accepted_notifications (id, receiverSerial, senderSerial, senderName, senderAvatar, senderLevel, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+                notificationId,
+                otherSerial,
+                actualMySerial,
+                senderPlayer.name,
+                senderPlayer.avatar,
+                senderPlayer.level || 1,
+                Date.now()
+              );
+
+              const targetSocketId = playerSockets.get(otherSerial);
+              if (targetSocketId) {
+                 io.to(targetSocketId).emit("friend_request_accepted", { targetSerial: actualMySerial, senderName: senderPlayer.name });
+              }
+            }
         }
         if (callback) callback({ success: true });
       } catch (e) {
