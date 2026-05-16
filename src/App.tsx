@@ -7320,9 +7320,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                             className="bg-white border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden"
                           >
                             <div className="flex items-center gap-3 relative z-10 w-full">
-                              <div className="relative w-10 h-10 rounded-full border-2 border-black bg-blue-100 object-cover">
+                              <div className="relative w-10 h-10">
                                 {renderAvatarContent(notification.senderAvatar, notification.senderLevel || 1, false, false, undefined, notification.senderSerial)}
-                                <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full border-b-2 border-black min-w-[20px] text-center">
+                                <div className="absolute -bottom-2 -right-1 bg-yellow-400 text-black text-[9px] font-bold px-1 py-0.5 rounded-full border-b-2 border-black min-w-[20px] text-center z-30">
                                   {notification.senderLevel || 1}
                                 </div>
                               </div>
