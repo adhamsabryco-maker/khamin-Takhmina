@@ -148,7 +148,6 @@ const XPAnimatedCounter = ({ finalXP }: { finalXP: number }) => {
 import confetti from 'canvas-confetti';
 import { COLLECTION_DATA } from '../collectionData';
 import { AdminCustomization } from './components/AdminCustomization';
-import { MockAdModal } from './components/MockAdModal';
 import { AdminLogin } from './components/AdminLogin';
 import { QuickChatManager } from './components/QuickChatManager';
 import { AvatarDisplay } from './components/AvatarDisplay';
@@ -1267,7 +1266,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   });
   const [customAvatar, setCustomAvatar] = useState(() => localStorage.getItem('khamin_custom_avatar') || '');
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('khamin_is_admin') === 'true');
-  const [mockAdProviderState, setMockAdProviderState] = useState<{ onComplete: () => void; onDismissed?: () => void; } | null>(null);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showPackageModal, setShowPackageModal] = useState(false);
@@ -2802,24 +2800,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
       const handleAdFailure = () => {
         setIsSpinAdLoading(false);
-        setMockAdProviderState({
-          onComplete: () => {
-            adFinished = true;
-            adViewed = true;
-            startSpin(true);
-          },
-          onDismissed: () => {
-             adFinished = true;
-             setIsReelsSpinning(false);
-             showAlert("يجب مشاهدة الإعلان كاملاً للف الأسهم المجانية!", "تنبيه");
-          }
-        });
+        adFinished = true;
+        showAlert('عذراً، لا يوجد إعلان متاح حالياً. يرجى المحاولة لاحقاً.', 'تنبيه');
       };
 
       if (typeof (window as any).adBreak === 'function') {
         const adTimeout = setTimeout(() => {
           if (!adFinished) handleAdFailure();
-        }, 4000);
+        }, 15000);
 
         try {
           (window as any).adBreak({
@@ -2827,7 +2815,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             name: 'lucky_wheel_spin',
             beforeAd: () => {
               clearTimeout(adTimeout);
-              if (adFinished) setMockAdProviderState(null);
               adFinished = false;
               setIsSpinAdLoading(false);
               Howler.mute(true);
@@ -5833,41 +5820,26 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       }
     };
 
-    const startMockAd = () => {
-      console.log('Falling back to mock ad');
-      startAdProcess();
-      setMockAdProviderState({
-        onComplete: () => {
-          onAdComplete();
-        },
-        onDismissed: () => {
-          clearTimeout(adSafetyTimeout);
-          adTriggeredRef.current = false;
-          setIsGlobalAdLoading(false);
-          showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
-          if (roomId) socket?.emit('ad_ended', { roomId });
-          setActivePowerUp(null);
-        }
-      });
-    };
-
     const handleAdUnavailable = () => {
-      console.warn('Google Ads unavailable, falling back to mock ad temporarily');
+      console.warn('Google Ads unavailable');
       setIsGlobalAdLoading(false);
-      startMockAd();
+      adTriggeredRef.current = false;
+      if (roomId) socket?.emit('ad_ended', { roomId });
+      setActivePowerUp(null);
+      showAlert('عذراً، لا يوجد إعلان متاح حالياً. يرجى المحاولة لاحقاً.', 'تنبيه');
     };
 
     // Call real AdSense adBreak if available
     if (typeof window.adBreak === 'function') {
       console.log('Calling Google AdSense adBreak');
       
-      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 4 seconds, use fallback
+      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 15 seconds, use fallback
       const adTimeout = setTimeout(() => {
         if (!localAdTriggered) {
-          console.warn('AdSense adBreak timed out, using fallback');
+          console.warn('AdSense adBreak timed out');
           handleAdUnavailable();
         }
-      }, 4000);
+      }, 15000);
 
       try {
         window.adBreak({
@@ -5876,10 +5848,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           beforeAd: () => {
             console.log('AdSense: beforeAd');
             clearTimeout(adTimeout);
-            if (localAdTriggered) {
-              console.log('AdSense started late, closing mock ad');
-              setMockAdProviderState(null);
-            }
             localAdTriggered = false;
             setIsGlobalAdLoading(false);
             startAdProcess();
@@ -5984,22 +5952,13 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       }
     };
 
-    const startMockAd = () => {
-      console.log('Falling back to mock ad for category');
-      startAdProcess();
-      setMockAdProviderState({
-        onComplete: () => {
-          onAdComplete();
-        },
-        onDismissed: () => {
-          onAdDismissed();
-        }
-      });
-    };
-
     const handleAdUnavailable = () => {
-      console.warn('Google Ads unavailable, falling back to mock ad temporarily');
-      startMockAd();
+      console.warn('Google Ads unavailable');
+      adTriggeredRef.current = false;
+      setIsWatchingCategoryAd(false);
+      setShowCategoryAdButton(true);
+      if (roomId) socket?.emit('ad_ended', { roomId });
+      showAlert('عذراً، لا يوجد إعلان متاح حالياً. يرجى المحاولة لاحقاً.', 'تنبيه');
     };
 
     if (typeof window.adBreak === 'function') {
@@ -6007,7 +5966,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (!localAdTriggered) {
           handleAdUnavailable();
         }
-      }, 4000);
+      }, 15000);
 
       try {
         window.adBreak({
@@ -6015,9 +5974,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           name: 'category_selection',
           beforeAd: () => {
             clearTimeout(adTimeout);
-            if (localAdTriggered) {
-              setMockAdProviderState(null);
-            }
             localAdTriggered = false;
             startAdProcess();
             adSafetyTimeout = setTimeout(() => {
@@ -6099,27 +6055,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       });
     };
 
-    const startMockAd = () => {
-      startAdProcess();
-      setMockAdProviderState({
-        onComplete: () => {
-          onAdComplete();
-        },
-        onDismissed: () => {
-          clearTimeout(adSafetyTimeout);
-          adTriggeredRef.current = false;
-          setIsGlobalAdLoading(false);
-          if (roomId) {
-            socket?.emit('ad_ended', { roomId });
-          }
-          showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
-        }
-      });
-    };
-
     const handleAdUnavailable = () => {
       setIsGlobalAdLoading(false);
-      startMockAd();
+      adTriggeredRef.current = false;
+      if (roomId) socket?.emit('ad_ended', { roomId });
+      showAlert('عذراً، لا يوجد إعلان متاح حالياً. يرجى المحاولة لاحقاً.', 'تنبيه');
     };
 
     if (typeof window.adBreak === 'function') {
@@ -6127,7 +6067,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (!localAdTriggered) {
           handleAdUnavailable();
         }
-      }, 4000);
+      }, 15000);
 
       try {
         window.adBreak({
@@ -6135,9 +6075,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           name: 'claim_collection_reward',
           beforeAd: () => {
             clearTimeout(adTimeout);
-            if (localAdTriggered) {
-              setMockAdProviderState(null);
-            }
             localAdTriggered = false;
             startAdProcess();
             adSafetyTimeout = setTimeout(() => {
@@ -6393,20 +6330,12 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     const handleAdFailure = () => {
       adTriggeredRef.current = false;
       setIsGlobalAdLoading(false);
-      setMockAdProviderState({
-        onComplete: () => {
-          onAdComplete();
-        },
-        onDismissed: () => {
-          adFinished = true;
-          adDismissed = true;
-          clearTimeout(adSafetyTimeout);
-          adTriggeredRef.current = false;
-          setIsGlobalAdLoading(false);
-          showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
-          if (onFailed) onFailed();
-        }
-      });
+      setIsCitySearchStarting(false);
+      adFinished = true;
+      adDismissed = true;
+      clearTimeout(adSafetyTimeout);
+      showAlert('عذراً، لا يوجد إعلان متاح حالياً للبحث. يرجى المحاولة لاحقاً.', 'تنبيه');
+      if (onFailed) onFailed();
     };
 
     if (typeof (window as any).adBreak === 'function') {
@@ -6414,7 +6343,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (!adFinished) {
           handleAdFailure();
         }
-      }, 4000);
+      }, 15000);
 
       try {
         (window as any).adBreak({
@@ -6422,9 +6351,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           name: 'city_search_ad',
           beforeAd: () => {
             clearTimeout(adTimeout);
-            if (adFinished) {
-              setMockAdProviderState(null);
-            }
             adFinished = false;
             startAdProcess();
             Howler.mute(true);
@@ -7202,7 +7128,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                            </div>
                          </div>
                          <div>
-                           <div className="font-black text-sm text-main">{friend.name}</div>
+                           <div className="font-black text-sm text-main flex items-center gap-1">
+                             {friend.name}
+                             {!!friend.isAdmin && <Shield className="w-4 h-4 text-purple-500 fill-purple-200" />}
+                           </div>
                            <div className="text-[10px] text-gray-500 bg-gray-200 px-1.5 rounded-full">Lvl {friend.level || 1}</div>
                          </div>
                        </div>
@@ -13029,7 +12958,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                             {renderAvatarContent(friend.avatar, friend.level || 1, false, false, undefined, friend.serial)}
                           </div>
                           <div>
-                            <div className="font-bold text-sm text-main">{friend.name}</div>
+                            <div className="font-bold text-sm text-main flex items-center gap-1">
+                              {friend.name}
+                              {!!friend.isAdmin && <Shield className="w-4 h-4 text-purple-500 fill-purple-200" />}
+                            </div>
                             <div className="text-[10px] text-gray-500">مستوى {friend.level || 1}</div>
                           </div>
                         </div>
@@ -14300,14 +14232,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               let adDismissed = false;
 
               const handleAdFailure = () => {
-                setMockAdProviderState({
-                  onComplete: () => {
-                    successReward();
-                  },
-                  onDismissed: () => {
-                    showAlert('يجب مشاهدة الإعلان كاملاً لمضاعفة المكافأة!', 'تنبيه');
-                  }
-                });
+                adFinished = true;
+                showAlert('عذراً، لا يوجد إعلان متاح حالياً لتلقي المكافأة بضعف. يرجى المحاولة لاحقاً.', 'تنبيه');
               };
               const successReward = () => {
                 socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
@@ -14321,7 +14247,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               if (typeof (window as any).adBreak === 'function') {
                 const adTimeout = setTimeout(() => {
                   if (!adFinished) handleAdFailure();
-                }, 8000);
+                }, 15000);
 
                 try {
                   (window as any).adBreak({
@@ -17387,24 +17313,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             customConfig={customConfig}
             onStartGame={handleMatchIntroStart}
             onComplete={handleMatchIntroComplete}
-          />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {mockAdProviderState && (
-          <MockAdModal
-            imageUrl={(customConfig as any)?.mockAdImage ? ((customConfig as any).mockAdImage.startsWith('data:') ? (customConfig as any).mockAdImage : `/uploads/${(customConfig as any).mockAdImage}`) : null}
-            targetUrl={(customConfig as any)?.mockAdLink || null}
-            onComplete={() => {
-              mockAdProviderState.onComplete();
-              setMockAdProviderState(null);
-            }}
-            onDismissed={() => {
-              if (mockAdProviderState.onDismissed) {
-                mockAdProviderState.onDismissed();
-              }
-              setMockAdProviderState(null);
-            }}
           />
         )}
       </AnimatePresence>
