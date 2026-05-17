@@ -2794,80 +2794,19 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         return;
       }
       
-      setIsSpinAdLoading(true);
-      // Ad logic
-      let adFinished = false;
-      let adViewed = false;
-      let adDismissed = false;
-
-      const handleAdFailure = () => {
-        setIsSpinAdLoading(false);
-        setMockAdProviderState({
-          onComplete: () => {
-            adFinished = true;
-            adViewed = true;
-            startSpin(true);
-          },
-          onDismissed: () => {
-             adFinished = true;
-             setIsReelsSpinning(false);
-             showAlert("يجب مشاهدة الإعلان كاملاً للف الأسهم المجانية!", "تنبيه");
-          }
-        });
-      };
-
-      if (typeof (window as any).adBreak === 'function') {
-        const adTimeout = setTimeout(() => {
-          if (!adFinished) handleAdFailure();
-        }, 4000);
-
-        try {
-          (window as any).adBreak({
-            type: 'reward',
-            name: 'lucky_wheel_spin',
-            beforeAd: () => {
-              clearTimeout(adTimeout);
-              if (adFinished) setMockAdProviderState(null);
-              adFinished = false;
-              setIsSpinAdLoading(false);
-              Howler.mute(true);
-            },
-            afterAd: () => {
-              Howler.mute(false);
-            },
-            beforeReward: (showAdFn: any) => {
-              showAdFn();
-            },
-            adViewed: () => {
-              adFinished = true;
-              adViewed = true;
-              startSpin(true);
-            },
-            adDismissed: () => {
-              setIsSpinAdLoading(false);
-              adFinished = true;
-              adDismissed = true;
-              Howler.mute(false);
-              showAlert('يجب مشاهدة الإعلان بالكامل للحصول على المحاولة!', 'تنبيه');
-            },
-            adBreakDone: (placementInfo: any) => {
-              setIsSpinAdLoading(false);
-              adFinished = true;
-              clearTimeout(adTimeout);
-              if (!adViewed && !adDismissed) {
-                handleAdFailure();
-              }
-            }
-          });
-        } catch (e) {
-          console.error("Ad error:", e);
-          clearTimeout(adTimeout);
-          handleAdFailure();
-        }
-      } else {
-        // No ad SDK found (AdBlocker)
-        handleAdFailure();
-      }
+      requestGameAd(
+        'lucky_wheel_spin',
+        () => {
+          setIsSpinAdLoading(false);
+          startSpin(true);
+        },
+        () => {
+          setIsSpinAdLoading(false);
+          setIsReelsSpinning(false);
+          // Optional: showAlert if they close, but for now just stop spin
+        },
+        setIsSpinAdLoading
+      );
     } else {
       startSpin(false);
     }
@@ -3163,6 +3102,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
   const handleOpenshowCollectionModal = () => {
     if (showCollectionModal) {
+      cancelAdRequest();
       playSound('clickClose');
       setShowCollectionModal(null);
       // Sequence will continue via useEffect or manual call
@@ -3207,6 +3147,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
   const toggleLuckyWheel = () => {
     if (showLuckyWheelModal) {
+      cancelAdRequest();
       playSound('clickClose');
       setShowLuckyWheelModal(false);
       // Sequence will continue via useEffect or manual call
@@ -3219,6 +3160,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   };
   
   const closeAllModals = () => {
+    cancelAdRequest();
     if (showSettingsModal) {
       const currentLevel = getLevel(xp);
       setLastSeenAvatarLevel(currentLevel);
@@ -3365,6 +3307,106 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const showPrompt = (message: string, defaultValue: string = '', onConfirm: (value: string) => void, title: string = 'إدخال') => {
     setCustomPrompt({ show: true, message, defaultValue, title, onConfirm });
     playSound('clickOpen');
+  };
+
+  const activeAdRequestId = useRef<number>(0);
+  const globalAdFailureCount = useRef<number>(0);
+
+  const cancelAdRequest = () => {
+    activeAdRequestId.current = 0;
+  };
+
+  const requestGameAd = (
+    name: string,
+    onReward: () => void,
+    onDismissed: () => void,
+    setLoadingState: (loading: boolean) => void
+  ) => {
+    const currentRequestId = Date.now();
+    activeAdRequestId.current = currentRequestId;
+    setLoadingState(true);
+
+    let adFinished = false;
+
+    const handleAdFailure = () => {
+      if (activeAdRequestId.current !== currentRequestId) return;
+      
+      setLoadingState(false);
+      globalAdFailureCount.current += 1;
+
+      if (globalAdFailureCount.current >= 3) {
+        setMockAdProviderState({
+          onComplete: () => {
+            if (activeAdRequestId.current !== currentRequestId) return;
+            adFinished = true;
+            onReward();
+            globalAdFailureCount.current = 0;
+          },
+          onDismissed: () => {
+            if (activeAdRequestId.current !== currentRequestId) return;
+            adFinished = true;
+            onDismissed();
+          }
+        });
+      } else {
+         showAlert("عذراً، لا يوجد إعلان متاح حالياً. يرجى المحاولة لاحقاً.", "تنبيه");
+         onDismissed();
+      }
+    };
+
+    if (typeof (window as any).adBreak === 'function') {
+      const adTimeout = setTimeout(() => {
+        if (!adFinished && activeAdRequestId.current === currentRequestId) {
+           handleAdFailure();
+        }
+      }, 7000);
+
+      try {
+        (window as any).adBreak({
+          type: 'reward',
+          name: name,
+          beforeAd: () => {
+            if (activeAdRequestId.current !== currentRequestId) return;
+            clearTimeout(adTimeout);
+            if (adFinished) setMockAdProviderState(null);
+            adFinished = false;
+            setLoadingState(false);
+            Howler.mute(true);
+          },
+          afterAd: () => {
+            Howler.mute(false);
+          },
+          beforeReward: (showAdFn: any) => {
+            if (activeAdRequestId.current !== currentRequestId) return;
+            showAdFn();
+          },
+          adViewed: () => {
+            if (activeAdRequestId.current !== currentRequestId) return;
+            adFinished = true;
+            globalAdFailureCount.current = 0;
+            onReward();
+          },
+          adDismissed: () => {
+            if (activeAdRequestId.current !== currentRequestId) return;
+            setLoadingState(false);
+            adFinished = true;
+            Howler.mute(false);
+            onDismissed();
+          }
+        });
+      } catch (e) {
+        if (!adFinished && activeAdRequestId.current === currentRequestId) {
+           clearTimeout(adTimeout);
+           handleAdFailure();
+        }
+      }
+    } else {
+      setTimeout(() => {
+        if (!adFinished && activeAdRequestId.current === currentRequestId) {
+          handleAdFailure();
+        }
+      }, 7000);
+    }
   };
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -5774,17 +5816,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     // Close confirmation modal immediately to prevent "fixed window" issue
     setShowAdConfirmation(false);
 
-    // Set triggered to true immediately to prevent double clicks
-    adTriggeredRef.current = true;
-    setIsGlobalAdLoading(true);
-
-    let localAdTriggered = false;
-
     const startAdProcess = () => {
-      if (localAdTriggered) return;
-      localAdTriggered = true;
-      setIsGlobalAdLoading(false);
-      
       if (roomId && isPowerUp) {
         const powerUpName = {
           quick_guess: 'تخمين سريع',
@@ -5804,14 +5836,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       socket?.emit('start_ad_watch', { serial: playerSerial });
     };
 
-    let adSafetyTimeout: NodeJS.Timeout;
-
-    const onAdComplete = () => {
-      clearTimeout(adSafetyTimeout);
+    const onReward = () => {
       adTriggeredRef.current = false;
-      setIsGlobalAdLoading(false);
-      
-      // Trigger cooldown after ad finishes
       setIsCooldown(true);
       setCooldownTime(30);
       
@@ -5819,7 +5845,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (!readyPowerUps.includes(activePowerUp!)) {
           setReadyPowerUps(prev => [...prev, activePowerUp!]);
         }
-        // Notify server that ad reward is ready for this helper
         if (roomId) {
           socket?.emit('ad_reward_ready', { roomId, helperId: activePowerUp });
         }
@@ -5833,123 +5858,40 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       }
     };
 
-    const startMockAd = () => {
-      console.log('Falling back to mock ad');
-      startAdProcess();
-      setMockAdProviderState({
-        onComplete: () => {
-          onAdComplete();
-        },
-        onDismissed: () => {
-          clearTimeout(adSafetyTimeout);
-          adTriggeredRef.current = false;
-          setIsGlobalAdLoading(false);
-          showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
-          if (roomId) socket?.emit('ad_ended', { roomId });
-          setActivePowerUp(null);
-        }
-      });
+    const onDismissed = () => {
+       adTriggeredRef.current = false;
+       showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
+       if (roomId) socket?.emit('ad_ended', { roomId });
+       setActivePowerUp(null);
     };
 
-    const handleAdUnavailable = () => {
-      console.warn('Google Ads unavailable, falling back to mock ad temporarily');
-      setIsGlobalAdLoading(false);
-      startMockAd();
-    };
+    startAdProcess();
 
-    // Call real AdSense adBreak if available
-    if (typeof window.adBreak === 'function') {
-      console.log('Calling Google AdSense adBreak');
-      
-      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 4 seconds, use fallback
-      const adTimeout = setTimeout(() => {
-        if (!localAdTriggered) {
-          console.warn('AdSense adBreak timed out, using fallback');
-          handleAdUnavailable();
+    requestGameAd(
+      isPowerUp ? `use_${activePowerUp}` : 'get_token',
+      onReward,
+      onDismissed,
+      (loading) => {
+        // As requested: Only change button to loading if not a power-up OR update isGlobalAdLoading
+        if (!isPowerUp) {
+           setIsGlobalAdLoading(loading);
+        } else {
+           // For powerups we don't show "جاري تجهيز الإعلان..." but we might need to block further clicks
+           if (loading) {
+              adTriggeredRef.current = true;
+           } else {
+              adTriggeredRef.current = false;
+           }
         }
-      }, 4000);
-
-      try {
-        window.adBreak({
-          type: 'reward',
-          name: isPowerUp ? `use_${activePowerUp}` : 'get_token',
-          beforeAd: () => {
-            console.log('AdSense: beforeAd');
-            clearTimeout(adTimeout);
-            if (localAdTriggered) {
-              console.log('AdSense started late, closing mock ad');
-              setMockAdProviderState(null);
-            }
-            localAdTriggered = false;
-            setIsGlobalAdLoading(false);
-            startAdProcess();
-            
-            // Safety timeout: if ad doesn't finish or dismiss within 60 seconds, resume game
-            adSafetyTimeout = setTimeout(() => {
-              console.warn('AdSense ad stuck, resuming game');
-              if (roomId) {
-                socket?.emit('ad_ended', { roomId });
-              }
-              setActivePowerUp(null);
-              setIsGlobalAdLoading(false);
-              adTriggeredRef.current = false;
-              showAlert('حدث خطأ أثناء تحميل الإعلان.', 'خطأ');
-            }, 60000);
-          },
-          afterAd: () => {
-            console.log('AdSense: afterAd');
-          },
-          beforeReward: (showAdFn: any) => {
-            console.log('AdSense: beforeReward');
-            showAdFn();
-          },
-          adDismissed: () => {
-            console.log('AdSense: adDismissed');
-            clearTimeout(adSafetyTimeout);
-            adTriggeredRef.current = false;
-            setIsGlobalAdLoading(false);
-            showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
-            if (roomId) {
-              socket?.emit('ad_ended', { roomId });
-            }
-            setActivePowerUp(null);
-          },
-          adViewed: () => {
-            console.log('AdSense: adViewed');
-            onAdComplete();
-          },
-          adBreakDone: (placementInfo: any) => {
-            console.log('AdSense: adBreakDone', placementInfo);
-            setIsGlobalAdLoading(false);
-            // If adBreakDone is called but ad was never triggered, it means no ad was available
-            if (!localAdTriggered) {
-              clearTimeout(adTimeout);
-              console.warn('AdSense adBreakDone called without triggering ad, using fallback');
-              handleAdUnavailable();
-            } else {
-              adTriggeredRef.current = false;
-            }
-          }
-        });
-      } catch (error) {
-        console.error('Error calling window.adBreak:', error);
-        clearTimeout(adTimeout);
-        handleAdUnavailable();
       }
-    } else {
-      // Fallback if AdSense is blocked or not loaded
-      handleAdUnavailable();
-    }
+    );
   };
 
   const handleWatchCategoryAd = useCallback(() => {
     if (adTriggeredRef.current) return;
     adTriggeredRef.current = true;
-    let localAdTriggered = false;
 
     const startAdProcess = () => {
-      if (localAdTriggered) return;
-      localAdTriggered = true;
       setIsWatchingCategoryAd(true);
       setShowCategoryAdButton(false);
       if (roomId) {
@@ -5958,10 +5900,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       socket?.emit('start_ad_watch', { serial: playerSerial });
     };
 
-    let adSafetyTimeout: NodeJS.Timeout;
-
     const onAdComplete = () => {
-      clearTimeout(adSafetyTimeout);
       adTriggeredRef.current = false;
       setIsWatchingCategoryAd(false);
       setHasWatchedCategoryAd(true);
@@ -5973,7 +5912,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     };
     
     const onAdDismissed = () => {
-      clearTimeout(adSafetyTimeout);
       adTriggeredRef.current = false;
       setIsWatchingCategoryAd(false);
       setShowCategoryAdButton(true);
@@ -5984,69 +5922,16 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       }
     };
 
-    const startMockAd = () => {
-      console.log('Falling back to mock ad for category');
-      startAdProcess();
-      setMockAdProviderState({
-        onComplete: () => {
-          onAdComplete();
-        },
-        onDismissed: () => {
-          onAdDismissed();
-        }
-      });
-    };
+    startAdProcess();
 
-    const handleAdUnavailable = () => {
-      console.warn('Google Ads unavailable, falling back to mock ad temporarily');
-      startMockAd();
-    };
-
-    if (typeof window.adBreak === 'function') {
-      const adTimeout = setTimeout(() => {
-        if (!localAdTriggered) {
-          handleAdUnavailable();
-        }
-      }, 4000);
-
-      try {
-        window.adBreak({
-          type: 'reward',
-          name: 'category_selection',
-          beforeAd: () => {
-            clearTimeout(adTimeout);
-            if (localAdTriggered) {
-              setMockAdProviderState(null);
-            }
-            localAdTriggered = false;
-            startAdProcess();
-            adSafetyTimeout = setTimeout(() => {
-               if (roomId) socket?.emit('ad_ended', { roomId });
-               adTriggeredRef.current = false;
-               setIsWatchingCategoryAd(false);
-               setShowCategoryAdButton(true);
-            }, 60000);
-          },
-          beforeReward: (showAdFn: any) => showAdFn(),
-          adDismissed: () => onAdDismissed(),
-          adViewed: () => onAdComplete(),
-          adBreakDone: (placementInfo: any) => {
-            if (!localAdTriggered) {
-              clearTimeout(adTimeout);
-              console.warn('AdSense adBreakDone called without triggering ad, using fallback');
-              handleAdUnavailable();
-            } else {
-              adTriggeredRef.current = false;
-            }
-          }
-        });
-      } catch (error) {
-        clearTimeout(adTimeout);
-        handleAdUnavailable();
+    requestGameAd(
+      'category_selection',
+      onAdComplete,
+      onAdDismissed,
+      (loading) => {
+         // UI already set to "WatchingCategoryAd", maybe we just use that or nothing
       }
-    } else {
-      handleAdUnavailable();
-    }
+    );
   }, [roomId, playerSerial, socket]);
 
   useEffect(() => {
@@ -6068,25 +5953,16 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     setPendingClaimReward(null);
 
     adTriggeredRef.current = true;
-    setIsGlobalAdLoading(true);
-    let localAdTriggered = false;
 
     const startAdProcess = () => {
-      if (localAdTriggered) return;
-      localAdTriggered = true;
-      setIsGlobalAdLoading(false);
       if (roomId) {
         socket?.emit('ad_started', { roomId, powerUpName: 'استلام مكافأة' });
       }
       socket?.emit('start_ad_watch', { serial: playerSerial });
     };
 
-    let adSafetyTimeout: NodeJS.Timeout;
-
     const onAdComplete = () => {
-      clearTimeout(adSafetyTimeout);
       adTriggeredRef.current = false;
-      setIsGlobalAdLoading(false);
       
       if (roomId) {
         socket?.emit('ad_ended', { roomId });
@@ -6099,84 +5975,22 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       });
     };
 
-    const startMockAd = () => {
-      startAdProcess();
-      setMockAdProviderState({
-        onComplete: () => {
-          onAdComplete();
-        },
-        onDismissed: () => {
-          clearTimeout(adSafetyTimeout);
-          adTriggeredRef.current = false;
-          setIsGlobalAdLoading(false);
-          if (roomId) {
-            socket?.emit('ad_ended', { roomId });
-          }
-          showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
-        }
-      });
+    const onAdDismissed = () => {
+       adTriggeredRef.current = false;
+       if (roomId) {
+         socket?.emit('ad_ended', { roomId });
+       }
+       showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
     };
 
-    const handleAdUnavailable = () => {
-      setIsGlobalAdLoading(false);
-      startMockAd();
-    };
+    startAdProcess();
 
-    if (typeof window.adBreak === 'function') {
-      const adTimeout = setTimeout(() => {
-        if (!localAdTriggered) {
-          handleAdUnavailable();
-        }
-      }, 4000);
-
-      try {
-        window.adBreak({
-          type: 'reward',
-          name: 'claim_collection_reward',
-          beforeAd: () => {
-            clearTimeout(adTimeout);
-            if (localAdTriggered) {
-              setMockAdProviderState(null);
-            }
-            localAdTriggered = false;
-            startAdProcess();
-            adSafetyTimeout = setTimeout(() => {
-              if (roomId) {
-                socket?.emit('ad_ended', { roomId });
-              }
-              adTriggeredRef.current = false;
-              showAlert('حدث خطأ أثناء تحميل الإعلان.', 'خطأ');
-            }, 60000);
-          },
-          afterAd: () => {},
-          beforeReward: (showAdFn: any) => { showAdFn(); },
-          adDismissed: () => {
-            clearTimeout(adSafetyTimeout);
-            adTriggeredRef.current = false;
-            if (roomId) {
-              socket?.emit('ad_ended', { roomId });
-            }
-            showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
-          },
-          adViewed: () => {
-            onAdComplete();
-          },
-          adBreakDone: (placementInfo: any) => {
-            if (!localAdTriggered) {
-              clearTimeout(adTimeout);
-              handleAdUnavailable();
-            } else {
-              adTriggeredRef.current = false;
-            }
-          }
-        });
-      } catch (error) {
-        clearTimeout(adTimeout);
-        handleAdUnavailable();
-      }
-    } else {
-      handleAdUnavailable();
-    }
+    requestGameAd(
+      'claim_collection_reward',
+      onAdComplete,
+      onAdDismissed,
+      setIsGlobalAdLoading
+    );
   };
 
   const handleUnlockNameChange = () => {
@@ -6371,107 +6185,22 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const handleShowAd = (onComplete: () => void, onFailed?: () => void) => {
     if (adTriggeredRef.current || isGlobalAdLoading) return;
     adTriggeredRef.current = true;
-    setIsGlobalAdLoading(true);
-    
-    let adFinished = false;
-    let adViewed = false;
-    let adDismissed = false;
 
-    const startAdProcess = () => {
-      socket?.emit('start_ad_watch', { serial: playerSerial });
-    };
+    socket?.emit('start_ad_watch', { serial: playerSerial });
 
-    let adSafetyTimeout: NodeJS.Timeout;
-
-    const onAdComplete = () => {
-      clearTimeout(adSafetyTimeout);
-      adTriggeredRef.current = false;
-      setIsGlobalAdLoading(false);
-      onComplete();
-    };
-
-    const handleAdFailure = () => {
-      adTriggeredRef.current = false;
-      setIsGlobalAdLoading(false);
-      setMockAdProviderState({
-        onComplete: () => {
-          onAdComplete();
-        },
-        onDismissed: () => {
-          adFinished = true;
-          adDismissed = true;
-          clearTimeout(adSafetyTimeout);
-          adTriggeredRef.current = false;
-          setIsGlobalAdLoading(false);
-          showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
-          if (onFailed) onFailed();
-        }
-      });
-    };
-
-    if (typeof (window as any).adBreak === 'function') {
-      const adTimeout = setTimeout(() => {
-        if (!adFinished) {
-          handleAdFailure();
-        }
-      }, 4000);
-
-      try {
-        (window as any).adBreak({
-          type: 'reward',
-          name: 'city_search_ad',
-          beforeAd: () => {
-            clearTimeout(adTimeout);
-            if (adFinished) {
-              setMockAdProviderState(null);
-            }
-            adFinished = false;
-            startAdProcess();
-            Howler.mute(true);
-            
-            adSafetyTimeout = setTimeout(() => {
-              onAdComplete();
-            }, 60000);
-          },
-          afterAd: () => {
-            Howler.mute(false);
-          },
-          beforeReward: (showAdFn: any) => { showAdFn(); },
-          adDismissed: () => {
-            adFinished = true;
-            adDismissed = true;
-            clearTimeout(adSafetyTimeout);
-            adTriggeredRef.current = false;
-            setIsGlobalAdLoading(false);
-            showAlert("يجب مشاهدة الإعلان كاملًا لبدء البحث!", "تنبيه");
-            if (onFailed) onFailed();
-          },
-          adViewed: () => {
-            adFinished = true;
-            adViewed = true;
-            clearTimeout(adSafetyTimeout);
-            onAdComplete();
-          },
-          adBreakDone: (placementInfo: any) => {
-            adFinished = true;
-            setIsGlobalAdLoading(false);
-            clearTimeout(adSafetyTimeout);
-            clearTimeout(adTimeout);
-            if (!adViewed && !adDismissed) {
-              // Google AdSense had no ad to show (No Fill)
-              handleAdFailure();
-            } else {
-              adTriggeredRef.current = false;
-            }
-          }
-        });
-      } catch (e) {
-        clearTimeout(adTimeout);
-        handleAdFailure();
-      }
-    } else {
-      handleAdFailure();
-    }
+    requestGameAd(
+      'city_search_ad',
+      () => {
+        adTriggeredRef.current = false;
+        onComplete();
+      },
+      () => {
+        adTriggeredRef.current = false;
+        showAlert("يجب مشاهدة الإعلان كاملاً لبدء البحث!", "تنبيه");
+        if (onFailed) onFailed();
+      },
+      setIsGlobalAdLoading
+    );
   };
 
   const [isCitySearchStarting, setIsCitySearchStarting] = useState(false);
@@ -6517,6 +6246,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   }, []);
 
   const resetToHome = () => {
+    cancelAdRequest();
     setJoined(false);
     setRoom(null);
     setRoomId('');
@@ -6737,7 +6467,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         'جاري التدوير...'
                       ) : isSpinAdLoading ? (
                         <div className="flex items-center gap-2">
-                          <Loader2 className="w-5 h-5 animate-spin" /> تجهيز الإعلان...
+                          <Loader2 className="w-5 h-5 animate-spin" /> جاري تجهيز الإعلان...
                         </div>
                       ) : spinCooldown > 0 ? (
                         <>انتظر {spinCooldown} ثانية...</>
@@ -8254,7 +7984,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   disabled={isGlobalAdLoading}
                   className={`flex-1 bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 ${isGlobalAdLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isGlobalAdLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> جاري التحميل...</> : 'نعم، شاهد الآن'}
+                  {isGlobalAdLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> جاري تجهيز الإعلان...</> : 'نعم، شاهد الآن'}
                 </button>
                 <button 
                   onClick={() => {
@@ -8290,7 +8020,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   disabled={isGlobalAdLoading}
                   className={`flex-1 bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 ${isGlobalAdLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isGlobalAdLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> جاري التحميل...</> : 'نعم، شاهد الآن'}
+                  {isGlobalAdLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> جاري تجهيز الإعلان...</> : 'نعم، شاهد الآن'}
                 </button>
                 <button 
                   onClick={() => setPendingClaimReward(null)}
@@ -8392,7 +8122,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         }`}
                       >
                         {isGlobalAdLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <><Loader2 className="w-4 h-4 animate-spin" /> جاري تجهيز الإعلان...</>
                         ) : getLevel(xp) < 50 ? (
                           'Level 50+'
                         ) : isCooldown ? (
@@ -8413,7 +8143,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <img src="/Takhmina_coin_02.png" className="w-6 h-6" />
                       </div>
                       <div>
-                        <div className="font-bold text-[14px] md:text-lg text-brown-dark">10 تخمينات</div>
+                        <div className="font-bold text-[16px] md:text-lg text-brown-dark">10 تخمينات</div>
                         <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
                            مقابل 25 مفتاح <Key className="w-3 h-3" />
                         </div>
@@ -8438,7 +8168,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         👑
                       </div>
                       <div>
-                        <div className="font-bold text-[14px] md:text-lg text-brown-dark">باقة المحترفين 3 أيام</div>
+                        <div className="font-bold text-[16px] md:text-lg text-brown-dark">باقة المحترفين 3 أيام</div>
                         <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
                            مقابل 100 مفتاح <Key className="w-3 h-3 text-yellow-500" />
                         </div>
@@ -8607,7 +8337,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                       <Zap className="w-5 h-5" />
                     التخمين السريع
                     </div>
-                    <span className="text-xs font-bold bg-orange-200 text-accent-orange px-2 py-1 rounded-full">تفتح في المستوى 1</span>
+                    <span className="text-xs bg-orange-200 text-accent-orange px-2 py-1 rounded-full">تفتح في المستوى 1</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     ميزة التخمين السريع تتيح لك محاولة تخمين الصورة قبل انتهاء الوقت.
@@ -8639,7 +8369,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
-                    <span className="text-xs font-bold bg-blue-200 text-accent-blue px-2 py-1 rounded-full">تفتح في المستوى 10</span>
+                    <span className="text-xs bg-blue-200 text-accent-blue px-2 py-1 rounded-full">تفتح في المستوى 10</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     تلميح عن اسم الصورة بأول حرف وثاني حرف لمساعدتك في التخمين. يمكنك استخدامها مرتين في كل مباراة.
@@ -8656,7 +8386,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
-                    <span className="text-xs font-bold bg-green-200 text-accent-green px-2 py-1 rounded-full">يفتح في المستوى 20</span>
+                    <span className="text-xs bg-green-200 text-accent-green px-2 py-1 rounded-full">يفتح في المستوى 20</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     يكشف لك عن عدد حروف الكلمة المطلوبة لتسهيل عملية التخمين وتضييق نطاق الاحتمالات.
@@ -8673,7 +8403,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
-                    <span className="text-xs font-bold bg-cyan-200 text-cyan-700 px-2 py-1 rounded-full">يفتح في المستوى 30</span>
+                    <span className="text-xs bg-cyan-200 text-cyan-700 px-2 py-1 rounded-full">يفتح في المستوى 30</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     يقوم بتجميد وقت المباراة لمدة 60 ثانية، مما يمنحك وقتاً إضافياً للتفكير والبحث دون أن ينقص الوقت الأصلي.
@@ -8690,7 +8420,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
-                    <span className="text-xs font-bold bg-indigo-200 text-indigo-700 px-2 py-1 rounded-full">يفتح في المستوى 40</span>
+                    <span className="text-xs bg-indigo-200 text-indigo-700 px-2 py-1 rounded-full">يفتح في المستوى 40</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     يكشف لك عن عدد الكلمات في اسم الصورة المطلوبة، مما يساعدك في معرفة ما إذا كانت الإجابة كلمة واحدة أم أكثر.
@@ -8707,7 +8437,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
-                    <span className="text-xs font-bold bg-purple-200 text-accent-purple px-2 py-1 rounded-full">يفتح في المستوى 50</span>
+                    <span className="text-xs bg-purple-200 text-accent-purple px-2 py-1 rounded-full">يفتح في المستوى 50</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     يتيح لك رؤية صورة منافسك، مما يعطيك أفضلية استراتيجية كبيرة جداً!
@@ -13574,7 +13304,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   className={`w-full py-4 bg-accent-blue hover:bg-blue-600 text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#1e3a8a] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2 ${(isGlobalAdLoading || isCitySearchStarting) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {(isGlobalAdLoading || isCitySearchStarting) ? (
-                    <><Loader2 className="w-6 h-6 animate-spin" /> جاري التجهيز...</>
+                    <><Loader2 className="w-6 h-6 animate-spin" /> جاري تجهيز الإعلان...</>
                   ) : (
                     <><Tv className="w-6 h-6" /> ابدأ البحث (شاهد إعلان)</>
                   )}
@@ -14233,6 +13963,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   };
 
   const handleCloseRainGiftSummary = () => {
+    cancelAdRequest();
     setShowRainGiftSummary(false);
   };
 
@@ -14301,20 +14032,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           
           <button
             onClick={() => {
-              let adFinished = false;
-              let adViewed = false;
-              let adDismissed = false;
-
-              const handleAdFailure = () => {
-                setMockAdProviderState({
-                  onComplete: () => {
-                    successReward();
-                  },
-                  onDismissed: () => {
-                    showAlert('يجب مشاهدة الإعلان كاملاً لمضاعفة المكافأة!', 'تنبيه');
-                  }
-                });
-              };
               const successReward = () => {
                 socket?.emit('claim_rain_gift', { serial: playerSerial, rewards: collectedRewards, isPro: hasProPackage });
                 localStorage.removeItem('khamin_pending_rain_gift');
@@ -14324,53 +14041,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 playSound('win');
               };
 
-              if (typeof (window as any).adBreak === 'function') {
-                const adTimeout = setTimeout(() => {
-                  if (!adFinished) handleAdFailure();
-                }, 8000);
-
-                try {
-                  (window as any).adBreak({
-                    type: 'reward',
-                    name: 'claim_rain_gift',
-                    beforeAd: () => {
-                      clearTimeout(adTimeout);
-                      Howler.mute(true);
-                    },
-                    afterAd: () => {
-                      Howler.mute(false);
-                    },
-                    beforeReward: (showAdFn: any) => {
-                      showAdFn();
-                    },
-                    adViewed: () => {
-                      adFinished = true;
-                      adViewed = true;
-                      successReward();
-                    },
-                    adDismissed: () => {
-                      adFinished = true;
-                      adDismissed = true;
-                      Howler.mute(false);
-                      showAlert('يجب مشاهدة الإعلان بالكامل لاستلام الهدايا!', 'تنبيه');
-                    },
-                    adBreakDone: (placementInfo: any) => {
-                      adFinished = true;
-                      clearTimeout(adTimeout);
-                      if (!adViewed && !adDismissed) {
-                        handleAdFailure();
-                      }
-                    }
-                  });
-                } catch (e) {
-                  console.error("Ad error:", e);
-                  clearTimeout(adTimeout);
-                  handleAdFailure();
-                }
-              } else {
-                // No ad SDK found (AdBlocker)
-                handleAdFailure();
-              }
+              requestGameAd(
+                'claim_rain_gift',
+                successReward,
+                () => {
+                  showAlert('يجب مشاهدة الإعلان بالكامل لاستلام الهدايا!', 'تنبيه');
+                },
+                setIsGlobalAdLoading // We can use global loading for this since it's a dedicated button in the modal, but maybe it blocks the whole screen... actually let's use a local state if we want the button to say loading, but there's no setLocalLoader here... wait, there is setIsGlobalAdLoading from context. Wait, let me just pass a dummy if none exists, or use setIsGlobalAdLoading. Actually let's use setIsGlobalAdLoading.
+              );
             }}
             className="w-full bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black text-xl shadow-lg transition-all flex items-center justify-center gap-2"
           >
@@ -14788,7 +14466,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     if (foundPlayer) {
                       return (
                         <div 
-                          className="mt-0.5 mb-2 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-xl p-2 grid grid-cols-3 md:grid-cols-3 flex items-center justify-center gap-6 md:gap-6 cursor-pointer hover:bg-red-500/20 transition-all shadow-sm box-game"
+                          className="mt-0.5 mb-2 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-xl p-2 flex items-center justify-center gap-6 md:gap-6 cursor-pointer hover:bg-red-500/20 transition-all shadow-sm box-game"
                           onClick={() => openPlayerProfile(foundPlayer.serial)}
                         >
                         <div class="flex flex-col text-[11px] md:text-sm items-center justify-between font-black text-red-600 gap-2 rounded-lg">
@@ -14801,7 +14479,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                              </div>
                              <span className="text-[10px] md:text-xs font-black text-main">{truncateName(foundPlayer.name)}</span>
                            </div>
-                           <div className="flex items-center gap-2 flex-col">
+                           <div className="flex items-center gap-2">
                              <span className="text-2xl md:text-3xl font-black text-red-500 drop-shadow-sm flex items-center">{foundPlayer.streak || highestStreakValue} 🔥</span>
                            </div>
                         </div>
@@ -14899,11 +14577,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               <span className="flex font-bold p-0.5 py-0.5 mb-1 items-center justify-center md:text-[13px] text-[12px] text-accent-purple">مدة الحدث 3 دقائق فقط! ⏰</span>
                 <div className="flex items-center mb-2 justify-between flex-row-reverse">
                   <div className="flex items-center gap-1" dir="ltr">
-                    <div className="w-6 h-6 md:w-8 md:h-8 bg-accent-orange rounded-full flex items-center justify-center text-white shadow-sm">
-                      <Clock className="w-5 h-5 md:w-6 md:h-6" />
+                    <div className="w-8 h-8 bg-accent-orange rounded-full flex items-center justify-center text-white shadow-sm">
+                      <Clock className="w-6 h-6" />
                     </div>
                     <div className="text-right">
-                      <div className={`font-bold text-main ${isRainGiftActive ? 'text-base md:text-sm' : 'text-[16px] md:text-[19px]'}`}>{rainGiftCountdown}</div>
+                      <div className={`font-bold text-main ${isRainGiftActive ? 'text-base md:text-lg' : 'text-[19px]'}`}>{rainGiftCountdown}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -15978,7 +15656,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                       {isWatchingCategoryAd ? (
                         <div className="text-center space-y-3">
                            <Loader2 className="w-8 h-8 animate-spin text-accent-orange mx-auto" />
-                           <p className="font-bold text-brown-muted">جاري مشاهدة الإعلان لفتح فئات التخمين...</p>
+                           <p className="font-bold text-brown-muted">جاري تجهيز الإعلان...</p>
                         </div>
                       ) : showCategoryAdButton ? (
                         <div className="text-center space-y-3">
