@@ -8413,7 +8413,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <img src="/Takhmina_coin_02.png" className="w-6 h-6" />
                       </div>
                       <div>
-                        <div className="font-bold text-[16px] md:text-lg text-brown-dark">10 تخمينات</div>
+                        <div className="font-bold text-[14px] md:text-lg text-brown-dark">10 تخمينات</div>
                         <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
                            مقابل 25 مفتاح <Key className="w-3 h-3" />
                         </div>
@@ -8438,7 +8438,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         👑
                       </div>
                       <div>
-                        <div className="font-bold text-[16px] md:text-lg text-brown-dark">باقة المحترفين 3 أيام</div>
+                        <div className="font-bold text-[14px] md:text-lg text-brown-dark">باقة المحترفين 3 أيام</div>
                         <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
                            مقابل 100 مفتاح <Key className="w-3 h-3 text-yellow-500" />
                         </div>
@@ -8607,7 +8607,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                       <Zap className="w-5 h-5" />
                     التخمين السريع
                     </div>
-                    <span className="text-xs bg-orange-200 text-accent-orange px-2 py-1 rounded-full">تفتح في المستوى 1</span>
+                    <span className="text-xs font-bold bg-orange-200 text-accent-orange px-2 py-1 rounded-full">تفتح في المستوى 1</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     ميزة التخمين السريع تتيح لك محاولة تخمين الصورة قبل انتهاء الوقت.
@@ -8639,7 +8639,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
-                    <span className="text-xs bg-blue-200 text-accent-blue px-2 py-1 rounded-full">تفتح في المستوى 10</span>
+                    <span className="text-xs font-bold bg-blue-200 text-accent-blue px-2 py-1 rounded-full">تفتح في المستوى 10</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     تلميح عن اسم الصورة بأول حرف وثاني حرف لمساعدتك في التخمين. يمكنك استخدامها مرتين في كل مباراة.
@@ -8656,7 +8656,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
-                    <span className="text-xs bg-green-200 text-accent-green px-2 py-1 rounded-full">يفتح في المستوى 20</span>
+                    <span className="text-xs font-bold bg-green-200 text-accent-green px-2 py-1 rounded-full">يفتح في المستوى 20</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     يكشف لك عن عدد حروف الكلمة المطلوبة لتسهيل عملية التخمين وتضييق نطاق الاحتمالات.
@@ -8673,7 +8673,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
-                    <span className="text-xs bg-cyan-200 text-cyan-700 px-2 py-1 rounded-full">يفتح في المستوى 30</span>
+                    <span className="text-xs font-bold bg-cyan-200 text-cyan-700 px-2 py-1 rounded-full">يفتح في المستوى 30</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     يقوم بتجميد وقت المباراة لمدة 60 ثانية، مما يمنحك وقتاً إضافياً للتفكير والبحث دون أن ينقص الوقت الأصلي.
@@ -8690,7 +8690,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
-                    <span className="text-xs bg-indigo-200 text-indigo-700 px-2 py-1 rounded-full">يفتح في المستوى 40</span>
+                    <span className="text-xs font-bold bg-indigo-200 text-indigo-700 px-2 py-1 rounded-full">يفتح في المستوى 40</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     يكشف لك عن عدد الكلمات في اسم الصورة المطلوبة، مما يساعدك في معرفة ما إذا كانت الإجابة كلمة واحدة أم أكثر.
@@ -8707,7 +8707,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
                     </div>
-                    <span className="text-xs bg-purple-200 text-accent-purple px-2 py-1 rounded-full">يفتح في المستوى 50</span>
+                    <span className="text-xs font-bold bg-purple-200 text-accent-purple px-2 py-1 rounded-full">يفتح في المستوى 50</span>
                   </h3>
                   <p className="text-sm leading-relaxed">
                     يتيح لك رؤية صورة منافسك، مما يعطيك أفضلية استراتيجية كبيرة جداً!
@@ -14788,7 +14788,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     if (foundPlayer) {
                       return (
                         <div 
-                          className="mt-0.5 mb-2 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-xl p-2 flex items-center justify-center gap-6 md:gap-6 cursor-pointer hover:bg-red-500/20 transition-all shadow-sm box-game"
+                          className="mt-0.5 mb-2 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-xl p-2 grid grid-cols-3 md:grid-cols-3 flex items-center justify-center gap-6 md:gap-6 cursor-pointer hover:bg-red-500/20 transition-all shadow-sm box-game"
                           onClick={() => openPlayerProfile(foundPlayer.serial)}
                         >
                         <div class="flex flex-col text-[11px] md:text-sm items-center justify-between font-black text-red-600 gap-2 rounded-lg">
@@ -14801,7 +14801,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                              </div>
                              <span className="text-[10px] md:text-xs font-black text-main">{truncateName(foundPlayer.name)}</span>
                            </div>
-                           <div className="flex items-center gap-2">
+                           <div className="flex items-center gap-2 flex-col">
                              <span className="text-2xl md:text-3xl font-black text-red-500 drop-shadow-sm flex items-center">{foundPlayer.streak || highestStreakValue} 🔥</span>
                            </div>
                         </div>
@@ -14899,11 +14899,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               <span className="flex font-bold p-0.5 py-0.5 mb-1 items-center justify-center md:text-[13px] text-[12px] text-accent-purple">مدة الحدث 3 دقائق فقط! ⏰</span>
                 <div className="flex items-center mb-2 justify-between flex-row-reverse">
                   <div className="flex items-center gap-1" dir="ltr">
-                    <div className="w-8 h-8 bg-accent-orange rounded-full flex items-center justify-center text-white shadow-sm">
-                      <Clock className="w-6 h-6" />
+                    <div className="w-6 h-6 md:w-8 md:h-8 bg-accent-orange rounded-full flex items-center justify-center text-white shadow-sm">
+                      <Clock className="w-5 h-5 md:w-6 md:h-6" />
                     </div>
                     <div className="text-right">
-                      <div className={`font-bold text-main ${isRainGiftActive ? 'text-base md:text-lg' : 'text-[19px]'}`}>{rainGiftCountdown}</div>
+                      <div className={`font-bold text-main ${isRainGiftActive ? 'text-base md:text-sm' : 'text-[16px] md:text-[19px]'}`}>{rainGiftCountdown}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
