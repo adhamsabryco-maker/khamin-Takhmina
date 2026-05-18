@@ -801,6 +801,22 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [highestLikesSerials, setHighestLikesSerials] = useState<string[]>([]);
   const [highestStreakSerials, setHighestStreakSerials] = useState<string[]>([]);
   const [highestLikesValue, setHighestLikesValue] = useState<number>(0);
+  const [highestLikesPlayers, setHighestLikesPlayers] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('khamin_highest_likes_players');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  
+  const [highestLevelValue, setHighestLevelValue] = useState<number>(0);
+  const [highestLevelSerials, setHighestLevelSerials] = useState<string[]>([]);
+  const [highestLevelPlayers, setHighestLevelPlayers] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('khamin_highest_level_players');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+
   const [highestStreakValue, setHighestStreakValue] = useState<number>(() => {
     try {
       return parseInt(localStorage.getItem('khamin_highest_streak_value') || '0');
@@ -4298,6 +4314,21 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (data && typeof data === 'object') {
           if (data.serials) setHighestLikesSerials(data.serials);
           if (data.value !== undefined) setHighestLikesValue(data.value);
+          if (data.players) {
+             setHighestLikesPlayers(data.players);
+             localStorage.setItem('khamin_highest_likes_players', JSON.stringify(data.players));
+          }
+        }
+      });
+      
+      newSocket.on('highest_level_update', (data: any) => {
+        if (data && typeof data === 'object') {
+          if (data.serials) setHighestLevelSerials(data.serials);
+          if (data.value !== undefined) setHighestLevelValue(data.value);
+          if (data.players) {
+             setHighestLevelPlayers(data.players);
+             localStorage.setItem('khamin_highest_level_players', JSON.stringify(data.players));
+          }
         }
       });
 
@@ -14855,38 +14886,66 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   <p className="text-[8px] md:text-[10px] font-bold text-black-400 py-1 px-1 inline-block">الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي 📊</p>
                 </div>
 
-                {/* Highest Streak Banner (Not Top 3) */}
+                {/* Top Players Special Categories Banner (Not Top 3) */}
                 {(() => {
-                  if (highestStreakPlayers && highestStreakPlayers.length > 0 && highestStreakValue > 0) {
-                    const top1 = topPlayers[0]?.serial;
-                    const top2 = topPlayers[1]?.serial;
-                    const top3 = topPlayers[2]?.serial;
-                    const foundPlayer = highestStreakPlayers.find(p => p.serial !== top1 && p.serial !== top2 && p.serial !== top3);
-                    
-                    if (foundPlayer) {
-                      return (
-                        <div 
-                          className="mt-0.5 mb-2 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-xl p-2 grid grid-cols-3 md:grid-cols-3 flex items-center justify-center gap-6 md:gap-6 cursor-pointer hover:bg-red-500/20 transition-all shadow-sm box-game"
-                          onClick={() => openPlayerProfile(foundPlayer.serial)}
-                        >
-                        <div class="flex flex-col text-[11px] md:text-sm items-center justify-between font-black text-red-600 gap-2 rounded-lg">
-                          <span>الأعلي</span>
-                          <span>فوز متتالي</span>
-                        </div>
-                           <div className="flex items-center gap-1 flex-col">
-                             <div className="w-10 h-10 md:w-12 md:h-12 relative flex items-center justify-center">
-                               {renderAvatarContent(foundPlayer.avatar, getLevel(foundPlayer.xp), false, foundPlayer.isOnline, foundPlayer.selectedFrame, foundPlayer.serial)}
-                             </div>
-                             <span className="text-[10px] md:text-xs font-black text-main">{truncateName(foundPlayer.name)}</span>
-                           </div>
-                           <div className="flex items-center gap-2 flex-col">
-                             <span className="text-2xl md:text-3xl font-black text-red-500 drop-shadow-sm flex items-center">{foundPlayer.streak || highestStreakValue} 🔥</span>
-                           </div>
-                        </div>
-                      );
+                  const topSerials = topPlayers.slice(0, 3).map(p => p.serial);
+                  const specialPlayers = new Map<string, { player: any, categories: { label: string, displayVal: string | number, icon: string }[] }>();
+
+                  const addSpecialPlayer = (players: any[] | undefined, val: number, label: string, icon: string, valueFormatter: (v: number, p: any) => string | number) => {
+                    if (players && players.length > 0 && val > 0) {
+                      const p = players.find(p => !topSerials.includes(p.serial));
+                      if (p) {
+                        if (!specialPlayers.has(p.serial)) {
+                          specialPlayers.set(p.serial, { player: p, categories: [] });
+                        }
+                        const pData = specialPlayers.get(p.serial)!;
+                        pData.categories.push({ 
+                          label, 
+                          displayVal: valueFormatter(val, p), 
+                          icon 
+                        });
+                      }
                     }
-                  }
-                  return null;
+                  };
+
+                  addSpecialPlayer(highestLevelPlayers, highestLevelValue, 'الأعلي مستوى', '⭐', (val, p) => getLevel(p.xp));
+                  addSpecialPlayer(highestStreakPlayers, highestStreakValue, 'فوز متتالي', '🔥', (val, p) => p.streak || val);
+                  addSpecialPlayer(highestLikesPlayers, highestLikesValue, 'الأكثر قلوب', '❤️', (val, p) => p.likes || val);
+
+                  const specialList = Array.from(specialPlayers.values());
+
+                  if (specialList.length === 0) return null;
+
+                  return (
+                    <div className={`mt-0.5 mb-2 grid gap-1.5 md:gap-2 ${specialList.length === 1 ? 'grid-cols-1' : specialList.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                      {specialList.map(({ player, categories }) => (
+                        <div 
+                          key={player.serial}
+                          className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl p-1.5 md:p-2 flex flex-col items-center gap-1.5 cursor-pointer hover:from-amber-500/20 hover:to-orange-500/20 transition-all border border-amber-500/20 box-game"
+                          onClick={() => openPlayerProfile(player.serial)}
+                        >
+                          <div className={`flex ${categories.length > 1 ? 'flex-col gap-1' : 'flex-col gap-0.5'} w-full items-center text-center flex-1`}>
+                            {categories.map((c, i) => (
+                              <div key={i} className={`flex flex-col items-center w-full ${categories.length > 1 ? 'bg-black/5 rounded-md py-0.5' : ''}`}>
+                                <span className={`font-black text-orange-600/80 leading-tight ${specialList.length === 3 ? 'text-[7px] md:text-[10px]' : 'text-[9px] md:text-[10px]'}`}>{c.label}</span>
+                                <span className={`font-black text-main flex items-center gap-0.5 justify-center mt-0.5 ${specialList.length === 3 ? 'text-[10px] md:text-sm' : 'text-xs md:text-sm'}`}>
+                                  {c.displayVal} <span className={specialList.length === 3 ? 'text-[9px]' : 'text-xs md:text-sm'}>{c.icon}</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className={`relative flex items-center justify-center shrink-0 ${specialList.length === 3 ? 'w-8 h-8 md:w-11 md:h-11 mt-1' : 'w-10 h-10 md:w-12 md:h-12 mt-1'}`}>
+                            {renderAvatarContent(player.avatar, getLevel(player.xp), false, player.isOnline, player.selectedFrame, player.serial)}
+                          </div>
+                          
+                          <span className={`font-black text-main w-full text-center truncate px-0.5 shrink-0 ${specialList.length === 3 ? 'text-[8px] md:text-xs' : 'text-[10px] md:text-xs'}`}>
+                            {truncateName(player.name)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
                 })()}
 
                 {/* Player Rank Info */}
