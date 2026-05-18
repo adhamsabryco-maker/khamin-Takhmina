@@ -682,6 +682,8 @@ const CityImage = ({ src, alt, className, onClick, wrapperClassName = '' }: City
   );
 };
 
+let sessionAdFailuresCount = parseInt(localStorage.getItem('khamin_ad_failures') || '0');
+
 export default function App() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const { customConfig, refreshConfig } = useAvatarConfig();
@@ -1206,9 +1208,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         
         if (rand < 0.80) { // 80% XP chance
            type = 'xp';
-           const xpRand = Math.random();
-           if (xpRand < 0.6) value = 10;
-           else value = 20;
+           value = 10;
            icon = `${value}XP`;
         } else if (rand < 0.82) { // 2% تخمينة chance
            type = 'token';
@@ -2802,6 +2802,16 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
       const handleAdFailure = () => {
         setIsSpinAdLoading(false);
+        if (sessionAdFailuresCount < 2) {
+          sessionAdFailuresCount += 1;
+          localStorage.setItem('khamin_ad_failures', sessionAdFailuresCount.toString());
+          showAlert('عذراً، انتظر قليلاً وحاول مرة أخرى', 'تنبيه');
+          adFinished = true;
+          setIsReelsSpinning(false);
+          return;
+        }
+        sessionAdFailuresCount = 0;
+        localStorage.setItem('khamin_ad_failures', '0');
         setMockAdProviderState({
           onComplete: () => {
             adFinished = true;
@@ -2819,7 +2829,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       if (typeof (window as any).adBreak === 'function') {
         const adTimeout = setTimeout(() => {
           if (!adFinished) handleAdFailure();
-        }, 4000);
+        }, 12000);
 
         try {
           (window as any).adBreak({
@@ -2839,6 +2849,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               showAdFn();
             },
             adViewed: () => {
+              sessionAdFailuresCount = 0;
+              localStorage.setItem('khamin_ad_failures', '0');
               adFinished = true;
               adViewed = true;
               startSpin(true);
@@ -5852,8 +5864,18 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     };
 
     const handleAdUnavailable = () => {
-      console.warn('Google Ads unavailable, falling back to mock ad temporarily');
       setIsGlobalAdLoading(false);
+      if (sessionAdFailuresCount < 2) {
+        sessionAdFailuresCount += 1;
+        localStorage.setItem('khamin_ad_failures', sessionAdFailuresCount.toString());
+        showAlert('عذراً، انتظر قليلاً وحاول مرة أخرى', 'تنبيه');
+        adTriggeredRef.current = false;
+        setActivePowerUp(null);
+        return;
+      }
+      sessionAdFailuresCount = 0;
+      localStorage.setItem('khamin_ad_failures', '0');
+      console.warn('Google Ads unavailable, falling back to mock ad temporarily');
       startMockAd();
     };
 
@@ -5861,13 +5883,13 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     if (typeof window.adBreak === 'function') {
       console.log('Calling Google AdSense adBreak');
       
-      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 4 seconds, use fallback
+      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 12 seconds, use fallback
       const adTimeout = setTimeout(() => {
         if (!localAdTriggered) {
           console.warn('AdSense adBreak timed out, using fallback');
           handleAdUnavailable();
         }
-      }, 4000);
+      }, 12000);
 
       try {
         window.adBreak({
@@ -5916,6 +5938,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           },
           adViewed: () => {
             console.log('AdSense: adViewed');
+            sessionAdFailuresCount = 0;
+            localStorage.setItem('khamin_ad_failures', '0');
             onAdComplete();
           },
           adBreakDone: (placementInfo: any) => {
@@ -5998,6 +6022,17 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     };
 
     const handleAdUnavailable = () => {
+      if (sessionAdFailuresCount < 2) {
+        sessionAdFailuresCount += 1;
+        localStorage.setItem('khamin_ad_failures', sessionAdFailuresCount.toString());
+        showAlert('عذراً، انتظر قليلاً وحاول مرة أخرى', 'تنبيه');
+        setIsWatchingCategoryAd(false);
+        setShowCategoryAdButton(true);
+        adTriggeredRef.current = false;
+        return;
+      }
+      sessionAdFailuresCount = 0;
+      localStorage.setItem('khamin_ad_failures', '0');
       console.warn('Google Ads unavailable, falling back to mock ad temporarily');
       startMockAd();
     };
@@ -6007,7 +6042,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (!localAdTriggered) {
           handleAdUnavailable();
         }
-      }, 4000);
+      }, 12000);
 
       try {
         window.adBreak({
@@ -6119,6 +6154,15 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
     const handleAdUnavailable = () => {
       setIsGlobalAdLoading(false);
+      if (sessionAdFailuresCount < 2) {
+        sessionAdFailuresCount += 1;
+        localStorage.setItem('khamin_ad_failures', sessionAdFailuresCount.toString());
+        showAlert('عذراً، انتظر قليلاً وحاول مرة أخرى', 'تنبيه');
+        adTriggeredRef.current = false;
+        return;
+      }
+      sessionAdFailuresCount = 0;
+      localStorage.setItem('khamin_ad_failures', '0');
       startMockAd();
     };
 
@@ -6127,7 +6171,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (!localAdTriggered) {
           handleAdUnavailable();
         }
-      }, 4000);
+      }, 12000);
 
       try {
         window.adBreak({
@@ -6159,6 +6203,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             showAlert('تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.', 'تنبيه');
           },
           adViewed: () => {
+            sessionAdFailuresCount = 0;
+            localStorage.setItem('khamin_ad_failures', '0');
             onAdComplete();
           },
           adBreakDone: (placementInfo: any) => {
@@ -6393,6 +6439,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     const handleAdFailure = () => {
       adTriggeredRef.current = false;
       setIsGlobalAdLoading(false);
+      if (sessionAdFailuresCount < 2) {
+        sessionAdFailuresCount += 1;
+        localStorage.setItem('khamin_ad_failures', sessionAdFailuresCount.toString());
+        showAlert('عذراً، انتظر قليلاً وحاول مرة أخرى', 'تنبيه');
+        return;
+      }
+      sessionAdFailuresCount = 0;
+      localStorage.setItem('khamin_ad_failures', '0');
       setMockAdProviderState({
         onComplete: () => {
           onAdComplete();
@@ -6414,7 +6468,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         if (!adFinished) {
           handleAdFailure();
         }
-      }, 4000);
+      }, 12000);
 
       try {
         (window as any).adBreak({
@@ -6447,6 +6501,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             if (onFailed) onFailed();
           },
           adViewed: () => {
+            sessionAdFailuresCount = 0;
+            localStorage.setItem('khamin_ad_failures', '0');
             adFinished = true;
             adViewed = true;
             clearTimeout(adSafetyTimeout);
@@ -6737,7 +6793,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         'جاري التدوير...'
                       ) : isSpinAdLoading ? (
                         <div className="flex items-center gap-2">
-                          <Loader2 className="w-5 h-5 animate-spin" /> تجهيز الإعلان...
+                          <Loader2 className="w-5 h-5 animate-spin" /> جاري تجهيز الإعلان...
                         </div>
                       ) : spinCooldown > 0 ? (
                         <>انتظر {spinCooldown} ثانية...</>
@@ -13574,7 +13630,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   className={`w-full py-4 bg-accent-blue hover:bg-blue-600 text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#1e3a8a] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2 ${(isGlobalAdLoading || isCitySearchStarting) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {(isGlobalAdLoading || isCitySearchStarting) ? (
-                    <><Loader2 className="w-6 h-6 animate-spin" /> جاري التجهيز...</>
+                    <><Loader2 className="w-6 h-6 animate-spin" /> جاري تجهيز الإعلان...</>
                   ) : (
                     <><Tv className="w-6 h-6" /> ابدأ البحث (شاهد إعلان)</>
                   )}
@@ -14283,7 +14339,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 </div>
                 {level >= 50 && (
                   <div className="absolute -top-2 -right-2 bg-accent-blue text-white text-[10px] font-bold px-1 py-0.5 rounded-full shadow-md">
-                    +{Number(count) * 50} XP
+                    +{Number(count) * 10} XP
                   </div>
                 )}
               </div>
@@ -14300,12 +14356,24 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           </p>
           
           <button
+            disabled={isGlobalAdLoading}
             onClick={() => {
+              if (isGlobalAdLoading) return;
+              setIsGlobalAdLoading(true);
               let adFinished = false;
               let adViewed = false;
               let adDismissed = false;
 
               const handleAdFailure = () => {
+                setIsGlobalAdLoading(false);
+                if (sessionAdFailuresCount < 2) {
+                  sessionAdFailuresCount += 1;
+                  localStorage.setItem('khamin_ad_failures', sessionAdFailuresCount.toString());
+                  showAlert('عذراً، انتظر قليلاً وحاول مرة أخرى', 'تنبيه');
+                  return;
+                }
+                sessionAdFailuresCount = 0;
+                localStorage.setItem('khamin_ad_failures', '0');
                 setMockAdProviderState({
                   onComplete: () => {
                     successReward();
@@ -14327,7 +14395,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               if (typeof (window as any).adBreak === 'function') {
                 const adTimeout = setTimeout(() => {
                   if (!adFinished) handleAdFailure();
-                }, 8000);
+                }, 12000);
 
                 try {
                   (window as any).adBreak({
@@ -14335,6 +14403,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     name: 'claim_rain_gift',
                     beforeAd: () => {
                       clearTimeout(adTimeout);
+                      setIsGlobalAdLoading(false);
                       Howler.mute(true);
                     },
                     afterAd: () => {
@@ -14344,18 +14413,23 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                       showAdFn();
                     },
                     adViewed: () => {
+                      sessionAdFailuresCount = 0;
+                      localStorage.setItem('khamin_ad_failures', '0');
                       adFinished = true;
                       adViewed = true;
+                      setIsGlobalAdLoading(false);
                       successReward();
                     },
                     adDismissed: () => {
                       adFinished = true;
                       adDismissed = true;
+                      setIsGlobalAdLoading(false);
                       Howler.mute(false);
                       showAlert('يجب مشاهدة الإعلان بالكامل لاستلام الهدايا!', 'تنبيه');
                     },
                     adBreakDone: (placementInfo: any) => {
                       adFinished = true;
+                      setIsGlobalAdLoading(false);
                       clearTimeout(adTimeout);
                       if (!adViewed && !adDismissed) {
                         handleAdFailure();
@@ -14372,9 +14446,13 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                 handleAdFailure();
               }
             }}
-            className="w-full bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black text-xl shadow-lg transition-all flex items-center justify-center gap-2"
+            className={`w-full bg-accent-green hover:brightness-110 text-white py-4 rounded-2xl font-black text-xl shadow-lg transition-all flex items-center justify-center gap-2 ${isGlobalAdLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <span className="text-2xl">📺</span> استلام الهدايا
+            {isGlobalAdLoading ? (
+              <><Loader2 className="w-6 h-6 animate-spin" /> جاري تجهيز الإعلان...</>
+            ) : (
+              <><span className="text-2xl">📺</span> استلام الهدايا</>
+            )}
           </button>
         </motion.div>
       </div>
