@@ -800,7 +800,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [isHighestLikes, setIsHighestLikes] = useState(false);
   const [highestLikesSerials, setHighestLikesSerials] = useState<string[]>([]);
   const [highestStreakSerials, setHighestStreakSerials] = useState<string[]>([]);
-  const [highestLikesValue, setHighestLikesValue] = useState<number>(0);
+  const [highestLikesValue, setHighestLikesValue] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('khamin_highest_likes_value') || '0');
+    } catch { return 0; }
+  });
   const [highestLikesPlayers, setHighestLikesPlayers] = useState<any[]>(() => {
     try {
       const cached = localStorage.getItem('khamin_highest_likes_players');
@@ -808,7 +812,11 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     } catch { return []; }
   });
   
-  const [highestLevelValue, setHighestLevelValue] = useState<number>(0);
+  const [highestLevelValue, setHighestLevelValue] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('khamin_highest_level_value') || '0');
+    } catch { return 0; }
+  });
   const [highestLevelSerials, setHighestLevelSerials] = useState<string[]>([]);
   const [highestLevelPlayers, setHighestLevelPlayers] = useState<any[]>(() => {
     try {
@@ -4292,7 +4300,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       newSocket.emit('get_highest_likes_serial', (data: any) => {
         if (data && typeof data === 'object') {
           if (data.serials) setHighestLikesSerials(data.serials);
-          if (data.value !== undefined) setHighestLikesValue(data.value);
+          if (data.value !== undefined) {
+             setHighestLikesValue(data.value);
+             localStorage.setItem('khamin_highest_likes_value', data.value.toString());
+          }
+          if (data.players) {
+             setHighestLikesPlayers(data.players);
+             localStorage.setItem('khamin_highest_likes_players', JSON.stringify(data.players));
+          }
         }
       });
 
@@ -4309,11 +4324,28 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
           }
         }
       });
+      
+      newSocket.emit('get_highest_level_serial', (data: any) => {
+        if (data && typeof data === 'object') {
+          if (data.serials) setHighestLevelSerials(data.serials);
+          if (data.value !== undefined) {
+             setHighestLevelValue(data.value);
+             localStorage.setItem('khamin_highest_level_value', data.value.toString());
+          }
+          if (data.players) {
+             setHighestLevelPlayers(data.players);
+             localStorage.setItem('khamin_highest_level_players', JSON.stringify(data.players));
+          }
+        }
+      });
 
       newSocket.on('highest_likes_update', (data: any) => {
         if (data && typeof data === 'object') {
           if (data.serials) setHighestLikesSerials(data.serials);
-          if (data.value !== undefined) setHighestLikesValue(data.value);
+          if (data.value !== undefined) {
+             setHighestLikesValue(data.value);
+             localStorage.setItem('khamin_highest_likes_value', data.value.toString());
+          }
           if (data.players) {
              setHighestLikesPlayers(data.players);
              localStorage.setItem('khamin_highest_likes_players', JSON.stringify(data.players));
@@ -4324,7 +4356,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       newSocket.on('highest_level_update', (data: any) => {
         if (data && typeof data === 'object') {
           if (data.serials) setHighestLevelSerials(data.serials);
-          if (data.value !== undefined) setHighestLevelValue(data.value);
+          if (data.value !== undefined) {
+             setHighestLevelValue(data.value);
+             localStorage.setItem('khamin_highest_level_value', data.value.toString());
+          }
           if (data.players) {
              setHighestLevelPlayers(data.players);
              localStorage.setItem('khamin_highest_level_players', JSON.stringify(data.players));
@@ -14893,7 +14928,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
                   const addSpecialPlayer = (players: any[] | undefined, val: number, label: string, icon: string, valueFormatter: (v: number, p: any) => string | number) => {
                     if (players && players.length > 0 && val > 0) {
-                      const p = players.find(p => !topSerials.includes(p.serial));
+                      const p = players.find(p => !topSerials.includes(p.serial) && !p.isAdmin);
                       if (p) {
                         if (!specialPlayers.has(p.serial)) {
                           specialPlayers.set(p.serial, { player: p, categories: [] });
