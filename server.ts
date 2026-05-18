@@ -2250,8 +2250,10 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   let topPlayersCacheTime = 0;
   let highestLikesSerials: string[] = [];
   let highestStreakSerials: string[] = [];
+  let highestLevelSerials: string[] = [];
   let globalMaxLikes = 0;
   let globalMaxStreak = 0;
+  let globalMaxLevelXp = 0;
 
   function isPlayerActiveForLeaderboard(p: any, now: number) {
     if (p.isAdmin || p.isPermanentBan || (p.banUntil && p.banUntil > now)) return false;
@@ -2286,8 +2288,22 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       }
     }
     
+    const highestLikesPlayersData = rewardSerials.map(serial => {
+      const p = allPlayers.get(serial);
+      if (p) {
+        return {
+          serial: p.serial,
+          name: p.name,
+          avatar: p.avatar,
+          selectedFrame: p.selectedFrame,
+          xp: p.xp
+        };
+      }
+      return null;
+    }).filter(p => p !== null);
+
     highestLikesSerials = rewardSerials;
-    io.emit('highest_likes_update', { serials: highestLikesSerials, value: globalMaxLikes });
+    io.emit('highest_likes_update', { serials: highestLikesSerials, value: globalMaxLikes, players: highestLikesPlayersData });
   }
 
   function updateHighestStreakGlobal() {
@@ -2337,11 +2353,61 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     io.emit('highest_streak_update', { serials: highestStreakSerials, value: globalMaxStreak, players: highestStreakPlayersData });
   }
 
+  function updateHighestLevelGlobal() {
+    let highestLevelPlayer = '';
+    let maxLevelXp = 0;
+    const now = Date.now();
+    
+    // Find max xp among non-admins
+    for (const p of allPlayers.values()) {
+      if (isPlayerActiveForLeaderboard(p, now)) {
+        if ((p.xp || 0) > maxLevelXp) {
+          maxLevelXp = p.xp || 0;
+          highestLevelPlayer = p.serial;
+        }
+      }
+    }
+    
+    globalMaxLevelXp = maxLevelXp;
+    
+    const rewardSerials = [];
+    if (highestLevelPlayer) rewardSerials.push(highestLevelPlayer);
+
+    // Check if any admin qualifies (xp >= maxLevelXp AND maxLevelXp > 0)
+    if (maxLevelXp > 0) {
+      for (const p of allPlayers.values()) {
+        if (p.isAdmin && (p.xp || 0) >= maxLevelXp) {
+           if (!rewardSerials.includes(p.serial)) {
+             rewardSerials.push(p.serial);
+           }
+        }
+      }
+    }
+
+    const highestLevelPlayersData = rewardSerials.map(serial => {
+      const p = allPlayers.get(serial);
+      if (p) {
+        return {
+          serial: p.serial,
+          name: p.name,
+          avatar: p.avatar,
+          selectedFrame: p.selectedFrame,
+          xp: p.xp
+        };
+      }
+      return null;
+    }).filter(p => p !== null);
+
+    highestLevelSerials = rewardSerials;
+    io.emit('highest_level_update', { serials: highestLevelSerials, value: globalMaxLevelXp, players: highestLevelPlayersData });
+  }
+
   function getTopPlayers(force = false) {
     const now = Date.now();
     if (force || now - topPlayersCacheTime > 60000) { // Cache for 1 minute unless forced
       updateHighestLikesGlobal();
       updateHighestStreakGlobal();
+      updateHighestLevelGlobal();
 
       cachedTopPlayers = Array.from(allPlayers.values())
         .filter(p => isPlayerActiveForLeaderboard(p, now)) // Exclude admins, banned, and inactive players
@@ -4098,7 +4164,20 @@ io.on("connection", (socket) => {
     socket.emit('theme_updated', themeConfig);
     socket.emit('top_players_update', getTopPlayers());
     socket.emit('policies_update', gamePolicies);
-    socket.emit('highest_likes_update', { serials: highestLikesSerials, value: globalMaxLikes });
+    const highestLikesPlayersDataForNewUser = highestLikesSerials.map(serial => {
+      const p = allPlayers.get(serial);
+      if (p) {
+        return {
+          serial: p.serial,
+          name: p.name,
+          avatar: p.avatar,
+          selectedFrame: p.selectedFrame,
+          xp: p.xp
+        };
+      }
+      return null;
+    }).filter(p => p !== null);
+    socket.emit('highest_likes_update', { serials: highestLikesSerials, value: globalMaxLikes, players: highestLikesPlayersDataForNewUser });
     const highestStreakPlayersDataForNewUser = highestStreakSerials.map(serial => {
       const p = allPlayers.get(serial);
       if (p) {
@@ -4115,6 +4194,21 @@ io.on("connection", (socket) => {
       return null;
     }).filter(p => p !== null);
     socket.emit('highest_streak_update', { serials: highestStreakSerials, value: globalMaxStreak, players: highestStreakPlayersDataForNewUser });
+    
+    const highestLevelPlayersDataForNewUser = highestLevelSerials.map(serial => {
+      const p = allPlayers.get(serial);
+      if (p) {
+        return {
+          serial: p.serial,
+          name: p.name,
+          avatar: p.avatar,
+          selectedFrame: p.selectedFrame,
+          xp: p.xp
+        };
+      }
+      return null;
+    }).filter(p => p !== null);
+    socket.emit('highest_level_update', { serials: highestLevelSerials, value: globalMaxLevelXp, players: highestLevelPlayersDataForNewUser });
     
     try {
       const luckyWheelSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('lucky_wheel_enabled') as { value: string } | undefined;
