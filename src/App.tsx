@@ -14959,7 +14959,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                           className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl p-1.5 md:p-2 flex flex-col items-center gap-1.5 cursor-pointer hover:from-amber-500/20 hover:to-orange-500/20 transition-all border border-amber-500/20 box-game"
                           onClick={() => openPlayerProfile(player.serial)}
                         >
-                          <div className={`flex ${categories.length > 1 ? 'flex-col gap-1' : 'flex-col gap-0.5'} w-full items-center text-center flex-1`}>
+                          <div className={`flex ${categories.length > 1 ? 'gap-1' : 'gap-0.5'} w-full items-center text-center flex-1`}>
                             {categories.map((c, i) => (
                               <div key={i} className={`flex flex-col items-center w-full ${categories.length > 1 ? 'bg-black/5 rounded-md py-0.5' : ''}`}>
                                 <span className={`font-black text-orange-600/80 leading-tight ${specialList.length === 3 ? 'text-[7px] md:text-[10px]' : 'text-[9px] md:text-[10px]'}`}>{c.label}</span>
