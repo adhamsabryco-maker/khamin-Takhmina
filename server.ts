@@ -2264,11 +2264,10 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   function updateHighestLikesGlobal() {
     let highestLikesPlayer = '';
     let maxLikes = 0;
-    const now = Date.now();
     
-    // Find max likes among non-admins
+    // Find max likes among ALL non-admins (active or inactive)
     for (const p of allPlayers.values()) {
-      if (isPlayerActiveForLeaderboard(p, now)) {
+      if (!p.isAdmin) {
         if ((p.likes || 0) > maxLikes) {
           maxLikes = p.likes || 0;
           highestLikesPlayer = p.serial;
@@ -2280,13 +2279,6 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     
     const rewardSerials = [];
     if (highestLikesPlayer) rewardSerials.push(highestLikesPlayer);
-    
-    // Check if any admin qualifies (likes >= maxLikes AND maxLikes > 0)
-    for (const p of allPlayers.values()) {
-      if (p.isAdmin && (p.likes || 0) >= maxLikes && maxLikes > 0 && !rewardSerials.includes(p.serial)) {
-        rewardSerials.push(p.serial);
-      }
-    }
     
     const highestLikesPlayersData = rewardSerials.map(serial => {
       const p = allPlayers.get(serial);
@@ -2310,11 +2302,10 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   function updateHighestStreakGlobal() {
     let highestStreakPlayer = '';
     let maxStreak = 0;
-    const now = Date.now();
     
-    // Find max streak among non-admins
+    // Find max streak among ALL non-admins
     for (const p of allPlayers.values()) {
-      if (isPlayerActiveForLeaderboard(p, now)) {
+      if (!p.isAdmin) {
         if ((p.streak || 0) > maxStreak) {
           maxStreak = p.streak || 0;
           highestStreakPlayer = p.serial;
@@ -2326,13 +2317,6 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     
     const rewardSerials = [];
     if (highestStreakPlayer) rewardSerials.push(highestStreakPlayer);
-
-    // Check if any admin qualifies (streak >= maxStreak AND maxStreak > 0)
-    for (const p of allPlayers.values()) {
-      if (p.isAdmin && (p.streak || 0) >= maxStreak && maxStreak > 0 && !rewardSerials.includes(p.serial)) {
-        rewardSerials.push(p.serial);
-      }
-    }
     
     const highestStreakPlayersData = rewardSerials.map(serial => {
       const p = allPlayers.get(serial);
@@ -2358,11 +2342,10 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   function updateHighestLevelGlobal() {
     let highestLevelPlayer = '';
     let maxLevelXp = 0;
-    const now = Date.now();
     
-    // Find max xp among non-admins
+    // Find max xp among ALL non-admins
     for (const p of allPlayers.values()) {
-      if (isPlayerActiveForLeaderboard(p, now)) {
+      if (!p.isAdmin) {
         if ((p.xp || 0) > maxLevelXp) {
           maxLevelXp = p.xp || 0;
           highestLevelPlayer = p.serial;
@@ -2374,17 +2357,6 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     
     const rewardSerials = [];
     if (highestLevelPlayer) rewardSerials.push(highestLevelPlayer);
-
-    // Check if any admin qualifies (xp >= maxLevelXp AND maxLevelXp > 0)
-    if (maxLevelXp > 0) {
-      for (const p of allPlayers.values()) {
-        if (p.isAdmin && (p.xp || 0) >= maxLevelXp) {
-           if (!rewardSerials.includes(p.serial)) {
-             rewardSerials.push(p.serial);
-           }
-        }
-      }
-    }
 
     const highestLevelPlayersData = rewardSerials.map(serial => {
       const p = allPlayers.get(serial);
