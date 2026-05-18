@@ -4579,7 +4579,7 @@ io.on("connection", (socket) => {
           if (typeof count === 'number' && count > 0) {
             // Level 50+ or Level 50+ Pro: Convert to XP
             if (playerLevel >= 50) {
-              player.xp = (player.xp || 0) + (count * 100);
+              player.xp = (player.xp || 0) + (count * 10);
             } else {
               player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + count;
               player.rainGiftHelpers[helperId] = (player.rainGiftHelpers[helperId] || 0) + count;
