@@ -2296,7 +2296,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           name: p.name,
           avatar: p.avatar,
           selectedFrame: p.selectedFrame,
-          xp: p.xp
+          xp: p.xp,
+          isAdmin: !!p.isAdmin
         };
       }
       return null;
@@ -2343,7 +2344,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           xp: p.xp,
           selectedFrame: p.selectedFrame,
           isOnline: playerSockets.has(p.serial),
-          streak: p.streak
+          streak: p.streak,
+          isAdmin: !!p.isAdmin
         };
       }
       return null;
@@ -2392,7 +2394,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           name: p.name,
           avatar: p.avatar,
           selectedFrame: p.selectedFrame,
-          xp: p.xp
+          xp: p.xp,
+          isAdmin: !!p.isAdmin
         };
       }
       return null;
@@ -4172,7 +4175,8 @@ io.on("connection", (socket) => {
           name: p.name,
           avatar: p.avatar,
           selectedFrame: p.selectedFrame,
-          xp: p.xp
+          xp: p.xp,
+          isAdmin: !!p.isAdmin
         };
       }
       return null;
@@ -4188,7 +4192,8 @@ io.on("connection", (socket) => {
           xp: p.xp,
           selectedFrame: p.selectedFrame,
           isOnline: playerSockets.has(p.serial),
-          streak: p.streak
+          streak: p.streak,
+          isAdmin: !!p.isAdmin
         };
       }
       return null;
@@ -4203,7 +4208,8 @@ io.on("connection", (socket) => {
           name: p.name,
           avatar: p.avatar,
           selectedFrame: p.selectedFrame,
-          xp: p.xp
+          xp: p.xp,
+          isAdmin: !!p.isAdmin
         };
       }
       return null;
@@ -4994,15 +5000,27 @@ io.on("connection", (socket) => {
     });
     
     socket.on("get_highest_likes_serial", (callback) => {
-      callback({ serials: highestLikesSerials, value: globalMaxLikes });
+      const highestLikesPlayersData = highestLikesSerials.map(serial => {
+        const p = allPlayers.get(serial);
+        return p ? { serial: p.serial, name: p.name, avatar: p.avatar, selectedFrame: p.selectedFrame, xp: p.xp, isAdmin: !!p.isAdmin } : null;
+      }).filter(p => p !== null);
+      callback({ serials: highestLikesSerials, value: globalMaxLikes, players: highestLikesPlayersData });
     });
 
     socket.on("get_highest_streak_serial", (callback) => {
       const highestStreakPlayersData = highestStreakSerials.map(serial => {
         const p = allPlayers.get(serial);
-        return p ? { serial: p.serial, name: p.name, avatar: p.avatar, xp: p.xp, selectedFrame: p.selectedFrame, isOnline: playerSockets.has(p.serial), streak: p.streak } : null;
+        return p ? { serial: p.serial, name: p.name, avatar: p.avatar, xp: p.xp, selectedFrame: p.selectedFrame, isOnline: playerSockets.has(p.serial), streak: p.streak, isAdmin: !!p.isAdmin } : null;
       }).filter(p => p !== null);
       callback({ serials: highestStreakSerials, value: globalMaxStreak, players: highestStreakPlayersData });
+    });
+
+    socket.on("get_highest_level_serial", (callback) => {
+      const highestLevelPlayersData = highestLevelSerials.map(serial => {
+        const p = allPlayers.get(serial);
+        return p ? { serial: p.serial, name: p.name, avatar: p.avatar, selectedFrame: p.selectedFrame, xp: p.xp, isAdmin: !!p.isAdmin } : null;
+      }).filter(p => p !== null);
+      callback({ serials: highestLevelSerials, value: globalMaxLevelXp, players: highestLevelPlayersData });
     });
     
     socket.on("get_city_search", ({ serial }) => {
