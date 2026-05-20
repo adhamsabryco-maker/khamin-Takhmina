@@ -1408,6 +1408,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   try { db.exec(`ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN hideMyInfo INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN hideFriendRequests INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastSpinDate TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN dailySpinCount INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN freeSpinUsed INTEGER DEFAULT 0`); } catch (e) {}
@@ -1732,8 +1734,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   }
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -1938,6 +1940,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
         rainGiftClaimedDay: player.rainGiftClaimedDay || null,
         notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0,
+        hideMyInfo: player.hideMyInfo !== undefined ? player.hideMyInfo : 0,
+        hideFriendRequests: player.hideFriendRequests !== undefined ? player.hideFriendRequests : 0,
         lastSpinDate: player.lastSpinDate || null,
         dailySpinCount: player.dailySpinCount || 0,
         freeSpinUsed: player.freeSpinUsed || 0,
@@ -1994,6 +1998,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
         rainGiftClaimedDay: player.rainGiftClaimedDay || null,
         notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0,
+        hideMyInfo: player.hideMyInfo !== undefined ? player.hideMyInfo : 0,
+        hideFriendRequests: player.hideFriendRequests !== undefined ? player.hideFriendRequests : 0,
         lastSpinDate: player.lastSpinDate || null,
         dailySpinCount: player.dailySpinCount || 0,
         freeSpinUsed: player.freeSpinUsed || 0,
@@ -2074,6 +2080,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           rainGiftHelpers: JSON.parse(row.rainGiftHelpers || '{}'),
           rainGiftClaimedDay: row.rainGiftClaimedDay || null,
           notificationsEnabled: row.notificationsEnabled !== undefined ? row.notificationsEnabled : 0,
+          hideMyInfo: row.hideMyInfo !== undefined ? row.hideMyInfo : 0,
+          hideFriendRequests: row.hideFriendRequests !== undefined ? row.hideFriendRequests : 0,
           lastSpinDate: row.lastSpinDate || null,
           dailySpinCount: row.dailySpinCount || 0,
           freeSpinUsed: row.freeSpinUsed || 0,
@@ -3207,7 +3215,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           helpersUsedCount: 0,
           ownedHelpers: match.p1.ownedHelpers || {},
           isAdmin: !!p1ServerPlayer?.isAdmin,
-          isPro: !!p1ServerPlayer?.proPackageExpiry && p1ServerPlayer.proPackageExpiry > Date.now()
+          isPro: !!p1ServerPlayer?.proPackageExpiry && p1ServerPlayer.proPackageExpiry > Date.now(),
+          hideFriendRequests: p1ServerPlayer ? (p1ServerPlayer.hideFriendRequests || 0) : 0
         },
         {
           id: match.p2.socket.id,
@@ -3244,7 +3253,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           helpersUsedCount: 0,
           ownedHelpers: match.p2.ownedHelpers || {},
           isAdmin: !!p2ServerPlayer?.isAdmin,
-          isPro: !!p2ServerPlayer?.proPackageExpiry && p2ServerPlayer.proPackageExpiry > Date.now()
+          isPro: !!p2ServerPlayer?.proPackageExpiry && p2ServerPlayer.proPackageExpiry > Date.now(),
+          hideFriendRequests: p2ServerPlayer ? (p2ServerPlayer.hideFriendRequests || 0) : 0
         }
       ],
       gameState: "waiting",
@@ -4959,6 +4969,15 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("update_player_privacy", ({ serial, hideMyInfo, hideFriendRequests }) => {
+      const player = allPlayers.get(serial);
+      if (player) {
+        if (hideMyInfo !== undefined) player.hideMyInfo = hideMyInfo ? 1 : 0;
+        if (hideFriendRequests !== undefined) player.hideFriendRequests = hideFriendRequests ? 1 : 0;
+        savePlayerData(serial);
+      }
+    });
+
     socket.on("update_player_notifications", ({ serial, enabled }) => {
       const player = allPlayers.get(serial);
       if (player) {
@@ -5345,7 +5364,8 @@ io.on("connection", (socket) => {
           helpersUsedCount: 0,
           ownedHelpers: serverPlayer.ownedHelpers || {},
           isAdmin: !!serverPlayer.isAdmin,
-          isPro: !!serverPlayer.proPackageExpiry && serverPlayer.proPackageExpiry > Date.now()
+          isPro: !!serverPlayer.proPackageExpiry && serverPlayer.proPackageExpiry > Date.now(),
+          hideFriendRequests: serverPlayer.hideFriendRequests || 0
         };
         room.players.push(player);
         
@@ -7716,6 +7736,28 @@ io.on("connection", (socket) => {
     socket.on("get_friend_status", handleCheckFriendStatus);
     socket.on("check_friend_status", handleCheckFriendStatus);
 
+    socket.on("search_players_by_name", ({ query, requesterSerial }, callback) => {
+      try {
+        if (!query || typeof query !== 'string' || query.trim().length === 0) {
+          callback({ results: [] });
+          return;
+        }
+
+        const searchQuery = `%${query.trim()}%`;
+        const results = db.prepare(`
+          SELECT serial, name, avatar, level, hideFriendRequests, selectedFrame 
+          FROM players 
+          WHERE name LIKE ? 
+          LIMIT 10
+        `).all(searchQuery);
+
+        callback({ success: true, results: results || [] });
+      } catch (error) {
+        console.error("Error searching players:", error);
+        callback({ success: false, error: "حدث خطأ أثناء البحث" });
+      }
+    });
+
     socket.on("get_player_profile", ({ targetSerial, requesterSerial }, callback) => {
       try {
         const targetPlayer = allPlayers.get(targetSerial);
@@ -7780,7 +7822,9 @@ io.on("connection", (socket) => {
             titles: [], // Future use
             ownedFrames: ownedFrames,
             isBlocked: isBlocked,
-            hasBlockedMe: hasBlockedMe
+            hasBlockedMe: hasBlockedMe,
+            hideMyInfo: targetPlayer.hideMyInfo || 0,
+            hideFriendRequests: targetPlayer.hideFriendRequests || 0
           }
         });
       } catch (error) {
@@ -7907,6 +7951,12 @@ io.on("connection", (socket) => {
     const handleAddFriend = async ({ serial, mySerial, targetSerial }: any, callback: any) => {
       const actualMySerial = mySerial || serial;
       if (!actualMySerial || !targetSerial || actualMySerial === targetSerial) return callback({ error: 'Invalid targets' });
+      
+      const targetPlayerCheck = db.prepare('SELECT hideFriendRequests FROM players WHERE serial = ?').get(targetSerial) as any;
+      if (targetPlayerCheck && targetPlayerCheck.hideFriendRequests) {
+        return callback({ error: 'هذا اللاعب لا يقبل طلبات الصداقة' });
+      }
+
       const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
       const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
       try {
