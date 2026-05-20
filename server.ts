@@ -2266,7 +2266,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   function isPlayerActiveForLeaderboard(p: any, now: number) {
     if (p.isAdmin || p.isPermanentBan || (p.banUntil && p.banUntil > now)) return false;
     if (!p.lastActiveAt) return false;
-    return (now - p.lastActiveAt <= 72 * 60 * 60 * 1000);
+    return (now - p.lastActiveAt <= 24 * 60 * 60 * 1000); // 24 hours
   }
 
   function updateHighestLikesGlobal() {
