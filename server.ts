@@ -7747,7 +7747,7 @@ io.on("connection", (socket) => {
         const results = db.prepare(`
           SELECT serial, name, avatar, level, hideFriendRequests, selectedFrame 
           FROM players 
-          WHERE name LIKE ? 
+          WHERE name LIKE ? AND (isAdmin IS NULL OR isAdmin = 0)
           LIMIT 10
         `).all(searchQuery);
 
