@@ -2474,6 +2474,29 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     }
   }, [friendRequests.length, collectionNotifications.length, systemMessages.length, likeNotifications.length, giftNotifications.length]);
 
+  // Prevent background scrolling when modals are open
+  useEffect(() => {
+    const checkScrollState = () => {
+      const overlays = document.querySelectorAll('.fixed.inset-0');
+      let shouldHide = false;
+      overlays.forEach(el => {
+        if (!el.classList.contains('bg-transparent')) {
+          shouldHide = true;
+        }
+      });
+      document.body.style.overflow = shouldHide ? 'hidden' : '';
+    };
+    
+    checkScrollState();
+    const observer = new MutationObserver(checkScrollState);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      observer.disconnect();
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   // Poll friends list for online status
   useEffect(() => {
     if (socket && playerSerial) {
@@ -7393,7 +7416,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                >
                                  <Gift className="w-4 h-4" />
                                </button>
-                               {!player.hideFriendRequests && (
+                               {!player.hideFriendRequests && !friendsList.some(f => f.serial === player.serial) && (
                                  <button 
                                    onClick={(e) => { e.stopPropagation(); playSound('clickOpen'); handleAddFriend(player.serial); }}
                                    className="bg-green-100 hover:bg-green-200 text-green-700 p-2 text-xs rounded-full font-bold shadow-sm border border-green-200 transition-colors"
@@ -8088,7 +8111,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
                <div className="relative">
                  {data.serial !== playerSerial && !!data.hideMyInfo && (
-                   <div className="absolute inset-0 bg-gray-200/95 rounded-xl z-10 flex flex-col items-center justify-center border-2 border-gray-300 backdrop-blur-sm shadow-[inset_0_0_20px_rgba(0,0,0,0.05)]">
+                   <div className="absolute inset-0 bg-gray-200/95 rounded-xl z-10 flex flex-col items-center justify-center border-2 border-gray-300 backdrop-blur-[2px] shadow-[inset_0_0_20px_rgba(0,0,0,0.05)]">
                      <Lock className="w-10 h-10 text-gray-400 mb-2 drop-shadow-sm" />
                      <span className="font-black text-gray-500 text-lg drop-shadow-sm decoration-2">خاص</span>
                    </div>
