@@ -76,6 +76,7 @@ import {
   Disc,
   Key,
   LogIn,
+  UserX,
 } from 'lucide-react';
 
 import easyGuessData from './data/easyGuess.json';
@@ -957,6 +958,16 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem('khamin_notifications_enabled');
     return saved !== null ? saved === 'true' : true;
+  });
+
+  const [hideMyInfo, setHideMyInfo] = useState(() => {
+    const saved = localStorage.getItem('khamin_hide_my_info');
+    return saved !== null ? saved === 'true' : false;
+  });
+
+  const [hideFriendRequests, setHideFriendRequests] = useState(() => {
+    const saved = localStorage.getItem('khamin_hide_friend_requests');
+    return saved !== null ? saved === 'true' : false;
   });
 
   useEffect(() => {
@@ -2324,6 +2335,27 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       socket.emit('update_player_notifications', { serial: playerSerial, enabled: newValue });
     }
   };
+
+  const toggleHideMyInfo = () => {
+    const newValue = !hideMyInfo;
+    setHideMyInfo(newValue);
+    playSound('clickOpen');
+    localStorage.setItem('khamin_hide_my_info', newValue.toString());
+    if (socket && isConnected) {
+      socket.emit('update_player_privacy', { serial: playerSerial, hideMyInfo: newValue });
+    }
+  };
+
+  const toggleHideFriendRequests = () => {
+    const newValue = !hideFriendRequests;
+    setHideFriendRequests(newValue);
+    playSound('clickOpen');
+    localStorage.setItem('khamin_hide_friend_requests', newValue.toString());
+    if (socket && isConnected) {
+      socket.emit('update_player_privacy', { serial: playerSerial, hideFriendRequests: newValue });
+    }
+  };
+
   const [playerCollection, setPlayerCollection] = useState<any[]>([]);
   const [claimedCollectionRewards, setClaimedCollectionRewards] = useState<any[]>([]);
   const [seenCategoryCounts, setSeenCategoryCounts] = useState<Record<string, number>>(() => {
@@ -2363,6 +2395,40 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [showRecentOpponents, setShowRecentOpponents] = useState(false);
 
   // Friend System State
+  const [showPlayerSearchModal, setShowPlayerSearchModal] = useState(false);
+  const [playerSearchQuery, setPlayerSearchQuery] = useState('');
+  const [playerSearchResults, setPlayerSearchResults] = useState<any[]>([]);
+  const [isSearchingPlayers, setIsSearchingPlayers] = useState(false);
+
+  useEffect(() => {
+    if (!showPlayerSearchModal) {
+      setPlayerSearchQuery('');
+      setPlayerSearchResults([]);
+      return;
+    }
+    
+    if (playerSearchQuery.trim().length === 0) {
+      setPlayerSearchResults([]);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(() => {
+      setIsSearchingPlayers(true);
+      if (socket && isConnected) {
+        socket.emit("search_players_by_name", { query: playerSearchQuery, requesterSerial: playerSerial }, (response: any) => {
+          setIsSearchingPlayers(false);
+          if (response && response.success) {
+            setPlayerSearchResults(response.results);
+          } else {
+            setPlayerSearchResults([]);
+          }
+        });
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [playerSearchQuery, showPlayerSearchModal, socket, isConnected, playerSerial]);
+
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [friendsList, setFriendsList] = useState<any[]>([]);
@@ -7250,6 +7316,110 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     </AnimatePresence>
   );
 
+  const renderPlayerSearchModal = () => {
+    return (
+      <AnimatePresence>
+        {showPlayerSearchModal && (
+          <div className="fixed inset-0 bg-black/60 z-[5000] flex items-center justify-center p-4" onClick={() => setShowPlayerSearchModal(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-game w-full max-w-md rounded-2xl md:rounded-[30px] border-4 border-[#F2DEB5] shadow-2xl overflow-hidden flex flex-col h-[65vh] max-h-[80vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-[#4A2C11] p-4 flex justify-between items-center relative border-b-2 border-amber-900/50 shadow-md z-10 w-full shrink-0">
+                <button 
+                  onClick={() => { playSound('clickClose'); setShowPlayerSearchModal(false); }}
+                  className="top-3 right-3 w-8 h-8 bg-white text-black border-4 border-black rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none"
+                >
+                  <X size={24} />
+                </button>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-black text-lg md:text-xl text-[#F2DEB5]">ابحث عن اللاعبين بالأسم</h2>
+                  <Search className="w-5 h-5 md:w-6 md:h-6 text-[#F2DEB5]" />
+                </div>
+              </div>
+
+              <div className="p-4 bg-amber-50 shrink-0 border-b-2 border-game relative z-10">
+                <div className="relative">
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                     <Search className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <input
+                    dir="rtl"
+                    type="text"
+                    value={playerSearchQuery}
+                    onChange={(e) => setPlayerSearchQuery(e.target.value)}
+                    placeholder="اكتب اسم اللاعب للبحث..."
+                    className="w-full bg-white border-2 border-game rounded-xl py-3 pr-10 pl-4 font-bold text-brown-dark focus:outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 transition-all text-sm md:text-base outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto w-full p-4 md:p-4 bg-gray-50 custom-scrollbar">
+                {isSearchingPlayers ? (
+                   <div className="h-full flex flex-col items-center justify-center py-10 opacity-70">
+                     <div className="w-12 h-12 border-4 border-amber-600/30 border-t-amber-600 rounded-full animate-spin mb-4"></div>
+                     <p className="text-amber-800 font-bold">جاري البحث...</p>
+                   </div>
+                ) : playerSearchQuery.trim().length === 0 ? (
+                   <div className="h-full flex flex-col items-center justify-center py-10 opacity-50 text-center px-4">
+                     <Users className="w-20 h-20 text-amber-900/20 mb-4" />
+                     <p className="text-amber-900 font-bold text-lg">ابحث عن أي لاعب باستخدام اسمه</p>
+                     <p className="text-sm text-amber-900/70 mt-2">ستظهر النتائج هنا فوراً</p>
+                   </div>
+                ) : playerSearchResults.filter(p => p.serial !== playerSerial).length > 0 ? (
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full content-start">
+                      {playerSearchResults.filter(p => p.serial !== playerSerial).map(player => (
+                        <div key={player.serial} className="bg-white border-2 border-game p-3 rounded-xl flex items-center justify-between shadow-sm cursor-pointer hover:bg-amber-50/50 transition-colors" onClick={() => { playSound('clickOpen'); setShowPlayerSearchModal(false); openPlayerProfile(player.serial); }}>
+                           <div className="flex items-center gap-3">
+                             <div className="relative">
+                               <div className="w-12 h-12">
+                                 {renderAvatarContent(player.avatar, player.level || 1, false, false, player.selectedFrame, player.serial)}
+                               </div>
+                               <div className="absolute -bottom-2 -left-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded border border-white shadow-sm">
+                                 {player.level || 1}
+                               </div>
+                             </div>
+                             <span className="font-bold text-brown-dark truncate max-w-[100px] text-sm md:text-base" dir="auto">{player.name}</span>
+                           </div>
+                           <div className="flex gap-2">
+                               <button 
+                                 onClick={(e) => { e.stopPropagation(); playSound('clickOpen'); setShowGiftModal({serial: player.serial, name: player.name, avatar: player.avatar, level: player.level || 1, selectedFrame: player.selectedFrame}); }}
+                                 className="bg-purple-100 hover:bg-purple-200 text-purple-600 p-2 text-xs rounded-full font-bold shadow-sm border border-purple-200 transition-colors"
+                                 title="إرسال هدية"
+                               >
+                                 <Gift className="w-4 h-4" />
+                               </button>
+                               {!player.hideFriendRequests && (
+                                 <button 
+                                   onClick={(e) => { e.stopPropagation(); playSound('clickOpen'); handleAddFriend(player.serial); }}
+                                   className="bg-green-100 hover:bg-green-200 text-green-700 p-2 text-xs rounded-full font-bold shadow-sm border border-green-200 transition-colors"
+                                   title="إضافة صديق"
+                                 >
+                                   <UserPlus className="w-4 h-4" />
+                                 </button>
+                               )}
+                           </div>
+                        </div>
+                      ))}
+                   </div>
+                ) : (
+                   <div className="h-full flex flex-col items-center justify-center py-10 opacity-70">
+                     <Search className="w-16 h-16 text-amber-900/30 mb-4" />
+                     <p className="text-amber-900 font-bold text-lg">لا يوجد لاعب بهذا الأسم!</p>
+                   </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    );
+  };
+
   const renderFriendsModal = () => {
     const sortedFriends = [...friendsList].sort((a, b) => {
       if (a.isOnline && !b.isOnline) return -1;
@@ -7862,7 +8032,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               </div>
               
                {/* Add Friend Button */}
-               {data.serial !== playerSerial && friendStatus !== 'friends' && !data.isAdmin && !data.isBlocked && !data.hasBlockedMe && (
+               {data.serial !== playerSerial && friendStatus !== 'friends' && !data.isAdmin && !data.isBlocked && !data.hasBlockedMe && (!data.hideFriendRequests || friendStatus !== 'none') && (
                   <button
                     disabled={friendStatus !== 'none'}
                     onClick={() => {
@@ -7916,8 +8086,15 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                  )}
                </div>
 
-               {/* Helpers and Keys */}
-               <div className="bg-white rounded-xl p-2 mb-2 border-2 border-gray-100 shadow-sm">
+               <div className="relative">
+                 {data.serial !== playerSerial && !!data.hideMyInfo && (
+                   <div className="absolute inset-0 bg-gray-200/95 rounded-xl z-10 flex flex-col items-center justify-center border-2 border-gray-300 backdrop-blur-sm shadow-[inset_0_0_20px_rgba(0,0,0,0.05)]">
+                     <Lock className="w-10 h-10 text-gray-400 mb-2 drop-shadow-sm" />
+                     <span className="font-black text-gray-500 text-lg drop-shadow-sm decoration-2">خاص</span>
+                   </div>
+                 )}
+                 {/* Helpers and Keys */}
+                 <div className="bg-white rounded-xl p-2 mb-2 border-2 border-gray-100 shadow-sm relative">
                   <h3 className="text-xs font-black text-brown-muted mb-1 text-center">المقتنيات والباقات</h3>
                   <div className="flex flex-wrap justify-center gap-0.5" dir="ltr">
                         <span 
@@ -7987,6 +8164,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     )}
                   </div>
                </div>
+
+               </div>
             </div>
           </motion.div>
         </motion.div>
@@ -7998,6 +8177,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     <>
       {renderPlayerProfileModal()}
       {renderFriendsModal()}
+      {renderPlayerSearchModal()}
       {renderFriendRequestsModal()}
       {renderAskFriendModal()}
       {renderGiftModal()}
@@ -9393,6 +9573,36 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         className={`w-12 h-6 rounded-full border-2 border-black transition-all relative ${notificationsEnabled ? 'bg-accent-green' : 'bg-gray-300'}`}
                       >
                         <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border-2 border-black transition-all ${notificationsEnabled ? 'right-0.5' : 'left-0.5'}`}></div>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between flex-row-reverse">
+                      <div className="flex items-center gap-2 flex-row-reverse">
+                        <div className="w-8 h-8 bg-red-500 rounded-xl flex items-center justify-center text-white shadow-sm border-2 border-black">
+                          <Lock className="w-4 h-4" />
+                        </div>
+                        <span className="text-sm font-black text-brown-muted">إخفاء معلوماتي</span>
+                      </div>
+                      <button 
+                        onClick={toggleHideMyInfo}
+                        className={`w-12 h-6 rounded-full border-2 border-black transition-all relative ${hideMyInfo ? 'bg-accent-green' : 'bg-gray-300'}`}
+                      >
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border-2 border-black transition-all ${hideMyInfo ? 'right-0.5' : 'left-0.5'}`}></div>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between flex-row-reverse">
+                      <div className="flex items-center gap-2 flex-row-reverse">
+                        <div className="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-sm border-2 border-black">
+                          <UserX className="w-4 h-4" />
+                        </div>
+                        <span className="text-sm font-black text-brown-muted">إخفاء طلبات الصداقة</span>
+                      </div>
+                      <button 
+                        onClick={toggleHideFriendRequests}
+                        className={`w-12 h-6 rounded-full border-2 border-black transition-all relative ${hideFriendRequests ? 'bg-accent-green' : 'bg-gray-300'}`}
+                      >
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border-2 border-black transition-all ${hideFriendRequests ? 'right-0.5' : 'left-0.5'}`}></div>
                       </button>
                     </div>
                   </div>
@@ -14713,29 +14923,31 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         }`} />
                         <span className="text-[11px] md:text-[12px]" dir="ltr">{proPackageDaysLeft}</span>
                       </span>                      
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="تخمينات">
+                        <span className="bg-white/50 flex items-center gap-0.5" title="تخمينات">
                           <span className="text-[13px] md:text-[14px]"><img src="/Takhmina_coin_02.png" className="w-3 h-3 md:w-4 md:h-4" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(tokens, tempItems?.tokens || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="مفاتيح">
+                        <span className="bg-white/50 flex items-center gap-0.5" title="مفاتيح">
                           <span className="text-[13px] md:text-[14px]"><Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(keys || 0, tempItems?.keys || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="إعجابات">
+                        <span className="bg-white/50 flex items-center gap-0.5" title="إعجابات">
                           <span className="text-[13px] md:text-[14px]"><Heart className="w-3 h-3 md:w-4 md:h-4 text-red-500 fill-red-500" /></span> <span className="text-[11px] md:text-[12px]">{likes || 0}</span>
                         </span>
-                        <span className="flex text-xs md:text-sm text-gray-400 px-0.5">|</span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="تجميد الوقت">
+                        <span className="bg-white/50 flex items-center gap-0.5" title="فوز متتالي">
+                          <span className="text-[13px] md:text-[14px]"></span>🔥 <span className="text-[11px] md:text-[12px]">{streak || 0}</span>
+                        </span>
+                        <span className="bg-white/50 flex items-center gap-0.5" title="تجميد الوقت">
                           <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.time_freeze || 0, tempItems?.helpers?.time_freeze || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="الجاسوس">
+                        <span className="bg-white/50 flex items-center gap-0.5" title="الجاسوس">
                           <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.spy_lens || 0, tempItems?.helpers?.spy_lens || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="عدد الكلمات">
+                        <span className="bg-white/50 flex items-center gap-0.5" title="عدد الكلمات">
                           <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.word_count || 0, tempItems?.helpers?.word_count || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="طول الكلمة">
+                        <span className="bg-white/50 flex items-center gap-0.5" title="طول الكلمة">
                           <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.word_length || 0, tempItems?.helpers?.word_length || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="تلميح">
+                        <span className="bg-white/50 flex items-center gap-0.5" title="تلميح">
                           <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.hint || 0, tempItems?.helpers?.hint || 0, 'text-accent-purple')}</span>
                         </span>
                       </div>
@@ -14822,7 +15034,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   <h2 className="text-sm md:text-base font-black text-main flex items-center gap-2">
                     أبطال التخمين
                   </h2>
-                  <span className="text-[10px] md:text-xs font-bold text-accent-orange px-2 py-1 rounded-full">المتصدرون حالياً</span>
+                  <span className="text-[10px] md:text-xs font-bold text-accent-orange rounded-full">المتصدرون حالياً</span>
                 </div>
 
                 <div className="flex items-end justify-center gap-2 md:gap-4">
@@ -15186,8 +15398,13 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
 
             <div className="pt-3 md:pt-3 border-t-2 border-game space-y-3 md:space-y-4">
                 <div className="flex items-center font-bold md:text-sm text-xs gap-1">
-                <Users className="w-4 h-4" />
-                 إجمالي اللاعبين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{totalPlayersCount}</span>
+                <button
+                  onClick={() => setShowPlayerSearchModal(true)}
+                  className="bg-gray-300 py-1 px-4 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-200 flex items-center gap-1 hover:text-purple-600 transition-colors"
+                >
+                  <Users className="w-4 h-4" />
+                  إجمالي اللاعبين: <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">{totalPlayersCount}</span>
+                </button>
                 <span className="text-green-600 bg-green-100 px-2 py-0.5 rounded-full md:text-sm text-xs mr-2">
                   متصل: {onlineCount > 1000 ? '1000+' : onlineCount}
                 </span>
@@ -15773,7 +15990,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <Flag className="w-4 h-4" fill={opponent.reports > 0 ? "currentColor" : "none"} />
                       </button>
 
-                      {opponentFriendStatus === 'none' && (
+                      {opponentFriendStatus === 'none' && !opponent.hideFriendRequests && (
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
