@@ -7371,7 +7371,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                      <p className="text-sm text-amber-900/70 mt-2">ستظهر النتائج هنا فوراً</p>
                    </div>
                 ) : playerSearchResults.filter(p => p.serial !== playerSerial).length > 0 ? (
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full content-start">
+                   <div className="grid grid-cols-1 md:grid-cols-1 gap-3 w-full content-start">
                       {playerSearchResults.filter(p => p.serial !== playerSerial).map(player => (
                         <div key={player.serial} className="bg-white border-2 border-game p-3 rounded-xl flex items-center justify-between shadow-sm cursor-pointer hover:bg-amber-50/50 transition-colors" onClick={() => { playSound('clickOpen'); setShowPlayerSearchModal(false); openPlayerProfile(player.serial); }}>
                            <div className="flex items-center gap-3">
@@ -7379,7 +7379,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                <div className="w-12 h-12">
                                  {renderAvatarContent(player.avatar, player.level || 1, false, false, player.selectedFrame, player.serial)}
                                </div>
-                               <div className="absolute -bottom-2 -left-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded border border-white shadow-sm">
+                               <div className="absolute -bottom-2 -left-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm z-10">
                                  {player.level || 1}
                                </div>
                              </div>
