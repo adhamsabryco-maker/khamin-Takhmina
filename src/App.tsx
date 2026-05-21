@@ -1996,6 +1996,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [avatar, setAvatar] = useState(() => localStorage.getItem('khamin_player_avatar') || AVATARS[0].id);
   const [selectedFrame, setSelectedFrame] = useState(() => localStorage.getItem('khamin_player_frame') || '');
   const [hasSelectedAvatar, setHasSelectedAvatar] = useState(false);
+  const [selectedInitialFrame, setSelectedInitialFrame] = useState<string | null>(null);
+  const [hasSelectedFrame, setHasSelectedFrame] = useState(false);
 
   // Player Profile Modal State
   const [selectedProfileSerial, setSelectedProfileSerial] = useState<string | null>(null);
@@ -2399,6 +2401,41 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   const [playerSearchQuery, setPlayerSearchQuery] = useState('');
   const [playerSearchResults, setPlayerSearchResults] = useState<any[]>([]);
   const [isSearchingPlayers, setIsSearchingPlayers] = useState(false);
+
+  // Effect to handle initial frame removal at level 10
+  useEffect(() => {
+    const currentLevel = getLevel(xp);
+    if (currentLevel >= 10 && selectedFrame) {
+      const initialFrames = [
+        'animals-category-frame-gift.png',
+        'birds-category-frame-gift.png',
+        'food-category-frame-gift.png',
+        'people-category-frame-gift.png',
+        'objects-category-frame-gift.png',
+        'plants-category-frame-gift.png',
+        'insects-category-frame-gift.png',
+        'football-category-frame-gift.png'
+      ];
+      
+      if (initialFrames.includes(selectedFrame)) {
+        let categoryId = null;
+        for (const [id, data] of Object.entries(COLLECTION_DATA)) {
+          if (data.stages.some(s => s.reward?.frame === selectedFrame)) {
+            categoryId = id;
+            break;
+          }
+        }
+        
+        const ownsFrame = claimedCollectionRewards.some(r => r.category_id === categoryId && r.stage === 2);
+        
+        if (!ownsFrame && playerSerial) {
+          setSelectedFrame('');
+          localStorage.setItem('khamin_player_frame', '');
+          socket?.emit('update_selected_frame', { playerSerial, frame: '' });
+        }
+      }
+    }
+  }, [xp, selectedFrame, claimedCollectionRewards, playerSerial, socket]);
 
   useEffect(() => {
     if (!showPlayerSearchModal) {
@@ -5674,12 +5711,17 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
       return;
     }
 
+    if (!hasSelectedFrame) {
+      setRegisterError('يرجى اختيار إطار البداية الخاص بك');
+      return;
+    }
+
     if (!acceptedTerms || !acceptedPrivacy) {
       setRegisterError('يجب الموافقة على الشروط والأحكام وسياسة الخصوصية لإنشاء حساب');
       return;
     }
 
-    socket?.emit('register_player', { name: playerName, avatar, xp, gender, fingerprint }, (response: any) => {
+    socket?.emit('register_player', { name: playerName, avatar, xp, gender, fingerprint, selectedFrame: selectedInitialFrame }, (response: any) => {
       if (response.error) {
         setRegisterError(response.error);
         return;
@@ -5694,6 +5736,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         localStorage.setItem('khamin_player_age', playerAge.toString());
         localStorage.setItem('khamin_player_gender', gender);
         localStorage.setItem('khamin_player_avatar', avatar);
+        if (selectedInitialFrame) {
+          localStorage.setItem('khamin_player_frame', selectedInitialFrame);
+          setSelectedFrame(selectedInitialFrame);
+        }
         localStorage.setItem('khamin_wins', '0');
         
         const isAdmin = localStorage.getItem('khamin_is_admin') === 'true';
@@ -10223,6 +10269,31 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                                 <div className="w-full h-full p-1">
                                   {renderAvatarContent(av.id, 1)}
                                 </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Initial Frame */}
+                        <div>
+                          <label className="block text-sm font-black text-brown-muted mb-3 text-right">اختر إطار البداية (إطارات أبطال التخمين)</label>
+                          <div className="grid grid-cols-4 gap-2">
+                            {[
+                              'animals-category-frame-gift.png',
+                              'birds-category-frame-gift.png',
+                              'food-category-frame-gift.png',
+                              'people-category-frame-gift.png',
+                              'objects-category-frame-gift.png',
+                              'plants-category-frame-gift.png',
+                              'insects-category-frame-gift.png',
+                              'football-category-frame-gift.png'
+                            ].map((frameId, index) => (
+                              <button
+                                key={`welcome-frame-${index}`}
+                                onClick={() => { setSelectedInitialFrame(frameId); setHasSelectedFrame(true); }}
+                                className={`w-full aspect-square box-game flex items-center justify-center transition-all overflow-hidden relative ${selectedInitialFrame === frameId ? '!bg-orange-100 !border-orange-400 scale-105' : ''}`}
+                              >
+                                <img src={`/assets/${frameId}`} alt="Frame" className="w-full h-full object-contain p-1" />
                               </button>
                             ))}
                           </div>
@@ -15138,14 +15209,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                       </div>
                       <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">{truncateName(topPlayers[1].name)}</div>
                       <div className="w-full rank-2-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
-                        <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5">
+                        <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                           Lvl {getLevel(topPlayers[1].xp || 0)}
                         </div>
-                        <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5 flex items-center gap-1">
+                        <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center gap-1">
                           <Trophy className="w-2 h-2" />
                           {topPlayers[1].wins || 0} فوز
                         </div>
-                        <div className="text-[8px] md:text-[9px] font-black text-black/60 px-2 py-0.5 flex items-center justify-center gap-1">
+                        <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center justify-center gap-1">
                           <span>{topPlayers[1].streak || 0} 🔥</span>
                           <span>{topPlayers[1].likes || 0} ❤️</span>
                         </div>
@@ -15170,14 +15241,14 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                       </div>
                       <div className="text-xs md:text-sm font-black text-main truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">{truncateName(topPlayers[0].name)}</div>
                       <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-2">
-                        <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1 ">
+                        <div className="text-[9px] md:text-xs font-black text-black/80 px-3 py-1 ">
                           Lvl {getLevel(topPlayers[0].xp || 0)}
                         </div>
-                        <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1 flex items-center gap-1">
+                        <div className="text-[9px] md:text-xs font-black text-black/80 px-3 py-1 flex items-center gap-1">
                           <Trophy className="w-3 h-3" />
                           {topPlayers[0].wins || 0} فوز
                         </div>
-                        <div className="text-[9px] md:text-xs font-black text-black/70 px-3 py-1 flex items-center justify-center gap-1">
+                        <div className="text-[9px] md:text-xs font-black text-black/80 px-3 py-1 flex items-center justify-center gap-1">
                           <span>{topPlayers[0].streak || 0} 🔥</span>
                           <span>{topPlayers[0].likes || 0} ❤️</span>
                         </div>
