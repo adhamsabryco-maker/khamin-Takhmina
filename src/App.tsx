@@ -8078,7 +8078,9 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               </div>
               
               <h2 className="text-xl font-black text-white flex items-center justify-center gap-2">
-                <div className="p-1.5 h-8 w-8" title="empty space"></div>
+                {data.serial !== playerSerial && (
+                  <div className="p-1.5 h-8 w-8" title="empty space"></div>
+                )}
                 {data.name}
                 {!!data.isAdmin && <Shield className="w-5 h-5 text-purple-200 fill-purple-500" />}
                 {data.serial !== playerSerial && !data.isAdmin && (
