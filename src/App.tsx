@@ -8032,6 +8032,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               </div>
               
               <h2 className="text-xl font-black text-white flex items-center justify-center gap-2">
+                <div className="p-1.5 h-8 w-8 rounded-full transition-colors shrink-0 hover:bg-black/30 text-white/90" title="empty space"></div>
                 {data.name}
                 {!!data.isAdmin && <Shield className="w-5 h-5 text-purple-200 fill-purple-500" />}
                 {data.serial !== playerSerial && !data.isAdmin && (
@@ -14994,7 +14995,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                     <div className="flex flex-wrap justify-center gap-1">
                       <div className="mt-0.5 pt-0.5 flex flex-wrap justify-center gap-0.3 md:gap-0.5 text-xs font-bold text-brown-dark" dir="ltr">
                       <span 
-                        className={`gap-0.5 px-1 flex items-center justify-center transition-all ${
+                        className={`gap-0.5 px-0.5 md:px-1 flex items-center justify-center transition-all ${
                           hasProPackage 
                             ? 'text-yellow-600' 
                             : 'text-gray-400 opacity-70'
@@ -15008,31 +15009,31 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         }`} />
                         <span className="text-[11px] md:text-[12px]" dir="ltr">{proPackageDaysLeft}</span>
                       </span>                      
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="تخمينات">
+                        <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="تخمينات">
                           <span className="text-[13px] md:text-[14px]"><img src="/Takhmina_coin_02.png" className="w-3 h-3 md:w-4 md:h-4" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(tokens, tempItems?.tokens || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="مفاتيح">
+                        <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="مفاتيح">
                           <span className="text-[13px] md:text-[14px]"><Key className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(keys || 0, tempItems?.keys || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="إعجابات">
+                        <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="إعجابات">
                           <span className="text-[13px] md:text-[14px]"><Heart className="w-3 h-3 md:w-4 md:h-4 text-red-500 fill-red-500" /></span> <span className="text-[11px] md:text-[12px]">{likes || 0}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="فوز متتالي">
-                          <span className="text-[13px] md:text-[14px]"></span>🔥 <span className="text-[11px] md:text-[12px]">{streak || 0}</span>
+                        <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="فوز متتالي">
+                          <span className="text-[12px] md:text-[13px]">🔥</span> <span className="text-[11px] md:text-[12px]">{streak || 0}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="تجميد الوقت">
+                        <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="تجميد الوقت">
                           <span className="text-[13px] md:text-[14px]"><Snowflake className="w-3 h-3 md:w-4 md:h-4 text-cyan-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.time_freeze || 0, tempItems?.helpers?.time_freeze || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="الجاسوس">
+                        <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="الجاسوس">
                           <span className="text-[13px] md:text-[14px]"><Eye className="w-3 h-3 md:w-4 md:h-4 text-purple-400" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.spy_lens || 0, tempItems?.helpers?.spy_lens || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="عدد الكلمات">
+                        <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="عدد الكلمات">
                           <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.word_count || 0, tempItems?.helpers?.word_count || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="طول الكلمة">
+                        <span className="bg-white/50 px-0.5 md:px-1flex items-center gap-0.5" title="طول الكلمة">
                           <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.word_length || 0, tempItems?.helpers?.word_length || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-1 flex items-center gap-0.5" title="تلميح">
+                        <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="تلميح">
                           <span className="text-[13px] md:text-[14px]"><HelpCircle className="w-3 h-3 md:w-4 md:h-4 text-blue-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.hint || 0, tempItems?.helpers?.hint || 0, 'text-accent-purple')}</span>
                         </span>
                       </div>
