@@ -55,12 +55,12 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
   const displayStar = !hideExtras && (customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null));
 
   const getAvatarStyle = (lvl: number) => {
-    if (lvl >= 50) return 'bg-[#fef2f2] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
-    if (lvl >= 40) return 'bg-[#faf5ff] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
-    if (lvl >= 30) return 'bg-[#ecfdf5] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
-    if (lvl >= 20) return 'bg-[#fefce8] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
-    if (lvl >= 10) return 'bg-[#e5e7eb] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
-    return 'bg-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
+    if (lvl >= 50) return 'bg-[#fef2f2] border-black';
+    if (lvl >= 40) return 'bg-[#faf5ff] border-black';
+    if (lvl >= 30) return 'bg-[#ecfdf5] border-black';
+    if (lvl >= 20) return 'bg-[#fefce8] border-black';
+    if (lvl >= 10) return 'bg-[#e5e7eb] border-black';
+    return 'bg-white border-black';
   };
 
   const renderStarsFallback = (lvl: number) => {
