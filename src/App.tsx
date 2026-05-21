@@ -15260,7 +15260,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                           <div className={`flex ${categories.length > 1 ? 'gap-1' : 'gap-0.5'} w-full items-center text-center flex-1`}>
                             {categories.map((c, i) => (
                               <div key={i} className={`flex flex-col items-center w-full ${categories.length > 1 ? 'bg-black/5 rounded-md py-0.5' : ''}`}>
-                                <span className={`font-black text-orange-600/80 leading-tight ${specialList.length === 3 ? 'text-[7px] md:text-[10px]' : 'text-[9px] md:text-[10px]'}`}>{c.label}</span>
+                                <span className={`font-bold md:font-black text-orange-600/80 leading-tight ${specialList.length === 3 ? 'text-[7px] md:text-[9px]' : 'text-[8px] md:text-[9px]'}`}>{c.label}</span>
                                 <span className={`font-black text-main flex items-center gap-0.5 justify-center mt-0.5 ${specialList.length === 3 ? 'text-[10px] md:text-sm' : 'text-xs md:text-sm'}`}>
                                   {c.displayVal} <span className={specialList.length === 3 ? 'text-[9px]' : 'text-xs md:text-sm'}>{c.icon}</span>
                                 </span>
@@ -15961,7 +15961,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             initial={{ opacity: 0, scale: 0.5, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 10 }}
             exit={{ opacity: 0, scale: 1.5, y: -20 }}
-            className="fixed top-14 md:top-16 left-1/2 -translate-x-1/2 z-[3000] flex flex-col items-center justify-center pointer-events-none mt-2 md:mt-4"
+            className="fixed top-30 md:top-20 left-1/2 -translate-x-1/2 z-[3000] flex flex-col items-center justify-center pointer-events-none mt-2 md:mt-4"
           >
             <div className="relative w-32 h-32 flex items-center justify-center mt-4">
               <div className="absolute inset-0 bg-yellow-400 blur-xl opacity-50 animate-pulse rounded-full"></div>
@@ -16060,6 +16060,10 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   )}
                 </div>
                 <div className="mt-2 font-black text-[11px] md:text-sm text-main flex items-center gap-2" dir="ltr">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-6 h-6 p-1 -m-1" title="empty space"></span>
+                    <span class="w-6 h-6 p-1 -m-1" title="empty space"></span>
+                  </div>
                   <span className="truncate max-w-[60px] md:max-w-[100px]">{opponent.name}</span>
                   {opponent.isAdmin ? (
                     <Shield className="w-3.5 h-3.5 text-purple-500" />
