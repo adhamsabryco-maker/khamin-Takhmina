@@ -4224,7 +4224,7 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("register_player", ({ name, avatar, xp, gender, fingerprint }, callback) => {
+    socket.on("register_player", ({ name, avatar, xp, gender, fingerprint, selectedFrame }, callback) => {
       const ip = getClientIp(socket);
       
       // Check if banned
@@ -4257,6 +4257,7 @@ io.on("connection", (socket) => {
         gender: gender || 'boy',
         fingerprint: fingerprint || null,
         ip: ip,
+        selectedFrame: selectedFrame || '',
         xp: xp || 0, 
         streak: 0,
         serial, 
@@ -7771,7 +7772,7 @@ io.on("connection", (socket) => {
       try {
         const targetPlayer = allPlayers.get(targetSerial);
         if (!targetPlayer) {
-          callback({ error: 'اللاعب غير موجود' });
+          callback({ error: 'ربما اللاعب فى وضع الخاص' });
           return;
         }
 
