@@ -8032,7 +8032,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               </div>
               
               <h2 className="text-xl font-black text-white flex items-center justify-center gap-2">
-                <div className="p-1.5 h-8 w-8 rounded-full transition-colors shrink-0 hover:bg-black/30 text-white/90" title="empty space"></div>
+                <div className="p-1.5 h-8 w-8" title="empty space"></div>
                 {data.name}
                 {!!data.isAdmin && <Shield className="w-5 h-5 text-purple-200 fill-purple-500" />}
                 {data.serial !== playerSerial && !data.isAdmin && (
@@ -14828,8 +14828,8 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         {renderRainGiftSummary()}
         {renderUpdateBanner()}
         {/* Fixed Header */}
-        <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-3 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
-          <div className="flex-1 flex items-center gap-2 md:gap-3">
+        <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-2 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
+          <div className="flex-1 flex items-center gap-1 md:gap-3">
             <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center overflow-hidden">
               <img src="/icon-3.png" alt="Logo" className="w-7 h-7 md:w-8 md:h-8 object-contain" />
             </div>
@@ -15030,7 +15030,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="عدد الكلمات">
                           <span className="text-[13px] md:text-[14px]"><Hash className="w-3 h-3 md:w-4 md:h-4 text-indigo-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.word_count || 0, tempItems?.helpers?.word_count || 0, 'text-accent-purple')}</span>
                         </span>
-                        <span className="bg-white/50 px-0.5 md:px-1flex items-center gap-0.5" title="طول الكلمة">
+                        <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="طول الكلمة">
                           <span className="text-[13px] md:text-[14px]"><Type className="w-3 h-3 md:w-4 md:h-4 text-green-500" /></span> <span className="text-[11px] md:text-[12px]">{renderQuantity(ownedHelpers?.word_length || 0, tempItems?.helpers?.word_length || 0, 'text-accent-purple')}</span>
                         </span>
                         <span className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5" title="تلميح">
@@ -15485,7 +15485,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
             <div className="pt-3 md:pt-3 border-t-2 border-game space-y-3 md:space-y-4">
                 <div className="flex items-center font-bold md:text-sm text-xs gap-1">
                 <button
-                  onClick={() => setShowPlayerSearchModal(true)}
+                  onClick={() => { playSound('clickOpen'); setShowPlayerSearchModal(true); }}
                   className="bg-gray-300 py-1 px-4 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-200 flex items-center gap-1 hover:text-purple-600 transition-colors"
                 >
                   <Users className="w-4 h-4" />
