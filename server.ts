@@ -7386,6 +7386,15 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("get_asked_friends", ({ serial, imageName }, callback) => {
+      try {
+        const rows = db.prepare('SELECT receiver_serial FROM collection_notifications WHERE sender_serial = ? AND image_name = ? AND type = ? AND status = ?').all(serial, imageName, 'request', 'pending') as any[];
+        callback({ success: true, askedSerials: rows.map(r => r.receiver_serial) });
+      } catch (e) {
+        callback({ error: "Internal server error" });
+      }
+    });
+
     socket.on("send_collection_request", ({ serial, targetSerials, imageName, categoryId }, callback) => {
       if (!serial || !targetSerials || !Array.isArray(targetSerials)) return callback({ error: "Invalid data" });
       try {
@@ -7957,6 +7966,21 @@ io.on("connection", (socket) => {
         return callback({ error: 'هذا اللاعب لا يقبل طلبات الصداقة' });
       }
 
+      // Check friend limit
+      try {
+        const friendsCountRow = db.prepare('SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?').get(actualMySerial, actualMySerial, 'accepted') as any;
+        if (friendsCountRow && friendsCountRow.count >= 50) {
+          return callback({ error: 'قائمة الأصدقاء ممتلئة, يجب حذف صديق لإضافة صديق جديد!', limitReached: true });
+        }
+        
+        const targetFriendsCountRow = db.prepare('SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?').get(targetSerial, targetSerial, 'accepted') as any;
+        if (targetFriendsCountRow && targetFriendsCountRow.count >= 50) {
+          return callback({ error: 'قائمة أصدقاء هذا اللاعب ممتلئة!' });
+        }
+      } catch(e) {
+        console.error(e);
+      }
+
       const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
       const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
       try {
@@ -8010,19 +8034,34 @@ io.on("connection", (socket) => {
       if (!actualMySerial) return;
       
       try {
+        const friendsCountRow = db.prepare('SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?').get(actualMySerial, actualMySerial, 'accepted') as any;
+        if (friendsCountRow && friendsCountRow.count >= 50) {
+          if (callback) return callback({ error: 'قائمة الأصدقاء ممتلئة, يجب حذف صديق لإضافة صديق جديد!', limitReached: true });
+          return;
+        }
+
         let otherSerial = null;
         if (requestId) {
-          // Find the request by ID
-          const row = db.prepare('SELECT player1, player2, sender FROM friends WHERE id = ?').get(requestId) as any;
-          if (row) {
-            db.prepare('UPDATE friends SET status = ? WHERE id = ?').run('accepted', requestId);
-            otherSerial = row.player1 === actualMySerial ? row.player2 : row.player1;
+          const row = db.prepare('SELECT player1, player2 FROM friends WHERE id = ?').get(requestId) as any;
+          if (row) otherSerial = row.player1 === actualMySerial ? row.player2 : row.player1;
+        } else if (targetSerial) {
+          otherSerial = targetSerial;
+        }
+
+        if (otherSerial) {
+          const otherFriendsCountRow = db.prepare('SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?').get(otherSerial, otherSerial, 'accepted') as any;
+          if (otherFriendsCountRow && otherFriendsCountRow.count >= 50) {
+            if (callback) return callback({ error: 'قائمة أصدقاء هذا اللاعب ممتلئة!' });
+            return;
           }
+        }
+
+        if (requestId) {
+          db.prepare('UPDATE friends SET status = ? WHERE id = ?').run('accepted', requestId);
         } else if (targetSerial) {
           const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
           const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
           db.prepare('UPDATE friends SET status = ? WHERE player1 = ? AND player2 = ? AND status = ? AND sender = ?').run('accepted', p1, p2, 'pending', targetSerial);
-          otherSerial = targetSerial;
         }
 
         if (otherSerial) {
