@@ -45,23 +45,23 @@ import { GoogleGenAI } from "@google/genai";
 import { COLLECTION_DATA } from "./collectionData";
 
 const SPIN_REWARDS = [
-  { id: 'time_freeze', type: 'helper', value: 'time_freeze', weight: 50, label: 'تجميد الوقت', icon: 'Snowflake' },
-  { id: 'word_length', type: 'helper', value: 'word_length', weight: 40, label: 'كاشف الحروف', icon: 'Type' },
-  { id: 'word_count', type: 'helper', value: 'word_count', weight: 30, label: 'عدد الكلمات', icon: 'Hash' },
-  { id: 'hint', type: 'helper', value: 'hint', weight: 20, label: 'تلميح', icon: 'HelpCircle' },
-  { id: 'spy_lens', type: 'helper', value: 'spy_lens', weight: 10, label: 'الجاسوس', icon: 'Eye' },
-  { id: 'token_1', type: 'token', value: 1, weight: 8, label: 'Token 1', icon: 'Coins' },
-  { id: 'token_2', type: 'token', value: 2, weight: 5, label: 'Token 2', icon: 'Coins' },
+  { id: 'time_freeze', type: 'helper', value: 'time_freeze', weight: 25, label: 'تجميد الوقت', icon: 'Snowflake' },
+  { id: 'word_length', type: 'helper', value: 'word_length', weight: 50, label: 'كاشف الحروف', icon: 'Type' },
+  { id: 'word_count', type: 'helper', value: 'word_count', weight: 60, label: 'عدد الكلمات', icon: 'Hash' },
+  { id: 'hint', type: 'helper', value: 'hint', weight: 40, label: 'تلميح', icon: 'HelpCircle' },
+  { id: 'spy_lens', type: 'helper', value: 'spy_lens', weight: 30, label: 'الجاسوس', icon: 'Eye' },
+  { id: 'token_1', type: 'token', value: 1, weight: 4, label: 'Token 1', icon: 'Coins' },
+  { id: 'token_2', type: 'token', value: 2, weight: 2, label: 'Token 2', icon: 'Coins' },
   { id: 'token_3', type: 'token', value: 3, weight: 1, label: 'Token 3', icon: 'Coins' },
-  { id: 'token_4', type: 'token', value: 4, weight: 0.05, label: 'Token 4', icon: 'Coins' },
-  { id: 'token_5', type: 'token', value: 5, weight: 0.0001, label: 'Token 5', icon: 'Coins' },
-  { id: 'token_10', type: 'token', value: 10, weight: 0.000001, label: 'Token 10', icon: 'Coins' },
-  { id: 'xp_10', type: 'xp', value: 10, weight: 90, label: '10 XP', icon: 'Star' },
-  { id: 'xp_20', type: 'xp', value: 20, weight: 80, label: '20 XP', icon: 'Star' },
-  { id: 'xp_30', type: 'xp', value: 30, weight: 70, label: '30 XP', icon: 'Star' },
-  { id: 'xp_40', type: 'xp', value: 40, weight: 60, label: '40 XP', icon: 'Star' },
-  { id: 'xp_50', type: 'xp', value: 50, weight: 2, label: '50 XP', icon: 'Star' },
-  { id: 'xp_100', type: 'xp', value: 100, weight: 1, label: '100 XP', icon: 'Star' },
+  { id: 'token_4', type: 'token', value: 4, weight: 0.5, label: 'Token 4', icon: 'Coins' },
+  { id: 'token_5', type: 'token', value: 5, weight: 0.1, label: 'Token 5', icon: 'Coins' },
+  { id: 'token_10', type: 'token', value: 10, weight: 0.05, label: 'Token 10', icon: 'Coins' },
+  { id: 'xp_10', type: 'xp', value: 10, weight: 20, label: '10 XP', icon: 'Star' },
+  { id: 'xp_20', type: 'xp', value: 20, weight: 18, label: '20 XP', icon: 'Star' },
+  { id: 'xp_30', type: 'xp', value: 30, weight: 16, label: '30 XP', icon: 'Star' },
+  { id: 'xp_40', type: 'xp', value: 40, weight: 14, label: '40 XP', icon: 'Star' },
+  { id: 'xp_50', type: 'xp', value: 50, weight: 10, label: '50 XP', icon: 'Star' },
+  { id: 'xp_100', type: 'xp', value: 100, weight: 5, label: '100 XP', icon: 'Star' },
   { id: 'xp_5000', type: 'xp', value: 5000, weight: 0.0001, label: '5000 XP', icon: 'Star' },
   { id: 'xp_10000', type: 'xp', value: 10000, weight: 0.0000001, label: '10000 XP', icon: 'Star' },
   { id: 'pro_30', type: 'pro', value: 30, weight: 0, label: 'باقة المحترفين', icon: 'Crown' },
@@ -1050,32 +1050,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     }
   }, 60000); // Check every minute
 
-  app.post("/api/claim-level-50-reward", (req, res) => {
-    const { serial } = req.body;
-    const player = allPlayers.get(serial);
-    if (!player) return res.status(404).json({ message: "Player not found" });
-    if (player.isAdmin) return res.status(403).json({ message: "Admins cannot claim this reward" });
-    if ((player.level || 0) < 50) return res.status(403).json({ message: "You must reach level 50" });
-    
-    const claimed = db.prepare('SELECT value FROM settings WHERE key = ?').get('level_50_reward_claimed');
-    if (claimed) return res.status(403).json({ message: "Reward already claimed" });
-    
-    // Award 10 tokens
-    player.tokens = (player.tokens || 0) + 10;
-    // Award 7-day Pro Package
-    player.proPackageExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
-    
-    savePlayerData(serial);
-    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('level_50_reward_claimed', 'true');
-    io.emit('reward_claimed', true);
-    
-    res.json({ success: true, tokens: player.tokens, proPackageExpiry: player.proPackageExpiry });
-  });
 
-  app.get("/api/check-level-50-reward", (req, res) => {
-    const claimed = db.prepare('SELECT value FROM settings WHERE key = ?').get('level_50_reward_claimed');
-    res.json({ claimed: !!claimed });
-  });
 
   app.get("/api/auth/google/url", (req, res) => {
     const redirectUri = getRedirectUri(req);
@@ -4433,15 +4408,8 @@ io.on("connection", (socket) => {
       if (!isAdSpin) {
         player.freeSpinUsed = 1;
         
-        // Smart retention mechanic for free spins
+        // Removed smart retention mechanic for free spins
         const daysUsed = player.luckyWheelDaysUsed || 0;
-        if (daysUsed === 0) {
-          selectedReward = SPIN_REWARDS.find(r => r.id === 'xp_5000') || selectedReward;
-        } else if (daysUsed === 2) {
-          selectedReward = SPIN_REWARDS.find(r => r.id === 'xp_10000') || selectedReward;
-        } else if (daysUsed === 4) {
-          selectedReward = SPIN_REWARDS.find(r => r.id === 'token_10') || selectedReward;
-        }
         player.luckyWheelDaysUsed = daysUsed + 1;
       }
       player.dailySpinCount = (player.dailySpinCount || 0) + 1;
