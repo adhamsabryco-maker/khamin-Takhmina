@@ -890,8 +890,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
     }
   }, [isNameAvailable]);
 
-  const [isRewardClaimed, setIsRewardClaimed] = useState(false);
-  const [showRewardModal, setShowRewardModal] = useState(false);
   const [showKeyDrop, setShowKeyDrop] = useState(false);
 
   const [playerAge, setPlayerAge] = useState(() => {
@@ -4134,13 +4132,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
   }, [playerSerial, fetchCollection]);
 
   useEffect(() => {
-    fetch('/api/check-level-50-reward')
-      .then(res => res.json())
-      .then(data => setIsRewardClaimed(data.claimed))
-      .catch(err => console.error('Failed to check reward status', err));
-
     if (socket && playerSerial) {
-      socket.on('reward_claimed', () => setIsRewardClaimed(true));
       socket.on('collection_reward_claimed', (data: any) => {
         showAlert(`مبروك! أكملت المرحلة ${data.stage} من فئة ${data.categoryName} وحصلت على ${data.xp} XP! 🏆`, 'مكافأة المجموعة');
         setXp(prev => prev + data.xp);
@@ -4151,7 +4143,6 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
         }
       });
       return () => {
-        socket.off('reward_claimed');
         socket.off('collection_reward_claimed');
       };
     }
@@ -15400,39 +15391,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                   return null;
                 })()}
 
-                {/* Level 50 Reward Section */}
-                {!isRewardClaimed && (
-                  <div className="mt-2 p-2 justify-between items-center flex gap-2 md:gap-2 bg-gradient-to-br from-amber-50 to-yellow-100 border border-amber-300 rounded-lg shadow-sm">
-                  <div className="items-center justify-between gap-2">
-                    <h3 className="font-bold md:font-black md:text-sm text-xs text-amber-900">هدية أول لاعب يصل Lvl 50 🎁</h3>
-                    <span className="font-bold md:text-[12px] text-[10px] text-amber-800">10 تخمينات + باقة المحترفين 7 أيام</span>
-                  </div>  
-                      <button 
-                        onClick={async () => {
-                          try {
-                            const response = await fetch('/api/claim-level-50-reward', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ serial: playerSerial })
-                            });
-                            if (response.ok) {
-                              setIsRewardClaimed(true);
-                              setShowRewardModal(true);
-                            } else {
-                              const data = await response.json();
-                              alert(data.message);
-                            }
-                          } catch (err) {
-                            console.error('Failed to claim reward', err);
-                          }
-                        }}
-                        disabled={getLevel(xp) < 50}
-                        className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-black font-black text-xs md:text-[12px] text-[10px] px-1 py-1 md:px-3 md:py-1.5 rounded-md shadow-sm border border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                      >
-                        {getLevel(xp) < 50 ? 'مغلق' : 'استلم الهدية'}
-                      </button>
-                  </div>
-                )}
+
               </div>
 
               {/* Rain Gift Event Section - Moved outside and below leaderboard */}
@@ -15526,34 +15485,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
               )}
             </div>
 
-            {/* Reward Modal */}
-            <AnimatePresence>
-              {showRewardModal && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/60 backdrop-blur-md z-[5000] flex items-center justify-center p-4"
-                  onClick={() => setShowRewardModal(false)}
-                >
-                  <motion.div
-                    onClick={(e) => e.stopPropagation()}
-                    initial={{ scale: 0.9, y: 20 }}
-                    animate={{ scale: 1, y: 0 }}
-                    exit={{ scale: 0.9, y: 20 }}
-                    className="bg-white rounded-[2rem] p-6 w-full max-w-sm text-center shadow-2xl border-4 border-black"
-                  >
-                    <h2 className="text-2xl font-black mb-4">مبروك يا بطل التخمين 💪</h2>
-                    <button 
-                      onClick={() => setShowRewardModal(false)}
-                      className="btn-game btn-primary w-full py-3 text-lg"
-                    >
-                      شكرا خمن تخمينة
-                    </button>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
 
             <div className="pt-3 md:pt-3 border-t-2 border-game space-y-3 md:space-y-4">
                 <div className="flex items-center font-bold md:text-sm text-xs gap-1">
@@ -15737,7 +15669,7 @@ const renderQuantity = (total: number, tempCount: number, tempColorClass: string
                         </div>
                         
                         <div className="relative w-10 h-10">
-                          {renderAvatarContent(player.avatar, getLevel(player.xp || 0), true, player.isOnline, player.selectedFrame, player.serial)}
+                          {renderAvatarContent(player.avatar, getLevel(player.xp || 0), false, player.isOnline, player.selectedFrame, player.serial)}
                         </div>
 
                         <div className="flex-1 min-w-0 text-right">
