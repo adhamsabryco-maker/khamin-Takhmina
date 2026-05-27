@@ -1291,6 +1291,7 @@ export default function App() {
       const fpPromise = FingerprintJS.load();
       const fp = await fpPromise;
       const result = await fp.get();
+      localStorage.setItem("khamin_fingerprint", result.visitorId);
       setFingerprint(result.visitorId);
     };
     setFp();
