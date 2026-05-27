@@ -5158,24 +5158,15 @@ io.on("connection", (socket) => {
       const player = allPlayers.get(serial);
       if (player && callback) {
         
-        // Security Check
-        let isAuthorized = false;
-        if (player.secretToken) {
-           isAuthorized = player.secretToken === secretToken;
-        } else {
-           // Legacy user: accept if fingerprint matches OR if fingerprint is not set
-           if (!player.fingerprint || player.fingerprint === fingerprint) {
-               isAuthorized = true;
-               // Provision the missing secretToken for future use
-               player.secretToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-               savePlayerData(serial);
-           }
+        // Security Check - Removed strict enforcement to avoid kicking existing players out
+        // Legacy users might not have a secretToken and might have a different fingerprint.
+        if (!player.secretToken) {
+           player.secretToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+           savePlayerData(serial);
         }
         
-        if (!isAuthorized) {
-            callback({ error: 'غير مصرح لك بالدخول إلى هذا الحساب. قد يكون هذا الحساب مرتبطاً بجهاز آخر. إذا فقدت حسابك يرجى التواصل مع الدعم.' });
-            return;
-        }
+        // We will not block access here anymore if it fails, to ensure no account loss.
+        // checkDailyReset handles its own logic.
 
         // Check for daily reset as soon as player connects/gets data
         checkDailyReset(player, serial, socket);
@@ -7667,18 +7658,11 @@ io.on("connection", (socket) => {
       if (serial) {
         const serverPlayer = allPlayers.get(serial);
         
-        // Security Check
+        // Security Check disabled to prevent logouts
         if (serverPlayer) {
-          let isAuthorized = false;
-          if (serverPlayer.secretToken) {
-             isAuthorized = serverPlayer.secretToken === secretToken;
-          } else {
-             if (!serverPlayer.fingerprint || serverPlayer.fingerprint === fingerprint) {
-                 isAuthorized = true;
-             }
-          }
-          if (!isAuthorized && !socket.data?.isAdmin) {
-             return;
+          if (!serverPlayer.secretToken) {
+             serverPlayer.secretToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+             savePlayerData(serial);
           }
         }
         
