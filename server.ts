@@ -1089,16 +1089,29 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         adminTokens.add(adminToken);
       }
 
-      // Redirect directly back to the app with the auth parameters
-      const params = new URLSearchParams({
+      const payload = {
         admin_auth: 'success',
         adminToken: adminToken || '',
         email: email || '',
+        name: name || '',
+        picture: picture || '',
         isAdmin: isAdmin ? 'true' : 'false'
-      });
-      
-      const redirectPath = isAdmin ? '/admin' : '/';
-      res.redirect(redirectPath + '?' + params.toString());
+      };
+
+      res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', payload: ${JSON.stringify(payload)} }, '*');
+                window.close();
+              } else {
+                document.body.innerHTML = 'Authentication successful. You can close this window.';
+              }
+            </script>
+          </body>
+        </html>
+      `);
     } catch (error: any) {
       console.error("Google Auth Error:", error.response?.data || error.message);
       
@@ -1385,6 +1398,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   try { db.exec(`ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN hideMyInfo INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN hideFriendRequests INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN secretToken TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN lastSpinDate TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN dailySpinCount INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN freeSpinUsed INTEGER DEFAULT 0`); } catch (e) {}
@@ -1709,8 +1723,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   }
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -1917,6 +1931,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0,
         hideMyInfo: player.hideMyInfo !== undefined ? player.hideMyInfo : 0,
         hideFriendRequests: player.hideFriendRequests !== undefined ? player.hideFriendRequests : 0,
+        secretToken: player.secretToken || null,
         lastSpinDate: player.lastSpinDate || null,
         dailySpinCount: player.dailySpinCount || 0,
         freeSpinUsed: player.freeSpinUsed || 0,
@@ -1975,6 +1990,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         notificationsEnabled: player.notificationsEnabled !== undefined ? player.notificationsEnabled : 0,
         hideMyInfo: player.hideMyInfo !== undefined ? player.hideMyInfo : 0,
         hideFriendRequests: player.hideFriendRequests !== undefined ? player.hideFriendRequests : 0,
+        secretToken: player.secretToken || null,
         lastSpinDate: player.lastSpinDate || null,
         dailySpinCount: player.dailySpinCount || 0,
         freeSpinUsed: player.freeSpinUsed || 0,
@@ -2057,6 +2073,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           notificationsEnabled: row.notificationsEnabled !== undefined ? row.notificationsEnabled : 0,
           hideMyInfo: row.hideMyInfo !== undefined ? row.hideMyInfo : 0,
           hideFriendRequests: row.hideFriendRequests !== undefined ? row.hideFriendRequests : 0,
+          secretToken: row.secretToken || null,
           lastSpinDate: row.lastSpinDate || null,
           dailySpinCount: row.dailySpinCount || 0,
           freeSpinUsed: row.freeSpinUsed || 0,
@@ -2248,9 +2265,10 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     let highestLikesPlayer = '';
     let maxLikes = 0;
     
-    // Find max likes among ALL non-admins (active or inactive)
+    // Find max likes among ALL non-admins who are not banned
+    const now = Date.now();
     for (const p of allPlayers.values()) {
-      if (!p.isAdmin) {
+      if (!p.isAdmin && !p.isPermanentBan && !(p.banUntil && p.banUntil > now)) {
         if ((p.likes || 0) > maxLikes) {
           maxLikes = p.likes || 0;
           highestLikesPlayer = p.serial;
@@ -2286,9 +2304,10 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     let highestStreakPlayer = '';
     let maxStreak = 0;
     
-    // Find max streak among ALL non-admins
+    // Find max streak among ALL non-admins who are not banned
+    const now = Date.now();
     for (const p of allPlayers.values()) {
-      if (!p.isAdmin) {
+      if (!p.isAdmin && !p.isPermanentBan && !(p.banUntil && p.banUntil > now)) {
         if ((p.streak || 0) > maxStreak) {
           maxStreak = p.streak || 0;
           highestStreakPlayer = p.serial;
@@ -2326,9 +2345,10 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     let highestLevelPlayer = '';
     let maxLevelXp = 0;
     
-    // Find max xp among ALL non-admins
+    // Find max xp among ALL non-admins who are not banned
+    const now = Date.now();
     for (const p of allPlayers.values()) {
-      if (!p.isAdmin) {
+      if (!p.isAdmin && !p.isPermanentBan && !(p.banUntil && p.banUntil > now)) {
         if ((p.xp || 0) > maxLevelXp) {
           maxLevelXp = p.xp || 0;
           highestLevelPlayer = p.serial;
@@ -4199,7 +4219,43 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("register_player", ({ name, avatar, xp, gender, fingerprint, selectedFrame }, callback) => {
+    socket.on("google_login_or_register", ({ email, name, picture, fingerprint }, callback) => {
+      const ip = getClientIp(socket);
+      
+      const banned = db.prepare('SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL)').get(fingerprint || null);
+      if (banned) {
+        if(callback) callback({ error: 'تم حظرك نهائياً من اللعبة' });
+        return;
+      }
+
+      // Check if user exists by email AND NOT IS ADMIN
+      let playerEntry = null;
+      for (const p of allPlayers.values()) {
+         if (p.email === email && p.isAdmin === false) {
+             playerEntry = p;
+             break;
+         }
+      }
+
+      if (playerEntry) {
+        // Player exists: login
+        playerEntry.fingerprint = fingerprint || playerEntry.fingerprint;
+        playerEntry.ip = ip || playerEntry.ip;
+        
+        let secretTokenToUse = playerEntry.secretToken;
+        if (!secretTokenToUse) {
+           secretTokenToUse = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+           playerEntry.secretToken = secretTokenToUse;
+        }
+
+        savePlayerData(playerEntry.serial);
+        if(callback) callback({ serial: playerEntry.serial, secretToken: secretTokenToUse, name: playerEntry.name });
+      } else {
+        if(callback) callback({ requiresRegistration: true, email, name, picture });
+      }
+    });
+
+    socket.on("register_player", ({ name, avatar, xp, gender, fingerprint, selectedFrame, email }, callback) => {
       const ip = getClientIp(socket);
       
       // Check if banned
@@ -4225,6 +4281,9 @@ io.on("connection", (socket) => {
         }
       }
       
+      // Generate a secretToken for authentication
+      const secretToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
       allPlayers.set(serial, { 
         name: filteredName, 
         level, 
@@ -4246,10 +4305,12 @@ io.on("connection", (socket) => {
         keys: 0,
         adsWatchedToday: 0,
         lastAdWatchDate: null,
+        secretToken,
+        email: email || null,
         lastActiveAt: Date.now()
       });
       savePlayerData(serial);
-      callback({ serial, name: filteredName });
+      callback({ serial, secretToken, name: filteredName });
     });
 
     socket.on("claim_serial_prize", ({ serial, helperId }, callback) => {
@@ -4832,6 +4893,10 @@ io.on("connection", (socket) => {
     });
 
     socket.on("update_profile", ({ playerSerial, playerName, avatar, gender }, callback) => {
+      if (socket.data?.serial !== playerSerial && !socket.data?.isAdmin) {
+         if (callback) callback({ success: false, error: 'Unauthorized' });
+         return;
+      }
       const player = allPlayers.get(playerSerial);
       if (player) {
         let filteredName = filterProfanity(playerName);
@@ -5088,9 +5153,30 @@ io.on("connection", (socket) => {
     socket.on("get_player_data", (data, callback) => {
       const serial = typeof data === 'string' ? data : data.serial;
       const fingerprint = typeof data === 'object' ? data.fingerprint : null;
+      const secretToken = typeof data === 'object' ? data.secretToken : null;
       
       const player = allPlayers.get(serial);
       if (player && callback) {
+        
+        // Security Check
+        let isAuthorized = false;
+        if (player.secretToken) {
+           isAuthorized = player.secretToken === secretToken;
+        } else {
+           // Legacy user: accept if fingerprint matches OR if fingerprint is not set
+           if (!player.fingerprint || player.fingerprint === fingerprint) {
+               isAuthorized = true;
+               // Provision the missing secretToken for future use
+               player.secretToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+               savePlayerData(serial);
+           }
+        }
+        
+        if (!isAuthorized) {
+            callback({ error: 'غير مصرح لك بالدخول إلى هذا الحساب. قد يكون هذا الحساب مرتبطاً بجهاز آخر. إذا فقدت حسابك يرجى التواصل مع الدعم.' });
+            return;
+        }
+
         // Check for daily reset as soon as player connects/gets data
         checkDailyReset(player, serial, socket);
 
@@ -5109,7 +5195,7 @@ io.on("connection", (socket) => {
           player.ip = ip;
           updated = true;
         }
-        if (fingerprint && player.fingerprint !== fingerprint) {
+        if (!player.fingerprint && fingerprint) {
           player.fingerprint = fingerprint;
           updated = true;
         }
@@ -7573,10 +7659,31 @@ io.on("connection", (socket) => {
       }
     });
 
-    socket.on("set_player_serial_for_socket", (serial) => {
-      socket.data = { ...socket.data, serial };
+    socket.on("set_player_serial_for_socket", (data) => {
+      const serial = typeof data === 'string' ? data : data.serial;
+      const secretToken = typeof data === 'object' ? data.secretToken : null;
+      const fingerprint = typeof data === 'object' ? data.fingerprint : null;
+      
       if (serial) {
         const serverPlayer = allPlayers.get(serial);
+        
+        // Security Check
+        if (serverPlayer) {
+          let isAuthorized = false;
+          if (serverPlayer.secretToken) {
+             isAuthorized = serverPlayer.secretToken === secretToken;
+          } else {
+             if (!serverPlayer.fingerprint || serverPlayer.fingerprint === fingerprint) {
+                 isAuthorized = true;
+             }
+          }
+          if (!isAuthorized && !socket.data?.isAdmin) {
+             return;
+          }
+        }
+        
+        socket.data = { ...socket.data, serial };
+
         if (serverPlayer) {
           serverPlayer.lastActiveAt = Date.now();
           savePlayerData(serial);
