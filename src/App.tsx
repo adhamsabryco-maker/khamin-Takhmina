@@ -1297,6 +1297,7 @@ export default function App() {
   }, []);
 
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [googleRegistrationData, setGoogleRegistrationData] = useState<{ email: string, name: string } | null>(null);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showHowToOpenEasyGuess, setShowHowToOpenEasyGuess] = useState(false);
   const [loginSerial, setLoginSerial] = useState("");
@@ -1800,6 +1801,69 @@ export default function App() {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showPackageModal, setShowPackageModal] = useState(false);
   const [editingPackage, setEditingPackage] = useState<any>(null);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Allow any origin that ends with .run.app or is localhost to be safe, however since it's just passing tokens to current origin it's okay.
+      if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
+        const payload = event.data.payload;
+        if (payload.isAdmin === 'true') {
+          setIsAdmin(true);
+          localStorage.setItem("khamin_is_admin", "true");
+          localStorage.setItem("khamin_admin_email", payload.email || "");
+          localStorage.setItem("khamin_admin_token", payload.adminToken || "");
+          window.location.reload();
+        } else {
+          // Regular user google login
+          if (socket) {
+            socket.emit("google_login_or_register", {
+              email: payload.email,
+              name: payload.name,
+              picture: payload.picture,
+              fingerprint: localStorage.getItem("khamin_fingerprint")
+            }, (response: any) => {
+              if (response.error) {
+                showAlert(response.error, "خطأ");
+                return;
+              }
+              if (response.requiresRegistration) {
+                 setGoogleRegistrationData({ email: response.email, name: response.name });
+                 setPlayerName(response.name || "");
+                 setShowWelcomeModal(true);
+                 setShowCreateAccount(true);
+              } else {
+                const { serial, name, secretToken } = response;
+                if (serial) {
+                  setPlayerSerial(serial);
+                  setPlayerName(name);
+                  localStorage.setItem("khamin_player_serial", serial);
+                  if (secretToken) localStorage.setItem("khamin_secret_token", secretToken);
+                  localStorage.setItem("khamin_player_name", name);
+                  
+                  socket.emit("set_player_serial_for_socket", { serial, fingerprint: localStorage.getItem("khamin_fingerprint"), secretToken });
+                  setShowWelcomeModal(false);
+                  setShowCreateAccount(false);
+                  playSound("clickClose");
+                  setGoogleRegistrationData(null);
+                  
+                  socket.emit("get_player_data", { serial, fingerprint: localStorage.getItem("khamin_fingerprint"), secretToken }, (playerData: any) => {
+                    if (playerData && !playerData.error) {
+                       setPlayerName(playerData.name);
+                       setAvatar(playerData.avatar);
+                       setXp(playerData.xp || 0);
+                       if (playerData.level) setLevel(playerData.level);
+                    }
+                  });
+                }
+              }
+            });
+          }
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [socket]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -4837,6 +4901,7 @@ export default function App() {
             socket.emit("get_player_data", {
               serial: playerSerial,
               fingerprint: localStorage.getItem("khamin_fingerprint"),
+              secretToken: localStorage.getItem("khamin_secret_token"),
             }); // to refresh collection
             fetchCollection(playerSerial);
           }
@@ -4876,6 +4941,7 @@ export default function App() {
           socket.emit("get_player_data", {
             serial: playerSerial,
             fingerprint: localStorage.getItem("khamin_fingerprint"),
+            secretToken: localStorage.getItem("khamin_secret_token"),
           }); // to refresh collection
           fetchCollection(playerSerial);
         } else {
@@ -4929,7 +4995,7 @@ export default function App() {
             },
           );
           const fingerprint = localStorage.getItem("khamin_fingerprint");
-          socket.emit("get_player_data", { serial: playerSerial, fingerprint });
+          socket.emit("get_player_data", { serial: playerSerial, fingerprint, secretToken: localStorage.getItem("khamin_secret_token") });
         } else if (res && res.limitReached) {
           showAlert(
             res.error ||
@@ -5397,7 +5463,7 @@ export default function App() {
         fetchCollection(playerSerial);
         const fingerprint = localStorage.getItem("khamin_fingerprint");
         if (fingerprint) {
-          socket.emit("get_player_data", { serial: playerSerial, fingerprint });
+          socket.emit("get_player_data", { serial: playerSerial, fingerprint, secretToken: localStorage.getItem("khamin_secret_token") });
         }
       });
       return () => {
@@ -5613,7 +5679,7 @@ export default function App() {
 
       const serial = localStorage.getItem("khamin_player_serial");
       if (serial) {
-        newSocket.emit("set_player_serial_for_socket", serial);
+        newSocket.emit("set_player_serial_for_socket", { serial, fingerprint, secretToken: localStorage.getItem("khamin_secret_token") });
         const isAdmin = localStorage.getItem("khamin_is_admin") === "true";
         const adminEmail =
           localStorage.getItem("khamin_admin_email") ||
@@ -5633,7 +5699,7 @@ export default function App() {
         // Fetch actual server data
         newSocket.emit(
           "get_player_data",
-          { serial, fingerprint },
+          { serial, fingerprint, secretToken: localStorage.getItem("khamin_secret_token") },
           (data: any) => {
             if (data && data.error) {
               // We DO NOT remove the serial from localStorage here anymore.
@@ -5647,6 +5713,9 @@ export default function App() {
               setReports(data.reports || 0);
               setتخمينات(data.tokens || 0);
               setReportedSerials(data.reportedSerials || []);
+              if (data.secretToken) {
+                localStorage.setItem("khamin_secret_token", data.secretToken);
+              }
               if (data.recentOpponents) {
                 setRecentOpponents(data.recentOpponents);
               }
@@ -6145,6 +6214,7 @@ export default function App() {
             newSocket.emit("get_player_data", {
               serial: currentSerial,
               fingerprint: currentFingerprint,
+              secretToken: localStorage.getItem("khamin_secret_token"),
             });
           }
         }
@@ -6809,6 +6879,7 @@ export default function App() {
       newSocket.emit("get_player_data", {
         serial: localStorage.getItem("khamin_player_serial"),
         fingerprint: localStorage.getItem("khamin_fingerprint"),
+        secretToken: localStorage.getItem("khamin_secret_token"),
       });
     });
 
@@ -6901,6 +6972,7 @@ export default function App() {
           newSocket.emit("get_player_data", {
             serial: currentSerial,
             fingerprint,
+            secretToken: localStorage.getItem("khamin_secret_token"),
           });
         }
         // Update in-game button status to 'friends' if the person who accepted is our current opponent
@@ -7307,6 +7379,7 @@ export default function App() {
         gender,
         fingerprint,
         selectedFrame: selectedInitialFrame,
+        email: googleRegistrationData ? googleRegistrationData.email : null,
       },
       (response: any) => {
         if (response.error) {
@@ -7314,15 +7387,17 @@ export default function App() {
           return;
         }
 
-        const { serial, name } = response;
+        const { serial, name, secretToken } = response;
         if (serial) {
           setPlayerSerial(serial);
           setPlayerName(name); // Update with filtered name
           localStorage.setItem("khamin_player_serial", serial);
+          if (secretToken) localStorage.setItem("khamin_secret_token", secretToken);
           localStorage.setItem("khamin_player_name", name);
           localStorage.setItem("khamin_player_age", playerAge.toString());
           localStorage.setItem("khamin_player_gender", gender);
           localStorage.setItem("khamin_player_avatar", avatar);
+          setGoogleRegistrationData(null);
           if (selectedInitialFrame) {
             localStorage.setItem("khamin_player_frame", selectedInitialFrame);
             setSelectedFrame(selectedInitialFrame);
@@ -7391,6 +7466,9 @@ export default function App() {
           }
 
           localStorage.setItem("khamin_player_serial", player.serial);
+          if (player.secretToken) {
+            localStorage.setItem("khamin_secret_token", player.secretToken);
+          }
           localStorage.setItem("khamin_player_name", player.name);
           localStorage.setItem(
             "khamin_player_age",
@@ -7459,6 +7537,9 @@ export default function App() {
           }
 
           localStorage.setItem("khamin_player_serial", player.serial);
+          if (player.secretToken) {
+            localStorage.setItem("khamin_secret_token", player.secretToken);
+          }
           localStorage.setItem("khamin_player_name", player.name);
           localStorage.setItem(
             "khamin_player_age",
@@ -12948,6 +13029,19 @@ export default function App() {
                 تسجيل دخول بـ ID لحساب آخر
               </button>
 
+              <button
+                onClick={() => {
+                  localStorage.removeItem("khamin_player_serial");
+                  localStorage.removeItem("khamin_secret_token");
+                  localStorage.removeItem("khamin_player_name");
+                  window.location.reload();
+                }}
+                className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 border-2 border-red-200 mt-2 py-2 text-sm flex items-center justify-center gap-2 font-black shadow-md"
+              >
+                <LogOut className="w-4 h-4" />
+                تسجيل خروج
+              </button>
+
               <div className="pt-2 border-t border-game mt-2">
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
@@ -13180,7 +13274,7 @@ export default function App() {
                           <UserPlus size={18} />
                         </div>
                         <span className="font-black text-main">
-                          إنشاء حساب جديد
+                          {googleRegistrationData ? 'إنشاء حساب آمن بـ Google' : 'إنشاء حساب مؤقت'}
                         </span>
                       </div>
                       <motion.div
@@ -13424,6 +13518,23 @@ export default function App() {
                       </div>
                     </motion.div>
                   </div>
+
+                  {/* Google Login Button */}
+                  {!googleRegistrationData && (
+                    <button
+                      onClick={() => {
+                        fetch("/api/auth/google/url")
+                          .then((res) => res.json())
+                          .then((data) => {
+                            window.open(data.url, 'oauth_popup', 'width=600,height=700');
+                          });
+                      }}
+                      className="w-full btn-game bg-white border-2 border-gray-200 text-gray-800 hover:bg-gray-50 py-4 text-lg font-black shadow-md flex items-center justify-center gap-3 mt-4"
+                    >
+                      <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6" />
+                      إنشاء حساب آمن بـ Google
+                    </button>
+                  )}
 
                   <AnimatePresence>
                     {registerError && (
