@@ -1302,9 +1302,11 @@ export default function App() {
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showHowToOpenEasyGuess, setShowHowToOpenEasyGuess] = useState(false);
   const [loginSerial, setLoginSerial] = useState("");
+  const [loginToken, setLoginToken] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showProfileLoginModal, setShowProfileLoginModal] = useState(false);
   const [profileLoginSerial, setProfileLoginSerial] = useState("");
+  const [profileLoginToken, setProfileLoginToken] = useState("");
   const [profileLoginError, setProfileLoginError] = useState("");
   const [pendingWelcomeModal, setPendingWelcomeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -7443,7 +7445,7 @@ export default function App() {
 
     socket?.emit(
       "get_player_data",
-      { serial: loginSerial.trim(), fingerprint },
+      { serial: loginSerial.trim(), fingerprint, secretToken: loginToken.trim() || undefined },
       (player: any) => {
         if (player && player.error) {
           setLoginError(player.error);
@@ -7514,7 +7516,7 @@ export default function App() {
 
     socket?.emit(
       "get_player_data",
-      { serial: profileLoginSerial.trim(), fingerprint },
+      { serial: profileLoginSerial.trim(), fingerprint, secretToken: profileLoginToken.trim() || undefined },
       (player: any) => {
         if (player && player.error) {
           setProfileLoginError(player.error);
@@ -12176,9 +12178,9 @@ export default function App() {
                         dir="rtl"
                       >
                         {isIdVisible ? (
-                          <EyeOff className="w-5 h-5 text-accent-blue opacity-50" />
+                          <EyeOff className="w-4 h-4 md:w-5 md:h-5 text-accent-blue opacity-50" />
                         ) : (
-                          <Eye className="w-4 h-4 text-accent-blue opacity-50" />
+                          <Eye className="w-4 h-4 md:w-5 md:h-5 text-accent-blue opacity-50" />
                         )}
                         <span>
                           {isIdVisible ? `ID: ${playerSerial}` : "أظهار الـ ID"}
@@ -12193,19 +12195,40 @@ export default function App() {
                             setCopied(true);
                             setTimeout(() => setCopied(false), 2000);
                           }}
-                          className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-xl hover:bg-blue-200 transition-colors active:scale-95"
+                          className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-blue-100 rounded-xl hover:bg-blue-200 transition-colors active:scale-95"
                           title="نسخ رقم اللاعب"
                         >
                           {copied ? (
-                            <Check className="w-5 h-5 text-green-600" />
+                            <Check className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
                           ) : (
-                            <Copy className="w-5 h-5 text-accent-blue" />
+                            <Copy className="w-4 h-4 md:w-5 md:h-5 text-accent-blue" />
                           )}
                         </button>
                       )}
                     </div>
-                    <span className="text-[12px] p-1 bg-red-100 font-bold text-red-600">
-                      لا تشارك الـ ID مع اي شخص!⚠️
+                    {isIdVisible && localStorage.getItem("khamin_secret_token") && (
+                      <div className="flex items-center border border-gray-200 rounded-lg p-1 px-2 gap-2 mt-1 bg-white">
+                        <span className="text-[10px] text-gray-500 block w-20">كلمة المرور (Secret Token)</span>
+                        <span className="text-[10px] font-mono text-brown-dark rounded bg-gray-100 px-1 py-0.5">
+                            {localStorage.getItem("khamin_secret_token")}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const token = localStorage.getItem("khamin_secret_token");
+                            if (token) {
+                                navigator.clipboard.writeText(token);
+                            }
+                          }}
+                          className="p-1 hover:bg-purple-100 rounded text-purple-600 transition-colors cursor-pointer"
+                          title="نسخ كلمة المرور"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                    <span className="text-[10px] md:text-[12px] p-1 bg-red-100 font-bold text-red-600 rounded">
+                      لا تشارك الـ ID أو كلمة المرور مع اي شخص!⚠️
                     </span>
                   </div>
 
@@ -13211,6 +13234,16 @@ export default function App() {
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold tracking-widest"
                     dir="rtl"
                   />
+                  <input
+                    type="password"
+                    value={profileLoginToken}
+                    onChange={(e) =>
+                      setProfileLoginToken(e.target.value.trim())
+                    }
+                    placeholder="كلمة المرور (اختياري إذا كنت على نفس الجهاز)"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold tracking-widest"
+                    dir="rtl"
+                  />
                   <AnimatePresence>
                     {profileLoginError && (
                       <motion.div
@@ -13552,6 +13585,21 @@ export default function App() {
 
                   {/* Already have an account Section */}
                   <div className="pt-6 mt-2 border-t-2 border-gray-100">
+                    {!googleRegistrationData && (
+                      <button
+                        onClick={() => {
+                          fetch("/api/auth/google/url")
+                            .then((res) => res.json())
+                            .then((data) => {
+                              window.open(data.url, 'oauth_popup', 'width=600,height=700');
+                            });
+                        }}
+                        className="w-full btn-game bg-white border-2 border-gray-200 text-gray-800 hover:bg-gray-50 py-3 text-lg font-black shadow-md flex items-center justify-center gap-3 mb-6"
+                      >
+                        <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                        تسجيل دخول بحساب Google
+                      </button>
+                    )}
                     <h3 className="text-center font-black text-brown-dark mb-4">
                       لديك حساب بالفعل؟
                     </h3>
@@ -13565,6 +13613,14 @@ export default function App() {
                         value={loginSerial}
                         onChange={(e) => setLoginSerial(e.target.value.trim())}
                         placeholder="أدخل رقم ID اللاعب الخاص بك"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold tracking-widest"
+                        dir="rtl"
+                      />
+                      <input
+                        type="password"
+                        value={loginToken}
+                        onChange={(e) => setLoginToken(e.target.value.trim())}
+                        placeholder="كلمة المرور (اختياري إذا كنت على نفس الجهاز)"
                         className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent-blue focus:ring-2 focus:ring-blue-200 outline-none transition-all text-center font-bold tracking-widest"
                         dir="rtl"
                       />
