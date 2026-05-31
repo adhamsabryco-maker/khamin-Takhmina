@@ -21109,7 +21109,7 @@ export default function App() {
                     className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5"
                     title="فوز متتالي"
                   >
-                    <span className="text-[12px] md:text-[13px]">🔥</span>{" "}
+                    <span className="text-[11px] md:text-[12px]">🔥</span>{" "}
                     <span className="text-[11px] md:text-[12px]">
                       {streak || 0}
                     </span>
@@ -21327,10 +21327,10 @@ export default function App() {
                               2
                             </div>
                           </div>
-                          <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
+                          <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]" dir="ltr">
                             {truncateName(topPlayers[1].name)}
                           </div>
-                          <div className="w-full rank-2-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
+                          <div className="w-full rank-2-bar h-20 md:h-24 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-1.5">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                               Lvl {getLevel(topPlayers[1].xp || 0)}
                             </div>
@@ -21378,7 +21378,7 @@ export default function App() {
                               1
                             </div>
                           </div>
-                          <div className="text-xs md:text-sm font-black text-main truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">
+                          <div className="text-xs md:text-sm font-black text-main truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]" dir="ltr">
                             {truncateName(topPlayers[0].name)}
                           </div>
                           <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-2">
@@ -21423,10 +21423,10 @@ export default function App() {
                               3
                             </div>
                           </div>
-                          <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
+                          <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]" dir="ltr">
                             {truncateName(topPlayers[2].name)}
                           </div>
-                          <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0 md:gap-0.2">
+                          <div className="w-full rank-3-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                               Lvl {getLevel(topPlayers[2].xp || 0)}
                             </div>
@@ -21532,7 +21532,7 @@ export default function App() {
                               onClick={() => openPlayerProfile(player.serial)}
                             >
                               <div
-                                className={`flex ${categories.length > 1 ? "gap-1" : "gap-0.5"} w-full items-center text-center flex-1`}
+                                className={`flex ${categories.length > 1 ? "gap-1" : "gap-0.5"} w-full bg-black/5 rounded-md py-0.5 items-center text-center flex-1`}
                               >
                                 {categories.map((c, i) => (
                                   <div
@@ -21681,7 +21681,7 @@ export default function App() {
                                 "تنبيه",
                               );
                             }}
-                            className="flex items-center gap-1 bg-white/80 px-2 py-0.5 rounded-lg border-2 border-2 hover:bg-white transition-colors"
+                            className="flex items-center gap-1 bg-white/80 px-1 py-0.5 rounded-lg border-2 border-2 hover:bg-white transition-colors"
                           >
                             <span className="text-sm font-bold text-accent-orange">
                               {keys}/5
@@ -21822,7 +21822,7 @@ export default function App() {
                         playSound("clickOpen");
                         setShowPlayerSearchModal(true);
                       }}
-                      className="bg-gray-300 py-1 px-4 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-200 flex items-center gap-1 hover:text-purple-600 transition-colors"
+                      className="bg-gray-300 py-1 px-1 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-200 flex items-center gap-1 hover:text-purple-600 transition-colors"
                     >
                       <Users className="w-4 h-4" />
                       إجمالي اللاعبين:{" "}
