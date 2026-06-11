@@ -8759,8 +8759,7 @@ export default function App() {
     const isGameActive =
       room?.gameState === "guessing" ||
       room?.gameState === "discussion" ||
-      room?.gameState === "custom_image_upload" ||
-      room?.gameState === "bus_complete_setup";
+      room?.gameState === "custom_image_upload";
     const me = room?.players.find((p) => p.id === socket?.id);
 
     // Only show confirmation if the game is active (playing)
@@ -23209,17 +23208,17 @@ export default function App() {
                         { key: "inanimate", label: "جماد", emoji: "🪑" },
                         { key: "country", label: "بلاد", emoji: "🌍" },
                       ].map((item) => (
-                        <div key={item.key} className="flex flex-row-reverse items-center justify-between gap-3 bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
+                        <div key={item.key} className={`flex flex-row-reverse items-center justify-between gap-3 bg-white p-2 rounded-xl border shadow-sm ${room.busCompleteSubmittedPlayers?.includes(socket?.id) ? 'border-gray-200 opacity-70' : 'border-gray-100'}`}>
                            <div className="flex-shrink-0 w-24 md:w-28 flex flex-row border-l-2 border-gray-100 items-center justify-end font-black text-brown-dark gap-2 text-sm md:text-base pr-2">
                              <span>{item.label}</span>
                              <span>{item.emoji}</span>
                            </div>
                            <input
                              type="text"
-                             className="flex-1 w-full text-right outline-none bg-transparent font-bold text-gray-800 placeholder-gray-300 text-sm md:text-base px-2"
+                             className="flex-1 w-full text-right outline-none bg-transparent font-bold text-gray-800 placeholder-gray-300 text-sm md:text-base px-2 disabled:text-gray-500"
                              placeholder={`اكتب ${item.label}...`}
                              value={busAnswers[item.key as keyof typeof busAnswers]}
-                             disabled={room.gameState !== "bus_complete_playing"}
+                             disabled={room.gameState !== "bus_complete_playing" || room.busCompleteSubmittedPlayers?.includes(socket?.id)}
                              onChange={(e) => setBusAnswers(prev => ({ ...prev, [item.key]: e.target.value }))}
                              dir="rtl"
                            />
@@ -23232,11 +23231,11 @@ export default function App() {
                         playSound("clickOpen");
                         socket?.emit("submit_bus_complete", { roomId, answers: busAnswers });
                       }}
-                      disabled={room.gameState !== "bus_complete_playing"}
+                      disabled={room.gameState !== "bus_complete_playing" || room.busCompleteSubmittedPlayers?.includes(socket?.id)}
                       className={`w-full py-4 rounded-2xl font-black text-xl md:text-2xl transition-all shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent mt-4
-                        ${room.gameState === "bus_complete_playing" ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
+                        ${(room.gameState === "bus_complete_playing" && !room.busCompleteSubmittedPlayers?.includes(socket?.id)) ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
                     >
-                      تخمينة كومبليت 🏁
+                      {room.busCompleteSubmittedPlayers?.includes(socket?.id) ? "في انتظار اللاعب الآخر..." : "تخمينة كومبليت 🏁"}
                     </button>
                   </>
                 )}
@@ -23286,7 +23285,10 @@ export default function App() {
                 
                 <div className="flex flex-col gap-3 mt-6">
                    <button
-                     onClick={() => socket?.emit("select_private_mode", { roomId, mode: "bus_complete" })}
+                     onClick={() => {
+                       socket?.emit("select_private_mode", { roomId, mode: "bus_complete" });
+                       setBusAnswers({ boy: "", girl: "", animal: "", plant: "", inanimate: "", country: "" });
+                     }}
                      className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2"
                    >
                      🔄 اللعب مرة أخرى كومبليت
@@ -23294,6 +23296,7 @@ export default function App() {
                    <button
                      onClick={() => {
                         socket?.emit("select_private_mode", { roomId, mode: null });
+                        setBusAnswers({ boy: "", girl: "", animal: "", plant: "", inanimate: "", country: "" });
                      }}
                      className="w-full btn-game bg-gray-200 hover:bg-gray-300 text-gray-700 shadow-[0_6px_0_0_#d1d5db] active:shadow-transparent py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
                    >
