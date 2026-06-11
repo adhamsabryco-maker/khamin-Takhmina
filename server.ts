@@ -4144,9 +4144,7 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     target.emit('player_data_update', { ...data, tempItems });
   }
 
-  const fs = require('fs');
-  const path = require('path');
-  let busCompleteData = {};
+  let busCompleteData: any = {};
   try {
     busCompleteData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/data/busCompleteData.json'), 'utf8'));
   } catch (e) {
