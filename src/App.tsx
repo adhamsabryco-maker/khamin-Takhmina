@@ -575,7 +575,11 @@ interface Room {
     | "discussion"
     | "guessing"
     | "finished"
-    | "custom_image_upload";
+    | "custom_image_upload"
+    | "bus_complete_setup"
+    | "bus_complete_spin"
+    | "bus_complete_playing"
+    | "bus_complete_evaluating";
   timer: number;
   category: string;
   isPaused: boolean;
@@ -591,7 +595,11 @@ interface Room {
   currentTurn?: string | null;
   waitingForAnswerFrom?: string | null;
   matchType?: "random" | "private";
-  selectionMode?: "ready" | "custom" | null;
+  selectionMode?: "ready" | "custom" | "bus_complete" | null;
+  busCompleteLetter?: string;
+  busCompleteWinner?: string;
+  busCompleteScores?: Record<string, { boy: number, girl: number, animal: number, plant: number, inanimate: number, country: number, total: number }>;
+  busCompleteAnswers?: Record<string, { boy: string, girl: string, animal: string, plant: string, inanimate: string, country: string }>;
 }
 
 const findNodeByText = (text: string, nodes: any[]): any | null => {
@@ -1298,7 +1306,10 @@ export default function App() {
   }, []);
 
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const [googleRegistrationData, setGoogleRegistrationData] = useState<{ email: string, name: string } | null>(null);
+  const [googleRegistrationData, setGoogleRegistrationData] = useState<{
+    email: string;
+    name: string;
+  } | null>(null);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showHowToOpenEasyGuess, setShowHowToOpenEasyGuess] = useState(false);
   const [loginSerial, setLoginSerial] = useState("");
@@ -1808,9 +1819,9 @@ export default function App() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Allow any origin that ends with .run.app or is localhost to be safe, however since it's just passing tokens to current origin it's okay.
-      if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
+      if (event.data?.type === "GOOGLE_AUTH_SUCCESS") {
         const payload = event.data.payload;
-        if (payload.isAdmin === 'true') {
+        if (payload.isAdmin === "true") {
           setIsAdmin(true);
           localStorage.setItem("khamin_is_admin", "true");
           localStorage.setItem("khamin_admin_email", payload.email || "");
@@ -1819,53 +1830,73 @@ export default function App() {
         } else {
           // Regular user google login
           if (socket) {
-            socket.emit("google_login_or_register", {
-              email: payload.email,
-              name: payload.name,
-              picture: payload.picture,
-              fingerprint: localStorage.getItem("khamin_fingerprint")
-            }, (response: any) => {
-              if (response.error) {
-                showAlert(response.error, "خطأ");
-                return;
-              }
-              if (response.requiresRegistration) {
-                 setGoogleRegistrationData({ email: response.email, name: response.name });
-                 setPlayerName(response.name || "");
-                 setShowWelcomeModal(true);
-                 setShowCreateAccount(true);
-              } else {
-                const { serial, name, secretToken } = response;
-                if (serial) {
-                  setPlayerSerial(serial);
-                  setPlayerName(name);
-                  localStorage.setItem("khamin_player_serial", serial);
-                  if (secretToken) localStorage.setItem("khamin_secret_token", secretToken);
-                  localStorage.setItem("khamin_player_name", name);
-                  
-                  socket.emit("set_player_serial_for_socket", { serial, fingerprint: localStorage.getItem("khamin_fingerprint"), secretToken });
-                  setShowWelcomeModal(false);
-                  setShowCreateAccount(false);
-                  playSound("clickClose");
-                  setGoogleRegistrationData(null);
-                  
-                  socket.emit("get_player_data", { serial, fingerprint: localStorage.getItem("khamin_fingerprint"), secretToken }, (playerData: any) => {
-                    if (playerData && !playerData.error) {
-                       setPlayerName(playerData.name);
-                       setAvatar(playerData.avatar);
-                       setXp(playerData.xp || 0);
-                       if (playerData.level) setLevel(playerData.level);
-                    }
-                  });
+            socket.emit(
+              "google_login_or_register",
+              {
+                email: payload.email,
+                name: payload.name,
+                picture: payload.picture,
+                fingerprint: localStorage.getItem("khamin_fingerprint"),
+              },
+              (response: any) => {
+                if (response.error) {
+                  showAlert(response.error, "خطأ");
+                  return;
                 }
-              }
-            });
+                if (response.requiresRegistration) {
+                  setGoogleRegistrationData({
+                    email: response.email,
+                    name: response.name,
+                  });
+                  setPlayerName(response.name || "");
+                  setShowWelcomeModal(true);
+                  setShowCreateAccount(true);
+                } else {
+                  const { serial, name, secretToken } = response;
+                  if (serial) {
+                    setPlayerSerial(serial);
+                    setPlayerName(name);
+                    localStorage.setItem("khamin_player_serial", serial);
+                    if (secretToken)
+                      localStorage.setItem("khamin_secret_token", secretToken);
+                    localStorage.setItem("khamin_player_name", name);
+
+                    socket.emit("set_player_serial_for_socket", {
+                      serial,
+                      fingerprint: localStorage.getItem("khamin_fingerprint"),
+                      secretToken,
+                    });
+                    setShowWelcomeModal(false);
+                    setShowCreateAccount(false);
+                    playSound("clickClose");
+                    setGoogleRegistrationData(null);
+
+                    socket.emit(
+                      "get_player_data",
+                      {
+                        serial,
+                        fingerprint: localStorage.getItem("khamin_fingerprint"),
+                        secretToken,
+                      },
+                      (playerData: any) => {
+                        if (playerData && !playerData.error) {
+                          setPlayerName(playerData.name);
+                          setAvatar(playerData.avatar);
+                          setXp(playerData.xp || 0);
+                          if (playerData.level) setLevel(playerData.level);
+                        }
+                      },
+                    );
+                  }
+                }
+              },
+            );
           }
         }
       }
     };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, [socket]);
 
   useEffect(() => {
@@ -4837,10 +4868,27 @@ export default function App() {
   const [isOpponentBlocked, setIsOpponentBlocked] = useState(false);
   const [useToken, setUseToken] = useState(false);
   const [isMutedByOpponent, setIsMutedByOpponent] = useState(false);
+  const [busAnswers, setBusAnswers] = useState({ boy: "", girl: "", animal: "", plant: "", inanimate: "", country: "" });
+  const [spinLetter, setSpinLetter] = useState("؟");
   const isOpponentBlockedRef = useRef(isOpponentBlocked);
   useEffect(() => {
     isOpponentBlockedRef.current = isOpponentBlocked;
   }, [isOpponentBlocked]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (room?.gameState === "bus_complete_spin") {
+      const letters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'];
+      interval = setInterval(() => {
+        setSpinLetter(letters[Math.floor(Math.random() * letters.length)]);
+      }, 100);
+    } else if (room?.busCompleteLetter) {
+      setSpinLetter(room.busCompleteLetter);
+    } else {
+      setSpinLetter("؟");
+    }
+    return () => clearInterval(interval);
+  }, [room?.gameState, room?.busCompleteLetter]);
 
   // Friend System Functions
   const handleAddFriend = (targetSerial: string) => {
@@ -4998,7 +5046,11 @@ export default function App() {
             },
           );
           const fingerprint = localStorage.getItem("khamin_fingerprint");
-          socket.emit("get_player_data", { serial: playerSerial, fingerprint, secretToken: localStorage.getItem("khamin_secret_token") });
+          socket.emit("get_player_data", {
+            serial: playerSerial,
+            fingerprint,
+            secretToken: localStorage.getItem("khamin_secret_token"),
+          });
         } else if (res && res.limitReached) {
           showAlert(
             res.error ||
@@ -5466,7 +5518,11 @@ export default function App() {
         fetchCollection(playerSerial);
         const fingerprint = localStorage.getItem("khamin_fingerprint");
         if (fingerprint) {
-          socket.emit("get_player_data", { serial: playerSerial, fingerprint, secretToken: localStorage.getItem("khamin_secret_token") });
+          socket.emit("get_player_data", {
+            serial: playerSerial,
+            fingerprint,
+            secretToken: localStorage.getItem("khamin_secret_token"),
+          });
         }
       });
       return () => {
@@ -5682,7 +5738,11 @@ export default function App() {
 
       const serial = localStorage.getItem("khamin_player_serial");
       if (serial) {
-        newSocket.emit("set_player_serial_for_socket", { serial, fingerprint, secretToken: localStorage.getItem("khamin_secret_token") });
+        newSocket.emit("set_player_serial_for_socket", {
+          serial,
+          fingerprint,
+          secretToken: localStorage.getItem("khamin_secret_token"),
+        });
         const isAdmin = localStorage.getItem("khamin_is_admin") === "true";
         const adminEmail =
           localStorage.getItem("khamin_admin_email") ||
@@ -5702,7 +5762,11 @@ export default function App() {
         // Fetch actual server data
         newSocket.emit(
           "get_player_data",
-          { serial, fingerprint, secretToken: localStorage.getItem("khamin_secret_token") },
+          {
+            serial,
+            fingerprint,
+            secretToken: localStorage.getItem("khamin_secret_token"),
+          },
           (data: any) => {
             if (data && data.error) {
               // We DO NOT remove the serial from localStorage here anymore.
@@ -6205,6 +6269,10 @@ export default function App() {
           setIsCustomSubmitted(false);
           setCustomImageBase64("");
           setCustomImageAnswer("");
+        }
+
+        if (updatedRoom.gameState === "bus_complete_setup" || updatedRoom.gameState === "waiting") {
+          setBusAnswers({ boy: "", girl: "", animal: "", plant: "", inanimate: "", country: "" });
         }
 
         if (
@@ -7395,7 +7463,8 @@ export default function App() {
           setPlayerSerial(serial);
           setPlayerName(name); // Update with filtered name
           localStorage.setItem("khamin_player_serial", serial);
-          if (secretToken) localStorage.setItem("khamin_secret_token", secretToken);
+          if (secretToken)
+            localStorage.setItem("khamin_secret_token", secretToken);
           localStorage.setItem("khamin_player_name", name);
           localStorage.setItem("khamin_player_age", playerAge.toString());
           localStorage.setItem("khamin_player_gender", gender);
@@ -7445,7 +7514,11 @@ export default function App() {
 
     socket?.emit(
       "get_player_data",
-      { serial: loginSerial.trim(), fingerprint, secretToken: loginToken.trim() || undefined },
+      {
+        serial: loginSerial.trim(),
+        fingerprint,
+        secretToken: loginToken.trim() || undefined,
+      },
       (player: any) => {
         if (player && player.error) {
           setLoginError(player.error);
@@ -7516,7 +7589,11 @@ export default function App() {
 
     socket?.emit(
       "get_player_data",
-      { serial: profileLoginSerial.trim(), fingerprint, secretToken: profileLoginToken.trim() || undefined },
+      {
+        serial: profileLoginSerial.trim(),
+        fingerprint,
+        secretToken: profileLoginToken.trim() || undefined,
+      },
       (player: any) => {
         if (player && player.error) {
           setProfileLoginError(player.error);
@@ -8682,7 +8759,8 @@ export default function App() {
     const isGameActive =
       room?.gameState === "guessing" ||
       room?.gameState === "discussion" ||
-      room?.gameState === "custom_image_upload";
+      room?.gameState === "custom_image_upload" ||
+      room?.gameState === "bus_complete_setup";
     const me = room?.players.find((p) => p.id === socket?.id);
 
     // Only show confirmation if the game is active (playing)
@@ -12206,27 +12284,32 @@ export default function App() {
                         </button>
                       )}
                     </div>
-                    {isIdVisible && localStorage.getItem("khamin_secret_token") && (
-                      <div className="flex items-center border border-gray-200 rounded-lg p-1 px-2 gap-2 mt-1 bg-white">
-                        <span className="text-[10px] text-gray-500 block w-20">كلمة المرور (Secret Token)</span>
-                        <span className="text-[10px] font-mono text-brown-dark rounded bg-gray-100 px-1 py-0.5">
+                    {isIdVisible &&
+                      localStorage.getItem("khamin_secret_token") && (
+                        <div className="flex items-center border border-gray-200 rounded-lg p-1 px-2 gap-2 mt-1 bg-white">
+                          <span className="text-[10px] text-gray-500 block w-20">
+                            كلمة المرور (Secret Token)
+                          </span>
+                          <span className="text-[10px] font-mono text-brown-dark rounded bg-gray-100 px-1 py-0.5">
                             {localStorage.getItem("khamin_secret_token")}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const token = localStorage.getItem("khamin_secret_token");
-                            if (token) {
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const token = localStorage.getItem(
+                                "khamin_secret_token",
+                              );
+                              if (token) {
                                 navigator.clipboard.writeText(token);
-                            }
-                          }}
-                          className="p-1 hover:bg-purple-100 rounded text-purple-600 transition-colors cursor-pointer"
-                          title="نسخ كلمة المرور"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
+                              }
+                            }}
+                            className="p-1 hover:bg-purple-100 rounded text-purple-600 transition-colors cursor-pointer"
+                            title="نسخ كلمة المرور"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     <span className="text-[10px] md:text-[12px] p-1 bg-red-100 font-bold text-red-600 rounded">
                       لا تشارك الـ ID أو كلمة المرور مع اي شخص!⚠️
                     </span>
@@ -13308,7 +13391,9 @@ export default function App() {
                           <UserPlus size={18} />
                         </div>
                         <span className="font-black text-main">
-                          {googleRegistrationData ? 'إنشاء حساب آمن بـ Google' : 'إنشاء حساب مؤقت'}
+                          {googleRegistrationData
+                            ? "إنشاء حساب آمن بـ Google"
+                            : "إنشاء حساب مؤقت"}
                         </span>
                       </div>
                       <motion.div
@@ -13560,12 +13645,20 @@ export default function App() {
                         fetch("/api/auth/google/url")
                           .then((res) => res.json())
                           .then((data) => {
-                            window.open(data.url, 'oauth_popup', 'width=600,height=700');
+                            window.open(
+                              data.url,
+                              "oauth_popup",
+                              "width=600,height=700",
+                            );
                           });
                       }}
                       className="w-full btn-game bg-white border-2 border-gray-200 text-gray-800 hover:bg-gray-50 py-4 text-lg font-black shadow-md flex items-center justify-center gap-3 mt-4"
                     >
-                      <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6" />
+                      <img
+                        src="https://www.google.com/favicon.ico"
+                        alt="Google"
+                        className="w-6 h-6"
+                      />
                       إنشاء حساب آمن بـ Google
                     </button>
                   )}
@@ -13591,12 +13684,20 @@ export default function App() {
                           fetch("/api/auth/google/url")
                             .then((res) => res.json())
                             .then((data) => {
-                              window.open(data.url, 'oauth_popup', 'width=600,height=700');
+                              window.open(
+                                data.url,
+                                "oauth_popup",
+                                "width=600,height=700",
+                              );
                             });
                         }}
                         className="w-full btn-game bg-white border-2 border-gray-200 text-gray-800 hover:bg-gray-50 py-3 text-lg font-black shadow-md flex items-center justify-center gap-3 mb-6"
                       >
-                        <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                        <img
+                          src="https://www.google.com/favicon.ico"
+                          alt="Google"
+                          className="w-5 h-5"
+                        />
                         تسجيل دخول بحساب Google
                       </button>
                     )}
@@ -21109,7 +21210,7 @@ export default function App() {
                     className="bg-white/50 px-0.5 md:px-1 flex items-center gap-0.5"
                     title="فوز متتالي"
                   >
-                    <span className="text-[11px] md:text-[12px]">🔥</span>{" "}
+                    <span className="text-[12px] md:text-[13px]">🔥</span>{" "}
                     <span className="text-[11px] md:text-[12px]">
                       {streak || 0}
                     </span>
@@ -21327,10 +21428,10 @@ export default function App() {
                               2
                             </div>
                           </div>
-                          <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]" dir="ltr">
+                          <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
                             {truncateName(topPlayers[1].name)}
                           </div>
-                          <div className="w-full rank-2-bar h-20 md:h-24 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-1.5">
+                          <div className="w-full rank-2-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                               Lvl {getLevel(topPlayers[1].xp || 0)}
                             </div>
@@ -21378,7 +21479,7 @@ export default function App() {
                               1
                             </div>
                           </div>
-                          <div className="text-xs md:text-sm font-black text-main truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]" dir="ltr">
+                          <div className="text-xs md:text-sm font-black text-main truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">
                             {truncateName(topPlayers[0].name)}
                           </div>
                           <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-2">
@@ -21423,10 +21524,10 @@ export default function App() {
                               3
                             </div>
                           </div>
-                          <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]" dir="ltr">
+                          <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
                             {truncateName(topPlayers[2].name)}
                           </div>
-                          <div className="w-full rank-3-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
+                          <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0 md:gap-0.2">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                               Lvl {getLevel(topPlayers[2].xp || 0)}
                             </div>
@@ -21532,7 +21633,7 @@ export default function App() {
                               onClick={() => openPlayerProfile(player.serial)}
                             >
                               <div
-                                className={`flex ${categories.length > 1 ? "gap-1" : "gap-0.5"} w-full bg-black/5 rounded-md py-0.5 items-center text-center flex-1`}
+                                className={`flex ${categories.length > 1 ? "gap-1" : "gap-0.5"} w-full items-center text-center flex-1`}
                               >
                                 {categories.map((c, i) => (
                                   <div
@@ -21681,7 +21782,7 @@ export default function App() {
                                 "تنبيه",
                               );
                             }}
-                            className="flex items-center gap-1 bg-white/80 px-1 py-0.5 rounded-lg border-2 border-2 hover:bg-white transition-colors"
+                            className="flex items-center gap-1 bg-white/80 px-2 py-0.5 rounded-lg border-2 border-2 hover:bg-white transition-colors"
                           >
                             <span className="text-sm font-bold text-accent-orange">
                               {keys}/5
@@ -21822,7 +21923,7 @@ export default function App() {
                         playSound("clickOpen");
                         setShowPlayerSearchModal(true);
                       }}
-                      className="bg-gray-300 py-1 px-1 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-200 flex items-center gap-1 hover:text-purple-600 transition-colors"
+                      className="bg-gray-300 py-1 px-4 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-200 flex items-center gap-1 hover:text-purple-600 transition-colors"
                     >
                       <Users className="w-4 h-4" />
                       إجمالي اللاعبين:{" "}
@@ -21845,8 +21946,9 @@ export default function App() {
                         {error}
                       </motion.div>
                     )}
-                    <label className="block text-base md:text-lg font-bold text-main mb-1 md:mb-2 px-1">
-                      إنشاء / دخول بكود غرفة
+                    <label className="flex items-center justify-between text-base md:text-lg font-bold text-main mb-1 md:mb-2 px-1">
+                      <span>إنشاء / دخول بكود غرفة</span>
+                      <span className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-[10px] md:text-xs px-2 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-red-200">جديد - تخمينة كومبليت</span>
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -22004,40 +22106,40 @@ export default function App() {
                       (p) => p.serial === playerSerial,
                     ) !== -1 && (
                       <div className="px-4 pb-3 pt-3 bg-gray-50">
-                      <div className="bg-purple-600 text-white p-3 rounded-none flex items-center gap-3 border-x-4 border-b-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                        <div className="font-black text-xl w-8 text-center bg-white/20 rounded-lg py-1">
-                          #
-                          {sortedTopPlayers.findIndex(
-                            (p) => p.serial === playerSerial,
-                          ) + 1}
-                        </div>
-                        <div className="relative w-10 h-10">
-                          {renderAvatarContent(
-                            avatar,
-                            getLevel(xp),
-                            true,
-                            true,
-                            selectedFrame,
-                            playerSerial,
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0 text-right">
-                          <div className="font-black truncate">
-                            أنت ({playerName})
+                        <div className="bg-purple-600 text-white p-3 rounded-none flex items-center gap-3 border-x-4 border-b-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                          <div className="font-black text-xl w-8 text-center bg-white/20 rounded-lg py-1">
+                            #
+                            {sortedTopPlayers.findIndex(
+                              (p) => p.serial === playerSerial,
+                            ) + 1}
                           </div>
-                          <div className="text-xs text-white/80 font-bold flex items-center gap-2">
-                            <span dir="ltr">Lvl {getLevel(xp)}</span>
-                            <span>•</span>
-                            <span>{wins} فوز</span>
-                            <span>•</span>
-                            <span>{streak} 🔥</span>
-                            <span>•</span>
-                            <span>{likes} ❤️</span>
+                          <div className="relative w-10 h-10">
+                            {renderAvatarContent(
+                              avatar,
+                              getLevel(xp),
+                              true,
+                              true,
+                              selectedFrame,
+                              playerSerial,
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 text-right">
+                            <div className="font-black truncate">
+                              أنت ({playerName})
+                            </div>
+                            <div className="text-xs text-white/80 font-bold flex items-center gap-2">
+                              <span dir="ltr">Lvl {getLevel(xp)}</span>
+                              <span>•</span>
+                              <span>{wins} فوز</span>
+                              <span>•</span>
+                              <span>{streak} 🔥</span>
+                              <span>•</span>
+                              <span>{likes} ❤️</span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                     <div
                       className="flex items-center justify-center gap-2 py-3 px-2 bg-gray-100"
@@ -22426,6 +22528,7 @@ export default function App() {
           <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-2 mx-2">
             {room.gameState !== "waiting" &&
               room.gameState !== "custom_image_upload" &&
+              room.gameState !== "bus_complete_setup" &&
               room.gameState !== "starting" && (
                 <div
                   className={`flex items-center justify-center min-w-[70px] md:min-w-[80px] gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-full text-sm md:text-base font-black transition-colors border-2 ${room.isFrozen ? "bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse" : room.timer <= 10 && room.gameState === "guessing" ? "bg-red-100 text-red-600 border-red-200 animate-pulse" : "bg-gray-100 text-brown-muted border-gray-200"}`}
@@ -23068,6 +23171,139 @@ export default function App() {
                   </div>
                 )}
               </div>
+            ) : ["bus_complete_setup", "bus_complete_spin", "bus_complete_playing"].includes(room.gameState) ? (
+              <div className="w-full card-game p-4 md:p-6 text-center space-y-4 md:space-y-6 relative overflow-hidden flex flex-col min-h-[400px]">
+                {/* Empty square for the letter */}
+                <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-dashed border-gray-300 rounded-2xl mx-auto flex items-center justify-center bg-gray-50 text-4xl md:text-5xl font-black text-blue-600 transition-all duration-200">
+                  <span className={room.gameState === "bus_complete_spin" ? "" : ""}>{spinLetter}</span>
+                </div>
+
+                {room.gameState === "bus_complete_setup" && (
+                  <button
+                    onClick={() => socket?.emit("search_bus_complete_letter", { roomId })}
+                    className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2"
+                  >
+                    البحث عن حرف وبدء اللعب 🎲
+                  </button>
+                )}
+
+                {(room.gameState === "bus_complete_playing" || room.gameState === "bus_complete_spin") && (
+                  <>
+                    {/* Timer */}
+                    <div className="flex justify-center items-center gap-2 bg-gray-100 py-2 px-6 rounded-xl w-fit mx-auto shadow-inner border border-gray-200">
+                       <Timer className={`w-5 h-5 ${room.timer <= 60 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
+                       <span className={`text-2xl font-black font-mono tracking-wider ${room.timer <= 60 ? 'text-red-600' : 'text-gray-700'}`}>
+                         {Math.floor(room.timer / 60)}:{(room.timer % 60).toString().padStart(2, "0")}
+                       </span>
+                    </div>
+
+                    <div className="space-y-3 pt-2 pointer-events-auto">
+                      {[
+                        { key: "boy", label: "ولد", emoji: "👦" },
+                        { key: "girl", label: "بنت", emoji: "👧" },
+                        { key: "animal", label: "حيوان", emoji: "🦁" },
+                        { key: "plant", label: "نبات", emoji: "🌿" },
+                        { key: "inanimate", label: "جماد", emoji: "🪑" },
+                        { key: "country", label: "بلاد", emoji: "🌍" },
+                      ].map((item) => (
+                        <div key={item.key} className="flex flex-row-reverse items-center justify-between gap-3 bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
+                           <div className="flex-shrink-0 w-24 md:w-28 flex flex-row border-l-2 border-gray-100 items-center justify-end font-black text-brown-dark gap-2 text-sm md:text-base pr-2">
+                             <span>{item.label}</span>
+                             <span>{item.emoji}</span>
+                           </div>
+                           <input
+                             type="text"
+                             className="flex-1 w-full text-right outline-none bg-transparent font-bold text-gray-800 placeholder-gray-300 text-sm md:text-base px-2"
+                             placeholder={`اكتب ${item.label}...`}
+                             value={busAnswers[item.key as keyof typeof busAnswers]}
+                             disabled={room.gameState !== "bus_complete_playing"}
+                             onChange={(e) => setBusAnswers(prev => ({ ...prev, [item.key]: e.target.value }))}
+                             dir="rtl"
+                           />
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        playSound("clickOpen");
+                        socket?.emit("submit_bus_complete", { roomId, answers: busAnswers });
+                      }}
+                      disabled={room.gameState !== "bus_complete_playing"}
+                      className={`w-full py-4 rounded-2xl font-black text-xl md:text-2xl transition-all shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent mt-4
+                        ${room.gameState === "bus_complete_playing" ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
+                    >
+                      تخمينة كومبليت 🏁
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : room.gameState === "bus_complete_evaluating" ? (
+              <div className="w-full card-game p-4 md:p-6 text-center space-y-4 md:space-y-6 relative overflow-hidden flex flex-col min-h-[400px]">
+                <h2 className="text-2xl font-black text-blue-600">نتيجة تخمينة كومبليت</h2>
+                
+                <div className="flex flex-col gap-4">
+                  {room.players.map((p) => {
+                    const score = room.busCompleteScores?.[p.id];
+                    const time = room.busCompleteSubmitTimes?.[p.id];
+                    const isWinner = room.busCompleteWinner === p.id;
+                    const isTie = room.busCompleteWinner === 'tie';
+                    if (!score) return null;
+                    return (
+                      <div key={p.id} className={`p-4 rounded-2xl border-4 ${isWinner ? 'border-accent-orange bg-orange-50' : isTie ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}>
+                        <div className="flex items-center justify-between font-black text-lg text-brown-dark mb-2">
+                           <span className="flex-1 text-right">{p.name} {p.id === socket?.id ? '(أنت)' : ''}</span>
+                           <span className="text-accent-orange bg-white px-3 py-1 rounded-full border border-orange-200">
+                             نقاط: {score.total}
+                           </span>
+                        </div>
+                        <div className="text-sm font-bold text-gray-500 mb-2">
+                          الوقت: {time ? `${time} ثانية` : 'وقت كامل'}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs font-bold mt-3">
+                          {['boy', 'girl', 'animal', 'plant', 'inanimate', 'country'].map(cat => {
+                             const pts = score[cat as keyof typeof score];
+                             const labels = { boy: 'ولد', girl: 'بنت', animal: 'حيوان', plant: 'نبات', inanimate: 'جماد', country: 'بلاد' };
+                             return (
+                               <div key={cat} className={`flex flex-col items-center p-1 rounded ${pts > 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-400'}`}>
+                                 <span>{labels[cat as keyof typeof labels]}</span>
+                                 <span>{pts > 0 ? '✔️' : '❌'}</span>
+                               </div>
+                             );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div className="text-3xl font-black my-4 text-brown-dark">
+                  {room.busCompleteWinner === socket?.id ? "🏆 لقد فزت! 🏆" : room.busCompleteWinner === 'tie' ? "🤝 تعادل!" : "😢 حظ أوفر المرة القادمة"}
+                </div>
+                
+                <div className="flex flex-col gap-3 mt-6">
+                   <button
+                     onClick={() => socket?.emit("select_private_mode", { roomId, mode: "bus_complete" })}
+                     className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2"
+                   >
+                     🔄 اللعب مرة أخرى كومبليت
+                   </button>
+                   <button
+                     onClick={() => {
+                        socket?.emit("select_private_mode", { roomId, mode: null });
+                     }}
+                     className="w-full btn-game bg-gray-200 hover:bg-gray-300 text-gray-700 shadow-[0_6px_0_0_#d1d5db] active:shadow-transparent py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
+                   >
+                     الرجوع لخيارات اللعب
+                   </button>
+                   <button
+                     onClick={handleLeaveGame}
+                     className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_6px_0_0_#fca5a5] active:shadow-transparent py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
+                   >
+                     🚪 خروج للرئيسية
+                   </button>
+                </div>
+              </div>
             ) : room.gameState === "waiting" ? (
               <React.Fragment>
                 <div className="w-full card-game p-3 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden">
@@ -23196,6 +23432,29 @@ export default function App() {
                             </span>
                             <span className="text-xs text-brown-muted">
                               (كل لاعب يرفع صورة للتاني يخمنها)
+                            </span>
+                          </button>
+
+                          <button
+                            disabled={room.players.length < 2}
+                            onClick={() =>
+                              socket?.emit("select_private_mode", {
+                                roomId: room.id,
+                                mode: "bus_complete",
+                              })
+                            }
+                            className={`bg-blue-100 hover:bg-blue-200 border-4 border-blue-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#3b82f6] active:shadow-none active:translate-y-2"}`}
+                          >
+                            <span
+                              className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
+                            >
+                              🚌
+                            </span>
+                            <span className="text-xl font-black text-blue-600">
+                              تخمينة كومبليت
+                            </span>
+                            <span className="text-xs text-brown-muted">
+                              (لعبة الحروف والكلمات السريعة)
                             </span>
                           </button>
                         </div>
@@ -24449,6 +24708,7 @@ export default function App() {
         {/* Help Cards (Bottom Left) - Vertical Stack */}
         {room.gameState !== "waiting" &&
           room.gameState !== "custom_image_upload" &&
+          room.gameState !== "bus_complete_setup" &&
           room.gameState !== "starting" && (
             <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
               {[
