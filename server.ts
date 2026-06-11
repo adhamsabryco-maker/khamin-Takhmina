@@ -4196,7 +4196,9 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       const t1 = room.busCompleteSubmitTimes?.[p1.id] || 300;
       const t2 = room.busCompleteSubmitTimes?.[p2.id] || 300;
 
-      if (s1 > s2 || (s1 === s2 && t1 < t2)) {
+      if (s1 === 0 && s2 === 0) {
+        room.busCompleteWinner = 'none'; // Both lose
+      } else if (s1 > s2 || (s1 === s2 && t1 < t2)) {
         room.busCompleteWinner = p1.id;
         const dbP1 = allPlayers.get(p1.serial);
         if (dbP1) { dbP1.busCompleteWins = (dbP1.busCompleteWins||0) + 1; savePlayerData(p1.serial); }
@@ -5543,7 +5545,17 @@ io.on("connection", (socket) => {
         } else if (mode === 'bus_complete') {
           room.gameState = "bus_complete_setup";
           room.category = 'تخمينة كومبليت';
+          room.busCompleteLetter = null;
+          room.busCompleteSubmittedPlayers = [];
           if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+        } else if (mode === null) {
+          room.gameState = "waiting";
+          room.selectionMode = null;
+          room.category = null;
+          room.busCompleteLetter = null;
+          room.busCompleteSubmittedPlayers = [];
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+          startWaitingInterval(roomId);
         }
         io.to(roomId).emit("room_update", room);
       }
@@ -5622,14 +5634,21 @@ io.on("connection", (socket) => {
       if (room && room.gameState === "bus_complete_playing") {
         if (!room.busCompleteAnswers) room.busCompleteAnswers = {};
         if (!room.busCompleteSubmitTimes) room.busCompleteSubmitTimes = {};
+        if (!room.busCompleteSubmittedPlayers) room.busCompleteSubmittedPlayers = [];
         
         room.busCompleteAnswers[socket.id] = answers;
         room.busCompleteSubmitTimes[socket.id] = 300 - room.timer; // Time taken
         
-        // Match ends immediately on first submit (Komplet!)
-        if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-        room.gameState = "bus_complete_evaluating";
-        evaluateBusCompleteAnswers(room);
+        if (!room.busCompleteSubmittedPlayers.includes(socket.id)) {
+            room.busCompleteSubmittedPlayers.push(socket.id);
+        }
+
+        if (room.busCompleteSubmittedPlayers.length === 2) {
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            room.gameState = "bus_complete_evaluating";
+            evaluateBusCompleteAnswers(room);
+        }
+        
         io.to(roomId).emit("room_update", room);
       }
     });
@@ -6670,7 +6689,14 @@ io.on("connection", (socket) => {
             if (!room.chatHistory) room.chatHistory = [];
             room.chatHistory.push({ ...messageObj, senderName: "النظام", timestamp: Date.now() });
             io.to(roomId).emit("chat_bubble", messageObj);
-            endGame(roomId, opponent ? opponent.name : "المنافس", true);
+            
+            if (room.gameState.startsWith("bus_complete") || room.gameState === "custom_image_upload") {
+               io.to(roomId).emit("game_stopped", { reason: "المنافس غادر المباراة" });
+               if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+               rooms.delete(roomId);
+            } else {
+               endGame(roomId, opponent ? opponent.name : "المنافس", true);
+            }
           } else if (room.gameState === "waiting") {
             socket.to(roomId).emit("opponent_left_lobby");
           }
@@ -8604,8 +8630,14 @@ io.on("connection", (socket) => {
             } else {
               io.to(roomId).emit("chat_bubble", { senderId: "system", text: `انقطع اتصال ${leavingPlayer.name}` });
             }
-            // Always end game with opponent as winner
-            endGame(roomId, opponent ? opponent.name : "المنافس", true);
+            if (room.gameState.startsWith("bus_complete") || room.gameState === "custom_image_upload") {
+               io.to(roomId).emit("game_stopped", { reason: "المنافس غادر المباراة" });
+               if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+               rooms.delete(roomId);
+            } else {
+               // Always end game with opponent as winner
+               endGame(roomId, opponent ? opponent.name : "المنافس", true);
+            }
           }
 
           // Now remove the player and cleanup
