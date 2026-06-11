@@ -22529,6 +22529,9 @@ export default function App() {
             {room.gameState !== "waiting" &&
               room.gameState !== "custom_image_upload" &&
               room.gameState !== "bus_complete_setup" &&
+              room.gameState !== "bus_complete_spin" &&
+              room.gameState !== "bus_complete_playing" &&
+              room.gameState !== "bus_complete_evaluating" &&
               room.gameState !== "starting" && (
                 <div
                   className={`flex items-center justify-center min-w-[70px] md:min-w-[80px] gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-full text-sm md:text-base font-black transition-colors border-2 ${room.isFrozen ? "bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse" : room.timer <= 10 && room.gameState === "guessing" ? "bg-red-100 text-red-600 border-red-200 animate-pulse" : "bg-gray-100 text-brown-muted border-gray-200"}`}
@@ -24709,6 +24712,9 @@ export default function App() {
         {room.gameState !== "waiting" &&
           room.gameState !== "custom_image_upload" &&
           room.gameState !== "bus_complete_setup" &&
+          room.gameState !== "bus_complete_spin" &&
+          room.gameState !== "bus_complete_playing" &&
+          room.gameState !== "bus_complete_evaluating" &&
           room.gameState !== "starting" && (
             <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
               {[
