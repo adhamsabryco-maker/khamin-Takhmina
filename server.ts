@@ -1365,6 +1365,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   try { db.exec(`ALTER TABLE players ADD COLUMN email TEXT`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN isAdmin INTEGER DEFAULT 0`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN tokens INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN busCompleteWins INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE players ADD COLUMN busCompleteUsedLetters TEXT DEFAULT '[]'`); } catch (e) {}
   try { db.exec(`ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0`); } catch (e) {}
   // Initialize randomXp with current xp for existing players so they don't lose leaderboard position
   try { db.exec(`UPDATE players SET randomXp = xp WHERE randomXp = 0 OR randomXp IS NULL`); } catch (e) {}
@@ -1723,8 +1725,8 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
   }
 
   const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters)
   `);
 
   // Helper to check and perform daily reset for Rain Gift rewards
@@ -1942,7 +1944,9 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         citySearchRewards: JSON.stringify(player.citySearchRewards || []),
         keys: player.keys || 0,
         likes: player.likes || 0,
-        lastActiveAt: player.lastActiveAt || 0
+        lastActiveAt: player.lastActiveAt || 0,
+        busCompleteWins: player.busCompleteWins || 0,
+        busCompleteUsedLetters: JSON.stringify(player.busCompleteUsedLetters || [])
       });
       invalidateTopPlayersCache();
     } catch (err) {
@@ -2001,7 +2005,9 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
         citySearchRewards: JSON.stringify(player.citySearchRewards || []),
         keys: player.keys || 0,
         likes: player.likes || 0,
-        lastActiveAt: player.lastActiveAt || 0
+        lastActiveAt: player.lastActiveAt || 0,
+        busCompleteWins: player.busCompleteWins || 0,
+        busCompleteUsedLetters: JSON.stringify(player.busCompleteUsedLetters || [])
       });
     }
   });
@@ -2084,7 +2090,9 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
           citySearchRewards: JSON.parse(row.citySearchRewards || '[]'),
           keys: row.keys || 0,
           likes: row.likes || 0,
-          lastActiveAt: row.lastActiveAt || 0
+          lastActiveAt: row.lastActiveAt || 0,
+          busCompleteWins: row.busCompleteWins || 0,
+          busCompleteUsedLetters: JSON.parse(row.busCompleteUsedLetters || '[]')
         });
       });
       console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -4136,6 +4144,74 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     target.emit('player_data_update', { ...data, tempItems });
   }
 
+  const fs = require('fs');
+  const path = require('path');
+  let busCompleteData = {};
+  try {
+    busCompleteData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/data/busCompleteData.json'), 'utf8'));
+  } catch (e) {
+    console.log("Error loading busCompleteData.json", e);
+  }
+
+  function normalizeArabicStr(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str.trim()
+      .replace(/[أإآا]/g, 'ا')
+      .replace(/[ةه]/g, 'ه')
+      .replace(/[ىي]/g, 'ي')
+      .replace(/\s+/g, '')
+      .replace(/[^ء-يa-zA-Z]/g, '');
+  }
+
+  function evaluateBusCompleteAnswers(room) {
+    const letter = room.busCompleteLetter;
+    if (!letter) return;
+    const targetLetter = normalizeArabicStr(letter);
+
+    room.busCompleteScores = {};
+    
+    room.players.forEach(p => {
+      room.busCompleteScores[p.id] = { boy: 0, girl: 0, animal: 0, plant: 0, inanimate: 0, country: 0, total: 0 };
+      const answers = room.busCompleteAnswers?.[p.id] || {};
+      
+      const categories = ['boy', 'girl', 'animal', 'plant', 'inanimate', 'country'];
+      categories.forEach(cat => {
+        let ans = normalizeArabicStr(answers[cat]);
+        if (ans && ans.startsWith(targetLetter)) {
+          const letterData = busCompleteData[targetLetter] || {};
+          const validList = (letterData[cat] || []).map(normalizeArabicStr);
+          if (validList.includes(ans)) {
+             room.busCompleteScores[p.id][cat] = 10;
+             room.busCompleteScores[p.id].total += 10;
+          } else {
+             room.busCompleteScores[p.id][cat] = 0;
+          }
+        }
+      });
+    });
+
+    const p1 = room.players[0];
+    const p2 = room.players[1];
+    if(p1 && p2) {
+      const s1 = room.busCompleteScores[p1.id].total;
+      const s2 = room.busCompleteScores[p2.id].total;
+      const t1 = room.busCompleteSubmitTimes?.[p1.id] || 300;
+      const t2 = room.busCompleteSubmitTimes?.[p2.id] || 300;
+
+      if (s1 > s2 || (s1 === s2 && t1 < t2)) {
+        room.busCompleteWinner = p1.id;
+        const dbP1 = allPlayers.get(p1.serial);
+        if (dbP1) { dbP1.busCompleteWins = (dbP1.busCompleteWins||0) + 1; savePlayerData(p1.serial); }
+      } else if (s2 > s1 || (s1 === s2 && t2 < t1)) {
+        room.busCompleteWinner = p2.id;
+        const dbP2 = allPlayers.get(p2.serial);
+        if (dbP2) { dbP2.busCompleteWins = (dbP2.busCompleteWins||0) + 1; savePlayerData(p2.serial); }
+      } else {
+        room.busCompleteWinner = 'tie';
+      }
+    }
+  }
+
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
     broadcastOnlineCount();
@@ -5466,7 +5542,96 @@ io.on("connection", (socket) => {
             }
           }, 1000);
           intervals.set(roomId, interval);
+        } else if (mode === 'bus_complete') {
+          room.gameState = "bus_complete_setup";
+          room.category = 'تخمينة كومبليت';
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
         }
+        io.to(roomId).emit("room_update", room);
+      }
+    });
+
+    socket.on("search_bus_complete_letter", ({ roomId }) => {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "bus_complete_setup") {
+        room.gameState = "bus_complete_spin";
+        io.to(roomId).emit("room_update", room);
+
+        const arabicLetters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'];
+        
+        // Find a letter not used by either player recently, if possible
+        const player1Serial = room.players[0]?.serial;
+        const player2Serial = room.players[1]?.serial;
+        const p1 = player1Serial ? allPlayers.get(player1Serial) : null;
+        const p2 = player2Serial ? allPlayers.get(player2Serial) : null;
+        
+        let used1 = p1?.busCompleteUsedLetters || [];
+        let used2 = p2?.busCompleteUsedLetters || [];
+        
+        let availableLetters = arabicLetters.filter(l => !used1.includes(l) && !used2.includes(l));
+        if (availableLetters.length === 0) {
+           availableLetters = arabicLetters; // Reset if all used
+           if (p1) { p1.busCompleteUsedLetters = []; savePlayerData(p1.serial); }
+           if (p2) { p2.busCompleteUsedLetters = []; savePlayerData(p2.serial); }
+        }
+        
+        const randomLetter = availableLetters[Math.floor(Math.random() * availableLetters.length)];
+        room.busCompleteLetter = randomLetter;
+
+        setTimeout(() => {
+          const r = rooms.get(roomId);
+          if (r && r.gameState === "bus_complete_spin") {
+            r.gameState = "bus_complete_playing";
+            r.timer = 300; // 5 minutes
+            
+            // Mark letter as used
+            if (p1 && r.busCompleteLetter) {
+              p1.busCompleteUsedLetters = [...(p1.busCompleteUsedLetters || []), r.busCompleteLetter];
+              savePlayerData(p1.serial);
+            }
+            if (p2 && r.busCompleteLetter) {
+              p2.busCompleteUsedLetters = [...(p2.busCompleteUsedLetters || []), r.busCompleteLetter];
+              savePlayerData(p2.serial);
+            }
+            
+            io.to(roomId).emit("room_update", r);
+            
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const interval = setInterval(() => {
+              const currentRoom = rooms.get(roomId);
+              if (!currentRoom || currentRoom.gameState !== 'bus_complete_playing') {
+                clearInterval(interval);
+                return;
+              }
+              currentRoom.timer--;
+              if (currentRoom.timer <= 0) {
+                 clearInterval(interval);
+                 currentRoom.gameState = "bus_complete_evaluating"; // Time is up
+                 evaluateBusCompleteAnswers(currentRoom);
+                 io.to(roomId).emit("room_update", currentRoom);
+              } else {
+                 io.to(roomId).emit("room_update", currentRoom);
+              }
+            }, 1000);
+            intervals.set(roomId, interval);
+          }
+        }, 3000); // 3 seconds spin effect
+      }
+    });
+
+    socket.on("submit_bus_complete", ({ roomId, answers }) => {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "bus_complete_playing") {
+        if (!room.busCompleteAnswers) room.busCompleteAnswers = {};
+        if (!room.busCompleteSubmitTimes) room.busCompleteSubmitTimes = {};
+        
+        room.busCompleteAnswers[socket.id] = answers;
+        room.busCompleteSubmitTimes[socket.id] = 300 - room.timer; // Time taken
+        
+        // Match ends immediately on first submit (Komplet!)
+        if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+        room.gameState = "bus_complete_evaluating";
+        evaluateBusCompleteAnswers(room);
         io.to(roomId).emit("room_update", room);
       }
     });
