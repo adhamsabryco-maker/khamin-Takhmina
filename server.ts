@@ -1216,7 +1216,12 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     luckyWheelDaysUsed?: number,
     citySearchRewards?: { type: 'token' | 'helper' | 'key', id?: string, amount: number, timestamp: number }[],
     keys?: number,
-    lastActiveAt?: number
+    lastActiveAt?: number,
+    hideMyInfo?: number,
+    hideFriendRequests?: number,
+    secretToken?: string,
+    busCompleteWins?: number,
+    busCompleteUsedLetters?: string[]
   }>();
 
   const playerSockets = new Map<string, string>();
@@ -5572,6 +5577,18 @@ io.on("connection", (socket) => {
       }
     });
 
+    socket.on("cancel_bus_complete_game", ({ roomId }) => {
+      const room = rooms.get(roomId);
+      if (room && (room.gameState === "bus_complete_playing" || room.gameState === "bus_complete_spin" || room.gameState === "bus_complete_evaluating")) {
+        room.gameState = "bus_complete_setup";
+        room.busCompleteLetter = undefined;
+        room.busCompleteSubmittedPlayers = [];
+        room.busCompleteAnswers = {};
+        if (room.timerInterval) clearInterval(room.timerInterval);
+        io.to(roomId).emit("room_update", room);
+      }
+    });
+
     socket.on("search_bus_complete_letter", ({ roomId }) => {
       const room = rooms.get(roomId);
       if (room && room.gameState === "bus_complete_setup") {
@@ -5605,6 +5622,9 @@ io.on("connection", (socket) => {
             r.gameState = "bus_complete_playing";
             r.timer = 300; // 5 minutes
             
+            r.busCompleteAdViewers = [];
+            r.busCompleteCooldowns = {};
+            
             // Mark letter as used
             if (p1 && r.busCompleteLetter) {
               p1.busCompleteUsedLetters = [...(p1.busCompleteUsedLetters || []), r.busCompleteLetter];
@@ -5624,6 +5644,28 @@ io.on("connection", (socket) => {
                 clearInterval(interval);
                 return;
               }
+              
+              let isCooldownActive = false;
+              let anyCooldownDecremented = false;
+              if (currentRoom.busCompleteCooldowns) {
+                Object.keys(currentRoom.busCompleteCooldowns).forEach(pid => {
+                  if (currentRoom.busCompleteCooldowns[pid] > 0) {
+                     currentRoom.busCompleteCooldowns[pid]--;
+                     isCooldownActive = true;
+                     anyCooldownDecremented = true;
+                  }
+                });
+              }
+
+              const isAdPlaying = currentRoom.busCompleteAdViewers && currentRoom.busCompleteAdViewers.length > 0;
+
+              if (isAdPlaying || isCooldownActive) {
+                  if (anyCooldownDecremented || isAdPlaying) {
+                     io.to(roomId).emit("room_update", currentRoom);
+                  }
+                  return;
+              }
+
               currentRoom.timer--;
               if (currentRoom.timer <= 0) {
                  clearInterval(interval);
@@ -5637,6 +5679,31 @@ io.on("connection", (socket) => {
             intervals.set(roomId, interval);
           }
         }, 3000); // 3 seconds spin effect
+      }
+    });
+
+    socket.on("bus_complete_ad_start", ({ roomId }) => {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "bus_complete_playing") {
+        if (!room.busCompleteAdViewers) room.busCompleteAdViewers = [];
+        if (!room.busCompleteAdViewers.includes(socket.id)) {
+          room.busCompleteAdViewers.push(socket.id);
+        }
+        io.to(roomId).emit("room_update", room);
+      }
+    });
+
+    socket.on("bus_complete_ad_end", ({ roomId, completed }) => {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "bus_complete_playing") {
+        if (room.busCompleteAdViewers) {
+          room.busCompleteAdViewers = room.busCompleteAdViewers.filter((id: any) => id !== socket.id);
+        }
+        if (completed) {
+          if (!room.busCompleteCooldowns) room.busCompleteCooldowns = {};
+          room.busCompleteCooldowns[socket.id] = 30; // 30 seconds cooldown
+        }
+        io.to(roomId).emit("room_update", room);
       }
     });
 
