@@ -23269,7 +23269,40 @@ export default function App() {
                                <button
                                  onClick={() => {
                                    if (room.busCompleteCooldowns?.[socket?.id || ""] > 0) return;
-                                   setAdSolveCategory({ key: item.key, label: item.label });
+                                   setCustomConfirm({
+                                     show: true,
+                                     title: `حل لغز ${item.label}`,
+                                     message: `هل تود مشاهدة اعلان لحل لغز اجابة ${item.label}؟`,
+                                     confirmText: "نعم",
+                                     cancelText: "لا",
+                                     onConfirm: () => {
+                                       setCustomConfirm(prev => ({ ...prev, show: false }));
+                                       socket?.emit("bus_complete_ad_start", { roomId });
+                                       setMockAdProviderState({
+                                         onComplete: () => {
+                                           socket?.emit("bus_complete_ad_end", { roomId, completed: true });
+                                           if (room?.busCompleteLetter) {
+                                              let mappedLetter = room.busCompleteLetter;
+                                              if (mappedLetter === "أ" || mappedLetter === "إ" || mappedLetter === "آ") mappedLetter = "ا";
+                                              if (mappedLetter === "ة") mappedLetter = "ه";
+                                              if (mappedLetter === "ى") mappedLetter = "ي";
+                                              const letterData = (busCompleteData as any)[mappedLetter];
+                                              if (letterData) {
+                                                const words = letterData[item.key] || [];
+                                                if (words.length > 0) {
+                                                  const randomWord = words[Math.floor(Math.random() * words.length)];
+                                                  setBusAnswers(prev => ({ ...prev, [item.key]: randomWord }));
+                                                }
+                                              }
+                                           }
+                                         },
+                                         onDismissed: () => {
+                                           socket?.emit("bus_complete_ad_end", { roomId, completed: false });
+                                           showAlert("يجب مشاهدة الاعلان بالكامل لحل اللغز!", "تنبيه");
+                                         }
+                                       });
+                                     }
+                                   });
                                  }}
                                  disabled={(room.busCompleteCooldowns?.[socket?.id || ""] || 0) > 0}
                                  className="flex-shrink-0 p-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-600 rounded-full transition-colors mx-1 border border-yellow-300 relative disabled:opacity-70 disabled:cursor-not-allowed group overflow-hidden"
@@ -25563,67 +25596,6 @@ export default function App() {
               onStartGame={handleMatchIntroStart}
               onComplete={handleMatchIntroComplete}
             />
-          )}
-        </AnimatePresence>
-        <AnimatePresence>
-          {adSolveCategory && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-              dir="rtl"
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative border-4 border-yellow-400 overflow-hidden"
-              >
-                 <div className="text-center">
-                    <Tv className="w-16 h-16 mx-auto mb-4 text-purple-600 animate-pulse" />
-                    <h3 className="text-xl font-black text-purple-900 mb-2">حل لغز {adSolveCategory.label}</h3>
-                    <p className="text-gray-600 font-bold mb-6">هل تود مشاهدة اعلان لحل لغز اجابة {adSolveCategory.label}؟</p>
-                    <div className="flex gap-3">
-                       <button
-                         onClick={() => {
-                           const cat = adSolveCategory;
-                           setAdSolveCategory(null);
-                           socket?.emit("bus_complete_ad_start", { roomId });
-                           setMockAdProviderState({
-                             onComplete: () => {
-                               socket?.emit("bus_complete_ad_end", { roomId, completed: true });
-                               if (room?.busCompleteLetter) {
-                                  const letterData = (busCompleteData as any)[room.busCompleteLetter];
-                                  if (letterData) {
-                                    const words = letterData[cat.key] || [];
-                                    if (words.length > 0) {
-                                      const randomWord = words[Math.floor(Math.random() * words.length)];
-                                      setBusAnswers(prev => ({ ...prev, [cat.key]: randomWord }));
-                                    }
-                                  }
-                               }
-                             },
-                             onDismissed: () => {
-                               socket?.emit("bus_complete_ad_end", { roomId, completed: false });
-                               alert("يجب مشاهدة الاعلان بالكامل لحل اللغز!");
-                             }
-                           });
-                         }}
-                         className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black py-3 rounded-xl transition-colors shadow-[0_4px_0_0_#ca8a04] active:shadow-none active:translate-y-1"
-                       >
-                         نعم
-                       </button>
-                       <button
-                         onClick={() => setAdSolveCategory(null)}
-                         className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-black py-3 rounded-xl transition-colors shadow-[0_4px_0_0_#9ca3af] active:shadow-none active:translate-y-1"
-                       >
-                         لا
-                       </button>
-                    </div>
-                 </div>
-              </motion.div>
-            </motion.div>
           )}
         </AnimatePresence>
         <AnimatePresence>
