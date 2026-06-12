@@ -4881,9 +4881,12 @@ export default function App() {
       const letters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'];
       interval = setInterval(() => {
         setSpinLetter(letters[Math.floor(Math.random() * letters.length)]);
+        playSound("cyclingReward");
       }, 100);
     } else if (room?.busCompleteLetter) {
       setSpinLetter(room.busCompleteLetter);
+      stopSound("cyclingReward");
+      playSound("bell");
     } else {
       setSpinLetter("؟");
     }
@@ -23180,9 +23183,12 @@ export default function App() {
                   <span className={room.gameState === "bus_complete_spin" ? "" : ""}>{spinLetter}</span>
                 </div>
 
-                {room.gameState === "bus_complete_setup" && (
+              {room.gameState === "bus_complete_setup" && (
                   <button
-                    onClick={() => socket?.emit("search_bus_complete_letter", { roomId })}
+                    onClick={() => {
+                    playSound("clickOpen");
+                    socket?.emit("search_bus_complete_letter", { roomId });
+                    }}
                     className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2"
                   >
                     البحث عن حرف وبدء اللعب 🎲
@@ -23226,17 +23232,45 @@ export default function App() {
                       ))}
                     </div>
 
-                    <button
-                      onClick={() => {
-                        playSound("clickOpen");
-                        socket?.emit("submit_bus_complete", { roomId, answers: busAnswers });
-                      }}
-                      disabled={room.gameState !== "bus_complete_playing" || room.busCompleteSubmittedPlayers?.includes(socket?.id)}
-                      className={`w-full py-4 rounded-2xl font-black text-xl md:text-2xl transition-all shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent mt-4
-                        ${(room.gameState === "bus_complete_playing" && !room.busCompleteSubmittedPlayers?.includes(socket?.id)) ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
-                    >
-                      {room.busCompleteSubmittedPlayers?.includes(socket?.id) ? "في انتظار اللاعب الآخر..." : "تخمينة كومبليت 🏁"}
-                    </button>
+                    {(() => {
+                      const meSubmitted = room.busCompleteSubmittedPlayers?.includes(socket?.id);
+                      const opponent = room.players.find(p => p.id !== socket?.id);
+                      const opponentSubmitted = opponent && room.busCompleteSubmittedPlayers?.includes(opponent.id);
+                      
+                      return (
+                        <div className="flex flex-col w-full gap-2 mt-4">
+                          {opponentSubmitted && !meSubmitted && (
+                               <div className="text-center text-red-600 font-bold bg-red-50 py-2 rounded-xl mb-1 animate-pulse border border-red-200">
+                                   {opponent.name} انتهي من التخمين! أسرع!
+                               </div>
+                          )}
+                          
+                          <button
+                            onClick={() => {
+                              playSound("clickOpen");
+                              socket?.emit("submit_bus_complete", { roomId, answers: busAnswers });
+                            }}
+                            disabled={room.gameState !== "bus_complete_playing" || meSubmitted}
+                            className={`w-full py-4 rounded-2xl font-black text-xl md:text-2xl transition-all shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent
+                              ${(room.gameState === "bus_complete_playing" && !meSubmitted) ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
+                          >
+                            {meSubmitted ? "في انتظار اللاعب الآخر..." : "تخمينة كومبليت 🏁"}
+                          </button>
+                          
+                          {meSubmitted && (
+                               <button
+                                   onClick={() => {
+                                       playSound("clickOpen");
+                                       socket?.emit("undo_bus_complete", { roomId });
+                                   }}
+                                   className="w-full py-3 rounded-2xl font-bold text-lg transition-all border-2 border-red-500 text-red-500 hover:bg-red-50"
+                               >
+                                   تراجع
+                               </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>
