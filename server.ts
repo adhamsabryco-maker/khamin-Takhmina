@@ -5652,6 +5652,12 @@ io.on("connection", (socket) => {
         
         if (!room.busCompleteSubmittedPlayers.includes(socket.id)) {
             room.busCompleteSubmittedPlayers.push(socket.id);
+            
+            // Fast timer trick: if this is the first player to submit and timer > 60
+            if (room.busCompleteSubmittedPlayers.length === 1 && room.timer > 60) {
+                room.busCompleteTimerReduction = room.timer - 60;
+                room.timer = 60;
+            }
         }
 
         if (room.busCompleteSubmittedPlayers.length === 2) {
@@ -5661,6 +5667,23 @@ io.on("connection", (socket) => {
         }
         
         io.to(roomId).emit("room_update", room);
+      }
+    });
+
+    socket.on("undo_bus_complete", ({ roomId }) => {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "bus_complete_playing") {
+        if (room.busCompleteSubmittedPlayers && room.busCompleteSubmittedPlayers.includes(socket.id)) {
+            room.busCompleteSubmittedPlayers = room.busCompleteSubmittedPlayers.filter((p: any) => p !== socket.id);
+            
+            // Restore timer if we had reduced it, and no one is submitted anymore
+            if (room.busCompleteSubmittedPlayers.length === 0 && room.busCompleteTimerReduction) {
+                room.timer += room.busCompleteTimerReduction;
+                room.busCompleteTimerReduction = 0;
+            }
+            
+            io.to(roomId).emit("room_update", room);
+        }
       }
     });
 
