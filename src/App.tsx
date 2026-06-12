@@ -21950,7 +21950,7 @@ export default function App() {
                     )}
                     <label className="flex items-center justify-between text-base md:text-lg font-bold text-main mb-1 md:mb-2 px-1">
                       <span>إنشاء / دخول بكود غرفة</span>
-                      <span className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-[10px] md:text-xs px-2 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-red-200">جديد - تخمينة كومبليت</span>
+                      <span className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-[9px] md:text-sm px-2 py-0.5 rounded-full font-black Battery-border-2 border-yellow-300 animate-pulse shadow-sm shadow-red-200">جديد - تخمينة كومبليت</span>
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -23199,13 +23199,13 @@ export default function App() {
                   <>
                     {/* Timer */}
                     <div className="flex justify-center items-center gap-2 bg-gray-100 py-2 px-6 rounded-xl w-fit mx-auto shadow-inner border border-gray-200">
-                       <Timer className={`w-5 h-5 ${room.timer <= 60 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
+                       <Timer className={`w-6 h-6 ${room.timer <= 60 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
                        <span className={`text-2xl font-black font-mono tracking-wider ${room.timer <= 60 ? 'text-red-600' : 'text-gray-700'}`}>
                          {Math.floor(room.timer / 60)}:{(room.timer % 60).toString().padStart(2, "0")}
                        </span>
                     </div>
 
-                    <div className="space-y-3 pt-2 pointer-events-auto">
+                    <div className="space-y-2 pt-2 pointer-events-auto" dir="ltr">
                       {[
                         { key: "boy", label: "ولد", emoji: "👦" },
                         { key: "girl", label: "بنت", emoji: "👧" },
@@ -23238,7 +23238,7 @@ export default function App() {
                       const opponentSubmitted = opponent && room.busCompleteSubmittedPlayers?.includes(opponent.id);
                       
                       return (
-                        <div className="flex flex-col w-full gap-2 mt-4">
+                        <div className="flex flex-col w-full gap-2 mt-2">
                           {opponentSubmitted && !meSubmitted && (
                                <div className="text-center text-red-600 font-bold bg-red-50 py-2 rounded-xl mb-1 animate-pulse border border-red-200">
                                    {opponent.name} انتهي من التخمين! أسرع!
@@ -23313,11 +23313,11 @@ export default function App() {
                   })}
                 </div>
                 
-                <div className="text-3xl font-black my-4 text-brown-dark">
+                <div className="text-2xl font-black my-0.5 text-brown-dark">
                   {room.busCompleteWinner === socket?.id ? "🏆 لقد فزت! 🏆" : room.busCompleteWinner === 'tie' ? "🤝 تعادل!" : "😢 حظ أوفر المرة القادمة"}
                 </div>
                 
-                <div className="flex flex-col gap-3 mt-6">
+                <div className="flex flex-col gap-3 mt-2">
                    <button
                      onClick={() => {
                        socket?.emit("select_private_mode", { roomId, mode: "bus_complete" });
