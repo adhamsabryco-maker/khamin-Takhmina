@@ -4151,20 +4151,30 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
     console.log("Error loading busCompleteData.json", e);
   }
 
-  function normalizeArabicStr(str) {
+  function normalizeArabicStr(str, phonetic = false) {
     if (!str || typeof str !== 'string') return '';
-    return str.trim()
+    let res = str.trim()
       .replace(/[أإآا]/g, 'ا')
       .replace(/[ةه]/g, 'ه')
-      .replace(/[ىي]/g, 'ي')
-      .replace(/\s+/g, '')
-      .replace(/[^ء-يa-zA-Z]/g, '');
+      .replace(/[ىي]/g, 'ي');
+      
+    if (phonetic) {
+      res = res
+        .replace(/[ثط]/g, 'ت')
+        .replace(/[ص]/g, 'س')
+        .replace(/[ق]/g, 'ك')
+        .replace(/[ض]/g, 'د')
+        .replace(/[ظذ]/g, 'ز');
+    }
+    
+    return res.replace(/\s+/g, '').replace(/[^ء-يa-zA-Z]/g, '');
   }
 
   function evaluateBusCompleteAnswers(room) {
     const letter = room.busCompleteLetter;
     if (!letter) return;
-    const targetLetter = normalizeArabicStr(letter);
+    const baseTargetLetter = normalizeArabicStr(letter);
+    const phoneticTargetLetter = normalizeArabicStr(letter, true);
 
     room.busCompleteScores = {};
     
@@ -4174,11 +4184,12 @@ function isSameNetwork(ip1: string | null | undefined, ip2: string | null | unde
       
       const categories = ['boy', 'girl', 'animal', 'plant', 'inanimate', 'country'];
       categories.forEach(cat => {
-        let ans = normalizeArabicStr(answers[cat]);
-        if (ans && ans.startsWith(targetLetter)) {
-          const letterData = busCompleteData[targetLetter] || {};
-          const validList = (letterData[cat] || []).map(normalizeArabicStr);
-          if (validList.includes(ans)) {
+        let ans = answers[cat];
+        let ansPhonetic = normalizeArabicStr(ans, true);
+        if (ansPhonetic && ansPhonetic.startsWith(phoneticTargetLetter)) {
+          const letterData = busCompleteData[baseTargetLetter] || {};
+          const validListPhonetic = (letterData[cat] || []).map(val => normalizeArabicStr(val, true));
+          if (validListPhonetic.includes(ansPhonetic)) {
              room.busCompleteScores[p.id][cat] = 10;
              room.busCompleteScores[p.id].total += 10;
           } else {
