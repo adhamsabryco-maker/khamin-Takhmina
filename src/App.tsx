@@ -86,6 +86,7 @@ import {
 } from "lucide-react";
 
 import easyGuessData from "./data/easyGuess.json";
+import busCompleteData from "./data/busCompleteData.json";
 
 const SPIN_REWARDS_UI = [
   {
@@ -565,6 +566,7 @@ interface Player {
   lastRenameAt?: number;
   keys?: number;
   isPro?: boolean;
+  busCompleteWins?: number;
 }
 
 interface Room {
@@ -598,6 +600,8 @@ interface Room {
   selectionMode?: "ready" | "custom" | "bus_complete" | null;
   busCompleteLetter?: string;
   busCompleteWinner?: string;
+  busCompleteAdViewers?: string[];
+  busCompleteCooldowns?: Record<string, number>;
   busCompleteScores?: Record<string, { boy: number, girl: number, animal: number, plant: number, inanimate: number, country: number, total: number }>;
   busCompleteAnswers?: Record<string, { boy: string, girl: string, animal: string, plant: string, inanimate: string, country: string }>;
 }
@@ -1811,6 +1815,7 @@ export default function App() {
     onComplete: () => void;
     onDismissed?: () => void;
   } | null>(null);
+  const [adSolveCategory, setAdSolveCategory] = useState<{key: string, label: string} | null>(null);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showPackageModal, setShowPackageModal] = useState(false);
@@ -1883,7 +1888,6 @@ export default function App() {
                           setPlayerName(playerData.name);
                           setAvatar(playerData.avatar);
                           setXp(playerData.xp || 0);
-                          if (playerData.level) setLevel(playerData.level);
                         }
                       },
                     );
@@ -23178,8 +23182,32 @@ export default function App() {
               </div>
             ) : ["bus_complete_setup", "bus_complete_spin", "bus_complete_playing"].includes(room.gameState) ? (
               <div className="w-full card-game p-4 md:p-6 text-center space-y-4 md:space-y-6 relative overflow-hidden flex flex-col min-h-[400px]">
+                
+                {room.players.length === 2 && (
+                  <div className="flex justify-between items-center w-full px-2 md:px-8 -mb-2">
+                    <div className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm" dir="rtl">
+                      <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">{room.players[1].name}</span>
+                      <span className="text-sm font-black text-green-600">🏆 {room.players[1].busCompleteWins || 0}</span>
+                    </div>
+                    <div className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm" dir="rtl">
+                      <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">{room.players[0].name}</span>
+                      <span className="text-sm font-black text-green-600">🏆 {room.players[0].busCompleteWins || 0}</span>
+                    </div>
+                  </div>
+                )}
+
+                {(room.gameState === "bus_complete_playing" || room.gameState === "bus_complete_spin") && (
+                  <button
+                    onClick={() => socket?.emit("cancel_bus_complete_game", { roomId })}
+                    className="mx-auto flex items-center justify-center gap-1 text-sm font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors mt-1 border"
+                  >
+                    <span>تغيير الحرف</span>
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+
                 {/* Empty square for the letter */}
-                <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-dashed border-gray-300 rounded-2xl mx-auto flex items-center justify-center bg-gray-50 text-4xl md:text-5xl font-black text-blue-600 transition-all duration-200">
+                <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-dashed border-gray-300 rounded-2xl mx-auto flex items-center justify-center bg-gray-50 text-4xl md:text-5xl font-black text-blue-600 transition-all duration-200 mt-2">
                   <span className={room.gameState === "bus_complete_spin" ? "" : ""}>{spinLetter}</span>
                 </div>
 
@@ -23199,11 +23227,19 @@ export default function App() {
                   <>
                     {/* Timer */}
                     <div className="flex justify-center items-center gap-2 bg-gray-100 py-2 px-6 rounded-xl w-fit mx-auto shadow-inner border border-gray-200">
-                       <Timer className={`w-6 h-6 ${room.timer <= 60 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
-                       <span className={`text-2xl font-black font-mono tracking-wider ${room.timer <= 60 ? 'text-red-600' : 'text-gray-700'}`}>
+                       <Timer className={`w-6 h-6 ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some(c => (c as number) > 0) ? 'text-blue-500 animate-pulse' : room.timer <= 60 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
+                       <span className={`text-2xl font-black font-mono tracking-wider ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some(c => (c as number) > 0) ? 'text-blue-600 animate-pulse' : room.timer <= 60 ? 'text-red-600' : 'text-gray-700'}`}>
                          {Math.floor(room.timer / 60)}:{(room.timer % 60).toString().padStart(2, "0")}
                        </span>
+                       {((room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some(c => (c as number) > 0)) && (
+                         <span className="text-sm font-bold text-blue-500 ml-1">(إنتظار)</span>
+                       )}
                     </div>
+                    {room.gameState === "bus_complete_playing" && (
+                       <div className="text-center text-red-400 font-bold text-sm mt-1 animate-pulse drop-shadow-sm">
+                         تجنب الأخطاء الإملائية للفوز بالمباراة
+                       </div>
+                    )}
 
                     <div className="space-y-2 pt-2 pointer-events-auto" dir="ltr">
                       {[
@@ -23219,15 +23255,34 @@ export default function App() {
                              <span>{item.label}</span>
                              <span>{item.emoji}</span>
                            </div>
-                           <input
-                             type="text"
-                             className="flex-1 w-full text-right outline-none bg-transparent font-bold text-gray-800 placeholder-gray-300 text-sm md:text-base px-2 disabled:text-gray-500"
-                             placeholder={`اكتب ${item.label}...`}
-                             value={busAnswers[item.key as keyof typeof busAnswers]}
-                             disabled={room.gameState !== "bus_complete_playing" || room.busCompleteSubmittedPlayers?.includes(socket?.id)}
-                             onChange={(e) => setBusAnswers(prev => ({ ...prev, [item.key]: e.target.value }))}
-                             dir="rtl"
-                           />
+                           <div className="flex-1 flex flex-row-reverse items-center">
+                             <input
+                               type="text"
+                               className="w-full text-right outline-none bg-transparent font-bold text-gray-800 placeholder-gray-300 text-sm md:text-base px-2 disabled:text-gray-500"
+                               placeholder={`اكتب ${item.label}...`}
+                               value={busAnswers[item.key as keyof typeof busAnswers]}
+                               disabled={room.gameState !== "bus_complete_playing" || room.busCompleteSubmittedPlayers?.includes(socket?.id)}
+                               onChange={(e) => setBusAnswers(prev => ({ ...prev, [item.key]: e.target.value }))}
+                               dir="rtl"
+                             />
+                             {room.gameState === "bus_complete_playing" && !room.busCompleteSubmittedPlayers?.includes(socket?.id) && !busAnswers[item.key as keyof typeof busAnswers] && (
+                               <button
+                                 onClick={() => {
+                                   if (room.busCompleteCooldowns?.[socket?.id || ""] > 0) return;
+                                   setAdSolveCategory({ key: item.key, label: item.label });
+                                 }}
+                                 disabled={(room.busCompleteCooldowns?.[socket?.id || ""] || 0) > 0}
+                                 className="flex-shrink-0 p-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-600 rounded-full transition-colors mx-1 border border-yellow-300 relative disabled:opacity-70 disabled:cursor-not-allowed group overflow-hidden"
+                               >
+                                 <Tv className={`w-4 h-4 md:w-5 md:h-5 text-yellow-600 ${room.busCompleteCooldowns?.[socket?.id || ""] > 0 ? "opacity-30" : ""}`} />
+                                 {(room.busCompleteCooldowns?.[socket?.id || ""] || 0) > 0 && (
+                                    <span className="absolute inset-0 flex items-center justify-center font-black text-xs md:text-sm bg-black/60 text-white leading-none">
+                                      {room.busCompleteCooldowns?.[socket?.id || ""]}
+                                    </span>
+                                 )}
+                               </button>
+                             )}
+                           </div>
                         </div>
                       ))}
                     </div>
@@ -25508,6 +25563,67 @@ export default function App() {
               onStartGame={handleMatchIntroStart}
               onComplete={handleMatchIntroComplete}
             />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {adSolveCategory && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              dir="rtl"
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative border-4 border-yellow-400 overflow-hidden"
+              >
+                 <div className="text-center">
+                    <Tv className="w-16 h-16 mx-auto mb-4 text-purple-600 animate-pulse" />
+                    <h3 className="text-xl font-black text-purple-900 mb-2">حل لغز {adSolveCategory.label}</h3>
+                    <p className="text-gray-600 font-bold mb-6">هل تود مشاهدة اعلان لحل لغز اجابة {adSolveCategory.label}؟</p>
+                    <div className="flex gap-3">
+                       <button
+                         onClick={() => {
+                           const cat = adSolveCategory;
+                           setAdSolveCategory(null);
+                           socket?.emit("bus_complete_ad_start", { roomId });
+                           setMockAdProviderState({
+                             onComplete: () => {
+                               socket?.emit("bus_complete_ad_end", { roomId, completed: true });
+                               if (room?.busCompleteLetter) {
+                                  const letterData = (busCompleteData as any)[room.busCompleteLetter];
+                                  if (letterData) {
+                                    const words = letterData[cat.key] || [];
+                                    if (words.length > 0) {
+                                      const randomWord = words[Math.floor(Math.random() * words.length)];
+                                      setBusAnswers(prev => ({ ...prev, [cat.key]: randomWord }));
+                                    }
+                                  }
+                               }
+                             },
+                             onDismissed: () => {
+                               socket?.emit("bus_complete_ad_end", { roomId, completed: false });
+                               alert("يجب مشاهدة الاعلان بالكامل لحل اللغز!");
+                             }
+                           });
+                         }}
+                         className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black py-3 rounded-xl transition-colors shadow-[0_4px_0_0_#ca8a04] active:shadow-none active:translate-y-1"
+                       >
+                         نعم
+                       </button>
+                       <button
+                         onClick={() => setAdSolveCategory(null)}
+                         className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-black py-3 rounded-xl transition-colors shadow-[0_4px_0_0_#9ca3af] active:shadow-none active:translate-y-1"
+                       >
+                         لا
+                       </button>
+                    </div>
+                 </div>
+              </motion.div>
+            </motion.div>
           )}
         </AnimatePresence>
         <AnimatePresence>
