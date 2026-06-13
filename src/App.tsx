@@ -8667,6 +8667,127 @@ export default function App() {
     }
   };
 
+  const showBusCompleteAd = (onComplete: () => void, onFailed?: () => void) => {
+    if (adTriggeredRef.current || isGlobalAdLoading) return;
+    adTriggeredRef.current = true;
+    setIsGlobalAdLoading(true);
+
+    let adFinished = false;
+    let adViewed = false;
+    let adDismissed = false;
+
+    const startAdProcess = () => {
+      socket?.emit("start_ad_watch", { serial: playerSerial });
+    };
+
+    let adSafetyTimeout: NodeJS.Timeout;
+
+    const onAdComplete = () => {
+      clearTimeout(adSafetyTimeout);
+      adTriggeredRef.current = false;
+      setIsGlobalAdLoading(false);
+      onComplete();
+    };
+
+    const handleAdFailure = () => {
+      adTriggeredRef.current = false;
+      setIsGlobalAdLoading(false);
+      if (sessionAdFailuresCount < 2) {
+        sessionAdFailuresCount += 1;
+        localStorage.setItem(
+          "khamin_ad_failures",
+          sessionAdFailuresCount.toString(),
+        );
+        showAlert("عذراً، انتظر قليلاً وحاول مرة أخرى", "تنبيه");
+        return;
+      }
+      sessionAdFailuresCount = 0;
+      localStorage.setItem("khamin_ad_failures", "0");
+      setMockAdProviderState({
+        onComplete: () => {
+          onAdComplete();
+        },
+        onDismissed: () => {
+          adFinished = true;
+          adDismissed = true;
+          clearTimeout(adSafetyTimeout);
+          adTriggeredRef.current = false;
+          setIsGlobalAdLoading(false);
+          showAlert("يجب مشاهدة الإعلان كاملاً لحل اللغز!", "تنبيه");
+          if (onFailed) onFailed();
+        },
+      });
+    };
+
+    if (typeof (window as any).adBreak === "function") {
+      const adTimeout = setTimeout(() => {
+        if (!adFinished) {
+          handleAdFailure();
+        }
+      }, 12000);
+
+      try {
+        (window as any).adBreak({
+          type: "reward",
+          name: "bus_complete_solve_ad",
+          beforeAd: () => {
+            clearTimeout(adTimeout);
+            if (adFinished) {
+              setMockAdProviderState(null);
+            }
+            adFinished = false;
+            startAdProcess();
+            Howler.mute(true);
+
+            adSafetyTimeout = setTimeout(() => {
+              onAdComplete();
+            }, 60000);
+          },
+          afterAd: () => {
+            Howler.mute(false);
+          },
+          beforeReward: (showAdFn: any) => {
+            showAdFn();
+          },
+          adDismissed: () => {
+            adFinished = true;
+            adDismissed = true;
+            clearTimeout(adSafetyTimeout);
+            adTriggeredRef.current = false;
+            setIsGlobalAdLoading(false);
+            showAlert("يجب مشاهدة الإعلان كاملًا لحل اللغز!", "تنبيه");
+            if (onFailed) onFailed();
+          },
+          adViewed: () => {
+            sessionAdFailuresCount = 0;
+            localStorage.setItem("khamin_ad_failures", "0");
+            adFinished = true;
+            adViewed = true;
+            clearTimeout(adSafetyTimeout);
+            onAdComplete();
+          },
+          adBreakDone: (placementInfo: any) => {
+            adFinished = true;
+            setIsGlobalAdLoading(false);
+            clearTimeout(adSafetyTimeout);
+            clearTimeout(adTimeout);
+            if (!adViewed && !adDismissed) {
+              // Google AdSense had no ad to show (No Fill)
+              handleAdFailure();
+            } else {
+              adTriggeredRef.current = false;
+            }
+          },
+        });
+      } catch (e) {
+        clearTimeout(adTimeout);
+        handleAdFailure();
+      }
+    } else {
+      handleAdFailure();
+    }
+  };
+
   const [isCitySearchStarting, setIsCitySearchStarting] = useState(false);
 
   const handleStartCitySearch = () => {
@@ -23278,8 +23399,8 @@ export default function App() {
                                      onConfirm: () => {
                                        setCustomConfirm(prev => ({ ...prev, show: false }));
                                        socket?.emit("bus_complete_ad_start", { roomId });
-                                       setMockAdProviderState({
-                                         onComplete: () => {
+                                       showBusCompleteAd(
+                                         () => {
                                            socket?.emit("bus_complete_ad_end", { roomId, completed: true });
                                            if (room?.busCompleteLetter) {
                                               let mappedLetter = room.busCompleteLetter;
@@ -23296,11 +23417,10 @@ export default function App() {
                                               }
                                            }
                                          },
-                                         onDismissed: () => {
+                                         () => {
                                            socket?.emit("bus_complete_ad_end", { roomId, completed: false });
-                                           showAlert("يجب مشاهدة الاعلان بالكامل لحل اللغز!", "تنبيه");
                                          }
-                                       });
+                                       );
                                      }
                                    });
                                  }}
