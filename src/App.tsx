@@ -23392,11 +23392,11 @@ export default function App() {
                 "bus_complete_spin",
                 "bus_complete_playing",
               ].includes(room.gameState) ? (
-              <div className="w-full card-game p-4 md:p-6 text-center space-y-4 md:space-y-6 relative overflow-hidden flex flex-col min-h-[400px]">
+              <div className="w-full card-game p-3 md:p-4 text-center space-y-3 md:space-y-4 relative overflow-hidden flex flex-col min-h-[auto]">
                 {room.players.length === 2 && (
-                  <div className="flex justify-between items-center w-full px-2 md:px-8 -mb-2">
+                  <div className="flex justify-between items-center w-full px-1 md:px-4 mb-2">
                     <div
-                      className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm"
+                      className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]"
                       dir="rtl"
                     >
                       <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">
@@ -23406,8 +23406,33 @@ export default function App() {
                         🏆 {room.players[1].busCompleteWins || 0}
                       </span>
                     </div>
+
+                    {(room.gameState === "bus_complete_playing" ||
+                      room.gameState === "bus_complete_spin") && (
+                      <div className="flex flex-col justify-center items-center gap-1 mx-2">
+                        <span
+                          className={`text-2xl font-black font-mono tracking-wider ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some((c) => (c as number) > 0) ? "text-blue-600 animate-pulse" : room.timer <= 60 ? "text-red-600" : "text-gray-700"}`}
+                        >
+                          {Math.floor(room.timer / 60)}:
+                          {(room.timer % 60).toString().padStart(2, "0")}
+                        </span>
+                        {(room.busCompleteAdViewers?.length || 0) > 0 ||
+                        Object.values(room.busCompleteCooldowns || {}).some(
+                          (c) => (c as number) > 0,
+                        ) ? (
+                          <span className="text-xs font-bold text-blue-500">
+                            (إنتظار)
+                          </span>
+                        ) : (
+                          <Timer
+                            className={`w-4 h-4 mt-[-4px] ${room.timer <= 60 ? "text-red-500 animate-pulse" : "text-gray-500"}`}
+                          />
+                        )}
+                      </div>
+                    )}
+
                     <div
-                      className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm"
+                      className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]"
                       dir="rtl"
                     >
                       <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">
@@ -23420,27 +23445,31 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Empty square for the letter */}
+                <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-dashed border-gray-300 rounded-2xl mx-auto flex items-center justify-center bg-gray-50 text-4xl md:text-5xl font-black text-blue-600 transition-all duration-200 mt-2">
+                  <span
+                    className={
+                      room.gameState === "bus_complete_spin"
+                        ? "animate-pulse"
+                        : ""
+                    }
+                  >
+                    {spinLetter}
+                  </span>
+                </div>
+
                 {(room.gameState === "bus_complete_playing" ||
                   room.gameState === "bus_complete_spin") && (
                   <button
                     onClick={() =>
                       socket?.emit("cancel_bus_complete_game", { roomId })
                     }
-                    className="mx-auto flex items-center justify-center gap-1 text-sm font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors mt-1 border"
+                    className="mx-auto flex items-center justify-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors border"
                   >
                     <span>تغيير الحرف</span>
-                    <X className="w-4 h-4" />
+                    <X className="w-3 h-3" />
                   </button>
                 )}
-
-                {/* Empty square for the letter */}
-                <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-dashed border-gray-300 rounded-2xl mx-auto flex items-center justify-center bg-gray-50 text-4xl md:text-5xl font-black text-blue-600 transition-all duration-200 mt-2">
-                  <span
-                    className={room.gameState === "bus_complete_spin" ? "" : ""}
-                  >
-                    {spinLetter}
-                  </span>
-                </div>
 
                 {room.gameState === "bus_complete_setup" && (
                   <button
@@ -23457,28 +23486,8 @@ export default function App() {
                 {(room.gameState === "bus_complete_playing" ||
                   room.gameState === "bus_complete_spin") && (
                   <>
-                    {/* Timer */}
-                    <div className="flex justify-center items-center gap-2 bg-gray-100 py-2 px-6 rounded-xl w-fit mx-auto shadow-inner border border-gray-200">
-                      <Timer
-                        className={`w-6 h-6 ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some((c) => (c as number) > 0) ? "text-blue-500 animate-pulse" : room.timer <= 60 ? "text-red-500 animate-pulse" : "text-gray-500"}`}
-                      />
-                      <span
-                        className={`text-2xl font-black font-mono tracking-wider ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some((c) => (c as number) > 0) ? "text-blue-600 animate-pulse" : room.timer <= 60 ? "text-red-600" : "text-gray-700"}`}
-                      >
-                        {Math.floor(room.timer / 60)}:
-                        {(room.timer % 60).toString().padStart(2, "0")}
-                      </span>
-                      {((room.busCompleteAdViewers?.length || 0) > 0 ||
-                        Object.values(room.busCompleteCooldowns || {}).some(
-                          (c) => (c as number) > 0,
-                        )) && (
-                        <span className="text-sm font-bold text-blue-500 ml-1">
-                          (إنتظار)
-                        </span>
-                      )}
-                    </div>
                     {room.gameState === "bus_complete_playing" && (
-                      <div className="text-center text-red-400 font-bold text-sm mt-1 animate-pulse drop-shadow-sm">
+                      <div className="text-center text-red-400 font-bold text-xs animate-pulse drop-shadow-sm -mt-2">
                         تجنب الأخطاء الإملائية للفوز بالمباراة
                       </div>
                     )}
