@@ -602,8 +602,29 @@ interface Room {
   busCompleteWinner?: string;
   busCompleteAdViewers?: string[];
   busCompleteCooldowns?: Record<string, number>;
-  busCompleteScores?: Record<string, { boy: number, girl: number, animal: number, plant: number, inanimate: number, country: number, total: number }>;
-  busCompleteAnswers?: Record<string, { boy: string, girl: string, animal: string, plant: string, inanimate: string, country: string }>;
+  busCompleteScores?: Record<
+    string,
+    {
+      boy: number;
+      girl: number;
+      animal: number;
+      plant: number;
+      inanimate: number;
+      country: number;
+      total: number;
+    }
+  >;
+  busCompleteAnswers?: Record<
+    string,
+    {
+      boy: string;
+      girl: string;
+      animal: string;
+      plant: string;
+      inanimate: string;
+      country: string;
+    }
+  >;
 }
 
 const findNodeByText = (text: string, nodes: any[]): any | null => {
@@ -1815,7 +1836,10 @@ export default function App() {
     onComplete: () => void;
     onDismissed?: () => void;
   } | null>(null);
-  const [adSolveCategory, setAdSolveCategory] = useState<{key: string, label: string} | null>(null);
+  const [adSolveCategory, setAdSolveCategory] = useState<{
+    key: string;
+    label: string;
+  } | null>(null);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showPackageModal, setShowPackageModal] = useState(false);
@@ -4872,7 +4896,14 @@ export default function App() {
   const [isOpponentBlocked, setIsOpponentBlocked] = useState(false);
   const [useToken, setUseToken] = useState(false);
   const [isMutedByOpponent, setIsMutedByOpponent] = useState(false);
-  const [busAnswers, setBusAnswers] = useState({ boy: "", girl: "", animal: "", plant: "", inanimate: "", country: "" });
+  const [busAnswers, setBusAnswers] = useState({
+    boy: "",
+    girl: "",
+    animal: "",
+    plant: "",
+    inanimate: "",
+    country: "",
+  });
   const [spinLetter, setSpinLetter] = useState("؟");
   const isOpponentBlockedRef = useRef(isOpponentBlocked);
   useEffect(() => {
@@ -4882,7 +4913,36 @@ export default function App() {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (room?.gameState === "bus_complete_spin") {
-      const letters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'];
+      const letters = [
+        "أ",
+        "ب",
+        "ت",
+        "ث",
+        "ج",
+        "ح",
+        "خ",
+        "د",
+        "ذ",
+        "ر",
+        "ز",
+        "س",
+        "ش",
+        "ص",
+        "ض",
+        "ط",
+        "ظ",
+        "ع",
+        "غ",
+        "ف",
+        "ق",
+        "ك",
+        "ل",
+        "م",
+        "ن",
+        "ه",
+        "و",
+        "ي",
+      ];
       interval = setInterval(() => {
         setSpinLetter(letters[Math.floor(Math.random() * letters.length)]);
         playSound("cyclingReward");
@@ -6278,8 +6338,18 @@ export default function App() {
           setCustomImageAnswer("");
         }
 
-        if (updatedRoom.gameState === "bus_complete_setup" || updatedRoom.gameState === "waiting") {
-          setBusAnswers({ boy: "", girl: "", animal: "", plant: "", inanimate: "", country: "" });
+        if (
+          updatedRoom.gameState === "bus_complete_setup" ||
+          updatedRoom.gameState === "waiting"
+        ) {
+          setBusAnswers({
+            boy: "",
+            girl: "",
+            animal: "",
+            plant: "",
+            inanimate: "",
+            country: "",
+          });
         }
 
         if (
@@ -7499,6 +7569,12 @@ export default function App() {
             );
           }
 
+          socket?.emit("set_player_serial_for_socket", {
+            serial,
+            fingerprint: localStorage.getItem("khamin_fingerprint"),
+            secretToken,
+          });
+
           socket?.emit("get_city_search", { serial });
 
           setShowWelcomeModal(false);
@@ -7573,7 +7649,11 @@ export default function App() {
 
           fetchCollection(player.serial);
 
-          socket?.emit("set_player_serial_for_socket", player.serial);
+          socket?.emit("set_player_serial_for_socket", {
+            serial: player.serial,
+            fingerprint: localStorage.getItem("khamin_fingerprint"),
+            secretToken: player.secretToken,
+          });
           socket?.emit("get_city_search", { serial: player.serial });
 
           setShowWelcomeModal(false);
@@ -7648,7 +7728,11 @@ export default function App() {
 
           fetchCollection(player.serial);
 
-          socket?.emit("set_player_serial_for_socket", player.serial);
+          socket?.emit("set_player_serial_for_socket", {
+            serial: player.serial,
+            fingerprint: localStorage.getItem("khamin_fingerprint"),
+            secretToken: player.secretToken,
+          });
           socket?.emit("get_city_search", { serial: player.serial });
 
           setShowProfileLoginModal(false);
@@ -22075,7 +22159,9 @@ export default function App() {
                     )}
                     <label className="flex items-center justify-between text-base md:text-lg font-bold text-main mb-1 md:mb-2 px-1">
                       <span>إنشاء / دخول بكود غرفة</span>
-                      <span className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-[9px] md:text-sm px-2 py-0.5 rounded-full font-black Battery-border-2 border-yellow-300 animate-pulse shadow-sm shadow-red-200">جديد - تخمينة كومبليت</span>
+                      <span className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-[9px] md:text-sm px-2 py-0.5 rounded-full font-black Battery-border-2 border-yellow-300 animate-pulse shadow-sm shadow-red-200">
+                        جديد - تخمينة كومبليت
+                      </span>
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -23301,25 +23387,45 @@ export default function App() {
                   </div>
                 )}
               </div>
-            ) : ["bus_complete_setup", "bus_complete_spin", "bus_complete_playing"].includes(room.gameState) ? (
+            ) : [
+                "bus_complete_setup",
+                "bus_complete_spin",
+                "bus_complete_playing",
+              ].includes(room.gameState) ? (
               <div className="w-full card-game p-4 md:p-6 text-center space-y-4 md:space-y-6 relative overflow-hidden flex flex-col min-h-[400px]">
-                
                 {room.players.length === 2 && (
                   <div className="flex justify-between items-center w-full px-2 md:px-8 -mb-2">
-                    <div className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm" dir="rtl">
-                      <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">{room.players[1].name}</span>
-                      <span className="text-sm font-black text-green-600">🏆 {room.players[1].busCompleteWins || 0}</span>
+                    <div
+                      className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm"
+                      dir="rtl"
+                    >
+                      <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">
+                        {room.players[1].name}
+                      </span>
+                      <span className="text-sm font-black text-green-600">
+                        🏆 {room.players[1].busCompleteWins || 0}
+                      </span>
                     </div>
-                    <div className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm" dir="rtl">
-                      <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">{room.players[0].name}</span>
-                      <span className="text-sm font-black text-green-600">🏆 {room.players[0].busCompleteWins || 0}</span>
+                    <div
+                      className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm"
+                      dir="rtl"
+                    >
+                      <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">
+                        {room.players[0].name}
+                      </span>
+                      <span className="text-sm font-black text-green-600">
+                        🏆 {room.players[0].busCompleteWins || 0}
+                      </span>
                     </div>
                   </div>
                 )}
 
-                {(room.gameState === "bus_complete_playing" || room.gameState === "bus_complete_spin") && (
+                {(room.gameState === "bus_complete_playing" ||
+                  room.gameState === "bus_complete_spin") && (
                   <button
-                    onClick={() => socket?.emit("cancel_bus_complete_game", { roomId })}
+                    onClick={() =>
+                      socket?.emit("cancel_bus_complete_game", { roomId })
+                    }
                     className="mx-auto flex items-center justify-center gap-1 text-sm font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors mt-1 border"
                   >
                     <span>تغيير الحرف</span>
@@ -23329,14 +23435,18 @@ export default function App() {
 
                 {/* Empty square for the letter */}
                 <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-dashed border-gray-300 rounded-2xl mx-auto flex items-center justify-center bg-gray-50 text-4xl md:text-5xl font-black text-blue-600 transition-all duration-200 mt-2">
-                  <span className={room.gameState === "bus_complete_spin" ? "" : ""}>{spinLetter}</span>
+                  <span
+                    className={room.gameState === "bus_complete_spin" ? "" : ""}
+                  >
+                    {spinLetter}
+                  </span>
                 </div>
 
-              {room.gameState === "bus_complete_setup" && (
+                {room.gameState === "bus_complete_setup" && (
                   <button
                     onClick={() => {
-                    playSound("clickOpen");
-                    socket?.emit("search_bus_complete_letter", { roomId });
+                      playSound("clickOpen");
+                      socket?.emit("search_bus_complete_letter", { roomId });
                     }}
                     className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2"
                   >
@@ -23344,25 +23454,39 @@ export default function App() {
                   </button>
                 )}
 
-                {(room.gameState === "bus_complete_playing" || room.gameState === "bus_complete_spin") && (
+                {(room.gameState === "bus_complete_playing" ||
+                  room.gameState === "bus_complete_spin") && (
                   <>
                     {/* Timer */}
                     <div className="flex justify-center items-center gap-2 bg-gray-100 py-2 px-6 rounded-xl w-fit mx-auto shadow-inner border border-gray-200">
-                       <Timer className={`w-6 h-6 ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some(c => (c as number) > 0) ? 'text-blue-500 animate-pulse' : room.timer <= 60 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
-                       <span className={`text-2xl font-black font-mono tracking-wider ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some(c => (c as number) > 0) ? 'text-blue-600 animate-pulse' : room.timer <= 60 ? 'text-red-600' : 'text-gray-700'}`}>
-                         {Math.floor(room.timer / 60)}:{(room.timer % 60).toString().padStart(2, "0")}
-                       </span>
-                       {((room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some(c => (c as number) > 0)) && (
-                         <span className="text-sm font-bold text-blue-500 ml-1">(إنتظار)</span>
-                       )}
+                      <Timer
+                        className={`w-6 h-6 ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some((c) => (c as number) > 0) ? "text-blue-500 animate-pulse" : room.timer <= 60 ? "text-red-500 animate-pulse" : "text-gray-500"}`}
+                      />
+                      <span
+                        className={`text-2xl font-black font-mono tracking-wider ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some((c) => (c as number) > 0) ? "text-blue-600 animate-pulse" : room.timer <= 60 ? "text-red-600" : "text-gray-700"}`}
+                      >
+                        {Math.floor(room.timer / 60)}:
+                        {(room.timer % 60).toString().padStart(2, "0")}
+                      </span>
+                      {((room.busCompleteAdViewers?.length || 0) > 0 ||
+                        Object.values(room.busCompleteCooldowns || {}).some(
+                          (c) => (c as number) > 0,
+                        )) && (
+                        <span className="text-sm font-bold text-blue-500 ml-1">
+                          (إنتظار)
+                        </span>
+                      )}
                     </div>
                     {room.gameState === "bus_complete_playing" && (
-                       <div className="text-center text-red-400 font-bold text-sm mt-1 animate-pulse drop-shadow-sm">
-                         تجنب الأخطاء الإملائية للفوز بالمباراة
-                       </div>
+                      <div className="text-center text-red-400 font-bold text-sm mt-1 animate-pulse drop-shadow-sm">
+                        تجنب الأخطاء الإملائية للفوز بالمباراة
+                      </div>
                     )}
 
-                    <div className="space-y-2 pt-2 pointer-events-auto" dir="ltr">
+                    <div
+                      className="space-y-2 pt-2 pointer-events-auto"
+                      dir="ltr"
+                    >
                       {[
                         { key: "boy", label: "ولد", emoji: "👦" },
                         { key: "girl", label: "بنت", emoji: "👧" },
@@ -23371,110 +23495,192 @@ export default function App() {
                         { key: "inanimate", label: "جماد", emoji: "🪑" },
                         { key: "country", label: "بلاد", emoji: "🌍" },
                       ].map((item) => (
-                        <div key={item.key} className={`flex flex-row-reverse items-center justify-between gap-3 bg-white p-2 rounded-xl border shadow-sm ${room.busCompleteSubmittedPlayers?.includes(socket?.id) ? 'border-gray-200 opacity-70' : 'border-gray-100'}`}>
-                           <div className="flex-shrink-0 w-24 md:w-28 flex flex-row border-l-2 border-gray-100 items-center justify-end font-black text-brown-dark gap-2 text-sm md:text-base pr-2">
-                             <span>{item.label}</span>
-                             <span>{item.emoji}</span>
-                           </div>
-                           <div className="flex-1 flex flex-row-reverse items-center">
-                             <input
-                               type="text"
-                               className="w-full text-right outline-none bg-transparent font-bold text-gray-800 placeholder-gray-300 text-sm md:text-base px-2 disabled:text-gray-500"
-                               placeholder={`اكتب ${item.label}...`}
-                               value={busAnswers[item.key as keyof typeof busAnswers]}
-                               disabled={room.gameState !== "bus_complete_playing" || room.busCompleteSubmittedPlayers?.includes(socket?.id)}
-                               onChange={(e) => setBusAnswers(prev => ({ ...prev, [item.key]: e.target.value }))}
-                               dir="rtl"
-                             />
-                             {room.gameState === "bus_complete_playing" && !room.busCompleteSubmittedPlayers?.includes(socket?.id) && !busAnswers[item.key as keyof typeof busAnswers] && (
-                               <button
-                                 onClick={() => {
-                                   if (room.busCompleteCooldowns?.[socket?.id || ""] > 0) return;
-                                   setCustomConfirm({
-                                     show: true,
-                                     title: `حل لغز ${item.label}`,
-                                     message: `هل تود مشاهدة اعلان لحل لغز اجابة ${item.label}؟`,
-                                     confirmText: "نعم",
-                                     cancelText: "لا",
-                                     onConfirm: () => {
-                                       setCustomConfirm(prev => ({ ...prev, show: false }));
-                                       socket?.emit("bus_complete_ad_start", { roomId });
-                                       showBusCompleteAd(
-                                         () => {
-                                           socket?.emit("bus_complete_ad_end", { roomId, completed: true });
-                                           if (room?.busCompleteLetter) {
-                                              let mappedLetter = room.busCompleteLetter;
-                                              if (mappedLetter === "أ" || mappedLetter === "إ" || mappedLetter === "آ") mappedLetter = "ا";
-                                              if (mappedLetter === "ة") mappedLetter = "ه";
-                                              if (mappedLetter === "ى") mappedLetter = "ي";
-                                              const letterData = (busCompleteData as any)[mappedLetter];
+                        <div
+                          key={item.key}
+                          className={`flex flex-row-reverse items-center justify-between gap-3 bg-white p-2 rounded-xl border shadow-sm ${room.busCompleteSubmittedPlayers?.includes(socket?.id) ? "border-gray-200 opacity-70" : "border-gray-100"}`}
+                        >
+                          <div className="flex-shrink-0 w-24 md:w-28 flex flex-row border-l-2 border-gray-100 items-center justify-end font-black text-brown-dark gap-2 text-sm md:text-base pr-2">
+                            <span>{item.label}</span>
+                            <span>{item.emoji}</span>
+                          </div>
+                          <div className="flex-1 flex flex-row-reverse items-center">
+                            <input
+                              type="text"
+                              className="w-full text-right outline-none bg-transparent font-bold text-gray-800 placeholder-gray-300 text-sm md:text-base px-2 disabled:text-gray-500"
+                              placeholder={`اكتب ${item.label}...`}
+                              value={
+                                busAnswers[item.key as keyof typeof busAnswers]
+                              }
+                              disabled={
+                                room.gameState !== "bus_complete_playing" ||
+                                room.busCompleteSubmittedPlayers?.includes(
+                                  socket?.id,
+                                )
+                              }
+                              onChange={(e) =>
+                                setBusAnswers((prev) => ({
+                                  ...prev,
+                                  [item.key]: e.target.value,
+                                }))
+                              }
+                              dir="rtl"
+                            />
+                            {room.gameState === "bus_complete_playing" &&
+                              !room.busCompleteSubmittedPlayers?.includes(
+                                socket?.id,
+                              ) &&
+                              !busAnswers[
+                                item.key as keyof typeof busAnswers
+                              ] && (
+                                <button
+                                  onClick={() => {
+                                    if (
+                                      room.busCompleteCooldowns?.[
+                                        socket?.id || ""
+                                      ] > 0
+                                    )
+                                      return;
+                                    setCustomConfirm({
+                                      show: true,
+                                      title: `حل لغز ${item.label}`,
+                                      message: `هل تود مشاهدة اعلان لحل لغز اجابة ${item.label}؟`,
+                                      confirmText: "نعم",
+                                      cancelText: "لا",
+                                      onConfirm: () => {
+                                        setCustomConfirm((prev) => ({
+                                          ...prev,
+                                          show: false,
+                                        }));
+                                        socket?.emit("bus_complete_ad_start", {
+                                          roomId,
+                                        });
+                                        showBusCompleteAd(
+                                          () => {
+                                            socket?.emit(
+                                              "bus_complete_ad_end",
+                                              { roomId, completed: true },
+                                            );
+                                            if (room?.busCompleteLetter) {
+                                              let mappedLetter =
+                                                room.busCompleteLetter;
+                                              if (
+                                                mappedLetter === "أ" ||
+                                                mappedLetter === "إ" ||
+                                                mappedLetter === "آ"
+                                              )
+                                                mappedLetter = "ا";
+                                              if (mappedLetter === "ة")
+                                                mappedLetter = "ه";
+                                              if (mappedLetter === "ى")
+                                                mappedLetter = "ي";
+                                              const letterData = (
+                                                busCompleteData as any
+                                              )[mappedLetter];
                                               if (letterData) {
-                                                const words = letterData[item.key] || [];
+                                                const words =
+                                                  letterData[item.key] || [];
                                                 if (words.length > 0) {
-                                                  const randomWord = words[Math.floor(Math.random() * words.length)];
-                                                  setBusAnswers(prev => ({ ...prev, [item.key]: randomWord }));
+                                                  const randomWord =
+                                                    words[
+                                                      Math.floor(
+                                                        Math.random() *
+                                                          words.length,
+                                                      )
+                                                    ];
+                                                  setBusAnswers((prev) => ({
+                                                    ...prev,
+                                                    [item.key]: randomWord,
+                                                  }));
                                                 }
                                               }
-                                           }
-                                         },
-                                         () => {
-                                           socket?.emit("bus_complete_ad_end", { roomId, completed: false });
-                                         }
-                                       );
-                                     }
-                                   });
-                                 }}
-                                 disabled={(room.busCompleteCooldowns?.[socket?.id || ""] || 0) > 0}
-                                 className="flex-shrink-0 p-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-600 rounded-full transition-colors mx-1 border border-yellow-300 relative disabled:opacity-70 disabled:cursor-not-allowed group overflow-hidden"
-                               >
-                                 <Tv className={`w-4 h-4 md:w-5 md:h-5 text-yellow-600 ${room.busCompleteCooldowns?.[socket?.id || ""] > 0 ? "opacity-30" : ""}`} />
-                                 {(room.busCompleteCooldowns?.[socket?.id || ""] || 0) > 0 && (
+                                            }
+                                          },
+                                          () => {
+                                            socket?.emit(
+                                              "bus_complete_ad_end",
+                                              { roomId, completed: false },
+                                            );
+                                          },
+                                        );
+                                      },
+                                    });
+                                  }}
+                                  disabled={
+                                    (room.busCompleteCooldowns?.[
+                                      socket?.id || ""
+                                    ] || 0) > 0
+                                  }
+                                  className="flex-shrink-0 p-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-600 rounded-full transition-colors mx-1 border border-yellow-300 relative disabled:opacity-70 disabled:cursor-not-allowed group overflow-hidden"
+                                >
+                                  <Tv
+                                    className={`w-4 h-4 md:w-5 md:h-5 text-yellow-600 ${room.busCompleteCooldowns?.[socket?.id || ""] > 0 ? "opacity-30" : ""}`}
+                                  />
+                                  {(room.busCompleteCooldowns?.[
+                                    socket?.id || ""
+                                  ] || 0) > 0 && (
                                     <span className="absolute inset-0 flex items-center justify-center font-black text-xs md:text-sm bg-black/60 text-white leading-none">
-                                      {room.busCompleteCooldowns?.[socket?.id || ""]}
+                                      {
+                                        room.busCompleteCooldowns?.[
+                                          socket?.id || ""
+                                        ]
+                                      }
                                     </span>
-                                 )}
-                               </button>
-                             )}
-                           </div>
+                                  )}
+                                </button>
+                              )}
+                          </div>
                         </div>
                       ))}
                     </div>
 
                     {(() => {
-                      const meSubmitted = room.busCompleteSubmittedPlayers?.includes(socket?.id);
-                      const opponent = room.players.find(p => p.id !== socket?.id);
-                      const opponentSubmitted = opponent && room.busCompleteSubmittedPlayers?.includes(opponent.id);
-                      
+                      const meSubmitted =
+                        room.busCompleteSubmittedPlayers?.includes(socket?.id);
+                      const opponent = room.players.find(
+                        (p) => p.id !== socket?.id,
+                      );
+                      const opponentSubmitted =
+                        opponent &&
+                        room.busCompleteSubmittedPlayers?.includes(opponent.id);
+
                       return (
                         <div className="flex flex-col w-full gap-2 mt-2">
                           {opponentSubmitted && !meSubmitted && (
-                               <div className="text-center text-red-600 font-bold bg-red-50 py-2 rounded-xl mb-1 animate-pulse border border-red-200">
-                                   {opponent.name} انتهي من التخمين! أسرع!
-                               </div>
+                            <div className="text-center text-red-600 font-bold bg-red-50 py-2 rounded-xl mb-1 animate-pulse border border-red-200">
+                              {opponent.name} انتهي من التخمين! أسرع!
+                            </div>
                           )}
-                          
+
                           <button
                             onClick={() => {
                               playSound("clickOpen");
-                              socket?.emit("submit_bus_complete", { roomId, answers: busAnswers });
+                              socket?.emit("submit_bus_complete", {
+                                roomId,
+                                answers: busAnswers,
+                              });
                             }}
-                            disabled={room.gameState !== "bus_complete_playing" || meSubmitted}
+                            disabled={
+                              room.gameState !== "bus_complete_playing" ||
+                              meSubmitted
+                            }
                             className={`w-full py-4 rounded-2xl font-black text-xl md:text-2xl transition-all shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent
-                              ${(room.gameState === "bus_complete_playing" && !meSubmitted) ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
+                              ${room.gameState === "bus_complete_playing" && !meSubmitted ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
                           >
-                            {meSubmitted ? "في انتظار اللاعب الآخر..." : "تخمينة كومبليت 🏁"}
+                            {meSubmitted
+                              ? "في انتظار اللاعب الآخر..."
+                              : "تخمينة كومبليت 🏁"}
                           </button>
-                          
+
                           {meSubmitted && (
-                               <button
-                                   onClick={() => {
-                                       playSound("clickOpen");
-                                       socket?.emit("undo_bus_complete", { roomId });
-                                   }}
-                                   className="w-full py-3 rounded-2xl font-bold text-lg transition-all border-2 border-red-500 text-red-500 hover:bg-red-50"
-                               >
-                                   تراجع
-                               </button>
+                            <button
+                              onClick={() => {
+                                playSound("clickOpen");
+                                socket?.emit("undo_bus_complete", { roomId });
+                              }}
+                              className="w-full py-3 rounded-2xl font-bold text-lg transition-all border-2 border-red-500 text-red-500 hover:bg-red-50"
+                            >
+                              تراجع
+                            </button>
                           )}
                         </div>
                       );
@@ -23484,72 +23690,122 @@ export default function App() {
               </div>
             ) : room.gameState === "bus_complete_evaluating" ? (
               <div className="w-full card-game p-4 md:p-6 text-center space-y-4 md:space-y-6 relative overflow-hidden flex flex-col min-h-[400px]">
-                <h2 className="text-2xl font-black text-blue-600">نتيجة تخمينة كومبليت</h2>
-                
+                <h2 className="text-2xl font-black text-blue-600">
+                  نتيجة تخمينة كومبليت
+                </h2>
+
                 <div className="flex flex-col gap-4">
                   {room.players.map((p) => {
                     const score = room.busCompleteScores?.[p.id];
                     const time = room.busCompleteSubmitTimes?.[p.id];
                     const isWinner = room.busCompleteWinner === p.id;
-                    const isTie = room.busCompleteWinner === 'tie';
+                    const isTie = room.busCompleteWinner === "tie";
                     if (!score) return null;
                     return (
-                      <div key={p.id} className={`p-4 rounded-2xl border-4 ${isWinner ? 'border-accent-orange bg-orange-50' : isTie ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}>
+                      <div
+                        key={p.id}
+                        className={`p-4 rounded-2xl border-4 ${isWinner ? "border-accent-orange bg-orange-50" : isTie ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-gray-50"}`}
+                      >
                         <div className="flex items-center justify-between font-black text-lg text-brown-dark mb-2">
-                           <span className="flex-1 text-right">{p.name} {p.id === socket?.id ? '(أنت)' : ''}</span>
-                           <span className="text-accent-orange bg-white px-3 py-1 rounded-full border border-orange-200">
-                             نقاط: {score.total}
-                           </span>
+                          <span className="flex-1 text-right">
+                            {p.name} {p.id === socket?.id ? "(أنت)" : ""}
+                          </span>
+                          <span className="text-accent-orange bg-white px-3 py-1 rounded-full border border-orange-200">
+                            نقاط: {score.total}
+                          </span>
                         </div>
                         <div className="text-sm font-bold text-gray-500 mb-2">
-                          الوقت: {time ? `${time} ثانية` : 'وقت كامل'}
+                          الوقت: {time ? `${time} ثانية` : "وقت كامل"}
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs font-bold mt-3">
-                          {['boy', 'girl', 'animal', 'plant', 'inanimate', 'country'].map(cat => {
-                             const pts = score[cat as keyof typeof score];
-                             const labels = { boy: 'ولد', girl: 'بنت', animal: 'حيوان', plant: 'نبات', inanimate: 'جماد', country: 'بلاد' };
-                             return (
-                               <div key={cat} className={`flex flex-col items-center p-1 rounded ${pts > 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-400'}`}>
-                                 <span>{labels[cat as keyof typeof labels]}</span>
-                                 <span>{pts > 0 ? '✔️' : '❌'}</span>
-                               </div>
-                             );
+                          {[
+                            "boy",
+                            "girl",
+                            "animal",
+                            "plant",
+                            "inanimate",
+                            "country",
+                          ].map((cat) => {
+                            const pts = score[cat as keyof typeof score];
+                            const labels = {
+                              boy: "ولد",
+                              girl: "بنت",
+                              animal: "حيوان",
+                              plant: "نبات",
+                              inanimate: "جماد",
+                              country: "بلاد",
+                            };
+                            return (
+                              <div
+                                key={cat}
+                                className={`flex flex-col items-center p-1 rounded ${pts > 0 ? "bg-green-100 text-green-700" : "bg-red-50 text-red-400"}`}
+                              >
+                                <span>
+                                  {labels[cat as keyof typeof labels]}
+                                </span>
+                                <span>{pts > 0 ? "✔️" : "❌"}</span>
+                              </div>
+                            );
                           })}
                         </div>
                       </div>
                     );
                   })}
                 </div>
-                
+
                 <div className="text-2xl font-black my-0.5 text-brown-dark">
-                  {room.busCompleteWinner === socket?.id ? "🏆 لقد فزت! 🏆" : room.busCompleteWinner === 'tie' ? "🤝 تعادل!" : "😢 حظ أوفر المرة القادمة"}
+                  {room.busCompleteWinner === socket?.id
+                    ? "🏆 لقد فزت! 🏆"
+                    : room.busCompleteWinner === "tie"
+                      ? "🤝 تعادل!"
+                      : "😢 حظ أوفر المرة القادمة"}
                 </div>
-                
+
                 <div className="flex flex-col gap-3 mt-2">
-                   <button
-                     onClick={() => {
-                       socket?.emit("select_private_mode", { roomId, mode: "bus_complete" });
-                       setBusAnswers({ boy: "", girl: "", animal: "", plant: "", inanimate: "", country: "" });
-                     }}
-                     className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2"
-                   >
-                     🔄 اللعب مرة أخرى كومبليت
-                   </button>
-                   <button
-                     onClick={() => {
-                        socket?.emit("select_private_mode", { roomId, mode: null });
-                        setBusAnswers({ boy: "", girl: "", animal: "", plant: "", inanimate: "", country: "" });
-                     }}
-                     className="w-full btn-game bg-gray-200 hover:bg-gray-300 text-gray-700 shadow-[0_6px_0_0_#d1d5db] active:shadow-transparent py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
-                   >
-                     الرجوع لخيارات اللعب
-                   </button>
-                   <button
-                     onClick={handleLeaveGame}
-                     className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_6px_0_0_#fca5a5] active:shadow-transparent py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
-                   >
-                     🚪 خروج للرئيسية
-                   </button>
+                  <button
+                    onClick={() => {
+                      socket?.emit("select_private_mode", {
+                        roomId,
+                        mode: "bus_complete",
+                      });
+                      setBusAnswers({
+                        boy: "",
+                        girl: "",
+                        animal: "",
+                        plant: "",
+                        inanimate: "",
+                        country: "",
+                      });
+                    }}
+                    className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2"
+                  >
+                    🔄 اللعب مرة أخرى كومبليت
+                  </button>
+                  <button
+                    onClick={() => {
+                      socket?.emit("select_private_mode", {
+                        roomId,
+                        mode: null,
+                      });
+                      setBusAnswers({
+                        boy: "",
+                        girl: "",
+                        animal: "",
+                        plant: "",
+                        inanimate: "",
+                        country: "",
+                      });
+                    }}
+                    className="w-full btn-game bg-gray-200 hover:bg-gray-300 text-gray-700 shadow-[0_6px_0_0_#d1d5db] active:shadow-transparent py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
+                  >
+                    الرجوع لخيارات اللعب
+                  </button>
+                  <button
+                    onClick={handleLeaveGame}
+                    className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_6px_0_0_#fca5a5] active:shadow-transparent py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
+                  >
+                    🚪 خروج للرئيسية
+                  </button>
                 </div>
               </div>
             ) : room.gameState === "waiting" ? (
