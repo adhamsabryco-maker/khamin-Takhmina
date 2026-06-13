@@ -23394,7 +23394,7 @@ export default function App() {
               ].includes(room.gameState) ? (
               <div className="w-full card-game p-3 md:p-4 text-center space-y-3 md:space-y-4 relative overflow-hidden flex flex-col min-h-[auto]">
                 {room.players.length === 2 && (
-                  <div className="flex justify-between items-center w-full px-1 md:px-4 mb-2">
+                  <div className="flex justify-between items-center w-full">
                     <div
                       className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]"
                       dir="rtl"
@@ -23409,7 +23409,7 @@ export default function App() {
 
                     {(room.gameState === "bus_complete_playing" ||
                       room.gameState === "bus_complete_spin") && (
-                      <div className="flex flex-col justify-center items-center gap-1 mx-2">
+                      <div className="flex justify-center items-center gap-1 mx-2 border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]" dir="ltr">
                         <span
                           className={`text-2xl font-black font-mono tracking-wider ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some((c) => (c as number) > 0) ? "text-blue-600 animate-pulse" : room.timer <= 60 ? "text-red-600" : "text-gray-700"}`}
                         >
@@ -23425,7 +23425,7 @@ export default function App() {
                           </span>
                         ) : (
                           <Timer
-                            className={`w-4 h-4 mt-[-4px] ${room.timer <= 60 ? "text-red-500 animate-pulse" : "text-gray-500"}`}
+                            className={`w-6 h-6 mt-[-4px] ${room.timer <= 60 ? "text-red-500 animate-pulse" : "text-gray-500"}`}
                           />
                         )}
                       </div>
@@ -23487,7 +23487,7 @@ export default function App() {
                   room.gameState === "bus_complete_spin") && (
                   <>
                     {room.gameState === "bus_complete_playing" && (
-                      <div className="text-center text-red-400 font-bold text-xs animate-pulse drop-shadow-sm -mt-2">
+                      <div className="text-center text-red-400 font-bold text-xs animate-pulse drop-shadow-sm -mt-2 mb-0.5">
                         تجنب الأخطاء الإملائية للفوز بالمباراة
                       </div>
                     )}
