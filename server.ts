@@ -4566,6 +4566,9 @@ async function startServer() {
             hideFriendRequests: p1ServerPlayer
               ? p1ServerPlayer.hideFriendRequests || 0
               : 0,
+            busCompleteWins: p1ServerPlayer
+              ? p1ServerPlayer.busCompleteWins || 0
+              : 0,
           },
           {
             id: match.p2.socket.id,
@@ -4613,6 +4616,9 @@ async function startServer() {
               p2ServerPlayer.proPackageExpiry > Date.now(),
             hideFriendRequests: p2ServerPlayer
               ? p2ServerPlayer.hideFriendRequests || 0
+              : 0,
+            busCompleteWins: p2ServerPlayer
+              ? p2ServerPlayer.busCompleteWins || 0
               : 0,
           },
         ],
@@ -7520,6 +7526,7 @@ async function startServer() {
                 !!serverPlayer.proPackageExpiry &&
                 serverPlayer.proPackageExpiry > Date.now(),
               hideFriendRequests: serverPlayer.hideFriendRequests || 0,
+              busCompleteWins: serverPlayer.busCompleteWins || 0,
             };
             room.players.push(player);
 
@@ -11846,6 +11853,7 @@ async function startServer() {
                 reports: senderPlayerData.reports || 0,
                 age: (senderPlayerData as any).age || null,
                 selectedFrame: senderPlayerData.selectedFrame,
+                busCompleteWins: senderPlayerData.busCompleteWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -11872,6 +11880,7 @@ async function startServer() {
                 reports: myPlayerData.reports || 0,
                 age: (myPlayerData as any).age || null,
                 selectedFrame: myPlayerData.selectedFrame,
+                busCompleteWins: myPlayerData.busCompleteWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
