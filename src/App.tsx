@@ -21642,7 +21642,7 @@ export default function App() {
                           <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
                             {truncateName(topPlayers[1].name)}
                           </div>
-                          <div className="w-full rank-2-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
+                          <div className="w-full rank-2-bar h-20 md:h-24 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-2">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                               Lvl {getLevel(topPlayers[1].xp || 0)}
                             </div>
@@ -21738,7 +21738,7 @@ export default function App() {
                           <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
                             {truncateName(topPlayers[2].name)}
                           </div>
-                          <div className="w-full rank-3-bar h-12 md:h-16 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0 md:gap-0.2">
+                          <div className="w-full rank-3-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                               Lvl {getLevel(topPlayers[2].xp || 0)}
                             </div>
@@ -21844,7 +21844,7 @@ export default function App() {
                               onClick={() => openPlayerProfile(player.serial)}
                             >
                               <div
-                                className={`flex ${categories.length > 1 ? "gap-1" : "gap-0.5"} w-full items-center text-center flex-1`}
+                                className={`flex ${categories.length > 1 ? "gap-1 bg-black/5" : "gap-0.5 bg-black/5"} w-full items-center text-center flex-1`}
                               >
                                 {categories.map((c, i) => (
                                   <div
@@ -23392,11 +23392,11 @@ export default function App() {
                 "bus_complete_spin",
                 "bus_complete_playing",
               ].includes(room.gameState) ? (
-              <div className="w-full card-game p-3 md:p-4 text-center space-y-3 md:space-y-4 relative overflow-hidden flex flex-col min-h-[auto]">
+              <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
                 {room.players.length === 2 && (
-                  <div className="flex justify-between items-center w-full">
+                  <div className="flex justify-between items-center w-full px-1">
                     <div
-                      className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]"
+                      className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px]"
                       dir="rtl"
                     >
                       <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">
@@ -23432,7 +23432,7 @@ export default function App() {
                     )}
 
                     <div
-                      className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]"
+                      className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px]"
                       dir="rtl"
                     >
                       <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">
@@ -23446,7 +23446,7 @@ export default function App() {
                 )}
 
                 {/* Empty square for the letter */}
-                <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-dashed border-gray-300 rounded-2xl mx-auto flex items-center justify-center bg-gray-50 text-4xl md:text-5xl font-black text-blue-600 transition-all duration-200 mt-2">
+                <div className="w-14 h-14 md:w-16 md:h-16 border-4 border-dashed border-gray-300 rounded-2xl mx-auto flex items-center justify-center bg-gray-50 text-3xl md:text-4xl font-black text-blue-600 transition-all duration-200 mt-1">
                   <span
                     className={
                       room.gameState === "bus_complete_spin"
@@ -23477,7 +23477,7 @@ export default function App() {
                       playSound("clickOpen");
                       socket?.emit("search_bus_complete_letter", { roomId });
                     }}
-                    className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2"
+                    className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-2.5 md:py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
                   >
                     البحث عن حرف وبدء اللعب 🎲
                   </button>
@@ -23493,7 +23493,7 @@ export default function App() {
                     )}
 
                     <div
-                      className="space-y-2 pt-2 pointer-events-auto"
+                      className="space-y-1.5 pt-1 pointer-events-auto"
                       dir="ltr"
                     >
                       {[
@@ -23506,16 +23506,16 @@ export default function App() {
                       ].map((item) => (
                         <div
                           key={item.key}
-                          className={`flex flex-row-reverse items-center justify-between gap-3 bg-white p-2 rounded-xl border shadow-sm ${room.busCompleteSubmittedPlayers?.includes(socket?.id) ? "border-gray-200 opacity-70" : "border-gray-100"}`}
+                          className={`flex flex-row-reverse items-center justify-between gap-3 bg-white p-1.5 rounded-xl border shadow-sm ${room.busCompleteSubmittedPlayers?.includes(socket?.id) ? "border-gray-200 opacity-70" : "border-gray-100"}`}
                         >
-                          <div className="flex-shrink-0 w-24 md:w-28 flex flex-row border-l-2 border-gray-100 items-center justify-end font-black text-brown-dark gap-2 text-sm md:text-base pr-2">
+                          <div className="flex-shrink-0 w-24 md:w-28 flex flex-row border-l-2 border-gray-100 items-center justify-end font-black text-brown-dark gap-2 text-sm pr-2">
                             <span>{item.label}</span>
                             <span>{item.emoji}</span>
                           </div>
                           <div className="flex-1 flex flex-row-reverse items-center">
                             <input
                               type="text"
-                              className="w-full text-right outline-none bg-transparent font-bold text-gray-800 placeholder-gray-300 text-sm md:text-base px-2 disabled:text-gray-500"
+                              className="w-full text-right outline-none bg-transparent font-bold text-gray-800 placeholder-gray-300 text-sm px-2 disabled:text-gray-500 py-0.5"
                               placeholder={`اكتب ${item.label}...`}
                               value={
                                 busAnswers[item.key as keyof typeof busAnswers]
@@ -23653,9 +23653,9 @@ export default function App() {
                         room.busCompleteSubmittedPlayers?.includes(opponent.id);
 
                       return (
-                        <div className="flex flex-col w-full gap-2 mt-2">
+                        <div className="flex flex-col w-full gap-2 mt-1">
                           {opponentSubmitted && !meSubmitted && (
-                            <div className="text-center text-red-600 font-bold bg-red-50 py-2 rounded-xl mb-1 animate-pulse border border-red-200">
+                            <div className="text-center text-red-600 font-bold bg-red-50 py-1.5 rounded-xl text-sm animate-pulse border border-red-200">
                               {opponent.name} انتهي من التخمين! أسرع!
                             </div>
                           )}
@@ -23672,7 +23672,7 @@ export default function App() {
                               room.gameState !== "bus_complete_playing" ||
                               meSubmitted
                             }
-                            className={`w-full py-4 rounded-2xl font-black text-xl md:text-2xl transition-all shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent
+                            className={`w-full py-2.5 rounded-2xl font-black text-lg md:text-xl transition-all shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent
                               ${room.gameState === "bus_complete_playing" && !meSubmitted ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
                           >
                             {meSubmitted
@@ -23686,7 +23686,7 @@ export default function App() {
                                 playSound("clickOpen");
                                 socket?.emit("undo_bus_complete", { roomId });
                               }}
-                              className="w-full py-3 rounded-2xl font-bold text-lg transition-all border-2 border-red-500 text-red-500 hover:bg-red-50"
+                              className="w-full py-2 rounded-2xl font-bold text-base transition-all border-2 border-red-500 text-red-500 hover:bg-red-50"
                             >
                               تراجع
                             </button>
