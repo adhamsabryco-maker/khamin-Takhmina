@@ -7597,9 +7597,18 @@ async function startServer() {
           room &&
           (room.gameState === "bus_complete_playing" ||
             room.gameState === "bus_complete_spin" ||
-            room.gameState === "bus_complete_evaluating")
+            room.gameState === "bus_complete_evaluating") &&
+          !room.busCompleteChangeLetterRequestBy
         ) {
           room.busCompleteChangeLetterRequestBy = socket.id;
+          const opponent = room.players.find((p: any) => p.id !== socket.id);
+          const requestor = room.players.find((p: any) => p.id === socket.id);
+          if (opponent && requestor) {
+            const opponentSocketId = playerSockets.get(opponent.serial) || opponent.id;
+            io.to(opponentSocketId).emit("bus_complete_letter_change_requested", {
+              opponentName: requestor.name,
+            });
+          }
           io.to(roomId).emit("room_update", room);
         }
       });
@@ -7620,7 +7629,14 @@ async function startServer() {
       socket.on("reject_change_bus_complete_letter", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (room) {
+          const requestorId = room.busCompleteChangeLetterRequestBy;
           room.busCompleteChangeLetterRequestBy = null;
+          if (requestorId) {
+            const opponent = room.players.find((p: any) => p.id === socket.id);
+            io.to(requestorId).emit("bus_complete_letter_change_rejected", {
+              opponentName: opponent?.name || "المنافس",
+            });
+          }
           io.to(roomId).emit("room_update", room);
         }
       });
@@ -8443,7 +8459,8 @@ async function startServer() {
             room.guessingPlayerId = socket.id;
             room.judgmentType = type;
 
-            io.to(opponent.id).emit("judgment_requested", {
+            const opponentSocketId = playerSockets.get(opponent.serial) || opponent.id;
+            io.to(opponentSocketId).emit("judgment_requested", {
               guess,
               type,
               playerId: socket.id,
@@ -9222,7 +9239,8 @@ async function startServer() {
 
               // Mute the player immediately in the current room
               blockedPlayer.isMuted = true;
-              io.to(blockedPlayer.id).emit("opponent_muted_you", true);
+              const blockedSocketId = playerSockets.get(blockedPlayer.serial) || blockedPlayer.id;
+              io.to(blockedSocketId).emit("opponent_muted_you", true);
               io.to(roomId).emit("room_update", room);
 
               savePlayerData(blocker.serial);
@@ -9374,7 +9392,8 @@ async function startServer() {
         if (room) {
           const opponent = room.players.find((p: any) => p.id !== socket.id);
           if (opponent) {
-            io.to(opponent.id).emit("opponent_muted_you", isMuted);
+            const opponentSocketId = playerSockets.get(opponent.serial) || opponent.id;
+            io.to(opponentSocketId).emit("opponent_muted_you", isMuted);
           }
         }
       });
