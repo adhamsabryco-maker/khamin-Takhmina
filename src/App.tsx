@@ -23777,15 +23777,21 @@ export default function App() {
                               inanimate: "جماد",
                               country: "بلاد",
                             };
+                            const playerAnswers = room.busCompleteAnswers?.[p.id];
+                            const answerText = playerAnswers ? (playerAnswers as any)[cat] : "";
+
                             return (
                               <div
                                 key={cat}
-                                className={`flex flex-col items-center p-1 rounded ${pts > 0 ? "bg-green-100 text-green-700" : "bg-red-50 text-red-400"}`}
+                                className={`flex flex-col items-center p-1.5 rounded-xl border ${pts > 0 ? "bg-green-100 border-green-200 text-green-700" : "bg-red-50 border-red-100 text-red-400"}`}
                               >
                                 <span>
                                   {labels[cat as keyof typeof labels]}
                                 </span>
-                                <span>{pts > 0 ? "✔️" : "❌"}</span>
+                                <span className="text-sm my-0.5">{pts > 0 ? "✔️" : "❌"}</span>
+                                <span className={`text-[10px] mt-0.5 text-center font-normal break-all line-clamp-1 max-w-full px-1 ${pts > 0 ? "text-green-600 opacity-90" : "text-red-400 opacity-80"}`}>
+                                  {answerText ? `${answerText}` : "—"}
+                                </span>
                               </div>
                             );
                           })}
