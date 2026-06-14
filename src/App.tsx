@@ -23409,7 +23409,10 @@ export default function App() {
 
                     {(room.gameState === "bus_complete_playing" ||
                       room.gameState === "bus_complete_spin") && (
-                      <div className="flex justify-center items-center gap-1 mx-2 border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]" dir="ltr">
+                      <div
+                        className="flex justify-center items-center gap-1 mx-2 border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]"
+                        dir="ltr"
+                      >
                         <span
                           className={`text-2xl font-black font-mono tracking-wider ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some((c) => (c as number) > 0) ? "text-blue-600 animate-pulse" : room.timer <= 60 ? "text-red-600" : "text-gray-700"}`}
                         >
@@ -23459,17 +23462,65 @@ export default function App() {
                 </div>
 
                 {(room.gameState === "bus_complete_playing" ||
-                  room.gameState === "bus_complete_spin") && (
-                  <button
-                    onClick={() =>
-                      socket?.emit("cancel_bus_complete_game", { roomId })
-                    }
-                    className="mx-auto flex items-center justify-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors border"
-                  >
-                    <span>تغيير الحرف</span>
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
+                  room.gameState === "bus_complete_spin") &&
+                  (room.busCompleteChangeLetterRequestBy ? (
+                    room.busCompleteChangeLetterRequestBy === socket?.id ? (
+                      <div className="bg-yellow-50 text-yellow-600 border border-yellow-200 font-bold text-xs p-2 rounded-xl text-center shadow-inner">
+                        انتظر موافقة{" "}
+                        {
+                          room.players?.find((p: any) => p.id !== socket?.id)
+                            ?.name
+                        }{" "}
+                        لتغيير الحرف...
+                      </div>
+                    ) : (
+                      <div className="bg-blue-50 border border-blue-200 p-2 rounded-xl text-center space-y-2 shadow-inner">
+                        <div className="text-blue-600 font-bold text-xs">
+                          {
+                            room.players?.find((p: any) => p.id !== socket?.id)
+                              ?.name
+                          }{" "}
+                          يريد تغيير الحرف
+                        </div>
+                        <div className="flex gap-2 justify-center flex-row-reverse">
+                          <button
+                            onClick={() =>
+                              socket?.emit(
+                                "accept_change_bus_complete_letter",
+                                { roomId },
+                              )
+                            }
+                            className="bg-green-500 hover:bg-green-600 text-white font-bold text-xs px-3 py-1 rounded-lg transition-colors shadow-sm"
+                          >
+                            موافقة
+                          </button>
+                          <button
+                            onClick={() =>
+                              socket?.emit(
+                                "reject_change_bus_complete_letter",
+                                { roomId },
+                              )
+                            }
+                            className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-3 py-1 rounded-lg transition-colors shadow-sm"
+                          >
+                            رفض
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <button
+                      onClick={() =>
+                        socket?.emit("request_change_bus_complete_letter", {
+                          roomId,
+                        })
+                      }
+                      className="mx-auto flex items-center justify-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors border"
+                    >
+                      <span>تغيير الحرف</span>
+                      <X className="w-3 h-3" />
+                    </button>
+                  ))}
 
                 {room.gameState === "bus_complete_setup" && (
                   <button
