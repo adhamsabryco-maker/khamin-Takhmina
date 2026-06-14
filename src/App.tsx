@@ -2836,7 +2836,6 @@ export default function App() {
     type: "quick" | "final";
     playerId: string;
   } | null>(null);
-  const [proAnnouncedFor, setProAnnouncedFor] = useState<string[]>([]);
   const [proAnnouncement, setProAnnouncement] = useState<{
     name: string;
     type: "joined" | "found";
@@ -2864,19 +2863,20 @@ export default function App() {
   ]);
   const askedQuickChatNodeRef = useRef<any | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const proAnnouncedForRef = useRef<string[]>([]);
 
   const [isSendingQuestion, setIsSendingQuestion] = useState(false);
 
   useEffect(() => {
     if (!room) {
-      setProAnnouncedFor([]);
-      setProAnnouncement(null);
+      proAnnouncedForRef.current = [];
+      setProAnnouncement((prev) => (prev !== null ? null : prev));
       return;
     }
 
     if (room && room.players) {
       if (room.gameState === "finished") {
-        setProAnnouncedFor([]);
+        proAnnouncedForRef.current = [];
       } else {
         // Trigger condition based on match type:
         // - Random: show when found
@@ -2890,11 +2890,11 @@ export default function App() {
             (p) =>
               p.id !== socket?.id &&
               p.isPro &&
-              !proAnnouncedFor.includes(`${room.id}-${p.serial}`),
+              !proAnnouncedForRef.current.includes(`${room.id}-${p.serial}`),
           );
           if (newPros.length > 0 && !proAnnouncement) {
             const p = newPros[0];
-            setProAnnouncedFor((prev) => [...prev, `${room.id}-${p.serial}`]);
+            proAnnouncedForRef.current.push(`${room.id}-${p.serial}`);
             setProAnnouncement({
               name: p.name,
               type: room.matchType === "random" ? "found" : "joined",
@@ -2905,7 +2905,7 @@ export default function App() {
         }
       }
     }
-  }, [room, proAnnouncedFor, proAnnouncement]);
+  }, [room, proAnnouncement, socket?.id]);
 
   useEffect(() => {
     if (
@@ -6834,6 +6834,35 @@ export default function App() {
       setSearchTimeLeft(null);
     });
 
+    newSocket.on(
+      "bus_complete_letter_change_requested",
+      ({ opponentName }) => {
+        showConfirm(
+          `${opponentName} يريد تغيير الحرف`,
+          () => {
+            newSocket.emit("accept_change_bus_complete_letter", {
+              roomId: roomRef.current?.id,
+            });
+          },
+          "طلب تغيير الحرف",
+          () => {
+            newSocket.emit("reject_change_bus_complete_letter", {
+              roomId: roomRef.current?.id,
+            });
+          },
+          "موافقة",
+          "رفض",
+        );
+      },
+    );
+
+    newSocket.on(
+      "bus_complete_letter_change_rejected",
+      ({ opponentName }) => {
+        showAlert(`تم رفض تغيير الحرف من قبل ${opponentName}`, "مرفوض");
+      },
+    );
+
     newSocket.on("game_started", () => {
       setChatHistory([]);
       setCooldowns({});
@@ -9005,7 +9034,7 @@ export default function App() {
     });
   };
 
-  const useCard = (
+  const handleUseCard = (
     type:
       | "quick_guess"
       | "hint"
@@ -9748,9 +9777,9 @@ export default function App() {
                   <div className="grid grid-cols-1 md:grid-cols-1 gap-3 w-full content-start">
                     {playerSearchResults
                       .filter((p) => p.serial !== playerSerial)
-                      .map((player) => (
+                      .map((player, idx) => (
                         <div
-                          key={player.serial}
+                          key={player.serial || player.id || `player-${idx}`}
                           className="bg-white border-2 border-game p-3 rounded-xl flex items-center justify-between shadow-sm cursor-pointer hover:bg-amber-50/50 transition-colors"
                           onClick={() => {
                             playSound("clickOpen");
@@ -9916,9 +9945,9 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    {filteredFriends.map((friend) => (
+                    {filteredFriends.map((friend, idx) => (
                       <div
-                        key={friend.serial}
+                        key={friend.serial || `friend-${idx}`}
                         className="bg-gray-50 border-2 border-gray-100 p-2 rounded-xl flex items-center justify-between shadow-sm"
                       >
                         <div
@@ -13442,9 +13471,9 @@ export default function App() {
                     لا يوجد لاعبين محظورين
                   </p>
                 ) : (
-                  blockedPlayers.map((bp) => (
+                  blockedPlayers.map((bp, idx) => (
                     <div
-                      key={bp.serial}
+                      key={bp.serial || `bp-${idx}`}
                       className="flex items-center justify-between bg-white p-3 rounded-xl border-2 border-gray-200 flex-row-reverse"
                     >
                       <span className="font-black text-main">{bp.name}</span>
@@ -16686,9 +16715,9 @@ export default function App() {
                             </div>
                           ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {pendingAvatars.map((player) => (
+                              {pendingAvatars.map((player, idx) => (
                                 <div
-                                  key={player.serial}
+                                  key={player.serial || player.name || `pending-${idx}`}
                                   className="bg-white p-3 rounded-xl border-2 border-gray-100 shadow-sm flex flex-col gap-3"
                                 >
                                   <div className="flex items-center gap-2">
@@ -18664,7 +18693,7 @@ export default function App() {
                                                 .slice(0, visibleCount)
                                                 .map((img) => (
                                                   <div
-                                                    key={img.id}
+                                                    key={img.id || `admin-img-${Math.random()}`}
                                                     className="box-game overflow-hidden flex flex-col"
                                                   >
                                                     <img
@@ -19274,7 +19303,7 @@ export default function App() {
                 <div className="space-y-2">
                   {friendsList
                     .filter((f) => !askedFriendsForImage.includes(f.serial))
-                    .map((friend) => {
+                    .map((friend, idx) => {
                       const isSelected = selectedFriendsForRequest.includes(
                         friend.serial,
                       );
@@ -19283,7 +19312,7 @@ export default function App() {
                       const isDisabled = isMaxSelected && !isSelected;
                       return (
                         <div
-                          key={friend.serial}
+                          key={friend.serial || `req-friend-${idx}`}
                           onClick={() => {
                             if (isDisabled) return;
                             if (isSelected) {
@@ -20130,9 +20159,9 @@ export default function App() {
               <div className="flex-1 flex flex-col p-4 overflow-hidden">
                 {/* Players Info */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  {spectatorRoomData.players.map((p: any) => (
+                  {spectatorRoomData.players.map((p: any, idx: number) => (
                     <div
-                      key={p.serial}
+                      key={p.serial || p.id || `spec-${idx}`}
                       className="bg-white/5 rounded-2xl p-3 border border-white/10 flex items-center gap-3"
                     >
                       <div className="w-10 h-10">
@@ -20188,7 +20217,7 @@ export default function App() {
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 items-center justify-center">
                     {spectatorRoomData.players.map((p: any, idx: number) => (
                       <div
-                        key={p.serial}
+                        key={p.serial || p.id || `spec-p-${idx}`}
                         className="flex flex-col items-center gap-2"
                       >
                         <div className="text-white/60 text-[10px] font-black">
@@ -21837,9 +21866,9 @@ export default function App() {
                         <div
                           className={`mt-0.5 mb-2 grid gap-1.5 md:gap-2 ${specialList.length === 1 ? "grid-cols-1" : specialList.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}
                         >
-                          {specialList.map(({ player, categories }) => (
+                          {specialList.map(({ player, categories }, idx) => (
                             <div
-                              key={player.serial}
+                              key={player.serial || player.name || `special-${idx}`}
                               className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl p-1.5 md:p-2 flex flex-col items-center gap-1.5 cursor-pointer hover:from-amber-500/20 hover:to-orange-500/20 transition-all border border-amber-500/20 box-game"
                               onClick={() => openPlayerProfile(player.serial)}
                             >
@@ -22388,7 +22417,7 @@ export default function App() {
                         const isMe = player.serial === playerSerial;
                         return (
                           <div
-                            key={player.serial}
+                            key={player.serial || player.name || `leaderboard-${index}`}
                             onClick={() => openPlayerProfile(player.serial)}
                             className={`
                           flex items-center gap-2 p-1 md:p-0.5 pt-2 py-2 rounded-xl border-2 transition-transform cursor-pointer hover:scale-[1.02]
@@ -23462,65 +23491,19 @@ export default function App() {
                 </div>
 
                 {(room.gameState === "bus_complete_playing" ||
-                  room.gameState === "bus_complete_spin") &&
-                  (room.busCompleteChangeLetterRequestBy ? (
-                    room.busCompleteChangeLetterRequestBy === socket?.id ? (
-                      <div className="bg-yellow-50 text-yellow-600 border border-yellow-200 font-bold text-xs p-2 rounded-xl text-center shadow-inner">
-                        انتظر موافقة{" "}
-                        {
-                          room.players?.find((p: any) => p.id !== socket?.id)
-                            ?.name
-                        }{" "}
-                        لتغيير الحرف...
-                      </div>
-                    ) : (
-                      <div className="bg-blue-50 border border-blue-200 p-2 rounded-xl text-center space-y-2 shadow-inner">
-                        <div className="text-blue-600 font-bold text-xs">
-                          {
-                            room.players?.find((p: any) => p.id !== socket?.id)
-                              ?.name
-                          }{" "}
-                          يريد تغيير الحرف
-                        </div>
-                        <div className="flex gap-2 justify-center flex-row-reverse">
-                          <button
-                            onClick={() =>
-                              socket?.emit(
-                                "accept_change_bus_complete_letter",
-                                { roomId },
-                              )
-                            }
-                            className="bg-green-500 hover:bg-green-600 text-white font-bold text-xs px-3 py-1 rounded-lg transition-colors shadow-sm"
-                          >
-                            موافقة
-                          </button>
-                          <button
-                            onClick={() =>
-                              socket?.emit(
-                                "reject_change_bus_complete_letter",
-                                { roomId },
-                              )
-                            }
-                            className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-3 py-1 rounded-lg transition-colors shadow-sm"
-                          >
-                            رفض
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  ) : (
-                    <button
-                      onClick={() =>
-                        socket?.emit("request_change_bus_complete_letter", {
-                          roomId,
-                        })
-                      }
-                      className="mx-auto flex items-center justify-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors border"
-                    >
-                      <span>تغيير الحرف</span>
-                      <X className="w-3 h-3" />
-                    </button>
-                  ))}
+                  room.gameState === "bus_complete_spin") && (
+                  <button
+                    onClick={() => {
+                      const opponent = room.players?.find((p: any) => p.id !== socket?.id)?.name || "اللاعب الآخر";
+                      showAlert(`انتظر موافقة ${opponent} لتغيير الحرف...`, "جاري الطلب");
+                      socket?.emit("request_change_bus_complete_letter", { roomId });
+                    }}
+                    className="mx-auto flex items-center justify-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors border"
+                  >
+                    <span>تغيير الحرف</span>
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
 
                 {room.gameState === "bus_complete_setup" && (
                   <button
@@ -25150,7 +25133,7 @@ export default function App() {
                                     room.currentTurn === socket?.id;
                                   return (
                                     <button
-                                      key={node ? node.id : `empty-${i}`}
+                                      key={`quick-chat-${i}-${node?.id || "empty"}`}
                                       disabled={
                                         !node ||
                                         isReelsSpinning ||
@@ -25218,9 +25201,7 @@ export default function App() {
                                           </motion.div>
                                         ) : (
                                           <motion.span
-                                            key={
-                                              node ? node.id : `empty-text-${i}`
-                                            }
+                                            key={`quick-chat-text-${i}-${node?.id || "empty"}`}
                                             initial={{ opacity: 0, y: 15 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ duration: 0.3 }}
@@ -25414,7 +25395,7 @@ export default function App() {
                               "البطارية غير مكتملة",
                             );
                           } else if (!isLocked) {
-                            useCard(card.id as any);
+                            handleUseCard(card.id as any);
                           } else {
                             setActiveTooltip(card.id);
                             setTimeout(() => setActiveTooltip(null), 4000);
