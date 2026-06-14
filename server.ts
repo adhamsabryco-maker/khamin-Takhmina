@@ -7591,7 +7591,7 @@ async function startServer() {
         }
       });
 
-      socket.on("cancel_bus_complete_game", ({ roomId }) => {
+      socket.on("request_change_bus_complete_letter", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (
           room &&
@@ -7599,11 +7599,28 @@ async function startServer() {
             room.gameState === "bus_complete_spin" ||
             room.gameState === "bus_complete_evaluating")
         ) {
+          room.busCompleteChangeLetterRequestBy = socket.id;
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("accept_change_bus_complete_letter", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.busCompleteChangeLetterRequestBy) {
+          room.busCompleteChangeLetterRequestBy = null;
           room.gameState = "bus_complete_setup";
           room.busCompleteLetter = undefined;
           room.busCompleteSubmittedPlayers = [];
           room.busCompleteAnswers = {};
           if (room.timerInterval) clearInterval(room.timerInterval);
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("reject_change_bus_complete_letter", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          room.busCompleteChangeLetterRequestBy = null;
           io.to(roomId).emit("room_update", room);
         }
       });
