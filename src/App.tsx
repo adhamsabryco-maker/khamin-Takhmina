@@ -23490,8 +23490,7 @@ export default function App() {
                   </span>
                 </div>
 
-                {(room.gameState === "bus_complete_playing" ||
-                  room.gameState === "bus_complete_spin") && (
+                {room.gameState === "bus_complete_playing" && (
                   <button
                     onClick={() => {
                       const opponent = room.players?.find((p: any) => p.id !== socket?.id)?.name || "اللاعب الآخر";
