@@ -23789,7 +23789,7 @@ export default function App() {
                                   {labels[cat as keyof typeof labels]}
                                 </span>
                                 <span className="text-sm my-0.5">{pts > 0 ? "✔️" : "❌"}</span>
-                                <span className={`text-[10px] mt-0.5 text-center font-normal break-all line-clamp-1 max-w-full px-1 ${pts > 0 ? "text-green-600 opacity-90" : "text-red-400 opacity-80"}`}>
+                                <span className={`text-[11px] mt-0.5 text-center font-bold break-all line-clamp-1 max-w-full px-1 ${pts > 0 ? "text-black" : "text-black"}`}>
                                   {answerText ? `${answerText}` : "—"}
                                 </span>
                               </div>
