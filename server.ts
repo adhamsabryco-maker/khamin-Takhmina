@@ -907,14 +907,28 @@ async function startServer() {
 
     const PORT = 3000;
 
-    // DEBUG: Log all requests
+    // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
-      console.log(`[REQUEST] ${req.method} ${req.url}`);
+      // Ignore static assets, uploads and socket.io logs to reduce Railway costs
+      const isStaticOrNoisy = req.url.startsWith("/assets/") || 
+        req.url.startsWith("/uploads/") || 
+        req.url.startsWith("/socket.io/") || 
+        req.url.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|json|wav|mp3|mp4|woff|woff2|ttf|eot)$/i);
+      if (!isStaticOrNoisy) {
+        console.log(`[REQUEST] ${req.method} ${req.url}`);
+      }
       next();
     });
 
     app.use(express.json({ limit: "50mb" }));
-    app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+    app.use("/uploads", express.static(path.join(__dirname, "public/uploads"), {
+      maxAge: "1y", // Cache uploads for 1 year
+      etag: true
+    }));
+    app.use(express.static(path.join(__dirname, "public"), {
+      maxAge: "1y", // Cache public directory stuff for 1 year
+      etag: true
+    }));
 
     // Google OAuth Routes (Moved to top)
     const getRedirectUri = (req: express.Request) => {
@@ -3609,7 +3623,7 @@ async function startServer() {
       return cachedTopPlayers;
     }
 
-    // Optimized: Update leaderboard for all clients every 1 minute
+    // Optimized: Update leaderboard for all clients every 5 minutes
     setInterval(() => {
       const topPlayers = getTopPlayers(true);
       io.emit("top_players_update", topPlayers);
@@ -3621,7 +3635,7 @@ async function startServer() {
           friendChallengeCooldowns.delete(key);
         }
       }
-    }, 60000);
+    }, 5 * 60000);
 
     function invalidateTopPlayersCache() {
       topPlayersCacheTime = 0;
@@ -12900,13 +12914,15 @@ async function startServer() {
     } else {
       app.use(
         express.static(path.join(__dirname, "dist"), {
+          maxAge: "1y", // Aggressively cache dist assets (which have hashes)
           setHeaders: (res, path) => {
             if (
               path.endsWith(".html") ||
               path.endsWith("sw.js") ||
               path.endsWith("manifest.webmanifest") ||
               path.endsWith("manifest.json") ||
-              path.endsWith("icon-3.png")
+              path.endsWith("icon-3.png") ||
+              path.endsWith("version.json")
             ) {
               res.setHeader(
                 "Cache-Control",
@@ -12914,6 +12930,8 @@ async function startServer() {
               );
               res.setHeader("Pragma", "no-cache");
               res.setHeader("Expires", "0");
+            } else {
+              res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
             }
           },
         }),
