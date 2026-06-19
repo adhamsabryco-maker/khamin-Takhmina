@@ -23807,8 +23807,14 @@ export default function App() {
                             let answerText = playerAnswers ? (playerAnswers as any)[cat] : "";
                             const isMe = p.id === socket?.id;
                             
-                            if (room.busCompleteHideResults && !isMe) {
-                                answerText = pts > 0 ? "إجابة صحيحة" : "إجابة خاطئة";
+                            if (!isMe) {
+                              if (pts > 0) {
+                                if (room.busCompleteHideResults) {
+                                  answerText = "إجابة صحيحة";
+                                }
+                              } else {
+                                answerText = answerText ? "إجابة خاطئة" : "";
+                              }
                             }
 
                             return (
