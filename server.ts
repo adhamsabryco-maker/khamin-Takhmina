@@ -4763,7 +4763,7 @@ async function startServer() {
     // setInterval(checkBotMatchmaking, 5000);
 
     const botConversations = new Map<string, any[]>();
-    const botFlags = new Map<string, boolean>();
+    const botFlags = new Map<string, any>();
     const botIntervals = new Map<string, NodeJS.Timeout>();
     const botTimeouts = new Map<string, NodeJS.Timeout>();
     const playerBotHistory = new Map<string, number>();
@@ -5355,6 +5355,220 @@ async function startServer() {
       );
     }
 
+    function clearBotSelectionModeTimeouts(roomId: string) {
+      const keys = [
+        roomId + "_mode_agree_timeout",
+        roomId + "_mode_hesitate_timeout",
+        roomId + "_mode_agree_after_hesitate_timeout",
+        roomId + "_mode_confirm_timeout",
+        roomId + "_mode_proactive_timeout",
+        roomId + "_bus_setup_timeout",
+        roomId + "_bus_playing_submit_timeout",
+      ];
+      keys.forEach((key) => {
+        if (botTimeouts.has(key)) {
+          clearTimeout(botTimeouts.get(key));
+          botTimeouts.delete(key);
+        }
+      });
+    }
+
+    function executeSelectionModeConfirmation(roomId: string) {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "waiting" && room.players.length === 2) {
+        const p1 = room.players[0];
+        const p2 = room.players[1];
+        const p1SocketId = p1.id;
+        const p2SocketId = p2.id;
+        const mode = p1.selectedSelectionMode;
+        if (p1.selectedSelectionMode && p1.selectedSelectionMode === room.players[1].selectedSelectionMode) {
+          const mode = p1.selectedSelectionMode;
+          if (mode === "custom" && room.matchType !== "private") {
+            return;
+          }
+          
+          room.selectionMode = mode;
+          p1.selectedSelectionMode = undefined;
+          room.players[1].selectedSelectionMode = undefined;
+          
+          if (mode === "custom") {
+            room.gameState = "custom_image_upload";
+            room.isCustomImageMode = true; // Set the flag here!
+            room.category = "صور مخصصة"; // Placeholder category to bypass checks
+            room.timer = 180; // 3 minutes
+            room.customImages = {};
+            // Restart interval for custom upload
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const interval = setInterval(() => {
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "custom_image_upload") {
+                clearInterval(interval);
+                return;
+              }
+              r.timer--;
+              if (r.timer <= 0) {
+                clearInterval(interval);
+                io.to(roomId).emit("game_stopped", {
+                  reason: "انتهى الوقت لتجهيز الصور!",
+                });
+                rooms.delete(roomId);
+              } else {
+                io.to(roomId).emit("timer_update", r.timer);
+              }
+            }, 1000);
+            intervals.set(roomId, interval);
+          } else if (mode === "bus_complete") {
+            room.gameState = "bus_complete_setup";
+            room.category = "تخمينة كومبليت";
+            room.busCompleteLetter = null;
+            room.busCompleteSubmittedPlayers = [];
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === null) {
+            room.gameState = "waiting";
+            room.selectionMode = null;
+            room.category = null;
+            room.busCompleteLetter = null;
+            room.busCompleteSubmittedPlayers = [];
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            startWaitingInterval(roomId);
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      }
+    }
+
+    function executeSearchBusCompleteLetter(roomId: string, hideResults?: boolean) {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "bus_complete_setup") {
+        room.gameState = "bus_complete_spin";
+        const hasBot = room.players.some((p: any) => p.isBot);
+        room.busCompleteHideResults = hideResults || hasBot;
+        io.to(roomId).emit("room_update", room);
+
+        const arabicLetters = [
+          "أ", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر", "ز", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ك", "ل", "م", "ن", "ه", "و", "ي"
+        ];
+
+        // Find a letter not used by either player recently, if possible
+        const player1Serial = room.players[0]?.serial;
+        const player2Serial = room.players[1]?.serial;
+        const p1 = player1Serial ? allPlayers.get(player1Serial) : null;
+        const p2 = player2Serial ? allPlayers.get(player2Serial) : null;
+
+        let used1 = p1?.busCompleteUsedLetters || [];
+        let used2 = p2?.busCompleteUsedLetters || [];
+
+        let availableLetters = arabicLetters.filter(
+          (l) => !used1.includes(l) && !used2.includes(l),
+        );
+        if (availableLetters.length === 0) {
+          availableLetters = arabicLetters; // Reset if all used
+          if (p1) {
+            p1.busCompleteUsedLetters = [];
+            savePlayerData(p1.serial);
+          }
+          if (p2) {
+            p2.busCompleteUsedLetters = [];
+            savePlayerData(p2.serial);
+          }
+        }
+
+        const randomLetter =
+          availableLetters[
+            Math.floor(Math.random() * availableLetters.length)
+          ];
+        room.busCompleteLetter = randomLetter;
+
+        setTimeout(() => {
+          const r = rooms.get(roomId);
+          if (r && r.gameState === "bus_complete_spin") {
+            r.gameState = "bus_complete_playing";
+            r.timer = 300; // 5 minutes
+
+            r.busCompleteAdViewers = [];
+            r.busCompleteCooldowns = {};
+
+            // Mark letter as used
+            if (p1 && r.busCompleteLetter) {
+              p1.busCompleteUsedLetters = [
+                ...(p1.busCompleteUsedLetters || []),
+                r.busCompleteLetter,
+              ];
+              savePlayerData(p1.serial);
+            }
+            if (p2 && r.busCompleteLetter) {
+              p2.busCompleteUsedLetters = [
+                ...(p2.busCompleteUsedLetters || []),
+                r.busCompleteLetter,
+              ];
+              savePlayerData(p2.serial);
+            }
+
+            io.to(roomId).emit("room_update", r);
+
+            // Handle bot updates if any
+            const bot = r.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", r);
+            }
+
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const interval = setInterval(() => {
+              const currentRoom = rooms.get(roomId);
+              if (
+                !currentRoom ||
+                currentRoom.gameState !== "bus_complete_playing"
+              ) {
+                clearInterval(interval);
+                return;
+              }
+
+              let isCooldownActive = false;
+              let anyCooldownDecremented = false;
+              if (currentRoom.busCompleteCooldowns) {
+                Object.keys(currentRoom.busCompleteCooldowns).forEach(
+                  (pid) => {
+                    if (currentRoom.busCompleteCooldowns[pid] > 0) {
+                      currentRoom.busCompleteCooldowns[pid]--;
+                      isCooldownActive = true;
+                      anyCooldownDecremented = true;
+                    }
+                  },
+                );
+              }
+
+              const isAdPlaying =
+                currentRoom.busCompleteAdViewers &&
+                currentRoom.busCompleteAdViewers.length > 0;
+
+              if (isAdPlaying || isCooldownActive) {
+                if (anyCooldownDecremented || isAdPlaying) {
+                  io.to(roomId).emit("room_update", currentRoom);
+                }
+                return;
+              }
+
+              currentRoom.timer--;
+              if (currentRoom.timer <= 0) {
+                clearInterval(interval);
+                currentRoom.gameState = "bus_complete_evaluating"; // Time is up
+                evaluateBusCompleteAnswers(currentRoom);
+                io.to(roomId).emit("room_update", currentRoom);
+              } else {
+                io.to(roomId).emit("room_update", currentRoom);
+              }
+            }, 1000);
+            intervals.set(roomId, interval);
+          }
+        }, 3000); // 3 seconds spin effect
+      }
+    }
+
     async function handleBotEvent(roomId: string, event: string, data: any) {
       const room = rooms.get(roomId);
       if (!room) return;
@@ -5374,14 +5588,157 @@ async function startServer() {
         return;
       }
 
+      if (event === "bus_complete_letter_change_requested") {
+        setTimeout(() => {
+          const r = rooms.get(roomId);
+          if (r && r.busCompleteChangeLetterRequestBy) {
+            r.busCompleteChangeLetterRequestBy = null;
+            r.gameState = "bus_complete_setup";
+            r.busCompleteLetter = undefined;
+            r.busCompleteSubmittedPlayers = [];
+            r.busCompleteAnswers = {};
+            r.busCompleteScores = {};
+            
+            // Clear any active playing or setup timeouts
+            if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
+              clearTimeout(botTimeouts.get(roomId + "_bus_playing_submit_timeout"));
+              botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
+            }
+            botFlags.delete(roomId + "_bus_playing_submit_timeout_scheduled");
+
+            if (botTimeouts.has(roomId + "_bus_setup_timeout")) {
+              clearTimeout(botTimeouts.get(roomId + "_bus_setup_timeout"));
+              botTimeouts.delete(roomId + "_bus_setup_timeout");
+            }
+
+            if (r.timerInterval) clearInterval(r.timerInterval);
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+            io.to(roomId).emit("room_update", r);
+
+            // Notify bot to restart setup timeout
+            handleBotEvent(roomId, "room_update", r);
+          }
+        }, 1500 + Math.random() * 2000);
+      }
+
       if (event === "room_update") {
-        // Initialize conversation if not already done
+        // ... previous bot conversations ...
         if (!botConversations.has(roomId)) {
           botConversations.set(roomId, []);
         }
 
+        // Handle bus_complete_playing action
+        if (room.gameState === "bus_complete_playing" && !room.busCompleteSubmittedPlayers?.includes(botPlayer.id)) {
+          if (!botFlags.has(roomId + "_bus_playing_submit_timeout_scheduled")) {
+            botFlags.set(roomId + "_bus_playing_submit_timeout_scheduled", true);
+
+            // Determine if bot will win (plays perfectly and answers all correct)
+            const willWin = Math.random() < 0.40; // 40% chance
+            const wrongCount = willWin ? 0 : Math.floor(Math.random() * 2) + 1; // 1 or 2 wrong
+
+            // Dynamic delay:
+            // If willWin is true (perfect play), delay is 1-3 minutes (60,000 to 180,000 ms)
+            // If willWin is false, delay is 2.5-4 minutes (150,000 to 240,000 ms)
+            const submitDelay = willWin
+              ? (60000 + Math.random() * 120000)
+              : (150000 + Math.random() * 90000);
+
+            const timeout = setTimeout(() => {
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "bus_complete_playing" || r.busCompleteSubmittedPlayers?.includes(botPlayer.id)) return;
+
+              let mappedLetter = r.busCompleteLetter || "ا";
+              if (mappedLetter === "أ" || mappedLetter === "إ" || mappedLetter === "آ") mappedLetter = "ا";
+              if (mappedLetter === "ة") mappedLetter = "ه";
+              if (mappedLetter === "ى") mappedLetter = "ي";
+
+              const letterData = busCompleteData[mappedLetter] || {};
+              const categories = ["boy", "girl", "animal", "plant", "inanimate", "country"];
+              const answers: any = {};
+              
+              const lastWrongCats: string[] = botFlags.get(roomId + "_last_wrong_cats") || [];
+              const availableToWrong = categories.filter(c => !lastWrongCats.includes(c));
+              const catsToWrong = availableToWrong.length >= wrongCount ? availableToWrong : [...categories];
+              const shuffledCats = catsToWrong.sort(() => 0.5 - Math.random());
+              const chosenWrongs = shuffledCats.slice(0, wrongCount);
+              
+              botFlags.set(roomId + "_last_wrong_cats", chosenWrongs);
+
+              categories.forEach(cat => {
+                const words = letterData[cat] || [];
+                if (chosenWrongs.includes(cat)) {
+                  answers[cat] = "معرفش";
+                } else if (words.length > 0) {
+                  answers[cat] = words[Math.floor(Math.random() * words.length)];
+                } else {
+                  answers[cat] = "معرفش"; // Fallback
+                }
+              });
+
+              // Apply submitting logic for bot directly
+              const botId = botPlayer.id;
+              if (!r.busCompleteAnswers) r.busCompleteAnswers = {};
+              if (!r.busCompleteSubmitTimes) r.busCompleteSubmitTimes = {};
+              if (!r.busCompleteSubmittedPlayers) r.busCompleteSubmittedPlayers = [];
+
+              r.busCompleteAnswers[botId] = answers;
+              const timeReduction = r.busCompleteTimerReduction || 0;
+              r.busCompleteSubmitTimes[botId] = 300 - (r.timer + timeReduction);
+
+              if (!r.busCompleteSubmittedPlayers.includes(botId)) {
+                r.busCompleteSubmittedPlayers.push(botId);
+                // Fast timer trick: if bot submits first
+                if (r.busCompleteSubmittedPlayers.length === 1 && r.timer > 60) {
+                   r.busCompleteTimerReduction = r.timer - 60;
+                   r.timer = 60;
+                }
+                
+                if (r.busCompleteSubmittedPlayers.length === 2) {
+                  if (intervals.has(roomId)) {
+                    clearInterval(intervals.get(roomId));
+                    intervals.delete(roomId);
+                  }
+                  r.gameState = "bus_complete_evaluating";
+                  evaluateBusCompleteAnswers(r);
+                }
+              }
+              io.to(roomId).emit("room_update", r);
+            }, submitDelay);
+
+            botTimeouts.set(roomId + "_bus_playing_submit_timeout", timeout);
+          }
+        } else {
+          // If we are no longer playing or already submitted, clear the playing submission timeout
+          if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_bus_playing_submit_timeout"));
+            botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
+            botFlags.delete(roomId + "_bus_playing_submit_timeout_scheduled");
+          }
+        }
+
+        // Handle proactive setup start (if player delays starting the game)
+        if (room.gameState === "bus_complete_setup" && !room.busCompleteLetter) {
+          if (!botTimeouts.has(roomId + "_bus_setup_timeout")) {
+            const setupDelay = 8000 + Math.random() * 4000; // 8 - 12 seconds
+            const setupTimeout = setTimeout(() => {
+              const r = rooms.get(roomId);
+              if (r && r.gameState === "bus_complete_setup" && !r.busCompleteLetter) {
+                executeSearchBusCompleteLetter(roomId);
+              }
+              botTimeouts.delete(roomId + "_bus_setup_timeout");
+            }, setupDelay);
+            botTimeouts.set(roomId + "_bus_setup_timeout", setupTimeout);
+          }
+        } else {
+          if (botTimeouts.has(roomId + "_bus_setup_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_bus_setup_timeout"));
+            botTimeouts.delete(roomId + "_bus_setup_timeout");
+          }
+        }
+
         // Requirement 6: Category selection negotiation
-        if (room.gameState === "waiting") {
+        if (room.gameState === "waiting" && room.selectionMode === "ready") {
           if (!botFlags.has(roomId + "_category_logic")) {
             botFlags.set(roomId + "_category_logic", true);
 
@@ -5558,6 +5915,138 @@ async function startServer() {
                 ); // 3-5 seconds delay
                 botTimeouts.set(roomId + "_agree_timeout", timeout);
               }
+            }
+          }
+        }
+        
+        // Requirement 7: Selection mode negotiation
+        if (room.gameState === "waiting" && !room.selectionMode) {
+          const currentHumanMode = humanPlayer?.selectedSelectionMode;
+          const lastHumanMode = botFlags.get(roomId + "_last_human_mode");
+          
+          if (currentHumanMode !== lastHumanMode) {
+            botFlags.set(roomId + "_last_human_mode", currentHumanMode || null);
+            clearBotSelectionModeTimeouts(roomId);
+          }
+
+          if (currentHumanMode) {
+            if (botPlayer.selectedSelectionMode !== currentHumanMode) {
+              // We need to negotiate/agree
+              const hasAgreeTimeout = botTimeouts.has(roomId + "_mode_agree_timeout");
+              const hasHesitateTimeout = botTimeouts.has(roomId + "_mode_hesitate_timeout");
+              const hasAgreeAfterHesitate = botTimeouts.has(roomId + "_mode_agree_after_hesitate_timeout");
+
+              if (!hasAgreeTimeout && !hasHesitateTimeout && !hasAgreeAfterHesitate) {
+                // Determine if this is a 90% agree or 10% hesitate roll
+                const roll = Math.random();
+                if (roll < 0.90) {
+                  // 90% chance: Agree after delay
+                  const delay = 1500 + Math.random() * 1000; // 1.5 - 2.5 seconds
+                  const timeout = setTimeout(() => {
+                    const r = rooms.get(roomId);
+                    if (!r || r.gameState !== "waiting" || r.selectionMode) return;
+                    const hp = r.players.find((p: any) => !p.isBot);
+                    const bp = r.players.find((p: any) => p.isBot);
+                    if (hp && hp.selectedSelectionMode) {
+                      bp.selectedSelectionMode = hp.selectedSelectionMode;
+                      io.to(roomId).emit("room_update", r);
+
+                      // Bot auto-confirms after another delay if human doesn't
+                      const confirmTimeout = setTimeout(() => {
+                        const rr = rooms.get(roomId);
+                        if (!rr || rr.gameState !== "waiting" || rr.selectionMode) return;
+                        const hpp = rr.players.find((p: any) => !p.isBot);
+                        const bpp = rr.players.find((p: any) => p.isBot);
+                        if (hpp && bpp && hpp.selectedSelectionMode === bpp.selectedSelectionMode) {
+                          executeSelectionModeConfirmation(roomId);
+                        }
+                      }, 2000 + Math.random() * 1500); // 2 - 3.5 seconds
+                      botTimeouts.set(roomId + "_mode_confirm_timeout", confirmTimeout);
+                    }
+                    botTimeouts.delete(roomId + "_mode_agree_timeout");
+                  }, delay);
+                  botTimeouts.set(roomId + "_mode_agree_timeout", timeout);
+                } else {
+                  // 10% chance: Hesitate and select a different mode first
+                  const diffMode = currentHumanMode === "bus_complete" ? "ready" : "bus_complete";
+                  const hesitateDelay = 1500 + Math.random() * 1000; // 1.5 - 2.5 seconds
+                  const timeout = setTimeout(() => {
+                    const r = rooms.get(roomId);
+                    if (!r || r.gameState !== "waiting" || r.selectionMode) return;
+                    const hp = r.players.find((p: any) => !p.isBot);
+                    const bp = r.players.find((p: any) => p.isBot);
+                    if (hp && hp.selectedSelectionMode === currentHumanMode) {
+                      bp.selectedSelectionMode = diffMode;
+                      io.to(roomId).emit("room_update", r);
+
+                      // Now set a subsequent agreement timeout to switch back to human's mode
+                      const agreeDelay = 2500 + Math.random() * 2000; // 2.5 - 4.5 seconds
+                      const followTimeout = setTimeout(() => {
+                        const r2 = rooms.get(roomId);
+                        if (!r2 || r2.gameState !== "waiting" || r2.selectionMode) return;
+                        const hp2 = r2.players.find((p: any) => !p.isBot);
+                        const bp2 = r2.players.find((p: any) => p.isBot);
+                        if (hp2 && hp2.selectedSelectionMode) {
+                          bp2.selectedSelectionMode = hp2.selectedSelectionMode;
+                          io.to(roomId).emit("room_update", r2);
+
+                          // Set up auto confirmation
+                          const lastConfirmTimeout = setTimeout(() => {
+                            const r3 = rooms.get(roomId);
+                            if (!r3 || r3.gameState !== "waiting" || r3.selectionMode) return;
+                            const hp3 = r3.players.find((p: any) => !p.isBot);
+                            const bp3 = r3.players.find((p: any) => p.isBot);
+                            if (hp3 && bp3 && hp3.selectedSelectionMode === bp3.selectedSelectionMode) {
+                              executeSelectionModeConfirmation(roomId);
+                            }
+                          }, 2000 + Math.random() * 1000);
+                          botTimeouts.set(roomId + "_mode_confirm_timeout", lastConfirmTimeout);
+                        }
+                        botTimeouts.delete(roomId + "_mode_agree_after_hesitate_timeout");
+                      }, agreeDelay);
+                      botTimeouts.set(roomId + "_mode_agree_after_hesitate_timeout", followTimeout);
+                    }
+                    botTimeouts.delete(roomId + "_mode_hesitate_timeout");
+                  }, hesitateDelay);
+                  botTimeouts.set(roomId + "_mode_hesitate_timeout", timeout);
+                }
+              }
+            } else {
+              // Bot and human are already matching (either bot proposed, or bot agreed)
+              if (!botTimeouts.has(roomId + "_mode_confirm_timeout")) {
+                const confirmTimeout = setTimeout(() => {
+                  const r = rooms.get(roomId);
+                  if (!r || r.gameState !== "waiting" || r.selectionMode) return;
+                  const hp = r.players.find((p: any) => !p.isBot);
+                  const bp = r.players.find((p: any) => p.isBot);
+                  if (hp && bp && hp.selectedSelectionMode === bp.selectedSelectionMode) {
+                    executeSelectionModeConfirmation(roomId);
+                  }
+                }, 2500 + Math.random() * 1500);
+                botTimeouts.set(roomId + "_mode_confirm_timeout", confirmTimeout);
+              }
+            }
+          } else {
+            // Human has NOT selected any mode yet!
+            clearBotSelectionModeTimeouts(roomId);
+
+            // Proactive selection mode proposal if human is late (8 seconds delay)
+            if (!botTimeouts.has(roomId + "_mode_proactive_timeout") && !botPlayer.selectedSelectionMode) {
+              const delay = 8000; // 8 seconds delay
+              const proactiveTimeout = setTimeout(() => {
+                const r = rooms.get(roomId);
+                if (!r || r.gameState !== "waiting" || r.selectionMode) return;
+                const hp = r.players.find((p: any) => !p.isBot);
+                const bp = r.players.find((p: any) => p.isBot);
+                if (hp && !hp.selectedSelectionMode && !bp.selectedSelectionMode) {
+                  // Choose randomly between "ready" and "bus_complete"
+                  const proposed = Math.random() < 0.5 ? "ready" : "bus_complete";
+                  bp.selectedSelectionMode = proposed;
+                  io.to(roomId).emit("room_update", r);
+                }
+                botTimeouts.delete(roomId + "_mode_proactive_timeout");
+              }, delay);
+              botTimeouts.set(roomId + "_mode_proactive_timeout", proactiveTimeout);
             }
           }
         }
@@ -7556,9 +8045,34 @@ async function startServer() {
         },
       );
 
+      socket.on("propose_selection_mode", ({ roomId, mode }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "waiting") {
+          const player = room.players.find((p: any) => p.id === socket.id);
+          if (player) {
+            player.selectedSelectionMode = mode;
+            io.to(roomId).emit("room_update", room);
+            
+            // Trigger bot to react to human player propose
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          }
+        }
+      });
+
+      socket.on("confirm_selection_mode", ({ roomId }) => {
+        executeSelectionModeConfirmation(roomId);
+      });
+
       socket.on("select_private_mode", ({ roomId, mode }) => {
         const room = rooms.get(roomId);
-        if (room && room.matchType === "private") {
+        if (room) {
+          if (mode === "custom" && room.matchType !== "private") {
+            return; // Ignore custom mode selection for non-private matches
+          }
+          
           room.selectionMode = mode;
           if (mode === "custom") {
             room.gameState = "custom_image_upload";
@@ -7624,6 +8138,10 @@ async function startServer() {
             });
           }
           io.to(roomId).emit("room_update", room);
+
+          if (opponent && opponent.isBot) {
+            handleBotEvent(roomId, "bus_complete_letter_change_requested", null);
+          }
         }
       });
 
@@ -7655,150 +8173,8 @@ async function startServer() {
         }
       });
 
-      socket.on("search_bus_complete_letter", ({ roomId }) => {
-        const room = rooms.get(roomId);
-        if (room && room.gameState === "bus_complete_setup") {
-          room.gameState = "bus_complete_spin";
-          io.to(roomId).emit("room_update", room);
-
-          const arabicLetters = [
-            "أ",
-            "ب",
-            "ت",
-            "ث",
-            "ج",
-            "ح",
-            "خ",
-            "د",
-            "ذ",
-            "ر",
-            "ز",
-            "س",
-            "ش",
-            "ص",
-            "ض",
-            "ط",
-            "ظ",
-            "ع",
-            "غ",
-            "ف",
-            "ق",
-            "ك",
-            "ل",
-            "م",
-            "ن",
-            "ه",
-            "و",
-            "ي",
-          ];
-
-          // Find a letter not used by either player recently, if possible
-          const player1Serial = room.players[0]?.serial;
-          const player2Serial = room.players[1]?.serial;
-          const p1 = player1Serial ? allPlayers.get(player1Serial) : null;
-          const p2 = player2Serial ? allPlayers.get(player2Serial) : null;
-
-          let used1 = p1?.busCompleteUsedLetters || [];
-          let used2 = p2?.busCompleteUsedLetters || [];
-
-          let availableLetters = arabicLetters.filter(
-            (l) => !used1.includes(l) && !used2.includes(l),
-          );
-          if (availableLetters.length === 0) {
-            availableLetters = arabicLetters; // Reset if all used
-            if (p1) {
-              p1.busCompleteUsedLetters = [];
-              savePlayerData(p1.serial);
-            }
-            if (p2) {
-              p2.busCompleteUsedLetters = [];
-              savePlayerData(p2.serial);
-            }
-          }
-
-          const randomLetter =
-            availableLetters[
-              Math.floor(Math.random() * availableLetters.length)
-            ];
-          room.busCompleteLetter = randomLetter;
-
-          setTimeout(() => {
-            const r = rooms.get(roomId);
-            if (r && r.gameState === "bus_complete_spin") {
-              r.gameState = "bus_complete_playing";
-              r.timer = 300; // 5 minutes
-
-              r.busCompleteAdViewers = [];
-              r.busCompleteCooldowns = {};
-
-              // Mark letter as used
-              if (p1 && r.busCompleteLetter) {
-                p1.busCompleteUsedLetters = [
-                  ...(p1.busCompleteUsedLetters || []),
-                  r.busCompleteLetter,
-                ];
-                savePlayerData(p1.serial);
-              }
-              if (p2 && r.busCompleteLetter) {
-                p2.busCompleteUsedLetters = [
-                  ...(p2.busCompleteUsedLetters || []),
-                  r.busCompleteLetter,
-                ];
-                savePlayerData(p2.serial);
-              }
-
-              io.to(roomId).emit("room_update", r);
-
-              if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-              const interval = setInterval(() => {
-                const currentRoom = rooms.get(roomId);
-                if (
-                  !currentRoom ||
-                  currentRoom.gameState !== "bus_complete_playing"
-                ) {
-                  clearInterval(interval);
-                  return;
-                }
-
-                let isCooldownActive = false;
-                let anyCooldownDecremented = false;
-                if (currentRoom.busCompleteCooldowns) {
-                  Object.keys(currentRoom.busCompleteCooldowns).forEach(
-                    (pid) => {
-                      if (currentRoom.busCompleteCooldowns[pid] > 0) {
-                        currentRoom.busCompleteCooldowns[pid]--;
-                        isCooldownActive = true;
-                        anyCooldownDecremented = true;
-                      }
-                    },
-                  );
-                }
-
-                const isAdPlaying =
-                  currentRoom.busCompleteAdViewers &&
-                  currentRoom.busCompleteAdViewers.length > 0;
-
-                if (isAdPlaying || isCooldownActive) {
-                  if (anyCooldownDecremented || isAdPlaying) {
-                    io.to(roomId).emit("room_update", currentRoom);
-                  }
-                  return;
-                }
-
-                currentRoom.timer--;
-                if (currentRoom.timer <= 0) {
-                  clearInterval(interval);
-                  currentRoom.gameState = "bus_complete_evaluating"; // Time is up
-                  evaluateBusCompleteAnswers(currentRoom);
-                  io.to(roomId).emit("room_update", currentRoom);
-                } else {
-                  io.to(roomId).emit("room_update", currentRoom);
-                }
-              }, 1000);
-              intervals.set(roomId, interval);
-            }
-          }, 3000); // 3 seconds spin effect
-        }
+      socket.on("search_bus_complete_letter", ({ roomId, hideResults }) => {
+        executeSearchBusCompleteLetter(roomId, hideResults);
       });
 
       socket.on("bus_complete_ad_start", ({ roomId }) => {
@@ -7837,7 +8213,8 @@ async function startServer() {
             room.busCompleteSubmittedPlayers = [];
 
           room.busCompleteAnswers[socket.id] = answers;
-          room.busCompleteSubmitTimes[socket.id] = 300 - room.timer; // Time taken
+          const timeReduction = room.busCompleteTimerReduction || 0;
+          room.busCompleteSubmitTimes[socket.id] = 300 - (room.timer + timeReduction);
 
           if (!room.busCompleteSubmittedPlayers.includes(socket.id)) {
             room.busCompleteSubmittedPlayers.push(socket.id);
@@ -7849,6 +8226,78 @@ async function startServer() {
             ) {
               room.busCompleteTimerReduction = room.timer - 60;
               room.timer = 60;
+              
+              // Trigger bot to submit
+              const botPlayer = room.players.find(p => p.isBot);
+              if (botPlayer) {
+                  // If human submitted, clear any existing bot timer and submit soon
+                  if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
+                    clearTimeout(botTimeouts.get(roomId + "_bus_playing_submit_timeout"));
+                    botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
+                  }
+                  botFlags.delete(roomId + "_bus_playing_submit_timeout_scheduled");
+
+                  setTimeout(() => {
+                      const r = rooms.get(roomId);
+                      // If the room still exists and bot hasn't submitted
+                      if (r && r.gameState === "bus_complete_playing" && !r.busCompleteSubmittedPlayers?.includes(botPlayer.id)) {
+                        let mappedLetter = r.busCompleteLetter || "ا";
+                        if (mappedLetter === "أ" || mappedLetter === "إ" || mappedLetter === "آ") mappedLetter = "ا";
+                        if (mappedLetter === "ة") mappedLetter = "ه";
+                        if (mappedLetter === "ى") mappedLetter = "ي";
+
+                        const letterData = busCompleteData[mappedLetter] || {};
+                        const categories = ["boy", "girl", "animal", "plant", "inanimate", "country"];
+                        const answers: any = {};
+                        
+                        // 1 in 4 chance the bot wins (plays perfectly), otherwise answers wrong on 1-2 items
+                        const willWin = Math.random() < 0.25;
+                        let wrongCount = willWin ? 0 : Math.floor(Math.random() * 2) + 1; // 1 or 2 wrong
+                        
+                        const lastWrongCats: string[] = botFlags.get(roomId + "_last_wrong_cats") || [];
+                        const availableToWrong = categories.filter(c => !lastWrongCats.includes(c));
+                        const catsToWrong = availableToWrong.length >= wrongCount ? availableToWrong : [...categories];
+                        const shuffledCats = catsToWrong.sort(() => 0.5 - Math.random());
+                        const chosenWrongs = shuffledCats.slice(0, wrongCount);
+                        
+                        botFlags.set(roomId + "_last_wrong_cats", chosenWrongs);
+
+                        categories.forEach(cat => {
+                          const words = letterData[cat] || [];
+                          if (chosenWrongs.includes(cat)) {
+                            answers[cat] = "معرفش";
+                          } else if (words.length > 0) {
+                            answers[cat] = words[Math.floor(Math.random() * words.length)];
+                          } else {
+                            answers[cat] = "معرفش";
+                          }
+                        });
+
+                        // Apply submitting logic for bot
+                        const botId = botPlayer.id;
+                        if (!r.busCompleteAnswers) r.busCompleteAnswers = {};
+                        if (!r.busCompleteSubmitTimes) r.busCompleteSubmitTimes = {};
+                        if (!r.busCompleteSubmittedPlayers) r.busCompleteSubmittedPlayers = [];
+
+                        r.busCompleteAnswers[botId] = answers;
+                        const timeReduction = r.busCompleteTimerReduction || 0;
+                        r.busCompleteSubmitTimes[botId] = 300 - (r.timer + timeReduction);
+
+                        if (!r.busCompleteSubmittedPlayers.includes(botId)) {
+                          r.busCompleteSubmittedPlayers.push(botId);
+                          if (r.busCompleteSubmittedPlayers.length === 2) {
+                            if (intervals.has(roomId)) {
+                              clearInterval(intervals.get(roomId));
+                              intervals.delete(roomId);
+                            }
+                            r.gameState = "bus_complete_evaluating";
+                            evaluateBusCompleteAnswers(r);
+                          }
+                        }
+                        io.to(roomId).emit("room_update", r);
+                      }
+                  }, 2000 + Math.random() * 3000); // Wait 2 to 5 seconds after human submits
+              }
             }
           }
 
