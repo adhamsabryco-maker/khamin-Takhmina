@@ -5635,14 +5635,19 @@ async function startServer() {
 
             // Determine if bot will win (plays perfectly and answers all correct)
             const willWin = Math.random() < 0.40; // 40% chance
-            const wrongCount = willWin ? 0 : Math.floor(Math.random() * 2) + 1; // 1 or 2 wrong
+            let wrongCount = 0;
+            if (!willWin) {
+              const rand = Math.random();
+              if (rand < 0.4) wrongCount = 1;
+              else if (rand < 0.7) wrongCount = 2;
+              else if (rand < 0.9) wrongCount = 3;
+              else wrongCount = 4;
+            }
 
-            // Dynamic delay:
-            // If willWin is true (perfect play), delay is 1-3 minutes (60,000 to 180,000 ms)
-            // If willWin is false, delay is 2.5-4 minutes (150,000 to 240,000 ms)
-            const submitDelay = willWin
-              ? (60000 + Math.random() * 120000)
-              : (150000 + Math.random() * 90000);
+            // Natural completion delay
+            const submitDelay = willWin 
+              ? (60000 + Math.random() * 120000)   // 1 to 3 minutes
+              : (150000 + Math.random() * 90000); // 2.5 to 4 minutes
 
             const timeout = setTimeout(() => {
               const r = rooms.get(roomId);
@@ -5668,11 +5673,16 @@ async function startServer() {
               categories.forEach(cat => {
                 const words = letterData[cat] || [];
                 if (chosenWrongs.includes(cat)) {
-                  answers[cat] = "معرفش";
+                  if (Math.random() < 0.6) {
+                    answers[cat] = ""; // 60% chance to leave it blank
+                  } else {
+                    const fallbackWrongs = ["معرفش", "اي حاجة", "مش عارف", "صعب", "لا يوجد"];
+                    answers[cat] = fallbackWrongs[Math.floor(Math.random() * fallbackWrongs.length)];
+                  }
                 } else if (words.length > 0) {
                   answers[cat] = words[Math.floor(Math.random() * words.length)];
                 } else {
-                  answers[cat] = "معرفش"; // Fallback
+                  answers[cat] = ""; // Fallback to blank if no correct words found
                 }
               });
 
@@ -8106,6 +8116,12 @@ async function startServer() {
             room.busCompleteLetter = null;
             room.busCompleteSubmittedPlayers = [];
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            
+            // Trigger bot logic for the new game
+            const opponent = room.players.find((p: any) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           } else if (mode === null) {
             room.gameState = "waiting";
             room.selectionMode = null;
@@ -8224,22 +8240,31 @@ async function startServer() {
               room.busCompleteSubmittedPlayers.length === 1 &&
               room.timer > 60
             ) {
+              const previousTimer = room.timer;
               room.busCompleteTimerReduction = room.timer - 60;
               room.timer = 60;
               
-              // Trigger bot to submit
               const botPlayer = room.players.find(p => p.isBot);
               if (botPlayer) {
-                  // If human submitted, clear any existing bot timer and submit soon
                   if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
                     clearTimeout(botTimeouts.get(roomId + "_bus_playing_submit_timeout"));
                     botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
                   }
                   botFlags.delete(roomId + "_bus_playing_submit_timeout_scheduled");
 
+                  const elapsedSec = 300 - previousTimer;
+                  let botReactionDelay = 0;
+                  if (elapsedSec < 25) {
+                    // Force the bot's total time from start to be 25-30s
+                    const targetTotalTime = 25 + Math.random() * 5;
+                    botReactionDelay = (targetTotalTime - elapsedSec) * 1000;
+                  } else {
+                    // Bot reacts in 3-5 seconds
+                    botReactionDelay = 3000 + Math.random() * 2000;
+                  }
+
                   setTimeout(() => {
                       const r = rooms.get(roomId);
-                      // If the room still exists and bot hasn't submitted
                       if (r && r.gameState === "bus_complete_playing" && !r.busCompleteSubmittedPlayers?.includes(botPlayer.id)) {
                         let mappedLetter = r.busCompleteLetter || "ا";
                         if (mappedLetter === "أ" || mappedLetter === "إ" || mappedLetter === "آ") mappedLetter = "ا";
@@ -8250,9 +8275,8 @@ async function startServer() {
                         const categories = ["boy", "girl", "animal", "plant", "inanimate", "country"];
                         const answers: any = {};
                         
-                        // 1 in 4 chance the bot wins (plays perfectly), otherwise answers wrong on 1-2 items
                         const willWin = Math.random() < 0.25;
-                        let wrongCount = willWin ? 0 : Math.floor(Math.random() * 2) + 1; // 1 or 2 wrong
+                        let wrongCount = willWin ? 0 : Math.floor(Math.random() * 2) + 1;
                         
                         const lastWrongCats: string[] = botFlags.get(roomId + "_last_wrong_cats") || [];
                         const availableToWrong = categories.filter(c => !lastWrongCats.includes(c));
@@ -8265,15 +8289,19 @@ async function startServer() {
                         categories.forEach(cat => {
                           const words = letterData[cat] || [];
                           if (chosenWrongs.includes(cat)) {
-                            answers[cat] = "معرفش";
+                            if (Math.random() < 0.6) {
+                              answers[cat] = ""; // 60% chance to leave blank
+                            } else {
+                              const fallbackWrongs = ["معرفش", "اي حاجة", "مش عارف", "صعب", "لا يوجد"];
+                              answers[cat] = fallbackWrongs[Math.floor(Math.random() * fallbackWrongs.length)];
+                            }
                           } else if (words.length > 0) {
                             answers[cat] = words[Math.floor(Math.random() * words.length)];
                           } else {
-                            answers[cat] = "معرفش";
+                            answers[cat] = "";
                           }
                         });
 
-                        // Apply submitting logic for bot
                         const botId = botPlayer.id;
                         if (!r.busCompleteAnswers) r.busCompleteAnswers = {};
                         if (!r.busCompleteSubmitTimes) r.busCompleteSubmitTimes = {};
@@ -8296,7 +8324,7 @@ async function startServer() {
                         }
                         io.to(roomId).emit("room_update", r);
                       }
-                  }, 2000 + Math.random() * 3000); // Wait 2 to 5 seconds after human submits
+                  }, botReactionDelay);
               }
             }
           }
