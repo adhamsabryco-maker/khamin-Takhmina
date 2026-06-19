@@ -23495,7 +23495,7 @@ export default function App() {
                   </span>
                 </div>
 
-                {room.gameState === "bus_complete_playing" && (
+                {room.gameState === "bus_complete_playing" && (!room.busCompleteSubmittedPlayers || room.busCompleteSubmittedPlayers.length === 0) && (
                   room.busCompleteChangeLetterRequestBy ? (
                     <button
                       disabled
