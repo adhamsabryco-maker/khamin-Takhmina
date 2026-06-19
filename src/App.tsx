@@ -567,11 +567,14 @@ interface Player {
   keys?: number;
   isPro?: boolean;
   busCompleteWins?: number;
+  selectedSelectionMode?: string;
 }
 
 interface Room {
   id: string;
   players: Player[];
+  proposedSelectionMode?: string | null;
+  proposedSelectionModeBy?: string | null;
   gameState:
     | "waiting"
     | "discussion"
@@ -600,6 +603,7 @@ interface Room {
   selectionMode?: "ready" | "custom" | "bus_complete" | null;
   busCompleteLetter?: string;
   busCompleteWinner?: string;
+  busCompleteHideResults?: boolean;
   busCompleteAdViewers?: string[];
   busCompleteCooldowns?: Record<string, number>;
   busCompleteScores?: Record<
@@ -4905,6 +4909,7 @@ export default function App() {
     country: "",
   });
   const [spinLetter, setSpinLetter] = useState("؟");
+  const [hideBusResults, setHideBusResults] = useState(false);
   const isOpponentBlockedRef = useRef(isOpponentBlocked);
   useEffect(() => {
     isOpponentBlockedRef.current = isOpponentBlocked;
@@ -23491,29 +23496,50 @@ export default function App() {
                 </div>
 
                 {room.gameState === "bus_complete_playing" && (
-                  <button
-                    onClick={() => {
-                      const opponent = room.players?.find((p: any) => p.id !== socket?.id)?.name || "اللاعب الآخر";
-                      showAlert(`انتظر موافقة ${opponent} لتغيير الحرف...`, "جاري الطلب");
-                      socket?.emit("request_change_bus_complete_letter", { roomId });
-                    }}
-                    className="mx-auto flex items-center justify-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors border"
-                  >
-                    <span>تغيير الحرف</span>
-                    <X className="w-3 h-3" />
-                  </button>
+                  room.busCompleteChangeLetterRequestBy ? (
+                    <button
+                      disabled
+                      className="mx-auto flex items-center justify-center gap-1 text-xs font-bold text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200 cursor-not-allowed"
+                    >
+                      <span>طلب معلق!</span>
+                      <span className="animate-pulse">🕒</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        const opponent = room.players?.find((p: any) => p.id !== socket?.id)?.name || "اللاعب الآخر";
+                        showAlert(`انتظر موافقة ${opponent} لتغيير الحرف...`, "جاري الطلب");
+                        socket?.emit("request_change_bus_complete_letter", { roomId });
+                      }}
+                      className="mx-auto flex items-center justify-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors border"
+                    >
+                      <span>تغيير الحرف</span>
+                      <X className="w-3 h-3" />
+                    </button>
+                  )
                 )}
 
                 {room.gameState === "bus_complete_setup" && (
-                  <button
-                    onClick={() => {
-                      playSound("clickOpen");
-                      socket?.emit("search_bus_complete_letter", { roomId });
-                    }}
-                    className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-2.5 md:py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
-                  >
-                    البحث عن حرف وبدء اللعب 🎲
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => {
+                        playSound("clickOpen");
+                        socket?.emit("search_bus_complete_letter", { roomId, hideResults: hideBusResults });
+                      }}
+                      className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-2.5 md:py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
+                    >
+                      البحث عن حرف وبدء اللعب 🎲
+                    </button>
+                    <label className="flex items-center justify-center gap-2 text-sm font-bold text-gray-500 cursor-pointer w-fit mx-auto">
+                      <input 
+                        type="checkbox" 
+                        checked={hideBusResults} 
+                        onChange={(e) => setHideBusResults(e.target.checked)} 
+                        className="w-4 h-4 text-blue-600 rounded bg-gray-100 border-gray-300"
+                      />
+                      إخفاء النتائج عن المنافس
+                    </label>
+                  </div>
                 )}
 
                 {(room.gameState === "bus_complete_playing" ||
@@ -23778,18 +23804,23 @@ export default function App() {
                               country: "بلاد",
                             };
                             const playerAnswers = room.busCompleteAnswers?.[p.id];
-                            const answerText = playerAnswers ? (playerAnswers as any)[cat] : "";
+                            let answerText = playerAnswers ? (playerAnswers as any)[cat] : "";
+                            const isMe = p.id === socket?.id;
+                            
+                            if (room.busCompleteHideResults && !isMe) {
+                                answerText = pts > 0 ? "إجابة صحيحة" : "إجابة خاطئة";
+                            }
 
                             return (
                               <div
                                 key={cat}
-                                className={`flex flex-col items-center p-1.5 rounded-xl border ${pts > 0 ? "bg-green-100 border-green-200 text-green-700" : "bg-red-50 border-red-100 text-red-400"}`}
+                                className={`flex flex-col items-center p-1.5 rounded-xl border ${pts > 0 ? "bg-green-100 border-green-200 text-green-700" : "bg-red-50 border-red-100 text-red-500"}`}
                               >
                                 <span>
                                   {labels[cat as keyof typeof labels]}
                                 </span>
                                 <span className="text-sm my-0.5">{pts > 0 ? "✔️" : "❌"}</span>
-                                <span className={`text-[11px] mt-0.5 text-center font-bold break-all line-clamp-1 max-w-full px-1 ${pts > 0 ? "text-black" : "text-black"}`}>
+                                <span className={`text-[11px] mt-0.5 text-center font-bold break-all line-clamp-1 max-w-full px-1 ${pts > 0 ? (room.busCompleteHideResults && !isMe ? "text-green-600" : "text-black") : (room.busCompleteHideResults && !isMe ? "text-red-500" : "text-black")}`}>
                                   {answerText ? `${answerText}` : "—"}
                                 </span>
                               </div>
@@ -23871,7 +23902,7 @@ export default function App() {
                     >
                       {room.players.length < 2
                         ? "بانتظار المنافس..."
-                        : isPrivate && !room.selectionMode
+                        : !room.selectionMode
                           ? "اختاروا هتلعبوا ايه بسرعة!"
                           : "اتفقوا على فئة التخمين للبدء!"}
                     </h2>
@@ -23926,8 +23957,7 @@ export default function App() {
                       </div>
                     )}
                     <div className="space-y-6">
-                      {isPrivate &&
-                      (!room.selectionMode || room.selectionMode === null) ? (
+                      {(!room.selectionMode || room.selectionMode === null) ? (
                         <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4 pt-1">
                           {room.players.length < 2 && (
                             <div className="flex flex-col items-center justify-center p-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl">
@@ -23941,78 +23971,129 @@ export default function App() {
                               </p>
                             </div>
                           )}
-                          <button
-                            disabled={room.players.length < 2}
-                            onClick={() =>
-                              socket?.emit("select_private_mode", {
-                                roomId: room.id,
-                                mode: "ready",
-                              })
-                            }
-                            className={`bg-orange-100 hover:bg-orange-200 border-4 border-accent-orange p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#ea580c] active:shadow-none active:translate-y-2"}`}
-                          >
-                            <span
-                              className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "ready",
+                                })
+                              }
+                              className={`w-full bg-orange-100 hover:bg-orange-200 border-4 border-accent-orange p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#ea580c] active:shadow-none active:translate-y-2"}`}
                             >
-                              😉
-                            </span>
-                            <span className="text-xl font-black text-accent-orange">
-                              فئات جاهزة للتخمين
-                            </span>
-                            <span className="text-xs text-brown-muted">
-                              (مبتدئين، أبطال، محترفين...)
-                            </span>
-                          </button>
+                              <span
+                                className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
+                              >
+                                😉
+                              </span>
+                              <span className="text-xl font-black text-accent-orange">
+                                فئات جاهزة للتخمين
+                              </span>
+                              <span className="text-xs text-brown-muted">
+                                (مبتدئين، أبطال، محترفين...)
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "ready" && oppMode === "ready") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
+                              if (meMode === "ready") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "ready") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
 
-                          <button
-                            disabled={room.players.length < 2}
-                            onClick={() =>
-                              socket?.emit("select_private_mode", {
-                                roomId: room.id,
-                                mode: "custom",
-                              })
-                            }
-                            className={`bg-purple-100 hover:bg-purple-200 border-4 border-purple-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#7e22ce] active:shadow-none active:translate-y-2"}`}
-                          >
-                            <span
-                              className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
-                            >
-                              😎
-                            </span>
-                            <span className="text-xl font-black text-purple-600">
-                              ارفع صورة يخمنها
-                            </span>
-                            <span className="text-xs text-brown-muted">
-                              (كل لاعب يرفع صورة للتاني يخمنها)
-                            </span>
-                          </button>
+                          {isPrivate && (
+                            <div className="relative">
+                              <button
+                                disabled={room.players.length < 2}
+                                onClick={() =>
+                                  socket?.emit("propose_selection_mode", {
+                                    roomId: room.id,
+                                    mode: "custom",
+                                  })
+                                }
+                                className={`w-full bg-purple-100 hover:bg-purple-200 border-4 border-purple-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#7e22ce] active:shadow-none active:translate-y-2"}`}
+                              >
+                                <span
+                                  className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
+                                >
+                                  😎
+                                </span>
+                                <span className="text-xl font-black text-purple-600">
+                                  ارفع صورة يخمنها
+                                </span>
+                                <span className="text-xs text-brown-muted">
+                                  (كل لاعب يرفع صورة للتاني يخمنها)
+                                </span>
+                              </button>
+                              {(() => {
+                                const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                                const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                                if (meMode === "custom" && oppMode === "custom") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
+                                if (meMode === "custom") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                                if (oppMode === "custom") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                                return null;
+                              })()}
+                            </div>
+                          )}
 
-                          <button
-                            disabled={room.players.length < 2}
-                            onClick={() =>
-                              socket?.emit("select_private_mode", {
-                                roomId: room.id,
-                                mode: "bus_complete",
-                              })
-                            }
-                            className={`bg-blue-100 hover:bg-blue-200 border-4 border-blue-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#3b82f6] active:shadow-none active:translate-y-2"}`}
-                          >
-                            <span
-                              className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "bus_complete",
+                                })
+                              }
+                              className={`w-full bg-blue-100 hover:bg-blue-200 border-4 border-blue-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#3b82f6] active:shadow-none active:translate-y-2"}`}
                             >
-                              🚌
-                            </span>
-                            <span className="text-xl font-black text-blue-600">
-                              تخمينة كومبليت
-                            </span>
-                            <span className="text-xs text-brown-muted">
-                              (لعبة الحروف والكلمات السريعة)
-                            </span>
-                          </button>
+                              <span
+                                className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
+                              >
+                                🚌
+                              </span>
+                              <span className="text-xl font-black text-blue-600">
+                                تخمينة كومبليت
+                              </span>
+                              <span className="text-xs text-brown-muted">
+                                (لعبة الحروف والكلمات السريعة)
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "bus_complete" && oppMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
+                              if (meMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+                          
+                          {(() => {
+                             const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                             const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                             if (meMode && meMode === oppMode) {
+                               return (
+                                 <button
+                                   onClick={() => {
+                                      playSound("clickOpen");
+                                      socket?.emit("confirm_selection_mode", { roomId });
+                                   }}
+                                   className="mt-4 w-full bg-green-500 hover:bg-green-600 border-[6px] border-green-600 text-white font-black text-xl md:text-2xl p-4 rounded-3xl transition-all shadow-[0_8px_0_0_#16a34a] active:shadow-none active:translate-y-2 flex justify-center items-center gap-3 relative overflow-hidden group"
+                                  >
+                                    احنا جاهزين 🕹️
+                                  </button>
+                               );
+                             }
+                             return null;
+                          })()}
                         </div>
                       ) : !hasWatchedCategoryAd &&
                         room.players.length >= 2 &&
-                        (room.selectionMode === "ready" || !isPrivate) ? (
+                        room.selectionMode === "ready" ? (
                         <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                           {isWatchingCategoryAd ? (
                             <div className="text-center space-y-3">
