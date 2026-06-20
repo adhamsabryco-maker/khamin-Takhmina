@@ -1335,6 +1335,7 @@ export default function App() {
   }, []);
 
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showWCGiftModal, setShowWCGiftModal] = useState(false);
   const [googleRegistrationData, setGoogleRegistrationData] = useState<{
     email: string;
     name: string;
@@ -1901,6 +1902,7 @@ export default function App() {
                     });
                     setShowWelcomeModal(false);
                     setShowCreateAccount(false);
+
                     playSound("clickClose");
                     setGoogleRegistrationData(null);
 
@@ -3306,7 +3308,11 @@ export default function App() {
           (r) => r.category_id === categoryId && r.stage === 2,
         );
 
-        if (!ownsFrame && playerSerial) {
+        const now = new Date();
+        const WC_END_DATE = new Date("2026-07-20T00:00:00Z");
+        const isWCGiftActive = selectedFrame === "football-category-frame-gift.png" && now <= WC_END_DATE;
+
+        if (!ownsFrame && !isWCGiftActive && playerSerial) {
           setSelectedFrame("");
           localStorage.setItem("khamin_player_frame", "");
           socket?.emit("update_selected_frame", { playerSerial, frame: "" });
@@ -3314,6 +3320,53 @@ export default function App() {
       }
     }
   }, [xp, selectedFrame, claimedCollectionRewards, playerSerial, socket]);
+
+  // World Cup Gift Logic
+  useEffect(() => {
+    if (playerName && !showWelcomeModal) {
+      const now = new Date();
+      const WC_END_DATE = new Date("2026-07-20T00:00:00Z");
+      
+      if (now > WC_END_DATE && selectedFrame === "football-category-frame-gift.png" && playerSerial) {
+        // Enforce expiration if they had it equipped as a gift
+        let categoryId = null;
+        for (const [id, data] of Object.entries(COLLECTION_DATA)) {
+          if (data.stages.some((s) => s.reward?.frame === selectedFrame)) {
+            categoryId = id;
+            break;
+          }
+        }
+        const ownsFrame = claimedCollectionRewards.some(
+          (r) => r.category_id === categoryId && r.stage === 2,
+        );
+        if (!ownsFrame) {
+          const prevFrame = localStorage.getItem("khamin_previous_frame_before_wc") || "";
+          setSelectedFrame(prevFrame);
+          localStorage.setItem("khamin_player_frame", prevFrame);
+          socket?.emit("update_selected_frame", { playerSerial, frame: prevFrame });
+        }
+      }
+    }
+  }, [playerName, showWelcomeModal, selectedFrame, claimedCollectionRewards, playerSerial, socket]);
+
+  const handleClaimWCGift = () => {
+    localStorage.setItem(`wc_gift_claimed_2026_${playerSerial}`, "true");
+    if (selectedFrame !== "football-category-frame-gift.png") {
+      localStorage.setItem("khamin_previous_frame_before_wc", selectedFrame || "");
+    }
+    
+    const newFrame = "football-category-frame-gift.png";
+    setSelectedFrame(newFrame);
+    localStorage.setItem("khamin_player_frame", newFrame);
+    if (playerSerial) {
+      socket?.emit("update_selected_frame", { playerSerial, frame: newFrame });
+    }
+    
+    playSound("clickClose");
+    setShowWCGiftModal(false);
+    setTimeout(checkAndShowNextModal, 300);
+  };
+
 
   useEffect(() => {
     if (!showPlayerSearchModal) {
@@ -4234,11 +4287,21 @@ export default function App() {
     // Prevent opening the next modal if any of the sequence modals (or welcome modal) are currently open
     if (
       showWelcomeModal ||
+      showWCGiftModal ||
       showDailyQuestModal ||
       showLuckyWheelModal ||
       showCitySearch
     )
       return;
+
+    // 0. World Cup Gift
+    const wcClaimed = localStorage.getItem(`wc_gift_claimed_2026_${playerSerial}`) === "true";
+    const now = new Date();
+    const WC_END_DATE = new Date("2026-07-20T00:00:00Z");
+    if (now <= WC_END_DATE && !wcClaimed) {
+      setShowWCGiftModal(true);
+      return;
+    }
 
     // 1. Daily Quest
     const hasUnclaimedDaily =
@@ -4290,6 +4353,7 @@ export default function App() {
     hasSeenCitySearchToday,
     citySearchState,
     showWelcomeModal,
+    showWCGiftModal,
     showDailyQuestModal,
     showLuckyWheelModal,
     showCitySearch,
@@ -4557,6 +4621,7 @@ export default function App() {
     setShowReportModal(false);
     setShowShopModal(false);
     setShowLuckyWheelModal(false);
+    setShowWCGiftModal(false);
   };
 
   const toggleSettings = () => {
@@ -7612,6 +7677,7 @@ export default function App() {
           socket?.emit("get_city_search", { serial });
 
           setShowWelcomeModal(false);
+          
           playSound("clickClose");
           setError("");
         } else {
@@ -7691,6 +7757,7 @@ export default function App() {
           socket?.emit("get_city_search", { serial: player.serial });
 
           setShowWelcomeModal(false);
+
           playSound("clickClose");
           setError("");
         } else {
@@ -7772,6 +7839,7 @@ export default function App() {
           setShowProfileLoginModal(false);
           setProfileLoginSerial("");
           closeAllModals();
+
           playSound("clickClose");
           setError("");
           showAlert("تم تسجيل الدخول بنجاح!", "تسجيل الدخول");
@@ -14070,6 +14138,44 @@ export default function App() {
                   className="w-full btn-game btn-secondary py-3 text-lg mt-2"
                 >
                   حسناً، فهمت
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showWCGiftModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full mx-auto shadow-2xl relative border-4 border-blue-400 overflow-hidden text-center"
+              >
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-green-400 via-blue-500 to-green-400"></div>
+                
+                <h2 className="text-2xl md:text-3xl font-black text-blue-800 mb-4 tracking-tight">هدية كأس العالم! 🏆</h2>
+                
+                <div className="w-40 h-40 mx-auto mb-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl flex items-center justify-center p-4 relative shadow-inner border-2 border-blue-100">
+                  <img src="/assets/football-category-frame-gift.png" alt="World Cup Frame" className="w-full h-full object-contain drop-shadow-md" />
+                </div>
+                
+                <p className="text-brown-dark font-bold mb-6 text-sm md:text-base leading-relaxed">
+                  بمناسبة انطلاق بطولة كأس العالم، نهديكم هذا الإطار المميز مجاناً لجميع الأبطال طوال فترة البطولة!
+                </p>
+
+                <button
+                  onClick={handleClaimWCGift}
+                  className="w-full bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 active:scale-95 text-white font-black py-4 rounded-xl text-lg shadow-lg transition-all outline-none"
+                >
+                  استلم الهدية! ⚽
                 </button>
               </motion.div>
             </motion.div>
