@@ -23783,7 +23783,7 @@ export default function App() {
                           </span>
                         </div>
                         <div className="text-sm font-bold text-gray-500 mb-2">
-                          الوقت: {time ? `${time} ثانية` : "وقت كامل"}
+                          الوقت: {time ? (time >= 60 ? `${Math.floor(time / 60)}:${(time % 60).toString().padStart(2, '0')}` : `${time} ثانية`) : "وقت كامل"}
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs font-bold mt-3">
                           {[
@@ -23812,7 +23812,7 @@ export default function App() {
                                 if (room.busCompleteHideResults) {
                                   answerText = "إجابة صحيحة";
                                 }
-                              } else {
+                              } else if (room.matchType === "random") {
                                 answerText = answerText ? "إجابة خاطئة" : "";
                               }
                             }
