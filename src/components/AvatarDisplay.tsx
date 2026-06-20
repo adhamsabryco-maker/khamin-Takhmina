@@ -40,19 +40,28 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
   const isFilename = typeof avatar === 'string' && avatar.includes('.png');
   const isDataUrl = typeof avatar === 'string' && avatar.startsWith('data:image');
   
-  let displayAvatar = isDataUrl ? avatar :
+  const appVersion = customConfig?.version || "1.0";
+  const appendV = (url: string | null | undefined) => {
+    if (!url || url.startsWith('data:image') || url.startsWith('http')) return url;
+    return `${url}?v=${appVersion}`;
+  };
+
+  let baseAvatar = isDataUrl ? avatar :
                      (avatarReplacement ? `/uploads/${avatarReplacement}` :
                      (isFilename ? (avatar.startsWith('/') ? avatar : `/assets/${avatar}`) : 
                      (customAvatar ? `/uploads/${customAvatar}` :
                      (staticAvatar ? `/assets/${Array.isArray(staticAvatar) ? staticAvatar[0] : staticAvatar}` : 
                      avatar))));
+  const displayAvatar = typeof baseAvatar === 'string' && !baseAvatar.startsWith('data:') && (baseAvatar.includes('/') || baseAvatar.includes('.png')) ? appendV(baseAvatar) as string : baseAvatar;
 
   let displayFrame = !hideExtras && (customFrame ? `/uploads/${customFrame}` : (staticFrame ? `/assets/${staticFrame}` : null));
   if (selectedFrame && !hideExtras) {
     displayFrame = `/assets/${selectedFrame}`;
   }
+  displayFrame = appendV(displayFrame) as string | null;
   
-  const displayStar = !hideExtras && (customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null));
+  let displayStar = !hideExtras && (customStar ? `/uploads/${customStar}` : (staticStar ? `/assets/${staticStar}` : null));
+  displayStar = appendV(displayStar) as string | null;
 
   const getAvatarStyle = (lvl: number) => {
     if (lvl >= 50) return 'bg-[#fef2f2] border-black';
