@@ -3613,6 +3613,7 @@ async function startServer() {
             avatar: p.avatar,
             selectedFrame: p.selectedFrame,
             gender: p.gender,
+            busCompleteWins: p.busCompleteWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
