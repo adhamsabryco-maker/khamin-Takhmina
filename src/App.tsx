@@ -1796,7 +1796,7 @@ export default function App() {
   });
 
   const [leaderboardFilter, setLeaderboardFilter] = useState<
-    "all" | "level" | "wins" | "streak" | "likes"
+    "all" | "busComplete" | "wins" | "streak" | "likes"
   >("all");
   const [leaderboardVisibleCount, setLeaderboardVisibleCount] = useState(10);
 
@@ -1809,8 +1809,8 @@ export default function App() {
 
   const sortedTopPlayers = useMemo(() => {
     let sorted = [...topPlayers];
-    if (leaderboardFilter === "level") {
-      sorted.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+    if (leaderboardFilter === "busComplete") {
+      sorted.sort((a, b) => (b.busCompleteWins || 0) - (a.busCompleteWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -4854,7 +4854,7 @@ export default function App() {
       setIsSearching(false);
       setJoined(false);
       socket?.emit("leave_matchmaking");
-      setRoomId((prev) => (prev.startsWith("random_") ? "" : prev));
+      setRoomId((prev) => (prev.startsWith("random_") || prev === "waiting_friend" ? "" : prev));
       setError("لم يتم العثور على منافس حالياً. يرجى المحاولة في وقت لاحق.");
       setTimeout(() => setError(""), 5000);
       setSearchTimeLeft(null);
@@ -7268,6 +7268,7 @@ export default function App() {
         showAlert("اللاعب غير مستعد حالياً أو رفض التحدي.", "تنبيه");
       }
       setIsSearching(false);
+      setRoomId("");
     });
 
     newSocket.on("friend_challenge_accepted", ({ roomId }) => {
@@ -10883,6 +10884,10 @@ export default function App() {
                 <span>{data.wins} فوز</span>
                 <span>•</span>
                 <span>{data.streak} 🔥</span>
+                <span>•</span>
+                <span>{data.likes || 0} ❤️</span>
+                <span>•</span>
+                <span>{data.busCompleteWins || 0} 🚌</span>
               </div>
 
               {/* Add Friend Button */}
@@ -20850,7 +20855,7 @@ export default function App() {
                       setJoined(false);
                       socket?.emit("leave_matchmaking");
                       setRoomId((prev) =>
-                        prev.startsWith("random_") ? "" : prev,
+                        prev.startsWith("random_") || prev === "waiting_friend" ? "" : prev,
                       );
                     }}
                     className="w-full btn-game btn-danger py-3 md:py-4 text-lg md:text-xl"
@@ -21793,6 +21798,7 @@ export default function App() {
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center justify-center gap-1">
                               <span>{topPlayers[1].streak || 0} 🔥</span>
                               <span>{topPlayers[1].likes || 0} ❤️</span>
+                              <span>{topPlayers[1].busCompleteWins || 0} 🚌</span>
                             </div>
                           </div>
                         </div>
@@ -21844,6 +21850,7 @@ export default function App() {
                             <div className="text-[9px] md:text-xs font-black text-black/80 px-3 py-1 flex items-center justify-center gap-1">
                               <span>{topPlayers[0].streak || 0} 🔥</span>
                               <span>{topPlayers[0].likes || 0} ❤️</span>
+                              <span>{topPlayers[0].busCompleteWins || 0} 🚌</span>
                             </div>
                           </div>
                         </div>
@@ -21889,6 +21896,7 @@ export default function App() {
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center justify-center gap-1">
                               <span>{topPlayers[2].streak || 0} 🔥</span>
                               <span>{topPlayers[2].likes || 0} ❤️</span>
+                              <span>{topPlayers[2].busCompleteWins || 0} 🚌</span>
                             </div>
                           </div>
                         </div>
@@ -22488,6 +22496,8 @@ export default function App() {
                               <span>{streak} 🔥</span>
                               <span>•</span>
                               <span>{likes} ❤️</span>
+                              <span>•</span>
+                              <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.busCompleteWins || 0} 🚌</span>
                             </div>
                           </div>
                         </div>
@@ -22500,7 +22510,7 @@ export default function App() {
                     >
                       {[
                         { id: "all", icon: "👥" },
-                        { id: "level", icon: "⭐" },
+                        { id: "busComplete", icon: "🚌" },
                         { id: "wins", icon: "🏆" },
                         { id: "streak", icon: "🔥" },
                         { id: "likes", icon: "❤️" },
@@ -22593,6 +22603,13 @@ export default function App() {
                                   dir="rtl"
                                 >
                                   {player.likes || 0} ❤️
+                                </span>
+                                <span className="text-brown-light">•</span>
+                                <span
+                                  className="bg-blue-50 text-blue-600 md:px-1.5 rounded"
+                                  dir="rtl"
+                                >
+                                  {player.busCompleteWins || 0} 🚌
                                 </span>
                               </div>
                             </div>
