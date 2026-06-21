@@ -11766,6 +11766,7 @@ async function startServer() {
                 tokens: targetPlayer.tokens,
                 keys: targetPlayer.keys,
                 likes: targetPlayer.likes || 0,
+                busCompleteWins: targetPlayer.busCompleteWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
