@@ -3367,6 +3367,13 @@ export default function App() {
     setTimeout(checkAndShowNextModal, 300);
   };
 
+  const handleDeclineWCGift = () => {
+    localStorage.setItem(`wc_gift_claimed_2026_${playerSerial}`, "true");
+    playSound("clickClose");
+    setShowWCGiftModal(false);
+    setTimeout(checkAndShowNextModal, 300);
+  };
+
 
   useEffect(() => {
     if (!showPlayerSearchModal) {
@@ -14182,6 +14189,12 @@ export default function App() {
                 >
                   استلم الهدية! ⚽
                 </button>
+                <button
+                  onClick={handleDeclineWCGift}
+                  className="w-full btn-game mt-3 bg-gray-300 hover:bg-gray-200 text-لامشؤن font-bold py-3 rounded-xl transition-all"
+                >
+                  لا، شكراً
+                </button>
               </motion.div>
             </motion.div>
           )}
@@ -20553,7 +20566,7 @@ export default function App() {
     return (
       <>
         {renderUpdateBanner()}
-        <div className="min-h-screen w-full flex items-center justify-center p-4 overflow-y-auto pt-24">
+        <div className="min-h-screen w-full flex flex-col items-center justify-center gap-4 p-4 overflow-y-auto pt-24">
           {/* Fixed Header */}
           <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-1 md:px-6 flex justify-between items-center z-[2000] border-b-4 border-black h-14 md:h-16">
             <div className="flex-1 flex items-center gap-1 md:gap-3">
@@ -20866,6 +20879,8 @@ export default function App() {
               </>
             )}
           </div>
+
+          <CategoryPageAd />
 
           {renderModals()}
         </div>
@@ -21847,7 +21862,7 @@ export default function App() {
                               <Trophy className="w-3 h-3" />
                               {topPlayers[0].wins || 0} فوز
                             </div>
-                            <div className="text-[9px] md:text-xs font-black text-black/80 px-3 py-1 flex items-center justify-center gap-1">
+                            <div className="text-[7px] md:text-[9px] font-black text-black/80 px-3 py-1 flex items-center justify-center gap-1">
                               <span>{topPlayers[0].streak || 0} 🔥</span>
                               <span>{topPlayers[0].likes || 0} ❤️</span>
                               <span>{topPlayers[0].busCompleteWins || 0} 🚌</span>
@@ -22466,8 +22481,8 @@ export default function App() {
                     {sortedTopPlayers.findIndex(
                       (p) => p.serial === playerSerial,
                     ) !== -1 && (
-                      <div className="px-4 pb-3 pt-3 bg-gray-50">
-                        <div className="bg-purple-600 text-white p-3 rounded-none flex items-center gap-3 border-x-4 border-b-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                      <div className="px-2 pb-3 pt-3 bg-gray-50">
+                        <div className="bg-purple-600 text-white p-2 rounded-none flex items-center gap-1 border-x-4 border-b-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                           <div className="font-black text-xl w-8 text-center bg-white/20 rounded-lg py-1">
                             #
                             {sortedTopPlayers.findIndex(
@@ -22488,7 +22503,7 @@ export default function App() {
                             <div className="font-black truncate">
                               أنت ({playerName})
                             </div>
-                            <div className="text-xs text-white/80 font-bold flex items-center gap-2">
+                            <div className="text-[10px] md:text-xs text-white/80 font-bold flex items-center gap-0.5 md:gap-1">
                               <span dir="ltr">Lvl {getLevel(xp)}</span>
                               <span>•</span>
                               <span>{wins} فوز</span>
@@ -22579,7 +22594,7 @@ export default function App() {
                               >
                                 {player.name} {isMe && "(أنت)"}
                               </div>
-                              <div className="text-xs text-brown-muted font-bold flex items-center gap-0.5 md:gap-2">
+                              <div className="text-[10px] md:text-xs text-brown-muted font-bold flex items-center gap-0.5 md:gap-1">
                                 <span
                                   className="bg-gray-100 md:px-1.5 rounded text-brown-muted"
                                   dir="ltr"
@@ -23549,7 +23564,8 @@ export default function App() {
                 "bus_complete_spin",
                 "bus_complete_playing",
               ].includes(room.gameState) ? (
-              <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
+              <React.Fragment>
+                <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
                 {room.players.length === 2 && (
                   <div className="flex justify-between items-center w-full px-1">
                     <div
@@ -23879,8 +23895,11 @@ export default function App() {
                   </>
                 )}
               </div>
+              <CategoryPageAd />
+            </React.Fragment>
             ) : room.gameState === "bus_complete_evaluating" ? (
-              <div className="w-full card-game p-4 md:p-6 text-center space-y-4 md:space-y-6 relative overflow-hidden flex flex-col min-h-[400px]">
+              <React.Fragment>
+                <div className="w-full card-game p-4 md:p-6 text-center space-y-4 md:space-y-6 relative overflow-hidden flex flex-col min-h-[400px]">
                 <h2 className="text-2xl font-black text-blue-600">
                   نتيجة تخمينة كومبليت
                 </h2>
@@ -24016,6 +24035,8 @@ export default function App() {
                   </button>
                 </div>
               </div>
+              <CategoryPageAd />
+            </React.Fragment>
             ) : room.gameState === "waiting" ? (
               <React.Fragment>
                 <div className="w-full card-game p-3 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden">
