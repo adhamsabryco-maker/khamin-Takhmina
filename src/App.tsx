@@ -787,7 +787,7 @@ import { CheckoutPage } from "./components/CheckoutPage";
 
 function normalizeEgyptian(text: string): string {
   if (!text) return "";
-  let normalized = text.trim();
+  let normalized = text.trim().replace(/\s+/g, " ");
   normalized = normalized.replace(/[أإآ]/g, "ا");
   normalized = normalized.replace(/ة/g, "ه");
   normalized = normalized.replace(/ى/g, "ي");
@@ -19826,7 +19826,7 @@ export default function App() {
            className="absolute top-0 left-0 bottom-0 bg-blue-100/50 transition-all duration-500 ease-out" 
            style={{ width: `${progress}%` }}
          />
-         <div className="relative flex flex-col sm:flex-row items-center justify-between gap-2 z-10">
+         <div className="relative flex sm:flex-row items-center justify-between gap-2 z-10">
            <div className="flex items-center gap-2 font-bold text-blue-800 text-sm">
              <span>المستوي {busCompleteRewardLevel}</span>
              <span className="text-xs bg-white px-1.5 py-0.5 rounded-md border border-blue-200" dir="ltr">
@@ -23760,13 +23760,14 @@ export default function App() {
                   </span>
                 </div>
 
-                {room.gameState === "bus_complete_playing" && (!room.busCompleteSubmittedPlayers || room.busCompleteSubmittedPlayers.length === 0) && (
+                {room.gameState === "bus_complete_playing" && room.timer > 280 && (!room.busCompleteSubmittedPlayers || room.busCompleteSubmittedPlayers.length === 0) && (
                   room.busCompleteChangeLetterRequestBy ? (
                     <button
                       disabled
                       className="mx-auto flex items-center justify-center gap-1 text-xs font-bold text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200 cursor-not-allowed"
                     >
                       <span>طلب معلق!</span>
+                      <span className="text-[10px]">({room.timer - 280})</span>
                       <span className="animate-pulse">🕒</span>
                     </button>
                   ) : (
@@ -23779,6 +23780,7 @@ export default function App() {
                       className="mx-auto flex items-center justify-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-3 py-1 rounded-full transition-colors border"
                     >
                       <span>تغيير الحرف</span>
+                      <span className="text-[10px] text-red-400 font-black" dir="ltr">({room.timer - 280})</span>
                       <X className="w-3 h-3" />
                     </button>
                   )
