@@ -2027,6 +2027,9 @@ async function startServer() {
         secretToken?: string;
         busCompleteWins?: number;
         busCompleteUsedLetters?: string[];
+        busCompleteRewardLevel?: number;
+        busCompleteMatchPoints?: number;
+        busCompleteExpiring?: any[];
       }
     >();
 
@@ -2229,6 +2232,15 @@ async function startServer() {
         `ALTER TABLE players ADD COLUMN busCompleteUsedLetters TEXT DEFAULT '[]'`,
       );
     } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN busCompleteRewardLevel INTEGER DEFAULT 1`);
+    } catch(e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN busCompleteMatchPoints INTEGER DEFAULT 0`);
+    } catch(e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN busCompleteExpiring TEXT DEFAULT '[]'`);
+    } catch(e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0`);
     } catch (e) {}
@@ -2769,8 +2781,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3045,6 +3057,9 @@ async function startServer() {
           busCompleteUsedLetters: JSON.stringify(
             player.busCompleteUsedLetters || [],
           ),
+          busCompleteRewardLevel: player.busCompleteRewardLevel || 1,
+          busCompleteMatchPoints: player.busCompleteMatchPoints || 0,
+          busCompleteExpiring: JSON.stringify(player.busCompleteExpiring || []),
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3115,6 +3130,9 @@ async function startServer() {
           busCompleteUsedLetters: JSON.stringify(
             player.busCompleteUsedLetters || [],
           ),
+          busCompleteRewardLevel: player.busCompleteRewardLevel || 1,
+          busCompleteMatchPoints: player.busCompleteMatchPoints || 0,
+          busCompleteExpiring: JSON.stringify(player.busCompleteExpiring || []),
         });
       }
     });
@@ -3208,6 +3226,9 @@ async function startServer() {
             busCompleteUsedLetters: JSON.parse(
               row.busCompleteUsedLetters || "[]",
             ),
+            busCompleteRewardLevel: row.busCompleteRewardLevel || 1,
+            busCompleteMatchPoints: row.busCompleteMatchPoints || 0,
+            busCompleteExpiring: JSON.parse(row.busCompleteExpiring || "[]"),
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -6420,6 +6441,23 @@ async function startServer() {
         } else {
           room.busCompleteWinner = "tie";
         }
+
+        if (room.matchType === "random") {
+          const dbP1 = allPlayers.get(p1.serial);
+          if (dbP1) {
+            dbP1.busCompleteMatchPoints = (dbP1.busCompleteMatchPoints || 0) + s1;
+            p1.busCompleteMatchPoints = dbP1.busCompleteMatchPoints;
+            savePlayerData(p1.serial);
+            io.to(p1.id).emit("player_data_update", dbP1);
+          }
+          const dbP2 = allPlayers.get(p2.serial);
+          if (dbP2) {
+            dbP2.busCompleteMatchPoints = (dbP2.busCompleteMatchPoints || 0) + s2;
+            p2.busCompleteMatchPoints = dbP2.busCompleteMatchPoints;
+            savePlayerData(p2.serial);
+            io.to(p2.id).emit("player_data_update", dbP2);
+          }
+        }
       }
     }
 
@@ -7779,6 +7817,44 @@ async function startServer() {
           }
 
           let updated = false;
+
+          // Check expired Bus Complete rewards
+          if (player.busCompleteExpiring && player.busCompleteExpiring.length > 0) {
+            const now = Date.now();
+            const validExpiring = [];
+            let expiredKeys = 0;
+            const expiredHelpers: any = {
+              hint: 0,
+              word_length: 0,
+              time_freeze: 0,
+              word_count: 0,
+              spy_lens: 0
+            };
+
+            for (const item of player.busCompleteExpiring) {
+              if (item.expiresAt <= now) {
+                expiredKeys += item.keys || 0;
+                if (item.helpers) {
+                  for (const h in expiredHelpers) {
+                    expiredHelpers[h] += item.helpers[h] || 0;
+                  }
+                }
+              } else {
+                validExpiring.push(item);
+              }
+            }
+
+            if (player.busCompleteExpiring.length !== validExpiring.length) {
+              player.busCompleteExpiring = validExpiring;
+              player.keys = Math.max(0, (player.keys || 0) - expiredKeys);
+              if (!player.ownedHelpers) player.ownedHelpers = {};
+              for (const h in expiredHelpers) {
+                player.ownedHelpers[h] = Math.max(0, (player.ownedHelpers[h] || 0) - expiredHelpers[h]);
+              }
+              updated = true;
+            }
+          }
+
           if (ip && player.ip !== ip) {
             player.ip = ip;
             updated = true;
@@ -10280,6 +10356,54 @@ async function startServer() {
           }
         } else {
           callback({ error: "Unauthorized" });
+        }
+      });
+
+      socket.on("claim_bus_complete_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const level = player.busCompleteRewardLevel || 1;
+          const requiredPoints = level * 100;
+          if ((player.busCompleteMatchPoints || 0) >= requiredPoints) {
+            player.busCompleteMatchPoints -= requiredPoints;
+            
+            const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
+            player.xp = (player.xp || 0) + xpReward;
+            
+            const keysReward = level;
+            player.keys = (player.keys || 0) + keysReward;
+
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            const helpersReward: any = {};
+            ["hint", "word_length", "time_freeze", "word_count", "spy_lens"].forEach(h => {
+              player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
+              helpersReward[h] = level;
+            });
+
+            if (!player.busCompleteExpiring) player.busCompleteExpiring = [];
+            player.busCompleteExpiring.push({
+              expiresAt: Date.now() + 48 * 60 * 60 * 1000,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+
+            player.busCompleteRewardLevel = level === 10 ? 1 : level + 1;
+            
+            const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+            if (!player.level || newLevel > player.level) {
+              player.level = newLevel;
+            }
+
+            savePlayerData(serial);
+            socket.emit("update_player", player);
+            socket.emit("bus_complete_reward_claimed", {
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward,
+              newLevel: player.busCompleteRewardLevel,
+              points: player.busCompleteMatchPoints
+            });
+          }
         }
       });
 
