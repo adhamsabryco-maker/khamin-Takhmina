@@ -1244,6 +1244,12 @@ export default function App() {
   const [keys, setKeys] = useState(
     () => parseInt(localStorage.getItem("khamin_keys") || "0") || 0,
   );
+  const [busCompleteRewardLevel, setBusCompleteRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_bus_reward_level") || "1") || 1,
+  );
+  const [busCompleteMatchPoints, setBusCompleteMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_bus_match_points") || "0") || 0,
+  );
   const [tempItems, setTempItems] = useState<{
     keys: number;
     tokens: number;
@@ -5852,6 +5858,30 @@ export default function App() {
       setActiveGlobalReward(reward);
     });
 
+    newSocket.on("bus_complete_reward_claimed", (data: any) => {
+      playSound("prize");
+      setCustomConfirm({
+         show: true,
+         title: "تم استلام هدايا تخمينة كومبليت بنجاح! 🎁",
+         message: "تم ترقية مستوى الهدايا إلى " + data.newLevel + "! متبقى 48 ساعة فقط قبل انتهاء صلاحية هدايا الوسائل المساعدة والمفاتيح التي استلمتها الان! استمتع بها.\n\n" +
+                  "حصلت على:\n" +
+                  "⭐ " + data.xp + " خبرة\n" +
+                  "🔑 " + data.keys + " مفاتيح\n" +
+                  "🔧 " + (data.newLevel > 1 ? data.newLevel - 1 : 10) + " من كل وسيلة مساعدة",
+         confirmText: "رائع!",
+         onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+      });
+      
+      if (data.points != null) {
+        setBusCompleteMatchPoints(data.points);
+        localStorage.setItem("khamin_bus_match_points", data.points.toString());
+      }
+      if (data.newLevel != null) {
+        setBusCompleteRewardLevel(data.newLevel);
+        localStorage.setItem("khamin_bus_reward_level", data.newLevel.toString());
+      }
+    });
+
     newSocket.on("app_settings", (settings: any) => {
       if (settings && settings.lucky_wheel_enabled !== undefined) {
         setLuckyWheelEnabled(
@@ -5935,6 +5965,22 @@ export default function App() {
                 (data.tokens || 0).toString(),
               );
 
+              if (data.keys != null) {
+                setKeys(data.keys);
+                localStorage.setItem("khamin_keys", data.keys.toString());
+              }
+              if (data.busCompleteRewardLevel != null) {
+                setBusCompleteRewardLevel(data.busCompleteRewardLevel);
+                localStorage.setItem("khamin_bus_reward_level", data.busCompleteRewardLevel.toString());
+              }
+              if (data.busCompleteMatchPoints != null) {
+                setBusCompleteMatchPoints(data.busCompleteMatchPoints);
+                localStorage.setItem("khamin_bus_match_points", data.busCompleteMatchPoints.toString());
+              }
+              if (data.likes != null) {
+                setLikes(data.likes);
+                localStorage.setItem("khamin_likes", data.likes.toString());
+              }
               if (data.tempItems) {
                 setTempItems(data.tempItems);
               }
@@ -6287,6 +6333,14 @@ export default function App() {
       if (data.keys != null) {
         setKeys(data.keys);
         localStorage.setItem("khamin_keys", data.keys.toString());
+      }
+      if (data.busCompleteRewardLevel != null) {
+        setBusCompleteRewardLevel(data.busCompleteRewardLevel);
+        localStorage.setItem("khamin_bus_reward_level", data.busCompleteRewardLevel.toString());
+      }
+      if (data.busCompleteMatchPoints != null) {
+        setBusCompleteMatchPoints(data.busCompleteMatchPoints);
+        localStorage.setItem("khamin_bus_match_points", data.busCompleteMatchPoints.toString());
       }
       if (data.likes != null) {
         setLikes(data.likes);
@@ -19759,6 +19813,77 @@ export default function App() {
     );
   };
 
+  const renderBusCompleteRewardBar = () => {
+    if (!room || room.matchType !== "random" || room.gameState !== "bus_complete_playing") return null;
+
+    const targetPoints = busCompleteRewardLevel * 100;
+    const progress = Math.min((busCompleteMatchPoints / targetPoints) * 100, 100);
+    const isReady = busCompleteMatchPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-2 relative overflow-hidden transition-all shadow-sm">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-blue-100/50 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex flex-col sm:flex-row items-center justify-between gap-2 z-10">
+           <div className="flex items-center gap-2 font-bold text-blue-800 text-sm">
+             <span>المستوي {busCompleteRewardLevel}</span>
+             <span className="text-xs bg-white px-1.5 py-0.5 rounded-md border border-blue-200" dir="ltr">
+               {busCompleteMatchPoints} / {targetPoints}
+             </span>
+           </div>
+           
+           <button
+             onClick={() => {
+                if (isReady) {
+                  setCustomConfirm({
+                    show: true,
+                     title: "مبروك! 🎉 اكتملت نقاط المستوي " + busCompleteRewardLevel,
+                     message: "هل تود مشاهدة اعلان لاستلام هدايا هذا المستوي؟\n\n" +
+                              "🎁 " + (busCompleteRewardLevel === 1 ? 50 : 100 + 50 * (busCompleteRewardLevel - 1)) + " XP\n" +
+                              "🔑 " + busCompleteRewardLevel + " مفتاح\n" +
+                              "🔧 " + busCompleteRewardLevel + " من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)",
+                     confirmText: "نعم مشاهدة الاعلان",
+                     cancelText: "الغاء",
+                     onConfirm: () => {
+                       setCustomConfirm((prev) => ({ ...prev, show: false }));
+                       socket?.emit("bus_complete_ad_start", { roomId: room.id });
+                       showBusCompleteAd(
+                         () => {
+                            socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: true });
+                            socket?.emit("claim_bus_complete_reward", { serial: socket?.data?.serial || playerSerial });
+                         },
+                         () => {
+                           socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: false });
+                         }
+                       );
+                     }
+                  });
+                } else {
+                  setCustomConfirm({
+                    show: true,
+                    title: `المستوي ${busCompleteRewardLevel}`,
+                    message: `متبقي ${targetPoints - busCompleteMatchPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                             `🎁 ${busCompleteRewardLevel === 1 ? 50 : 100 + 50 * (busCompleteRewardLevel - 1)} XP\n` +
+                             `🔑 ${busCompleteRewardLevel} مفتاح\n` +
+                             `🔧 ${busCompleteRewardLevel} من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)`,
+                    confirmText: "حسناً",
+                    onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                  });
+                }
+             }}
+             className={`flex justify-center items-center gap-1.5 px-3 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+               ${isReady ? "bg-green-500 text-white animate-pulse hover:bg-green-600 border border-green-600" : "bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"}`}
+           >
+             <span>🎁</span>
+             <span>استلم الهدايا</span>
+           </button>
+         </div>
+      </div>
+    );
+  };
+
   const renderUpdateBanner = () => {
     if (!needRefresh && !needsUpdate) return null;
     return createPortal(
@@ -22244,7 +22369,7 @@ export default function App() {
                                 isRainGiftActive
                               )
                             }
-                            className={`px-2 md:px-6 py-2 rounded-xl font-bold md:font-black md:text-[13px] text-[10px] transition-all shadow-md ${
+                            className={`px-2 py-2 rounded-xl font-bold md:font-black md:text-[13px] text-[10px] transition-all shadow-md ${
                               localStorage.getItem(
                                 "khamin_pending_rain_gift",
                               ) ||
@@ -23566,6 +23691,7 @@ export default function App() {
               ].includes(room.gameState) ? (
               <React.Fragment>
                 <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
+                {renderBusCompleteRewardBar()}
                 {room.players.length === 2 && (
                   <div className="flex justify-between items-center w-full px-1">
                     <div
@@ -23736,105 +23862,134 @@ export default function App() {
                               !room.busCompleteSubmittedPlayers?.includes(
                                 socket?.id,
                               ) &&
-                              !busAnswers[
-                                item.key as keyof typeof busAnswers
-                              ] && (
-                                <button
-                                  onClick={() => {
-                                    if (
-                                      room.busCompleteCooldowns?.[
-                                        socket?.id || ""
-                                      ] > 0
-                                    )
-                                      return;
-                                    setCustomConfirm({
-                                      show: true,
-                                      title: `حل لغز ${item.label}`,
-                                      message: `هل تود مشاهدة اعلان لحل لغز اجابة ${item.label}؟`,
-                                      confirmText: "نعم",
-                                      cancelText: "لا",
-                                      onConfirm: () => {
-                                        setCustomConfirm((prev) => ({
-                                          ...prev,
-                                          show: false,
-                                        }));
-                                        socket?.emit("bus_complete_ad_start", {
-                                          roomId,
-                                        });
-                                        showBusCompleteAd(
-                                          () => {
-                                            socket?.emit(
-                                              "bus_complete_ad_end",
-                                              { roomId, completed: true },
-                                            );
-                                            if (room?.busCompleteLetter) {
-                                              let mappedLetter =
-                                                room.busCompleteLetter;
-                                              if (
-                                                mappedLetter === "أ" ||
-                                                mappedLetter === "إ" ||
-                                                mappedLetter === "آ"
-                                              )
-                                                mappedLetter = "ا";
-                                              if (mappedLetter === "ة")
-                                                mappedLetter = "ه";
-                                              if (mappedLetter === "ى")
-                                                mappedLetter = "ي";
-                                              const letterData = (
-                                                busCompleteData as any
-                                              )[mappedLetter];
-                                              if (letterData) {
-                                                const words =
-                                                  letterData[item.key] || [];
-                                                if (words.length > 0) {
-                                                  const randomWord =
-                                                    words[
-                                                      Math.floor(
-                                                        Math.random() *
-                                                          words.length,
-                                                      )
-                                                    ];
-                                                  setBusAnswers((prev) => ({
-                                                    ...prev,
-                                                    [item.key]: randomWord,
-                                                  }));
-                                                }
-                                              }
-                                            }
-                                          },
-                                          () => {
-                                            socket?.emit(
-                                              "bus_complete_ad_end",
-                                              { roomId, completed: false },
-                                            );
-                                          },
-                                        );
-                                      },
-                                    });
-                                  }}
-                                  disabled={
-                                    (room.busCompleteCooldowns?.[
-                                      socket?.id || ""
-                                    ] || 0) > 0
+                              (() => {
+                                const ans = busAnswers[item.key as keyof typeof busAnswers];
+                                const hasTyped = !!ans?.trim();
+                                let isCorrect = false;
+                                if (hasTyped && room.busCompleteLetter) {
+                                  let mappedLetter = room.busCompleteLetter;
+                                  if (mappedLetter === "أ" || mappedLetter === "إ" || mappedLetter === "آ") mappedLetter = "ا";
+                                  if (mappedLetter === "ة") mappedLetter = "ه";
+                                  if (mappedLetter === "ى") mappedLetter = "ي";
+
+                                  let mappedAns = normalizeEgyptian(ans.trim());
+                                  let phoneticTargetLetter = normalizeEgyptian(mappedLetter);
+
+                                  if (mappedAns.startsWith(phoneticTargetLetter)) {
+                                    const letterData = (busCompleteData as any)[mappedLetter] || {};
+                                    const validListPhonetic = (letterData[item.key] || []).map((val: string) => normalizeEgyptian(val));
+                                    isCorrect = validListPhonetic.includes(mappedAns);
                                   }
-                                  className="flex-shrink-0 p-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-600 rounded-full transition-colors mx-1 border border-yellow-300 relative disabled:opacity-70 disabled:cursor-not-allowed group overflow-hidden"
-                                >
-                                  <Tv
-                                    className={`w-4 h-4 md:w-5 md:h-5 text-yellow-600 ${room.busCompleteCooldowns?.[socket?.id || ""] > 0 ? "opacity-30" : ""}`}
-                                  />
-                                  {(room.busCompleteCooldowns?.[
-                                    socket?.id || ""
-                                  ] || 0) > 0 && (
-                                    <span className="absolute inset-0 flex items-center justify-center font-black text-xs md:text-sm bg-black/60 text-white leading-none">
-                                      {
-                                        room.busCompleteCooldowns?.[
+                                }
+
+                                return (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {hasTyped && !isCorrect && (
+                                      <span className="text-red-500 font-black px-1 text-sm animate-bounce">❌</span>
+                                    )}
+                                    {isCorrect && (
+                                      <span className="text-green-500 font-black px-1 text-sm">✔️</span>
+                                    )}
+                                    {!isCorrect && (
+                                      <button
+                                        onClick={() => {
+                                          if (
+                                            room.busCompleteCooldowns?.[
+                                              socket?.id || ""
+                                            ] > 0
+                                          )
+                                            return;
+                                          setCustomConfirm({
+                                            show: true,
+                                            title: `حل لغز ${item.label}`,
+                                            message: `هل تود مشاهدة اعلان لحل لغز اجابة ${item.label}؟`,
+                                            confirmText: "نعم",
+                                            cancelText: "لا",
+                                            onConfirm: () => {
+                                              setCustomConfirm((prev) => ({
+                                                ...prev,
+                                                show: false,
+                                              }));
+                                              socket?.emit("bus_complete_ad_start", {
+                                                roomId,
+                                              });
+                                              showBusCompleteAd(
+                                                () => {
+                                                  socket?.emit(
+                                                    "bus_complete_ad_end",
+                                                    { roomId, completed: true },
+                                                  );
+                                                  if (room?.busCompleteLetter) {
+                                                    let mappedLetter =
+                                                      room.busCompleteLetter;
+                                                    if (
+                                                      mappedLetter === "أ" ||
+                                                      mappedLetter === "إ" ||
+                                                      mappedLetter === "آ"
+                                                    )
+                                                      mappedLetter = "ا";
+                                                    if (mappedLetter === "ة")
+                                                      mappedLetter = "ه";
+                                                    if (mappedLetter === "ى")
+                                                      mappedLetter = "ي";
+                                                    const letterData = (
+                                                      busCompleteData as any
+                                                    )[mappedLetter];
+                                                    if (letterData) {
+                                                      const words =
+                                                        letterData[item.key] || [];
+                                                      if (words.length > 0) {
+                                                        const randomWord =
+                                                          words[
+                                                            Math.floor(
+                                                              Math.random() *
+                                                                words.length,
+                                                            )
+                                                          ];
+                                                        setBusAnswers((prev) => ({
+                                                          ...prev,
+                                                          [item.key]: randomWord,
+                                                        }));
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                () => {
+                                                  socket?.emit(
+                                                    "bus_complete_ad_end",
+                                                    { roomId, completed: false },
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          });
+                                        }}
+                                        disabled={
+                                          (room.busCompleteCooldowns?.[
+                                            socket?.id || ""
+                                          ] || 0) > 0
+                                        }
+                                        className={`flex-shrink-0 p-1.5 rounded-full mx-1 border relative disabled:opacity-70 disabled:cursor-not-allowed group overflow-hidden transition-all ${hasTyped ? "bg-red-100 hover:bg-red-200 text-red-600 border-red-300 animate-pulse" : "bg-yellow-100 hover:bg-yellow-200 text-yellow-600 border-yellow-300"}`}
+                                      >
+                                        <Tv
+                                          className={`w-4 h-4 md:w-5 md:h-5 ${hasTyped ? "text-red-500" : "text-yellow-600"} ${room.busCompleteCooldowns?.[socket?.id || ""] > 0 ? "opacity-30" : ""}`}
+                                        />
+                                        {(room.busCompleteCooldowns?.[
                                           socket?.id || ""
-                                        ]
-                                      }
-                                    </span>
-                                  )}
-                                </button>
-                              )}
+                                        ] || 0) > 0 && (
+                                          <span className="absolute inset-0 flex items-center justify-center font-black text-xs md:text-sm bg-black/60 text-white leading-none">
+                                            {
+                                              room.busCompleteCooldowns?.[
+                                                socket?.id || ""
+                                              ]
+                                            }
+                                          </span>
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                           </div>
                         </div>
                       ))}
@@ -23868,14 +24023,17 @@ export default function App() {
                             }}
                             disabled={
                               room.gameState !== "bus_complete_playing" ||
-                              meSubmitted
+                              meSubmitted ||
+                              (room.busCompleteAdViewers?.length || 0) > 0
                             }
                             className={`w-full py-2.5 rounded-2xl font-black text-lg md:text-xl transition-all shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent
-                              ${room.gameState === "bus_complete_playing" && !meSubmitted ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
+                              ${room.gameState === "bus_complete_playing" && !meSubmitted && (room.busCompleteAdViewers?.length || 0) === 0 ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
                           >
                             {meSubmitted
                               ? "في انتظار اللاعب الآخر..."
-                              : "تخمينة كومبليت 🏁"}
+                              : (room.busCompleteAdViewers?.length || 0) > 0
+                                ? "إعلان قيد التشغيل 📺"
+                                : "تخمينة كومبليت 🏁"}
                           </button>
 
                           {meSubmitted && (
