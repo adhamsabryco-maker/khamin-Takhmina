@@ -567,6 +567,7 @@ interface Player {
   keys?: number;
   isPro?: boolean;
   busCompleteWins?: number;
+  xoWins?: number;
   selectedSelectionMode?: string;
 }
 
@@ -584,7 +585,9 @@ interface Room {
     | "bus_complete_setup"
     | "bus_complete_spin"
     | "bus_complete_playing"
-    | "bus_complete_evaluating";
+    | "bus_complete_evaluating"
+    | "xo_playing"
+    | "xo_finished";
   timer: number;
   category: string;
   isPaused: boolean;
@@ -599,13 +602,23 @@ interface Room {
   guessingPlayerId?: string;
   currentTurn?: string | null;
   waitingForAnswerFrom?: string | null;
-  matchType?: "random" | "private";
-  selectionMode?: "ready" | "custom" | "bus_complete" | null;
+  matchType?: "random" | "private" | "friend" | string;
+  selectionMode?: "ready" | "custom" | "bus_complete" | "xo" | null;
   busCompleteLetter?: string;
   busCompleteWinner?: string;
   busCompleteHideResults?: boolean;
   busCompleteAdViewers?: string[];
   busCompleteCooldowns?: Record<string, number>;
+  busCompleteSubmittedPlayers?: string[];
+  busCompleteSubmitTimes?: Record<string, number>;
+  busCompleteTimerReduction?: number;
+  busCompleteChangeLetterRequestBy?: string | null;
+  xoBoard?: (string | null)[];
+  xoTurn?: string | null;
+  xoWinner?: string | "draw" | null;
+  xoWinningLine?: number[] | null;
+  xoXPlayer?: string | null;
+  xoOPlayer?: string | null;
   busCompleteScores?: Record<
     string,
     {
@@ -1250,6 +1263,12 @@ export default function App() {
   const [busCompleteMatchPoints, setBusCompleteMatchPoints] = useState(
     () => parseInt(localStorage.getItem("khamin_bus_match_points") || "0") || 0,
   );
+  const [xoRewardLevel, setXoRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_xo_reward_level") || "1") || 1,
+  );
+  const [xoMatchPoints, setXoMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_xo_match_points") || "0") || 0,
+  );
   const [tempItems, setTempItems] = useState<{
     keys: number;
     tokens: number;
@@ -1817,6 +1836,8 @@ export default function App() {
     let sorted = [...topPlayers];
     if (leaderboardFilter === "busComplete") {
       sorted.sort((a, b) => (b.busCompleteWins || 0) - (a.busCompleteWins || 0));
+    } else if (leaderboardFilter === "xo") {
+      sorted.sort((a, b) => (b.xoWins || 0) - (a.xoWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -2834,6 +2855,7 @@ export default function App() {
 
   const [roomId, setRoomId] = useState("");
   const [room, setRoom] = useState<Room | null>(null);
+
   const [privateCategoryMode, setPrivateCategoryMode] = useState<
     null | "ready" | "custom"
   >(null);
@@ -5384,6 +5406,31 @@ export default function App() {
     }
   }, []);
 
+  const prevGameStateRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (room && room.gameState === "xo_finished" && prevGameStateRef.current === "xo_playing") {
+      if (room.xoWinner === socket?.id) {
+        playSound("win");
+      } else if (room.xoWinner === "draw") {
+        playSound("pop");
+      } else {
+        playSound("lose");
+      }
+    }
+    
+    if (room && room.gameState === "bus_complete_evaluating" && prevGameStateRef.current === "bus_complete_playing") {
+      if (room.busCompleteWinner === socket?.id) {
+        playSound("win");
+      } else if (room.busCompleteWinner === "tie") {
+        playSound("pop");
+      } else {
+        playSound("lose");
+      }
+    }
+
+    prevGameStateRef.current = room?.gameState || null;
+  }, [room?.gameState, room?.xoWinner, room?.busCompleteWinner, socket?.id, playSound]);
+
   const clearPlayerData = () => {
     // Clear all localStorage items related to the game
     const keysToRemove = [];
@@ -5882,6 +5929,29 @@ export default function App() {
       }
     });
 
+    newSocket.on("xo_reward_claimed", (data: any) => {
+      playSound("prize");
+      setCustomConfirm({
+         show: true,
+         title: "تم استلام هدايا XO بنجاح! 🎁",
+         message: "تم ترقية مستوى هدايا XO إلى " + data.newLevel + "!\n\n" +
+                  "حصلت على:\n" +
+                  "⭐ " + data.xp + " خبرة\n" +
+                  "🔑 " + data.keys + " مفاتيح\n" +
+                  "🔧 " + (data.newLevel > 1 ? data.newLevel - 1 : 10) + " من كل وسيلة مساعدة",
+         confirmText: "رائع!",
+         onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+      });
+      if (data.points != null) {
+        setXoMatchPoints(data.points);
+        localStorage.setItem("khamin_xo_match_points", data.points.toString());
+      }
+      if (data.newLevel != null) {
+        setXoRewardLevel(data.newLevel);
+        localStorage.setItem("khamin_xo_reward_level", data.newLevel.toString());
+      }
+    });
+
     newSocket.on("app_settings", (settings: any) => {
       if (settings && settings.lucky_wheel_enabled !== undefined) {
         setLuckyWheelEnabled(
@@ -5976,6 +6046,14 @@ export default function App() {
               if (data.busCompleteMatchPoints != null) {
                 setBusCompleteMatchPoints(data.busCompleteMatchPoints);
                 localStorage.setItem("khamin_bus_match_points", data.busCompleteMatchPoints.toString());
+              }
+              if (data.xoRewardLevel != null) {
+                setXoRewardLevel(data.xoRewardLevel);
+                localStorage.setItem("khamin_xo_reward_level", data.xoRewardLevel.toString());
+              }
+              if (data.xoMatchPoints != null) {
+                setXoMatchPoints(data.xoMatchPoints);
+                localStorage.setItem("khamin_xo_match_points", data.xoMatchPoints.toString());
               }
               if (data.likes != null) {
                 setLikes(data.likes);
@@ -6341,6 +6419,14 @@ export default function App() {
       if (data.busCompleteMatchPoints != null) {
         setBusCompleteMatchPoints(data.busCompleteMatchPoints);
         localStorage.setItem("khamin_bus_match_points", data.busCompleteMatchPoints.toString());
+      }
+      if (data.xoRewardLevel != null) {
+        setXoRewardLevel(data.xoRewardLevel);
+        localStorage.setItem("khamin_xo_reward_level", data.xoRewardLevel.toString());
+      }
+      if (data.xoMatchPoints != null) {
+        setXoMatchPoints(data.xoMatchPoints);
+        localStorage.setItem("khamin_xo_match_points", data.xoMatchPoints.toString());
       }
       if (data.likes != null) {
         setLikes(data.likes);
@@ -8961,7 +9047,7 @@ export default function App() {
           clearTimeout(adSafetyTimeout);
           adTriggeredRef.current = false;
           setIsGlobalAdLoading(false);
-          showAlert("يجب مشاهدة الإعلان كاملاً لحل اللغز!", "تنبيه");
+          showAlert("يجب مشاهدة الاعلان كاملا لاستلام الهدايا", "تنبيه");
           if (onFailed) onFailed();
         },
       });
@@ -9003,7 +9089,7 @@ export default function App() {
             clearTimeout(adSafetyTimeout);
             adTriggeredRef.current = false;
             setIsGlobalAdLoading(false);
-            showAlert("يجب مشاهدة الإعلان كاملًا لحل اللغز!", "تنبيه");
+            showAlert("يجب مشاهدة الاعلان كاملا لاستلام الهدايا", "تنبيه");
             if (onFailed) onFailed();
           },
           adViewed: () => {
@@ -10949,6 +11035,8 @@ export default function App() {
                 <span>{data.likes || 0} ❤️</span>
                 <span>•</span>
                 <span>{data.busCompleteWins || 0} 🚌</span>
+                <span>•</span>
+                <span>{data.xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
               </div>
 
               {/* Add Friend Button */}
@@ -19813,6 +19901,77 @@ export default function App() {
     );
   };
 
+  const renderXORewardBar = () => {
+    if (!room || room.matchType !== "random" || room.gameState !== "xo_playing") return null;
+
+    const targetPoints = xoRewardLevel * 100;
+    const progress = Math.min((xoMatchPoints / targetPoints) * 100, 100);
+    const isReady = xoMatchPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-2 relative overflow-hidden transition-all shadow-sm">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-blue-100/50 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex sm:flex-row items-center justify-between gap-2 z-10 w-full">
+           <div className="flex items-center gap-2 font-bold text-blue-800 text-sm">
+             <span>المستوي {xoRewardLevel}</span>
+             <span className="text-xs bg-white px-1.5 py-0.5 rounded-md border border-blue-200" dir="ltr">
+               {xoMatchPoints} / {targetPoints}
+             </span>
+           </div>
+           
+           <button
+             onClick={() => {
+                if (isReady) {
+                  setCustomConfirm({
+                     show: true,
+                     title: "مبروك! 🎉 اكتملت نقاط المستوي " + xoRewardLevel,
+                     message: "يمكنك استلام هدايا هذا المستوى الآن، هل تود مشاهدة الإعلان؟\n\n" +
+                              "🎁 " + (xoRewardLevel === 1 ? 50 : 100 + 50 * (xoRewardLevel - 1)) + " XP\n" +
+                              "🔑 " + xoRewardLevel + " مفتاح\n" +
+                              "🔧 " + xoRewardLevel + " من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)",
+                     confirmText: "نعم مشاهدة الاعلان",
+                     cancelText: "الغاء",
+                     onConfirm: () => {
+                       setCustomConfirm((prev) => ({ ...prev, show: false }));
+                       // We can use the same logic for showing ad as bus_complete but specific for xo
+                       socket?.emit("bus_complete_ad_start", { roomId: room.id }); // reuse visual ad lock
+                       showBusCompleteAd(
+                         () => {
+                            socket?.emit("claim_xo_reward", { serial: socket?.data?.serial || playerSerial });
+                         },
+                         () => {
+                            showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+                         }
+                       );
+                     }
+                  });
+                } else {
+                  setCustomConfirm({
+                    show: true,
+                    title: `المستوي ${xoRewardLevel}`,
+                    message: `متبقي ${targetPoints - xoMatchPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                             `🎁 ${xoRewardLevel === 1 ? 50 : 100 + 50 * (xoRewardLevel - 1)} XP\n` +
+                             `🔑 ${xoRewardLevel} مفتاح\n` +
+                             `🔧 ${xoRewardLevel} من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)`,
+                    confirmText: "حسناً",
+                    onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                  });
+                }
+             }}
+             className={`flex justify-center items-center gap-1.5 px-3 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+               ${isReady ? "bg-green-500 text-white animate-pulse hover:bg-green-600 border border-green-600" : "bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"}`}
+           >
+             <span>🎁</span>
+             <span>استلم الهدايا</span>
+           </button>
+         </div>
+      </div>
+    );
+  };
+  
   const renderBusCompleteRewardBar = () => {
     if (!room || room.matchType !== "random" || room.gameState !== "bus_complete_playing") return null;
 
@@ -21935,10 +22094,11 @@ export default function App() {
                               <Trophy className="w-2 h-2" />
                               {topPlayers[1].wins || 0} فوز
                             </div>
-                            <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center justify-center gap-1">
+                            <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex flex-wrap items-center justify-center gap-1">
                               <span>{topPlayers[1].streak || 0} 🔥</span>
                               <span>{topPlayers[1].likes || 0} ❤️</span>
                               <span>{topPlayers[1].busCompleteWins || 0} 🚌</span>
+                              <span>{topPlayers[1].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                             </div>
                           </div>
                         </div>
@@ -21987,10 +22147,11 @@ export default function App() {
                               <Trophy className="w-3 h-3" />
                               {topPlayers[0].wins || 0} فوز
                             </div>
-                            <div className="text-[7px] md:text-[9px] font-black text-black/80 px-3 py-1 flex items-center justify-center gap-1">
+                            <div className="text-[7px] md:text-[9px] font-black text-black/80 px-3 py-1 flex flex-wrap items-center justify-center gap-1">
                               <span>{topPlayers[0].streak || 0} 🔥</span>
                               <span>{topPlayers[0].likes || 0} ❤️</span>
                               <span>{topPlayers[0].busCompleteWins || 0} 🚌</span>
+                              <span>{topPlayers[0].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                             </div>
                           </div>
                         </div>
@@ -22033,10 +22194,11 @@ export default function App() {
                               <Trophy className="w-2 h-2" />
                               {topPlayers[2].wins || 0} فوز
                             </div>
-                            <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center justify-center gap-1">
+                            <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex flex-wrap items-center justify-center gap-1">
                               <span>{topPlayers[2].streak || 0} 🔥</span>
                               <span>{topPlayers[2].likes || 0} ❤️</span>
                               <span>{topPlayers[2].busCompleteWins || 0} 🚌</span>
+                              <span>{topPlayers[2].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                             </div>
                           </div>
                         </div>
@@ -22638,6 +22800,8 @@ export default function App() {
                               <span>{likes} ❤️</span>
                               <span>•</span>
                               <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.busCompleteWins || 0} 🚌</span>
+                              <span>•</span>
+                              <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.xoWins || 0} <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span></span>
                             </div>
                           </div>
                         </div>
@@ -22651,6 +22815,7 @@ export default function App() {
                       {[
                         { id: "all", icon: "👥" },
                         { id: "busComplete", icon: "🚌" },
+                        { id: "xo", icon: <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span> },
                         { id: "wins", icon: "🏆" },
                         { id: "streak", icon: "🔥" },
                         { id: "likes", icon: "❤️" },
@@ -22750,6 +22915,13 @@ export default function App() {
                                   dir="rtl"
                                 >
                                   {player.busCompleteWins || 0} 🚌
+                                </span>
+                                <span className="text-brown-light">•</span>
+                                <span
+                                  className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded"
+                                  dir="rtl"
+                                >
+                                  {player.xoWins || 0} <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                                 </span>
                               </div>
                             </div>
@@ -23042,6 +23214,8 @@ export default function App() {
               room.gameState !== "bus_complete_spin" &&
               room.gameState !== "bus_complete_playing" &&
               room.gameState !== "bus_complete_evaluating" &&
+              room.gameState !== "xo_playing" &&
+              room.gameState !== "xo_finished" &&
               room.gameState !== "starting" && (
                 <div
                   className={`flex items-center justify-center min-w-[70px] md:min-w-[80px] gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-full text-sm md:text-base font-black transition-colors border-2 ${room.isFrozen ? "bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse" : room.timer <= 10 && room.gameState === "guessing" ? "bg-red-100 text-red-600 border-red-200 animate-pulse" : "bg-gray-100 text-brown-muted border-gray-200"}`}
@@ -24197,6 +24371,118 @@ export default function App() {
               </div>
               <CategoryPageAd />
             </React.Fragment>
+            ) : room.gameState === "xo_playing" || room.gameState === "xo_finished" ? (
+              <React.Fragment>
+                <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
+                {renderXORewardBar()}
+                {room.players.length === 2 && (
+                  <div className="flex justify-between items-center w-full px-1">
+                    <div className="flex flex-col items-center bg-white border-2 border-red-200 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px]" dir="rtl">
+                      <span className="text-[10px] md:text-xs font-black text-gray-500 max-w-[80px] break-words text-center flex items-center justify-center gap-1">
+                        {(room.players.find(p => p.id === room.xoXPlayer)?.name || "اللاعب X").substring(0, 5)}
+                        <span className="text-red-500 font-black text-base">✖</span>
+                      </span>
+                      <span className="text-sm font-black text-red-500">🏆 {room.players.find(p => p.id === room.xoXPlayer)?.xoWins || 0}</span>
+                    </div>
+
+                    <div className={`flex justify-center items-center gap-1 mx-2 ${room.gameState !== "xo_finished" ? "border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]" : "font-black text-lg text-brown-dark"}`} dir="ltr">
+                        {room.gameState === "xo_finished" ? (
+                           <span>انتهت المباراة</span>
+                        ) : (
+                           <span className={`text-2xl font-black font-mono tracking-wider ${room.timer <= 60 ? "text-red-600" : "text-gray-700"}`}>
+                             {Math.floor(room.timer / 60)}:{(room.timer % 60).toString().padStart(2, "0")}
+                           </span>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px]" dir="rtl">
+                      <span className="text-[10px] md:text-xs font-black text-gray-500 max-w-[80px] break-words text-center flex items-center justify-center gap-1">
+                        {(room.players.find(p => p.id === room.xoOPlayer)?.name || "اللاعب O").substring(0, 5)}
+                        <span className="text-green-600 font-black text-base">◯</span>
+                      </span>
+                      <span className="text-sm font-black text-green-600">🏆 {room.players.find(p => p.id === room.xoOPlayer)?.xoWins || 0}</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-center my-4">
+                  <div className="grid grid-cols-3 gap-2 bg-gray-200 p-3 rounded-2xl w-full max-w-[320px] mx-auto shadow-inner border-4 border-gray-300">
+                    {room.xoBoard?.map((cell, idx) => {
+                      const isWinningCell = room.xoWinningLine?.includes(idx);
+                      const myTurn = room.xoTurn === socket?.id && room.gameState === "xo_playing";
+                      return (
+                        <button
+                          key={idx}
+                          disabled={!myTurn || cell !== null}
+                          onClick={() => {
+                             socket?.emit("submit_xo_move", { roomId: room.id, index: idx });
+                             playSound("clickOpen");
+                          }}
+                          className={`aspect-square flex items-center justify-center text-5xl md:text-6xl font-black rounded-xl transition-all duration-200 transform
+                            ${cell === null ? "bg-white hover:bg-gray-50 cursor-pointer shadow-sm" : cell === "X" ? "bg-red-50 text-red-500 shadow-sm" : "bg-green-50 text-green-600 shadow-sm"}
+                            ${isWinningCell ? "bg-yellow-200 ring-4 ring-yellow-400 scale-105 z-10 animate-bounce" : ""}
+                            ${myTurn && cell === null ? "hover:scale-105 hover:shadow-md ring-2 ring-transparent hover:ring-blue-300" : cell !== null ? "" : "cursor-default opacity-80"}
+                          `}
+                        >
+                           {cell === "X" ? "✖" : cell === "O" ? "◯" : ""}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {room.gameState === "xo_playing" && (
+                   <div className="text-center font-bold text-base md:text-lg mb-2">
+                      {room.xoTurn === socket?.id ? (
+                         <span className="text-blue-600 animate-pulse bg-blue-50 px-4 py-1 rounded-full border border-blue-200">دورك الآن للعب! 🎮</span>
+                      ) : (
+                         <span className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳</span>
+                      )}
+                   </div>
+                )}
+
+                {room.gameState === "xo_finished" && (
+                   <div className="flex flex-col gap-3 mt-4 animate-in fade-in slide-in-from-bottom-4">
+                     <div className="text-xl md:text-2xl font-black p-3 md:p-4 rounded-2xl border-4 bg-white mx-2">
+                        {room.xoWinner === "draw" ? (
+                           <span className="text-gray-600 whitespace-pre-wrap">تعادل! 🤝{"\n"}لا يوجد فائز هذه المرة</span>
+                        ) : room.xoWinner === socket?.id ? (
+                           <span className="text-green-500 whitespace-pre-wrap">لقد فزت! 🎉{"\n"}لعب رائع وذكي!</span>
+                        ) : (
+                           <span className="text-red-500 whitespace-pre-wrap">حظ أوفر المرة القادمة! 😔{"\n"}تعلم من أخطائك</span>
+                        )}
+                     </div>
+                     <div className="flex gap-2 w-full justify-center mt-2 px-2 pb-2">
+                       <button
+                         onClick={() => {
+                            playSound("clickOpen");
+                            socket?.emit("play_again", { roomId: room.id });
+                         }}
+                         className="flex-1 btn-game bg-blue-100 hover:bg-blue-200 text-blue-600 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5"
+                       >
+                         تغيير اللعبة
+                       </button>
+                       <button
+                         onClick={() => {
+                            playSound("clickOpen");
+                            socket?.emit("restart_xo", { roomId: room.id });
+                         }}
+                         className="flex-1 btn-game bg-green-100 hover:bg-green-200 text-green-700 shadow-[0_4px_0_0_#86efac] active:shadow-transparent py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5"
+                       >
+                         لعب مرة أخري!
+                       </button>
+                     </div>
+                     <button
+                         onClick={handleLeaveGame}
+                         className="w-auto mx-4 btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5"
+                       >
+                         🚪 خروج للرئيسية
+                       </button>
+                   </div>
+                )}
+                </div>
+                <CategoryPageAd />
+              </React.Fragment>
             ) : room.gameState === "waiting" ? (
               <React.Fragment>
                 <div className="w-full card-game p-3 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden">
@@ -24378,6 +24664,38 @@ export default function App() {
                               if (meMode === "bus_complete" && oppMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
                               if (meMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
                               if (oppMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+                          
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "xo",
+                                })
+                              }
+                              className={`w-full bg-green-100 hover:bg-green-200 border-4 border-green-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#22c55e] active:shadow-none active:translate-y-2"}`}
+                            >
+                              <div className={`flex gap-0.5 text-4xl font-black ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`} dir="ltr">
+                                <span className="text-red-500">X</span>
+                                <span className="text-green-600">O</span>
+                              </div>
+                              <span className="text-xl font-black text-green-700">
+                               تيك تاك تو - تخمينة XO
+                              </span>
+                              <span className="text-xs text-brown-muted">
+                                (اللعبة الكلاسيكية للذكاء والسرعة)
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "xo" && oppMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
+                              if (meMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -25653,6 +25971,8 @@ export default function App() {
           room.gameState !== "bus_complete_spin" &&
           room.gameState !== "bus_complete_playing" &&
           room.gameState !== "bus_complete_evaluating" &&
+          room.gameState !== "xo_playing" &&
+          room.gameState !== "xo_finished" &&
           room.gameState !== "starting" && (
             <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
               {[
