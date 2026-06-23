@@ -288,26 +288,39 @@ const SPIN_REWARDS_UI = [
 ];
 
 const CategoryPageAd = () => {
-  useEffect(() => {
-    // ننتظر قليلاً حتى يستقر عرض الصفحة (DOM) لتجنب خطأ availableWidth=0
-    const timer = setTimeout(() => {
-      try {
-        if (typeof window !== "undefined" && window.adsbygoogle) {
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
-        }
-      } catch (e) {
-        console.error("AdSense initialization error:", e);
-      }
-    }, 500);
+  const adRef = useRef<HTMLModElement>(null);
 
-    return () => clearTimeout(timer);
+  useEffect(() => {
+    let interval: any;
+    const attemptPush = () => {
+      if (adRef.current && adRef.current.clientWidth > 0) {
+        try {
+          if (typeof window !== "undefined" && window.adsbygoogle && !adRef.current.dataset.adPushed) {
+            adRef.current.dataset.adPushed = "true";
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+          }
+        } catch (e) {
+          console.error("AdSense initialization error:", e);
+        }
+        if (interval) clearInterval(interval);
+      }
+    };
+
+    interval = setInterval(attemptPush, 500);
+    const timeout = setTimeout(attemptPush, 100);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, []);
 
   return (
     <div className="w-full mt-4 md:mt-4 flex flex-col items-center justify-center overflow-hidden min-h-[50px] sm:min-h-[90px]">
       <ins
-        className="adsbygoogle"
-        style={{ display: "block" }} // تم حذف الارتفاع والعرض الثابت من هنا
+        ref={adRef}
+        className="adsbygoogle w-full"
+        style={{ display: "block", minWidth: "250px" }} // تم تحديد عرض أدنى لتجنب خطأ availableWidth=0
         data-ad-client="ca-pub-8026106142955130"
         data-ad-slot="9111492892"
         data-ad-format="horizontal" // إجبار الشكل الأفقي
