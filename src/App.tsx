@@ -304,14 +304,14 @@ const CategoryPageAd = () => {
   }, []);
 
   return (
-    <div className="w-full mt-4 md:mt-4 min-h-[90px] max-h-[120px] flex flex-col items-center overflow-hidden">
+    <div className="w-full mt-4 md:mt-4 flex flex-col items-center justify-center overflow-hidden min-h-[50px] sm:min-h-[90px]">
       <ins
         className="adsbygoogle"
-        style={{ display: "block", width: "100%", height: "90px" }}
+        style={{ display: "block" }} // تم حذف الارتفاع والعرض الثابت من هنا
         data-ad-client="ca-pub-8026106142955130"
         data-ad-slot="9111492892"
-        data-ad-format="horizontal"
-        data-full-width-responsive="true"
+        data-ad-format="horizontal" // إجبار الشكل الأفقي
+        data-full-width-responsive="true" // السماح بالتمدد الأفقي الكامل ليناسب الشاشة
       ></ins>
     </div>
   );
