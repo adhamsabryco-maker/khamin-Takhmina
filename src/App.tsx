@@ -324,7 +324,7 @@ const CategoryPageAd = () => {
         data-ad-client="ca-pub-8026106142955130"
         data-ad-slot="9111492892"
         data-ad-format="horizontal" // إجبار الشكل الأفقي
-        data-full-width-responsive="true" // السماح بالتمدد الأفقي الكامل ليناسب الشاشة
+        data-full-width-responsive="false" // لمنع تحويل الإعلان لمربع كبير على الموبايل وإجباره على البقاء أفقيًا
       ></ins>
     </div>
   );
@@ -23984,7 +23984,7 @@ export default function App() {
                     >
                       البحث عن حرف وبدء اللعب 🎲
                     </button>
-                    <label className="flex items-center justify-center gap-2 text-sm font-bold text-gray-500 cursor-pointer w-fit mx-auto">
+                    <label className="flex items-center my-2 justify-center gap-2 text-sm font-bold text-gray-500 cursor-pointer w-fit mx-auto">
                       <input 
                         type="checkbox" 
                         checked={hideBusResults} 
