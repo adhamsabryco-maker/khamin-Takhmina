@@ -2030,6 +2030,9 @@ async function startServer() {
         busCompleteRewardLevel?: number;
         busCompleteMatchPoints?: number;
         busCompleteExpiring?: any[];
+        xoWins?: number;
+        xoRewardLevel?: number;
+        xoMatchPoints?: number;
       }
     >();
 
@@ -2240,6 +2243,15 @@ async function startServer() {
     } catch(e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN busCompleteExpiring TEXT DEFAULT '[]'`);
+    } catch(e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN xoWins INTEGER DEFAULT 0`);
+    } catch(e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN xoRewardLevel INTEGER DEFAULT 1`);
+    } catch(e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN xoMatchPoints INTEGER DEFAULT 0`);
     } catch(e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0`);
@@ -2781,8 +2793,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3060,6 +3072,9 @@ async function startServer() {
           busCompleteRewardLevel: player.busCompleteRewardLevel || 1,
           busCompleteMatchPoints: player.busCompleteMatchPoints || 0,
           busCompleteExpiring: JSON.stringify(player.busCompleteExpiring || []),
+          xoWins: player.xoWins || 0,
+          xoRewardLevel: player.xoRewardLevel || 1,
+          xoMatchPoints: player.xoMatchPoints || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3133,6 +3148,9 @@ async function startServer() {
           busCompleteRewardLevel: player.busCompleteRewardLevel || 1,
           busCompleteMatchPoints: player.busCompleteMatchPoints || 0,
           busCompleteExpiring: JSON.stringify(player.busCompleteExpiring || []),
+          xoWins: player.xoWins || 0,
+          xoRewardLevel: player.xoRewardLevel || 1,
+          xoMatchPoints: player.xoMatchPoints || 0,
         });
       }
     });
@@ -3229,6 +3247,9 @@ async function startServer() {
             busCompleteRewardLevel: row.busCompleteRewardLevel || 1,
             busCompleteMatchPoints: row.busCompleteMatchPoints || 0,
             busCompleteExpiring: JSON.parse(row.busCompleteExpiring || "[]"),
+            xoWins: row.xoWins || 0,
+            xoRewardLevel: row.xoRewardLevel || 1,
+            xoMatchPoints: row.xoMatchPoints || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -4732,6 +4753,9 @@ async function startServer() {
             age: botPersona.age,
             gender: botPersona.gender,
             xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
+            wins: Math.floor(botPersona.level * (Math.random() * 5 + 2)),
+            busCompleteWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            xoWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             isBot: true,
             persona: botPersona.personality,
             selectedFrame: "",
@@ -5450,6 +5474,42 @@ async function startServer() {
             if (bot) {
               handleBotEvent(roomId, "room_update", room);
             }
+          } else if (mode === "xo") {
+            room.gameState = "xo_playing";
+            room.category = "xo";
+            room.xoBoard = Array(9).fill(null);
+            room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
+            room.xoOPlayer = room.players.find((p: any) => p.id !== room.xoXPlayer).id;
+            room.xoTurn = room.xoXPlayer;
+            room.xoWinner = null;
+            room.xoWinningLine = null;
+            room.timer = 120; // 2 minutes to finish a game, otherwise it ties or ends
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            
+            const interval = setInterval(() => {
+              const r = rooms.get(roomId);
+              if (!r || (r.gameState !== "xo_playing" && r.gameState !== "xo_finished")) {
+                clearInterval(interval);
+                return;
+              }
+              if (r.gameState === "xo_playing") {
+                r.timer--;
+                if (r.timer <= 0) {
+                  clearInterval(interval);
+                  r.xoWinner = "draw";
+                  r.gameState = "xo_finished";
+                  io.to(roomId).emit("room_update", r);
+                } else {
+                  io.to(roomId).emit("timer_update", r.timer);
+                }
+              }
+            }, 1000);
+            intervals.set(roomId, interval);
+
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           } else if (mode === null) {
             room.gameState = "waiting";
             room.selectionMode = null;
@@ -5591,6 +5651,93 @@ async function startServer() {
       }
     }
 
+    function executeBotXOMove(roomId: string) {
+      if (botFlags.has(roomId + "_xo_move_scheduled")) return;
+      botFlags.set(roomId + "_xo_move_scheduled", true);
+
+      const room = rooms.get(roomId);
+      if (!room || room.gameState !== "xo_playing") {
+        botFlags.delete(roomId + "_xo_move_scheduled");
+        return;
+      }
+      const bot = room.players.find((p: any) => p.isBot);
+      if (!bot || room.xoTurn !== bot.id) {
+        botFlags.delete(roomId + "_xo_move_scheduled");
+        return;
+      }
+
+      setTimeout(() => {
+        botFlags.delete(roomId + "_xo_move_scheduled");
+        const r = rooms.get(roomId);
+        if (!r || r.gameState !== "xo_playing" || r.xoTurn !== bot.id) return;
+
+        const emptyIndices = [];
+        for (let i = 0; i < 9; i++) if (r.xoBoard[i] === null) emptyIndices.push(i);
+        if (emptyIndices.length > 0) {
+          const winLines = [
+            [0,1,2], [3,4,5], [6,7,8],
+            [0,3,6], [1,4,7], [2,5,8],
+            [0,4,8], [2,4,6]
+          ];
+          
+          let selectedIdx: number | null = null;
+          const piece = r.xoXPlayer === bot.id ? "X" : "O";
+          const enemyPiece = r.xoXPlayer === bot.id ? "O" : "X";
+          
+          const getWinningMove = (p: string) => {
+            for (const line of winLines) {
+              const [a, b, c] = line;
+              if (r.xoBoard[a] === p && r.xoBoard[b] === p && r.xoBoard[c] === null) return c;
+              if (r.xoBoard[a] === p && r.xoBoard[c] === p && r.xoBoard[b] === null) return b;
+              if (r.xoBoard[b] === p && r.xoBoard[c] === p && r.xoBoard[a] === null) return a;
+            }
+            return null;
+          };
+
+          const winMove = getWinningMove(piece);
+          const blockMove = getWinningMove(enemyPiece);
+
+          if (winMove !== null && Math.random() < 0.8) {
+             selectedIdx = winMove;
+          } else if (blockMove !== null && Math.random() < 0.6) {
+             selectedIdx = blockMove;
+          } else {
+             selectedIdx = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+          }
+
+          r.xoBoard[selectedIdx] = piece;
+          
+          let bWinner = null;
+          let bWinningLine = null;
+          for (const line of winLines) {
+            const [a, b, c] = line;
+            if (r.xoBoard[a] && r.xoBoard[a] === r.xoBoard[b] && r.xoBoard[a] === r.xoBoard[c]) {
+              bWinner = r.xoBoard[a] === "X" ? r.xoXPlayer : r.xoOPlayer;
+              bWinningLine = line;
+              break;
+            }
+          }
+          
+          if (bWinner) {
+            r.xoWinner = bWinner;
+            r.xoWinningLine = bWinningLine;
+            r.gameState = "xo_finished";
+          } else if (r.xoBoard.every((cell: any) => cell !== null)) {
+            r.xoWinner = "draw";
+            r.gameState = "xo_finished";
+          } else {
+            r.xoTurn = r.xoXPlayer === bot.id ? r.xoOPlayer : r.xoXPlayer;
+          }
+          io.to(roomId).emit("room_update", r);
+          
+          if (r.gameState === "xo_playing" && r.xoTurn === bot.id) {
+             // In case bot plays against itself (unlikely but just to cascade)
+             handleBotEvent(roomId, "room_update", r);
+          }
+        }
+      }, 1000 + Math.random() * 1500);
+    }
+
     async function handleBotEvent(roomId: string, event: string, data: any) {
       const room = rooms.get(roomId);
       if (!room) return;
@@ -5648,6 +5795,11 @@ async function startServer() {
         // ... previous bot conversations ...
         if (!botConversations.has(roomId)) {
           botConversations.set(roomId, []);
+        }
+
+        // Handle XO playing action
+        if (room.gameState === "xo_playing" && room.xoTurn === botPlayer.id) {
+           executeBotXOMove(roomId);
         }
 
         // Handle bus_complete_playing action
@@ -6424,18 +6576,18 @@ async function startServer() {
           room.busCompleteWinner = "none"; // Both lose
         } else if (s1 > s2 || (s1 === s2 && t1 < t2)) {
           room.busCompleteWinner = p1.id;
+          p1.busCompleteWins = (p1.busCompleteWins || 0) + 1;
           const dbP1 = allPlayers.get(p1.serial);
           if (dbP1) {
-            dbP1.busCompleteWins = (dbP1.busCompleteWins || 0) + 1;
-            p1.busCompleteWins = dbP1.busCompleteWins;
+            dbP1.busCompleteWins = p1.busCompleteWins;
             savePlayerData(p1.serial);
           }
         } else if (s2 > s1 || (s1 === s2 && t2 < t1)) {
           room.busCompleteWinner = p2.id;
+          p2.busCompleteWins = (p2.busCompleteWins || 0) + 1;
           const dbP2 = allPlayers.get(p2.serial);
           if (dbP2) {
-            dbP2.busCompleteWins = (dbP2.busCompleteWins || 0) + 1;
-            p2.busCompleteWins = dbP2.busCompleteWins;
+            dbP2.busCompleteWins = p2.busCompleteWins;
             savePlayerData(p2.serial);
           }
         } else {
@@ -6443,19 +6595,22 @@ async function startServer() {
         }
 
         if (room.matchType === "random") {
-          const dbP1 = allPlayers.get(p1.serial);
-          if (dbP1) {
-            dbP1.busCompleteMatchPoints = (dbP1.busCompleteMatchPoints || 0) + s1;
-            p1.busCompleteMatchPoints = dbP1.busCompleteMatchPoints;
-            savePlayerData(p1.serial);
-            io.to(p1.id).emit("player_data_update", dbP1);
-          }
-          const dbP2 = allPlayers.get(p2.serial);
-          if (dbP2) {
-            dbP2.busCompleteMatchPoints = (dbP2.busCompleteMatchPoints || 0) + s2;
-            p2.busCompleteMatchPoints = dbP2.busCompleteMatchPoints;
-            savePlayerData(p2.serial);
-            io.to(p2.id).emit("player_data_update", dbP2);
+          if (room.busCompleteWinner === p1.id) {
+            p1.busCompleteMatchPoints = (p1.busCompleteMatchPoints || 0) + 10;
+            const dbP1 = allPlayers.get(p1.serial);
+            if (dbP1) {
+              dbP1.busCompleteMatchPoints = p1.busCompleteMatchPoints;
+              savePlayerData(p1.serial);
+              io.to(p1.id).emit("player_data_update", dbP1);
+            }
+          } else if (room.busCompleteWinner === p2.id) {
+            p2.busCompleteMatchPoints = (p2.busCompleteMatchPoints || 0) + 10;
+            const dbP2 = allPlayers.get(p2.serial);
+            if (dbP2) {
+              dbP2.busCompleteMatchPoints = p2.busCompleteMatchPoints;
+              savePlayerData(p2.serial);
+              io.to(p2.id).emit("player_data_update", dbP2);
+            }
           }
         }
       }
@@ -8199,6 +8354,42 @@ async function startServer() {
             if (opponent && opponent.isBot) {
               handleBotEvent(roomId, "room_update", room);
             }
+          } else if (mode === "xo") {
+            room.gameState = "xo_playing";
+            room.category = "xo";
+            room.xoBoard = Array(9).fill(null);
+            room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
+            room.xoOPlayer = room.players.find((p: any) => p.id !== room.xoXPlayer).id;
+            room.xoTurn = room.xoXPlayer;
+            room.xoWinner = null;
+            room.xoWinningLine = null;
+            room.timer = 120; // 2 minutes to finish a game, otherwise it ties or ends
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            
+            const interval = setInterval(() => {
+              const r = rooms.get(roomId);
+              if (!r || (r.gameState !== "xo_playing" && r.gameState !== "xo_finished")) {
+                clearInterval(interval);
+                return;
+              }
+              if (r.gameState === "xo_playing") {
+                r.timer--;
+                if (r.timer <= 0) {
+                  clearInterval(interval);
+                  r.xoWinner = "draw";
+                  r.gameState = "xo_finished";
+                  io.to(roomId).emit("room_update", r);
+                } else {
+                  io.to(roomId).emit("timer_update", r.timer);
+                }
+              }
+            }, 1000);
+            intervals.set(roomId, interval);
+
+            const opponent = room.players.find((p: any) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           } else if (mode === null) {
             room.gameState = "waiting";
             room.selectionMode = null;
@@ -8413,6 +8604,67 @@ async function startServer() {
           }
 
           io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("submit_xo_move", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "xo_playing" && room.xoTurn === socket.id) {
+          if (room.xoBoard && room.xoBoard[index] === null && !room.xoWinner) {
+             const piece = room.xoXPlayer === socket.id ? "X" : "O";
+             room.xoBoard[index] = piece;
+             
+             // Check win
+             const winLines = [
+               [0,1,2], [3,4,5], [6,7,8], // rows
+               [0,3,6], [1,4,7], [2,5,8], // cols
+               [0,4,8], [2,4,6]           // diagonals
+             ];
+             
+             let winner = null;
+             let winningLine = null;
+             for (const line of winLines) {
+               const [a, b, c] = line;
+               if (room.xoBoard[a] && room.xoBoard[a] === room.xoBoard[b] && room.xoBoard[a] === room.xoBoard[c]) {
+                 winner = room.xoBoard[a] === "X" ? room.xoXPlayer : room.xoOPlayer;
+                 winningLine = line;
+                 break;
+               }
+             }
+             
+             if (winner) {
+               room.xoWinner = winner;
+               room.xoWinningLine = winningLine;
+               room.gameState = "xo_finished";
+               
+               // Update wins and points for winner
+               const pWinner = room.players.find((p: any) => p.id === winner);
+               if (pWinner) {
+                 pWinner.xoWins = (pWinner.xoWins || 0) + 1;
+                 const dbP = allPlayers.get(pWinner.serial);
+                 if (dbP) {
+                   dbP.xoWins = pWinner.xoWins;
+                   if (room.matchType === "random") {
+                     dbP.xoMatchPoints = (dbP.xoMatchPoints || 0) + 10;
+                   }
+                   pWinner.xoMatchPoints = dbP.xoMatchPoints;
+                   savePlayerData(pWinner.serial);
+                   io.to(pWinner.id).emit("player_data_update", dbP);
+                 }
+               }
+             } else if (room.xoBoard.every((cell: any) => cell !== null)) {
+               room.xoWinner = "draw";
+               room.gameState = "xo_finished";
+             } else {
+               room.xoTurn = room.xoXPlayer === socket.id ? room.xoOPlayer : room.xoXPlayer;
+             }
+             
+             io.to(roomId).emit("room_update", room);
+             
+             if (room.gameState === "xo_playing" && room.players.some((p: any) => p.isBot)) {
+               handleBotEvent(roomId, "room_update", room);
+             }
+          }
         }
       });
 
@@ -9966,9 +10218,51 @@ async function startServer() {
         }
       });
 
+      socket.on("restart_xo", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "xo_finished") {
+            room.gameState = "xo_playing";
+            room.category = "xo";
+            room.xoBoard = Array(9).fill(null);
+            room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
+            room.xoOPlayer = room.players.find((p: any) => p.id !== room.xoXPlayer).id;
+            room.xoTurn = room.xoXPlayer;
+            room.xoWinner = null;
+            room.xoWinningLine = null;
+            room.timer = 120;
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            
+            const interval = setInterval(() => {
+              const r = rooms.get(roomId);
+              if (!r || (r.gameState !== "xo_playing" && r.gameState !== "xo_finished")) {
+                clearInterval(interval);
+                return;
+              }
+              if (r.gameState === "xo_playing") {
+                r.timer--;
+                if (r.timer <= 0) {
+                  clearInterval(interval);
+                  r.xoWinner = "draw";
+                  r.gameState = "xo_finished";
+                  io.to(roomId).emit("room_update", r);
+                } else {
+                  io.to(roomId).emit("timer_update", r.timer);
+                }
+              }
+            }, 1000);
+            intervals.set(roomId, interval);
+
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+            io.to(roomId).emit("room_update", room);
+        }
+      });
+
       socket.on("play_again", ({ roomId }) => {
         const room = rooms.get(roomId);
-        if (room && room.gameState === "finished") {
+        if (room && (room.gameState === "finished" || room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating")) {
           // Reset room state
           room.gameState = "waiting";
           room.timer = 120; // Increased timer for selection
@@ -9982,6 +10276,21 @@ async function startServer() {
           room.isCustomImageMode = false;
           room.selectionMode = null; // Important: triggers mode selection screen
           room.customImages = {};
+          
+          room.xoBoard = null;
+          room.xoTurn = null;
+          room.xoWinner = null;
+          room.xoWinningLine = null;
+          room.xoXPlayer = null;
+          room.xoOPlayer = null;
+          
+          room.busCompleteScores = {};
+          room.busCompleteSubmitTimes = {};
+          room.busCompleteWinner = null;
+          room.busCompleteLetter = null;
+          room.busCompleteChangeLetterRequestBy = null;
+          room.busCompleteSubmittedPlayers = [];
+          room.busCompleteViewersCount = 0;
 
           // Reset players state
           room.players.forEach((p: any) => {
@@ -9999,6 +10308,7 @@ async function startServer() {
             p.spyLensUsed = false;
             p.helperCharge = 0;
             p.chatBuffer = "";
+            p.selectedSelectionMode = null;
             p.engChatBuffer = "";
           });
 
@@ -10402,6 +10712,49 @@ async function startServer() {
               helpers: helpersReward,
               newLevel: player.busCompleteRewardLevel,
               points: player.busCompleteMatchPoints
+            });
+          }
+        }
+      });
+
+      socket.on("claim_xo_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const level = player.xoRewardLevel || 1;
+          const requiredPoints = level * 100;
+          if ((player.xoMatchPoints || 0) >= requiredPoints) {
+            player.xoMatchPoints -= requiredPoints;
+            
+            const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
+            player.xp = (player.xp || 0) + xpReward;
+            
+            const keysReward = level;
+            player.keys = (player.keys || 0) + keysReward;
+
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            const helpersReward: any = {};
+            ["hint", "word_length", "time_freeze", "word_count", "spy_lens"].forEach(h => {
+              player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
+              helpersReward[h] = level;
+            });
+
+            // Using same expiring list just generic or maybe create xoExpiring. But for simplicity let's share the busCompleteExpiring arrays or wait, we just skip expiring for now, the user didn't mention it.
+            
+            player.xoRewardLevel = level === 10 ? 1 : level + 1;
+            
+            const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+            if (!player.level || newLevel > player.level) {
+              player.level = newLevel;
+            }
+
+            savePlayerData(serial);
+            socket.emit("update_player", player);
+            socket.emit("xo_reward_claimed", {
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward,
+              newLevel: player.xoRewardLevel,
+              points: player.xoMatchPoints
             });
           }
         }
