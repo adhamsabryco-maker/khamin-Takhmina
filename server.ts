@@ -3656,6 +3656,7 @@ async function startServer() {
             selectedFrame: p.selectedFrame,
             gender: p.gender,
             busCompleteWins: p.busCompleteWins || 0,
+            xoWins: p.xoWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -4626,6 +4627,9 @@ async function startServer() {
             busCompleteWins: p1ServerPlayer
               ? p1ServerPlayer.busCompleteWins || 0
               : 0,
+            xoWins: p1ServerPlayer
+              ? p1ServerPlayer.xoWins || 0
+              : match.p1.xoWins || 0,
           },
           {
             id: match.p2.socket.id,
@@ -4677,6 +4681,9 @@ async function startServer() {
             busCompleteWins: p2ServerPlayer
               ? p2ServerPlayer.busCompleteWins || 0
               : 0,
+            xoWins: p2ServerPlayer
+              ? p2ServerPlayer.xoWins || 0
+              : match.p2.xoWins || 0,
           },
         ],
         gameState: "waiting",
@@ -8272,6 +8279,7 @@ async function startServer() {
                 serverPlayer.proPackageExpiry > Date.now(),
               hideFriendRequests: serverPlayer.hideFriendRequests || 0,
               busCompleteWins: serverPlayer.busCompleteWins || 0,
+              xoWins: serverPlayer.xoWins || 0,
             };
             room.players.push(player);
 
@@ -12244,6 +12252,7 @@ async function startServer() {
                 keys: targetPlayer.keys,
                 likes: targetPlayer.likes || 0,
                 busCompleteWins: targetPlayer.busCompleteWins || 0,
+                xoWins: targetPlayer.xoWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
@@ -12860,6 +12869,7 @@ async function startServer() {
                 age: (senderPlayerData as any).age || null,
                 selectedFrame: senderPlayerData.selectedFrame,
                 busCompleteWins: senderPlayerData.busCompleteWins || 0,
+                xoWins: senderPlayerData.xoWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -12887,6 +12897,7 @@ async function startServer() {
                 age: (myPlayerData as any).age || null,
                 selectedFrame: myPlayerData.selectedFrame,
                 busCompleteWins: myPlayerData.busCompleteWins || 0,
+                xoWins: myPlayerData.xoWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
