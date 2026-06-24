@@ -5458,15 +5458,18 @@ async function startServer() {
                 clearInterval(interval);
                 return;
               }
-              r.timer--;
-              if (r.timer <= 0) {
-                clearInterval(interval);
-                io.to(roomId).emit("game_stopped", {
-                  reason: "انتهى الوقت لتجهيز الصور!",
-                });
-                rooms.delete(roomId);
-              } else {
-                io.to(roomId).emit("timer_update", r.timer);
+              const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+              if (!isAdPlaying) {
+                r.timer--;
+                if (r.timer <= 0) {
+                  clearInterval(interval);
+                  io.to(roomId).emit("game_stopped", {
+                    reason: "انتهى الوقت لتجهيز الصور!",
+                  });
+                  rooms.delete(roomId);
+                } else {
+                  io.to(roomId).emit("timer_update", r.timer);
+                }
               }
             }, 1000);
             intervals.set(roomId, interval);
@@ -5500,14 +5503,17 @@ async function startServer() {
                 return;
               }
               if (r.gameState === "xo_playing") {
-                r.timer--;
-                if (r.timer <= 0) {
-                  clearInterval(interval);
-                  r.xoWinner = "draw";
-                  r.gameState = "xo_finished";
-                  io.to(roomId).emit("room_update", r);
-                } else {
-                  io.to(roomId).emit("timer_update", r.timer);
+                const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+                if (!isAdPlaying) {
+                  r.timer--;
+                  if (r.timer <= 0) {
+                    clearInterval(interval);
+                    r.xoWinner = "draw";
+                    r.gameState = "xo_finished";
+                    io.to(roomId).emit("room_update", r);
+                  } else {
+                    io.to(roomId).emit("timer_update", r.timer);
+                  }
                 }
               }
             }, 1000);
@@ -5632,8 +5638,10 @@ async function startServer() {
               }
 
               const isAdPlaying =
-                currentRoom.busCompleteAdViewers &&
-                currentRoom.busCompleteAdViewers.length > 0;
+                (currentRoom.busCompleteAdViewers &&
+                currentRoom.busCompleteAdViewers.length > 0) ||
+                (currentRoom.adPausedPlayers && 
+                currentRoom.adPausedPlayers.size > 0);
 
               if (isAdPlaying || isCooldownActive) {
                 if (anyCooldownDecremented || isAdPlaying) {
@@ -8338,15 +8346,18 @@ async function startServer() {
                 clearInterval(interval);
                 return;
               }
-              r.timer--;
-              if (r.timer <= 0) {
-                clearInterval(interval);
-                io.to(roomId).emit("game_stopped", {
-                  reason: "انتهى الوقت لتجهيز الصور!",
-                });
-                rooms.delete(roomId);
-              } else {
-                io.to(roomId).emit("timer_update", r.timer);
+              const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+              if (!isAdPlaying) {
+                r.timer--;
+                if (r.timer <= 0) {
+                  clearInterval(interval);
+                  io.to(roomId).emit("game_stopped", {
+                    reason: "انتهى الوقت لتجهيز الصور!",
+                  });
+                  rooms.delete(roomId);
+                } else {
+                  io.to(roomId).emit("timer_update", r.timer);
+                }
               }
             }, 1000);
             intervals.set(roomId, interval);
@@ -8381,14 +8392,17 @@ async function startServer() {
                 return;
               }
               if (r.gameState === "xo_playing") {
-                r.timer--;
-                if (r.timer <= 0) {
-                  clearInterval(interval);
-                  r.xoWinner = "draw";
-                  r.gameState = "xo_finished";
-                  io.to(roomId).emit("room_update", r);
-                } else {
-                  io.to(roomId).emit("timer_update", r.timer);
+                const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+                if (!isAdPlaying) {
+                  r.timer--;
+                  if (r.timer <= 0) {
+                    clearInterval(interval);
+                    r.xoWinner = "draw";
+                    r.gameState = "xo_finished";
+                    io.to(roomId).emit("room_update", r);
+                  } else {
+                    io.to(roomId).emit("timer_update", r.timer);
+                  }
                 }
               }
             }, 1000);
@@ -8985,16 +8999,19 @@ async function startServer() {
               clearInterval(interval);
               return;
             }
-            r.timer--;
-            if (r.timer <= 0) {
-              clearInterval(interval);
-              io.to(roomId).emit("game_stopped", {
-                reason: "انتهى الوقت لتجهيز الصور!",
-              });
-              io.in(roomId).socketsLeave(roomId);
-              rooms.delete(roomId);
-            } else {
-              io.to(roomId).emit("timer_update", r.timer);
+            const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+            if (!isAdPlaying) {
+              r.timer--;
+              if (r.timer <= 0) {
+                clearInterval(interval);
+                io.to(roomId).emit("game_stopped", {
+                  reason: "انتهى الوقت لتجهيز الصور!",
+                });
+                io.in(roomId).socketsLeave(roomId);
+                rooms.delete(roomId);
+              } else {
+                io.to(roomId).emit("timer_update", r.timer);
+              }
             }
           }, 1000);
           intervals.set(roomId, interval);
@@ -9633,6 +9650,7 @@ async function startServer() {
           // Only emit message if player was NOT already in adPausedPlayers
           const alreadyInAd = room.adPausedPlayers.has(socket.id);
           room.adPausedPlayers.add(socket.id);
+          room.adPausedPlayersArray = Array.from(room.adPausedPlayers);
 
           if (powerUpName) {
             if (!room.powerUpAdsInProgress)
@@ -9659,6 +9677,7 @@ async function startServer() {
               }
             }
           }
+          io.to(roomId).emit("room_update", room);
         }
       });
 
@@ -9678,6 +9697,7 @@ async function startServer() {
         const room = rooms.get(roomId);
         if (room && room.adPausedPlayers) {
           room.adPausedPlayers.delete(socket.id);
+          room.adPausedPlayersArray = Array.from(room.adPausedPlayers);
 
           if (
             room.powerUpAdsInProgress &&
@@ -9686,6 +9706,7 @@ async function startServer() {
             room.powerUpAdsInProgress.delete(socket.id);
             room.adCooldownTimer = 30; // 30s cooldown before resuming timer
           }
+          io.to(roomId).emit("room_update", room);
         }
       });
 
@@ -10247,14 +10268,17 @@ async function startServer() {
                 return;
               }
               if (r.gameState === "xo_playing") {
-                r.timer--;
-                if (r.timer <= 0) {
-                  clearInterval(interval);
-                  r.xoWinner = "draw";
-                  r.gameState = "xo_finished";
-                  io.to(roomId).emit("room_update", r);
-                } else {
-                  io.to(roomId).emit("timer_update", r.timer);
+                const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+                if (!isAdPlaying) {
+                  r.timer--;
+                  if (r.timer <= 0) {
+                    clearInterval(interval);
+                    r.xoWinner = "draw";
+                    r.gameState = "xo_finished";
+                    io.to(roomId).emit("room_update", r);
+                  } else {
+                    io.to(roomId).emit("timer_update", r.timer);
+                  }
                 }
               }
             }, 1000);
@@ -10834,8 +10858,8 @@ async function startServer() {
       socket.on("buy_tokens_with_keys", ({ playerSerial }, callback) => {
         const player = allPlayers.get(playerSerial);
         if (player) {
-          if ((player.keys || 0) >= 25) {
-            player.keys -= 25;
+          if ((player.keys || 0) >= 100) {
+            player.keys -= 100;
             player.tokens = (player.tokens || 0) + 10;
             savePlayerData(playerSerial);
             emitPlayerDataUpdate(io.to(socket.id), player.serial, player);
@@ -10856,7 +10880,7 @@ async function startServer() {
             const now = Date.now();
             player.proPackageExpiry =
               Math.max(player.proPackageExpiry || 0, now) +
-              3 * 24 * 60 * 60 * 1000;
+              1 * 24 * 60 * 60 * 1000;
             savePlayerData(playerSerial);
             emitPlayerDataUpdate(io.to(socket.id), player.serial, player);
             callback({
