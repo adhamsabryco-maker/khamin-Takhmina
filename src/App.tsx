@@ -605,6 +605,7 @@ interface Room {
   category: string;
   isPaused: boolean;
   pausingPlayerId: string | null;
+  adPausedPlayersArray?: string[];
   quickGuessTimer: number;
   isFrozen?: boolean;
   freezeTimer?: number;
@@ -1416,6 +1417,9 @@ export default function App() {
   );
   const [showTokenInfoModal, setShowTokenInfoModal] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
+  const [matchAdState, setMatchAdState] = useState<{ show: boolean; timer: number; adFailed: boolean; adStarted: boolean; }>({ show: false, timer: 0, adFailed: false, adStarted: false });
+  const matchesPlayedRef = useRef(0);
+  const previousGameStateRef = useRef<string | null>(null);
   const [activePowerUp, setActivePowerUp] = useState<string | null>(null);
   const [hasWatchedCategoryAd, setHasWatchedCategoryAd] = useState(false);
   const [isWatchingCategoryAd, setIsWatchingCategoryAd] = useState(false);
@@ -4691,13 +4695,13 @@ export default function App() {
 
   const handleBuyTokensWithKeys = () => {
     playSound("clickOpen");
-    if ((keys || 0) < 25) {
+    if ((keys || 0) < 100) {
       showAlert("ليس لديك مفاتيح كافية!", "المتجر");
       return;
     }
 
     showConfirm(
-      "هل تريد تحويل 25 مفتاح إلى 10 تخمينات؟",
+      "هل تريد تحويل 100 مفتاح إلى 10 تخمينات؟",
       () => {
         socket?.emit(
           "buy_tokens_with_keys",
@@ -4723,7 +4727,7 @@ export default function App() {
     }
 
     showConfirm(
-      "هل تريد تفعيل باقة المحترفين لمدة 3 أيام مقابل 100 مفتاح؟",
+      "هل تريد تفعيل باقة المحترفين لمدة يوم واحد مقابل 100 مفتاح؟",
       () => {
         socket?.emit(
           "buy_pro_with_keys",
@@ -8360,6 +8364,103 @@ export default function App() {
     }
   };
 
+  const triggerMatchAd = useCallback(() => {
+    setMatchAdState(prev => ({ ...prev, adStarted: true, adFailed: false }));
+    
+    if (typeof (window as any).adBreak === "function") {
+      let adFinished = false;
+      let adViewed = false;
+      let adDismissed = false;
+      
+      const handleAdFailure = () => {
+        localStorage.removeItem("khamin_pending_match_ad");
+        setMatchAdState({ show: false, timer: 0, adFailed: false, adStarted: false });
+      };
+
+      const adTimeout = setTimeout(() => {
+        if (!adFinished) handleAdFailure();
+      }, 12000);
+
+      try {
+        (window as any).adBreak({
+          type: "reward",
+          name: "match_interval_ad",
+          beforeAd: () => {
+            clearTimeout(adTimeout);
+          },
+          beforeReward: (showAdFn: any) => showAdFn(),
+          afterAd: () => {},
+          adDismissed: () => {
+            adFinished = true;
+            adDismissed = true;
+            localStorage.setItem("khamin_pending_match_ad", "true");
+            setMatchAdState(prev => ({ ...prev, adFailed: true, adStarted: false }));
+          },
+          adViewed: () => {
+            adFinished = true;
+            adViewed = true;
+            localStorage.removeItem("khamin_pending_match_ad");
+            setMatchAdState({ show: false, timer: 0, adFailed: false, adStarted: false });
+          },
+          adBreakDone: (placementInfo: any) => {
+            adFinished = true;
+            clearTimeout(adTimeout);
+            if (!adViewed && !adDismissed) {
+               localStorage.removeItem("khamin_pending_match_ad");
+               setMatchAdState({ show: false, timer: 0, adFailed: false, adStarted: false });
+            }
+          }
+        });
+      } catch(e) {
+        clearTimeout(adTimeout);
+        handleAdFailure();
+      }
+    } else {
+      localStorage.removeItem("khamin_pending_match_ad");
+      setMatchAdState({ show: false, timer: 0, adFailed: false, adStarted: false });
+    }
+  }, []);
+
+  useEffect(() => {
+    const me = room?.players.find((p) => p.id === socket?.id);
+    if (room && room.gameState !== previousGameStateRef.current) {
+      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished") {
+        matchesPlayedRef.current += 1;
+        if (matchesPlayedRef.current >= 3 && !me?.isPro) {
+          matchesPlayedRef.current = 0;
+          localStorage.setItem("khamin_pending_match_ad", "true");
+          setMatchAdState({ show: true, timer: 3, adFailed: false, adStarted: false });
+        }
+      } else if (room.gameState === "waiting" && localStorage.getItem("khamin_pending_match_ad") === "true" && !me?.isPro) {
+        setMatchAdState({ show: true, timer: 0, adFailed: true, adStarted: false });
+      }
+      previousGameStateRef.current = room.gameState;
+    }
+  }, [room?.gameState, room?.players, socket?.id]);
+
+  useEffect(() => {
+    if (matchAdState.show && matchAdState.timer > 0 && !matchAdState.adStarted && !matchAdState.adFailed) {
+      const timerId = setTimeout(() => {
+        setMatchAdState(prev => ({ ...prev, timer: prev.timer - 1 }));
+      }, 1000);
+      return () => clearTimeout(timerId);
+    } else if (matchAdState.show && matchAdState.timer === 0 && !matchAdState.adStarted && !matchAdState.adFailed) {
+      triggerMatchAd();
+    }
+  }, [matchAdState.show, matchAdState.timer, matchAdState.adStarted, matchAdState.adFailed, triggerMatchAd]);
+
+  useEffect(() => {
+    if (matchAdState.show) {
+      if (room?.id) {
+        socket?.emit("ad_started", { roomId: room.id, powerUpName: "تجهيز مباراة" });
+      }
+    } else {
+      if (room?.id) {
+        socket?.emit("ad_ended", { roomId: room.id });
+      }
+    }
+  }, [matchAdState.show, room?.id, socket]);
+
   const handleWatchCategoryAd = useCallback(() => {
     if (adTriggeredRef.current) return;
     adTriggeredRef.current = true;
@@ -11276,8 +11377,66 @@ export default function App() {
     );
   };
 
+  const renderMatchIntervalAdModal = () => {
+    if (!matchAdState.show) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9999] flex flex-col items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-[#FFF9F0] border-4 border-[#8B4513] p-6 md:p-8 rounded-3xl text-center max-w-sm w-full space-y-5 shadow-[0_0_40px_rgba(139,69,19,0.3)]"
+          dir="rtl"
+        >
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 border-2 border-blue-300">
+            <span className="text-3xl">📺</span>
+          </div>
+          
+          <h3 className="text-xl md:text-2xl font-black text-[#8B4513] leading-tight">
+            جاري تجهيز المباراة التالية...
+          </h3>
+          <p className="text-sm md:text-base text-gray-600 font-bold px-2">
+            شاهد الإعلان القصير للاستمرار!
+          </p>
+          
+          <div className="h-[80px] flex items-center justify-center">
+            {matchAdState.adFailed ? (
+              <button 
+                className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-2xl font-black text-lg transition-all shadow-[0_4px_0_rgb(37,99,235)] active:translate-y-1 active:shadow-none"
+                onClick={() => triggerMatchAd()}
+              >
+                استكمال الاعلان للاستمرار 📺
+              </button>
+            ) : matchAdState.timer > 0 ? (
+              <div className="relative w-20 h-20 flex items-center justify-center mx-auto">
+                <svg className="absolute inset-0 w-full h-full -rotate-90">
+                  <circle cx="40" cy="40" r="36" className="stroke-gray-200" strokeWidth="8" fill="none" />
+                  <circle 
+                    cx="40" 
+                    cy="40" 
+                    r="36" 
+                    className="stroke-blue-500 transition-all duration-1000" 
+                    strokeWidth="8" 
+                    fill="none" 
+                    strokeDasharray={`${2 * Math.PI * 36}`}
+                    strokeDashoffset={`${2 * Math.PI * 36 * (1 - matchAdState.timer / 3)}`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="text-3xl font-black text-blue-600 animate-pulse">{matchAdState.timer}</span>
+              </div>
+            ) : (
+               <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+  };
+
   const renderModals = () => (
     <>
+      {renderMatchIntervalAdModal()}
       {renderPlayerProfileModal()}
       {renderFriendsModal()}
       {renderPlayerSearchModal()}
@@ -12012,17 +12171,17 @@ export default function App() {
                           10 تخمينات
                         </div>
                         <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
-                          مقابل 25 مفتاح <Key className="w-3 h-3" />
+                          مقابل 100 مفتاح <Key className="w-3 h-3" />
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handleBuyTokensWithKeys}
-                        disabled={(keys || 0) < 25}
-                        className={`px-3 py-2 rounded-xl font-black text-sm transition-all shadow-md flex items-center gap-1 ${(keys || 0) < 25 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-yellow-400 hover:bg-yellow-500 text-black animate-pulse active:scale-95"}`}
+                        disabled={(keys || 0) < 100}
+                        className={`px-3 py-2 rounded-xl font-black text-sm transition-all shadow-md flex items-center gap-1 ${(keys || 0) < 100 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-yellow-400 hover:bg-yellow-500 text-black animate-pulse active:scale-95"}`}
                       >
-                        {(keys || 0) < 25 && <Lock className="w-4 h-4" />}
+                        {(keys || 0) < 100 && <Lock className="w-4 h-4" />}
                         تبديل
                       </button>
                     </div>
@@ -12035,12 +12194,19 @@ export default function App() {
                         👑
                       </div>
                       <div>
-                        <div className="font-bold text-[14px] md:text-lg text-brown-dark">
-                          باقة المحترفين 3 أيام
+                        <div className="font-bold text-[13px] md:text-lg text-brown-dark">
+                          باقة المحترفين 1 يوم
                         </div>
-                        <div className="text-xs font-bold text-yellow-600 flex items-center gap-1">
+                        <div className="text-xs font-bold text-yellow-600 flex items-center gap-1 mt-0.5">
                           مقابل 100 مفتاح{" "}
                           <Key className="w-3 h-3 text-yellow-500" />
+                        </div>
+                        <div className="text-[8px] md:text-xs font-bold text-gray-600 flex items-center gap-1 mt-0.5">
+                          استمتع باللعبة بدون اعلانات
+                          <div className="relative inline-flex items-center justify-center">
+                            <span className="w-3 h-3 md:w-3 md:h-3 flex items-center text-center justify-center">📺</span>
+                            <Ban className="w-4 h-4 md:w-5 md:h-5 text-red-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -23900,12 +24066,12 @@ export default function App() {
                         dir="ltr"
                       >
                         <span
-                          className={`text-2xl font-black font-mono tracking-wider ${(room.busCompleteAdViewers?.length || 0) > 0 || Object.values(room.busCompleteCooldowns || {}).some((c) => (c as number) > 0) ? "text-blue-600 animate-pulse" : room.timer <= 60 ? "text-red-600" : "text-gray-700"}`}
+                          className={`text-2xl font-black font-mono tracking-wider ${((room.busCompleteAdViewers?.length || 0) > 0 || (room.adPausedPlayersArray?.length || 0) > 0) || Object.values(room.busCompleteCooldowns || {}).some((c) => (c as number) > 0) ? "text-blue-600 animate-pulse" : room.timer <= 60 ? "text-red-600" : "text-gray-700"}`}
                         >
                           {Math.floor(room.timer / 60)}:
                           {(room.timer % 60).toString().padStart(2, "0")}
                         </span>
-                        {(room.busCompleteAdViewers?.length || 0) > 0 ||
+                        {((room.busCompleteAdViewers?.length || 0) > 0 || (room.adPausedPlayersArray?.length || 0) > 0) ||
                         Object.values(room.busCompleteCooldowns || {}).some(
                           (c) => (c as number) > 0,
                         ) ? (
@@ -24213,14 +24379,14 @@ export default function App() {
                             disabled={
                               room.gameState !== "bus_complete_playing" ||
                               meSubmitted ||
-                              (room.busCompleteAdViewers?.length || 0) > 0
+                              ((room.busCompleteAdViewers?.length || 0) > 0 || (room.adPausedPlayersArray?.length || 0) > 0)
                             }
                             className={`w-full py-2.5 rounded-2xl font-black text-lg md:text-xl transition-all shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent
-                              ${room.gameState === "bus_complete_playing" && !meSubmitted && (room.busCompleteAdViewers?.length || 0) === 0 ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
+                              ${room.gameState === "bus_complete_playing" && !meSubmitted && !((room.busCompleteAdViewers?.length || 0) > 0 || (room.adPausedPlayersArray?.length || 0) > 0) ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-[0_6px_0_0_#9ca3af]"}`}
                           >
                             {meSubmitted
                               ? "في انتظار اللاعب الآخر..."
-                              : (room.busCompleteAdViewers?.length || 0) > 0
+                              : ((room.busCompleteAdViewers?.length || 0) > 0 || (room.adPausedPlayersArray?.length || 0) > 0)
                                 ? "إعلان قيد التشغيل 📺"
                                 : "تخمينة كومبليت 🏁"}
                           </button>
