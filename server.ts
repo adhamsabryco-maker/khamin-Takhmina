@@ -1933,6 +1933,49 @@ async function startServer() {
       }
     });
 
+    const getWinningLines = (size: number, winLength: number): number[][] => {
+      const lines: number[][] = [];
+      // rows
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c <= size - winLength; c++) {
+          const line = [];
+          for (let i = 0; i < winLength; i++) line.push(r * size + c + i);
+          lines.push(line);
+        }
+      }
+      // cols
+      for (let c = 0; c < size; c++) {
+        for (let r = 0; r <= size - winLength; r++) {
+          const line = [];
+          for (let i = 0; i < winLength; i++) line.push((r + i) * size + c);
+          lines.push(line);
+        }
+      }
+      // diag right
+      for (let r = 0; r <= size - winLength; r++) {
+        for (let c = 0; c <= size - winLength; c++) {
+          const line = [];
+          for (let i = 0; i < winLength; i++) line.push((r + i) * size + c + i);
+          lines.push(line);
+        }
+      }
+      // diag left
+      for (let r = 0; r <= size - winLength; r++) {
+        for (let c = winLength - 1; c < size; c++) {
+          const line = [];
+          for (let i = 0; i < winLength; i++) line.push((r + i) * size + c - i);
+          lines.push(line);
+        }
+      }
+      return lines;
+    };
+
+    const getXOTimerLimit = (size: number): number => {
+      if (size <= 5) return 120; // 2 minutes for 3x3, 4x4, 5x5
+      if (size <= 8) return 180; // 3 minutes for 6x6, 7x7, 8x8
+      return 300; // 5 minutes for 9x9, 10x10
+    };
+
     // Game State
     const rooms = new Map<string, any>();
     const intervals = new Map<string, NodeJS.Timeout>();
@@ -5487,13 +5530,17 @@ async function startServer() {
           } else if (mode === "xo") {
             room.gameState = "xo_playing";
             room.category = "xo";
-            room.xoBoard = Array(9).fill(null);
+            room.xoLevel = 1;
+            const size = 3;
+            room.xoBoardSize = size;
+            room.xoWinLength = 3;
+            room.xoBoard = Array(size * size).fill(null);
             room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
             room.xoOPlayer = room.players.find((p: any) => p.id !== room.xoXPlayer).id;
             room.xoTurn = room.xoXPlayer;
             room.xoWinner = null;
             room.xoWinningLine = null;
-            room.timer = 120; // 2 minutes to finish a game, otherwise it ties or ends
+            room.timer = getXOTimerLimit(size); // Dynamic limit based on board size
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
             
             const interval = setInterval(() => {
@@ -5687,13 +5734,13 @@ async function startServer() {
         if (!r || r.gameState !== "xo_playing" || r.xoTurn !== bot.id) return;
 
         const emptyIndices = [];
-        for (let i = 0; i < 9; i++) if (r.xoBoard[i] === null) emptyIndices.push(i);
+        const size = r.xoBoardSize || 3;
+        const winLength = r.xoWinLength || 3;
+        const level = r.xoLevel || 1;
+        
+        for (let i = 0; i < size * size; i++) if (r.xoBoard[i] === null) emptyIndices.push(i);
         if (emptyIndices.length > 0) {
-          const winLines = [
-            [0,1,2], [3,4,5], [6,7,8],
-            [0,3,6], [1,4,7], [2,5,8],
-            [0,4,8], [2,4,6]
-          ];
+          const winLines = getWinningLines(size, winLength);
           
           let selectedIdx: number | null = null;
           const piece = r.xoXPlayer === bot.id ? "X" : "O";
@@ -5701,10 +5748,14 @@ async function startServer() {
           
           const getWinningMove = (p: string) => {
             for (const line of winLines) {
-              const [a, b, c] = line;
-              if (r.xoBoard[a] === p && r.xoBoard[b] === p && r.xoBoard[c] === null) return c;
-              if (r.xoBoard[a] === p && r.xoBoard[c] === p && r.xoBoard[b] === null) return b;
-              if (r.xoBoard[b] === p && r.xoBoard[c] === p && r.xoBoard[a] === null) return a;
+              let pCount = 0;
+              let nullCount = 0;
+              let nullIdx = -1;
+              for (const idx of line) {
+                if (r.xoBoard[idx] === p) pCount++;
+                else if (r.xoBoard[idx] === null) { nullCount++; nullIdx = idx; }
+              }
+              if (pCount === winLength - 1 && nullCount === 1) return nullIdx;
             }
             return null;
           };
@@ -5712,9 +5763,13 @@ async function startServer() {
           const winMove = getWinningMove(piece);
           const blockMove = getWinningMove(enemyPiece);
 
-          if (winMove !== null && Math.random() < 0.8) {
+          // Difficulty scaling based on level (1 to 8)
+          const winChance = 0.5 + (level * 0.06); // level 1: 0.56, level 8: 0.98
+          const blockChance = 0.4 + (level * 0.07); // level 1: 0.47, level 8: 0.96
+
+          if (winMove !== null && Math.random() < winChance) {
              selectedIdx = winMove;
-          } else if (blockMove !== null && Math.random() < 0.6) {
+          } else if (blockMove !== null && Math.random() < blockChance) {
              selectedIdx = blockMove;
           } else {
              selectedIdx = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
@@ -5725,9 +5780,15 @@ async function startServer() {
           let bWinner = null;
           let bWinningLine = null;
           for (const line of winLines) {
-            const [a, b, c] = line;
-            if (r.xoBoard[a] && r.xoBoard[a] === r.xoBoard[b] && r.xoBoard[a] === r.xoBoard[c]) {
-              bWinner = r.xoBoard[a] === "X" ? r.xoXPlayer : r.xoOPlayer;
+            let isWin = true;
+            for (const idx of line) {
+              if (r.xoBoard[idx] !== piece) {
+                isWin = false;
+                break;
+              }
+            }
+            if (isWin) {
+              bWinner = r.xoXPlayer === bot.id ? r.xoXPlayer : r.xoOPlayer;
               bWinningLine = line;
               break;
             }
@@ -5737,6 +5798,21 @@ async function startServer() {
             r.xoWinner = bWinner;
             r.xoWinningLine = bWinningLine;
             r.gameState = "xo_finished";
+            
+            const pWinner = r.players.find((p: any) => p.id === bWinner);
+            if (pWinner) {
+              pWinner.xoWins = (pWinner.xoWins || 0) + 1;
+              const dbP = allPlayers.get(pWinner.serial);
+              if (dbP) {
+                dbP.xoWins = pWinner.xoWins;
+                if (r.matchType === "random") {
+                  dbP.xoMatchPoints = (dbP.xoMatchPoints || 0) + 10;
+                }
+                pWinner.xoMatchPoints = dbP.xoMatchPoints;
+                savePlayerData(pWinner.serial);
+                io.to(pWinner.id).emit("player_data_update", dbP);
+              }
+            }
           } else if (r.xoBoard.every((cell: any) => cell !== null)) {
             r.xoWinner = "draw";
             r.gameState = "xo_finished";
@@ -8376,13 +8452,17 @@ async function startServer() {
           } else if (mode === "xo") {
             room.gameState = "xo_playing";
             room.category = "xo";
-            room.xoBoard = Array(9).fill(null);
+            room.xoLevel = 1;
+            const size = 3;
+            room.xoBoardSize = size;
+            room.xoWinLength = 3;
+            room.xoBoard = Array(size * size).fill(null);
             room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
             room.xoOPlayer = room.players.find((p: any) => p.id !== room.xoXPlayer).id;
             room.xoTurn = room.xoXPlayer;
             room.xoWinner = null;
             room.xoWinningLine = null;
-            room.timer = 120; // 2 minutes to finish a game, otherwise it ties or ends
+            room.timer = getXOTimerLimit(size); // Dynamic limit based on board size
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
             
             const interval = setInterval(() => {
@@ -8637,18 +8717,20 @@ async function startServer() {
              room.xoBoard[index] = piece;
              
              // Check win
-             const winLines = [
-               [0,1,2], [3,4,5], [6,7,8], // rows
-               [0,3,6], [1,4,7], [2,5,8], // cols
-               [0,4,8], [2,4,6]           // diagonals
-             ];
+             const winLines = getWinningLines(room.xoBoardSize || 3, room.xoWinLength || 3);
              
              let winner = null;
              let winningLine = null;
              for (const line of winLines) {
-               const [a, b, c] = line;
-               if (room.xoBoard[a] && room.xoBoard[a] === room.xoBoard[b] && room.xoBoard[a] === room.xoBoard[c]) {
-                 winner = room.xoBoard[a] === "X" ? room.xoXPlayer : room.xoOPlayer;
+               let isWin = true;
+               for (const idx of line) {
+                 if (room.xoBoard[idx] !== piece) {
+                   isWin = false;
+                   break;
+                 }
+               }
+               if (isWin) {
+                 winner = room.xoXPlayer === socket.id ? room.xoXPlayer : room.xoOPlayer;
                  winningLine = line;
                  break;
                }
@@ -10252,13 +10334,18 @@ async function startServer() {
         if (room && room.gameState === "xo_finished") {
             room.gameState = "xo_playing";
             room.category = "xo";
-            room.xoBoard = Array(9).fill(null);
+            room.xoLevel = (room.xoLevel || 1) + 1;
+            if (room.xoLevel > 8) room.xoLevel = 1;
+            const size = room.xoLevel + 2;
+            room.xoBoardSize = size;
+            room.xoWinLength = size === 3 ? 3 : (size === 4 || size === 5 ? 4 : 5);
+            room.xoBoard = Array(size * size).fill(null);
             room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
             room.xoOPlayer = room.players.find((p: any) => p.id !== room.xoXPlayer).id;
             room.xoTurn = room.xoXPlayer;
             room.xoWinner = null;
             room.xoWinningLine = null;
-            room.timer = 120;
+            room.timer = getXOTimerLimit(size);
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
             
             const interval = setInterval(() => {
@@ -10315,6 +10402,9 @@ async function startServer() {
           room.xoWinningLine = null;
           room.xoXPlayer = null;
           room.xoOPlayer = null;
+          room.xoLevel = 1;
+          room.xoBoardSize = 3;
+          room.xoWinLength = 3;
           
           room.busCompleteScores = {};
           room.busCompleteSubmitTimes = {};
