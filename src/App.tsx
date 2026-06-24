@@ -24584,11 +24584,24 @@ export default function App() {
                   </div>
                 )}
                 
-                <div className="flex justify-center my-4">
-                  <div className="grid grid-cols-3 gap-2 bg-gray-200 p-3 rounded-2xl w-full max-w-[320px] mx-auto shadow-inner border-4 border-gray-300">
+                <div className="text-center mb-1 px-2 mt-1">
+                  <p className="text-xs md:text-sm font-bold text-gray-600 bg-blue-50 p-2 rounded-xl border border-blue-100 w-fit mx-auto shadow-sm">
+                    اجمع {room.xoWinLength || 3} رموز متتالية للفوز!
+                  </p>
+                </div>
+                <div className="flex justify-center my-2">
+                  <div 
+                    className="bg-gray-200 p-2 md:p-3 rounded-2xl w-full max-w-[360px] mx-auto shadow-inner border-4 border-gray-300"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: `repeat(${room.xoBoardSize || 3}, minmax(0, 1fr))`,
+                      gap: (room.xoBoardSize || 3) > 6 ? '2px' : (room.xoBoardSize || 3) > 4 ? '4px' : '8px'
+                    }}
+                  >
                     {room.xoBoard?.map((cell, idx) => {
                       const isWinningCell = room.xoWinningLine?.includes(idx);
                       const myTurn = room.xoTurn === socket?.id && room.gameState === "xo_playing";
+                      const sizeClass = (room.xoBoardSize || 3) <= 4 ? "text-5xl md:text-6xl p-2" : (room.xoBoardSize || 3) <= 6 ? "text-3xl md:text-4xl p-1" : (room.xoBoardSize || 3) <= 8 ? "text-2xl md:text-3xl p-1" : "text-xl md:text-2xl p-0.5";
                       return (
                         <button
                           key={idx}
@@ -24597,7 +24610,7 @@ export default function App() {
                              socket?.emit("submit_xo_move", { roomId: room.id, index: idx });
                              playSound("clickOpen");
                           }}
-                          className={`aspect-square flex items-center justify-center text-5xl md:text-6xl font-black rounded-xl transition-all duration-200 transform
+                          className={`aspect-square flex items-center justify-center font-black rounded-[20%] transition-all duration-200 transform ${sizeClass}
                             ${cell === null ? "bg-white hover:bg-gray-50 cursor-pointer shadow-sm" : cell === "X" ? "bg-red-50 text-red-500 shadow-sm" : "bg-green-50 text-green-600 shadow-sm"}
                             ${isWinningCell ? "bg-yellow-200 ring-4 ring-yellow-400 scale-105 z-10 animate-bounce" : ""}
                             ${myTurn && cell === null ? "hover:scale-105 hover:shadow-md ring-2 ring-transparent hover:ring-blue-300" : cell !== null ? "" : "cursor-default opacity-80"}
@@ -24611,7 +24624,7 @@ export default function App() {
                 </div>
 
                 {room.gameState === "xo_playing" && (
-                   <div className="text-center font-bold text-base md:text-lg mb-2">
+                   <div className="text-center my-2 font-bold text-base md:text-lg mb-2">
                       {room.xoTurn === socket?.id ? (
                          <span className="text-blue-600 animate-pulse bg-blue-50 px-4 py-1 rounded-full border border-blue-200">دورك الآن للعب! 🎮</span>
                       ) : (
@@ -24637,7 +24650,9 @@ export default function App() {
                             playSound("clickOpen");
                             socket?.emit("play_again", { roomId: room.id });
                          }}
-                         className="flex-1 btn-game bg-blue-100 hover:bg-blue-200 text-blue-600 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5"
+                         disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                         className={`flex-1 btn-game py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5
+                           ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-blue-100 hover:bg-blue-200 text-blue-600 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
                        >
                          تغيير اللعبة
                        </button>
@@ -24646,9 +24661,11 @@ export default function App() {
                             playSound("clickOpen");
                             socket?.emit("restart_xo", { roomId: room.id });
                          }}
-                         className="flex-1 btn-game bg-green-100 hover:bg-green-200 text-green-700 shadow-[0_4px_0_0_#86efac] active:shadow-transparent py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5"
+                         disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                         className={`flex-1 btn-game py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5
+                           ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-green-100 hover:bg-green-200 text-green-700 shadow-[0_4px_0_0_#86efac] active:shadow-transparent"}`}
                        >
-                         لعب مرة أخري!
+                         {((room.adPausedPlayersArray?.length || 0) > 0) ? "إعلان قيد التشغيل 📺" : (room.xoLevel || 1) < 8 ? `انتقل الي المستوي ${(room.xoLevel || 1) + 1}` : "لعب مرة أخري!"}
                        </button>
                      </div>
                      <button
