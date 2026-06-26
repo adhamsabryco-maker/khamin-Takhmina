@@ -389,6 +389,7 @@ const SOUNDS = {
   clickOpen: "/sounds/click-open.mp3",
   clickClose: "/sounds/click-close.mp3",
   tick: "/sounds/tick.mp3",
+  clockTicking: "/sounds/clock-ticking.mp3",
   luckyReels: "/sounds/lucky-reels-sound-effect.mp3",
   spinStart: "/sounds/lucky-reels-sound-effect.mp3",
   proArrival: "/sounds/proArrival.mp3",
@@ -627,9 +628,11 @@ interface Room {
   busCompleteSubmitTimes?: Record<string, number>;
   busCompleteTimerReduction?: number;
   busCompleteChangeLetterRequestBy?: string | null;
+  busCompleteRematchRequestedBy?: string[];
   xoBoard?: (string | null)[];
   xoTurn?: string | null;
   xoWinner?: string | "draw" | null;
+  xoMatchWins?: { [key: string]: number };
   xoWinningLine?: number[] | null;
   xoXPlayer?: string | null;
   xoOPlayer?: string | null;
@@ -1182,6 +1185,7 @@ export default function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [reconnectWaitingMessage, setReconnectWaitingMessage] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState(
     () => localStorage.getItem("khamin_player_name") || "",
   );
@@ -6690,6 +6694,14 @@ export default function App() {
       setRoom((prev) => (prev ? { ...prev, timer } : null));
     });
 
+    newSocket.on("player_disconnected_waiting", ({ name }) => {
+      setReconnectWaitingMessage(`انتظر قليلاً! انقطع اتصال ${name}، ننتظر عودته...`);
+    });
+
+    newSocket.on("player_reconnected", ({ name }) => {
+      setReconnectWaitingMessage(null);
+    });
+
     newSocket.on("chat_bubble", async ({ senderId, text }) => {
       if (senderId !== newSocket.id && isOpponentBlockedRef.current) return;
 
@@ -7169,6 +7181,7 @@ export default function App() {
     });
 
     newSocket.on("game_stopped", ({ reason }) => {
+      setReconnectWaitingMessage(null);
       setError(reason);
       setTimeout(() => setError(""), 5000);
       setJoined(false);
@@ -7653,6 +7666,24 @@ export default function App() {
       }
     } else {
       stopSound("tick");
+    }
+  }, [room?.timer, room?.gameState, playSound, stopSound]);
+
+  // Clock ticking for bus_complete_playing last minute
+  useEffect(() => {
+    if (!room) return;
+    const isBusCompleteHurry = room.gameState === "bus_complete_playing" && room.timer <= 60 && room.timer > 0;
+    
+    if (isBusCompleteHurry) {
+       if (lastTickTimeRef.current.busCompleteHurryStarted !== 1) {
+         playSound("clockTicking", 0.5);
+         lastTickTimeRef.current.busCompleteHurryStarted = 1;
+       }
+    } else {
+       if (lastTickTimeRef.current.busCompleteHurryStarted === 1) {
+         stopSound("clockTicking");
+         lastTickTimeRef.current.busCompleteHurryStarted = 0;
+       }
     }
   }, [room?.timer, room?.gameState, playSound, stopSound]);
 
@@ -11153,44 +11184,52 @@ export default function App() {
                 <span>{data.xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
               </div>
 
-              {/* Add Friend Button */}
+              {/* Friend Status Indicator / Add Friend Button */}
               {data.serial !== playerSerial &&
-                friendStatus !== "friends" &&
                 !data.isAdmin &&
                 !data.isBlocked &&
-                !data.hasBlockedMe &&
-                (!data.hideFriendRequests || friendStatus !== "none") && (
-                  <button
-                    disabled={friendStatus !== "none"}
-                    onClick={() => {
-                      if (friendStatus === "none") {
-                        playSound("clickOpen");
-                        handleAddFriend(data.serial);
-                        setSelectedProfileSerial(null);
-                      }
-                    }}
-                    className={`w-full max-w-[200px] mx-auto py-2 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all ${
-                      friendStatus === "pending_sent"
-                        ? "bg-orange-100 text-orange-700 border-2 border-orange-200"
-                        : friendStatus === "pending_received"
-                          ? "bg-blue-100 text-blue-700 border-2 border-blue-200"
-                          : "bg-white text-purple-700 hover:bg-gray-100 shadow-md border-b-2 border-gray-300 active:translate-y-px active:border-b-0 target-add-btn"
-                    }`}
-                  >
-                    {friendStatus === "pending_sent" ? (
-                      <>
-                        <Clock className="w-4 h-4" /> طلب صداقة مرسل
-                      </>
-                    ) : friendStatus === "pending_received" ? (
-                      <>
-                        <Users className="w-4 h-4" /> لديه طلب لك بالصداقة
-                      </>
+                !data.hasBlockedMe && (
+                  <>
+                    {friendStatus === "friends" ? (
+                      <div className="w-full max-w-[200px] mx-auto py-2 rounded-xl font-black text-xs flex items-center justify-center gap-2 bg-green-100 text-green-700 border-2 border-green-200">
+                        <Users className="w-4 h-4" /> صديق
+                      </div>
                     ) : (
-                      <>
-                        <UserPlus className="w-4 h-4" /> إضافة صديق
-                      </>
+                      (!data.hideFriendRequests || friendStatus !== "none") && (
+                        <button
+                          disabled={friendStatus !== "none"}
+                          onClick={() => {
+                            if (friendStatus === "none") {
+                              playSound("clickOpen");
+                              handleAddFriend(data.serial);
+                              setSelectedProfileSerial(null);
+                            }
+                          }}
+                          className={`w-full max-w-[200px] mx-auto py-2 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all ${
+                            friendStatus === "pending_sent"
+                              ? "bg-orange-100 text-orange-700 border-2 border-orange-200"
+                              : friendStatus === "pending_received"
+                                ? "bg-blue-100 text-blue-700 border-2 border-blue-200"
+                                : "bg-white text-purple-700 hover:bg-gray-100 shadow-md border-b-2 border-gray-300 active:translate-y-px active:border-b-0 target-add-btn"
+                          }`}
+                        >
+                          {friendStatus === "pending_sent" ? (
+                            <>
+                              <Clock className="w-4 h-4" /> طلب صداقة مرسل
+                            </>
+                          ) : friendStatus === "pending_received" ? (
+                            <>
+                              <Users className="w-4 h-4" /> لديه طلب لك بالصداقة
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-4 h-4" /> إضافة صديق
+                            </>
+                          )}
+                        </button>
+                      )
                     )}
-                  </button>
+                  </>
                 )}
             </div>
 
@@ -23641,10 +23680,6 @@ export default function App() {
                     className="mt-2 font-black text-[11px] md:text-sm text-main flex items-center gap-2"
                     dir="ltr"
                   >
-                    <div class="flex items-center gap-1.5">
-                      <span class="w-6 h-6 p-1 -m-1" title="empty space"></span>
-                      <span class="w-6 h-6 p-1 -m-1" title="empty space"></span>
-                    </div>
                     <span className="truncate max-w-[60px] md:max-w-[100px]">
                       {opponent.name}
                     </span>
@@ -24387,7 +24422,7 @@ export default function App() {
                             {meSubmitted
                               ? "في انتظار اللاعب الآخر..."
                               : ((room.busCompleteAdViewers?.length || 0) > 0 || (room.adPausedPlayersArray?.length || 0) > 0)
-                                ? "إعلان قيد التشغيل 📺"
+                                ? "انتظر! المنافس يشاهد إعلان 📺"
                                 : "تخمينة كومبليت 🏁"}
                           </button>
 
@@ -24413,9 +24448,17 @@ export default function App() {
             ) : room.gameState === "bus_complete_evaluating" ? (
               <React.Fragment>
                 <div className="w-full card-game p-4 md:p-6 text-center space-y-4 md:space-y-6 relative overflow-hidden flex flex-col min-h-[400px]">
-                <h2 className="text-2xl font-black text-blue-600">
+                <h2 className="text-2xl mb-2 font-black text-blue-600">
                   نتيجة تخمينة كومبليت
                 </h2>
+                
+                <div className="text-xl md:text-2xl font-black p-2 bg-yellow-200 mb-2 text-brown-dark">
+                  {room.busCompleteWinner === socket?.id
+                    ? "🏆 لقد فزت! 🏆"
+                    : room.busCompleteWinner === "tie"
+                      ? "🤝 تعادل!"
+                      : "😢 حظ أوفر المرة القادمة"}
+                </div>
 
                 <div className="flex flex-col gap-4">
                   {room.players.map((p) => {
@@ -24493,20 +24536,12 @@ export default function App() {
                   })}
                 </div>
 
-                <div className="text-2xl font-black my-0.5 text-brown-dark">
-                  {room.busCompleteWinner === socket?.id
-                    ? "🏆 لقد فزت! 🏆"
-                    : room.busCompleteWinner === "tie"
-                      ? "🤝 تعادل!"
-                      : "😢 حظ أوفر المرة القادمة"}
-                </div>
-
                 <div className="flex flex-col gap-3 mt-2">
                   <button
                     onClick={() => {
-                      socket?.emit("select_private_mode", {
+                      if ((room.adPausedPlayersArray?.length || 0) > 0) return;
+                      socket?.emit("request_bus_complete_rematch", {
                         roomId,
-                        mode: "bus_complete",
                       });
                       setBusAnswers({
                         boy: "",
@@ -24517,9 +24552,24 @@ export default function App() {
                         country: "",
                       });
                     }}
-                    className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2"
+                    disabled={(room.adPausedPlayersArray?.length || 0) > 0 || room.busCompleteRematchRequestedBy?.includes(socket?.id || "")}
+                    className={`w-full btn-game shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2 ${
+                      (room.adPausedPlayersArray?.length || 0) > 0
+                        ? "bg-gray-300 hover:bg-gray-400 text-gray-700 shadow-[0_6px_0_0_#9ca3af]"
+                        : room.busCompleteRematchRequestedBy?.includes(room.players.find(p => p.id !== socket?.id)?.id || "")
+                          ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_6px_0_0_#166534]"
+                          : room.busCompleteRematchRequestedBy?.includes(socket?.id || "")
+                            ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_6px_0_0_#166534]"
+                            : "bg-blue-500 hover:bg-blue-600 text-white"
+                    }`}
                   >
-                    🔄 اللعب مرة أخرى كومبليت
+                    {(room.adPausedPlayersArray?.length || 0) > 0
+                      ? "انتظر! المنافس يشاهد إعلان 📺"
+                      : room.busCompleteRematchRequestedBy?.includes(socket?.id || "")
+                        ? "في انتظار المنافس..."
+                        : room.busCompleteRematchRequestedBy?.includes(room.players.find(p => p.id !== socket?.id)?.id || "")
+                          ? "🎮 المنافس جاهز للعب"
+                          : "🔄 اللعب مرة أخرى كومبليت"}
                   </button>
                   <button
                     onClick={() => {
@@ -24635,6 +24685,43 @@ export default function App() {
 
                 {room.gameState === "xo_finished" && (
                    <div className="flex flex-col gap-3 mt-4 animate-in fade-in slide-in-from-bottom-4">
+                     {room.xoLevel === 8 ? (
+                       <div className="text-xl md:text-2xl font-black p-3 md:p-4 rounded-2xl border-4 bg-white mx-2 flex flex-col items-center">
+                         <span className="text-gray-800 mb-2">انتهت المباراة! النتيجة النهائية:</span>
+                         {(() => {
+                            const p1 = room.players[0];
+                            const p2 = room.players[1] || { id: "draw", name: "تعادل", avatar: "👤" };
+                            const p1Wins = room.xoMatchWins?.[p1.id] || 0;
+                            const p2Wins = room.xoMatchWins?.[p2.id] || 0;
+                            const isP1Winner = p1Wins > p2Wins;
+                            const isP2Winner = p2Wins > p1Wins;
+                            const isDraw = p1Wins === p2Wins;
+
+                            const me = room.players.find(p => p.id === socket?.id);
+                            
+                            let resultMessage = "";
+                            if (isDraw) resultMessage = "النتيجة النهائية تعادل! 🤝";
+                            else if ((isP1Winner && me?.id === p1.id) || (isP2Winner && me?.id === p2.id)) resultMessage = "لقد فزت بالمباراة! 🎉";
+                            else resultMessage = "لقد خسرت المباراة! 😔";
+                            
+                            return (
+                              <>
+                                <span className={`whitespace-pre-wrap ${isDraw ? "text-gray-600" : ((isP1Winner && me?.id === p1.id) || (isP2Winner && me?.id === p2.id)) ? "text-green-500" : "text-red-500"}`}>{resultMessage}</span>
+                                <div className="flex justify-around w-full mt-4 bg-gray-50 rounded-xl p-2 border">
+                                  <div className="flex flex-col items-center gap-1 w-1/2">
+                                    <span className="text-lg">{p1.name} {isP1Winner ? "😁" : (isDraw ? "🤝" : "😡")}</span>
+                                    <span className="text-2xl text-blue-600">{p1Wins}</span>
+                                  </div>
+                                  <div className="flex flex-col items-center gap-1 border-r border-gray-300 w-1/2">
+                                    <span className="text-lg">{p2.name} {isP2Winner ? "😁" : (isDraw ? "🤝" : "😡")}</span>
+                                    <span className="text-2xl text-blue-600">{p2Wins}</span>
+                                  </div>
+                                </div>
+                              </>
+                            );
+                         })()}
+                       </div>
+                     ) : (
                      <div className="text-xl md:text-2xl font-black p-3 md:p-4 rounded-2xl border-4 bg-white mx-2">
                         {room.xoWinner === "draw" ? (
                            <span className="text-gray-600 whitespace-pre-wrap">تعادل! 🤝{"\n"}لا يوجد فائز هذه المرة</span>
@@ -24644,6 +24731,7 @@ export default function App() {
                            <span className="text-red-500 whitespace-pre-wrap">حظ أوفر المرة القادمة! 😔{"\n"}تعلم من أخطائك</span>
                         )}
                      </div>
+                     )}
                      <div className="flex gap-2 w-full justify-center mt-2 px-2 pb-2">
                        <button
                          onClick={() => {
@@ -24665,7 +24753,7 @@ export default function App() {
                          className={`flex-1 btn-game py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5
                            ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-green-100 hover:bg-green-200 text-green-700 shadow-[0_4px_0_0_#86efac] active:shadow-transparent"}`}
                        >
-                         {((room.adPausedPlayersArray?.length || 0) > 0) ? "إعلان قيد التشغيل 📺" : (room.xoLevel || 1) < 8 ? `انتقل الي المستوي ${(room.xoLevel || 1) + 1}` : "لعب مرة أخري!"}
+                         {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺" : (room.xoLevel || 1) < 8 ? `انتقل الي المستوي ${(room.xoLevel || 1) + 1}` : "لعب مرة أخري!"}
                        </button>
                      </div>
                      <button
@@ -24711,6 +24799,12 @@ export default function App() {
                       )}
                     </div>
                   </div>
+
+                  {((room.adPausedPlayersArray?.length || 0) > 0) && !room.adPausedPlayersArray?.includes(socket?.id) && (
+                    <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-bold p-2 rounded-xl mb-3 flex items-center justify-center gap-1 animate-pulse">
+                      انتظر قليلا! اللاعب ({room.players?.find((p: any) => room.adPausedPlayersArray?.includes(p.id))?.name || "الآخر"}) يشاهد إعلان قصير 📺
+                    </div>
+                  )}
 
                   <div className="space-y-4">
                     {isPrivate && room.players.length < 2 && (
@@ -26951,6 +27045,16 @@ export default function App() {
             />
           )}
         </AnimatePresence>
+
+        {reconnectWaitingMessage && (
+          <div className="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-6 shadow-xl flex flex-col items-center max-w-sm text-center">
+              <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
+              <p className="font-bold text-gray-800 text-lg">{reconnectWaitingMessage}</p>
+            </div>
+          </div>
+        )}
+
       </div>
     </>
   );
