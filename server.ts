@@ -219,6 +219,26 @@ if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
   );
 }
 
+let botNamesData: { boy: string[]; girl: string[] } = { boy: [], girl: [] };
+try {
+  botNamesData = JSON.parse(
+    fs.readFileSync(
+      path.join(process.cwd(), "src/data/botNames.json"),
+      "utf8",
+    ),
+  );
+} catch (e) {
+  console.log("Error loading botNames.json", e);
+}
+
+function getRandomBotName(gender: string): string {
+  const list = botNamesData[gender as "boy" | "girl"] || [];
+  if (list.length > 0) {
+    return list[Math.floor(Math.random() * list.length)];
+  }
+  return gender === "girl" ? "لؤلؤة" : "العقيد";
+}
+
 const BOT_PERSONAS = [
   // --- مستوى القمة (36 - 40) - Avatar 40 ---
   {
@@ -4541,11 +4561,13 @@ async function startServer() {
           if (!p.isBot && Date.now() - p.joinedAt > 5000) {
             const botPersona =
               BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
+            const botName = getRandomBotName(botPersona.gender);
             const bot = {
               id: "bot_" + Date.now() + Math.random().toString(36).substr(2, 5),
               playerId:
                 "bot_" + Date.now() + Math.random().toString(36).substr(2, 5),
-              playerName: botPersona.name,
+              playerName: botName,
+              personaName: botPersona.name,
               avatar: botPersona.avatar,
               gender: botPersona.gender,
               age: botPersona.age,
@@ -4557,12 +4579,13 @@ async function startServer() {
               joinedAt: Date.now(),
               status: "searching",
               isBot: true,
+              persona: botPersona.personality,
               socket: {
                 id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
                 connected: true,
                 emit: (event: string, data: any) => {
                   console.log(
-                    `[Bot ${botPersona.name}] Received event ${event}:`,
+                    `[Bot ${botPersona.name} as ${botName}] Received event ${event}:`,
                     data,
                   );
                 },
@@ -4710,6 +4733,7 @@ async function startServer() {
             reportedBy: p2ServerPlayer ? p2ServerPlayer.reportedBy : [],
             isBot: match.p2.isBot,
             persona: match.p2.persona,
+            personaName: match.p2.personaName,
             useToken: match.p2.useToken,
             profanityCount: 0,
             helpersUsedCount: 0,
@@ -4795,10 +4819,12 @@ async function startServer() {
 
           // Use the avatar defined in the persona
           const botAvatar = botPersona.avatar;
+          const botName = getRandomBotName(botPersona.gender);
 
           const botPlayer = {
             playerId: `bot_${Math.random().toString(36).substr(2, 9)}`,
-            playerName: botPersona.name,
+            playerName: botName,
+            personaName: botPersona.name,
             avatar: botAvatar,
             age: botPersona.age,
             gender: botPersona.gender,
@@ -5012,7 +5038,7 @@ async function startServer() {
 
       try {
         const player = currentRoom.players.find((p: any) => !p.isBot);
-        const botPersona = BOT_PERSONAS.find((p) => p.name === bot.name);
+        const botPersona = BOT_PERSONAS.find((p) => p.name === (bot.personaName || bot.name));
 
         // Bot Quick Guess Logic
         const winCount = playerBotHistory.get(player.playerId) || 0;
@@ -5531,6 +5557,7 @@ async function startServer() {
             room.gameState = "xo_playing";
             room.category = "xo";
             room.xoLevel = 1;
+            room.xoMatchWins = {};
             const size = 3;
             room.xoBoardSize = size;
             room.xoWinLength = 3;
@@ -5557,6 +5584,8 @@ async function startServer() {
                     clearInterval(interval);
                     r.xoWinner = "draw";
                     r.gameState = "xo_finished";
+                    r.xoMatchWins = r.xoMatchWins || {};
+                    r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
                     io.to(roomId).emit("room_update", r);
                   } else {
                     io.to(roomId).emit("timer_update", r.timer);
@@ -5576,6 +5605,7 @@ async function startServer() {
             room.category = null;
             room.busCompleteLetter = null;
             room.busCompleteSubmittedPlayers = [];
+            room.busCompleteRematchRequestedBy = [];
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
             startWaitingInterval(roomId);
           }
@@ -5702,6 +5732,10 @@ async function startServer() {
                 clearInterval(interval);
                 currentRoom.gameState = "bus_complete_evaluating"; // Time is up
                 evaluateBusCompleteAnswers(currentRoom);
+                
+                const bot = currentRoom.players.find((p: any) => p.isBot);
+                if (bot) handleBotEvent(roomId, "room_update", currentRoom);
+                
                 io.to(roomId).emit("room_update", currentRoom);
               } else {
                 io.to(roomId).emit("room_update", currentRoom);
@@ -5798,6 +5832,8 @@ async function startServer() {
             r.xoWinner = bWinner;
             r.xoWinningLine = bWinningLine;
             r.gameState = "xo_finished";
+            r.xoMatchWins = r.xoMatchWins || {};
+            r.xoMatchWins[bWinner] = (r.xoMatchWins[bWinner] || 0) + 1;
             
             const pWinner = r.players.find((p: any) => p.id === bWinner);
             if (pWinner) {
@@ -5816,6 +5852,8 @@ async function startServer() {
           } else if (r.xoBoard.every((cell: any) => cell !== null)) {
             r.xoWinner = "draw";
             r.gameState = "xo_finished";
+            r.xoMatchWins = r.xoMatchWins || {};
+            r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
           } else {
             r.xoTurn = r.xoXPlayer === bot.id ? r.xoOPlayer : r.xoXPlayer;
           }
@@ -5914,6 +5952,35 @@ async function startServer() {
               ? (60000 + Math.random() * 120000)   // 1 to 3 minutes
               : (150000 + Math.random() * 90000); // 2.5 to 4 minutes
 
+            const watchAdChance = Math.random();
+            if (watchAdChance < 0.3) {
+              const delayBeforeAd = submitDelay * 0.4;
+              const adDuration = 5000 + Math.random() * 5000;
+              setTimeout(() => {
+                 const currentRoom = rooms.get(roomId);
+                 if (currentRoom && currentRoom.gameState === "bus_complete_playing" && !currentRoom.busCompleteSubmittedPlayers?.includes(botPlayer.id)) {
+                     if (!currentRoom.adPausedPlayers) currentRoom.adPausedPlayers = new Set();
+                     currentRoom.adPausedPlayers.add(botPlayer.id);
+                     currentRoom.adPausedPlayersArray = Array.from(currentRoom.adPausedPlayers);
+                     if (!currentRoom.powerUpAdsInProgress) currentRoom.powerUpAdsInProgress = new Map();
+                     currentRoom.powerUpAdsInProgress.set(botPlayer.id, "bot_simulated_ad");
+                     io.to(roomId).emit("room_update", currentRoom);
+                     
+                     setTimeout(() => {
+                        const rAfterAd = rooms.get(roomId);
+                        if (rAfterAd && rAfterAd.adPausedPlayers) {
+                            rAfterAd.adPausedPlayers.delete(botPlayer.id);
+                            rAfterAd.adPausedPlayersArray = Array.from(rAfterAd.adPausedPlayers);
+                            if (rAfterAd.powerUpAdsInProgress) {
+                               rAfterAd.powerUpAdsInProgress.delete(botPlayer.id);
+                            }
+                            io.to(roomId).emit("room_update", rAfterAd);
+                        }
+                     }, adDuration);
+                 }
+              }, delayBeforeAd);
+            }
+
             const timeout = setTimeout(() => {
               const r = rooms.get(roomId);
               if (!r || r.gameState !== "bus_complete_playing" || r.busCompleteSubmittedPlayers?.includes(botPlayer.id)) return;
@@ -5976,6 +6043,7 @@ async function startServer() {
                   }
                   r.gameState = "bus_complete_evaluating";
                   evaluateBusCompleteAnswers(r);
+                  handleBotEvent(roomId, "room_update", r);
                 }
               }
               io.to(roomId).emit("room_update", r);
@@ -6010,6 +6078,37 @@ async function startServer() {
             clearTimeout(botTimeouts.get(roomId + "_bus_setup_timeout"));
             botTimeouts.delete(roomId + "_bus_setup_timeout");
           }
+        }
+
+        // Handle auto-rematch in evaluating state
+        if (room.gameState === "bus_complete_evaluating") {
+           if (!botFlags.has(roomId + "_bus_eval_rematch")) {
+              botFlags.set(roomId + "_bus_eval_rematch", true);
+              const rematchDelay = 8000 + Math.random() * 7000; // 8 - 15 seconds
+              setTimeout(() => {
+                 const r = rooms.get(roomId);
+                 if (r && r.gameState === "bus_complete_evaluating") {
+                    if (!r.busCompleteRematchRequestedBy) {
+                       r.busCompleteRematchRequestedBy = [];
+                    }
+                    if (!r.busCompleteRematchRequestedBy.includes(botPlayer.id)) {
+                       r.busCompleteRematchRequestedBy.push(botPlayer.id);
+                    }
+                    if (r.busCompleteRematchRequestedBy.length >= 2) {
+                       r.gameState = "bus_complete_setup";
+                       r.category = "تخمينة كومبليت";
+                       r.busCompleteLetter = null;
+                       r.busCompleteSubmittedPlayers = [];
+                       r.busCompleteRematchRequestedBy = [];
+                       if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                       handleBotEvent(roomId, "room_update", r);
+                    }
+                    io.to(roomId).emit("room_update", r);
+                 }
+              }, rematchDelay);
+           }
+        } else {
+           botFlags.delete(roomId + "_bus_eval_rematch");
         }
 
         // Requirement 6: Category selection negotiation
@@ -6368,7 +6467,7 @@ async function startServer() {
 
         try {
           const botPersona = BOT_PERSONAS.find(
-            (p) => p.name === botPlayer.name,
+            (p) => p.name === (botPlayer.personaName || botPlayer.name),
           );
 
           console.log(
@@ -8149,6 +8248,24 @@ async function startServer() {
             tempItems: getTempItemsSum(player),
           };
           callback(enrichedPlayer);
+          
+          // Reconnect logic
+          for (const [roomId, room] of rooms.entries()) {
+            if (room.isWaitingForReconnect && room.disconnectedPlayerSerial === serial) {
+              clearTimeout(room.reconnectTimeoutId);
+              room.isWaitingForReconnect = false;
+              room.disconnectedPlayerSerial = null;
+              
+              const p = room.players.find((pl:any) => pl.serial === serial);
+              if (p) {
+                p.id = socket.id;
+              }
+              socket.join(roomId);
+              io.to(roomId).emit("player_reconnected", { name: p ? p.name : "اللاعب" });
+              socket.emit("room_update", room);
+              break;
+            }
+          }
         } else if (callback) {
           callback(null);
         }
@@ -8453,6 +8570,7 @@ async function startServer() {
             room.gameState = "xo_playing";
             room.category = "xo";
             room.xoLevel = 1;
+            room.xoMatchWins = {};
             const size = 3;
             room.xoBoardSize = size;
             room.xoWinLength = 3;
@@ -8479,6 +8597,8 @@ async function startServer() {
                     clearInterval(interval);
                     r.xoWinner = "draw";
                     r.gameState = "xo_finished";
+                    r.xoMatchWins = r.xoMatchWins || {};
+                    r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
                     io.to(roomId).emit("room_update", r);
                   } else {
                     io.to(roomId).emit("timer_update", r.timer);
@@ -8498,8 +8618,38 @@ async function startServer() {
             room.category = null;
             room.busCompleteLetter = null;
             room.busCompleteSubmittedPlayers = [];
+            room.busCompleteRematchRequestedBy = [];
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
             startWaitingInterval(roomId);
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("request_bus_complete_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "bus_complete_evaluating") {
+          if (!room.busCompleteRematchRequestedBy) {
+            room.busCompleteRematchRequestedBy = [];
+          }
+          if (!room.busCompleteRematchRequestedBy.includes(socket.id)) {
+            room.busCompleteRematchRequestedBy.push(socket.id);
+          }
+
+          if (room.busCompleteRematchRequestedBy.length >= 2) {
+            // Both players want to play again
+            room.gameState = "bus_complete_setup";
+            room.category = "تخمينة كومبليت";
+            room.busCompleteLetter = null;
+            room.busCompleteSubmittedPlayers = [];
+            room.busCompleteRematchRequestedBy = [];
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            
+            // Trigger bot logic for the new game
+            const opponent = room.players.find((p: any) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           }
           io.to(roomId).emit("room_update", room);
         }
@@ -8690,6 +8840,7 @@ async function startServer() {
                             }
                             r.gameState = "bus_complete_evaluating";
                             evaluateBusCompleteAnswers(r);
+                            handleBotEvent(roomId, "room_update", r);
                           }
                         }
                         io.to(roomId).emit("room_update", r);
@@ -8703,6 +8854,8 @@ async function startServer() {
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
             room.gameState = "bus_complete_evaluating";
             evaluateBusCompleteAnswers(room);
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) handleBotEvent(roomId, "room_update", room);
           }
 
           io.to(roomId).emit("room_update", room);
@@ -8740,6 +8893,8 @@ async function startServer() {
                room.xoWinner = winner;
                room.xoWinningLine = winningLine;
                room.gameState = "xo_finished";
+               room.xoMatchWins = room.xoMatchWins || {};
+               room.xoMatchWins[winner] = (room.xoMatchWins[winner] || 0) + 1;
                
                // Update wins and points for winner
                const pWinner = room.players.find((p: any) => p.id === winner);
@@ -8759,6 +8914,8 @@ async function startServer() {
              } else if (room.xoBoard.every((cell: any) => cell !== null)) {
                room.xoWinner = "draw";
                room.gameState = "xo_finished";
+               room.xoMatchWins = room.xoMatchWins || {};
+               room.xoMatchWins["draw"] = (room.xoMatchWins["draw"] || 0) + 1;
              } else {
                room.xoTurn = room.xoXPlayer === socket.id ? room.xoOPlayer : room.xoXPlayer;
              }
@@ -9578,7 +9735,7 @@ async function startServer() {
 
         // Helper function to drop a key
         const dropKeyChance = () => {
-          if (dbPlayer && Math.random() < 0.15) {
+          if (dbPlayer && !hasPro && Math.random() < 0.15) {
             dbPlayer.keys = (dbPlayer.keys || 0) + 1;
             savePlayerData(serial);
             emitPlayerDataUpdate(socket, serial, {
@@ -10243,7 +10400,7 @@ async function startServer() {
           if (player) {
             const opponent = room.players.find((p: any) => p.id !== socket.id);
 
-            if (room.gameState !== "finished" && room.gameState !== "waiting") {
+            if (room.gameState !== "finished" && room.gameState !== "xo_finished" && room.gameState !== "bus_complete_evaluating" && room.gameState !== "waiting") {
               // Player intentionally left during an active game
               const messageObj = {
                 senderId: "system",
@@ -10282,12 +10439,15 @@ async function startServer() {
               intervals.delete(roomId);
             }
 
-            if (room.gameState !== "finished") {
+            if (room.gameState !== "finished" && room.gameState !== "xo_finished" && room.gameState !== "bus_complete_evaluating") {
               io.in(roomId).socketsLeave(roomId);
               rooms.delete(roomId);
             } else {
               // Emit room update so the remaining player knows the opponent left
               socket.to(roomId).emit("room_update", room);
+              if (room.players.every((p: any) => p.isBot)) {
+                rooms.delete(roomId);
+              }
             }
           }
         }
@@ -10335,7 +10495,10 @@ async function startServer() {
             room.gameState = "xo_playing";
             room.category = "xo";
             room.xoLevel = (room.xoLevel || 1) + 1;
-            if (room.xoLevel > 8) room.xoLevel = 1;
+            if (room.xoLevel > 8) {
+              room.xoLevel = 1;
+              room.xoMatchWins = {};
+            }
             const size = room.xoLevel + 2;
             room.xoBoardSize = size;
             room.xoWinLength = size === 3 ? 3 : (size === 4 || size === 5 ? 4 : 5);
@@ -10362,6 +10525,8 @@ async function startServer() {
                     clearInterval(interval);
                     r.xoWinner = "draw";
                     r.gameState = "xo_finished";
+                    r.xoMatchWins = r.xoMatchWins || {};
+                    r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
                     io.to(roomId).emit("room_update", r);
                   } else {
                     io.to(roomId).emit("timer_update", r.timer);
@@ -10403,6 +10568,7 @@ async function startServer() {
           room.xoXPlayer = null;
           room.xoOPlayer = null;
           room.xoLevel = 1;
+          room.xoMatchWins = {};
           room.xoBoardSize = 3;
           room.xoWinLength = 3;
           
@@ -13091,7 +13257,7 @@ async function startServer() {
               reason === "client namespace disconnect" ||
               leavingPlayer.intentionallyLeft;
 
-            if (room.gameState !== "finished" && room.gameState !== "waiting") {
+            if (room.gameState !== "finished" && room.gameState !== "xo_finished" && room.gameState !== "bus_complete_evaluating" && room.gameState !== "waiting") {
               if (isIntentional) {
                 if (
                   leavingPlayer.useToken &&
@@ -13108,13 +13274,49 @@ async function startServer() {
                   });
                 }
               } else {
-                io.to(roomId).emit("chat_bubble", {
-                  senderId: "system",
-                  text: `انقطع اتصال ${leavingPlayer.name}`,
-                });
+                room.isWaitingForReconnect = true;
+                room.disconnectedPlayerSerial = leavingPlayer.serial;
+                io.to(roomId).emit("player_disconnected_waiting", { name: leavingPlayer.name });
+                
+                const timeoutId = setTimeout(() => {
+                  const currentRoom = rooms.get(roomId);
+                  if (currentRoom && currentRoom.isWaitingForReconnect && currentRoom.disconnectedPlayerSerial === leavingPlayer.serial) {
+                     io.to(roomId).emit("chat_bubble", {
+                       senderId: "system",
+                       text: `انقطع اتصال ${leavingPlayer.name} ولم يعد`,
+                     });
+                     if (
+                       currentRoom.gameState === "custom_image_upload"
+                     ) {
+                       io.to(roomId).emit("game_stopped", {
+                         reason: "المنافس غادر المباراة",
+                       });
+                       if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                       rooms.delete(roomId);
+                     } else {
+                       endGame(roomId, opponent ? opponent.name : "المنافس", true);
+                     }
+                     
+                     const idx = currentRoom.players.findIndex((p:any) => p.serial === leavingPlayer.serial);
+                     if (idx !== -1) currentRoom.players.splice(idx, 1);
+                     if (intervals.has(roomId)) {
+                       clearInterval(intervals.get(roomId));
+                       intervals.delete(roomId);
+                     }
+                     if (currentRoom.gameState !== "finished" && currentRoom.gameState !== "xo_finished" && currentRoom.gameState !== "bus_complete_evaluating") {
+                       io.in(roomId).socketsLeave(roomId);
+                       rooms.delete(roomId);
+                     } else {
+                       io.to(roomId).emit("room_update", currentRoom);
+                     }
+                  }
+                }, 15000);
+                
+                room.reconnectTimeoutId = timeoutId;
+                return; // Do NOT remove player from room yet
               }
+
               if (
-                room.gameState.startsWith("bus_complete") ||
                 room.gameState === "custom_image_upload"
               ) {
                 io.to(roomId).emit("game_stopped", {
@@ -13140,12 +13342,16 @@ async function startServer() {
               socket.to(roomId).emit("opponent_left_lobby");
             }
 
-            if (room.gameState !== "finished") {
+            if (room.gameState !== "finished" && room.gameState !== "xo_finished" && room.gameState !== "bus_complete_evaluating") {
               io.in(roomId).socketsLeave(roomId);
               rooms.delete(roomId);
             } else {
               // Emit room update so the remaining player knows the opponent left
               socket.to(roomId).emit("room_update", room);
+              if (room.players.every((p: any) => p.isBot)) {
+                if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                rooms.delete(roomId);
+              }
             }
           }
         });
@@ -13360,6 +13566,8 @@ async function startServer() {
       }
 
       const interval = setInterval(() => {
+        if (room.isWaitingForReconnect) return;
+        
         // Handle Ad Pause (highest priority - pauses everything)
         if (room.adPausedPlayers && room.adPausedPlayers.size > 0) {
           return; // Skip all timer decrements
