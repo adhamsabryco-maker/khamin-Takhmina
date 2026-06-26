@@ -222,10 +222,7 @@ if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
 let botNamesData: { boy: string[]; girl: string[] } = { boy: [], girl: [] };
 try {
   botNamesData = JSON.parse(
-    fs.readFileSync(
-      path.join(process.cwd(), "src/data/botNames.json"),
-      "utf8",
-    ),
+    fs.readFileSync(path.join(process.cwd(), "src/data/botNames.json"), "utf8"),
   );
 } catch (e) {
   console.log("Error loading botNames.json", e);
@@ -930,10 +927,13 @@ async function startServer() {
     // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
       // Ignore static assets, uploads and socket.io logs to reduce Railway costs
-      const isStaticOrNoisy = req.url.startsWith("/assets/") || 
-        req.url.startsWith("/uploads/") || 
-        req.url.startsWith("/socket.io/") || 
-        req.url.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|json|wav|mp3|mp4|woff|woff2|ttf|eot)$/i);
+      const isStaticOrNoisy =
+        req.url.startsWith("/assets/") ||
+        req.url.startsWith("/uploads/") ||
+        req.url.startsWith("/socket.io/") ||
+        req.url.match(
+          /\.(js|css|png|jpg|jpeg|gif|ico|svg|json|wav|mp3|mp4|woff|woff2|ttf|eot)$/i,
+        );
       if (!isStaticOrNoisy) {
         console.log(`[REQUEST] ${req.method} ${req.url}`);
       }
@@ -941,14 +941,19 @@ async function startServer() {
     });
 
     app.use(express.json({ limit: "50mb" }));
-    app.use("/uploads", express.static(path.join(__dirname, "public/uploads"), {
-      maxAge: "1y", // Cache uploads for 1 year
-      etag: true
-    }));
-    app.use(express.static(path.join(__dirname, "public"), {
-      maxAge: "1y", // Cache public directory stuff for 1 year
-      etag: true
-    }));
+    app.use(
+      "/uploads",
+      express.static(path.join(__dirname, "public/uploads"), {
+        maxAge: "1y", // Cache uploads for 1 year
+        etag: true,
+      }),
+    );
+    app.use(
+      express.static(path.join(__dirname, "public"), {
+        maxAge: "1y", // Cache public directory stuff for 1 year
+        etag: true,
+      }),
+    );
 
     // Google OAuth Routes (Moved to top)
     const getRedirectUri = (req: express.Request) => {
@@ -2299,23 +2304,29 @@ async function startServer() {
       );
     } catch (e) {}
     try {
-      db.exec(`ALTER TABLE players ADD COLUMN busCompleteRewardLevel INTEGER DEFAULT 1`);
-    } catch(e) {}
+      db.exec(
+        `ALTER TABLE players ADD COLUMN busCompleteRewardLevel INTEGER DEFAULT 1`,
+      );
+    } catch (e) {}
     try {
-      db.exec(`ALTER TABLE players ADD COLUMN busCompleteMatchPoints INTEGER DEFAULT 0`);
-    } catch(e) {}
+      db.exec(
+        `ALTER TABLE players ADD COLUMN busCompleteMatchPoints INTEGER DEFAULT 0`,
+      );
+    } catch (e) {}
     try {
-      db.exec(`ALTER TABLE players ADD COLUMN busCompleteExpiring TEXT DEFAULT '[]'`);
-    } catch(e) {}
+      db.exec(
+        `ALTER TABLE players ADD COLUMN busCompleteExpiring TEXT DEFAULT '[]'`,
+      );
+    } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN xoWins INTEGER DEFAULT 0`);
-    } catch(e) {}
+    } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN xoRewardLevel INTEGER DEFAULT 1`);
-    } catch(e) {}
+    } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN xoMatchPoints INTEGER DEFAULT 0`);
-    } catch(e) {}
+    } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0`);
     } catch (e) {}
@@ -4830,7 +4841,9 @@ async function startServer() {
             gender: botPersona.gender,
             xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
             wins: Math.floor(botPersona.level * (Math.random() * 5 + 2)),
-            busCompleteWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            busCompleteWins: Math.floor(
+              botPersona.level * (Math.random() * 3 + 1),
+            ),
             xoWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             isBot: true,
             persona: botPersona.personality,
@@ -5038,7 +5051,9 @@ async function startServer() {
 
       try {
         const player = currentRoom.players.find((p: any) => !p.isBot);
-        const botPersona = BOT_PERSONAS.find((p) => p.name === (bot.personaName || bot.name));
+        const botPersona = BOT_PERSONAS.find(
+          (p) => p.name === (bot.personaName || bot.name),
+        );
 
         // Bot Quick Guess Logic
         const winCount = playerBotHistory.get(player.playerId) || 0;
@@ -5503,16 +5518,19 @@ async function startServer() {
         const p1SocketId = p1.id;
         const p2SocketId = p2.id;
         const mode = p1.selectedSelectionMode;
-        if (p1.selectedSelectionMode && p1.selectedSelectionMode === room.players[1].selectedSelectionMode) {
+        if (
+          p1.selectedSelectionMode &&
+          p1.selectedSelectionMode === room.players[1].selectedSelectionMode
+        ) {
           const mode = p1.selectedSelectionMode;
           if (mode === "custom" && room.matchType !== "private") {
             return;
           }
-          
+
           room.selectionMode = mode;
           p1.selectedSelectionMode = undefined;
           room.players[1].selectedSelectionMode = undefined;
-          
+
           if (mode === "custom") {
             room.gameState = "custom_image_upload";
             room.isCustomImageMode = true; // Set the flag here!
@@ -5527,7 +5545,8 @@ async function startServer() {
                 clearInterval(interval);
                 return;
               }
-              const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+              const isAdPlaying =
+                r.adPausedPlayers && r.adPausedPlayers.size > 0;
               if (!isAdPlaying) {
                 r.timer--;
                 if (r.timer <= 0) {
@@ -5548,7 +5567,7 @@ async function startServer() {
             room.busCompleteLetter = null;
             room.busCompleteSubmittedPlayers = [];
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-            
+
             const bot = room.players.find((p: any) => p.isBot);
             if (bot) {
               handleBotEvent(roomId, "room_update", room);
@@ -5563,21 +5582,27 @@ async function startServer() {
             room.xoWinLength = 3;
             room.xoBoard = Array(size * size).fill(null);
             room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
-            room.xoOPlayer = room.players.find((p: any) => p.id !== room.xoXPlayer).id;
+            room.xoOPlayer = room.players.find(
+              (p: any) => p.id !== room.xoXPlayer,
+            ).id;
             room.xoTurn = room.xoXPlayer;
             room.xoWinner = null;
             room.xoWinningLine = null;
             room.timer = getXOTimerLimit(size); // Dynamic limit based on board size
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-            
+
             const interval = setInterval(() => {
               const r = rooms.get(roomId);
-              if (!r || (r.gameState !== "xo_playing" && r.gameState !== "xo_finished")) {
+              if (
+                !r ||
+                (r.gameState !== "xo_playing" && r.gameState !== "xo_finished")
+              ) {
                 clearInterval(interval);
                 return;
               }
               if (r.gameState === "xo_playing") {
-                const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+                const isAdPlaying =
+                  r.adPausedPlayers && r.adPausedPlayers.size > 0;
                 if (!isAdPlaying) {
                   r.timer--;
                   if (r.timer <= 0) {
@@ -5614,7 +5639,10 @@ async function startServer() {
       }
     }
 
-    function executeSearchBusCompleteLetter(roomId: string, hideResults?: boolean) {
+    function executeSearchBusCompleteLetter(
+      roomId: string,
+      hideResults?: boolean,
+    ) {
       const room = rooms.get(roomId);
       if (room && room.gameState === "bus_complete_setup") {
         room.gameState = "bus_complete_spin";
@@ -5623,7 +5651,34 @@ async function startServer() {
         io.to(roomId).emit("room_update", room);
 
         const arabicLetters = [
-          "أ", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر", "ز", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ك", "ل", "م", "ن", "ه", "و", "ي"
+          "أ",
+          "ب",
+          "ت",
+          "ث",
+          "ج",
+          "ح",
+          "خ",
+          "د",
+          "ذ",
+          "ر",
+          "ز",
+          "س",
+          "ش",
+          "ص",
+          "ض",
+          "ط",
+          "ظ",
+          "ع",
+          "غ",
+          "ف",
+          "ق",
+          "ك",
+          "ل",
+          "م",
+          "ن",
+          "ه",
+          "و",
+          "ي",
         ];
 
         // Find a letter not used by either player recently, if possible
@@ -5651,9 +5706,7 @@ async function startServer() {
         }
 
         const randomLetter =
-          availableLetters[
-            Math.floor(Math.random() * availableLetters.length)
-          ];
+          availableLetters[Math.floor(Math.random() * availableLetters.length)];
         room.busCompleteLetter = randomLetter;
 
         setTimeout(() => {
@@ -5703,22 +5756,20 @@ async function startServer() {
               let isCooldownActive = false;
               let anyCooldownDecremented = false;
               if (currentRoom.busCompleteCooldowns) {
-                Object.keys(currentRoom.busCompleteCooldowns).forEach(
-                  (pid) => {
-                    if (currentRoom.busCompleteCooldowns[pid] > 0) {
-                      currentRoom.busCompleteCooldowns[pid]--;
-                      isCooldownActive = true;
-                      anyCooldownDecremented = true;
-                    }
-                  },
-                );
+                Object.keys(currentRoom.busCompleteCooldowns).forEach((pid) => {
+                  if (currentRoom.busCompleteCooldowns[pid] > 0) {
+                    currentRoom.busCompleteCooldowns[pid]--;
+                    isCooldownActive = true;
+                    anyCooldownDecremented = true;
+                  }
+                });
               }
 
               const isAdPlaying =
                 (currentRoom.busCompleteAdViewers &&
-                currentRoom.busCompleteAdViewers.length > 0) ||
-                (currentRoom.adPausedPlayers && 
-                currentRoom.adPausedPlayers.size > 0);
+                  currentRoom.busCompleteAdViewers.length > 0) ||
+                (currentRoom.adPausedPlayers &&
+                  currentRoom.adPausedPlayers.size > 0);
 
               if (isAdPlaying || isCooldownActive) {
                 if (anyCooldownDecremented || isAdPlaying) {
@@ -5732,10 +5783,10 @@ async function startServer() {
                 clearInterval(interval);
                 currentRoom.gameState = "bus_complete_evaluating"; // Time is up
                 evaluateBusCompleteAnswers(currentRoom);
-                
+
                 const bot = currentRoom.players.find((p: any) => p.isBot);
                 if (bot) handleBotEvent(roomId, "room_update", currentRoom);
-                
+
                 io.to(roomId).emit("room_update", currentRoom);
               } else {
                 io.to(roomId).emit("room_update", currentRoom);
@@ -5762,109 +5813,117 @@ async function startServer() {
         return;
       }
 
-      setTimeout(() => {
-        botFlags.delete(roomId + "_xo_move_scheduled");
-        const r = rooms.get(roomId);
-        if (!r || r.gameState !== "xo_playing" || r.xoTurn !== bot.id) return;
+      setTimeout(
+        () => {
+          botFlags.delete(roomId + "_xo_move_scheduled");
+          const r = rooms.get(roomId);
+          if (!r || r.gameState !== "xo_playing" || r.xoTurn !== bot.id) return;
 
-        const emptyIndices = [];
-        const size = r.xoBoardSize || 3;
-        const winLength = r.xoWinLength || 3;
-        const level = r.xoLevel || 1;
-        
-        for (let i = 0; i < size * size; i++) if (r.xoBoard[i] === null) emptyIndices.push(i);
-        if (emptyIndices.length > 0) {
-          const winLines = getWinningLines(size, winLength);
-          
-          let selectedIdx: number | null = null;
-          const piece = r.xoXPlayer === bot.id ? "X" : "O";
-          const enemyPiece = r.xoXPlayer === bot.id ? "O" : "X";
-          
-          const getWinningMove = (p: string) => {
-            for (const line of winLines) {
-              let pCount = 0;
-              let nullCount = 0;
-              let nullIdx = -1;
-              for (const idx of line) {
-                if (r.xoBoard[idx] === p) pCount++;
-                else if (r.xoBoard[idx] === null) { nullCount++; nullIdx = idx; }
+          const emptyIndices = [];
+          const size = r.xoBoardSize || 3;
+          const winLength = r.xoWinLength || 3;
+          const level = r.xoLevel || 1;
+
+          for (let i = 0; i < size * size; i++)
+            if (r.xoBoard[i] === null) emptyIndices.push(i);
+          if (emptyIndices.length > 0) {
+            const winLines = getWinningLines(size, winLength);
+
+            let selectedIdx: number | null = null;
+            const piece = r.xoXPlayer === bot.id ? "X" : "O";
+            const enemyPiece = r.xoXPlayer === bot.id ? "O" : "X";
+
+            const getWinningMove = (p: string) => {
+              for (const line of winLines) {
+                let pCount = 0;
+                let nullCount = 0;
+                let nullIdx = -1;
+                for (const idx of line) {
+                  if (r.xoBoard[idx] === p) pCount++;
+                  else if (r.xoBoard[idx] === null) {
+                    nullCount++;
+                    nullIdx = idx;
+                  }
+                }
+                if (pCount === winLength - 1 && nullCount === 1) return nullIdx;
               }
-              if (pCount === winLength - 1 && nullCount === 1) return nullIdx;
+              return null;
+            };
+
+            const winMove = getWinningMove(piece);
+            const blockMove = getWinningMove(enemyPiece);
+
+            // Difficulty scaling based on level (1 to 8)
+            const winChance = 0.5 + level * 0.06; // level 1: 0.56, level 8: 0.98
+            const blockChance = 0.4 + level * 0.07; // level 1: 0.47, level 8: 0.96
+
+            if (winMove !== null && Math.random() < winChance) {
+              selectedIdx = winMove;
+            } else if (blockMove !== null && Math.random() < blockChance) {
+              selectedIdx = blockMove;
+            } else {
+              selectedIdx =
+                emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
             }
-            return null;
-          };
 
-          const winMove = getWinningMove(piece);
-          const blockMove = getWinningMove(enemyPiece);
+            r.xoBoard[selectedIdx] = piece;
 
-          // Difficulty scaling based on level (1 to 8)
-          const winChance = 0.5 + (level * 0.06); // level 1: 0.56, level 8: 0.98
-          const blockChance = 0.4 + (level * 0.07); // level 1: 0.47, level 8: 0.96
-
-          if (winMove !== null && Math.random() < winChance) {
-             selectedIdx = winMove;
-          } else if (blockMove !== null && Math.random() < blockChance) {
-             selectedIdx = blockMove;
-          } else {
-             selectedIdx = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
-          }
-
-          r.xoBoard[selectedIdx] = piece;
-          
-          let bWinner = null;
-          let bWinningLine = null;
-          for (const line of winLines) {
-            let isWin = true;
-            for (const idx of line) {
-              if (r.xoBoard[idx] !== piece) {
-                isWin = false;
+            let bWinner = null;
+            let bWinningLine = null;
+            for (const line of winLines) {
+              let isWin = true;
+              for (const idx of line) {
+                if (r.xoBoard[idx] !== piece) {
+                  isWin = false;
+                  break;
+                }
+              }
+              if (isWin) {
+                bWinner = r.xoXPlayer === bot.id ? r.xoXPlayer : r.xoOPlayer;
+                bWinningLine = line;
                 break;
               }
             }
-            if (isWin) {
-              bWinner = r.xoXPlayer === bot.id ? r.xoXPlayer : r.xoOPlayer;
-              bWinningLine = line;
-              break;
-            }
-          }
-          
-          if (bWinner) {
-            r.xoWinner = bWinner;
-            r.xoWinningLine = bWinningLine;
-            r.gameState = "xo_finished";
-            r.xoMatchWins = r.xoMatchWins || {};
-            r.xoMatchWins[bWinner] = (r.xoMatchWins[bWinner] || 0) + 1;
-            
-            const pWinner = r.players.find((p: any) => p.id === bWinner);
-            if (pWinner) {
-              pWinner.xoWins = (pWinner.xoWins || 0) + 1;
-              const dbP = allPlayers.get(pWinner.serial);
-              if (dbP) {
-                dbP.xoWins = pWinner.xoWins;
-                if (r.matchType === "random") {
-                  dbP.xoMatchPoints = (dbP.xoMatchPoints || 0) + 10;
+
+            if (bWinner) {
+              r.xoWinner = bWinner;
+              r.xoWinningLine = bWinningLine;
+              r.gameState = "xo_finished";
+              r.xoMatchWins = r.xoMatchWins || {};
+              r.xoMatchWins[bWinner] = (r.xoMatchWins[bWinner] || 0) + 1;
+
+              const pWinner = r.players.find((p: any) => p.id === bWinner);
+              if (pWinner) {
+                pWinner.xoWins = (pWinner.xoWins || 0) + 1;
+                const dbP = allPlayers.get(pWinner.serial);
+                if (dbP) {
+                  dbP.xoWins = pWinner.xoWins;
+                  if (r.matchType === "random") {
+                    dbP.xoMatchPoints = (dbP.xoMatchPoints || 0) + 10;
+                  }
+                  pWinner.xoMatchPoints = dbP.xoMatchPoints;
+                  savePlayerData(pWinner.serial);
+                  io.to(pWinner.id).emit("player_data_update", dbP);
                 }
-                pWinner.xoMatchPoints = dbP.xoMatchPoints;
-                savePlayerData(pWinner.serial);
-                io.to(pWinner.id).emit("player_data_update", dbP);
               }
+            } else if (r.xoBoard.every((cell: any) => cell !== null)) {
+              r.xoWinner = "draw";
+              r.gameState = "xo_finished";
+              r.xoMatchWins = r.xoMatchWins || {};
+              r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
+            } else {
+              r.xoTurn = r.xoXPlayer === bot.id ? r.xoOPlayer : r.xoXPlayer;
             }
-          } else if (r.xoBoard.every((cell: any) => cell !== null)) {
-            r.xoWinner = "draw";
-            r.gameState = "xo_finished";
-            r.xoMatchWins = r.xoMatchWins || {};
-            r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
-          } else {
-            r.xoTurn = r.xoXPlayer === bot.id ? r.xoOPlayer : r.xoXPlayer;
+            io.to(roomId).emit("room_update", r);
+
+            if (r.gameState === "xo_playing" && r.xoTurn === bot.id) {
+              // In case bot plays against itself (unlikely but just to cascade)
+              handleBotEvent(roomId, "room_update", r);
+            }
           }
-          io.to(roomId).emit("room_update", r);
-          
-          if (r.gameState === "xo_playing" && r.xoTurn === bot.id) {
-             // In case bot plays against itself (unlikely but just to cascade)
-             handleBotEvent(roomId, "room_update", r);
-          }
-        }
-      }, 1000 + Math.random() * 1500);
+        },
+        1000 + Math.random() * 1500,
+      );
     }
 
     async function handleBotEvent(roomId: string, event: string, data: any) {
@@ -5887,37 +5946,42 @@ async function startServer() {
       }
 
       if (event === "bus_complete_letter_change_requested") {
-        setTimeout(() => {
-          const r = rooms.get(roomId);
-          if (r && r.busCompleteChangeLetterRequestBy) {
-            r.busCompleteChangeLetterRequestBy = null;
-            r.gameState = "bus_complete_setup";
-            r.busCompleteLetter = undefined;
-            r.busCompleteSubmittedPlayers = [];
-            r.busCompleteAnswers = {};
-            r.busCompleteScores = {};
-            
-            // Clear any active playing or setup timeouts
-            if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
-              clearTimeout(botTimeouts.get(roomId + "_bus_playing_submit_timeout"));
-              botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
+        setTimeout(
+          () => {
+            const r = rooms.get(roomId);
+            if (r && r.busCompleteChangeLetterRequestBy) {
+              r.busCompleteChangeLetterRequestBy = null;
+              r.gameState = "bus_complete_setup";
+              r.busCompleteLetter = undefined;
+              r.busCompleteSubmittedPlayers = [];
+              r.busCompleteAnswers = {};
+              r.busCompleteScores = {};
+
+              // Clear any active playing or setup timeouts
+              if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
+                clearTimeout(
+                  botTimeouts.get(roomId + "_bus_playing_submit_timeout"),
+                );
+                botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
+              }
+              botFlags.delete(roomId + "_bus_playing_submit_timeout_scheduled");
+
+              if (botTimeouts.has(roomId + "_bus_setup_timeout")) {
+                clearTimeout(botTimeouts.get(roomId + "_bus_setup_timeout"));
+                botTimeouts.delete(roomId + "_bus_setup_timeout");
+              }
+
+              if (r.timerInterval) clearInterval(r.timerInterval);
+              if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+              io.to(roomId).emit("room_update", r);
+
+              // Notify bot to restart setup timeout
+              handleBotEvent(roomId, "room_update", r);
             }
-            botFlags.delete(roomId + "_bus_playing_submit_timeout_scheduled");
-
-            if (botTimeouts.has(roomId + "_bus_setup_timeout")) {
-              clearTimeout(botTimeouts.get(roomId + "_bus_setup_timeout"));
-              botTimeouts.delete(roomId + "_bus_setup_timeout");
-            }
-
-            if (r.timerInterval) clearInterval(r.timerInterval);
-            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-
-            io.to(roomId).emit("room_update", r);
-
-            // Notify bot to restart setup timeout
-            handleBotEvent(roomId, "room_update", r);
-          }
-        }, 1500 + Math.random() * 2000);
+          },
+          1500 + Math.random() * 2000,
+        );
       }
 
       if (event === "room_update") {
@@ -5928,16 +5992,22 @@ async function startServer() {
 
         // Handle XO playing action
         if (room.gameState === "xo_playing" && room.xoTurn === botPlayer.id) {
-           executeBotXOMove(roomId);
+          executeBotXOMove(roomId);
         }
 
         // Handle bus_complete_playing action
-        if (room.gameState === "bus_complete_playing" && !room.busCompleteSubmittedPlayers?.includes(botPlayer.id)) {
+        if (
+          room.gameState === "bus_complete_playing" &&
+          !room.busCompleteSubmittedPlayers?.includes(botPlayer.id)
+        ) {
           if (!botFlags.has(roomId + "_bus_playing_submit_timeout_scheduled")) {
-            botFlags.set(roomId + "_bus_playing_submit_timeout_scheduled", true);
+            botFlags.set(
+              roomId + "_bus_playing_submit_timeout_scheduled",
+              true,
+            );
 
             // Determine if bot will win (plays perfectly and answers all correct)
-            const willWin = Math.random() < 0.40; // 40% chance
+            const willWin = Math.random() < 0.4; // 40% chance
             let wrongCount = 0;
             if (!willWin) {
               const rand = Math.random();
@@ -5948,71 +6018,119 @@ async function startServer() {
             }
 
             // Natural completion delay
-            const submitDelay = willWin 
-              ? (60000 + Math.random() * 120000)   // 1 to 3 minutes
-              : (150000 + Math.random() * 90000); // 2.5 to 4 minutes
+            const submitDelay = willWin
+              ? 60000 + Math.random() * 120000 // 1 to 3 minutes
+              : 150000 + Math.random() * 90000; // 2.5 to 4 minutes
 
             const watchAdChance = Math.random();
             if (watchAdChance < 0.3) {
               const delayBeforeAd = submitDelay * 0.4;
               const adDuration = 5000 + Math.random() * 5000;
               setTimeout(() => {
-                 const currentRoom = rooms.get(roomId);
-                 if (currentRoom && currentRoom.gameState === "bus_complete_playing" && !currentRoom.busCompleteSubmittedPlayers?.includes(botPlayer.id)) {
-                     if (!currentRoom.adPausedPlayers) currentRoom.adPausedPlayers = new Set();
-                     currentRoom.adPausedPlayers.add(botPlayer.id);
-                     currentRoom.adPausedPlayersArray = Array.from(currentRoom.adPausedPlayers);
-                     if (!currentRoom.powerUpAdsInProgress) currentRoom.powerUpAdsInProgress = new Map();
-                     currentRoom.powerUpAdsInProgress.set(botPlayer.id, "bot_simulated_ad");
-                     io.to(roomId).emit("room_update", currentRoom);
-                     
-                     setTimeout(() => {
-                        const rAfterAd = rooms.get(roomId);
-                        if (rAfterAd && rAfterAd.adPausedPlayers) {
-                            rAfterAd.adPausedPlayers.delete(botPlayer.id);
-                            rAfterAd.adPausedPlayersArray = Array.from(rAfterAd.adPausedPlayers);
-                            if (rAfterAd.powerUpAdsInProgress) {
-                               rAfterAd.powerUpAdsInProgress.delete(botPlayer.id);
-                            }
-                            io.to(roomId).emit("room_update", rAfterAd);
-                        }
-                     }, adDuration);
-                 }
+                const currentRoom = rooms.get(roomId);
+                if (
+                  currentRoom &&
+                  currentRoom.gameState === "bus_complete_playing" &&
+                  !currentRoom.busCompleteSubmittedPlayers?.includes(
+                    botPlayer.id,
+                  )
+                ) {
+                  if (!currentRoom.adPausedPlayers)
+                    currentRoom.adPausedPlayers = new Set();
+                  currentRoom.adPausedPlayers.add(botPlayer.id);
+                  currentRoom.adPausedPlayersArray = Array.from(
+                    currentRoom.adPausedPlayers,
+                  );
+                  if (!currentRoom.powerUpAdsInProgress)
+                    currentRoom.powerUpAdsInProgress = new Map();
+                  currentRoom.powerUpAdsInProgress.set(
+                    botPlayer.id,
+                    "bot_simulated_ad",
+                  );
+                  io.to(roomId).emit("room_update", currentRoom);
+
+                  setTimeout(() => {
+                    const rAfterAd = rooms.get(roomId);
+                    if (rAfterAd && rAfterAd.adPausedPlayers) {
+                      rAfterAd.adPausedPlayers.delete(botPlayer.id);
+                      rAfterAd.adPausedPlayersArray = Array.from(
+                        rAfterAd.adPausedPlayers,
+                      );
+                      if (rAfterAd.powerUpAdsInProgress) {
+                        rAfterAd.powerUpAdsInProgress.delete(botPlayer.id);
+                      }
+                      io.to(roomId).emit("room_update", rAfterAd);
+                    }
+                  }, adDuration);
+                }
               }, delayBeforeAd);
             }
 
             const timeout = setTimeout(() => {
               const r = rooms.get(roomId);
-              if (!r || r.gameState !== "bus_complete_playing" || r.busCompleteSubmittedPlayers?.includes(botPlayer.id)) return;
+              if (
+                !r ||
+                r.gameState !== "bus_complete_playing" ||
+                r.busCompleteSubmittedPlayers?.includes(botPlayer.id)
+              )
+                return;
 
               let mappedLetter = r.busCompleteLetter || "ا";
-              if (mappedLetter === "أ" || mappedLetter === "إ" || mappedLetter === "آ") mappedLetter = "ا";
+              if (
+                mappedLetter === "أ" ||
+                mappedLetter === "إ" ||
+                mappedLetter === "آ"
+              )
+                mappedLetter = "ا";
               if (mappedLetter === "ة") mappedLetter = "ه";
               if (mappedLetter === "ى") mappedLetter = "ي";
 
               const letterData = busCompleteData[mappedLetter] || {};
-              const categories = ["boy", "girl", "animal", "plant", "inanimate", "country"];
+              const categories = [
+                "boy",
+                "girl",
+                "animal",
+                "plant",
+                "inanimate",
+                "country",
+              ];
               const answers: any = {};
-              
-              const lastWrongCats: string[] = botFlags.get(roomId + "_last_wrong_cats") || [];
-              const availableToWrong = categories.filter(c => !lastWrongCats.includes(c));
-              const catsToWrong = availableToWrong.length >= wrongCount ? availableToWrong : [...categories];
+
+              const lastWrongCats: string[] =
+                botFlags.get(roomId + "_last_wrong_cats") || [];
+              const availableToWrong = categories.filter(
+                (c) => !lastWrongCats.includes(c),
+              );
+              const catsToWrong =
+                availableToWrong.length >= wrongCount
+                  ? availableToWrong
+                  : [...categories];
               const shuffledCats = catsToWrong.sort(() => 0.5 - Math.random());
               const chosenWrongs = shuffledCats.slice(0, wrongCount);
-              
+
               botFlags.set(roomId + "_last_wrong_cats", chosenWrongs);
 
-              categories.forEach(cat => {
+              categories.forEach((cat) => {
                 const words = letterData[cat] || [];
                 if (chosenWrongs.includes(cat)) {
                   if (Math.random() < 0.6) {
                     answers[cat] = ""; // 60% chance to leave it blank
                   } else {
-                    const fallbackWrongs = ["معرفش", "اي حاجة", "مش عارف", "صعب", "لا يوجد"];
-                    answers[cat] = fallbackWrongs[Math.floor(Math.random() * fallbackWrongs.length)];
+                    const fallbackWrongs = [
+                      "معرفش",
+                      "اي حاجة",
+                      "مش عارف",
+                      "صعب",
+                      "لا يوجد",
+                    ];
+                    answers[cat] =
+                      fallbackWrongs[
+                        Math.floor(Math.random() * fallbackWrongs.length)
+                      ];
                   }
                 } else if (words.length > 0) {
-                  answers[cat] = words[Math.floor(Math.random() * words.length)];
+                  answers[cat] =
+                    words[Math.floor(Math.random() * words.length)];
                 } else {
                   answers[cat] = ""; // Fallback to blank if no correct words found
                 }
@@ -6022,7 +6140,8 @@ async function startServer() {
               const botId = botPlayer.id;
               if (!r.busCompleteAnswers) r.busCompleteAnswers = {};
               if (!r.busCompleteSubmitTimes) r.busCompleteSubmitTimes = {};
-              if (!r.busCompleteSubmittedPlayers) r.busCompleteSubmittedPlayers = [];
+              if (!r.busCompleteSubmittedPlayers)
+                r.busCompleteSubmittedPlayers = [];
 
               r.busCompleteAnswers[botId] = answers;
               const timeReduction = r.busCompleteTimerReduction || 0;
@@ -6031,11 +6150,14 @@ async function startServer() {
               if (!r.busCompleteSubmittedPlayers.includes(botId)) {
                 r.busCompleteSubmittedPlayers.push(botId);
                 // Fast timer trick: if bot submits first
-                if (r.busCompleteSubmittedPlayers.length === 1 && r.timer > 60) {
-                   r.busCompleteTimerReduction = r.timer - 60;
-                   r.timer = 60;
+                if (
+                  r.busCompleteSubmittedPlayers.length === 1 &&
+                  r.timer > 60
+                ) {
+                  r.busCompleteTimerReduction = r.timer - 60;
+                  r.timer = 60;
                 }
-                
+
                 if (r.busCompleteSubmittedPlayers.length === 2) {
                   if (intervals.has(roomId)) {
                     clearInterval(intervals.get(roomId));
@@ -6054,19 +6176,28 @@ async function startServer() {
         } else {
           // If we are no longer playing or already submitted, clear the playing submission timeout
           if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
-            clearTimeout(botTimeouts.get(roomId + "_bus_playing_submit_timeout"));
+            clearTimeout(
+              botTimeouts.get(roomId + "_bus_playing_submit_timeout"),
+            );
             botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
             botFlags.delete(roomId + "_bus_playing_submit_timeout_scheduled");
           }
         }
 
         // Handle proactive setup start (if player delays starting the game)
-        if (room.gameState === "bus_complete_setup" && !room.busCompleteLetter) {
+        if (
+          room.gameState === "bus_complete_setup" &&
+          !room.busCompleteLetter
+        ) {
           if (!botTimeouts.has(roomId + "_bus_setup_timeout")) {
             const setupDelay = 8000 + Math.random() * 4000; // 8 - 12 seconds
             const setupTimeout = setTimeout(() => {
               const r = rooms.get(roomId);
-              if (r && r.gameState === "bus_complete_setup" && !r.busCompleteLetter) {
+              if (
+                r &&
+                r.gameState === "bus_complete_setup" &&
+                !r.busCompleteLetter
+              ) {
                 executeSearchBusCompleteLetter(roomId);
               }
               botTimeouts.delete(roomId + "_bus_setup_timeout");
@@ -6082,33 +6213,34 @@ async function startServer() {
 
         // Handle auto-rematch in evaluating state
         if (room.gameState === "bus_complete_evaluating") {
-           if (!botFlags.has(roomId + "_bus_eval_rematch")) {
-              botFlags.set(roomId + "_bus_eval_rematch", true);
-              const rematchDelay = 8000 + Math.random() * 7000; // 8 - 15 seconds
-              setTimeout(() => {
-                 const r = rooms.get(roomId);
-                 if (r && r.gameState === "bus_complete_evaluating") {
-                    if (!r.busCompleteRematchRequestedBy) {
-                       r.busCompleteRematchRequestedBy = [];
-                    }
-                    if (!r.busCompleteRematchRequestedBy.includes(botPlayer.id)) {
-                       r.busCompleteRematchRequestedBy.push(botPlayer.id);
-                    }
-                    if (r.busCompleteRematchRequestedBy.length >= 2) {
-                       r.gameState = "bus_complete_setup";
-                       r.category = "تخمينة كومبليت";
-                       r.busCompleteLetter = null;
-                       r.busCompleteSubmittedPlayers = [];
-                       r.busCompleteRematchRequestedBy = [];
-                       if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-                       handleBotEvent(roomId, "room_update", r);
-                    }
-                    io.to(roomId).emit("room_update", r);
-                 }
-              }, rematchDelay);
-           }
+          if (!botFlags.has(roomId + "_bus_eval_rematch")) {
+            botFlags.set(roomId + "_bus_eval_rematch", true);
+            const rematchDelay = 8000 + Math.random() * 7000; // 8 - 15 seconds
+            setTimeout(() => {
+              const r = rooms.get(roomId);
+              if (r && r.gameState === "bus_complete_evaluating") {
+                if (!r.busCompleteRematchRequestedBy) {
+                  r.busCompleteRematchRequestedBy = [];
+                }
+                if (!r.busCompleteRematchRequestedBy.includes(botPlayer.id)) {
+                  r.busCompleteRematchRequestedBy.push(botPlayer.id);
+                }
+                if (r.busCompleteRematchRequestedBy.length >= 2) {
+                  r.gameState = "bus_complete_setup";
+                  r.category = "تخمينة كومبليت";
+                  r.busCompleteLetter = null;
+                  r.busCompleteSubmittedPlayers = [];
+                  r.busCompleteRematchRequestedBy = [];
+                  if (intervals.has(roomId))
+                    clearInterval(intervals.get(roomId));
+                  handleBotEvent(roomId, "room_update", r);
+                }
+                io.to(roomId).emit("room_update", r);
+              }
+            }, rematchDelay);
+          }
         } else {
-           botFlags.delete(roomId + "_bus_eval_rematch");
+          botFlags.delete(roomId + "_bus_eval_rematch");
         }
 
         // Requirement 6: Category selection negotiation
@@ -6292,12 +6424,12 @@ async function startServer() {
             }
           }
         }
-        
+
         // Requirement 7: Selection mode negotiation
         if (room.gameState === "waiting" && !room.selectionMode) {
           const currentHumanMode = humanPlayer?.selectedSelectionMode;
           const lastHumanMode = botFlags.get(roomId + "_last_human_mode");
-          
+
           if (currentHumanMode !== lastHumanMode) {
             botFlags.set(roomId + "_last_human_mode", currentHumanMode || null);
             clearBotSelectionModeTimeouts(roomId);
@@ -6306,19 +6438,30 @@ async function startServer() {
           if (currentHumanMode) {
             if (botPlayer.selectedSelectionMode !== currentHumanMode) {
               // We need to negotiate/agree
-              const hasAgreeTimeout = botTimeouts.has(roomId + "_mode_agree_timeout");
-              const hasHesitateTimeout = botTimeouts.has(roomId + "_mode_hesitate_timeout");
-              const hasAgreeAfterHesitate = botTimeouts.has(roomId + "_mode_agree_after_hesitate_timeout");
+              const hasAgreeTimeout = botTimeouts.has(
+                roomId + "_mode_agree_timeout",
+              );
+              const hasHesitateTimeout = botTimeouts.has(
+                roomId + "_mode_hesitate_timeout",
+              );
+              const hasAgreeAfterHesitate = botTimeouts.has(
+                roomId + "_mode_agree_after_hesitate_timeout",
+              );
 
-              if (!hasAgreeTimeout && !hasHesitateTimeout && !hasAgreeAfterHesitate) {
+              if (
+                !hasAgreeTimeout &&
+                !hasHesitateTimeout &&
+                !hasAgreeAfterHesitate
+              ) {
                 // Determine if this is a 90% agree or 10% hesitate roll
                 const roll = Math.random();
-                if (roll < 0.90) {
+                if (roll < 0.9) {
                   // 90% chance: Agree after delay
                   const delay = 1500 + Math.random() * 1000; // 1.5 - 2.5 seconds
                   const timeout = setTimeout(() => {
                     const r = rooms.get(roomId);
-                    if (!r || r.gameState !== "waiting" || r.selectionMode) return;
+                    if (!r || r.gameState !== "waiting" || r.selectionMode)
+                      return;
                     const hp = r.players.find((p: any) => !p.isBot);
                     const bp = r.players.find((p: any) => p.isBot);
                     if (hp && hp.selectedSelectionMode) {
@@ -6326,27 +6469,47 @@ async function startServer() {
                       io.to(roomId).emit("room_update", r);
 
                       // Bot auto-confirms after another delay if human doesn't
-                      const confirmTimeout = setTimeout(() => {
-                        const rr = rooms.get(roomId);
-                        if (!rr || rr.gameState !== "waiting" || rr.selectionMode) return;
-                        const hpp = rr.players.find((p: any) => !p.isBot);
-                        const bpp = rr.players.find((p: any) => p.isBot);
-                        if (hpp && bpp && hpp.selectedSelectionMode === bpp.selectedSelectionMode) {
-                          executeSelectionModeConfirmation(roomId);
-                        }
-                      }, 2000 + Math.random() * 1500); // 2 - 3.5 seconds
-                      botTimeouts.set(roomId + "_mode_confirm_timeout", confirmTimeout);
+                      const confirmTimeout = setTimeout(
+                        () => {
+                          const rr = rooms.get(roomId);
+                          if (
+                            !rr ||
+                            rr.gameState !== "waiting" ||
+                            rr.selectionMode
+                          )
+                            return;
+                          const hpp = rr.players.find((p: any) => !p.isBot);
+                          const bpp = rr.players.find((p: any) => p.isBot);
+                          if (
+                            hpp &&
+                            bpp &&
+                            hpp.selectedSelectionMode ===
+                              bpp.selectedSelectionMode
+                          ) {
+                            executeSelectionModeConfirmation(roomId);
+                          }
+                        },
+                        2000 + Math.random() * 1500,
+                      ); // 2 - 3.5 seconds
+                      botTimeouts.set(
+                        roomId + "_mode_confirm_timeout",
+                        confirmTimeout,
+                      );
                     }
                     botTimeouts.delete(roomId + "_mode_agree_timeout");
                   }, delay);
                   botTimeouts.set(roomId + "_mode_agree_timeout", timeout);
                 } else {
                   // 10% chance: Hesitate and select a different mode first
-                  const diffMode = currentHumanMode === "bus_complete" ? "ready" : "bus_complete";
+                  const diffMode =
+                    currentHumanMode === "bus_complete"
+                      ? "ready"
+                      : "bus_complete";
                   const hesitateDelay = 1500 + Math.random() * 1000; // 1.5 - 2.5 seconds
                   const timeout = setTimeout(() => {
                     const r = rooms.get(roomId);
-                    if (!r || r.gameState !== "waiting" || r.selectionMode) return;
+                    if (!r || r.gameState !== "waiting" || r.selectionMode)
+                      return;
                     const hp = r.players.find((p: any) => !p.isBot);
                     const bp = r.players.find((p: any) => p.isBot);
                     if (hp && hp.selectedSelectionMode === currentHumanMode) {
@@ -6357,7 +6520,12 @@ async function startServer() {
                       const agreeDelay = 2500 + Math.random() * 2000; // 2.5 - 4.5 seconds
                       const followTimeout = setTimeout(() => {
                         const r2 = rooms.get(roomId);
-                        if (!r2 || r2.gameState !== "waiting" || r2.selectionMode) return;
+                        if (
+                          !r2 ||
+                          r2.gameState !== "waiting" ||
+                          r2.selectionMode
+                        )
+                          return;
                         const hp2 = r2.players.find((p: any) => !p.isBot);
                         const bp2 = r2.players.find((p: any) => p.isBot);
                         if (hp2 && hp2.selectedSelectionMode) {
@@ -6365,20 +6533,41 @@ async function startServer() {
                           io.to(roomId).emit("room_update", r2);
 
                           // Set up auto confirmation
-                          const lastConfirmTimeout = setTimeout(() => {
-                            const r3 = rooms.get(roomId);
-                            if (!r3 || r3.gameState !== "waiting" || r3.selectionMode) return;
-                            const hp3 = r3.players.find((p: any) => !p.isBot);
-                            const bp3 = r3.players.find((p: any) => p.isBot);
-                            if (hp3 && bp3 && hp3.selectedSelectionMode === bp3.selectedSelectionMode) {
-                              executeSelectionModeConfirmation(roomId);
-                            }
-                          }, 2000 + Math.random() * 1000);
-                          botTimeouts.set(roomId + "_mode_confirm_timeout", lastConfirmTimeout);
+                          const lastConfirmTimeout = setTimeout(
+                            () => {
+                              const r3 = rooms.get(roomId);
+                              if (
+                                !r3 ||
+                                r3.gameState !== "waiting" ||
+                                r3.selectionMode
+                              )
+                                return;
+                              const hp3 = r3.players.find((p: any) => !p.isBot);
+                              const bp3 = r3.players.find((p: any) => p.isBot);
+                              if (
+                                hp3 &&
+                                bp3 &&
+                                hp3.selectedSelectionMode ===
+                                  bp3.selectedSelectionMode
+                              ) {
+                                executeSelectionModeConfirmation(roomId);
+                              }
+                            },
+                            2000 + Math.random() * 1000,
+                          );
+                          botTimeouts.set(
+                            roomId + "_mode_confirm_timeout",
+                            lastConfirmTimeout,
+                          );
                         }
-                        botTimeouts.delete(roomId + "_mode_agree_after_hesitate_timeout");
+                        botTimeouts.delete(
+                          roomId + "_mode_agree_after_hesitate_timeout",
+                        );
                       }, agreeDelay);
-                      botTimeouts.set(roomId + "_mode_agree_after_hesitate_timeout", followTimeout);
+                      botTimeouts.set(
+                        roomId + "_mode_agree_after_hesitate_timeout",
+                        followTimeout,
+                      );
                     }
                     botTimeouts.delete(roomId + "_mode_hesitate_timeout");
                   }, hesitateDelay);
@@ -6388,16 +6577,27 @@ async function startServer() {
             } else {
               // Bot and human are already matching (either bot proposed, or bot agreed)
               if (!botTimeouts.has(roomId + "_mode_confirm_timeout")) {
-                const confirmTimeout = setTimeout(() => {
-                  const r = rooms.get(roomId);
-                  if (!r || r.gameState !== "waiting" || r.selectionMode) return;
-                  const hp = r.players.find((p: any) => !p.isBot);
-                  const bp = r.players.find((p: any) => p.isBot);
-                  if (hp && bp && hp.selectedSelectionMode === bp.selectedSelectionMode) {
-                    executeSelectionModeConfirmation(roomId);
-                  }
-                }, 2500 + Math.random() * 1500);
-                botTimeouts.set(roomId + "_mode_confirm_timeout", confirmTimeout);
+                const confirmTimeout = setTimeout(
+                  () => {
+                    const r = rooms.get(roomId);
+                    if (!r || r.gameState !== "waiting" || r.selectionMode)
+                      return;
+                    const hp = r.players.find((p: any) => !p.isBot);
+                    const bp = r.players.find((p: any) => p.isBot);
+                    if (
+                      hp &&
+                      bp &&
+                      hp.selectedSelectionMode === bp.selectedSelectionMode
+                    ) {
+                      executeSelectionModeConfirmation(roomId);
+                    }
+                  },
+                  2500 + Math.random() * 1500,
+                );
+                botTimeouts.set(
+                  roomId + "_mode_confirm_timeout",
+                  confirmTimeout,
+                );
               }
             }
           } else {
@@ -6405,22 +6605,33 @@ async function startServer() {
             clearBotSelectionModeTimeouts(roomId);
 
             // Proactive selection mode proposal if human is late (8 seconds delay)
-            if (!botTimeouts.has(roomId + "_mode_proactive_timeout") && !botPlayer.selectedSelectionMode) {
+            if (
+              !botTimeouts.has(roomId + "_mode_proactive_timeout") &&
+              !botPlayer.selectedSelectionMode
+            ) {
               const delay = 8000; // 8 seconds delay
               const proactiveTimeout = setTimeout(() => {
                 const r = rooms.get(roomId);
                 if (!r || r.gameState !== "waiting" || r.selectionMode) return;
                 const hp = r.players.find((p: any) => !p.isBot);
                 const bp = r.players.find((p: any) => p.isBot);
-                if (hp && !hp.selectedSelectionMode && !bp.selectedSelectionMode) {
+                if (
+                  hp &&
+                  !hp.selectedSelectionMode &&
+                  !bp.selectedSelectionMode
+                ) {
                   // Choose randomly between "ready" and "bus_complete"
-                  const proposed = Math.random() < 0.5 ? "ready" : "bus_complete";
+                  const proposed =
+                    Math.random() < 0.5 ? "ready" : "bus_complete";
                   bp.selectedSelectionMode = proposed;
                   io.to(roomId).emit("room_update", r);
                 }
                 botTimeouts.delete(roomId + "_mode_proactive_timeout");
               }, delay);
-              botTimeouts.set(roomId + "_mode_proactive_timeout", proactiveTimeout);
+              botTimeouts.set(
+                roomId + "_mode_proactive_timeout",
+                proactiveTimeout,
+              );
             }
           }
         }
@@ -8164,7 +8375,10 @@ async function startServer() {
           let updated = false;
 
           // Check expired Bus Complete rewards
-          if (player.busCompleteExpiring && player.busCompleteExpiring.length > 0) {
+          if (
+            player.busCompleteExpiring &&
+            player.busCompleteExpiring.length > 0
+          ) {
             const now = Date.now();
             const validExpiring = [];
             let expiredKeys = 0;
@@ -8173,7 +8387,7 @@ async function startServer() {
               word_length: 0,
               time_freeze: 0,
               word_count: 0,
-              spy_lens: 0
+              spy_lens: 0,
             };
 
             for (const item of player.busCompleteExpiring) {
@@ -8194,7 +8408,10 @@ async function startServer() {
               player.keys = Math.max(0, (player.keys || 0) - expiredKeys);
               if (!player.ownedHelpers) player.ownedHelpers = {};
               for (const h in expiredHelpers) {
-                player.ownedHelpers[h] = Math.max(0, (player.ownedHelpers[h] || 0) - expiredHelpers[h]);
+                player.ownedHelpers[h] = Math.max(
+                  0,
+                  (player.ownedHelpers[h] || 0) - expiredHelpers[h],
+                );
               }
               updated = true;
             }
@@ -8248,20 +8465,25 @@ async function startServer() {
             tempItems: getTempItemsSum(player),
           };
           callback(enrichedPlayer);
-          
+
           // Reconnect logic
           for (const [roomId, room] of rooms.entries()) {
-            if (room.isWaitingForReconnect && room.disconnectedPlayerSerial === serial) {
+            if (
+              room.isWaitingForReconnect &&
+              room.disconnectedPlayerSerial === serial
+            ) {
               clearTimeout(room.reconnectTimeoutId);
               room.isWaitingForReconnect = false;
               room.disconnectedPlayerSerial = null;
-              
-              const p = room.players.find((pl:any) => pl.serial === serial);
+
+              const p = room.players.find((pl: any) => pl.serial === serial);
               if (p) {
                 p.id = socket.id;
               }
               socket.join(roomId);
-              io.to(roomId).emit("player_reconnected", { name: p ? p.name : "اللاعب" });
+              io.to(roomId).emit("player_reconnected", {
+                name: p ? p.name : "اللاعب",
+              });
               socket.emit("room_update", room);
               break;
             }
@@ -8503,7 +8725,7 @@ async function startServer() {
           if (player) {
             player.selectedSelectionMode = mode;
             io.to(roomId).emit("room_update", room);
-            
+
             // Trigger bot to react to human player propose
             const bot = room.players.find((p: any) => p.isBot);
             if (bot) {
@@ -8523,7 +8745,7 @@ async function startServer() {
           if (mode === "custom" && room.matchType !== "private") {
             return; // Ignore custom mode selection for non-private matches
           }
-          
+
           room.selectionMode = mode;
           if (mode === "custom") {
             room.gameState = "custom_image_upload";
@@ -8539,7 +8761,8 @@ async function startServer() {
                 clearInterval(interval);
                 return;
               }
-              const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+              const isAdPlaying =
+                r.adPausedPlayers && r.adPausedPlayers.size > 0;
               if (!isAdPlaying) {
                 r.timer--;
                 if (r.timer <= 0) {
@@ -8560,7 +8783,7 @@ async function startServer() {
             room.busCompleteLetter = null;
             room.busCompleteSubmittedPlayers = [];
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-            
+
             // Trigger bot logic for the new game
             const opponent = room.players.find((p: any) => p.id !== socket.id);
             if (opponent && opponent.isBot) {
@@ -8576,21 +8799,27 @@ async function startServer() {
             room.xoWinLength = 3;
             room.xoBoard = Array(size * size).fill(null);
             room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
-            room.xoOPlayer = room.players.find((p: any) => p.id !== room.xoXPlayer).id;
+            room.xoOPlayer = room.players.find(
+              (p: any) => p.id !== room.xoXPlayer,
+            ).id;
             room.xoTurn = room.xoXPlayer;
             room.xoWinner = null;
             room.xoWinningLine = null;
             room.timer = getXOTimerLimit(size); // Dynamic limit based on board size
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-            
+
             const interval = setInterval(() => {
               const r = rooms.get(roomId);
-              if (!r || (r.gameState !== "xo_playing" && r.gameState !== "xo_finished")) {
+              if (
+                !r ||
+                (r.gameState !== "xo_playing" && r.gameState !== "xo_finished")
+              ) {
                 clearInterval(interval);
                 return;
               }
               if (r.gameState === "xo_playing") {
-                const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+                const isAdPlaying =
+                  r.adPausedPlayers && r.adPausedPlayers.size > 0;
                 if (!isAdPlaying) {
                   r.timer--;
                   if (r.timer <= 0) {
@@ -8644,7 +8873,7 @@ async function startServer() {
             room.busCompleteSubmittedPlayers = [];
             room.busCompleteRematchRequestedBy = [];
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-            
+
             // Trigger bot logic for the new game
             const opponent = room.players.find((p: any) => p.id !== socket.id);
             if (opponent && opponent.isBot) {
@@ -8668,15 +8897,23 @@ async function startServer() {
           const opponent = room.players.find((p: any) => p.id !== socket.id);
           const requestor = room.players.find((p: any) => p.id === socket.id);
           if (opponent && requestor) {
-            const opponentSocketId = playerSockets.get(opponent.serial) || opponent.id;
-            io.to(opponentSocketId).emit("bus_complete_letter_change_requested", {
-              opponentName: requestor.name,
-            });
+            const opponentSocketId =
+              playerSockets.get(opponent.serial) || opponent.id;
+            io.to(opponentSocketId).emit(
+              "bus_complete_letter_change_requested",
+              {
+                opponentName: requestor.name,
+              },
+            );
           }
           io.to(roomId).emit("room_update", room);
 
           if (opponent && opponent.isBot) {
-            handleBotEvent(roomId, "bus_complete_letter_change_requested", null);
+            handleBotEvent(
+              roomId,
+              "bus_complete_letter_change_requested",
+              null,
+            );
           }
         }
       });
@@ -8750,7 +8987,8 @@ async function startServer() {
 
           room.busCompleteAnswers[socket.id] = answers;
           const timeReduction = room.busCompleteTimerReduction || 0;
-          room.busCompleteSubmitTimes[socket.id] = 300 - (room.timer + timeReduction);
+          room.busCompleteSubmitTimes[socket.id] =
+            300 - (room.timer + timeReduction);
 
           if (!room.busCompleteSubmittedPlayers.includes(socket.id)) {
             room.busCompleteSubmittedPlayers.push(socket.id);
@@ -8763,89 +9001,132 @@ async function startServer() {
               const previousTimer = room.timer;
               room.busCompleteTimerReduction = room.timer - 60;
               room.timer = 60;
-              
-              const botPlayer = room.players.find(p => p.isBot);
+
+              const botPlayer = room.players.find((p) => p.isBot);
               if (botPlayer) {
-                  if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
-                    clearTimeout(botTimeouts.get(roomId + "_bus_playing_submit_timeout"));
-                    botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
-                  }
-                  botFlags.delete(roomId + "_bus_playing_submit_timeout_scheduled");
+                if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
+                  clearTimeout(
+                    botTimeouts.get(roomId + "_bus_playing_submit_timeout"),
+                  );
+                  botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
+                }
+                botFlags.delete(
+                  roomId + "_bus_playing_submit_timeout_scheduled",
+                );
 
-                  const elapsedSec = 300 - previousTimer;
-                  let botReactionDelay = 0;
-                  if (elapsedSec < 25) {
-                    // Force the bot's total time from start to be 25-30s
-                    const targetTotalTime = 25 + Math.random() * 5;
-                    botReactionDelay = (targetTotalTime - elapsedSec) * 1000;
-                  } else {
-                    // Bot reacts in 3-5 seconds
-                    botReactionDelay = 3000 + Math.random() * 2000;
-                  }
+                const elapsedSec = 300 - previousTimer;
+                let botReactionDelay = 0;
+                if (elapsedSec < 25) {
+                  // Force the bot's total time from start to be 25-30s
+                  const targetTotalTime = 25 + Math.random() * 5;
+                  botReactionDelay = (targetTotalTime - elapsedSec) * 1000;
+                } else {
+                  // Bot reacts in 3-5 seconds
+                  botReactionDelay = 3000 + Math.random() * 2000;
+                }
 
-                  setTimeout(() => {
-                      const r = rooms.get(roomId);
-                      if (r && r.gameState === "bus_complete_playing" && !r.busCompleteSubmittedPlayers?.includes(botPlayer.id)) {
-                        let mappedLetter = r.busCompleteLetter || "ا";
-                        if (mappedLetter === "أ" || mappedLetter === "إ" || mappedLetter === "آ") mappedLetter = "ا";
-                        if (mappedLetter === "ة") mappedLetter = "ه";
-                        if (mappedLetter === "ى") mappedLetter = "ي";
+                setTimeout(() => {
+                  const r = rooms.get(roomId);
+                  if (
+                    r &&
+                    r.gameState === "bus_complete_playing" &&
+                    !r.busCompleteSubmittedPlayers?.includes(botPlayer.id)
+                  ) {
+                    let mappedLetter = r.busCompleteLetter || "ا";
+                    if (
+                      mappedLetter === "أ" ||
+                      mappedLetter === "إ" ||
+                      mappedLetter === "آ"
+                    )
+                      mappedLetter = "ا";
+                    if (mappedLetter === "ة") mappedLetter = "ه";
+                    if (mappedLetter === "ى") mappedLetter = "ي";
 
-                        const letterData = busCompleteData[mappedLetter] || {};
-                        const categories = ["boy", "girl", "animal", "plant", "inanimate", "country"];
-                        const answers: any = {};
-                        
-                        const willWin = Math.random() < 0.25;
-                        let wrongCount = willWin ? 0 : Math.floor(Math.random() * 2) + 1;
-                        
-                        const lastWrongCats: string[] = botFlags.get(roomId + "_last_wrong_cats") || [];
-                        const availableToWrong = categories.filter(c => !lastWrongCats.includes(c));
-                        const catsToWrong = availableToWrong.length >= wrongCount ? availableToWrong : [...categories];
-                        const shuffledCats = catsToWrong.sort(() => 0.5 - Math.random());
-                        const chosenWrongs = shuffledCats.slice(0, wrongCount);
-                        
-                        botFlags.set(roomId + "_last_wrong_cats", chosenWrongs);
+                    const letterData = busCompleteData[mappedLetter] || {};
+                    const categories = [
+                      "boy",
+                      "girl",
+                      "animal",
+                      "plant",
+                      "inanimate",
+                      "country",
+                    ];
+                    const answers: any = {};
 
-                        categories.forEach(cat => {
-                          const words = letterData[cat] || [];
-                          if (chosenWrongs.includes(cat)) {
-                            if (Math.random() < 0.6) {
-                              answers[cat] = ""; // 60% chance to leave blank
-                            } else {
-                              const fallbackWrongs = ["معرفش", "اي حاجة", "مش عارف", "صعب", "لا يوجد"];
-                              answers[cat] = fallbackWrongs[Math.floor(Math.random() * fallbackWrongs.length)];
-                            }
-                          } else if (words.length > 0) {
-                            answers[cat] = words[Math.floor(Math.random() * words.length)];
-                          } else {
-                            answers[cat] = "";
-                          }
-                        });
+                    const willWin = Math.random() < 0.25;
+                    let wrongCount = willWin
+                      ? 0
+                      : Math.floor(Math.random() * 2) + 1;
 
-                        const botId = botPlayer.id;
-                        if (!r.busCompleteAnswers) r.busCompleteAnswers = {};
-                        if (!r.busCompleteSubmitTimes) r.busCompleteSubmitTimes = {};
-                        if (!r.busCompleteSubmittedPlayers) r.busCompleteSubmittedPlayers = [];
+                    const lastWrongCats: string[] =
+                      botFlags.get(roomId + "_last_wrong_cats") || [];
+                    const availableToWrong = categories.filter(
+                      (c) => !lastWrongCats.includes(c),
+                    );
+                    const catsToWrong =
+                      availableToWrong.length >= wrongCount
+                        ? availableToWrong
+                        : [...categories];
+                    const shuffledCats = catsToWrong.sort(
+                      () => 0.5 - Math.random(),
+                    );
+                    const chosenWrongs = shuffledCats.slice(0, wrongCount);
 
-                        r.busCompleteAnswers[botId] = answers;
-                        const timeReduction = r.busCompleteTimerReduction || 0;
-                        r.busCompleteSubmitTimes[botId] = 300 - (r.timer + timeReduction);
+                    botFlags.set(roomId + "_last_wrong_cats", chosenWrongs);
 
-                        if (!r.busCompleteSubmittedPlayers.includes(botId)) {
-                          r.busCompleteSubmittedPlayers.push(botId);
-                          if (r.busCompleteSubmittedPlayers.length === 2) {
-                            if (intervals.has(roomId)) {
-                              clearInterval(intervals.get(roomId));
-                              intervals.delete(roomId);
-                            }
-                            r.gameState = "bus_complete_evaluating";
-                            evaluateBusCompleteAnswers(r);
-                            handleBotEvent(roomId, "room_update", r);
-                          }
+                    categories.forEach((cat) => {
+                      const words = letterData[cat] || [];
+                      if (chosenWrongs.includes(cat)) {
+                        if (Math.random() < 0.6) {
+                          answers[cat] = ""; // 60% chance to leave blank
+                        } else {
+                          const fallbackWrongs = [
+                            "معرفش",
+                            "اي حاجة",
+                            "مش عارف",
+                            "صعب",
+                            "لا يوجد",
+                          ];
+                          answers[cat] =
+                            fallbackWrongs[
+                              Math.floor(Math.random() * fallbackWrongs.length)
+                            ];
                         }
-                        io.to(roomId).emit("room_update", r);
+                      } else if (words.length > 0) {
+                        answers[cat] =
+                          words[Math.floor(Math.random() * words.length)];
+                      } else {
+                        answers[cat] = "";
                       }
-                  }, botReactionDelay);
+                    });
+
+                    const botId = botPlayer.id;
+                    if (!r.busCompleteAnswers) r.busCompleteAnswers = {};
+                    if (!r.busCompleteSubmitTimes)
+                      r.busCompleteSubmitTimes = {};
+                    if (!r.busCompleteSubmittedPlayers)
+                      r.busCompleteSubmittedPlayers = [];
+
+                    r.busCompleteAnswers[botId] = answers;
+                    const timeReduction = r.busCompleteTimerReduction || 0;
+                    r.busCompleteSubmitTimes[botId] =
+                      300 - (r.timer + timeReduction);
+
+                    if (!r.busCompleteSubmittedPlayers.includes(botId)) {
+                      r.busCompleteSubmittedPlayers.push(botId);
+                      if (r.busCompleteSubmittedPlayers.length === 2) {
+                        if (intervals.has(roomId)) {
+                          clearInterval(intervals.get(roomId));
+                          intervals.delete(roomId);
+                        }
+                        r.gameState = "bus_complete_evaluating";
+                        evaluateBusCompleteAnswers(r);
+                        handleBotEvent(roomId, "room_update", r);
+                      }
+                    }
+                    io.to(roomId).emit("room_update", r);
+                  }
+                }, botReactionDelay);
               }
             }
           }
@@ -8864,67 +9145,81 @@ async function startServer() {
 
       socket.on("submit_xo_move", ({ roomId, index }) => {
         const room = rooms.get(roomId);
-        if (room && room.gameState === "xo_playing" && room.xoTurn === socket.id) {
+        if (
+          room &&
+          room.gameState === "xo_playing" &&
+          room.xoTurn === socket.id
+        ) {
           if (room.xoBoard && room.xoBoard[index] === null && !room.xoWinner) {
-             const piece = room.xoXPlayer === socket.id ? "X" : "O";
-             room.xoBoard[index] = piece;
-             
-             // Check win
-             const winLines = getWinningLines(room.xoBoardSize || 3, room.xoWinLength || 3);
-             
-             let winner = null;
-             let winningLine = null;
-             for (const line of winLines) {
-               let isWin = true;
-               for (const idx of line) {
-                 if (room.xoBoard[idx] !== piece) {
-                   isWin = false;
-                   break;
-                 }
-               }
-               if (isWin) {
-                 winner = room.xoXPlayer === socket.id ? room.xoXPlayer : room.xoOPlayer;
-                 winningLine = line;
-                 break;
-               }
-             }
-             
-             if (winner) {
-               room.xoWinner = winner;
-               room.xoWinningLine = winningLine;
-               room.gameState = "xo_finished";
-               room.xoMatchWins = room.xoMatchWins || {};
-               room.xoMatchWins[winner] = (room.xoMatchWins[winner] || 0) + 1;
-               
-               // Update wins and points for winner
-               const pWinner = room.players.find((p: any) => p.id === winner);
-               if (pWinner) {
-                 pWinner.xoWins = (pWinner.xoWins || 0) + 1;
-                 const dbP = allPlayers.get(pWinner.serial);
-                 if (dbP) {
-                   dbP.xoWins = pWinner.xoWins;
-                   if (room.matchType === "random") {
-                     dbP.xoMatchPoints = (dbP.xoMatchPoints || 0) + 10;
-                   }
-                   pWinner.xoMatchPoints = dbP.xoMatchPoints;
-                   savePlayerData(pWinner.serial);
-                   io.to(pWinner.id).emit("player_data_update", dbP);
-                 }
-               }
-             } else if (room.xoBoard.every((cell: any) => cell !== null)) {
-               room.xoWinner = "draw";
-               room.gameState = "xo_finished";
-               room.xoMatchWins = room.xoMatchWins || {};
-               room.xoMatchWins["draw"] = (room.xoMatchWins["draw"] || 0) + 1;
-             } else {
-               room.xoTurn = room.xoXPlayer === socket.id ? room.xoOPlayer : room.xoXPlayer;
-             }
-             
-             io.to(roomId).emit("room_update", room);
-             
-             if (room.gameState === "xo_playing" && room.players.some((p: any) => p.isBot)) {
-               handleBotEvent(roomId, "room_update", room);
-             }
+            const piece = room.xoXPlayer === socket.id ? "X" : "O";
+            room.xoBoard[index] = piece;
+
+            // Check win
+            const winLines = getWinningLines(
+              room.xoBoardSize || 3,
+              room.xoWinLength || 3,
+            );
+
+            let winner = null;
+            let winningLine = null;
+            for (const line of winLines) {
+              let isWin = true;
+              for (const idx of line) {
+                if (room.xoBoard[idx] !== piece) {
+                  isWin = false;
+                  break;
+                }
+              }
+              if (isWin) {
+                winner =
+                  room.xoXPlayer === socket.id
+                    ? room.xoXPlayer
+                    : room.xoOPlayer;
+                winningLine = line;
+                break;
+              }
+            }
+
+            if (winner) {
+              room.xoWinner = winner;
+              room.xoWinningLine = winningLine;
+              room.gameState = "xo_finished";
+              room.xoMatchWins = room.xoMatchWins || {};
+              room.xoMatchWins[winner] = (room.xoMatchWins[winner] || 0) + 1;
+
+              // Update wins and points for winner
+              const pWinner = room.players.find((p: any) => p.id === winner);
+              if (pWinner) {
+                pWinner.xoWins = (pWinner.xoWins || 0) + 1;
+                const dbP = allPlayers.get(pWinner.serial);
+                if (dbP) {
+                  dbP.xoWins = pWinner.xoWins;
+                  if (room.matchType === "random") {
+                    dbP.xoMatchPoints = (dbP.xoMatchPoints || 0) + 10;
+                  }
+                  pWinner.xoMatchPoints = dbP.xoMatchPoints;
+                  savePlayerData(pWinner.serial);
+                  io.to(pWinner.id).emit("player_data_update", dbP);
+                }
+              }
+            } else if (room.xoBoard.every((cell: any) => cell !== null)) {
+              room.xoWinner = "draw";
+              room.gameState = "xo_finished";
+              room.xoMatchWins = room.xoMatchWins || {};
+              room.xoMatchWins["draw"] = (room.xoMatchWins["draw"] || 0) + 1;
+            } else {
+              room.xoTurn =
+                room.xoXPlayer === socket.id ? room.xoOPlayer : room.xoXPlayer;
+            }
+
+            io.to(roomId).emit("room_update", room);
+
+            if (
+              room.gameState === "xo_playing" &&
+              room.players.some((p: any) => p.isBot)
+            ) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           }
         }
       });
@@ -9543,7 +9838,8 @@ async function startServer() {
             room.guessingPlayerId = socket.id;
             room.judgmentType = type;
 
-            const opponentSocketId = playerSockets.get(opponent.serial) || opponent.id;
+            const opponentSocketId =
+              playerSockets.get(opponent.serial) || opponent.id;
             io.to(opponentSocketId).emit("judgment_requested", {
               guess,
               type,
@@ -10327,7 +10623,8 @@ async function startServer() {
 
               // Mute the player immediately in the current room
               blockedPlayer.isMuted = true;
-              const blockedSocketId = playerSockets.get(blockedPlayer.serial) || blockedPlayer.id;
+              const blockedSocketId =
+                playerSockets.get(blockedPlayer.serial) || blockedPlayer.id;
               io.to(blockedSocketId).emit("opponent_muted_you", true);
               io.to(roomId).emit("room_update", room);
 
@@ -10400,7 +10697,12 @@ async function startServer() {
           if (player) {
             const opponent = room.players.find((p: any) => p.id !== socket.id);
 
-            if (room.gameState !== "finished" && room.gameState !== "xo_finished" && room.gameState !== "bus_complete_evaluating" && room.gameState !== "waiting") {
+            if (
+              room.gameState !== "finished" &&
+              room.gameState !== "xo_finished" &&
+              room.gameState !== "bus_complete_evaluating" &&
+              room.gameState !== "waiting"
+            ) {
               // Player intentionally left during an active game
               const messageObj = {
                 senderId: "system",
@@ -10439,7 +10741,11 @@ async function startServer() {
               intervals.delete(roomId);
             }
 
-            if (room.gameState !== "finished" && room.gameState !== "xo_finished" && room.gameState !== "bus_complete_evaluating") {
+            if (
+              room.gameState !== "finished" &&
+              room.gameState !== "xo_finished" &&
+              room.gameState !== "bus_complete_evaluating"
+            ) {
               io.in(roomId).socketsLeave(roomId);
               rooms.delete(roomId);
             } else {
@@ -10483,7 +10789,8 @@ async function startServer() {
         if (room) {
           const opponent = room.players.find((p: any) => p.id !== socket.id);
           if (opponent) {
-            const opponentSocketId = playerSockets.get(opponent.serial) || opponent.id;
+            const opponentSocketId =
+              playerSockets.get(opponent.serial) || opponent.id;
             io.to(opponentSocketId).emit("opponent_muted_you", isMuted);
           }
         }
@@ -10492,61 +10799,72 @@ async function startServer() {
       socket.on("restart_xo", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (room && room.gameState === "xo_finished") {
-            room.gameState = "xo_playing";
-            room.category = "xo";
-            room.xoLevel = (room.xoLevel || 1) + 1;
-            if (room.xoLevel > 8) {
-              room.xoLevel = 1;
-              room.xoMatchWins = {};
+          room.gameState = "xo_playing";
+          room.category = "xo";
+          room.xoLevel = (room.xoLevel || 1) + 1;
+          if (room.xoLevel > 8) {
+            room.xoLevel = 1;
+            room.xoMatchWins = {};
+          }
+          const size = room.xoLevel + 2;
+          room.xoBoardSize = size;
+          room.xoWinLength = size === 3 ? 3 : size === 4 || size === 5 ? 4 : 5;
+          room.xoBoard = Array(size * size).fill(null);
+          room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
+          room.xoOPlayer = room.players.find(
+            (p: any) => p.id !== room.xoXPlayer,
+          ).id;
+          room.xoTurn = room.xoXPlayer;
+          room.xoWinner = null;
+          room.xoWinningLine = null;
+          room.timer = getXOTimerLimit(size);
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+          const interval = setInterval(() => {
+            const r = rooms.get(roomId);
+            if (
+              !r ||
+              (r.gameState !== "xo_playing" && r.gameState !== "xo_finished")
+            ) {
+              clearInterval(interval);
+              return;
             }
-            const size = room.xoLevel + 2;
-            room.xoBoardSize = size;
-            room.xoWinLength = size === 3 ? 3 : (size === 4 || size === 5 ? 4 : 5);
-            room.xoBoard = Array(size * size).fill(null);
-            room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
-            room.xoOPlayer = room.players.find((p: any) => p.id !== room.xoXPlayer).id;
-            room.xoTurn = room.xoXPlayer;
-            room.xoWinner = null;
-            room.xoWinningLine = null;
-            room.timer = getXOTimerLimit(size);
-            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-            
-            const interval = setInterval(() => {
-              const r = rooms.get(roomId);
-              if (!r || (r.gameState !== "xo_playing" && r.gameState !== "xo_finished")) {
-                clearInterval(interval);
-                return;
-              }
-              if (r.gameState === "xo_playing") {
-                const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
-                if (!isAdPlaying) {
-                  r.timer--;
-                  if (r.timer <= 0) {
-                    clearInterval(interval);
-                    r.xoWinner = "draw";
-                    r.gameState = "xo_finished";
-                    r.xoMatchWins = r.xoMatchWins || {};
-                    r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
-                    io.to(roomId).emit("room_update", r);
-                  } else {
-                    io.to(roomId).emit("timer_update", r.timer);
-                  }
+            if (r.gameState === "xo_playing") {
+              const isAdPlaying =
+                r.adPausedPlayers && r.adPausedPlayers.size > 0;
+              if (!isAdPlaying) {
+                r.timer--;
+                if (r.timer <= 0) {
+                  clearInterval(interval);
+                  r.xoWinner = "draw";
+                  r.gameState = "xo_finished";
+                  r.xoMatchWins = r.xoMatchWins || {};
+                  r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
+                  io.to(roomId).emit("room_update", r);
+                } else {
+                  io.to(roomId).emit("timer_update", r.timer);
                 }
               }
-            }, 1000);
-            intervals.set(roomId, interval);
-
-            const bot = room.players.find((p: any) => p.isBot);
-            if (bot) {
-              handleBotEvent(roomId, "room_update", room);
             }
-            io.to(roomId).emit("room_update", room);
+          }, 1000);
+          intervals.set(roomId, interval);
+
+          const bot = room.players.find((p: any) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+          io.to(roomId).emit("room_update", room);
         }
       });
 
       socket.on("play_again", ({ roomId }) => {
         const room = rooms.get(roomId);
-        if (room && (room.gameState === "finished" || room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating")) {
+        if (
+          room &&
+          (room.gameState === "finished" ||
+            room.gameState === "xo_finished" ||
+            room.gameState === "bus_complete_evaluating")
+        ) {
           // Reset room state
           room.gameState = "waiting";
           room.timer = 120; // Increased timer for selection
@@ -10560,7 +10878,7 @@ async function startServer() {
           room.isCustomImageMode = false;
           room.selectionMode = null; // Important: triggers mode selection screen
           room.customImages = {};
-          
+
           room.xoBoard = null;
           room.xoTurn = null;
           room.xoWinner = null;
@@ -10571,7 +10889,7 @@ async function startServer() {
           room.xoMatchWins = {};
           room.xoBoardSize = 3;
           room.xoWinLength = 3;
-          
+
           room.busCompleteScores = {};
           room.busCompleteSubmitTimes = {};
           room.busCompleteWinner = null;
@@ -10964,16 +11282,22 @@ async function startServer() {
           const requiredPoints = level * 100;
           if ((player.busCompleteMatchPoints || 0) >= requiredPoints) {
             player.busCompleteMatchPoints -= requiredPoints;
-            
+
             const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
             player.xp = (player.xp || 0) + xpReward;
-            
+
             const keysReward = level;
             player.keys = (player.keys || 0) + keysReward;
 
             if (!player.ownedHelpers) player.ownedHelpers = {};
             const helpersReward: any = {};
-            ["hint", "word_length", "time_freeze", "word_count", "spy_lens"].forEach(h => {
+            [
+              "hint",
+              "word_length",
+              "time_freeze",
+              "word_count",
+              "spy_lens",
+            ].forEach((h) => {
               player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
               helpersReward[h] = level;
             });
@@ -10982,11 +11306,11 @@ async function startServer() {
             player.busCompleteExpiring.push({
               expiresAt: Date.now() + 48 * 60 * 60 * 1000,
               keys: keysReward,
-              helpers: helpersReward
+              helpers: helpersReward,
             });
 
             player.busCompleteRewardLevel = level === 10 ? 1 : level + 1;
-            
+
             const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
             if (!player.level || newLevel > player.level) {
               player.level = newLevel;
@@ -10999,7 +11323,7 @@ async function startServer() {
               keys: keysReward,
               helpers: helpersReward,
               newLevel: player.busCompleteRewardLevel,
-              points: player.busCompleteMatchPoints
+              points: player.busCompleteMatchPoints,
             });
           }
         }
@@ -11012,24 +11336,30 @@ async function startServer() {
           const requiredPoints = level * 100;
           if ((player.xoMatchPoints || 0) >= requiredPoints) {
             player.xoMatchPoints -= requiredPoints;
-            
+
             const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
             player.xp = (player.xp || 0) + xpReward;
-            
+
             const keysReward = level;
             player.keys = (player.keys || 0) + keysReward;
 
             if (!player.ownedHelpers) player.ownedHelpers = {};
             const helpersReward: any = {};
-            ["hint", "word_length", "time_freeze", "word_count", "spy_lens"].forEach(h => {
+            [
+              "hint",
+              "word_length",
+              "time_freeze",
+              "word_count",
+              "spy_lens",
+            ].forEach((h) => {
               player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
               helpersReward[h] = level;
             });
 
             // Using same expiring list just generic or maybe create xoExpiring. But for simplicity let's share the busCompleteExpiring arrays or wait, we just skip expiring for now, the user didn't mention it.
-            
+
             player.xoRewardLevel = level === 10 ? 1 : level + 1;
-            
+
             const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
             if (!player.level || newLevel > player.level) {
               player.level = newLevel;
@@ -11042,7 +11372,7 @@ async function startServer() {
               keys: keysReward,
               helpers: helpersReward,
               newLevel: player.xoRewardLevel,
-              points: player.xoMatchPoints
+              points: player.xoMatchPoints,
             });
           }
         }
@@ -13257,7 +13587,12 @@ async function startServer() {
               reason === "client namespace disconnect" ||
               leavingPlayer.intentionallyLeft;
 
-            if (room.gameState !== "finished" && room.gameState !== "xo_finished" && room.gameState !== "bus_complete_evaluating" && room.gameState !== "waiting") {
+            if (
+              room.gameState !== "finished" &&
+              room.gameState !== "xo_finished" &&
+              room.gameState !== "bus_complete_evaluating" &&
+              room.gameState !== "waiting"
+            ) {
               if (isIntentional) {
                 if (
                   leavingPlayer.useToken &&
@@ -13276,49 +13611,35 @@ async function startServer() {
               } else {
                 room.isWaitingForReconnect = true;
                 room.disconnectedPlayerSerial = leavingPlayer.serial;
-                io.to(roomId).emit("player_disconnected_waiting", { name: leavingPlayer.name });
-                
+                io.to(roomId).emit("player_disconnected_waiting", {
+                  name: leavingPlayer.name,
+                });
+
                 const timeoutId = setTimeout(() => {
                   const currentRoom = rooms.get(roomId);
-                  if (currentRoom && currentRoom.isWaitingForReconnect && currentRoom.disconnectedPlayerSerial === leavingPlayer.serial) {
-                     io.to(roomId).emit("chat_bubble", {
-                       senderId: "system",
-                       text: `انقطع اتصال ${leavingPlayer.name} ولم يعد`,
-                     });
-                     if (
-                       currentRoom.gameState === "custom_image_upload"
-                     ) {
-                       io.to(roomId).emit("game_stopped", {
-                         reason: "المنافس غادر المباراة",
-                       });
-                       if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-                       rooms.delete(roomId);
-                     } else {
-                       endGame(roomId, opponent ? opponent.name : "المنافس", true);
-                     }
-                     
-                     const idx = currentRoom.players.findIndex((p:any) => p.serial === leavingPlayer.serial);
-                     if (idx !== -1) currentRoom.players.splice(idx, 1);
-                     if (intervals.has(roomId)) {
-                       clearInterval(intervals.get(roomId));
-                       intervals.delete(roomId);
-                     }
-                     if (currentRoom.gameState !== "finished" && currentRoom.gameState !== "xo_finished" && currentRoom.gameState !== "bus_complete_evaluating") {
-                       io.in(roomId).socketsLeave(roomId);
-                       rooms.delete(roomId);
-                     } else {
-                       io.to(roomId).emit("room_update", currentRoom);
-                     }
+                  if (
+                    currentRoom &&
+                    currentRoom.isWaitingForReconnect &&
+                    currentRoom.disconnectedPlayerSerial ===
+                      leavingPlayer.serial
+                  ) {
+                    io.to(roomId).emit("game_stopped", {
+                      reason: "انقطع اتصال المنافس ولم يعد بعد مرور 15 ثانية.",
+                    });
+                    if (intervals.has(roomId)) {
+                      clearInterval(intervals.get(roomId));
+                      intervals.delete(roomId);
+                    }
+                    io.in(roomId).socketsLeave(roomId);
+                    rooms.delete(roomId);
                   }
                 }, 15000);
-                
+
                 room.reconnectTimeoutId = timeoutId;
                 return; // Do NOT remove player from room yet
               }
 
-              if (
-                room.gameState === "custom_image_upload"
-              ) {
+              if (room.gameState === "custom_image_upload") {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
                 });
@@ -13342,7 +13663,11 @@ async function startServer() {
               socket.to(roomId).emit("opponent_left_lobby");
             }
 
-            if (room.gameState !== "finished" && room.gameState !== "xo_finished" && room.gameState !== "bus_complete_evaluating") {
+            if (
+              room.gameState !== "finished" &&
+              room.gameState !== "xo_finished" &&
+              room.gameState !== "bus_complete_evaluating"
+            ) {
               io.in(roomId).socketsLeave(roomId);
               rooms.delete(roomId);
             } else {
@@ -13567,7 +13892,7 @@ async function startServer() {
 
       const interval = setInterval(() => {
         if (room.isWaitingForReconnect) return;
-        
+
         // Handle Ad Pause (highest priority - pauses everything)
         if (room.adPausedPlayers && room.adPausedPlayers.size > 0) {
           return; // Skip all timer decrements
@@ -14220,7 +14545,10 @@ async function startServer() {
               res.setHeader("Pragma", "no-cache");
               res.setHeader("Expires", "0");
             } else {
-              res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+              res.setHeader(
+                "Cache-Control",
+                "public, max-age=31536000, immutable",
+              );
             }
           },
         }),
