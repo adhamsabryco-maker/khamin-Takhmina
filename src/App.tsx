@@ -22827,9 +22827,6 @@ export default function App() {
                     )}
                     <label className="flex items-center justify-between text-base md:text-lg font-bold text-main mb-1 md:mb-2 px-1">
                       <span>إنشاء / دخول بكود غرفة</span>
-                      <span className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-[9px] md:text-sm px-2 py-0.5 rounded-full font-black Battery-border-2 border-yellow-300 animate-pulse shadow-sm shadow-red-200">
-                        جديد - تخمينة كومبليت
-                      </span>
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -24460,7 +24457,7 @@ export default function App() {
                       : "😢 حظ أوفر المرة القادمة"}
                 </div>
 
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col mb-1 gap-2">
                   {room.players.map((p) => {
                     const score = room.busCompleteScores?.[p.id];
                     const time = room.busCompleteSubmitTimes?.[p.id];
@@ -24470,7 +24467,7 @@ export default function App() {
                     return (
                       <div
                         key={p.id}
-                        className={`p-4 rounded-2xl border-4 ${isWinner ? "border-accent-orange bg-orange-50" : isTie ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-gray-50"}`}
+                        className={`p-2 rounded-2xl border-4 ${isWinner ? "border-accent-orange bg-orange-50" : isTie ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-gray-50"}`}
                       >
                         <div className="flex items-center justify-between font-black text-lg text-brown-dark mb-2">
                           <span className="flex-1 text-right">
@@ -24536,7 +24533,7 @@ export default function App() {
                   })}
                 </div>
 
-                <div className="flex flex-col gap-3 mt-2">
+                <div className="flex flex-col gap-3 mt-1">
                   <button
                     onClick={() => {
                       if ((room.adPausedPlayersArray?.length || 0) > 0) return;
@@ -24605,7 +24602,7 @@ export default function App() {
                 <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
                 {renderXORewardBar()}
                 {room.players.length === 2 && (
-                  <div className="flex justify-between items-center w-full px-1">
+                  <div className="flex justify-between items-center w-full mb-1 px-1">
                     <div className="flex flex-col items-center bg-white border-2 border-red-200 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px]" dir="rtl">
                       <span className="text-[10px] md:text-xs font-black text-gray-500 max-w-[80px] break-words text-center flex items-center justify-center gap-1">
                         {(room.players.find(p => p.id === room.xoXPlayer)?.name || "اللاعب X").substring(0, 5)}
@@ -24635,7 +24632,7 @@ export default function App() {
                 )}
                 
                 <div className="text-center mb-1 px-2 mt-1">
-                  <p className="text-xs md:text-sm font-bold text-gray-600 bg-blue-50 p-2 rounded-xl border border-blue-100 w-fit mx-auto shadow-sm">
+                  <p className="text-xs md:text-sm font-bold text-blue-600 bg-blue-50 p-2 rounded-xl border border-blue-100 w-fit mx-auto shadow-sm">
                     اجمع {room.xoWinLength || 3} رموز متتالية للفوز!
                   </p>
                 </div>
@@ -24684,10 +24681,9 @@ export default function App() {
                 )}
 
                 {room.gameState === "xo_finished" && (
-                   <div className="flex flex-col gap-3 mt-4 animate-in fade-in slide-in-from-bottom-4">
+                   <div className="flex flex-col gap-1 mt-1 animate-in fade-in slide-in-from-bottom-4">
                      {room.xoLevel === 8 ? (
-                       <div className="text-xl md:text-2xl font-black p-3 md:p-4 rounded-2xl border-4 bg-white mx-2 flex flex-col items-center">
-                         <span className="text-gray-800 mb-2">انتهت المباراة! النتيجة النهائية:</span>
+                       <div className="text-sm md:text-lg font-black p-1 rounded-2xl border-4 bg-white mx-2 flex flex-col items-center">
                          {(() => {
                             const p1 = room.players[0];
                             const p2 = room.players[1] || { id: "draw", name: "تعادل", avatar: "👤" };
@@ -24707,13 +24703,13 @@ export default function App() {
                             return (
                               <>
                                 <span className={`whitespace-pre-wrap ${isDraw ? "text-gray-600" : ((isP1Winner && me?.id === p1.id) || (isP2Winner && me?.id === p2.id)) ? "text-green-500" : "text-red-500"}`}>{resultMessage}</span>
-                                <div className="flex justify-around w-full mt-4 bg-gray-50 rounded-xl p-2 border">
+                                <div className="flex justify-around w-full mt-1 bg-gray-300 rounded-xl p-2 border">
                                   <div className="flex flex-col items-center gap-1 w-1/2">
-                                    <span className="text-lg">{p1.name} {isP1Winner ? "😁" : (isDraw ? "🤝" : "😡")}</span>
+                                    <span className="text-lg">{p1.name} {isP1Winner ? "😁" : (isDraw ? "🤝" : "🥺")}</span>
                                     <span className="text-2xl text-blue-600">{p1Wins}</span>
                                   </div>
                                   <div className="flex flex-col items-center gap-1 border-r border-gray-300 w-1/2">
-                                    <span className="text-lg">{p2.name} {isP2Winner ? "😁" : (isDraw ? "🤝" : "😡")}</span>
+                                    <span className="text-lg">{p2.name} {isP2Winner ? "😁" : (isDraw ? "🤝" : "🥺")}</span>
                                     <span className="text-2xl text-blue-600">{p2Wins}</span>
                                   </div>
                                 </div>
@@ -24722,7 +24718,7 @@ export default function App() {
                          })()}
                        </div>
                      ) : (
-                     <div className="text-xl md:text-2xl font-black p-3 md:p-4 rounded-2xl border-4 bg-white mx-2">
+                     <div className="text-sm md:text-lg font-black p-1 rounded-2xl border-4 bg-white mx-2">
                         {room.xoWinner === "draw" ? (
                            <span className="text-gray-600 whitespace-pre-wrap">تعادل! 🤝{"\n"}لا يوجد فائز هذه المرة</span>
                         ) : room.xoWinner === socket?.id ? (
@@ -24732,7 +24728,7 @@ export default function App() {
                         )}
                      </div>
                      )}
-                     <div className="flex gap-2 w-full justify-center mt-2 px-2 pb-2">
+                     <div className="flex gap-2 w-full justify-center mt-1 px-2 pb-2">
                        <button
                          onClick={() => {
                             playSound("clickOpen");
