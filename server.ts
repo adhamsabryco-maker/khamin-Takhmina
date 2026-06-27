@@ -8481,12 +8481,27 @@ async function startServer() {
             }
           }
 
+          let activeRoomId = null;
+          for (const [roomId, room] of rooms.entries()) {
+            const p = room.players.find((pl: any) => pl.serial === serial);
+            if (
+              p &&
+              room.gameState !== "finished" &&
+              room.gameState !== "xo_finished" &&
+              room.gameState !== "bus_complete_evaluating"
+            ) {
+              activeRoomId = roomId;
+              break;
+            }
+          }
+
           const enrichedPlayer = {
             ...player,
             isHighestLikes:
               highestLikesSerials.includes(player.serial) &&
               (player.likes || 0) > 0,
             tempItems: getTempItemsSum(player),
+            activeRoomId,
           };
           callback(enrichedPlayer);
 
