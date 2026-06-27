@@ -6695,7 +6695,7 @@ export default function App() {
     });
 
     newSocket.on("player_disconnected_waiting", ({ name }) => {
-      setReconnectWaitingMessage(`انتظر قليلاً! انقطع اتصال ${name}، ننتظر عودته...`);
+      setReconnectWaitingMessage("انقطع اتصال المنافس، انتظر قليلاً!");
     });
 
     newSocket.on("player_reconnected", ({ name }) => {
@@ -6949,6 +6949,7 @@ export default function App() {
 
     newSocket.on("game_finished", ({ room, winnerId, updates }) => {
       if (isIntentionalLeaveRef.current) return;
+      setReconnectWaitingMessage(null);
       setRoom(room);
       setCooldowns({});
       setReadyPowerUps([]);
@@ -27043,10 +27044,10 @@ export default function App() {
         </AnimatePresence>
 
         {reconnectWaitingMessage && (
-          <div className="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-6 shadow-xl flex flex-col items-center max-w-sm text-center">
-              <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
-              <p className="font-bold text-gray-800 text-lg">{reconnectWaitingMessage}</p>
+          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[999] p-4 w-full max-w-sm pointer-events-none">
+            <div className="bg-orange-50/95 backdrop-blur-md border border-orange-200 rounded-2xl p-4 shadow-xl flex items-center gap-3 dir-rtl text-right pointer-events-auto">
+              <Loader2 className="w-5 h-5 text-orange-500 animate-spin flex-shrink-0" />
+              <p className="font-bold text-orange-900 text-sm">{reconnectWaitingMessage}</p>
             </div>
           </div>
         )}
