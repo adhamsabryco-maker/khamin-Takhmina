@@ -6044,6 +6044,7 @@ export default function App() {
                   setTimeout(() => {
                     showAlert("انتهت المباراة أو غادر منافسك أثناء انقطاع اتصالك.", "تنبيه");
                   }, 100);
+                  setJoined(false);
                   return null;
                 }
                 return currentRoom;
