@@ -3012,6 +3012,11 @@ export default function App() {
 
   const [joined, setJoined] = useState(false);
 
+  useEffect(() => {
+    // Clear any reconnection waiting messages when joining/leaving rooms or transitioning to a new room ID
+    setReconnectWaitingMessage(null);
+  }, [joined, room?.id]);
+
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   useEffect(() => {
