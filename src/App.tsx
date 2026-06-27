@@ -6039,6 +6039,16 @@ export default function App() {
               setError(data.error);
               setShowWelcomeModal(true);
             } else if (data) {
+              setRoom((currentRoom) => {
+                if (currentRoom && (!data.activeRoomId || data.activeRoomId !== currentRoom.id)) {
+                  setTimeout(() => {
+                    showAlert("انتهت المباراة أو غادر منافسك أثناء انقطاع اتصالك.", "تنبيه");
+                  }, 100);
+                  return null;
+                }
+                return currentRoom;
+              });
+
               setXp(data.xp);
               prevLevelRef.current = getLevel(data.xp);
               setWins(data.wins || 0);
