@@ -11741,18 +11741,20 @@ async function startServer() {
             socket.join(roomId);
             // Send initial room state to admin
             socket.emit("room_update", room);
-            callback({ success: true });
+            if (typeof callback === "function") callback({ success: true });
           } else {
-            callback({ error: "Room not found" });
+            if (typeof callback === "function") callback({ error: "Room not found" });
           }
         } else {
-          callback({ error: "Unauthorized" });
+          if (typeof callback === "function") callback({ error: "Unauthorized" });
         }
       });
 
       socket.on("admin_leave_spectator", (roomId, callback) => {
         socket.leave(roomId);
-        callback({ success: true });
+        if (typeof callback === "function") {
+          callback({ success: true });
+        }
       });
 
       socket.on("admin_update_player", ({ serial, updates }, callback) => {
@@ -11799,13 +11801,12 @@ async function startServer() {
                 break;
               }
             }
-
-            callback({ success: true });
+            if (typeof callback === "function") callback({ success: true });
           } else {
-            callback({ error: "Player not found" });
+            if (typeof callback === "function") callback({ error: "Player not found" });
           }
         } else {
-          callback({ error: "Unauthorized" });
+          if (typeof callback === "function") callback({ error: "Unauthorized" });
         }
       });
 
@@ -11826,12 +11827,12 @@ async function startServer() {
               }
             }
 
-            callback({ success: true });
+            if (typeof callback === "function") callback({ success: true });
           } else {
-            callback({ error: "Player not found" });
+            if (typeof callback === "function") callback({ error: "Player not found" });
           }
         } else {
-          callback({ error: "Unauthorized" });
+          if (typeof callback === "function") callback({ error: "Unauthorized" });
         }
       });
 
