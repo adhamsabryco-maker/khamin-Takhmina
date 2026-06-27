@@ -4907,6 +4907,11 @@ async function startServer() {
       const currentRoom = rooms.get(roomId);
       if (!currentRoom || currentRoom.gameState !== "discussion") return;
 
+      if (currentRoom.isWaitingForReconnect) {
+        setTimeout(() => triggerBotQuestion(roomId, bot), 2000);
+        return;
+      }
+
       // Only ask if it's the bot's turn
       if (currentRoom.currentTurn !== bot.id) return;
 
@@ -5447,6 +5452,11 @@ async function startServer() {
           const currentRoom = rooms.get(roomId);
           if (!currentRoom || currentRoom.gameState !== "guessing") return;
 
+          if (currentRoom.isWaitingForReconnect) {
+            setTimeout(() => startBotGuessing(roomId), 2000);
+            return;
+          }
+
           const currentBot = currentRoom.players.find((p: any) => p.isBot);
           const currentPlayer = currentRoom.players.find((p: any) => !p.isBot);
           if (!currentBot || !currentPlayer) return;
@@ -5819,6 +5829,13 @@ async function startServer() {
           const r = rooms.get(roomId);
           if (!r || r.gameState !== "xo_playing" || r.xoTurn !== bot.id) return;
 
+          if (r.isWaitingForReconnect) {
+            setTimeout(() => {
+              executeBotXOMove(roomId);
+            }, 2000);
+            return;
+          }
+
           const emptyIndices = [];
           const size = r.xoBoardSize || 3;
           const winLength = r.xoWinLength || 3;
@@ -6066,7 +6083,7 @@ async function startServer() {
               }, delayBeforeAd);
             }
 
-            const timeout = setTimeout(() => {
+            const runBusCompleteBotSubmit = () => {
               const r = rooms.get(roomId);
               if (
                 !r ||
@@ -6074,6 +6091,12 @@ async function startServer() {
                 r.busCompleteSubmittedPlayers?.includes(botPlayer.id)
               )
                 return;
+
+              if (r.isWaitingForReconnect) {
+                const nextTimeout = setTimeout(runBusCompleteBotSubmit, 2000);
+                botTimeouts.set(roomId + "_bus_playing_submit_timeout", nextTimeout);
+                return;
+              }
 
               let mappedLetter = r.busCompleteLetter || "ا";
               if (
@@ -6169,8 +6192,9 @@ async function startServer() {
                 }
               }
               io.to(roomId).emit("room_update", r);
-            }, submitDelay);
+            };
 
+            const timeout = setTimeout(runBusCompleteBotSubmit, submitDelay);
             botTimeouts.set(roomId + "_bus_playing_submit_timeout", timeout);
           }
         } else {
@@ -8468,23 +8492,82 @@ async function startServer() {
 
           // Reconnect logic
           for (const [roomId, room] of rooms.entries()) {
+            const p = room.players.find((pl: any) => pl.serial === serial);
             if (
-              room.isWaitingForReconnect &&
-              room.disconnectedPlayerSerial === serial
+              p &&
+              room.gameState !== "finished" &&
+              room.gameState !== "xo_finished" &&
+              room.gameState !== "bus_complete_evaluating"
             ) {
-              clearTimeout(room.reconnectTimeoutId);
+              const oldSocketId = p.id;
               room.isWaitingForReconnect = false;
               room.disconnectedPlayerSerial = null;
+              p.id = socket.id;
 
-              const p = room.players.find((pl: any) => pl.serial === serial);
-              if (p) {
-                p.id = socket.id;
+              // Comprehensive update of all cached player (socket) IDs inside the room object
+              if (oldSocketId && oldSocketId !== socket.id) {
+                if (room.xoXPlayer === oldSocketId) room.xoXPlayer = socket.id;
+                if (room.xoOPlayer === oldSocketId) room.xoOPlayer = socket.id;
+                if (room.xoTurn === oldSocketId) room.xoTurn = socket.id;
+                if (room.currentTurn === oldSocketId) room.currentTurn = socket.id;
+                if (room.guessingPlayerId === oldSocketId) room.guessingPlayerId = socket.id;
+                if (room.pausingPlayerId === oldSocketId) room.pausingPlayerId = socket.id;
+                if (room.busCompleteChangeLetterRequestBy === oldSocketId) room.busCompleteChangeLetterRequestBy = socket.id;
+                
+                if (room.busCompleteSubmittedPlayers) {
+                  room.busCompleteSubmittedPlayers = room.busCompleteSubmittedPlayers.map((id: any) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.busCompleteRematchRequestedBy) {
+                  room.busCompleteRematchRequestedBy = room.busCompleteRematchRequestedBy.map((id: any) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.busCompleteAdViewers) {
+                  room.busCompleteAdViewers = room.busCompleteAdViewers.map((id: any) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.busCompleteCooldowns && room.busCompleteCooldowns[oldSocketId] !== undefined) {
+                  room.busCompleteCooldowns[socket.id] = room.busCompleteCooldowns[oldSocketId];
+                  delete room.busCompleteCooldowns[oldSocketId];
+                }
+                if (room.busCompleteAnswers && room.busCompleteAnswers[oldSocketId] !== undefined) {
+                  room.busCompleteAnswers[socket.id] = room.busCompleteAnswers[oldSocketId];
+                  delete room.busCompleteAnswers[oldSocketId];
+                }
+                if (room.busCompleteSubmitTimes && room.busCompleteSubmitTimes[oldSocketId] !== undefined) {
+                  room.busCompleteSubmitTimes[socket.id] = room.busCompleteSubmitTimes[oldSocketId];
+                  delete room.busCompleteSubmitTimes[oldSocketId];
+                }
+                if (room.customImages && room.customImages[oldSocketId] !== undefined) {
+                  room.customImages[socket.id] = room.customImages[oldSocketId];
+                  delete room.customImages[oldSocketId];
+                }
+                if (room.adPausedPlayers && room.adPausedPlayers.has(oldSocketId)) {
+                  room.adPausedPlayers.delete(oldSocketId);
+                  room.adPausedPlayers.add(socket.id);
+                }
+                if (room.powerUpAdsInProgress && room.powerUpAdsInProgress.has(oldSocketId)) {
+                  const val = room.powerUpAdsInProgress.get(oldSocketId);
+                  room.powerUpAdsInProgress.delete(oldSocketId);
+                  room.powerUpAdsInProgress.set(socket.id, val);
+                }
+                if (room.adRewardedPowerUps && room.adRewardedPowerUps.has(oldSocketId)) {
+                  const val = room.adRewardedPowerUps.get(oldSocketId);
+                  room.adRewardedPowerUps.delete(oldSocketId);
+                  room.adRewardedPowerUps.set(socket.id, val);
+                }
               }
+
               socket.join(roomId);
               io.to(roomId).emit("player_reconnected", {
-                name: p ? p.name : "اللاعب",
+                name: p.name,
               });
-              socket.emit("room_update", room);
+
+              // Broadcast the room update to ALL players in the room (including opponent/bot)
+              io.to(roomId).emit("room_update", room);
+
+              // Notify the bot of the reconnection and room update
+              const hasBot = room.players.some((pl: any) => pl.isBot);
+              if (hasBot) {
+                handleBotEvent(roomId, "room_update", room);
+              }
               break;
             }
           }
@@ -13614,29 +13697,7 @@ async function startServer() {
                 io.to(roomId).emit("player_disconnected_waiting", {
                   name: leavingPlayer.name,
                 });
-
-                const timeoutId = setTimeout(() => {
-                  const currentRoom = rooms.get(roomId);
-                  if (
-                    currentRoom &&
-                    currentRoom.isWaitingForReconnect &&
-                    currentRoom.disconnectedPlayerSerial ===
-                      leavingPlayer.serial
-                  ) {
-                    io.to(roomId).emit("game_stopped", {
-                      reason: "انقطع اتصال المنافس ولم يعد بعد مرور 15 ثانية.",
-                    });
-                    if (intervals.has(roomId)) {
-                      clearInterval(intervals.get(roomId));
-                      intervals.delete(roomId);
-                    }
-                    io.in(roomId).socketsLeave(roomId);
-                    rooms.delete(roomId);
-                  }
-                }, 15000);
-
-                room.reconnectTimeoutId = timeoutId;
-                return; // Do NOT remove player from room yet
+                return; // Do NOT remove player from room yet, no 15-second timeout
               }
 
               if (room.gameState === "custom_image_upload") {
@@ -13891,8 +13952,6 @@ async function startServer() {
       }
 
       const interval = setInterval(() => {
-        if (room.isWaitingForReconnect) return;
-
         // Handle Ad Pause (highest priority - pauses everything)
         if (room.adPausedPlayers && room.adPausedPlayers.size > 0) {
           return; // Skip all timer decrements
