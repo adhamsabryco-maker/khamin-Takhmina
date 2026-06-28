@@ -5850,37 +5850,65 @@ async function startServer() {
             const piece = r.xoXPlayer === bot.id ? "X" : "O";
             const enemyPiece = r.xoXPlayer === bot.id ? "O" : "X";
 
-            const getWinningMove = (p: string) => {
+            const getWinningMove = (p: string, targetCount: number) => {
+              const candidates = [];
               for (const line of winLines) {
                 let pCount = 0;
-                let nullCount = 0;
-                let nullIdx = -1;
+                let enemyCount = 0;
+                let nullIndices = [];
                 for (const idx of line) {
                   if (r.xoBoard[idx] === p) pCount++;
-                  else if (r.xoBoard[idx] === null) {
-                    nullCount++;
-                    nullIdx = idx;
-                  }
+                  else if (r.xoBoard[idx] !== null) enemyCount++;
+                  else nullIndices.push(idx);
                 }
-                if (pCount === winLength - 1 && nullCount === 1) return nullIdx;
+                if (pCount === targetCount && enemyCount === 0 && nullIndices.length > 0) {
+                  candidates.push(nullIndices[Math.floor(Math.random() * nullIndices.length)]);
+                }
               }
+              if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
               return null;
             };
 
-            const winMove = getWinningMove(piece);
-            const blockMove = getWinningMove(enemyPiece);
+            const winMove = getWinningMove(piece, winLength - 1);
+            const blockMove = getWinningMove(enemyPiece, winLength - 1);
+            
+            // Smarter moves for building or blocking earlier
+            const smartBuildMove = winLength > 3 ? getWinningMove(piece, winLength - 2) : null;
+            const smartBlockMove = winLength > 3 ? getWinningMove(enemyPiece, winLength - 2) : null;
 
             // Difficulty scaling based on level (1 to 8)
-            const winChance = 0.5 + level * 0.06; // level 1: 0.56, level 8: 0.98
-            const blockChance = 0.4 + level * 0.07; // level 1: 0.47, level 8: 0.96
+            const winChance = 0.65 + level * 0.04; // level 1: 0.69, level 8: 0.97
+            const smartChance = 0.4 + level * 0.07; // chance to play a strategic move
 
             if (winMove !== null && Math.random() < winChance) {
               selectedIdx = winMove;
-            } else if (blockMove !== null && Math.random() < blockChance) {
+            } else if (blockMove !== null) {
+              // Always block an immediate loss
               selectedIdx = blockMove;
+            } else if (smartBlockMove !== null && Math.random() < smartChance) {
+              selectedIdx = smartBlockMove;
+            } else if (smartBuildMove !== null && Math.random() < smartChance) {
+              selectedIdx = smartBuildMove;
             } else {
-              selectedIdx =
-                emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+              // Pick a random move, preferably near existing pieces if possible
+              const adjacentIndices = emptyIndices.filter(idx => {
+                const row = Math.floor(idx / size);
+                const col = idx % size;
+                for (let dr = -1; dr <= 1; dr++) {
+                  for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    const r2 = row + dr;
+                    const c2 = col + dc;
+                    if (r2 >= 0 && r2 < size && c2 >= 0 && c2 < size) {
+                      if (r.xoBoard[r2 * size + c2] !== null) return true;
+                    }
+                  }
+                }
+                return false;
+              });
+              
+              const pool = adjacentIndices.length > 0 ? adjacentIndices : emptyIndices;
+              selectedIdx = pool[Math.floor(Math.random() * pool.length)];
             }
 
             r.xoBoard[selectedIdx] = piece;
@@ -5933,8 +5961,7 @@ async function startServer() {
             }
             io.to(roomId).emit("room_update", r);
 
-            if (r.gameState === "xo_playing" && r.xoTurn === bot.id) {
-              // In case bot plays against itself (unlikely but just to cascade)
+            if (r.players.some((p: any) => p.isBot)) {
               handleBotEvent(roomId, "room_update", r);
             }
           }
@@ -6010,6 +6037,99 @@ async function startServer() {
         // Handle XO playing action
         if (room.gameState === "xo_playing" && room.xoTurn === botPlayer.id) {
           executeBotXOMove(roomId);
+        }
+
+        // Handle XO finished action (bot auto-restarts or goes to next level)
+        if (room.gameState === "xo_finished") {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            if (!botTimeouts.has(roomId + "_xo_restart_timeout")) {
+              botTimeouts.set(
+                roomId + "_xo_restart_timeout",
+                setTimeout(() => {
+                  botTimeouts.delete(roomId + "_xo_restart_timeout");
+                  const r = rooms.get(roomId);
+                  if (r && r.gameState === "xo_finished") {
+                    const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+                    if (isAdStillPlaying) return; // double check
+
+                    if ((r.xoLevel || 1) >= 8) {
+                      if (!r.xoRematchRequestedBy) r.xoRematchRequestedBy = [];
+                      if (!r.xoRematchRequestedBy.includes(botPlayer.id)) {
+                        r.xoRematchRequestedBy.push(botPlayer.id);
+                      }
+                      io.to(roomId).emit("room_update", r);
+                      if (r.xoRematchRequestedBy.length < 2) return;
+                      r.xoRematchRequestedBy = [];
+                      r.xoLevel = 1;
+                      r.xoMatchWins = {};
+                    } else {
+                      r.xoLevel = (r.xoLevel || 1) + 1;
+                    }
+
+                    r.gameState = "xo_playing";
+                    r.category = "xo";
+                    const size = r.xoLevel + 2;
+                  r.xoBoardSize = size;
+                  r.xoWinLength = size === 3 ? 3 : size === 4 || size === 5 ? 4 : 5;
+                  r.xoBoard = Array(size * size).fill(null);
+                  r.xoXPlayer = r.players[Math.floor(Math.random() * 2)].id;
+                  r.xoOPlayer = r.players.find((p: any) => p.id !== r.xoXPlayer).id;
+                  r.xoTurn = r.xoXPlayer;
+                  r.xoWinner = null;
+                  r.xoWinningLine = null;
+                  r.timer = getXOTimerLimit(size);
+                  if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+                  const interval = setInterval(() => {
+                    const updatedRoom = rooms.get(roomId);
+                    if (
+                      !updatedRoom ||
+                      (updatedRoom.gameState !== "xo_playing" &&
+                        updatedRoom.gameState !== "xo_finished")
+                    ) {
+                      clearInterval(interval);
+                      return;
+                    }
+                    if (updatedRoom.gameState === "xo_playing") {
+                      const isAdPlaying =
+                        updatedRoom.adPausedPlayers && updatedRoom.adPausedPlayers.size > 0;
+                      if (!isAdPlaying) {
+                        updatedRoom.timer--;
+                        if (updatedRoom.timer <= 0) {
+                          clearInterval(interval);
+                          updatedRoom.xoWinner = "draw";
+                          updatedRoom.gameState = "xo_finished";
+                          updatedRoom.xoMatchWins = updatedRoom.xoMatchWins || {};
+                          updatedRoom.xoMatchWins["draw"] =
+                            (updatedRoom.xoMatchWins["draw"] || 0) + 1;
+                          io.to(roomId).emit("room_update", updatedRoom);
+                          handleBotEvent(roomId, "room_update", updatedRoom);
+                        } else {
+                          io.to(roomId).emit("timer_update", updatedRoom.timer);
+                        }
+                      }
+                    }
+                  }, 1000);
+                  intervals.set(roomId, interval);
+
+                  const bot = r.players.find((p: any) => p.isBot);
+                  if (bot) {
+                    handleBotEvent(roomId, "room_update", r);
+                  }
+                  io.to(roomId).emit("room_update", r);
+                }
+              }, 4500 + Math.random() * 2000)
+            );
+          }
+        }
+      }
+        
+      if (room.gameState !== "xo_finished" || (room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0)) {
+          if (botTimeouts.has(roomId + "_xo_restart_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_xo_restart_timeout"));
+            botTimeouts.delete(roomId + "_xo_restart_timeout");
+          }
         }
 
         // Handle bus_complete_playing action
@@ -9072,6 +9192,9 @@ async function startServer() {
             room.busCompleteCooldowns[socket.id] = 30; // 30 seconds cooldown
           }
           io.to(roomId).emit("room_update", room);
+          if (room.players.some((p: any) => p.isBot)) {
+            handleBotEvent(roomId, "room_update", room);
+          }
         }
       });
 
@@ -9312,10 +9435,7 @@ async function startServer() {
 
             io.to(roomId).emit("room_update", room);
 
-            if (
-              room.gameState === "xo_playing" &&
-              room.players.some((p: any) => p.isBot)
-            ) {
+            if (room.players.some((p: any) => p.isBot)) {
               handleBotEvent(roomId, "room_update", room);
             }
           }
@@ -10340,6 +10460,10 @@ async function startServer() {
             room.adCooldownTimer = 30; // 30s cooldown before resuming timer
           }
           io.to(roomId).emit("room_update", room);
+          
+          if (room.players.some((p: any) => p.isBot)) {
+            handleBotEvent(roomId, "room_update", room);
+          }
         }
       });
 
@@ -10897,13 +11021,24 @@ async function startServer() {
       socket.on("restart_xo", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (room && room.gameState === "xo_finished") {
-          room.gameState = "xo_playing";
-          room.category = "xo";
-          room.xoLevel = (room.xoLevel || 1) + 1;
-          if (room.xoLevel > 8) {
+          if ((room.xoLevel || 1) >= 8) {
+            if (!room.xoRematchRequestedBy) room.xoRematchRequestedBy = [];
+            if (!room.xoRematchRequestedBy.includes(socket.id)) {
+              room.xoRematchRequestedBy.push(socket.id);
+            }
+            if (room.xoRematchRequestedBy.length < 2 && room.players.length === 2) {
+              io.to(roomId).emit("room_update", room);
+              return;
+            }
+            room.xoRematchRequestedBy = [];
             room.xoLevel = 1;
             room.xoMatchWins = {};
+          } else {
+            room.xoLevel = (room.xoLevel || 1) + 1;
           }
+
+          room.gameState = "xo_playing";
+          room.category = "xo";
           const size = room.xoLevel + 2;
           room.xoBoardSize = size;
           room.xoWinLength = size === 3 ? 3 : size === 4 || size === 5 ? 4 : 5;
