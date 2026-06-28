@@ -634,6 +634,7 @@ interface Room {
   xoWinner?: string | "draw" | null;
   xoMatchWins?: { [key: string]: number };
   xoWinningLine?: number[] | null;
+  xoRematchRequestedBy?: string[];
   xoXPlayer?: string | null;
   xoOPlayer?: string | null;
   busCompleteScores?: Record<
@@ -24650,7 +24651,7 @@ export default function App() {
                 
                 <div className="text-center mb-1 px-2 mt-1">
                   <p className="text-xs md:text-sm font-bold text-blue-600 bg-blue-50 p-2 rounded-xl border border-blue-100 w-fit mx-auto shadow-sm">
-                    اجمع {room.xoWinLength || 3} رموز متتالية للفوز!
+                    المستوي {room.xoLevel || 1} - اجمع {room.xoWinLength || 3} رموز متتالية للفوز!
                   </p>
                 </div>
                 <div className="flex justify-center my-2">
@@ -24762,11 +24763,20 @@ export default function App() {
                             playSound("clickOpen");
                             socket?.emit("restart_xo", { roomId: room.id });
                          }}
-                         disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                         disabled={((room.adPausedPlayersArray?.length || 0) > 0) || (room.xoLevel === 8 && room.xoRematchRequestedBy?.includes(socket?.id || ""))}
                          className={`flex-1 btn-game py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5
-                           ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-green-100 hover:bg-green-200 text-green-700 shadow-[0_4px_0_0_#86efac] active:shadow-transparent"}`}
+                           ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
+                             room.xoLevel === 8 && room.xoRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
+                               ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_4px_0_0_#166534] active:shadow-transparent"
+                               : room.xoLevel === 8 && room.xoRematchRequestedBy?.includes(socket?.id || "")
+                                 ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_4px_0_0_#166534]"
+                                 : "bg-green-100 hover:bg-green-200 text-green-700 shadow-[0_4px_0_0_#86efac] active:shadow-transparent"}`}
                        >
-                         {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺" : (room.xoLevel || 1) < 8 ? `انتقل الي المستوي ${(room.xoLevel || 1) + 1}` : "لعب مرة أخري!"}
+                         {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺" 
+                          : (room.xoLevel || 1) < 8 ? `انتقل الي المستوي ${(room.xoLevel || 1) + 1}` 
+                          : room.xoRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
+                          : room.xoRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
+                          : "لعب مرة أخري!"}
                        </button>
                      </div>
                      <button
