@@ -8414,6 +8414,12 @@ export default function App() {
   };
 
   const triggerMatchAd = useCallback(() => {
+    if (hasProPackage) {
+      setMatchAdState({ show: false, timer: 0, adFailed: false, adStarted: false });
+      localStorage.removeItem("khamin_pending_match_ad");
+      return;
+    }
+
     setMatchAdState(prev => ({ ...prev, adStarted: true, adFailed: false }));
     
     if (typeof (window as any).adBreak === "function") {
@@ -8468,24 +8474,25 @@ export default function App() {
       localStorage.removeItem("khamin_pending_match_ad");
       setMatchAdState({ show: false, timer: 0, adFailed: false, adStarted: false });
     }
-  }, []);
+  }, [hasProPackage]);
 
   useEffect(() => {
-    const me = room?.players.find((p) => p.id === socket?.id);
     if (room && room.gameState !== previousGameStateRef.current) {
       if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished") {
-        matchesPlayedRef.current += 1;
-        if (matchesPlayedRef.current >= 3 && !me?.isPro) {
-          matchesPlayedRef.current = 0;
-          localStorage.setItem("khamin_pending_match_ad", "true");
-          setMatchAdState({ show: true, timer: 3, adFailed: false, adStarted: false });
+        if (!hasProPackage) {
+          matchesPlayedRef.current += 1;
+          if (matchesPlayedRef.current >= 3) {
+            matchesPlayedRef.current = 0;
+            localStorage.setItem("khamin_pending_match_ad", "true");
+            setMatchAdState({ show: true, timer: 3, adFailed: false, adStarted: false });
+          }
         }
-      } else if (room.gameState === "waiting" && localStorage.getItem("khamin_pending_match_ad") === "true" && !me?.isPro) {
+      } else if (room.gameState === "waiting" && localStorage.getItem("khamin_pending_match_ad") === "true" && !hasProPackage) {
         setMatchAdState({ show: true, timer: 0, adFailed: true, adStarted: false });
       }
       previousGameStateRef.current = room.gameState;
     }
-  }, [room?.gameState, room?.players, socket?.id]);
+  }, [room?.gameState, hasProPackage]);
 
   useEffect(() => {
     if (matchAdState.show && matchAdState.timer > 0 && !matchAdState.adStarted && !matchAdState.adFailed) {
@@ -9384,16 +9391,23 @@ export default function App() {
     const isGameActive =
       room?.gameState === "guessing" ||
       room?.gameState === "discussion" ||
-      room?.gameState === "custom_image_upload";
+      room?.gameState === "custom_image_upload" ||
+      room?.gameState === "xo_playing" ||
+      room?.gameState === "xo_finished" ||
+      room?.gameState === "bus_complete_setup" ||
+      room?.gameState === "bus_complete_spin" ||
+      room?.gameState === "bus_complete_playing" ||
+      room?.gameState === "bus_complete_evaluating";
+
     const me = room?.players.find((p) => p.id === socket?.id);
 
     // Only show confirmation if the game is active (playing)
     if (isGameActive) {
       let message = "هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟";
-      if (me?.useToken) {
+      if (me?.useToken && (room?.gameState === "guessing" || room?.gameState === "discussion")) {
         message =
           "تحذير: إذا انسحبت الآن، ستخسر التخمينة المستخدمة! وتعتبر خاسر. هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟";
-      } else {
+      } else if (room?.gameState === "guessing" || room?.gameState === "discussion" || room?.gameState === "custom_image_upload") {
         message =
           "انسحابك من المبارة تعتبر خاسر. هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟";
       }
@@ -9413,6 +9427,7 @@ export default function App() {
     }
 
     isIntentionalLeaveRef.current = true;
+    socket?.emit("intentional_leave", { roomId });
     socket?.emit("leave_room", { roomId }, () => {
       resetToHome();
     });
@@ -20176,9 +20191,11 @@ export default function App() {
                        socket?.emit("bus_complete_ad_start", { roomId: room.id }); // reuse visual ad lock
                        showBusCompleteAd(
                          () => {
+                            socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: true });
                             socket?.emit("claim_xo_reward", { serial: socket?.data?.serial || playerSerial });
                          },
                          () => {
+                            socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: false });
                             showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
                          }
                        );
@@ -27071,9 +27088,28 @@ export default function App() {
 
         {reconnectWaitingMessage && (
           <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[999] p-4 w-full max-w-sm pointer-events-none">
-            <div className="bg-orange-50/95 backdrop-blur-md border border-orange-200 rounded-2xl p-4 shadow-xl flex items-center gap-3 dir-rtl text-right pointer-events-auto">
-              <Loader2 className="w-5 h-5 text-orange-500 animate-spin flex-shrink-0" />
-              <p className="font-bold text-orange-900 text-sm">{reconnectWaitingMessage}</p>
+            <div className="bg-orange-50/95 backdrop-blur-md border border-orange-200 rounded-2xl p-4 shadow-xl flex flex-col gap-3 dir-rtl text-right pointer-events-auto">
+              <div className="flex items-center gap-3 w-full">
+                <Loader2 className="w-5 h-5 text-orange-500 animate-spin flex-shrink-0" />
+                <p className="font-bold text-orange-900 text-sm flex-1">{reconnectWaitingMessage}</p>
+              </div>
+              <button 
+                onClick={() => {
+                   setReconnectWaitingMessage(null);
+                   if (room?.id) {
+                      isIntentionalLeaveRef.current = true;
+                      socket?.emit("intentional_leave", { roomId: room.id });
+                      socket?.emit("leave_room", { roomId: room.id }, () => {
+                         resetToHome();
+                      });
+                   } else {
+                      resetToHome();
+                   }
+                }}
+                className="w-full bg-red-100 hover:bg-red-200 text-red-600 font-bold py-2 rounded-xl text-sm transition-colors border border-red-200 flex items-center justify-center gap-2"
+              >
+                🚪 مغادرة المباراة
+              </button>
             </div>
           </div>
         )}
