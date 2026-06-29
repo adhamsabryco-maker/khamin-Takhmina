@@ -8635,8 +8635,24 @@ async function startServer() {
               room.gameState !== "bus_complete_evaluating"
             ) {
               const oldSocketId = p.id;
-              room.isWaitingForReconnect = false;
-              room.disconnectedPlayerSerial = null;
+              const opponent = room.players.find((pl: any) => pl.serial !== serial);
+              const isOpponentOnline = opponent && playerSockets.has(opponent.serial);
+              
+              if (serial === room.disconnectedPlayerSerial) {
+                if (isOpponentOnline || opponent?.isBot) {
+                  room.isWaitingForReconnect = false;
+                  room.disconnectedPlayerSerial = null;
+                } else {
+                  room.isWaitingForReconnect = true;
+                  room.disconnectedPlayerSerial = opponent?.serial || null;
+                }
+              } else {
+                if (!isOpponentOnline && !opponent?.isBot) {
+                  room.isWaitingForReconnect = true;
+                  room.disconnectedPlayerSerial = opponent?.serial || null;
+                }
+              }
+              
               p.id = socket.id;
 
               // Comprehensive update of all cached player (socket) IDs inside the room object
@@ -8694,6 +8710,12 @@ async function startServer() {
               io.to(roomId).emit("player_reconnected", {
                 name: p.name,
               });
+              
+              if (room.isWaitingForReconnect) {
+                socket.emit("player_disconnected_waiting", {
+                  name: opponent?.name || "المنافس",
+                });
+              }
 
               // Broadcast the room update to ALL players in the room (including opponent/bot)
               io.to(roomId).emit("room_update", room);
@@ -9170,10 +9192,16 @@ async function startServer() {
 
       socket.on("bus_complete_ad_start", ({ roomId }) => {
         const room = rooms.get(roomId);
-        if (room && room.gameState === "bus_complete_playing") {
-          if (!room.busCompleteAdViewers) room.busCompleteAdViewers = [];
-          if (!room.busCompleteAdViewers.includes(socket.id)) {
-            room.busCompleteAdViewers.push(socket.id);
+        if (room && (room.gameState === "bus_complete_playing" || room.gameState === "xo_playing")) {
+          if (!room.adPausedPlayers) room.adPausedPlayers = new Set();
+          room.adPausedPlayers.add(socket.id);
+          room.adPausedPlayersArray = Array.from(room.adPausedPlayers);
+          
+          if (room.gameState === "bus_complete_playing") {
+            if (!room.busCompleteAdViewers) room.busCompleteAdViewers = [];
+            if (!room.busCompleteAdViewers.includes(socket.id)) {
+              room.busCompleteAdViewers.push(socket.id);
+            }
           }
           io.to(roomId).emit("room_update", room);
         }
@@ -9181,13 +9209,17 @@ async function startServer() {
 
       socket.on("bus_complete_ad_end", ({ roomId, completed }) => {
         const room = rooms.get(roomId);
-        if (room && room.gameState === "bus_complete_playing") {
+        if (room && (room.gameState === "bus_complete_playing" || room.gameState === "xo_playing")) {
+          if (room.adPausedPlayers) {
+            room.adPausedPlayers.delete(socket.id);
+            room.adPausedPlayersArray = Array.from(room.adPausedPlayers);
+          }
           if (room.busCompleteAdViewers) {
             room.busCompleteAdViewers = room.busCompleteAdViewers.filter(
               (id: any) => id !== socket.id,
             );
           }
-          if (completed) {
+          if (completed && room.gameState === "bus_complete_playing") {
             if (!room.busCompleteCooldowns) room.busCompleteCooldowns = {};
             room.busCompleteCooldowns[socket.id] = 30; // 30 seconds cooldown
           }
@@ -10733,6 +10765,14 @@ async function startServer() {
                       message: "لقد قمت بالإبلاغ عن هذا اللاعب بالفعل.",
                     });
                 }
+              } else if (!serverReportedPlayer && reportedPlayer.isBot) {
+                console.log(`Bot reported by ${serverReporter?.name}, simulating success.`);
+                if (callback) {
+                  callback({
+                    success: true,
+                    message: "تم استلام البلاغ بنجاح",
+                  });
+                }
               } else {
                 console.log(
                   `Report failed: serverReportedPlayer=${!!serverReportedPlayer}, serverReporter=${!!serverReporter}`,
@@ -10940,7 +10980,8 @@ async function startServer() {
 
               if (
                 room.gameState.startsWith("bus_complete") ||
-                room.gameState === "custom_image_upload"
+                room.gameState === "custom_image_upload" ||
+                room.gameState.startsWith("xo_")
               ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
@@ -13848,7 +13889,34 @@ async function startServer() {
                 io.to(roomId).emit("player_disconnected_waiting", {
                   name: leavingPlayer.name,
                 });
-                return; // Do NOT remove player from room yet, no 15-second timeout
+                
+                // Auto-forfeit if player doesn't reconnect within 30 seconds
+                setTimeout(() => {
+                  const r = rooms.get(roomId);
+                  if (r && r.isWaitingForReconnect && r.disconnectedPlayerSerial === leavingPlayer.serial) {
+                    if (
+                      r.gameState.startsWith("bus_complete") ||
+                      r.gameState === "custom_image_upload" ||
+                      r.gameState.startsWith("xo_")
+                    ) {
+                      io.to(roomId).emit("game_stopped", {
+                        reason: "المنافس فقد الاتصال ولم يعد",
+                      });
+                      if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                      rooms.delete(roomId);
+                    } else {
+                      endGame(roomId, opponent ? opponent.name : "المنافس", true);
+                    }
+                    
+                    // Also cleanup the room completely if it's empty now
+                    if (r.players.length === 0) {
+                      if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                      rooms.delete(roomId);
+                    }
+                  }
+                }, 30000);
+
+                return; // Do NOT remove player from room yet, wait 30 seconds
               }
 
               if (room.gameState === "custom_image_upload") {
