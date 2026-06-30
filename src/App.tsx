@@ -23748,34 +23748,52 @@ export default function App() {
           {/* Scrollable grid container keeping current play visual and centering on next action */}
           <div className="w-full max-w-[320px] max-h-[280px] overflow-y-auto bg-gray-300 p-2 rounded-xl shadow-inner scroll-smooth border border-gray-400/20">
             <div className="grid grid-cols-5 gap-1 touch-manipulation">
-              {room.handGrid.map((c: any, idx: number) => {
-                const isEmpty = c === null;
-                const isP1 = c === room.players[0].id;
-                const isP2 = c === room.players[1].id;
-                // Highlight the next available cell
-                const isNext = isEmpty && room.handGrid.findIndex((x: any) => x === null) === idx;
-                return (
-                  <button 
-                    key={idx} 
-                    disabled={!isNext}
-                    ref={(el) => {
-                      if (isNext && el && idx !== prevHandNextIdxRef.current) {
-                        prevHandNextIdxRef.current = idx;
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
-                    }}
-                    onClick={() => {
-                      if (isNext) {
-                        socket?.emit("hand_click_cell", { roomId: room.id });
-                      }
-                    }}
-                    className={`aspect-square rounded-md flex items-center justify-center font-black text-lg md:text-xl border-2 transition-all ${isEmpty ? (isNext ? 'bg-yellow-100 border-yellow-400 scale-105 shadow-sm active:scale-95 cursor-pointer animate-pulse' : 'bg-white border-gray-100 opacity-60 cursor-default') : 'bg-gray-100 border-gray-300'}`}
-                  >
-                    {isP1 && <span className="text-red-500 drop-shadow-sm">X</span>}
-                    {isP2 && <span className="text-green-500 drop-shadow-sm">X</span>}
-                  </button>
-                );
-              })}
+              {(() => {
+                const nextEmptyIdx = room.handGrid.findIndex((x: any) => x === null);
+                return room.handGrid.map((c: any, idx: number) => {
+                  const isEmpty = c === null;
+                  const isP1 = c === room.players[0].id;
+                  const isP2 = c === room.players[1].id;
+                  // Highlight the next available cell using the cached nextEmptyIdx (O(1) lookup inside loop)
+                  const isNext = isEmpty && nextEmptyIdx === idx;
+                  return (
+                    <button 
+                      key={idx} 
+                      disabled={!isNext}
+                      ref={(el) => {
+                        if (isNext && el && idx !== prevHandNextIdxRef.current) {
+                          prevHandNextIdxRef.current = idx;
+                          // Use auto-scrolling with nearest block to prevent heavy layout-recalculation/animation lag
+                          el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+                        }
+                      }}
+                      onClick={() => {
+                        if (isNext) {
+                          // Optimistic update for instantaneous feedback on production servers (Railway/GitHub)
+                          if (room && socket) {
+                            const updatedGrid = [...room.handGrid];
+                            const currentEmptyIdx = updatedGrid.findIndex(x => x === null);
+                            if (currentEmptyIdx !== -1) {
+                              updatedGrid[currentEmptyIdx] = socket.id;
+                              setRoom({
+                                ...room,
+                                handGrid: updatedGrid
+                              });
+                              // Play sound immediately on client side for crisp responsive feedback
+                              playSound("handXFill");
+                            }
+                          }
+                          socket?.emit("hand_click_cell", { roomId: room.id });
+                        }
+                      }}
+                      className={`aspect-square rounded-md flex items-center justify-center font-black text-lg md:text-xl border-2 transition-colors duration-100 ${isEmpty ? (isNext ? 'bg-yellow-100 border-yellow-400 scale-105 shadow-sm active:scale-95 cursor-pointer animate-pulse' : 'bg-white border-gray-100 opacity-60 cursor-default') : 'bg-gray-100 border-gray-300'}`}
+                    >
+                      {isP1 && <span className="text-red-500 drop-shadow-sm">X</span>}
+                      {isP2 && <span className="text-green-500 drop-shadow-sm">X</span>}
+                    </button>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
