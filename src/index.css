@@ -117,6 +117,12 @@
   CASUAL GAME UI THEME - "COMIC BOOK"
 */
 
+.hand-bg {
+    height: 100%;
+    width: 100%;
+    background-image: url('public/hand-background.jpg');
+}
+
 .rank-1-frame {
   background-image: url('public/blue-flame.gif');
   mix-blend-mode: screen;

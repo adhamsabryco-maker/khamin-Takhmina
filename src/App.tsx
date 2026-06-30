@@ -10,7 +10,7 @@ import { createPortal } from "react-dom";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { GoogleGenAI } from "@google/genai";
 import { io, Socket } from "socket.io-client";
-import { Facebook, Youtube, Instagram, Heart } from "lucide-react";
+import { Facebook, Youtube, Instagram, Heart, Hand, BellRing } from "lucide-react";
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { motion, AnimatePresence, animate } from "motion/react";
 import {
@@ -385,11 +385,13 @@ const SOUNDS = {
   shakingBox: "/sounds/shakingBox.mp3",
   bell: "/sounds/bell.mp3",
   correct: "/sounds/correct.mp3",
+  wrong: "/sounds/wrong.mp3",
   message: "/sounds/message.mp3",
   clickOpen: "/sounds/click-open.mp3",
   clickClose: "/sounds/click-close.mp3",
   tick: "/sounds/tick.mp3",
   clockTicking: "/sounds/clock-ticking.mp3",
+  handXFill: "/sounds/hand-x-fill.mp3",
   luckyReels: "/sounds/lucky-reels-sound-effect.mp3",
   spinStart: "/sounds/lucky-reels-sound-effect.mp3",
   proArrival: "/sounds/proArrival.mp3",
@@ -397,6 +399,7 @@ const SOUNDS = {
   notification: "/sounds/notification.mp3",
   lobbyBackground: "/sounds/lobby-background-music.mp3",
   gameBackground: "/sounds/start-game-background-music.mp3",
+  deskBell: "/sounds/desk-bell.mp3",
 };
 
 interface ThemeConfig {
@@ -582,6 +585,7 @@ interface Player {
   isPro?: boolean;
   busCompleteWins?: number;
   xoWins?: number;
+  handWins?: number;
   selectedSelectionMode?: string;
 }
 
@@ -618,7 +622,7 @@ interface Room {
   currentTurn?: string | null;
   waitingForAnswerFrom?: string | null;
   matchType?: "random" | "private" | "friend" | string;
-  selectionMode?: "ready" | "custom" | "bus_complete" | "xo" | null;
+  selectionMode?: "ready" | "custom" | "bus_complete" | "xo" | "hand_khamin" | null;
   busCompleteLetter?: string;
   busCompleteWinner?: string;
   busCompleteHideResults?: boolean;
@@ -1288,6 +1292,12 @@ export default function App() {
   const [xoMatchPoints, setXoMatchPoints] = useState(
     () => parseInt(localStorage.getItem("khamin_xo_match_points") || "0") || 0,
   );
+  const [handRewardLevel, setHandRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_hand_reward_level") || "1") || 1,
+  );
+  const [handMatchPoints, setHandMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_hand_match_points") || "0") || 0,
+  );
   const [tempItems, setTempItems] = useState<{
     keys: number;
     tokens: number;
@@ -1843,7 +1853,7 @@ export default function App() {
   });
 
   const [leaderboardFilter, setLeaderboardFilter] = useState<
-    "all" | "busComplete" | "wins" | "streak" | "likes"
+    "all" | "busComplete" | "xo" | "hand" | "wins" | "streak" | "likes"
   >("all");
   const [leaderboardVisibleCount, setLeaderboardVisibleCount] = useState(10);
 
@@ -1860,6 +1870,8 @@ export default function App() {
       sorted.sort((a, b) => (b.busCompleteWins || 0) - (a.busCompleteWins || 0));
     } else if (leaderboardFilter === "xo") {
       sorted.sort((a, b) => (b.xoWins || 0) - (a.xoWins || 0));
+    } else if (leaderboardFilter === "hand") {
+      sorted.sort((a, b) => (b.handWins || 0) - (a.handWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -2877,6 +2889,7 @@ export default function App() {
 
   const [roomId, setRoomId] = useState("");
   const [room, setRoom] = useState<Room | null>(null);
+  const [shakeBell, setShakeBell] = useState(false);
 
   const [privateCategoryMode, setPrivateCategoryMode] = useState<
     null | "ready" | "custom"
@@ -5433,7 +5446,29 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (room?.gameState === "hand_playing" && room?.handPhase === "picking" && room.handPickerId === socket?.id) {
+       playSound("clockTicking");
+    } else {
+       stopSound("clockTicking");
+    }
+  }, [room?.gameState, room?.handPhase, room?.handPickerId, socket?.id, playSound, stopSound]);
+
   const prevGameStateRef = useRef<string | null>(null);
+  const prevHandGridCountRef = useRef<number>(0);
+  
+  useEffect(() => {
+    if (room?.gameState === "hand_playing" && room.handGrid && room.handPickerId === socket?.id) {
+      const filledCount = room.handGrid.filter((c: any) => c !== null).length;
+      if (filledCount > prevHandGridCountRef.current) {
+         playSound("handXFill");
+      }
+      prevHandGridCountRef.current = filledCount;
+    } else if (room?.gameState !== "hand_playing") {
+      prevHandGridCountRef.current = 0;
+    }
+  }, [room?.gameState, room?.handGrid, room?.handPickerId, socket?.id, playSound]);
+
   useEffect(() => {
     if (room && room.gameState === "xo_finished" && prevGameStateRef.current === "xo_playing") {
       if (room.xoWinner === socket?.id) {
@@ -5455,8 +5490,18 @@ export default function App() {
       }
     }
 
+    if (room && room.gameState === "hand_finished" && prevGameStateRef.current === "hand_playing") {
+      if (room.handWinner === socket?.id) {
+        playSound("win");
+      } else if (room.handWinner === "draw") {
+        playSound("pop");
+      } else {
+        playSound("lose");
+      }
+    }
+
     prevGameStateRef.current = room?.gameState || null;
-  }, [room?.gameState, room?.xoWinner, room?.busCompleteWinner, socket?.id, playSound]);
+  }, [room?.gameState, room?.xoWinner, room?.busCompleteWinner, room?.handWinner, socket?.id, playSound]);
 
   const clearPlayerData = () => {
     // Clear all localStorage items related to the game
@@ -5956,6 +6001,29 @@ export default function App() {
       }
     });
 
+    newSocket.on("hand_reward_claimed", (data: any) => {
+      playSound("prize");
+      setCustomConfirm({
+         show: true,
+         title: "تم استلام هدايا التخمين بنجاح! 🎁",
+         message: "تم ترقية مستوى هدايا كف اليد إلى " + data.newLevel + "!\n\n" +
+                  "تم إضافة:\n" +
+                  `+ ${data.xp} نقطة خبرة ✨\n` +
+                  `+ ${data.keys} مفاتيح 🔑\n` +
+                  `+ ${Object.values(data.helpers)[0]} من كل وسيلة مساعدة 🛠️`,
+         confirmText: "رائع!",
+         onConfirm: () => { setCustomConfirm({ show: false, title: "", message: "", confirmText: "", onConfirm: () => {} }); }
+      });
+      if (data.points != null) {
+        setHandMatchPoints(data.points);
+        localStorage.setItem("khamin_hand_match_points", data.points.toString());
+      }
+      if (data.newLevel != null) {
+        setHandRewardLevel(data.newLevel);
+        localStorage.setItem("khamin_hand_reward_level", data.newLevel.toString());
+      }
+    });
+
     newSocket.on("xo_reward_claimed", (data: any) => {
       playSound("prize");
       setCustomConfirm({
@@ -6092,6 +6160,14 @@ export default function App() {
               if (data.xoMatchPoints != null) {
                 setXoMatchPoints(data.xoMatchPoints);
                 localStorage.setItem("khamin_xo_match_points", data.xoMatchPoints.toString());
+              }
+              if (data.handRewardLevel != null) {
+                setHandRewardLevel(data.handRewardLevel);
+                localStorage.setItem("khamin_hand_reward_level", data.handRewardLevel.toString());
+              }
+              if (data.handMatchPoints != null) {
+                setHandMatchPoints(data.handMatchPoints);
+                localStorage.setItem("khamin_hand_match_points", data.handMatchPoints.toString());
               }
               if (data.likes != null) {
                 setLikes(data.likes);
@@ -6466,6 +6542,14 @@ export default function App() {
         setXoMatchPoints(data.xoMatchPoints);
         localStorage.setItem("khamin_xo_match_points", data.xoMatchPoints.toString());
       }
+      if (data.handRewardLevel != null) {
+        setHandRewardLevel(data.handRewardLevel);
+        localStorage.setItem("khamin_hand_reward_level", data.handRewardLevel.toString());
+      }
+      if (data.handMatchPoints != null) {
+        setHandMatchPoints(data.handMatchPoints);
+        localStorage.setItem("khamin_hand_match_points", data.handMatchPoints.toString());
+      }
       if (data.likes != null) {
         setLikes(data.likes);
         localStorage.setItem("khamin_likes", data.likes.toString());
@@ -6573,6 +6657,16 @@ export default function App() {
 
     newSocket.on("ad_cooldown_update", (timeLeft: number) => {
       setAdCooldownTimer(timeLeft);
+    });
+
+    newSocket.on("hand_bell_rung", () => {
+      playSound("deskBell");
+    });
+
+    newSocket.on("hand_wrong_guess", () => {
+      playSound("wrong");
+      setShakeBell(true);
+      setTimeout(() => setShakeBell(false), 500);
     });
 
     newSocket.on("room_update", (updatedRoom: Room) => {
@@ -8478,7 +8572,7 @@ export default function App() {
 
   useEffect(() => {
     if (room && room.gameState !== previousGameStateRef.current) {
-      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished") {
+      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished") {
         if (!hasProPackage) {
           matchesPlayedRef.current += 1;
           if (matchesPlayedRef.current >= 3) {
@@ -9397,7 +9491,9 @@ export default function App() {
       room?.gameState === "bus_complete_setup" ||
       room?.gameState === "bus_complete_spin" ||
       room?.gameState === "bus_complete_playing" ||
-      room?.gameState === "bus_complete_evaluating";
+      room?.gameState === "bus_complete_evaluating" ||
+      room?.gameState === "hand_playing" ||
+      room?.gameState === "hand_finished";
 
     const me = room?.players.find((p) => p.id === socket?.id);
 
@@ -11215,6 +11311,8 @@ export default function App() {
                 <span>{data.busCompleteWins || 0} 🚌</span>
                 <span>•</span>
                 <span>{data.xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
+                <span>•</span>
+                <span>{data.handWins || 0} 🖐</span>
               </div>
 
               {/* Friend Status Indicator / Add Friend Button */}
@@ -20153,7 +20251,7 @@ export default function App() {
   };
 
   const renderXORewardBar = () => {
-    if (!room || room.matchType !== "random" || room.gameState !== "xo_playing") return null;
+    if (!room || room.matchType !== "random" || (room.gameState !== "xo_playing" && room.gameState !== "xo_finished")) return null;
 
     const targetPoints = xoRewardLevel * 100;
     const progress = Math.min((xoMatchPoints / targetPoints) * 100, 100);
@@ -20209,6 +20307,78 @@ export default function App() {
                              `🎁 ${xoRewardLevel === 1 ? 50 : 100 + 50 * (xoRewardLevel - 1)} XP\n` +
                              `🔑 ${xoRewardLevel} مفتاح\n` +
                              `🔧 ${xoRewardLevel} من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)`,
+                    confirmText: "حسناً",
+                    onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                  });
+                }
+             }}
+             className={`flex justify-center items-center gap-1.5 px-3 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+               ${isReady ? "bg-green-500 text-white animate-pulse hover:bg-green-600 border border-green-600" : "bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"}`}
+           >
+             <span>🎁</span>
+             <span>استلم الهدايا</span>
+           </button>
+         </div>
+      </div>
+    );
+  };
+
+  const renderHandRewardBar = () => {
+    if (!room || room.matchType !== "random" || (room.gameState !== "hand_playing" && room.gameState !== "hand_finished")) return null;
+
+    const targetPoints = handRewardLevel * 100;
+    const progress = Math.min((handMatchPoints / targetPoints) * 100, 100);
+    const isReady = handMatchPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-2 relative overflow-hidden transition-all shadow-sm">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-blue-100/50 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex sm:flex-row items-center justify-between gap-2 z-10 w-full">
+           <div className="flex items-center gap-2 font-bold text-blue-800 text-sm">
+             <span>المستوي {handRewardLevel}</span>
+             <span className="text-xs bg-white px-1.5 py-0.5 rounded-md border border-blue-200" dir="ltr">
+               {handMatchPoints} / {targetPoints}
+             </span>
+           </div>
+           
+           <button
+             onClick={() => {
+                if (isReady) {
+                  setCustomConfirm({
+                     show: true,
+                     title: "مبروك! 🎉 اكتملت نقاط المستوي " + handRewardLevel,
+                     message: "يمكنك استلام هدايا هذا المستوى الآن، هل تود مشاهدة الإعلان؟\n\n" +
+                              "🎁 " + (handRewardLevel === 1 ? 50 : 100 + 50 * (handRewardLevel - 1)) + " XP\n" +
+                              "🔑 " + handRewardLevel + " مفتاح\n" +
+                              "🔧 " + handRewardLevel + " من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)",
+                     confirmText: "نعم مشاهدة الاعلان",
+                     cancelText: "الغاء",
+                     onConfirm: () => {
+                       setCustomConfirm((prev) => ({ ...prev, show: false }));
+                       socket?.emit("bus_complete_ad_start", { roomId: room.id }); 
+                       showBusCompleteAd(
+                         () => {
+                            socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: true });
+                            socket?.emit("claim_hand_reward", { serial: socket?.data?.serial || playerSerial });
+                         },
+                         () => {
+                            socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: false });
+                            showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+                         }
+                       );
+                     }
+                  });
+                } else {
+                  setCustomConfirm({
+                    show: true,
+                    title: `المستوي ${handRewardLevel}`,
+                    message: `متبقي ${targetPoints - handMatchPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                             `🎁 ${handRewardLevel === 1 ? 50 : 100 + 50 * (handRewardLevel - 1)} XP\n` +
+                             `🔑 ${handRewardLevel} مفتاح\n` +
+                             `🔧 ${handRewardLevel} من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)`,
                     confirmText: "حسناً",
                     onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
                   });
@@ -22352,6 +22522,7 @@ export default function App() {
                               <span>{topPlayers[1].likes || 0} ❤️</span>
                               <span>{topPlayers[1].busCompleteWins || 0} 🚌</span>
                               <span>{topPlayers[1].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
+                              <span>{topPlayers[1].handWins || 0} 🖐</span>
                             </div>
                           </div>
                         </div>
@@ -22405,6 +22576,7 @@ export default function App() {
                               <span>{topPlayers[0].likes || 0} ❤️</span>
                               <span>{topPlayers[0].busCompleteWins || 0} 🚌</span>
                               <span>{topPlayers[0].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
+                              <span>{topPlayers[0].handWins || 0} 🖐</span>
                             </div>
                           </div>
                         </div>
@@ -22452,6 +22624,7 @@ export default function App() {
                               <span>{topPlayers[2].likes || 0} ❤️</span>
                               <span>{topPlayers[2].busCompleteWins || 0} 🚌</span>
                               <span>{topPlayers[2].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
+                              <span>{topPlayers[2].handWins || 0} 🖐</span>
                             </div>
                           </div>
                         </div>
@@ -23052,6 +23225,8 @@ export default function App() {
                               <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.busCompleteWins || 0} 🚌</span>
                               <span>•</span>
                               <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.xoWins || 0} <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span></span>
+                              <span>•</span>
+                              <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.handWins || 0} 🖐</span>
                             </div>
                           </div>
                         </div>
@@ -23066,6 +23241,7 @@ export default function App() {
                         { id: "all", icon: "👥" },
                         { id: "busComplete", icon: "🚌" },
                         { id: "xo", icon: <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span> },
+                        { id: "hand", icon: "🖐" },
                         { id: "wins", icon: "🏆" },
                         { id: "streak", icon: "🔥" },
                         { id: "likes", icon: "❤️" },
@@ -23172,6 +23348,13 @@ export default function App() {
                                   dir="rtl"
                                 >
                                   {player.xoWins || 0} <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span>
+                                </span>
+                                <span className="text-brown-light">•</span>
+                                <span
+                                  className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded"
+                                  dir="rtl"
+                                >
+                                  {player.handWins || 0} 🖐
                                 </span>
                               </div>
                             </div>
@@ -23391,6 +23574,213 @@ export default function App() {
       </>
     );
   }
+
+  const renderHandGame = () => {
+    if (!room || (room.gameState !== "hand_playing" && room.gameState !== "hand_finished")) return null;
+
+    if (room.gameState === "hand_finished") {
+      return (
+        <div className="w-full flex flex-col items-center justify-center p-2">
+          <h2 className="text-2xl font-black mb-4">انتهت اللعبة!</h2>
+          <div className="flex gap-4 font-black text-xl mb-4">
+            <span className="text-red-500">{room.players[0].name}: {room.handP1Score}</span>
+            <span className="text-green-500">{room.players[1].name}: {room.handP2Score}</span>
+          </div>
+          <div className="text-3xl font-black mb-6">
+            {room.handWinner === "draw" ? "تعادل!" : 
+             room.handWinner === socket?.id ? "🏆 لقد فزت!" : 
+             "😢 خسرت!"}
+          </div>
+          <div className="flex flex-col gap-2 w-full">
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={() => {
+                  playSound("clickOpen");
+                  socket?.emit("play_again", { roomId: room.id });
+                }}
+                disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                className={`flex-1 btn-game py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5
+                  ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-blue-100 hover:bg-blue-200 text-blue-600 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
+              >
+                تغيير اللعبة
+              </button>
+              <button
+                onClick={() => {
+                  playSound("clickOpen");
+                  socket?.emit("request_hand_rematch", { roomId: room.id });
+                }}
+                disabled={((room.adPausedPlayersArray?.length || 0) > 0) || (room.handRematchRequestedBy?.includes(socket?.id || ""))}
+                className={`flex-1 btn-game py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5
+                  ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
+                    room.handRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
+                      ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_4px_0_0_#166534] active:shadow-transparent"
+                      : room.handRematchRequestedBy?.includes(socket?.id || "")
+                        ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_4px_0_0_#166534]"
+                        : "bg-green-100 hover:bg-green-200 text-green-700 shadow-[0_4px_0_0_#86efac] active:shadow-transparent"}`}
+              >
+                {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺" 
+                 : room.handRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
+                 : room.handRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
+                 : "لعب مرة أخرى!"}
+              </button>
+            </div>
+            <button
+              onClick={handleLeaveGame}
+              className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5 mt-1"
+            >
+              🚪 خروج للرئيسية
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    const isPicker = socket?.id === room.handPickerId;
+    const isSearcher = socket?.id === room.handSearcherId;
+    
+    // Hand view
+    if (room.handPhase === "picking" || (isSearcher && room.handPhase === "searching")) {
+      const isWaitingSearcher = room.handPhase === "picking" && isSearcher;
+      return (
+        <div className="w-full flex flex-col hand-bg items-center justify-center p-2">
+          <h2 className="text-sm md:text-base font-black mb-2 text-pink-600 border-2 border-pink-200 bg-pink-50 px-4 py-2 rounded-xl shadow-sm text-center">
+            {room.handPhase === "picking" 
+              ? (isPicker ? `اختار رقم للمنافس يبحث عنه 🧐 (${room.timer || 0}ث)` : `انتظر قليلاً! المنافس يختار رقم... ⏳ (${room.timer || 0}ث)`) 
+              : "ابحث عن الرقم واضغط على الجرس! 🔔"}
+          </h2>
+          {room.handPhase === "searching" && (
+            <div className="text-2xl md:text-2xl font-black text-red-500 mb-2 animate-pulse drop-shadow-md">
+              الرقم: {room.handTargetNumber}
+            </div>
+          )}
+          <div 
+            className="relative w-full max-w-[280px] md:max-w-[345px] mx-auto my-2 z-10"
+            style={{ aspectRatio: "229.4/317.85" }}
+          >
+            {/* Custom High-Quality Hand Silhouette SVG Path Outline from public/hand.svg */}
+            <svg 
+              viewBox="0 0 229.4 317.85" 
+              className="absolute pointer-events-none z-0"
+              style={{
+                left: "1.5%",
+                top: "2%",
+                width: "100%",
+                height: "100%",
+              }}
+            >
+              <path
+                d="m226.59,146.53c-9.24,38.1-27.97,72-37.95,108.82-9.39,21.37-24.28,39.8-29.55,62.51-4.35-4.32,2.55-18.98,6.11-25.27,5.62-14.05,17.01-25.79,21.38-40.59,4.25-21.7,14.01-40.92,22.4-61.06,4.14-10.16,8.26-21.76,10.1-29.83,1.68-7.36,7.34-17.7,7.37-26.08.03-7.09-7.16-11.99-13.87-9.7-20.09,6.85-23.26,37.11-36.07,52.93-23.85,19,.34-59.51.34-68.73,3.87-18.09,5.8-24.5,9.16-42.69,3.53-8.48,3.06-44.16-6.79-45.57-21.77-3.13-28.07,71.56-32.11,85.75-2.68,9.43-2.57,34.46-11.87,34.68-7.31.17-6.76-19.53-7.85-28.18.02-25.44,2.43-47.13,1.83-72.6-1.8-10.18-.5-32.93-11.86-36.93-8.3-2.92-11.2-1.06-13.81,2.51s-4.21,7.45-5.07,11.64c-8.86,43.38,7.1,130.79-7.98,131.71-12.93.79-14.58-40.62-16.43-54s-5.59-33.02-9.07-50.66c-4.24-10.81-6.27-28.9-21.49-18.7-21.96,16.2,29.05,149.94,4.28,135.07-13.01-16.67-20.21-42.39-31.4-60.87-2.66-4.81-6.71-3.39-9.83-.7-2.43,2.1-3.76,5.2-3.7,8.41.37,21.95,15.83,44.79,19.73,67.04,6.66,21.2,12.33,42.72,17,64.49,3.07,14.29,7.92,28.13,14.17,41.34,4.26,9.01,7.69,18.18,7.23,25.58-13.9-27.72-23.43-56.3-30.32-86.68-4.41-24.48-19.31-71.49-19.31-71.49,0,0-13.95-28.34-10.96-43.68,13.67-32.5,29.79,19.45,35.78,31.61,25.59,55.01,13.52-3.66,7.58-25.43-1.57-21.86-22.76-88.42,6.95-89.71,17.93-.78,21.21,50.22,24.78,67.65,2.97,14.51,3.45,49.34,13.46,57.62,1.28,1.06,3.19.41,3.58-1.2C99.76,115.67,75.8-3.9,114.23.1c25.48,2.65,16.8,78.94,17.13,102.16.12,8.92-3.01,27.26,2.26,34.11,1.51,1.97,4.66,1.2,5.28-1.2,8.47-32.58,8.67-70.53,23.34-101.94,21.78-36.76,31.14,3.16,26.85,31.59-4.01,26.62-32.69,132.19-14,110.32,12.86-15.04,13.37-38.03,29.57-49.38,17.77-10.82,30.66,2.1,21.93,20.77Z"
+                stroke="black"
+                strokeWidth="1"
+                fill="black"
+              />
+            </svg>
+            
+            {room.handNumbers?.map((n: any, idx: number) => {
+              const isSelected = room.handSearcherSelected === n.val;
+              const px = parseFloat(n.left) / 100;
+              const py = parseFloat(n.top) / 100;
+              // Map numbers within hand box for inner padding and spacing
+              const leftPos = `${7.5 + px * 85}%`;
+              const topPos = `${7.5 + py * 85}%`;
+              const isPickerPicking = room.handPhase === "picking" && isPicker;
+              return (
+                <button
+                  key={idx}
+                  disabled={isWaitingSearcher}
+                  className={`absolute font-black transition-all duration-200 z-10 
+                    ${isPickerPicking ? 'text-red-600 hover:text-red-500 hover:scale-115' : isSelected ? 'text-pink-600 scale-125 font-extrabold drop-shadow' : 'text-gray-800 hover:text-pink-600'} 
+                    ${isWaitingSearcher ? 'opacity-40 cursor-default hover:text-gray-800 pointer-events-none' : ''}`}
+                  style={{
+                    left: leftPos,
+                    top: topPos,
+                    fontSize: n.fontSize,
+                    transform: `translate(-50%, -50%) rotate(${n.rotate})`,
+                  }}
+                  onClick={() => {
+                    if (isWaitingSearcher) return;
+                    if (room.handPhase === "picking") {
+                      socket?.emit("hand_pick_number", { roomId: room.id, number: n.val });
+                    } else if (room.handPhase === "searching") {
+                      socket?.emit("hand_select_number", { roomId: room.id, number: n.val });
+                    }
+                  }}
+                >
+                  {n.val}
+                </button>
+              );
+            })}
+          </div>
+          {isSearcher && room.handPhase === "searching" && (
+             <button
+               onClick={() => socket?.emit("hand_ring_bell", { roomId: room.id })}
+               className={`mt-4 w-20 h-20 md:w-24 md:h-24 rounded-full border-[6px] shadow-[0_8px_0_0_#991b1b] active:shadow-none active:translate-y-[8px] flex items-center justify-center text-white transition-all ${shakeBell ? "animate-shake" : ""} ${room.handSearcherSelected ? (shakeBell ? 'bg-red-500 border-red-700' : 'bg-red-500 border-red-700 animate-bounce') : 'bg-gray-400 border-gray-600'}`}
+             >
+               <BellRing className="w-8 h-8 md:w-10 md:h-10" />
+             </button>
+          )}
+        </div>
+      );
+    }
+
+    // Grid view (Picker during searching phase)
+    if (isPicker && room.handPhase === "searching") {
+      const p1Count = room.handGrid.filter((c: any) => c === room.players[0].id).length;
+      const p2Count = room.handGrid.filter((c: any) => c === room.players[1].id).length;
+      
+      return (
+        <div className="w-full flex flex-col items-center justify-center p-2">
+          <div className="flex justify-between w-full mb-2 px-2 font-black text-lg bg-gray-50 border-2 border-gray-200 rounded-xl py-2">
+            <span className="text-red-500 flex flex-col items-center">
+               <span className="text-xs text-gray-500">{room.players[0].name}</span>
+               {p1Count}
+            </span>
+            <span className="text-green-500 flex flex-col items-center">
+               <span className="text-xs text-gray-500">{room.players[1].name}</span>
+               {p2Count}
+            </span>
+          </div>
+          <h2 className="text-sm md:text-base font-black mb-2 text-blue-600 animate-pulse border border-blue-200 bg-blue-50 px-3 py-1 rounded-full text-center">
+            المنافس بيبحث... املأ المربعات بسرعة! ✍️
+          </h2>
+          {/* Scrollable grid container keeping current play visual and centering on next action */}
+          <div className="w-full max-w-[320px] max-h-[280px] overflow-y-auto bg-gray-300 p-2 rounded-xl shadow-inner scroll-smooth border border-gray-400/20">
+            <div className="grid grid-cols-5 gap-1 touch-manipulation">
+              {room.handGrid.map((c: any, idx: number) => {
+                const isEmpty = c === null;
+                const isP1 = c === room.players[0].id;
+                const isP2 = c === room.players[1].id;
+                // Highlight the next available cell
+                const isNext = isEmpty && room.handGrid.findIndex((x: any) => x === null) === idx;
+                return (
+                  <button 
+                    key={idx} 
+                    disabled={!isNext}
+                    ref={(el) => {
+                      if (isNext && el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }}
+                    onClick={() => {
+                      if (isNext) {
+                        socket?.emit("hand_click_cell", { roomId: room.id });
+                      }
+                    }}
+                    className={`aspect-square rounded-md flex items-center justify-center font-black text-lg md:text-xl border-2 transition-all ${isEmpty ? (isNext ? 'bg-yellow-100 border-yellow-400 scale-105 shadow-sm active:scale-95 cursor-pointer animate-pulse' : 'bg-white border-gray-100 opacity-60 cursor-default') : 'bg-gray-100 border-gray-300'}`}
+                  >
+                    {isP1 && <span className="text-red-500 drop-shadow-sm">X</span>}
+                    {isP2 && <span className="text-green-500 drop-shadow-sm">X</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
+  };
 
   if (!room) {
     if (isSearching) return null; // Handled by isSearching block
@@ -24807,6 +25197,13 @@ export default function App() {
                 </div>
                 <CategoryPageAd />
               </React.Fragment>
+            ) : room.gameState === "hand_playing" || room.gameState === "hand_finished" ? (
+              <React.Fragment>
+                <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
+                  {renderHandRewardBar()}
+                  {renderHandGame()}
+                </div>
+              </React.Fragment>
             ) : room.gameState === "waiting" ? (
               <React.Fragment>
                 <div className="w-full card-game p-3 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden">
@@ -25026,6 +25423,37 @@ export default function App() {
                               if (meMode === "xo" && oppMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
                               if (meMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
                               if (oppMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+                          
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "hand_khamin",
+                                })
+                              }
+                              className={`w-full bg-pink-100 hover:bg-pink-200 border-4 border-pink-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#ec4899] active:shadow-none active:translate-y-2"}`}
+                            >
+                              <div className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
+                                🖐
+                              </div>
+                              <span className="text-xl font-black text-pink-700">
+                                تخمينة كف يد
+                              </span>
+                              <span className="text-xs text-brown-muted">
+                                (سرعة بديهة وملاحظة)
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "hand_khamin" && oppMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-pink-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
+                              if (meMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -26303,6 +26731,8 @@ export default function App() {
           room.gameState !== "bus_complete_evaluating" &&
           room.gameState !== "xo_playing" &&
           room.gameState !== "xo_finished" &&
+          room.gameState !== "hand_playing" &&
+          room.gameState !== "hand_finished" &&
           room.gameState !== "starting" && (
             <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
               {[
