@@ -605,7 +605,20 @@ interface Room {
     | "bus_complete_playing"
     | "bus_complete_evaluating"
     | "xo_playing"
-    | "xo_finished";
+    | "xo_finished"
+    | "hand_playing"
+    | "hand_finished";
+  handGrid?: (string | null)[];
+  handPickerId?: string | null;
+  handSearcherId?: string | null;
+  handPhase?: "picking" | "searching" | string;
+  handWinner?: string | "draw" | null;
+  handP1Score?: number;
+  handP2Score?: number;
+  handRematchRequestedBy?: string[];
+  handTargetNumber?: number | null;
+  handNumbers?: any[];
+  handSearcherSelected?: number | null;
   timer: number;
   category: string;
   isPaused: boolean;
@@ -6744,6 +6757,19 @@ export default function App() {
         const verb = opp?.gender === "girl" ? "غادرت" : "غادر";
         setError(`${verb} المنافس${opp?.gender === "girl" ? "ة" : ""} الغرفة!`);
         setTimeout(() => setError(""), 3000);
+      }
+
+      if (
+        updatedRoom.gameState === "hand_playing" &&
+        roomRef.current?.gameState === "hand_playing" &&
+        updatedRoom.handGrid &&
+        roomRef.current?.handGrid
+      ) {
+        const currentFilledCount = roomRef.current.handGrid.filter((c: any) => c !== null).length;
+        const incomingFilledCount = updatedRoom.handGrid.filter((c: any) => c !== null).length;
+        if (incomingFilledCount < currentFilledCount) {
+          updatedRoom.handGrid = roomRef.current.handGrid;
+        }
       }
 
       setRoom(updatedRoom);
@@ -23775,12 +23801,18 @@ export default function App() {
                             const currentEmptyIdx = updatedGrid.findIndex(x => x === null);
                             if (currentEmptyIdx !== -1) {
                               updatedGrid[currentEmptyIdx] = socket.id;
+                              
+                              // Play sound immediately on client side for crisp responsive feedback
+                              playSound("handXFill");
+                              
+                              // Cache the count so the subsequent useEffect run doesn't double-play the sound
+                              const newFilledCount = updatedGrid.filter((x: any) => x !== null).length;
+                              prevHandGridCountRef.current = newFilledCount;
+
                               setRoom({
                                 ...room,
                                 handGrid: updatedGrid
                               });
-                              // Play sound immediately on client side for crisp responsive feedback
-                              playSound("handXFill");
                             }
                           }
                           socket?.emit("hand_click_cell", { roomId: room.id });
