@@ -8924,7 +8924,8 @@ async function startServer() {
               p &&
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
-              room.gameState !== "bus_complete_evaluating"
+              room.gameState !== "bus_complete_evaluating" &&
+              room.gameState !== "hand_finished"
             ) {
               activeRoomId = roomId;
               break;
@@ -8948,7 +8949,8 @@ async function startServer() {
               p &&
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
-              room.gameState !== "bus_complete_evaluating"
+              room.gameState !== "bus_complete_evaluating" &&
+              room.gameState !== "hand_finished"
             ) {
               const oldSocketId = p.id;
               const opponent = room.players.find((pl: any) => pl.serial !== serial);
@@ -8981,6 +8983,14 @@ async function startServer() {
                 if (room.pausingPlayerId === oldSocketId) room.pausingPlayerId = socket.id;
                 if (room.busCompleteChangeLetterRequestBy === oldSocketId) room.busCompleteChangeLetterRequestBy = socket.id;
                 
+                // Hand Guessing updates:
+                if (room.handPickerId === oldSocketId) room.handPickerId = socket.id;
+                if (room.handSearcherId === oldSocketId) room.handSearcherId = socket.id;
+                if (room.handWinner === oldSocketId) room.handWinner = socket.id;
+                if (room.handRematchRequestedBy) {
+                  room.handRematchRequestedBy = room.handRematchRequestedBy.map((id: any) => id === oldSocketId ? socket.id : id);
+                }
+
                 if (room.busCompleteSubmittedPlayers) {
                   room.busCompleteSubmittedPlayers = room.busCompleteSubmittedPlayers.map((id: any) => id === oldSocketId ? socket.id : id);
                 }
@@ -11375,6 +11385,7 @@ async function startServer() {
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
               room.gameState !== "bus_complete_evaluating" &&
+              room.gameState !== "hand_finished" &&
               room.gameState !== "waiting"
             ) {
               // Player intentionally left during an active game
@@ -11419,7 +11430,8 @@ async function startServer() {
             if (
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
-              room.gameState !== "bus_complete_evaluating"
+              room.gameState !== "bus_complete_evaluating" &&
+              room.gameState !== "hand_finished"
             ) {
               io.in(roomId).socketsLeave(roomId);
               rooms.delete(roomId);
@@ -14366,6 +14378,7 @@ async function startServer() {
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
               room.gameState !== "bus_complete_evaluating" &&
+              room.gameState !== "hand_finished" &&
               room.gameState !== "waiting"
             ) {
               if (isIntentional) {
@@ -14446,7 +14459,8 @@ async function startServer() {
             if (
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
-              room.gameState !== "bus_complete_evaluating"
+              room.gameState !== "bus_complete_evaluating" &&
+              room.gameState !== "hand_finished"
             ) {
               io.in(roomId).socketsLeave(roomId);
               rooms.delete(roomId);
