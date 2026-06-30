@@ -2101,6 +2101,9 @@ async function startServer() {
         xoWins?: number;
         xoRewardLevel?: number;
         xoMatchPoints?: number;
+        handWins?: number;
+        handRewardLevel?: number;
+        handMatchPoints?: number;
       }
     >();
 
@@ -2327,6 +2330,16 @@ async function startServer() {
     try {
       db.exec(`ALTER TABLE players ADD COLUMN xoMatchPoints INTEGER DEFAULT 0`);
     } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN handWins INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN handRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN handMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {}
+
     try {
       db.exec(`ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0`);
     } catch (e) {}
@@ -2867,8 +2880,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3149,6 +3162,9 @@ async function startServer() {
           xoWins: player.xoWins || 0,
           xoRewardLevel: player.xoRewardLevel || 1,
           xoMatchPoints: player.xoMatchPoints || 0,
+          handWins: player.handWins || 0,
+          handRewardLevel: player.handRewardLevel || 1,
+          handMatchPoints: player.handMatchPoints || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3225,6 +3241,9 @@ async function startServer() {
           xoWins: player.xoWins || 0,
           xoRewardLevel: player.xoRewardLevel || 1,
           xoMatchPoints: player.xoMatchPoints || 0,
+          handWins: player.handWins || 0,
+          handRewardLevel: player.handRewardLevel || 1,
+          handMatchPoints: player.handMatchPoints || 0,
         });
       }
     });
@@ -3324,6 +3343,9 @@ async function startServer() {
             xoWins: row.xoWins || 0,
             xoRewardLevel: row.xoRewardLevel || 1,
             xoMatchPoints: row.xoMatchPoints || 0,
+            handWins: row.handWins || 0,
+            handRewardLevel: row.handRewardLevel || 1,
+            handMatchPoints: row.handMatchPoints || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -3731,6 +3753,7 @@ async function startServer() {
             gender: p.gender,
             busCompleteWins: p.busCompleteWins || 0,
             xoWins: p.xoWins || 0,
+            handWins: p.handWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -4707,6 +4730,9 @@ async function startServer() {
             xoWins: p1ServerPlayer
               ? p1ServerPlayer.xoWins || 0
               : match.p1.xoWins || 0,
+            handWins: p1ServerPlayer
+              ? p1ServerPlayer.handWins || 0
+              : match.p1.handWins || 0,
           },
           {
             id: match.p2.socket.id,
@@ -4762,6 +4788,9 @@ async function startServer() {
             xoWins: p2ServerPlayer
               ? p2ServerPlayer.xoWins || 0
               : match.p2.xoWins || 0,
+            handWins: p2ServerPlayer
+              ? p2ServerPlayer.handWins || 0
+              : match.p2.handWins || 0,
           },
         ],
         gameState: "waiting",
@@ -4845,6 +4874,7 @@ async function startServer() {
               botPersona.level * (Math.random() * 3 + 1),
             ),
             xoWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            handWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             isBot: true,
             persona: botPersona.personality,
             selectedFrame: "",
@@ -5520,6 +5550,145 @@ async function startServer() {
       });
     }
 
+    const HAND_POINTS = [
+      { x: 220, y: 245 },
+      { x: 212, y: 260 },
+      { x: 207, y: 276 },
+      { x: 199, y: 292 },
+      { x: 195, y: 311 },
+      { x: 175, y: 300 },
+      { x: 183, y: 143 },
+      { x: 178, y: 163 },
+      { x: 175, y: 183 },
+      { x: 171, y: 200 },
+      { x: 166, y: 218 },
+      { x: 164, y: 237 },
+      { x: 157, y: 259 },
+      { x: 159, y: 280 },
+      { x: 136, y: 260 },
+      { x: 118, y: 122 },
+      { x: 116, y: 142 },
+      { x: 120, y: 163 },
+      { x: 116, y: 184 },
+      { x: 118, y: 205 },
+      { x: 118, y: 224 },
+      { x: 118, y: 244 },
+      { x: 110, y: 266 },
+      { x: 17, y: 219 },
+      { x: 23, y: 235 },
+      { x: 30, y: 252 },
+      { x: 37, y: 268 },
+      { x: 55, y: 145 },
+      { x: 60, y: 165 },
+      { x: 59, y: 182 },
+      { x: 64, y: 198 },
+      { x: 67, y: 215 },
+      { x: 70, y: 232 },
+      { x: 74, y: 250 },
+      { x: 81, y: 272 },
+      { x: 61, y: 282 },
+      { x: 41, y: 286 },
+      { x: 138, y: 277 },
+      { x: 117, y: 282 },
+      { x: 96, y: 285 },
+      { x: 73, y: 293 },
+      { x: 48, y: 301 },
+      { x: 153, y: 298 },
+      { x: 130, y: 295 },
+      { x: 103, y: 301 },
+      { x: 77, y: 310 },
+      { x: 54, y: 318 },
+      { x: 189, y: 330 },
+      { x: 170, y: 316 },
+      { x: 144, y: 311 },
+      { x: 117, y: 312 },
+      { x: 93, y: 318 },
+      { x: 71, y: 327 },
+      { x: 57, y: 342 },
+      { x: 185, y: 349 },
+      { x: 168, y: 335 },
+      { x: 147, y: 329 },
+      { x: 124, y: 327 },
+      { x: 101, y: 336 },
+      { x: 79, y: 343 },
+      { x: 177, y: 368 },
+      { x: 161, y: 351 },
+      { x: 138, y: 343 },
+      { x: 115, y: 351 },
+      { x: 91, y: 356 },
+      { x: 65, y: 363 },
+      { x: 166, y: 387 },
+      { x: 153, y: 367 },
+      { x: 132, y: 363 },
+      { x: 108, y: 372 },
+      { x: 82, y: 374 },
+      { x: 142, y: 386 },
+      { x: 115, y: 389 },
+      { x: 91, y: 390 },
+      { x: 69, y: 387 }
+    ];
+
+    function initializeHandGame(room: any) {
+      room.gameState = "hand_playing";
+      room.category = "hand_khamin";
+      room.handGrid = Array(100).fill(null);
+      const firstPlayerIdx = Math.floor(Math.random() * 2);
+      room.handPickerId = room.players[firstPlayerIdx].id;
+      room.handSearcherId = room.players[1 - firstPlayerIdx].id;
+      room.handPhase = "picking";
+      room.handTargetNumber = null;
+      room.handSearcherSelected = null;
+      room.handP1Score = 0;
+      room.handP2Score = 0;
+      room.handWinner = null;
+      room.timer = 30;
+
+      if (intervals.has(room.id)) clearInterval(intervals.get(room.id));
+      const interval = setInterval(() => {
+        const r = rooms.get(room.id);
+        if (!r || (r.gameState !== "hand_playing" && r.gameState !== "hand_finished")) {
+          clearInterval(interval);
+          return;
+        }
+
+        if (r.adPausedPlayers && r.adPausedPlayers.size > 0) return;
+
+        if (r.gameState === "hand_playing" && r.handPhase === "picking") {
+          if (r.timer > 0) {
+             r.timer--;
+             io.to(r.id).emit("timer_update", r.timer);
+          }
+          if (r.timer <= 0) {
+             const temp = r.handPickerId;
+             r.handPickerId = r.handSearcherId;
+             r.handSearcherId = temp;
+             r.timer = 30;
+             io.to(r.id).emit("timer_update", r.timer);
+             io.to(r.id).emit("room_update", r);
+             const bot = r.players.find((p: any) => p.isBot);
+             if (bot) handleBotEvent(r.id, "room_update", r);
+          }
+        }
+      }, 1000);
+      intervals.set(room.id, interval);
+
+      const minX = 17;
+      const maxX = 220;
+      const minY = 122;
+      const maxY = 390;
+      const width = maxX - minX;  // 203
+      const height = maxY - minY; // 268
+
+      const numbers = Array.from({ length: HAND_POINTS.length }, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+      room.handNumbers = HAND_POINTS.map((pt, i) => ({
+        val: numbers[i],
+        left: `${((pt.x - minX) / width) * 100}%`,
+        top: `${((pt.y - minY) / height) * 100}%`,
+        fontSize: `${13 + Math.random() * 4}px`,
+        rotate: `${-15 + Math.random() * 30}deg`
+      }));
+    }
+
     function executeSelectionModeConfirmation(roomId: string) {
       const room = rooms.get(roomId);
       if (room && room.gameState === "waiting" && room.players.length === 2) {
@@ -5630,6 +5799,12 @@ async function startServer() {
             }, 1000);
             intervals.set(roomId, interval);
 
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "hand_khamin") {
+            initializeHandGame(room);
             const bot = room.players.find((p: any) => p.isBot);
             if (bot) {
               handleBotEvent(roomId, "room_update", room);
@@ -6037,6 +6212,147 @@ async function startServer() {
         // Handle XO playing action
         if (room.gameState === "xo_playing" && room.xoTurn === botPlayer.id) {
           executeBotXOMove(roomId);
+        }
+
+        // Handle Hand Game bot actions
+        if (room.gameState === "hand_playing") {
+          // If bot is picking a number
+          if (room.handPhase === "picking" && room.handPickerId === botPlayer.id) {
+            if (!botTimeouts.has(roomId + "_hand_pick_timeout")) {
+               const delay = 2000 + Math.random() * 2000;
+               const timeout = setTimeout(() => {
+                 const r = rooms.get(roomId);
+                 if (r && r.gameState === "hand_playing" && r.handPhase === "picking" && r.handPickerId === botPlayer.id) {
+                   const availableNumbers = r.handNumbers.map((n: any) => n.val);
+                   const target = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
+                   r.handTargetNumber = target;
+                   r.handPhase = "searching";
+                   io.to(roomId).emit("room_update", r);
+                   handleBotEvent(roomId, "room_update", r);
+                 }
+                 botTimeouts.delete(roomId + "_hand_pick_timeout");
+               }, delay);
+               botTimeouts.set(roomId + "_hand_pick_timeout", timeout);
+            }
+          }
+
+          // If bot is filling grid
+          if (room.handPhase === "searching" && room.handPickerId === botPlayer.id) {
+            if (!botTimeouts.has(roomId + "_hand_grid_timeout")) {
+               const delay = 800 + Math.random() * 800;
+               const timeout = setTimeout(() => {
+                 const r = rooms.get(roomId);
+                 if (r && r.gameState === "hand_playing" && r.handPhase === "searching" && r.handPickerId === botPlayer.id) {
+                   botTimeouts.delete(roomId + "_hand_grid_timeout");
+                   const emptyIdx = r.handGrid.findIndex((c: any) => c === null);
+                   if (emptyIdx !== -1) {
+                     r.handGrid[emptyIdx] = botPlayer.id;
+                     if (r.handGrid.every((c: any) => c !== null)) {
+                        r.gameState = "hand_finished";
+                        const p1Count = r.handGrid.filter((c: any) => c === r.players[0].id).length;
+                        const p2Count = r.handGrid.filter((c: any) => c === r.players[1].id).length;
+                        r.handP1Score = p1Count;
+                        r.handP2Score = p2Count;
+                        if (p1Count > p2Count) r.handWinner = r.players[0].id;
+                        else if (p2Count > p1Count) r.handWinner = r.players[1].id;
+                        else r.handWinner = "draw";
+
+                        if (r.handWinner && r.handWinner !== "draw") {
+                          const pWinner = r.players.find((p: any) => p.id === r.handWinner);
+                          if (pWinner) {
+                            pWinner.handWins = (pWinner.handWins || 0) + 1;
+                            const dbP = allPlayers.get(pWinner.serial);
+                            if (dbP) {
+                              dbP.handWins = pWinner.handWins;
+                              if (r.matchType === "random") {
+                                dbP.handMatchPoints = (dbP.handMatchPoints || 0) + 10;
+                              }
+                              pWinner.handMatchPoints = dbP.handMatchPoints;
+                              savePlayerData(pWinner.serial);
+                              io.to(pWinner.id).emit("player_data_update", dbP);
+                            }
+                          }
+                        }
+                     }
+                     io.to(roomId).emit("room_update", r);
+                     handleBotEvent(roomId, "room_update", r);
+                   }
+                 } else {
+                   botTimeouts.delete(roomId + "_hand_grid_timeout");
+                 }
+               }, delay);
+               botTimeouts.set(roomId + "_hand_grid_timeout", timeout);
+            }
+          }
+
+          // If bot is searching
+          if (room.handPhase === "searching" && room.handSearcherId === botPlayer.id) {
+            if (!botTimeouts.has(roomId + "_hand_search_timeout")) {
+               const delay = 5000 + Math.random() * 7000;
+               const timeout = setTimeout(() => {
+                 const r = rooms.get(roomId);
+                 if (r && r.gameState === "hand_playing" && r.handPhase === "searching" && r.handSearcherId === botPlayer.id) {
+                   botTimeouts.delete(roomId + "_hand_search_timeout");
+                   r.handSearcherSelected = r.handTargetNumber;
+                   const temp = r.handPickerId;
+                   r.handPickerId = r.handSearcherId;
+                   r.handSearcherId = temp;
+                   r.handPhase = "picking";
+                   r.handTargetNumber = null;
+                   r.handSearcherSelected = null;
+                   r.timer = 30;
+                   
+                   // Clear bot grid filling timeout if any
+                   if (botTimeouts.has(roomId + "_hand_grid_timeout")) {
+                     clearTimeout(botTimeouts.get(roomId + "_hand_grid_timeout"));
+                     botTimeouts.delete(roomId + "_hand_grid_timeout");
+                   }
+                   
+                   io.to(roomId).emit("room_update", r);
+                   handleBotEvent(roomId, "room_update", r);
+                 } else {
+                   botTimeouts.delete(roomId + "_hand_search_timeout");
+                 }
+               }, delay);
+               botTimeouts.set(roomId + "_hand_search_timeout", timeout);
+            }
+          }
+        }
+
+        // Handle Hand Game finished action (bot auto-restarts)
+        if (room.gameState === "hand_finished") {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            if (!botTimeouts.has(roomId + "_hand_restart_timeout")) {
+              botTimeouts.set(
+                roomId + "_hand_restart_timeout",
+                setTimeout(() => {
+                  botTimeouts.delete(roomId + "_hand_restart_timeout");
+                  const r = rooms.get(roomId);
+                  if (r && r.gameState === "hand_finished") {
+                    const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+                    if (isAdStillPlaying) return; // double check
+
+                    if (!r.handRematchRequestedBy) r.handRematchRequestedBy = [];
+                    if (!r.handRematchRequestedBy.includes(botPlayer.id)) {
+                      r.handRematchRequestedBy.push(botPlayer.id);
+                    }
+                    io.to(roomId).emit("room_update", r);
+                    if (r.handRematchRequestedBy.length < 2) return;
+                    r.handRematchRequestedBy = [];
+                    initializeHandGame(r);
+                    io.to(roomId).emit("room_update", r);
+                    handleBotEvent(roomId, "room_update", r);
+                  }
+                }, 4000 + Math.random() * 3000)
+              );
+            }
+          } else {
+            if (botTimeouts.has(roomId + "_hand_restart_timeout")) {
+              clearTimeout(botTimeouts.get(roomId + "_hand_restart_timeout"));
+              botTimeouts.delete(roomId + "_hand_restart_timeout");
+            }
+          }
         }
 
         // Handle XO finished action (bot auto-restarts or goes to next level)
@@ -8943,6 +9259,7 @@ async function startServer() {
               hideFriendRequests: serverPlayer.hideFriendRequests || 0,
               busCompleteWins: serverPlayer.busCompleteWins || 0,
               xoWins: serverPlayer.xoWins || 0,
+              handWins: serverPlayer.handWins || 0,
             };
             room.players.push(player);
 
@@ -9081,6 +9398,14 @@ async function startServer() {
             if (opponent && opponent.isBot) {
               handleBotEvent(roomId, "room_update", room);
             }
+          } else if (mode === "hand_khamin") {
+            initializeHandGame(room);
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           } else if (mode === null) {
             room.gameState = "waiting";
             room.selectionMode = null;
@@ -9192,7 +9517,7 @@ async function startServer() {
 
       socket.on("bus_complete_ad_start", ({ roomId }) => {
         const room = rooms.get(roomId);
-        if (room && (room.gameState === "bus_complete_playing" || room.gameState === "xo_playing")) {
+        if (room && (room.gameState === "bus_complete_playing" || room.gameState === "xo_playing" || room.gameState.startsWith("hand_") || room.gameState.endsWith("_finished"))) {
           if (!room.adPausedPlayers) room.adPausedPlayers = new Set();
           room.adPausedPlayers.add(socket.id);
           room.adPausedPlayersArray = Array.from(room.adPausedPlayers);
@@ -9209,7 +9534,7 @@ async function startServer() {
 
       socket.on("bus_complete_ad_end", ({ roomId, completed }) => {
         const room = rooms.get(roomId);
-        if (room && (room.gameState === "bus_complete_playing" || room.gameState === "xo_playing")) {
+        if (room && (room.gameState === "bus_complete_playing" || room.gameState === "xo_playing" || room.gameState.startsWith("hand_") || room.gameState.endsWith("_finished"))) {
           if (room.adPausedPlayers) {
             room.adPausedPlayers.delete(socket.id);
             room.adPausedPlayersArray = Array.from(room.adPausedPlayers);
@@ -9393,6 +9718,93 @@ async function startServer() {
           }
 
           io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("hand_pick_number", ({ roomId, number }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "hand_playing" && room.handPhase === "picking" && room.handPickerId === socket.id) {
+          room.handTargetNumber = number;
+          room.handPhase = "searching";
+          io.to(roomId).emit("room_update", room);
+          
+          if (room.players.some((p: any) => p.isBot)) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        }
+      });
+
+      socket.on("hand_click_cell", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "hand_playing" && room.handPhase === "searching" && room.handPickerId === socket.id) {
+          const emptyIdx = room.handGrid.findIndex((c: any) => c === null);
+          if (emptyIdx !== -1) {
+            room.handGrid[emptyIdx] = socket.id;
+            
+            if (room.handGrid.every((c: any) => c !== null)) {
+              room.gameState = "hand_finished";
+              const p1Count = room.handGrid.filter((c: any) => c === room.players[0].id).length;
+              const p2Count = room.handGrid.filter((c: any) => c === room.players[1].id).length;
+              room.handP1Score = p1Count;
+              room.handP2Score = p2Count;
+              if (p1Count > p2Count) room.handWinner = room.players[0].id;
+              else if (p2Count > p1Count) room.handWinner = room.players[1].id;
+              else room.handWinner = "draw";
+
+              if (room.handWinner && room.handWinner !== "draw") {
+                const pWinner = room.players.find((p: any) => p.id === room.handWinner);
+                if (pWinner) {
+                  pWinner.handWins = (pWinner.handWins || 0) + 1;
+                  const dbP = allPlayers.get(pWinner.serial);
+                  if (dbP) {
+                    dbP.handWins = pWinner.handWins;
+                    if (room.matchType === "random") {
+                      dbP.handMatchPoints = (dbP.handMatchPoints || 0) + 10;
+                    }
+                    pWinner.handMatchPoints = dbP.handMatchPoints;
+                    savePlayerData(pWinner.serial);
+                    io.to(pWinner.id).emit("player_data_update", dbP);
+                  }
+                }
+              }
+            }
+            io.to(roomId).emit("room_update", room);
+            
+            if (room.gameState === "hand_finished" && room.players.some((p: any) => p.isBot)) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          }
+        }
+      });
+
+      socket.on("hand_select_number", ({ roomId, number }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "hand_playing" && room.handPhase === "searching" && room.handSearcherId === socket.id) {
+          room.handSearcherSelected = number;
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("hand_ring_bell", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "hand_playing" && room.handPhase === "searching" && room.handSearcherId === socket.id) {
+          if (room.handSearcherSelected === room.handTargetNumber) {
+            const temp = room.handPickerId;
+            room.handPickerId = room.handSearcherId;
+            room.handSearcherId = temp;
+            room.handPhase = "picking";
+            room.handTargetNumber = null;
+            room.handSearcherSelected = null;
+            room.timer = 30;
+            io.to(roomId).emit("hand_bell_rung");
+            io.to(roomId).emit("room_update", room);
+            
+            if (room.players.some((p: any) => p.isBot)) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else {
+            socket.emit("hand_wrong_guess");
+          }
         }
       });
 
@@ -11131,12 +11543,37 @@ async function startServer() {
         }
       });
 
+      socket.on("request_hand_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "hand_finished") {
+          if (!room.handRematchRequestedBy) {
+            room.handRematchRequestedBy = [];
+          }
+          if (!room.handRematchRequestedBy.includes(socket.id)) {
+            room.handRematchRequestedBy.push(socket.id);
+          }
+
+          if (room.handRematchRequestedBy.length >= 2) {
+            room.handRematchRequestedBy = [];
+            initializeHandGame(room);
+            
+            // Trigger bot logic for the new game if opponent is bot
+            const opponent = room.players.find((p: any) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+
       socket.on("play_again", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (
           room &&
           (room.gameState === "finished" ||
             room.gameState === "xo_finished" ||
+            room.gameState === "hand_finished" ||
             room.gameState === "bus_complete_evaluating")
         ) {
           // Reset room state
@@ -11152,6 +11589,19 @@ async function startServer() {
           room.isCustomImageMode = false;
           room.selectionMode = null; // Important: triggers mode selection screen
           room.customImages = {};
+
+          // Reset hand game state parameters
+          room.handGrid = null;
+          room.handPickerId = null;
+          room.handSearcherId = null;
+          room.handPhase = null;
+          room.handTargetNumber = null;
+          room.handSearcherSelected = null;
+          room.handRematchRequestedBy = [];
+          room.handP1Score = 0;
+          room.handP2Score = 0;
+          room.handWinner = null;
+          room.handNumbers = null;
 
           room.xoBoard = null;
           room.xoTurn = null;
@@ -11598,6 +12048,53 @@ async function startServer() {
               helpers: helpersReward,
               newLevel: player.busCompleteRewardLevel,
               points: player.busCompleteMatchPoints,
+            });
+          }
+        }
+      });
+
+      socket.on("claim_hand_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const level = player.handRewardLevel || 1;
+          const requiredPoints = level * 100;
+          if ((player.handMatchPoints || 0) >= requiredPoints) {
+            player.handMatchPoints -= requiredPoints;
+
+            const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
+            player.xp = (player.xp || 0) + xpReward;
+
+            const keysReward = level;
+            player.keys = (player.keys || 0) + keysReward;
+
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            const helpersReward: any = {};
+            [
+              "skip_letter",
+              "remove_category",
+              "time_freeze",
+              "word_count",
+              "spy_lens",
+            ].forEach((h) => {
+              player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
+              helpersReward[h] = level;
+            });
+
+            player.handRewardLevel = level === 10 ? 1 : level + 1;
+
+            const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+            if (!player.level || newLevel > player.level) {
+              player.level = newLevel;
+            }
+
+            savePlayerData(serial);
+            socket.emit("update_player", player);
+            socket.emit("hand_reward_claimed", {
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward,
+              newLevel: player.handRewardLevel,
+              points: player.handMatchPoints,
             });
           }
         }
@@ -13138,6 +13635,7 @@ async function startServer() {
                 likes: targetPlayer.likes || 0,
                 busCompleteWins: targetPlayer.busCompleteWins || 0,
                 xoWins: targetPlayer.xoWins || 0,
+                handWins: targetPlayer.handWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
@@ -13755,6 +14253,7 @@ async function startServer() {
                 selectedFrame: senderPlayerData.selectedFrame,
                 busCompleteWins: senderPlayerData.busCompleteWins || 0,
                 xoWins: senderPlayerData.xoWins || 0,
+                handWins: senderPlayerData.handWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -13783,6 +14282,7 @@ async function startServer() {
                 selectedFrame: myPlayerData.selectedFrame,
                 busCompleteWins: myPlayerData.busCompleteWins || 0,
                 xoWins: myPlayerData.xoWins || 0,
+                handWins: myPlayerData.handWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
