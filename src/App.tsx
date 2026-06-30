@@ -5456,6 +5456,7 @@ export default function App() {
 
   const prevGameStateRef = useRef<string | null>(null);
   const prevHandGridCountRef = useRef<number>(0);
+  const prevHandNextIdxRef = useRef<number>(-1);
   
   useEffect(() => {
     if (room?.gameState === "hand_playing" && room.handGrid && room.handPickerId === socket?.id) {
@@ -5466,6 +5467,7 @@ export default function App() {
       prevHandGridCountRef.current = filledCount;
     } else if (room?.gameState !== "hand_playing") {
       prevHandGridCountRef.current = 0;
+      prevHandNextIdxRef.current = -1;
     }
   }, [room?.gameState, room?.handGrid, room?.handPickerId, socket?.id, playSound]);
 
@@ -23757,7 +23759,8 @@ export default function App() {
                     key={idx} 
                     disabled={!isNext}
                     ref={(el) => {
-                      if (isNext && el) {
+                      if (isNext && el && idx !== prevHandNextIdxRef.current) {
+                        prevHandNextIdxRef.current = idx;
                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }
                     }}
