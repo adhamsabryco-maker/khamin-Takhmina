@@ -1390,6 +1390,8 @@ async function startServer() {
           db.prepare(
             "UPDATE players SET notificationsEnabled = 1 WHERE serial = ?",
           ).run(serial);
+          const p = allPlayers.get(serial);
+          if (p) p.notificationsEnabled = 1;
         }
 
         res.status(201).json({ success: true });
@@ -1415,6 +1417,8 @@ async function startServer() {
           db.prepare(
             "UPDATE players SET notificationsEnabled = 0 WHERE serial = ?",
           ).run(serial);
+          const p = allPlayers.get(serial);
+          if (p) p.notificationsEnabled = 0;
         }
 
         res.json({ success: true });
