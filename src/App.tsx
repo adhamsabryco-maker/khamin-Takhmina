@@ -3199,19 +3199,21 @@ export default function App() {
       setNotificationsEnabled(true);
       localStorage.setItem("khamin_notifications_enabled", "true");
 
+      const currentSerial = playerSerial || localStorage.getItem("khamin_player_serial");
+
       // Send subscription to server
       await fetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          serial: playerSerial,
+          serial: currentSerial,
           subscription,
         }),
       });
 
-      if (socket && isConnected) {
+      if (socket && isConnected && currentSerial) {
         socket.emit("update_player_notifications", {
-          serial: playerSerial,
+          serial: currentSerial,
           enabled: true,
         });
       }
@@ -3221,8 +3223,24 @@ export default function App() {
       if (force) {
         showAlert("تم تفعيل إشعارات الهاتف بنجاح! 🔔", "نجاح");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to subscribe to push:", err);
+      // If it's a DOMException or applicationServerKey mismatch, try to unsubscribe first then resubscribe
+      if (err.name === 'InvalidStateError' || err.message?.includes('mismatch')) {
+        try {
+           const registration = await navigator.serviceWorker.ready;
+           const existingSub = await registration.pushManager.getSubscription();
+           if (existingSub) {
+             await existingSub.unsubscribe();
+             // Retry once silently
+             if (!force) subscribeToPush(true);
+             return;
+           }
+        } catch (e) {
+           console.error("Failed to recover from push subscription error:", e);
+        }
+      }
+      
       if (force) {
         showAlert("فشل تفعيل الإشعارات. يرجى المحاولة مرة أخرى.", "خطأ");
       }
@@ -3238,19 +3256,22 @@ export default function App() {
 
       if (subscription) {
         await subscription.unsubscribe();
+        
+        const currentSerial = playerSerial || localStorage.getItem("khamin_player_serial");
+        
         // Notify server to remove subscription
         await fetch("/api/push/unsubscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            serial: playerSerial,
+            serial: currentSerial,
             subscription,
           }),
         });
 
-        if (socket && isConnected) {
+        if (socket && isConnected && currentSerial) {
           socket.emit("update_player_notifications", {
-            serial: playerSerial,
+            serial: currentSerial,
             enabled: false,
           });
         }
@@ -7630,7 +7651,7 @@ export default function App() {
 
         // Try to subscribe to push notifications
         // We do it after a short delay to not block loading
-        setTimeout(() => subscribeToPush(), 60000);
+        setTimeout(() => subscribeToPush(), 5000);
 
         const serverVersion = config.version || "1.1.1";
         setGameVersion(serverVersion);
@@ -23621,8 +23642,8 @@ export default function App() {
         <div className="w-full flex flex-col items-center justify-center p-2">
           <h2 className="text-2xl font-black mb-4">انتهت اللعبة!</h2>
           <div className="flex gap-4 font-black text-xl mb-4">
-            <span className="text-red-500">{room.players[0].name}: {room.handP1Score}</span>
-            <span className="text-green-500">{room.players[1].name}: {room.handP2Score}</span>
+            <span className="text-red-500">{room.players[0]?.name || "لاعب 1"}: {room.handP1Score}</span>
+            <span className="text-green-500">{room.players[1]?.name || "لاعب 2"}: {room.handP2Score}</span>
           </div>
           <div className="text-3xl font-black mb-6">
             {room.handWinner === "draw" ? "تعادل!" : 
@@ -23792,18 +23813,20 @@ export default function App() {
 
     // Grid view (Picker during searching phase)
     if (isPicker && room.handPhase === "searching") {
-      const p1Count = room.handGrid.filter((c: any) => c === room.players[0].id).length;
-      const p2Count = room.handGrid.filter((c: any) => c === room.players[1].id).length;
+      const p1Id = room.players[0]?.id;
+      const p2Id = room.players[1]?.id;
+      const p1Count = room.handGrid.filter((c: any) => c === p1Id).length;
+      const p2Count = room.handGrid.filter((c: any) => c === p2Id).length;
       
       return (
         <div className="w-full flex flex-col items-center justify-center p-2">
           <div className="flex justify-between w-full mb-2 px-2 font-black text-lg bg-gray-50 border-2 border-gray-200 rounded-xl py-2">
             <span className="text-red-500 flex flex-col items-center">
-               <span className="text-xs text-gray-500">{room.players[0].name}</span>
+               <span className="text-xs text-gray-500">{room.players[0]?.name || "لاعب 1"}</span>
                {p1Count}
             </span>
             <span className="text-green-500 flex flex-col items-center">
-               <span className="text-xs text-gray-500">{room.players[1].name}</span>
+               <span className="text-xs text-gray-500">{room.players[1]?.name || "لاعب 2"}</span>
                {p2Count}
             </span>
           </div>
@@ -23817,8 +23840,8 @@ export default function App() {
                 const nextEmptyIdx = room.handGrid.findIndex((x: any) => x === null);
                 return room.handGrid.map((c: any, idx: number) => {
                   const isEmpty = c === null;
-                  const isP1 = c === room.players[0].id;
-                  const isP2 = c === room.players[1].id;
+                  const isP1 = c === p1Id;
+                  const isP2 = c === p2Id;
                   // Highlight the next available cell using the cached nextEmptyIdx (O(1) lookup inside loop)
                   const isNext = isEmpty && nextEmptyIdx === idx;
                   return (
@@ -24601,10 +24624,10 @@ export default function App() {
                       dir="rtl"
                     >
                       <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">
-                        {room.players[1].name}
+                        {room.players[1]?.name || "لاعب 2"}
                       </span>
                       <span className="text-sm font-black text-green-600">
-                        🏆 {room.players[1].busCompleteWins || 0}
+                        🏆 {room.players[1]?.busCompleteWins || 0}
                       </span>
                     </div>
 
@@ -24640,10 +24663,10 @@ export default function App() {
                       dir="rtl"
                     >
                       <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">
-                        {room.players[0].name}
+                        {room.players[0]?.name || "لاعب 1"}
                       </span>
                       <span className="text-sm font-black text-green-600">
-                        🏆 {room.players[0].busCompleteWins || 0}
+                        🏆 {room.players[0]?.busCompleteWins || 0}
                       </span>
                     </div>
                   </div>
@@ -25202,8 +25225,8 @@ export default function App() {
                      {room.xoLevel === 8 ? (
                        <div className="text-sm md:text-lg font-black p-1 rounded-2xl border-4 bg-white mx-2 flex flex-col items-center">
                          {(() => {
-                            const p1 = room.players[0];
-                            const p2 = room.players[1] || { id: "draw", name: "تعادل", avatar: "👤" };
+                            const p1 = room.players[0] || { id: "p1", name: "لاعب 1", avatar: "👤" };
+                            const p2 = room.players[1] || { id: "p2", name: "لاعب 2", avatar: "👤" };
                             const p1Wins = room.xoMatchWins?.[p1.id] || 0;
                             const p2Wins = room.xoMatchWins?.[p2.id] || 0;
                             const isP1Winner = p1Wins > p2Wins;
