@@ -11404,7 +11404,8 @@ async function startServer() {
               if (
                 room.gameState.startsWith("bus_complete") ||
                 room.gameState === "custom_image_upload" ||
-                room.gameState.startsWith("xo_")
+                room.gameState.startsWith("xo_") ||
+                room.gameState.startsWith("hand_")
               ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
@@ -14410,7 +14411,8 @@ async function startServer() {
                     if (
                       r.gameState.startsWith("bus_complete") ||
                       r.gameState === "custom_image_upload" ||
-                      r.gameState.startsWith("xo_")
+                      r.gameState.startsWith("xo_") ||
+                      r.gameState.startsWith("hand_")
                     ) {
                       io.to(roomId).emit("game_stopped", {
                         reason: "المنافس فقد الاتصال ولم يعد",
@@ -14432,7 +14434,12 @@ async function startServer() {
                 return; // Do NOT remove player from room yet, wait 30 seconds
               }
 
-              if (room.gameState === "custom_image_upload") {
+              if (
+                room.gameState === "custom_image_upload" ||
+                room.gameState.startsWith("bus_complete") ||
+                room.gameState.startsWith("xo_") ||
+                room.gameState.startsWith("hand_")
+              ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
                 });
