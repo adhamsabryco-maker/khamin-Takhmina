@@ -1084,7 +1084,11 @@ export default function App() {
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   const { customConfig, refreshConfig } = useAvatarConfig();
   const appVersion = customConfig.version || "1.1.1";
-  const [initialVersion, setInitialVersion] = useState<string | null>(null);
+  const [initialVersion, setInitialVersion] = useState<string | null>(() => {
+    const meta = document.querySelector('meta[name="app-version"]');
+    const v = meta?.getAttribute("content");
+    return (v && v !== "{{VERSION}}") ? v : null;
+  });
   const [needsUpdate, setNeedsUpdate] = useState(false);
   const {
     needRefresh: [needRefresh, setNeedRefresh],
@@ -1097,9 +1101,8 @@ export default function App() {
       console.log("SW registration error", error);
     },
     onNeedRefresh() {
-      // Automatically update when a new SW is available
-      console.log("[DEBUG] New SW available, updating...");
-      updateServiceWorker(true);
+      console.log("[DEBUG] New SW available, showing update banner...");
+      setNeedsUpdate(true);
     },
   });
 
@@ -2902,6 +2905,13 @@ export default function App() {
 
   const [roomId, setRoomId] = useState("");
   const [room, setRoom] = useState<Room | null>(null);
+  
+  const [handPickerLocalSelected, setHandPickerLocalSelected] = useState<number | null>(null);
+  useEffect(() => {
+    if (room?.handPhase !== "picking") {
+      setHandPickerLocalSelected(null);
+    }
+  }, [room?.handPhase]);
   const [shakeBell, setShakeBell] = useState(false);
 
   const [privateCategoryMode, setPrivateCategoryMode] = useState<
@@ -23682,7 +23692,7 @@ export default function App() {
             </div>
           )}
           <div 
-            className="relative w-full max-w-[280px] md:max-w-[345px] mx-auto my-2 z-10"
+            className="relative w-[85vw] max-w-[360px] mx-auto my-2 z-10"
             style={{ aspectRatio: "229.4/317.85" }}
           >
             {/* Custom High-Quality Hand Silhouette SVG Path Outline from public/hand.svg */}
@@ -23712,23 +23722,28 @@ export default function App() {
               const leftPos = `${7.5 + px * 85}%`;
               const topPos = `${7.5 + py * 85}%`;
               const isPickerPicking = room.handPhase === "picking" && isPicker;
+              const isLocalSelected = isPickerPicking && handPickerLocalSelected === n.val;
               return (
                 <button
                   key={idx}
                   disabled={isWaitingSearcher}
-                  className={`absolute font-black transition-all duration-200 z-10 
-                    ${isPickerPicking ? 'text-red-600 hover:text-red-500 hover:scale-115' : isSelected ? 'text-pink-600 scale-125 font-extrabold drop-shadow' : 'text-gray-800 hover:text-pink-600'} 
+                  className={`absolute font-black transition-all duration-200 z-10 flex items-center justify-center 
+                    ${isPickerPicking 
+                      ? (isLocalSelected ? 'text-pink-600 scale-125 font-extrabold drop-shadow bg-pink-100 rounded-full' : 'text-red-600 hover:text-red-500 hover:scale-115') 
+                      : isSelected ? 'text-pink-600 scale-125 font-extrabold drop-shadow' : 'text-gray-800 hover:text-pink-600'} 
                     ${isWaitingSearcher ? 'opacity-40 cursor-default hover:text-gray-800 pointer-events-none' : ''}`}
                   style={{
                     left: leftPos,
                     top: topPos,
                     fontSize: n.fontSize,
                     transform: `translate(-50%, -50%) rotate(${n.rotate})`,
+                    padding: isLocalSelected ? '0.2em 0.3em' : '0',
                   }}
                   onClick={() => {
                     if (isWaitingSearcher) return;
                     if (room.handPhase === "picking") {
-                      socket?.emit("hand_pick_number", { roomId: room.id, number: n.val });
+                      playSound("clickOpen");
+                      setHandPickerLocalSelected(n.val);
                     } else if (room.handPhase === "searching") {
                       socket?.emit("hand_select_number", { roomId: room.id, number: n.val });
                     }
@@ -23739,6 +23754,30 @@ export default function App() {
               );
             })}
           </div>
+          {room.handPhase === "picking" && isPicker && (
+            <div className="flex flex-col items-center mt-2 mb-4">
+              <button
+                disabled={handPickerLocalSelected === null}
+                onClick={() => {
+                  if (handPickerLocalSelected !== null) {
+                    playSound("clickClose");
+                    socket?.emit("hand_pick_number", { roomId: room.id, number: handPickerLocalSelected });
+                  }
+                }}
+                className={`px-6 py-3 rounded-2xl font-black text-lg md:text-xl shadow-[0_4px_0_0_rgba(0,0,0,0.1)] transition-all flex flex-col items-center leading-tight
+                  ${handPickerLocalSelected !== null 
+                    ? "bg-green-500 hover:bg-green-600 text-white active:translate-y-[4px] active:shadow-none" 
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"}`}
+              >
+                <span className="flex gap-3" dir="rtl">
+                  تأكيد إرسال الرقم
+                {handPickerLocalSelected !== null && (
+                  <span className="text-xl font-black text-red-600">({handPickerLocalSelected})</span>
+                )}
+                </span>
+              </button>
+            </div>
+          )}
           {isSearcher && room.handPhase === "searching" && (
              <button
                onClick={() => socket?.emit("hand_ring_bell", { roomId: room.id })}
@@ -25334,20 +25373,15 @@ export default function App() {
                     )}
                     <div className="space-y-6">
                       {(!room.selectionMode || room.selectionMode === null) ? (
-                        <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4 pt-1">
-                          {room.players.length < 2 && (
-                            <div className="flex flex-col items-center justify-center p-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl">
-                              <Loader2 className="w-8 h-8 animate-spin text-purple-500 mb-2" />
-                              <h3 className="font-black text-brown-dark text-lg">
-                                في انتظار اللاعب الثاني...
-                              </h3>
-                              <p className="text-sm text-brown-muted font-bold text-center">
-                                تقدر تختار طريقة اللعب أول ما اللاعب التاني يدخل
-                                🤪
-                              </p>
-                            </div>
-                          )}
-                          <div className="relative">
+                        <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 pt-1">
+                          <div className="text-center">
+                            <h3 className="box-game p-2 font-black text-accent-orange text-2xl md:text-3xl drop-shadow-sm">
+                              ألعاب خمن تخمينة
+                            </h3>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3 md:gap-4">
+                            <div className="relative">
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
@@ -25356,17 +25390,17 @@ export default function App() {
                                   mode: "ready",
                                 })
                               }
-                              className={`w-full bg-orange-100 hover:bg-orange-200 border-4 border-accent-orange p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#ea580c] active:shadow-none active:translate-y-2"}`}
+                              className={`h-full w-full bg-orange-100 hover:bg-orange-200 border-[3px] border-accent-orange p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#ea580c] active:shadow-none active:translate-y-1.5"}`}
                             >
                               <span
-                                className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
+                                className={`text-3xl md:text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
                               >
                                 😉
                               </span>
-                              <span className="text-xl font-black text-accent-orange">
+                              <span className="text-[13px] md:text-lg font-black text-accent-orange text-center leading-tight">
                                 فئات جاهزة للتخمين
                               </span>
-                              <span className="text-xs text-brown-muted">
+                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
                                 (مبتدئين، أبطال، محترفين...)
                               </span>
                             </button>
@@ -25390,18 +25424,18 @@ export default function App() {
                                     mode: "custom",
                                   })
                                 }
-                                className={`w-full bg-purple-100 hover:bg-purple-200 border-4 border-purple-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#7e22ce] active:shadow-none active:translate-y-2"}`}
+                                className={`h-full w-full bg-purple-100 hover:bg-purple-200 border-[3px] border-purple-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#7e22ce] active:shadow-none active:translate-y-1.5"}`}
                               >
                                 <span
-                                  className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
+                                  className={`text-3xl md:text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
                                 >
                                   😎
                                 </span>
-                                <span className="text-xl font-black text-purple-600">
+                                <span className="text-[13px] md:text-lg font-black text-purple-600 text-center leading-tight">
                                   ارفع صورة يخمنها
                                 </span>
-                                <span className="text-xs text-brown-muted">
-                                  (كل لاعب يرفع صورة للتاني يخمنها)
+                                <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
+                                  (كل لاعب يرفع صورة للتاني)
                                 </span>
                               </button>
                               {(() => {
@@ -25424,17 +25458,17 @@ export default function App() {
                                   mode: "bus_complete",
                                 })
                               }
-                              className={`w-full bg-blue-100 hover:bg-blue-200 border-4 border-blue-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#3b82f6] active:shadow-none active:translate-y-2"}`}
+                              className={`h-full w-full bg-blue-100 hover:bg-blue-200 border-[3px] border-blue-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#3b82f6] active:shadow-none active:translate-y-1.5"}`}
                             >
                               <span
-                                className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
+                                className={`text-3xl md:text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
                               >
                                 🚌
                               </span>
-                              <span className="text-xl font-black text-blue-600">
+                              <span className="text-[13px] md:text-lg font-black text-blue-600 text-center leading-tight">
                                 تخمينة كومبليت
                               </span>
-                              <span className="text-xs text-brown-muted">
+                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
                                 (لعبة الحروف والكلمات السريعة)
                               </span>
                             </button>
@@ -25457,16 +25491,16 @@ export default function App() {
                                   mode: "xo",
                                 })
                               }
-                              className={`w-full bg-green-100 hover:bg-green-200 border-4 border-green-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#22c55e] active:shadow-none active:translate-y-2"}`}
+                              className={`h-full w-full bg-green-100 hover:bg-green-200 border-[3px] border-green-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#22c55e] active:shadow-none active:translate-y-1.5"}`}
                             >
-                              <div className={`flex gap-0.5 text-4xl font-black ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`} dir="ltr">
+                              <div className={`flex gap-0.5 text-3xl md:text-4xl font-black ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`} dir="ltr">
                                 <span className="text-red-500">X</span>
                                 <span className="text-green-600">O</span>
                               </div>
-                              <span className="text-xl font-black text-green-700">
-                               تيك تاك تو - تخمينة XO
+                              <span className="text-[13px] md:text-lg font-black text-green-700 text-center leading-tight">
+                               تخمينة XO
                               </span>
-                              <span className="text-xs text-brown-muted">
+                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
                                 (اللعبة الكلاسيكية للذكاء والسرعة)
                               </span>
                             </button>
@@ -25489,15 +25523,15 @@ export default function App() {
                                   mode: "hand_khamin",
                                 })
                               }
-                              className={`w-full bg-pink-100 hover:bg-pink-200 border-4 border-pink-500 p-3 rounded-3xl transition-all flex flex-col items-center gap-2 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_8px_0_0_#ec4899] active:shadow-none active:translate-y-2"}`}
+                              className={`h-full w-full bg-pink-100 hover:bg-pink-200 border-[3px] border-pink-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#ec4899] active:shadow-none active:translate-y-1.5"}`}
                             >
-                              <div className={`text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
+                              <div className={`text-3xl md:text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
                                 🖐
                               </div>
-                              <span className="text-xl font-black text-pink-700">
+                              <span className="text-[13px] md:text-lg font-black text-pink-700 text-center leading-tight">
                                 تخمينة كف يد
                               </span>
-                              <span className="text-xs text-brown-muted">
+                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
                                 (سرعة بديهة وملاحظة)
                               </span>
                             </button>
@@ -25509,6 +25543,8 @@ export default function App() {
                               if (oppMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
+                          </div>
+                          
                           </div>
                           
                           {(() => {
