@@ -2475,6 +2475,11 @@ async function startServer() {
         `ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 0`,
       );
     } catch (e) {}
+    
+    try {
+      // Migrate existing subscribed users to have notifications enabled
+      db.exec(`UPDATE players SET notificationsEnabled = 1 WHERE serial IN (SELECT serial FROM push_subscriptions WHERE serial IS NOT NULL)`);
+    } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN hideMyInfo INTEGER DEFAULT 0`);
     } catch (e) {}
