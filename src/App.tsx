@@ -3178,7 +3178,7 @@ export default function App() {
 
     // If we are here, either permission is granted or we are forcing (which will trigger browser prompt)
     // But we only proceed if notifications are enabled in our app settings OR we are forcing
-    if (!force && !notificationsEnabled) {
+    if (!force && !notificationsEnabled && Notification.permission !== "granted") {
       console.log("[Push] Notifications disabled in app settings");
       return;
     }
@@ -23834,7 +23834,7 @@ export default function App() {
             المنافس بيبحث... املأ المربعات بسرعة! ✍️
           </h2>
           {/* Scrollable grid container keeping current play visual and centering on next action */}
-          <div className="w-full max-w-[320px] max-h-[280px] overflow-y-auto bg-gray-300 p-2 rounded-xl shadow-inner scroll-smooth border border-gray-400/20">
+          <div className="w-full max-w-[360px] max-h-[280px] overflow-y-auto bg-gray-300 p-2 rounded-xl shadow-inner scroll-smooth border border-gray-400/20">
             <div className="grid grid-cols-5 gap-1 touch-manipulation">
               {(() => {
                 const nextEmptyIdx = room.handGrid.findIndex((x: any) => x === null);
