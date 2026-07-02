@@ -5534,7 +5534,17 @@ export default function App() {
         playSound("lose");
       }
     }
-    
+
+    if (room && room.gameState === "iq_finished" && prevGameStateRef.current === "iq_playing") {
+      if (room.iqWinner === socket?.id) {
+        playSound("win");
+      } else if (room.iqWinner === "draw") {
+        playSound("pop");
+      } else {
+        playSound("lose");
+      }
+    }
+
     if (room && room.gameState === "bus_complete_evaluating" && prevGameStateRef.current === "bus_complete_playing") {
       if (room.busCompleteWinner === socket?.id) {
         playSound("win");
@@ -5556,7 +5566,7 @@ export default function App() {
     }
 
     prevGameStateRef.current = room?.gameState || null;
-  }, [room?.gameState, room?.xoWinner, room?.busCompleteWinner, room?.handWinner, socket?.id, playSound]);
+  }, [room?.gameState, room?.xoWinner, room?.iqWinner, room?.busCompleteWinner, room?.handWinner, socket?.id, playSound]);
 
   const clearPlayerData = () => {
     // Clear all localStorage items related to the game
@@ -25411,7 +25421,7 @@ export default function App() {
 
                     <div className="flex-1 flex flex-col items-center justify-center relative z-10 py-1 mb-0.5 w-full">
                       <div 
-                        className={`bg-gray-100 p-1 md:p-2 rounded-2xl w-full mx-auto shadow-inner border border-gray-300 ${
+                        className={`bg-gray-100 p-1 rounded-2xl w-full mx-auto shadow-inner Battery-border-2 border-gray-300 ${
                           room.iqBoardSize === 4 ? "max-w-[420px]" : room.iqBoardSize === 6 ? "max-w-[560px]" : "max-w-[680px]"
                         }`}
                         style={{
@@ -25437,10 +25447,10 @@ export default function App() {
                               disabled={!myTurn || isFlipped}
                               onClick={() => {
                                  socket?.emit("submit_iq_move", { roomId: room.id, index: idx });
-                                 playSound("clickOpen");
+                                 playSound("handXFill");
                               }}
                               className={`aspect-square relative transition-all duration-100 transform hover:scale-105 flex items-center justify-center overflow-hidden shadow-sm
-                                ${room.iqBoardSize === 8 ? "rounded-md border-b-2" : room.iqBoardSize === 6 ? "rounded-lg border-b-[3px]" : "rounded-xl border-b-4"}
+                                ${room.iqBoardSize === 8 ? "rounded-md border-b-1" : room.iqBoardSize === 6 ? "rounded-lg border-b-[3px]" : "rounded-xl border-b-4"}
                                 ${isFlipped 
                                   ? (isMatched ? "bg-gray-100 border-gray-300" : `bg-white ${room.iqTurn === room.iqPlayer1 ? "border-red-500" : "border-green-500"}`) 
                                   : (room.iqTurn === room.iqPlayer1 ? "bg-red-500 border-red-700" : "bg-green-500 border-green-700")
