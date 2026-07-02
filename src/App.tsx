@@ -3178,7 +3178,7 @@ export default function App() {
 
     // If we are here, either permission is granted or we are forcing (which will trigger browser prompt)
     // But we only proceed if notifications are enabled in our app settings OR we are forcing
-    if (!force && !notificationsEnabled && Notification.permission !== "granted") {
+    if (!force && !notificationsEnabled) {
       console.log("[Push] Notifications disabled in app settings");
       return;
     }
