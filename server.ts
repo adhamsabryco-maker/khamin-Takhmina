@@ -1895,7 +1895,19 @@ async function startServer() {
                 window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', payload: ${JSON.stringify(payload)} }, '*');
                 window.close();
               } else {
-                document.body.innerHTML = 'Authentication successful. You can close this window.';
+                try {
+                  const payload = ${JSON.stringify(payload)};
+                  if (payload.isAdmin === "true") {
+                    localStorage.setItem("khamin_is_admin", "true");
+                    localStorage.setItem("khamin_admin_email", payload.email || "");
+                    localStorage.setItem("khamin_admin_token", payload.adminToken || "");
+                    window.location.href = "/";
+                  } else {
+                    document.body.innerHTML = 'Authentication successful. You can close this window.';
+                  }
+                } catch (e) {
+                  document.body.innerHTML = 'Authentication successful. You can close this window.';
+                }
               }
             </script>
           </body>
@@ -2087,6 +2099,9 @@ async function startServer() {
         handWins?: number;
         handRewardLevel?: number;
         handMatchPoints?: number;
+        iqWins?: number;
+        iqRewardLevel?: number;
+        iqMatchPoints?: number;
       }
     >();
 
@@ -2321,6 +2336,16 @@ async function startServer() {
     } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN handMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {}
+
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN iqWins INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN iqRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN iqMatchPoints INTEGER DEFAULT 0`);
     } catch (e) {}
 
     try {
@@ -2868,8 +2893,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3153,6 +3178,9 @@ async function startServer() {
           handWins: player.handWins || 0,
           handRewardLevel: player.handRewardLevel || 1,
           handMatchPoints: player.handMatchPoints || 0,
+          iqWins: player.iqWins || 0,
+          iqRewardLevel: player.iqRewardLevel || 1,
+          iqMatchPoints: player.iqMatchPoints || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3232,6 +3260,9 @@ async function startServer() {
           handWins: player.handWins || 0,
           handRewardLevel: player.handRewardLevel || 1,
           handMatchPoints: player.handMatchPoints || 0,
+          iqWins: player.iqWins || 0,
+          iqRewardLevel: player.iqRewardLevel || 1,
+          iqMatchPoints: player.iqMatchPoints || 0,
         });
       }
     });
@@ -3334,6 +3365,9 @@ async function startServer() {
             handWins: row.handWins || 0,
             handRewardLevel: row.handRewardLevel || 1,
             handMatchPoints: row.handMatchPoints || 0,
+            iqWins: row.iqWins || 0,
+            iqRewardLevel: row.iqRewardLevel || 1,
+            iqMatchPoints: row.iqMatchPoints || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -3742,6 +3776,7 @@ async function startServer() {
             busCompleteWins: p.busCompleteWins || 0,
             xoWins: p.xoWins || 0,
             handWins: p.handWins || 0,
+            iqWins: p.iqWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -4721,6 +4756,9 @@ async function startServer() {
             handWins: p1ServerPlayer
               ? p1ServerPlayer.handWins || 0
               : match.p1.handWins || 0,
+            iqWins: p1ServerPlayer
+              ? p1ServerPlayer.iqWins || 0
+              : match.p1.iqWins || 0,
           },
           {
             id: match.p2.socket.id,
@@ -4779,6 +4817,9 @@ async function startServer() {
             handWins: p2ServerPlayer
               ? p2ServerPlayer.handWins || 0
               : match.p2.handWins || 0,
+            iqWins: p2ServerPlayer
+              ? p2ServerPlayer.iqWins || 0
+              : match.p2.iqWins || 0,
           },
         ],
         gameState: "waiting",
@@ -4863,6 +4904,7 @@ async function startServer() {
             ),
             xoWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             handWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            iqWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             isBot: true,
             persona: botPersona.personality,
             selectedFrame: "",
@@ -5739,6 +5781,14 @@ async function startServer() {
             if (bot) {
               handleBotEvent(roomId, "room_update", room);
             }
+          } else if (mode === "iq") {
+            room.iqLevel = 1;
+            room.iqMatchWins = {};
+            initializeIQGame(room);
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           } else if (mode === "xo") {
             room.gameState = "xo_playing";
             room.category = "xo";
@@ -6133,6 +6183,247 @@ async function startServer() {
       );
     }
 
+    function sendRoomUpdate(roomId: string, customRoom?: any) {
+      const room = customRoom || rooms.get(roomId);
+      if (!room) return;
+
+      if (room.category === "iq" && room.iqBoard) {
+        const sanitizedRoom = {
+          ...room,
+          iqBoard: room.iqBoard.map((img: string, idx: number) => {
+            const isRevealed = room.iqFlipped?.includes(idx) || room.iqMatched?.includes(idx);
+            return isRevealed ? img : "";
+          })
+        };
+        io.to(roomId).emit("room_update", sanitizedRoom);
+      } else {
+        io.to(roomId).emit("room_update", room);
+      }
+    }
+
+    function executeBotIQMove(roomId: string) {
+      if (botFlags.has(roomId + "_iq_move_scheduled")) return;
+      botFlags.set(roomId + "_iq_move_scheduled", true);
+
+      const room = rooms.get(roomId);
+      if (!room || room.gameState !== "iq_playing") {
+        botFlags.delete(roomId + "_iq_move_scheduled");
+        return;
+      }
+      const bot = room.players.find((p: any) => p.isBot);
+      if (!bot || room.iqTurn !== bot.id) {
+        botFlags.delete(roomId + "_iq_move_scheduled");
+        return;
+      }
+
+      setTimeout(() => {
+        botFlags.delete(roomId + "_iq_move_scheduled");
+        const r = rooms.get(roomId);
+        if (!r || r.gameState !== "iq_playing" || r.iqTurn !== bot.id) return;
+
+        if (r.isWaitingForReconnect) {
+          setTimeout(() => {
+            executeBotIQMove(roomId);
+          }, 2000);
+          return;
+        }
+
+        const unmatched: number[] = [];
+        const size = r.iqBoard.length;
+        for (let i = 0; i < size; i++) {
+          if (!r.iqMatched.includes(i)) {
+            unmatched.push(i);
+          }
+        }
+
+        if (unmatched.length < 2) return;
+
+        const level = r.iqLevel || 1;
+        if (!r.iqSeen) r.iqSeen = [];
+        const consecutive = r.botConsecutiveMatches || 0;
+
+        let idx1: number = -1;
+        let idx2: number = -1;
+
+        // Force mismatch to prevent the bot from having consecutive matched streaks that feel superhuman
+        let forceMismatch = false;
+        if (level === 1 && consecutive >= 2) {
+          forceMismatch = true;
+        } else if (level === 2 && consecutive >= 1) {
+          forceMismatch = true;
+        } else if (level === 3 && consecutive >= 1) {
+          forceMismatch = true;
+        }
+
+        // Determine scanChance and memoryChance based on level and consecutive matches
+        let scanChance = 0;
+        let memoryChance = 0;
+
+        if (!forceMismatch) {
+          if (level === 1) {
+            // Level 1: 4x4 (16 cards)
+            if (consecutive === 0) {
+              scanChance = 0.2;
+              memoryChance = 0.35;
+            } else if (consecutive === 1) {
+              scanChance = 0.1;
+              memoryChance = 0.15;
+            }
+          } else if (level === 2) {
+            // Level 2: 6x6 (36 cards) - much harder!
+            if (consecutive === 0) {
+              scanChance = 0.12;
+              memoryChance = 0.2;
+            }
+          } else {
+            // Level 3: 8x8 (64 cards) - extremely hard!
+            if (consecutive === 0) {
+              scanChance = 0.05;
+              memoryChance = 0.1;
+            }
+          }
+        }
+
+        let foundPairInMemory = false;
+
+        if (Math.random() < scanChance) {
+          // Look for any pair of unmatched indices in r.iqSeen that have the same image
+          const seenUnmatched = unmatched.filter(idx => r.iqSeen.includes(idx));
+          for (let i = 0; i < seenUnmatched.length; i++) {
+            for (let j = i + 1; j < seenUnmatched.length; j++) {
+              const u1 = seenUnmatched[i];
+              const u2 = seenUnmatched[j];
+              if (r.iqBoard[u1] === r.iqBoard[u2]) {
+                // The bot remembers this pair!
+                idx1 = u1;
+                idx2 = u2;
+                foundPairInMemory = true;
+                break;
+              }
+            }
+            if (foundPairInMemory) break;
+          }
+        }
+
+        if (!foundPairInMemory) {
+          // Pick a random unmatched card as idx1
+          const shuffledUnmatched = [...unmatched].sort(() => Math.random() - 0.5);
+          idx1 = shuffledUnmatched[0];
+
+          // Find the partner index of idx1 in the board
+          const partnerIdx = unmatched.find(idx => idx !== idx1 && r.iqBoard[idx] === r.iqBoard[idx1]);
+
+          // Check if the partner is in r.iqSeen
+          const partnerHasBeenSeen = partnerIdx !== undefined && r.iqSeen.includes(partnerIdx);
+          
+          if (partnerIdx !== undefined && partnerHasBeenSeen && !forceMismatch && Math.random() < memoryChance) {
+            // Bot remembers the partner!
+            idx2 = partnerIdx;
+          } else {
+            // Bot doesn't remember or is forced to mismatch, so it picks a random other unmatched card
+            const otherUnmatched = shuffledUnmatched.filter(idx => idx !== idx1);
+            const mismatchPool = otherUnmatched.filter(idx => r.iqBoard[idx] !== r.iqBoard[idx1]);
+            if (forceMismatch && mismatchPool.length > 0) {
+              idx2 = mismatchPool[Math.floor(Math.random() * mismatchPool.length)];
+            } else {
+              idx2 = otherUnmatched[Math.floor(Math.random() * otherUnmatched.length)];
+            }
+          }
+        }
+
+        // Simulate first flip
+        r.iqFlipped = [idx1];
+        if (!r.iqSeen.includes(idx1)) {
+          r.iqSeen.push(idx1);
+        }
+        sendRoomUpdate(roomId, r);
+
+        // Wait 0.6s then flip second card
+        setTimeout(() => {
+          const r2 = rooms.get(roomId);
+          if (!r2 || r2.gameState !== "iq_playing" || r2.iqTurn !== bot.id) return;
+          r2.iqFlipped = [idx1, idx2];
+          if (!r2.iqSeen) r2.iqSeen = [];
+          if (!r2.iqSeen.includes(idx2)) {
+            r2.iqSeen.push(idx2);
+          }
+          sendRoomUpdate(roomId, r2);
+
+          // Standard matching check delay (reduced to 800ms)
+          setTimeout(() => {
+            const currentRoom = rooms.get(roomId);
+            if (!currentRoom || currentRoom.gameState !== "iq_playing") return;
+
+            const isMatch = currentRoom.iqBoard[idx1] === currentRoom.iqBoard[idx2];
+            if (isMatch) {
+              currentRoom.iqMatched.push(idx1, idx2);
+              if (currentRoom.iqTurn === currentRoom.iqPlayer1) {
+                currentRoom.iqP1Score = (currentRoom.iqP1Score || 0) + 1;
+              } else {
+                currentRoom.iqP2Score = (currentRoom.iqP2Score || 0) + 1;
+              }
+            }
+
+            // End game check
+            if (currentRoom.iqMatched.length === currentRoom.iqBoard.length) {
+              const p1Score = currentRoom.iqP1Score || 0;
+              const p2Score = currentRoom.iqP2Score || 0;
+              if (p1Score > p2Score) currentRoom.iqWinner = currentRoom.iqPlayer1;
+              else if (p2Score > p1Score) currentRoom.iqWinner = currentRoom.iqPlayer2;
+              else currentRoom.iqWinner = "draw";
+
+              currentRoom.gameState = "iq_finished";
+              currentRoom.iqMatchWins[currentRoom.iqWinner] = (currentRoom.iqMatchWins[currentRoom.iqWinner] || 0) + 1;
+
+              if (currentRoom.iqWinner && currentRoom.iqWinner !== "draw") {
+                const winnerPlayer = currentRoom.players.find((p: any) => p.id === currentRoom.iqWinner);
+                if (winnerPlayer) {
+                  winnerPlayer.iqWins = (winnerPlayer.iqWins || 0) + 1;
+                  const dbP = allPlayers.get(winnerPlayer.serial);
+                  if (dbP) {
+                    dbP.iqWins = winnerPlayer.iqWins;
+                    dbP.iqMatchPoints = (dbP.iqMatchPoints || 0) + 10;
+                    savePlayerData(winnerPlayer.serial);
+                    io.to(winnerPlayer.id).emit("player_data_update", dbP);
+                  }
+                }
+              }
+            }
+
+            if (isMatch) {
+              if (currentRoom.gameState === "iq_playing") {
+                currentRoom.iqTurnTimer = (currentRoom.iqTurnTimer || 10) + 10;
+              }
+              const bPlayer = currentRoom.players.find((p: any) => p.isBot);
+              if (bPlayer && currentRoom.iqTurn === bPlayer.id) {
+                currentRoom.botConsecutiveMatches = (currentRoom.botConsecutiveMatches || 0) + 1;
+              }
+            } else {
+              if (currentRoom.gameState === "iq_playing") {
+                currentRoom.iqTurn = currentRoom.iqTurn === currentRoom.iqPlayer1 ? currentRoom.iqPlayer2 : currentRoom.iqPlayer1;
+                currentRoom.iqTurnTimer = 10;
+              }
+              currentRoom.botConsecutiveMatches = 0;
+            }
+            currentRoom.iqFlipped = [];
+
+            sendRoomUpdate(roomId, currentRoom);
+            
+            // Trigger bot logic recursively or if turn is still bot's turn!
+            if (currentRoom.gameState === "iq_playing") {
+              const bPlayer = currentRoom.players.find((p: any) => p.isBot);
+              if (bPlayer) {
+                handleBotEvent(roomId, "room_update", currentRoom);
+              }
+            }
+
+          }, 800);
+
+        }, 600);
+
+      }, 600 + Math.random() * 500);
+    }
+
     async function handleBotEvent(roomId: string, event: string, data: any) {
       const room = rooms.get(roomId);
       if (!room) return;
@@ -6200,6 +6491,11 @@ async function startServer() {
         // Handle XO playing action
         if (room.gameState === "xo_playing" && room.xoTurn === botPlayer.id) {
           executeBotXOMove(roomId);
+        }
+
+        // Handle IQ playing action
+        if (room.gameState === "iq_playing" && room.iqTurn === botPlayer.id) {
+          executeBotIQMove(roomId);
         }
 
         // Handle Hand Game bot actions
@@ -6340,6 +6636,55 @@ async function startServer() {
               clearTimeout(botTimeouts.get(roomId + "_hand_restart_timeout"));
               botTimeouts.delete(roomId + "_hand_restart_timeout");
             }
+          }
+        }
+
+        // Handle IQ finished action (bot auto-restarts)
+        if (room.gameState === "iq_finished") {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            if (!botTimeouts.has(roomId + "_iq_restart_timeout")) {
+              botTimeouts.set(
+                roomId + "_iq_restart_timeout",
+                setTimeout(() => {
+                  botTimeouts.delete(roomId + "_iq_restart_timeout");
+                  const r = rooms.get(roomId);
+                  if (r && r.gameState === "iq_finished") {
+                    const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+                    if (isAdStillPlaying) return; // double check
+
+                    if ((r.iqLevel || 1) >= 3) {
+                      if (!r.iqRematchRequestedBy) r.iqRematchRequestedBy = [];
+                      if (!r.iqRematchRequestedBy.includes(botPlayer.id)) {
+                        r.iqRematchRequestedBy.push(botPlayer.id);
+                      }
+                      io.to(roomId).emit("room_update", r);
+                      if (r.iqRematchRequestedBy.length < 2) return;
+                      r.iqRematchRequestedBy = [];
+                      r.iqLevel = 1;
+                      r.iqMatchWins = {};
+                    } else {
+                      r.iqLevel = (r.iqLevel || 1) + 1;
+                    }
+
+                    initializeIQGame(r);
+                    io.to(roomId).emit("room_update", r);
+                  }
+                }, 4000 + Math.random() * 3000)
+              );
+            }
+          } else {
+            if (botTimeouts.has(roomId + "_iq_restart_timeout")) {
+              clearTimeout(botTimeouts.get(roomId + "_iq_restart_timeout"));
+              botTimeouts.delete(roomId + "_iq_restart_timeout");
+            }
+          }
+        }
+
+        if (room.gameState !== "iq_finished" || (room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0)) {
+          if (botTimeouts.has(roomId + "_iq_restart_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_iq_restart_timeout"));
+            botTimeouts.delete(roomId + "_iq_restart_timeout");
           }
         }
 
@@ -7462,6 +7807,156 @@ async function startServer() {
             }
           }
         }
+      }
+    }
+
+    function initializeIQGame(room: any) {
+      room.gameState = "iq_playing";
+      room.category = "iq";
+      room.iqLevel = room.iqLevel || 1;
+      room.iqMatchWins = room.iqMatchWins || {};
+      
+      const size = room.iqLevel === 1 ? 4 : room.iqLevel === 2 ? 6 : 8; // 4x4, 6x6, 8x8
+      room.iqBoardSize = size;
+      
+      // Select 3 random unique categories for the 3 levels of the current match
+      const allPossibleCategories = ["animals", "birds", "food", "people", "objects", "plants", "insects", "football"];
+      
+      if (room.iqLevel === 1 || !room.iqLevelCategories || room.iqLevelCategories.length !== 3) {
+        const shuffled = [...allPossibleCategories];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        room.iqLevelCategories = shuffled.slice(0, 3);
+      }
+      
+      let selectedCategory = room.iqLevelCategories[room.iqLevel - 1] || "animals";
+      
+      let allImages = [];
+      try {
+        allImages = db.prepare("SELECT data as image FROM custom_images WHERE category = ?").all(selectedCategory) as any[];
+      } catch (e) {
+        console.error("Error loading images for category:", selectedCategory, e);
+      }
+
+      // Fallback in case a selected category has no images (e.g. in development/testing environment)
+      if (allImages.length === 0) {
+        try {
+          const activeCategoriesResult = db.prepare("SELECT DISTINCT category FROM custom_images").all() as { category: string }[];
+          const activeCategories = activeCategoriesResult.map(c => c.category).filter(c => c);
+          
+          if (activeCategories.length > 0) {
+            const fallbackCategory = activeCategories[Math.floor(Math.random() * activeCategories.length)];
+            allImages = db.prepare("SELECT data as image FROM custom_images WHERE category = ?").all(fallbackCategory) as any[];
+            selectedCategory = fallbackCategory;
+          }
+        } catch (e) {
+          console.error("Error fetching fallback categories:", e);
+        }
+      }
+
+      const arabicCategoryNames: Record<string, string> = {
+        animals: "حيوانات",
+        birds: "طيور",
+        food: "أكلات",
+        people: "اشخاص",
+        objects: "جماد",
+        plants: "نبات",
+        insects: "حشرات",
+        football: "كرة القدم",
+      };
+      
+      room.iqCategory = selectedCategory;
+      room.iqCategoryName = arabicCategoryNames[selectedCategory] || selectedCategory;
+
+      let neededPairs = (size * size) / 2;
+      let selectedImages = [];
+      if (allImages.length > 0) {
+        // Shuffle all images
+        for (let i = allImages.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allImages[i], allImages[j]] = [allImages[j], allImages[i]];
+        }
+        // Take needed amount (repeating if necessary)
+        for (let i = 0; i < neededPairs; i++) {
+          selectedImages.push(allImages[i % allImages.length].image);
+        }
+      } else {
+        // Fallback
+        for (let i = 0; i < neededPairs; i++) {
+          selectedImages.push(""); 
+        }
+      }
+      
+      // Double and shuffle to create board
+      let board = [...selectedImages, ...selectedImages];
+      for (let i = board.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [board[i], board[j]] = [board[j], board[i]];
+      }
+      
+      room.iqBoard = board;
+      room.iqFlipped = []; 
+      room.iqMatched = [];
+      room.iqSeen = [];
+      room.botConsecutiveMatches = 0;
+      
+      room.iqPlayer1 = room.players[Math.floor(Math.random() * 2)].id;
+      room.iqPlayer2 = room.players.find((p: any) => p.id !== room.iqPlayer1).id;
+      room.iqPlayer1Color = "red";
+      room.iqPlayer2Color = "green";
+      room.iqP1Score = 0;
+      room.iqP2Score = 0;
+      
+      room.iqTurn = room.iqPlayer1;
+      room.iqWinner = null;
+      
+      room.timer = room.iqLevel === 1 ? 5 * 60 : room.iqLevel === 2 ? 10 * 60 : 15 * 60; // Level 1: 5m, Level 2: 10m, Level 3: 15m
+      room.iqTurnTimer = 10; // 10 seconds
+      
+      if (intervals.has(room.id)) clearInterval(intervals.get(room.id));
+      
+      const interval = setInterval(() => {
+        const r = rooms.get(room.id);
+        if (!r || (r.gameState !== "iq_playing" && r.gameState !== "iq_finished")) {
+          clearInterval(interval);
+          return;
+        }
+        if (r.gameState === "iq_playing") {
+          const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+          if (!isAdPlaying) {
+            r.timer--;
+            r.iqTurnTimer--;
+            
+            if (r.timer <= 0) {
+              clearInterval(interval);
+              r.iqWinner = "draw";
+              r.gameState = "iq_finished";
+              r.iqMatchWins["draw"] = (r.iqMatchWins["draw"] || 0) + 1;
+              sendRoomUpdate(room.id, r);
+            } else if (r.iqTurnTimer <= 0) {
+              r.iqTurnTimer = 10;
+              r.iqFlipped = [];
+              r.iqTurn = r.iqTurn === r.iqPlayer1 ? r.iqPlayer2 : r.iqPlayer1;
+              sendRoomUpdate(room.id, r);
+              
+              const bot = r.players.find((p: any) => p.isBot);
+              if (bot) {
+                handleBotEvent(room.id, "room_update", r);
+              }
+            } else {
+              io.to(room.id).emit("timer_update", r.timer);
+              io.to(room.id).emit("iq_timer_update", r.iqTurnTimer);
+            }
+          }
+        }
+      }, 1000);
+      intervals.set(room.id, interval);
+
+      const bot = room.players.find((p: any) => p.isBot);
+      if (bot) {
+        handleBotEvent(room.id, "room_update", room);
       }
     }
 
@@ -9258,6 +9753,7 @@ async function startServer() {
               busCompleteWins: serverPlayer.busCompleteWins || 0,
               xoWins: serverPlayer.xoWins || 0,
               handWins: serverPlayer.handWins || 0,
+              iqWins: serverPlayer.iqWins || 0,
             };
             room.players.push(player);
 
@@ -9340,6 +9836,14 @@ async function startServer() {
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
 
             // Trigger bot logic for the new game
+            const opponent = room.players.find((p: any) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "iq") {
+            room.iqLevel = 1;
+            room.iqMatchWins = {};
+            initializeIQGame(room);
             const opponent = room.players.find((p: any) => p.id !== socket.id);
             if (opponent && opponent.isBot) {
               handleBotEvent(roomId, "room_update", room);
@@ -9802,6 +10306,89 @@ async function startServer() {
             }
           } else {
             socket.emit("hand_wrong_guess");
+          }
+        }
+      });
+
+      socket.on("submit_iq_move", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "iq_playing" && room.iqTurn === socket.id) {
+          if (!room.iqFlipped) room.iqFlipped = [];
+          if (!room.iqMatched) room.iqMatched = [];
+          if (!room.iqSeen) room.iqSeen = [];
+          
+          if (!room.iqFlipped.includes(index) && !room.iqMatched.includes(index) && room.iqFlipped.length < 2) {
+            room.iqFlipped.push(index);
+            if (!room.iqSeen.includes(index)) {
+              room.iqSeen.push(index);
+            }
+            sendRoomUpdate(roomId, room);
+            
+            if (room.iqFlipped.length === 2) {
+              const [idx1, idx2] = room.iqFlipped;
+              const isMatch = room.iqBoard[idx1] === room.iqBoard[idx2];
+              
+              setTimeout(() => {
+                const currentRoom = rooms.get(roomId);
+                if (!currentRoom || currentRoom.gameState !== "iq_playing") return;
+                
+                if (isMatch) {
+                  currentRoom.iqMatched.push(idx1, idx2);
+                  if (currentRoom.iqTurn === currentRoom.iqPlayer1) {
+                    currentRoom.iqP1Score = (currentRoom.iqP1Score || 0) + 1;
+                  } else {
+                    currentRoom.iqP2Score = (currentRoom.iqP2Score || 0) + 1;
+                  }
+                }
+                
+                // End game check
+                if (currentRoom.iqMatched.length === currentRoom.iqBoard.length) {
+                  const p1Score = currentRoom.iqP1Score || 0;
+                  const p2Score = currentRoom.iqP2Score || 0;
+                  if (p1Score > p2Score) currentRoom.iqWinner = currentRoom.iqPlayer1;
+                  else if (p2Score > p1Score) currentRoom.iqWinner = currentRoom.iqPlayer2;
+                  else currentRoom.iqWinner = "draw";
+                  
+                  currentRoom.gameState = "iq_finished";
+                  currentRoom.iqMatchWins[currentRoom.iqWinner] = (currentRoom.iqMatchWins[currentRoom.iqWinner] || 0) + 1;
+                  
+                  if (currentRoom.iqWinner && currentRoom.iqWinner !== "draw") {
+                    const winnerPlayer = currentRoom.players.find((p: any) => p.id === currentRoom.iqWinner);
+                    if (winnerPlayer) {
+                      winnerPlayer.iqWins = (winnerPlayer.iqWins || 0) + 1;
+                      const dbP = allPlayers.get(winnerPlayer.serial);
+                      if (dbP) {
+                        dbP.iqWins = winnerPlayer.iqWins;
+                        dbP.iqMatchPoints = (dbP.iqMatchPoints || 0) + 10;
+                        savePlayerData(winnerPlayer.serial);
+                        io.to(winnerPlayer.id).emit("player_data_update", dbP);
+                      }
+                    }
+                  }
+                }
+                
+                if (isMatch) {
+                  if (currentRoom.gameState === "iq_playing") {
+                    currentRoom.iqTurnTimer = (currentRoom.iqTurnTimer || 10) + 10;
+                  }
+                  currentRoom.botConsecutiveMatches = 0;
+                } else {
+                  if (currentRoom.gameState === "iq_playing") {
+                    currentRoom.iqTurn = currentRoom.iqTurn === currentRoom.iqPlayer1 ? currentRoom.iqPlayer2 : currentRoom.iqPlayer1;
+                    currentRoom.iqTurnTimer = 10;
+                  }
+                  currentRoom.botConsecutiveMatches = 0;
+                }
+                currentRoom.iqFlipped = [];
+                
+                sendRoomUpdate(roomId, currentRoom);
+
+                // Call handleBotEvent if there's a bot and it's their turn!
+                if (currentRoom.gameState === "iq_playing" && currentRoom.players.some((p: any) => p.isBot)) {
+                  handleBotEvent(roomId, "room_update", currentRoom);
+                }
+              }, 800); // 800ms delay to show cards (reduced from 1.5s for speed)
+            }
           }
         }
       });
@@ -11372,6 +11959,7 @@ async function startServer() {
             if (
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
+              room.gameState !== "iq_finished" &&
               room.gameState !== "bus_complete_evaluating" &&
               room.gameState !== "hand_finished" &&
               room.gameState !== "waiting"
@@ -11393,7 +11981,8 @@ async function startServer() {
                 room.gameState.startsWith("bus_complete") ||
                 room.gameState === "custom_image_upload" ||
                 room.gameState.startsWith("xo_") ||
-                room.gameState.startsWith("hand_")
+                room.gameState.startsWith("hand_") ||
+                room.gameState.startsWith("iq_")
               ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
@@ -11419,6 +12008,7 @@ async function startServer() {
             if (
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
+              room.gameState !== "iq_finished" &&
               room.gameState !== "bus_complete_evaluating" &&
               room.gameState !== "hand_finished"
             ) {
@@ -11544,6 +12134,35 @@ async function startServer() {
         }
       });
 
+      socket.on("restart_iq", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "iq_finished") {
+          if ((room.iqLevel || 1) >= 3) {
+            if (!room.iqRematchRequestedBy) room.iqRematchRequestedBy = [];
+            if (!room.iqRematchRequestedBy.includes(socket.id)) {
+              room.iqRematchRequestedBy.push(socket.id);
+            }
+            if (room.iqRematchRequestedBy.length < 2 && room.players.length === 2) {
+              sendRoomUpdate(roomId, room);
+              return;
+            }
+            room.iqRematchRequestedBy = [];
+            room.iqLevel = 1;
+            room.iqMatchWins = {};
+          } else {
+            room.iqLevel = (room.iqLevel || 1) + 1;
+          }
+
+          initializeIQGame(room);
+          sendRoomUpdate(roomId, room);
+          
+          const bot = room.players.find((p: any) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        }
+      });
+
       socket.on("request_hand_rematch", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (room && room.gameState === "hand_finished") {
@@ -11575,7 +12194,9 @@ async function startServer() {
           (room.gameState === "finished" ||
             room.gameState === "xo_finished" ||
             room.gameState === "hand_finished" ||
-            room.gameState === "bus_complete_evaluating")
+            room.gameState === "bus_complete_evaluating" ||
+            room.gameState === "iq_playing" ||
+            room.gameState === "iq_finished")
         ) {
           // Reset room state
           room.gameState = "waiting";
@@ -11603,6 +12224,14 @@ async function startServer() {
           room.handP2Score = 0;
           room.handWinner = null;
           room.handNumbers = null;
+
+          room.iqBoard = null;
+          room.iqFlipped = null;
+          room.iqMatched = null;
+          room.iqTurn = null;
+          room.iqLevel = 1;
+          room.iqMatchWins = {};
+          room.iqBoardSize = null;
 
           room.xoBoard = null;
           room.xoTurn = null;
@@ -12101,6 +12730,52 @@ async function startServer() {
         }
       });
 
+            socket.on("claim_iq_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const level = player.iqRewardLevel || 1;
+          const requiredPoints = level * 100;
+          if ((player.iqMatchPoints || 0) >= requiredPoints) {
+            player.iqMatchPoints -= requiredPoints;
+
+            const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
+            player.xp = (player.xp || 0) + xpReward;
+
+            const keysReward = level;
+            player.keys = (player.keys || 0) + keysReward;
+
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            const helpersReward: any = {};
+            [
+              "hint",
+              "word_length",
+              "time_freeze",
+              "word_count",
+              "spy_lens",
+            ].forEach((h) => {
+              player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
+              helpersReward[h] = level;
+            });
+
+            player.iqRewardLevel = level === 10 ? 1 : level + 1;
+
+            const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+            if (!player.level || newLevel > player.level) {
+              player.level = newLevel;
+            }
+
+            savePlayerData(serial);
+            socket.emit("update_player", player);
+            socket.emit("iq_reward_claimed", {
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward,
+              newLevel: player.iqRewardLevel,
+              points: player.iqMatchPoints,
+            });
+          }
+        }
+      });
       socket.on("claim_xo_reward", ({ serial }) => {
         const player = allPlayers.get(serial);
         if (player) {
@@ -14245,6 +14920,7 @@ async function startServer() {
                 busCompleteWins: senderPlayerData.busCompleteWins || 0,
                 xoWins: senderPlayerData.xoWins || 0,
                 handWins: senderPlayerData.handWins || 0,
+                iqWins: senderPlayerData.iqWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -14274,6 +14950,7 @@ async function startServer() {
                 busCompleteWins: myPlayerData.busCompleteWins || 0,
                 xoWins: myPlayerData.xoWins || 0,
                 handWins: myPlayerData.handWins || 0,
+                iqWins: myPlayerData.iqWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -14390,7 +15067,8 @@ async function startServer() {
                       r.gameState.startsWith("bus_complete") ||
                       r.gameState === "custom_image_upload" ||
                       r.gameState.startsWith("xo_") ||
-                      r.gameState.startsWith("hand_")
+                      r.gameState.startsWith("hand_") ||
+                      r.gameState.startsWith("iq_")
                     ) {
                       io.to(roomId).emit("game_stopped", {
                         reason: "المنافس فقد الاتصال ولم يعد",
@@ -14416,7 +15094,8 @@ async function startServer() {
                 room.gameState === "custom_image_upload" ||
                 room.gameState.startsWith("bus_complete") ||
                 room.gameState.startsWith("xo_") ||
-                room.gameState.startsWith("hand_")
+                room.gameState.startsWith("hand_") ||
+                room.gameState.startsWith("iq_")
               ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
@@ -14444,6 +15123,7 @@ async function startServer() {
             if (
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
+              room.gameState !== "iq_finished" &&
               room.gameState !== "bus_complete_evaluating" &&
               room.gameState !== "hand_finished"
             ) {
