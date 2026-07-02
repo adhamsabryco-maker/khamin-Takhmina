@@ -1464,14 +1464,7 @@ async function startServer() {
       // Only send to subscriptions where the player has notificationsEnabled = 1
       // We join with players table to check the status
       const subscriptions = db
-        .prepare(
-          `
-      SELECT ps.subscription, ps.serial 
-      FROM push_subscriptions ps
-      LEFT JOIN players p ON ps.serial = p.serial
-      WHERE p.notificationsEnabled = 1 OR ps.serial IS NULL
-    `,
-        )
+        .prepare("SELECT subscription, serial FROM push_subscriptions")
         .all() as any[];
 
       const payload = JSON.stringify({ title, body, url: url || "/" });
@@ -1704,14 +1697,7 @@ async function startServer() {
 
                 // Send Push Notification
                 const subscriptions = db
-                  .prepare(
-                    `
-              SELECT ps.subscription 
-              FROM push_subscriptions ps
-              LEFT JOIN players p ON ps.serial = p.serial
-              WHERE ps.serial = ? AND (p.notificationsEnabled = 1 OR ps.serial IS NULL)
-            `,
-                  )
+                  .prepare("SELECT subscription FROM push_subscriptions WHERE serial = ?")
                   .all(playerRecord.serial) as any[];
 
                 if (subscriptions.length > 0) {
@@ -1776,14 +1762,7 @@ async function startServer() {
         ).run(notification.id);
 
         const subscriptions = db
-          .prepare(
-            `
-        SELECT ps.subscription, ps.serial 
-        FROM push_subscriptions ps
-        LEFT JOIN players p ON ps.serial = p.serial
-        WHERE p.notificationsEnabled = 1 OR ps.serial IS NULL
-      `,
-          )
+          .prepare("SELECT subscription, serial FROM push_subscriptions")
           .all() as any[];
 
         const payload = JSON.stringify({
@@ -13760,14 +13739,7 @@ async function startServer() {
               // Player is offline, send push notification
               try {
                 const subscriptions = db
-                  .prepare(
-                    `
-              SELECT ps.subscription 
-              FROM push_subscriptions ps
-              LEFT JOIN players p ON ps.serial = p.serial
-              WHERE ps.serial = ? AND (p.notificationsEnabled = 1 OR ps.serial IS NULL)
-            `,
-                  )
+                  .prepare("SELECT subscription FROM push_subscriptions WHERE serial = ?")
                   .all(targetSerial) as any[];
 
                 if (subscriptions.length > 0) {
@@ -13786,6 +13758,8 @@ async function startServer() {
                         db.prepare(
                           "DELETE FROM push_subscriptions WHERE subscription = ?",
                         ).run(sub.subscription);
+                      } else {
+                        console.error("Push Like Error:", err.statusCode, err.body || err.message);
                       }
                     }
                   }
@@ -13911,14 +13885,7 @@ async function startServer() {
                 .prepare("SELECT name FROM players WHERE serial = ?")
                 .get(actualMySerial) as any;
               const subscriptions = db
-                .prepare(
-                  `
-              SELECT ps.subscription 
-              FROM push_subscriptions ps
-              LEFT JOIN players p ON ps.serial = p.serial
-              WHERE ps.serial = ? AND (p.notificationsEnabled = 1 OR ps.serial IS NULL)
-            `,
-                )
+                .prepare("SELECT subscription FROM push_subscriptions WHERE serial = ?")
                 .all(targetSerial) as any[];
 
               if (subscriptions.length > 0 && senderPlayer) {
@@ -13937,6 +13904,8 @@ async function startServer() {
                       db.prepare(
                         "DELETE FROM push_subscriptions WHERE subscription = ?",
                       ).run(sub.subscription);
+                    } else {
+                      console.error("Push Friend Error:", err.statusCode, err.body || err.message);
                     }
                   }
                 }
