@@ -586,6 +586,7 @@ interface Player {
   busCompleteWins?: number;
   xoWins?: number;
   handWins?: number;
+  iqWins?: number;
   selectedSelectionMode?: string;
 }
 
@@ -1308,6 +1309,12 @@ export default function App() {
   const [xoMatchPoints, setXoMatchPoints] = useState(
     () => parseInt(localStorage.getItem("khamin_xo_match_points") || "0") || 0,
   );
+  const [iqMatchPoints, setIqMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_iq_match_points") || "0") || 0,
+  );
+  const [iqRewardLevel, setIqRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_iq_reward_level") || "1") || 1,
+  );
   const [handRewardLevel, setHandRewardLevel] = useState(
     () => parseInt(localStorage.getItem("khamin_hand_reward_level") || "1") || 1,
   );
@@ -1869,7 +1876,7 @@ export default function App() {
   });
 
   const [leaderboardFilter, setLeaderboardFilter] = useState<
-    "all" | "busComplete" | "xo" | "hand" | "wins" | "streak" | "likes"
+    "all" | "busComplete" | "xo" | "hand" | "iq" | "wins" | "streak" | "likes"
   >("all");
   const [leaderboardVisibleCount, setLeaderboardVisibleCount] = useState(10);
 
@@ -1888,6 +1895,8 @@ export default function App() {
       sorted.sort((a, b) => (b.xoWins || 0) - (a.xoWins || 0));
     } else if (leaderboardFilter === "hand") {
       sorted.sort((a, b) => (b.handWins || 0) - (a.handWins || 0));
+    } else if (leaderboardFilter === "iq") {
+      sorted.sort((a, b) => (b.iqWins || 0) - (a.iqWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -6070,6 +6079,28 @@ export default function App() {
       }
     });
 
+        newSocket.on("iq_reward_claimed", (data: any) => {
+      playSound("prize");
+      setCustomConfirm({
+         show: true,
+         title: "تم استلام هدايا IQ بنجاح! 🎁",
+         message: "تم ترقية مستوى هدايا IQ إلى " + data.newLevel + "!\n\n" +
+                  "حصلت على:\n" +
+                  "⭐ " + data.xp + " خبرة\n" +
+                  "🔑 " + data.keys + " مفاتيح\n" +
+                  "🔧 " + (data.newLevel > 1 ? data.newLevel - 1 : 10) + " من كل وسيلة مساعدة",
+         confirmText: "رائع!",
+         onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+      });
+      if (data.points != null) {
+        setIqMatchPoints(data.points);
+        localStorage.setItem("khamin_iq_match_points", data.points.toString());
+      }
+      if (data.newLevel != null) {
+        setIqRewardLevel(data.newLevel);
+        localStorage.setItem("khamin_iq_reward_level", data.newLevel.toString());
+      }
+    });
     newSocket.on("xo_reward_claimed", (data: any) => {
       playSound("prize");
       setCustomConfirm({
@@ -6203,9 +6234,17 @@ export default function App() {
                 setXoRewardLevel(data.xoRewardLevel);
                 localStorage.setItem("khamin_xo_reward_level", data.xoRewardLevel.toString());
               }
+              if (data.iqRewardLevel != null) {
+                setIqRewardLevel(data.iqRewardLevel);
+                localStorage.setItem("khamin_iq_reward_level", data.iqRewardLevel.toString());
+              }
               if (data.xoMatchPoints != null) {
                 setXoMatchPoints(data.xoMatchPoints);
                 localStorage.setItem("khamin_xo_match_points", data.xoMatchPoints.toString());
+              }
+              if (data.iqMatchPoints != null) {
+                setIqMatchPoints(data.iqMatchPoints);
+                localStorage.setItem("khamin_iq_match_points", data.iqMatchPoints.toString());
               }
               if (data.handRewardLevel != null) {
                 setHandRewardLevel(data.handRewardLevel);
@@ -6581,13 +6620,21 @@ export default function App() {
         localStorage.setItem("khamin_bus_match_points", data.busCompleteMatchPoints.toString());
       }
       if (data.xoRewardLevel != null) {
-        setXoRewardLevel(data.xoRewardLevel);
-        localStorage.setItem("khamin_xo_reward_level", data.xoRewardLevel.toString());
-      }
+                setXoRewardLevel(data.xoRewardLevel);
+                localStorage.setItem("khamin_xo_reward_level", data.xoRewardLevel.toString());
+              }
+              if (data.iqRewardLevel != null) {
+                setIqRewardLevel(data.iqRewardLevel);
+                localStorage.setItem("khamin_iq_reward_level", data.iqRewardLevel.toString());
+              }
       if (data.xoMatchPoints != null) {
-        setXoMatchPoints(data.xoMatchPoints);
-        localStorage.setItem("khamin_xo_match_points", data.xoMatchPoints.toString());
-      }
+                setXoMatchPoints(data.xoMatchPoints);
+                localStorage.setItem("khamin_xo_match_points", data.xoMatchPoints.toString());
+              }
+              if (data.iqMatchPoints != null) {
+                setIqMatchPoints(data.iqMatchPoints);
+                localStorage.setItem("khamin_iq_match_points", data.iqMatchPoints.toString());
+              }
       if (data.handRewardLevel != null) {
         setHandRewardLevel(data.handRewardLevel);
         localStorage.setItem("khamin_hand_reward_level", data.handRewardLevel.toString());
@@ -6862,6 +6909,9 @@ export default function App() {
 
     newSocket.on("timer_update", (timer: number) => {
       setRoom((prev) => (prev ? { ...prev, timer } : null));
+    });
+    newSocket.on("iq_timer_update", (timer: number) => {
+      setRoom((prev) => (prev ? { ...prev, iqTurnTimer: timer } : null));
     });
 
     newSocket.on("player_disconnected_waiting", ({ name }) => {
@@ -9547,6 +9597,8 @@ export default function App() {
       room?.gameState === "custom_image_upload" ||
       room?.gameState === "xo_playing" ||
       room?.gameState === "xo_finished" ||
+      room?.gameState === "iq_playing" ||
+      room?.gameState === "iq_finished" ||
       room?.gameState === "bus_complete_setup" ||
       room?.gameState === "bus_complete_spin" ||
       room?.gameState === "bus_complete_playing" ||
@@ -14905,7 +14957,11 @@ export default function App() {
                   fetch("/api/auth/google/url")
                     .then((res) => res.json())
                     .then((data) => {
-                      window.location.href = data.url;
+                      window.open(
+                        data.url,
+                        "oauth_popup",
+                        "width=600,height=700",
+                      );
                     });
                 }}
               />
@@ -20309,6 +20365,79 @@ export default function App() {
     );
   };
 
+    const renderIQRewardBar = () => {
+    if (!room || room.matchType !== "random" || (room.gameState !== "iq_playing" && room.gameState !== "iq_finished")) return null;
+
+    const targetPoints = iqRewardLevel * 100;
+    const progress = Math.min((iqMatchPoints / targetPoints) * 100, 100);
+    const isReady = iqMatchPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-2 relative overflow-hidden transition-all shadow-sm">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-blue-100/50 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex sm:flex-row items-center justify-between gap-2 z-10 w-full">
+           <div className="flex items-center gap-2 font-bold text-blue-800 text-sm">
+             <span>المستوي {iqRewardLevel}</span>
+             <span className="text-xs bg-white px-1.5 py-0.5 rounded-md border border-blue-200" dir="ltr">
+               {iqMatchPoints} / {targetPoints}
+             </span>
+           </div>
+           
+           <button
+             onClick={() => {
+                if (isReady) {
+                  setCustomConfirm({
+                     show: true,
+                     title: "مبروك! 🎉 اكتملت نقاط المستوي " + iqRewardLevel,
+                     message: "يمكنك استلام هدايا هذا المستوى الآن، هل تود مشاهدة الإعلان؟\n\n" +
+                              "🎁 " + (iqRewardLevel === 1 ? 50 : 100 + 50 * (iqRewardLevel - 1)) + " XP\n" +
+                              "🔑 " + iqRewardLevel + " مفتاح\n" +
+                              "🔧 " + iqRewardLevel + " من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)",
+                     confirmText: "نعم مشاهدة الاعلان",
+                     cancelText: "الغاء",
+                     onConfirm: () => {
+                       setCustomConfirm((prev) => ({ ...prev, show: false }));
+                       socket?.emit("bus_complete_ad_start", { roomId: room.id });
+                       showBusCompleteAd(
+                         () => {
+                            socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: true });
+                            socket?.emit("claim_iq_reward", { serial: socket?.data?.serial || playerSerial });
+                         },
+                         () => {
+                            socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: false });
+                            showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+                         }
+                       );
+                     }
+                  });
+                } else {
+                  setCustomConfirm({
+                    show: true,
+                    title: `المستوي ${iqRewardLevel}`,
+                    message: `متبقي ${targetPoints - iqMatchPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                             `🎁 ${iqRewardLevel === 1 ? 50 : 100 + 50 * (iqRewardLevel - 1)} XP\n` +
+                             `🔑 ${iqRewardLevel} مفتاح\n` +
+                             `🔧 ${iqRewardLevel} من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)`,
+                    confirmText: "حسناً",
+                    onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                  });
+                }
+             }}
+             className={`flex justify-center items-center gap-1.5 px-3 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+               ${isReady ? "bg-green-500 text-white animate-pulse hover:bg-green-600 border border-green-600" : "bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"}`}
+           >
+             <span>🎁</span>
+             <span>استلم الهدايا</span>
+           </button>
+         </div>
+      </div>
+    );
+  };
+
+
   const renderXORewardBar = () => {
     if (!room || room.matchType !== "random" || (room.gameState !== "xo_playing" && room.gameState !== "xo_finished")) return null;
 
@@ -23301,6 +23430,7 @@ export default function App() {
                         { id: "busComplete", icon: "🚌" },
                         { id: "xo", icon: <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span> },
                         { id: "hand", icon: "🖐" },
+                        { id: "iq", icon: "🧠" },
                         { id: "wins", icon: "🏆" },
                         { id: "streak", icon: "🔥" },
                         { id: "likes", icon: "❤️" },
@@ -24119,7 +24249,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <main className="flex-1 relative flex flex-col items-center py-2 px-2 max-w-md mx-auto w-full overflow-hidden">
+        <main className={`flex-1 relative flex flex-col items-center py-2 px-2 mx-auto w-full overflow-hidden ${room?.category === "iq" ? "max-w-md" : "max-w-md"}`}>
           {/* Players Header (VS Mode) */}
           <div className="w-full flex items-center justify-center gap-3 md:gap-6 py-2 px-4 bg-white/60 backdrop-blur-md rounded-[32px] border-4 border-white shadow-xl mb-4 relative z-50">
             {/* Player (Me) */}
@@ -25137,6 +25267,279 @@ export default function App() {
               </div>
               <CategoryPageAd />
             </React.Fragment>
+                        ) : room.gameState === "iq_playing" || room.gameState === "iq_finished" ? (
+              <React.Fragment>
+                <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
+                {renderIQRewardBar()}
+                {room.gameState === "iq_finished" && room.iqLevel === 3 ? (
+                  <div className="w-full py-1 flex flex-col items-center justify-center animate-fade-in text-center space-y-6">
+                    
+                    <div className="space-y-2 mb-2">
+                      <h2 className="text-2xl md:text-3xl font-black text-brown-dark">انتهت مباراة الذكاء!</h2>
+                      <p className="text-xs md:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full border w-fit mx-auto">اكتملت جميع المستويات الثلاثة</p>
+                    </div>
+
+                    <div className="w-full max-w-sm bg-white border-4 border-dashed border-gray-200 rounded-3xl mb-2 p-2 md:p-3 space-y-4">
+                      {(() => {
+                        const p1 = room.players.find((p: any) => p.id === room.iqPlayer1) || room.players[0] || { id: "p1", name: "لاعب 1" };
+                        const p2 = room.players.find((p: any) => p.id === room.iqPlayer2) || room.players[1] || { id: "p2", name: "لاعب 2" };
+                        
+                        const p1Wins = room.iqMatchWins?.[p1.id] || 0;
+                        const p2Wins = room.iqMatchWins?.[p2.id] || 0;
+                        
+                        const isP1Winner = p1Wins > p2Wins;
+                        const isP2Winner = p2Wins > p1Wins;
+                        const isDraw = p1Wins === p2Wins;
+                        
+                        const me = room.players.find((p: any) => p.id === socket?.id);
+                        
+                        let matchResult = "";
+                        let resultColor = "";
+                        
+                        if (isDraw) {
+                          matchResult = "النتيجة النهائية تعادل! 🤝";
+                          resultColor = "text-gray-600 bg-gray-50 border-gray-200";
+                        } else if ((isP1Winner && me?.id === p1.id) || (isP2Winner && me?.id === p2.id)) {
+                          matchResult = "لقد فزت بالمباراة! 🎉";
+                          resultColor = "text-green-600 bg-green-50 border-green-200 animate-pulse";
+                        } else {
+                          matchResult = "لقد خسرت المباراة! 😔";
+                          resultColor = "text-red-500 bg-red-50 border-red-200";
+                        }
+
+                        return (
+                          <div className="space-y-4">
+                            <div className={`text-base md:text-lg font-black mb-2 p-2 rounded-2xl border ${resultColor}`}>
+                              {matchResult}
+                            </div>
+                            
+                            <div className="flex justify-around items-center gap-3">
+                              <div className="flex flex-col items-center gap-1.5 p-3 bg-red-50 border border-red-100 rounded-2xl w-1/2">
+                                <span className="text-xs md:text-sm font-bold text-red-600 max-w-[100px] truncate">{p1.name}</span>
+                                <span className="text-3xl font-black text-red-500">{p1Wins}</span>
+                                <span className="text-[10px] text-red-400">فوز بالمستويات</span>
+                              </div>
+                              <div className="text-xl font-black text-gray-400">VS</div>
+                              <div className="flex flex-col items-center gap-1.5 p-3 bg-green-50 border border-green-100 rounded-2xl w-1/2">
+                                <span className="text-xs md:text-sm font-bold text-green-600 max-w-[100px] truncate">{p2.name}</span>
+                                <span className="text-3xl font-black text-green-500">{p2Wins}</span>
+                                <span className="text-[10px] text-green-400">فوز بالمستويات</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="flex flex-col gap-2.5 w-full max-w-sm">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            playSound("clickOpen");
+                            socket?.emit("play_again", { roomId: room.id });
+                          }}
+                          className="flex-1 btn-game bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-[0_4px_0_0_#d1d5db] active:shadow-transparent py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2"
+                        >
+                          تغيير اللعبة
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound("clickOpen");
+                            socket?.emit("restart_iq", { roomId: room.id });
+                          }}
+                          disabled={((room.adPausedPlayersArray?.length || 0) > 0) || room.iqRematchRequestedBy?.includes(socket?.id || "")}
+                          className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2
+                            ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
+                              room.iqRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
+                               ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a] active:shadow-transparent"
+                               : room.iqRematchRequestedBy?.includes(socket?.id || "")
+                                 ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a]"
+                                 : "bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
+                        >
+                          {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
+                            : room.iqRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
+                            : room.iqRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
+                            : "لعب مرة أخري!"}
+                        </button>
+                      </div>
+                      
+                      <button
+                        onClick={handleLeaveGame}
+                        className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-3 text-base font-black rounded-2xl flex items-center justify-center gap-2"
+                      >
+                        🚪 خروج للرئيسية
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <React.Fragment>
+                    {room.players.length === 2 && (
+                      <div className="flex justify-between items-center w-full mb-1 px-1">
+                        <div className="flex flex-col items-center bg-white border-2 border-red-200 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px]" dir="rtl">
+                          <span className="text-[10px] md:text-xs font-black text-gray-500 max-w-[80px] break-words text-center flex items-center justify-center gap-1">
+                            {(room.players.find((p: any) => p.id === room.iqPlayer1)?.name || "اللاعب 1").substring(0, 5)}
+                            <span className="w-3 h-3 rounded-sm bg-red-500 border border-red-700"></span>
+                          </span>
+                          <span className="text-sm font-black text-red-500">🏆 {room.players.find((p: any) => p.id === room.iqPlayer1)?.iqWins || 0}</span>
+                        </div>
+
+                        <div className={`flex justify-center items-center gap-1 mx-2 ${room.gameState !== "iq_finished" ? "border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]" : "font-black text-lg text-brown-dark"}`} dir="ltr">
+                            {room.gameState === "iq_finished" ? (
+                               <span>انتهت المباراة</span>
+                            ) : (
+                               <span className={`text-2xl font-black font-mono tracking-wider ${room.timer <= 60 ? "text-red-600" : "text-gray-700"}`}>
+                                 {Math.floor(room.timer / 60)}:{(room.timer % 60).toString().padStart(2, "0")}
+                               </span>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px]" dir="rtl">
+                          <span className="text-[10px] md:text-xs font-black text-gray-500 max-w-[80px] break-words text-center flex items-center justify-center gap-1">
+                            {(room.players.find((p: any) => p.id === room.iqPlayer2)?.name || "اللاعب 2").substring(0, 5)}
+                            <span className="w-3 h-3 rounded-sm bg-green-500 border border-green-700"></span>
+                          </span>
+                          <span className="text-sm font-black text-green-600">🏆 {room.players.find((p: any) => p.id === room.iqPlayer2)?.iqWins || 0}</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="text-center mb-1 px-2 mt-1">
+                      <p className="text-xs md:text-sm font-bold text-blue-600 bg-blue-50 p-2 rounded-xl border border-blue-100 w-fit mx-auto shadow-sm">
+                        المستوي {room.iqLevel || 1} {room.iqCategoryName ? `(${room.iqCategoryName})` : ""} - طابق الصور المتشابهة للفوز!
+                      </p>
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center justify-center relative z-10 py-1 mb-0.5 w-full">
+                      <div 
+                        className={`bg-gray-100 p-1 md:p-2 rounded-2xl w-full mx-auto shadow-inner border border-gray-300 ${
+                          room.iqBoardSize === 4 ? "max-w-[420px]" : room.iqBoardSize === 6 ? "max-w-[560px]" : "max-w-[680px]"
+                        }`}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: `repeat(${room.iqBoardSize || 4}, minmax(0, 1fr))`,
+                          gap: (room.iqBoardSize || 4) > 6 ? '3px' : (room.iqBoardSize || 4) === 6 ? '6px' : '8px'
+                        }}
+                      >
+                        {room.iqBoard?.map((cellImg: any, idx: number) => {
+                          const isFlipped = room.iqFlipped?.includes(idx) || room.iqMatched?.includes(idx);
+                          const isMatched = room.iqMatched?.includes(idx);
+                          const myTurn = room.iqTurn === socket?.id && room.gameState === "iq_playing";
+                          
+                          const cellImgSrc = cellImg
+                            ? cellImg.startsWith("data:")
+                              ? cellImg
+                              : `data:image/png;base64,${cellImg}`
+                            : "";
+
+                          return (
+                            <button
+                              key={idx}
+                              disabled={!myTurn || isFlipped}
+                              onClick={() => {
+                                 socket?.emit("submit_iq_move", { roomId: room.id, index: idx });
+                                 playSound("clickOpen");
+                              }}
+                              className={`aspect-square relative transition-all duration-100 transform hover:scale-105 flex items-center justify-center overflow-hidden shadow-sm
+                                ${room.iqBoardSize === 8 ? "rounded-md border-b-2" : room.iqBoardSize === 6 ? "rounded-lg border-b-[3px]" : "rounded-xl border-b-4"}
+                                ${isFlipped 
+                                  ? (isMatched ? "bg-gray-100 border-gray-300" : `bg-white ${room.iqTurn === room.iqPlayer1 ? "border-red-500" : "border-green-500"}`) 
+                                  : (room.iqTurn === room.iqPlayer1 ? "bg-red-500 border-red-700" : "bg-green-500 border-green-700")
+                                }
+                              `}
+                            >
+                               {isFlipped ? (
+                                 <div className={`absolute inset-0 flex items-center justify-center overflow-hidden ${isMatched ? "opacity-50 grayscale" : ""}`}>
+                                   <img src={cellImgSrc} alt="card" className="w-[85%] h-[85%] object-contain" />
+                                 </div>
+                               ) : (
+                                 <div className="w-1/2 h-1/2 opacity-20 bg-white rounded-full flex items-center justify-center">
+                                   <span className={`text-white font-black ${room.iqBoardSize === 8 ? "text-xs md:text-sm" : room.iqBoardSize === 6 ? "text-sm md:text-lg" : "text-base md:text-xl"}`}>?</span>
+                                 </div>
+                                )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    
+                    {room.gameState === "iq_playing" && (
+                       <div className="text-center my-1 font-bold text-base md:text-lg mb-2 flex flex-col items-center gap-1">
+                          {room.iqTurn === socket?.id ? (
+                             <span className="text-blue-600 animate-pulse bg-blue-50 px-4 py-1 rounded-full border border-blue-200">دورك الآن للعب! ⏳ {room.iqTurnTimer}</span>
+                          ) : (
+                             <span className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳ {room.iqTurnTimer}</span>
+                          )}
+                          
+                          <div className="flex gap-4 text-sm mt-1">
+                            <span className="text-red-500 font-black px-2 bg-red-50 rounded border border-red-200">نقاطك: {room.iqPlayer1 === socket?.id ? room.iqP1Score : room.iqP2Score}</span>
+                            <span className="text-gray-500 font-black px-2 bg-gray-50 rounded border border-gray-200">نقاط الخصم: {room.iqPlayer1 !== socket?.id ? room.iqP1Score : room.iqP2Score}</span>
+                          </div>
+                       </div>
+                    )}
+                    
+                    {room.gameState === "iq_finished" && (
+                       <div className="flex flex-col text-center my-0.5 w-full animate-fade-in-up">
+                         <div className="mb-1">
+                           {room.iqWinner === "draw" ? (
+                              <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-black text-lg shadow-sm border border-gray-200">
+                                تعادل! 🤝
+                              </div>
+                           ) : room.iqWinner === socket?.id ? (
+                              <div className="bg-green-100 text-green-700 px-4 py-2 rounded-xl font-black text-lg shadow-sm border border-green-200 animate-pulse">
+                                أنت الفائز بالجولة! 🎉
+                              </div>
+                           ) : (
+                              <div className="bg-red-100 text-red-600 px-4 py-2 rounded-xl font-black text-lg shadow-sm border border-red-200">
+                                حظ أوفر المرة القادمة! 💔
+                              </div>
+                           )}
+                         </div>
+                         
+                         <div className="flex flex-row gap-2 mt-1 px-2">
+                           <button
+                             onClick={() => {
+                                playSound("clickOpen");
+                                socket?.emit("play_again", { roomId: room.id });
+                             }}
+                             className="flex-1 btn-game bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-[0_4px_0_0_#d1d5db] active:shadow-transparent py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5"
+                           >
+                             تغيير اللعبة
+                           </button>
+                           <button
+                             onClick={() => {
+                                playSound("clickOpen");
+                                socket?.emit("restart_iq", { roomId: room.id });
+                             }}
+                             disabled={((room.adPausedPlayersArray?.length || 0) > 0) || (room.iqLevel === 3 && room.iqRematchRequestedBy?.includes(socket?.id || ""))}
+                             className={`flex-1 btn-game py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5
+                               ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
+                                 room.iqLevel === 3 && room.iqRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
+                                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a] active:shadow-transparent"
+                                  : room.iqLevel === 3 && room.iqRematchRequestedBy?.includes(socket?.id || "")
+                                    ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a]"
+                                    : "bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
+                           >
+                             {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
+                               : (room.iqLevel || 1) < 3 ? `انتقل الي المستوي ${(room.iqLevel || 1) + 1}`
+                               : room.iqRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
+                              : room.iqRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
+                              : "لعب مرة أخري!"}
+                           </button>
+                         </div>
+                         
+                         <button
+                             onClick={handleLeaveGame}
+                             className="w-auto mx-4 btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5 mt-2"
+                           >
+                             🚪 خروج للرئيسية
+                           </button>
+                       </div>
+                    )}
+                  </React.Fragment>
+                )}
+                </div>
+                <CategoryPageAd />
+              </React.Fragment>
             ) : room.gameState === "xo_playing" || room.gameState === "xo_finished" ? (
               <React.Fragment>
                 <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
@@ -25533,6 +25936,38 @@ export default function App() {
                               if (meMode === "xo" && oppMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
                               if (meMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
                               if (oppMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+                          
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "iq",
+                                })
+                              }
+                              className={`h-full w-full bg-blue-100 hover:bg-blue-200 border-[3px] border-blue-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#3b82f6] active:shadow-none active:translate-y-1.5"}`}
+                            >
+                              <div className={`flex gap-0.5 text-3xl md:text-4xl font-black ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`} dir="ltr">
+                                <span className="text-blue-500">I</span>
+                                <span className="text-blue-700">Q</span>
+                              </div>
+                              <span className="text-[13px] md:text-lg font-black text-blue-700 text-center leading-tight">
+                               تخمينة IQ
+                              </span>
+                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
+                                (لعبة تطابق الصور والذاكرة)
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "iq" && oppMode === "iq") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
+                              if (meMode === "iq") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "iq") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -26845,6 +27280,8 @@ export default function App() {
           room.gameState !== "xo_finished" &&
           room.gameState !== "hand_playing" &&
           room.gameState !== "hand_finished" &&
+          room.gameState !== "iq_playing" &&
+          room.gameState !== "iq_finished" &&
           room.gameState !== "starting" && (
             <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
               {[
