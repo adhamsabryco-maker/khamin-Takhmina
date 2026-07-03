@@ -16,6 +16,9 @@ export default defineConfig(({mode}) => {
         filename: 'sw.ts',
         registerType: 'prompt',
         injectRegister: 'auto',
+        injectManifest: {
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        },
         manifest: {
           id: '/',
           name: 'خمن تخمينة',
