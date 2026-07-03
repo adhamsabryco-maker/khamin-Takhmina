@@ -11434,6 +11434,8 @@ export default function App() {
                 <span>{data.xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                 <span>•</span>
                 <span>{data.handWins || 0} 🖐</span>
+                <span>•</span>
+                <span>{data.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
               </div>
 
               {/* Friend Status Indicator / Add Friend Button */}
@@ -22721,6 +22723,7 @@ export default function App() {
                               <span>{topPlayers[1].busCompleteWins || 0} 🚌</span>
                               <span>{topPlayers[1].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                               <span>{topPlayers[1].handWins || 0} 🖐</span>
+                              <span>{topPlayers[1].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                             </div>
                           </div>
                         </div>
@@ -22775,6 +22778,7 @@ export default function App() {
                               <span>{topPlayers[0].busCompleteWins || 0} 🚌</span>
                               <span>{topPlayers[0].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                               <span>{topPlayers[0].handWins || 0} 🖐</span>
+                              <span>{topPlayers[0].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                             </div>
                           </div>
                         </div>
@@ -22823,6 +22827,7 @@ export default function App() {
                               <span>{topPlayers[2].busCompleteWins || 0} 🚌</span>
                               <span>{topPlayers[2].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                               <span>{topPlayers[2].handWins || 0} 🖐</span>
+                              <span>{topPlayers[2].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                             </div>
                           </div>
                         </div>
@@ -23425,6 +23430,8 @@ export default function App() {
                               <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.xoWins || 0} <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span></span>
                               <span>•</span>
                               <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.handWins || 0} 🖐</span>
+                              <span>•</span>
+                              <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                             </div>
                           </div>
                         </div>
@@ -23440,7 +23447,7 @@ export default function App() {
                         { id: "busComplete", icon: "🚌" },
                         { id: "xo", icon: <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span> },
                         { id: "hand", icon: "🖐" },
-                        { id: "iq", icon: "🧠" },
+                        { id: "iq", icon: <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span> },
                         { id: "wins", icon: "🏆" },
                         { id: "streak", icon: "🔥" },
                         { id: "likes", icon: "❤️" },
@@ -23554,6 +23561,13 @@ export default function App() {
                                   dir="rtl"
                                 >
                                   {player.handWins || 0} 🖐
+                                </span>
+                                <span className="text-brown-light">•</span>
+                                <span
+                                  className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded"
+                                  dir="rtl"
+                                >
+                                  {player.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>
                                 </span>
                               </div>
                             </div>
