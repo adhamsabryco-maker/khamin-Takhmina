@@ -23363,17 +23363,14 @@ export default function App() {
                 exit={{ scale: 0.9, y: 20 }}
                 className="bg-modal-theme rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl relative flex flex-col max-h-[85vh]"
               >
-                <div className="bg-orange-500 p-6 text-center relative shrink-0 border-b-4 border-black">
+                <div className="bg-orange-500 p-3 text-center relative shrink-0 border-b-4 border-black">
                   <button
                     onClick={handleOpenshowLeaderboardModal}
-                    className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
+                    className="absolute top-1 right-1 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
-                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg border-2 border-yellow-400">
-                    <Trophy className="w-8 h-8 text-yellow-500" />
-                  </div>
-                  <h2 className="text-2xl font-black text-white mb-1">
+                  <h2 className="text-xl font-black text-white mb-1">
                     أبطال التخمين (Top 100)
                   </h2>
                   <p className="text-white/80 text-sm font-bold">
@@ -23391,8 +23388,8 @@ export default function App() {
                     {sortedTopPlayers.findIndex(
                       (p) => p.serial === playerSerial,
                     ) !== -1 && (
-                      <div className="px-2 pb-3 pt-3 bg-gray-50">
-                        <div className="bg-purple-600 text-white p-2 rounded-none flex items-center gap-1 border-x-4 border-b-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                      <div className="px-2 pb-2 pt-2 bg-gray-300">
+                        <div className="bg-orange-500 text-white p-2 rounded-none flex items-center gap-1 border-x-4 border-b-4 border-black">
                           <div className="font-black text-xl w-8 text-center bg-white/20 rounded-lg py-1">
                             #
                             {sortedTopPlayers.findIndex(
@@ -23436,7 +23433,7 @@ export default function App() {
                     )}
 
                     <div
-                      className="flex items-center justify-center gap-2 py-3 px-2 bg-gray-100"
+                      className="flex items-center justify-center gap-2 py-1 px-2 bg-gray-100"
                       dir="rtl"
                     >
                       {[
@@ -23452,7 +23449,7 @@ export default function App() {
                         <button
                           key={filter.id}
                           onClick={() => setLeaderboardFilter(filter.id as any)}
-                          className={`flex-1 max-w-[4rem] h-11 flex items-center justify-center rounded-xl font-black text-xl transition-all border-b-4 ${
+                          className={`flex-1 max-w-[4rem] h-10 flex items-center justify-center rounded-xl font-black text-xl transition-all border-b-4 ${
                             leaderboardFilter === filter.id
                               ? "bg-orange-500 text-white border-orange-600 shadow-sm -translate-y-1"
                               : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
@@ -23513,7 +23510,7 @@ export default function App() {
                               >
                                 {player.name} {isMe && "(أنت)"}
                               </div>
-                              <div className="text-[10px] md:text-xs text-brown-muted font-bold flex items-center gap-0.5 md:gap-1">
+                              <div className="text-[10px] md:text-xs text-brown-muted font-bold flex flex-wrap items-center justify-center gap-1 md:gap-1.5">
                                 <span
                                   className="bg-gray-100 md:px-1.5 rounded text-brown-muted"
                                   dir="ltr"
