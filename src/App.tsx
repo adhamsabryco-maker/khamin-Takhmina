@@ -1882,7 +1882,7 @@ export default function App() {
   });
 
   const [leaderboardFilter, setLeaderboardFilter] = useState<
-    "all" | "busComplete" | "xo" | "hand" | "iq" | "wins" | "streak" | "likes"
+    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "wins" | "streak" | "likes"
   >("all");
   const [leaderboardVisibleCount, setLeaderboardVisibleCount] = useState(10);
 
@@ -1903,6 +1903,8 @@ export default function App() {
       sorted.sort((a, b) => (b.handWins || 0) - (a.handWins || 0));
     } else if (leaderboardFilter === "iq") {
       sorted.sort((a, b) => (b.iqWins || 0) - (a.iqWins || 0));
+    } else if (leaderboardFilter === "dots") {
+      sorted.sort((a, b) => (b.dotsWins || 0) - (a.dotsWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -11510,7 +11512,7 @@ export default function App() {
                 <span>•</span>
                 <span>{data.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                 <span>•</span>
-                <span>{data.dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
+                <span>{data.dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
               </div>
 
               {/* Friend Status Indicator / Add Friend Button */}
@@ -22968,22 +22970,22 @@ export default function App() {
                           <div className="text-xs md:text-sm font-black text-main truncate w-full text-center mt-2 max-w-[90px] md:max-w-[120px]">
                             {truncateName(topPlayers[0].name)}
                           </div>
-                          <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-2">
-                            <div className="text-[9px] md:text-xs font-black text-black/80 px-3 py-1 ">
+                          <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1.5">
+                            <div className="text-[9px] md:text-xs font-black text-black/80 px-1 py-0.5 pt-0.5 ">
                               Lvl {getLevel(topPlayers[0].xp || 0)}
                             </div>
-                            <div className="text-[9px] md:text-xs font-black text-black/80 px-3 py-1 flex items-center gap-1">
+                            <div className="text-[9px] md:text-xs font-black text-black/80 px-1 py-0.5 pt-0.5 flex items-center gap-1">
                               <Trophy className="w-3 h-3" />
                               {topPlayers[0].wins || 0} فوز
                             </div>
-                            <div className="text-[7px] md:text-[9px] font-black text-black/80 px-3 py-1 flex flex-wrap items-center justify-center gap-1">
+                            <div className="text-[7px] md:text-[9px] font-black text-black/80 px-1 md:px-2 py-1 flex flex-wrap items-center justify-center gap-1">
                               <span>{topPlayers[0].streak || 0} 🔥</span>
                               <span>{topPlayers[0].likes || 0} ❤️</span>
                               <span>{topPlayers[0].busCompleteWins || 0} 🚌</span>
                               <span>{topPlayers[0].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                               <span>{topPlayers[0].handWins || 0} 🖐</span>
                               <span>{topPlayers[0].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
-                              <span>{topPlayers[0].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
+                              <span>{topPlayers[0].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -23018,22 +23020,22 @@ export default function App() {
                           <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
                             {truncateName(topPlayers[2].name)}
                           </div>
-                          <div className="w-full rank-3-bar h-20 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
-                            <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
+                          <div className="w-full rank-3-bar h-20 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.2 md:gap-0.2">
+                            <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.2 pt-0.2">
                               Lvl {getLevel(topPlayers[2].xp || 0)}
                             </div>
-                            <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center gap-1">
+                            <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.2 pt-0.2 flex items-center gap-1">
                               <Trophy className="w-2 h-2" />
                               {topPlayers[2].wins || 0} فوز
                             </div>
-                            <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex flex-wrap items-center justify-center gap-1">
+                            <div className="text-[8px] md:text-[9px] font-black text-black/80 px-1 md:px-2 py-0.2 pt-0.2 flex flex-wrap items-center justify-center gap-1">
                               <span>{topPlayers[2].streak || 0} 🔥</span>
                               <span>{topPlayers[2].likes || 0} ❤️</span>
                               <span>{topPlayers[2].busCompleteWins || 0} 🚌</span>
                               <span>{topPlayers[2].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                               <span>{topPlayers[2].handWins || 0} 🖐</span>
                               <span>{topPlayers[2].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
-                              <span>{topPlayers[2].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
+                              <span>{topPlayers[2].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -25761,7 +25763,7 @@ export default function App() {
                                  
                                  {/* Dots */}
                                  {dots.map((d, i) => (
-                                   <div key={`dot-${i}`} className={`absolute w-4 h-4 rounded-full z-30 shadow-sm transition-colors duration-300 ${room.dotsTurn === room.dotsPlayer1 ? 'bg-red-500 border-2 border-red-600' : 'bg-blue-500 border-2 border-blue-600'}`} style={{
+                                   <div key={`dot-${i}`} className={`absolute w-4 h-4 rounded-full z-30 shadow-sm transition-colors duration-100 ${room.dotsTurn === room.dotsPlayer1 ? 'bg-red-500 border-2 border-red-600' : 'bg-blue-500 border-2 border-blue-600'}`} style={{
                                      left: `calc(${d.c * dotSpacing}% - 8px)`,
                                      top: `calc(${d.r * dotSpacing}% - 8px)`
                                    }}></div>
