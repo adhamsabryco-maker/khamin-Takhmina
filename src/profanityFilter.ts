@@ -1,5 +1,5 @@
 import * as BadWordsFilter from 'bad-words';
-const Filter = BadWordsFilter as any;
+const Filter = (BadWordsFilter as any).default || BadWordsFilter;
 
 const englishFilter = new Filter();
 
