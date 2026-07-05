@@ -1315,6 +1315,12 @@ export default function App() {
   const [iqRewardLevel, setIqRewardLevel] = useState(
     () => parseInt(localStorage.getItem("khamin_iq_reward_level") || "1") || 1,
   );
+  const [dotsRewardLevel, setDotsRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_dots_reward_level") || "1") || 1,
+  );
+  const [dotsMatchPoints, setDotsMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_dots_match_points") || "0") || 0,
+  );
   const [handRewardLevel, setHandRewardLevel] = useState(
     () => parseInt(localStorage.getItem("khamin_hand_reward_level") || "1") || 1,
   );
@@ -5420,7 +5426,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const isGameActive = !!room && room.gameState !== "waiting";
+        const isGameActive = !!room && (
+      room.gameState === "playing" ||
+      room.gameState === "finished" ||
+      room.gameState === "xo_playing" ||
+      room.gameState === "xo_finished" ||
+      room.gameState === "iq_playing" ||
+      room.gameState === "iq_finished" ||
+      room.gameState === "dots_playing" ||
+      room.gameState === "dots_finished" ||
+      room.gameState === "bus_complete_playing" ||
+      room.gameState === "bus_complete_evaluating" ||
+      room.gameState === "bus_complete_spin" ||
+      room.gameState === "bus_complete_finished" ||
+      room.gameState === "hand_playing" ||
+      room.gameState === "hand_finished"
+    );
 
     const activeMusic = isGameActive
       ? gameMusicRef.current
@@ -5541,6 +5562,17 @@ export default function App() {
         playSound("lose");
       }
     }
+
+    if (room && room.gameState === "dots_finished" && prevGameStateRef.current === "dots_playing") {
+      if (room.dotsWinner === socket?.id) {
+        playSound("win");
+      } else if (room.dotsWinner === "draw") {
+        playSound("pop");
+      } else {
+        playSound("lose");
+      }
+    }
+
 
     if (room && room.gameState === "bus_complete_evaluating" && prevGameStateRef.current === "bus_complete_playing") {
       if (room.busCompleteWinner === socket?.id) {
@@ -6131,6 +6163,29 @@ export default function App() {
       }
     });
 
+    newSocket.on("dots_reward_claimed", (data: any) => {
+      playSound("prize");
+      setCustomConfirm({
+         show: true,
+         title: "تم استلام هدايا لعبة نقطة وخط بنجاح! 🎁",
+         message: "تم ترقية مستوى هدايا نقطة وخط إلى " + data.newLevel + "!\n\n" +
+                  "حصلت على:\n" +
+                  "⭐ " + data.xp + " خبرة\n" +
+                  "🔑 " + data.keys + " مفاتيح\n" +
+                  "🔧 " + (data.newLevel > 1 ? data.newLevel - 1 : 10) + " من كل وسيلة مساعدة",
+         confirmText: "رائع!",
+         onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+      });
+      if (data.points != null) {
+        setDotsMatchPoints(data.points);
+        localStorage.setItem("khamin_dots_match_points", data.points.toString());
+      }
+      if (data.newLevel != null) {
+        setDotsRewardLevel(data.newLevel);
+        localStorage.setItem("khamin_dots_reward_level", data.newLevel.toString());
+      }
+    });
+
     newSocket.on("app_settings", (settings: any) => {
       if (settings && settings.lucky_wheel_enabled !== undefined) {
         setLuckyWheelEnabled(
@@ -6252,6 +6307,14 @@ export default function App() {
               if (data.iqMatchPoints != null) {
                 setIqMatchPoints(data.iqMatchPoints);
                 localStorage.setItem("khamin_iq_match_points", data.iqMatchPoints.toString());
+              }
+              if (data.dotsRewardLevel != null) {
+                setDotsRewardLevel(data.dotsRewardLevel);
+                localStorage.setItem("khamin_dots_reward_level", data.dotsRewardLevel.toString());
+              }
+              if (data.dotsMatchPoints != null) {
+                setDotsMatchPoints(data.dotsMatchPoints);
+                localStorage.setItem("khamin_dots_match_points", data.dotsMatchPoints.toString());
               }
               if (data.handRewardLevel != null) {
                 setHandRewardLevel(data.handRewardLevel);
@@ -6642,6 +6705,14 @@ export default function App() {
                 setIqMatchPoints(data.iqMatchPoints);
                 localStorage.setItem("khamin_iq_match_points", data.iqMatchPoints.toString());
               }
+              if (data.dotsRewardLevel != null) {
+                setDotsRewardLevel(data.dotsRewardLevel);
+                localStorage.setItem("khamin_dots_reward_level", data.dotsRewardLevel.toString());
+              }
+              if (data.dotsMatchPoints != null) {
+                setDotsMatchPoints(data.dotsMatchPoints);
+                localStorage.setItem("khamin_dots_match_points", data.dotsMatchPoints.toString());
+              }
       if (data.handRewardLevel != null) {
         setHandRewardLevel(data.handRewardLevel);
         localStorage.setItem("khamin_hand_reward_level", data.handRewardLevel.toString());
@@ -6919,6 +6990,9 @@ export default function App() {
     });
     newSocket.on("iq_timer_update", (timer: number) => {
       setRoom((prev) => (prev ? { ...prev, iqTurnTimer: timer } : null));
+    });
+    newSocket.on("dots_timer_update", (timer: number) => {
+      setRoom((prev) => (prev ? { ...prev, dotsTurnTimer: timer } : null));
     });
 
     newSocket.on("player_disconnected_waiting", ({ name }) => {
@@ -8688,7 +8762,7 @@ export default function App() {
 
   useEffect(() => {
     if (room && room.gameState !== previousGameStateRef.current) {
-      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished") {
+      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished") {
         if (!hasProPackage) {
           matchesPlayedRef.current += 1;
           if (matchesPlayedRef.current >= 3) {
@@ -9606,6 +9680,8 @@ export default function App() {
       room?.gameState === "xo_finished" ||
       room?.gameState === "iq_playing" ||
       room?.gameState === "iq_finished" ||
+      room?.gameState === "dots_playing" ||
+      room?.gameState === "dots_finished" ||
       room?.gameState === "bus_complete_setup" ||
       room?.gameState === "bus_complete_spin" ||
       room?.gameState === "bus_complete_playing" ||
@@ -11433,6 +11509,8 @@ export default function App() {
                 <span>{data.handWins || 0} 🖐</span>
                 <span>•</span>
                 <span>{data.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
+                <span>•</span>
+                <span>{data.dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
               </div>
 
               {/* Friend Status Indicator / Add Friend Button */}
@@ -20374,7 +20452,135 @@ export default function App() {
     );
   };
 
-    const renderIQRewardBar = () => {
+  
+  const renderDotsRewardBar = () => {
+    if (!room || room.matchType !== "random" || (room.gameState !== "dots_playing" && room.gameState !== "dots_finished")) return null;
+
+    const targetPoints = dotsRewardLevel * 100;
+    const progress = Math.min((dotsMatchPoints / targetPoints) * 100, 100);
+    const isReady = dotsMatchPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-2 relative overflow-hidden transition-all shadow-sm">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-blue-100/50 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex sm:flex-row items-center justify-between gap-2 z-10 w-full">
+           <div className="flex items-center gap-2 font-bold text-blue-800 text-sm">
+             <span>المستوي {dotsRewardLevel}</span>
+             <span className="text-xs bg-white px-1.5 py-0.5 rounded-md border border-blue-200" dir="ltr">
+               {dotsMatchPoints} / {targetPoints}
+             </span>
+           </div>
+           
+           <button
+             onClick={() => {
+                if (isReady) {
+                  setCustomConfirm({
+                     show: true,
+                     title: "مبروك! 🎉 اكتملت نقاط المستوي " + dotsRewardLevel,
+                     message: "يمكنك استلام هدايا هذا المستوى الآن، هل تود مشاهدة الإعلان؟\n\n" +
+                              "🎁 " + (dotsRewardLevel === 1 ? 50 : 100 + 50 * (dotsRewardLevel - 1)) + " XP\n" +
+                              "🔑 " + dotsRewardLevel + " مفتاح\n" +
+                              "🔧 " + dotsRewardLevel + " من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)",
+                     confirmText: "نعم مشاهدة الاعلان",
+                     cancelText: "الغاء",
+                     onConfirm: () => {
+                       setCustomConfirm((prev) => ({ ...prev, show: false }));
+                       socket?.emit("bus_complete_ad_start", { roomId: room.id });
+                       showBusCompleteAd(
+                         () => {
+                            socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: true });
+                            socket?.emit("claim_dots_reward", { serial: socket?.data?.serial || playerSerial });
+                         },
+                         () => {
+                            socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: false });
+                            showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+                         }
+                       );
+                     }
+                  });
+                } else {
+                  setCustomConfirm({
+                    show: true,
+                    title: `المستوي ${dotsRewardLevel}`,
+                    message: `متبقي ${targetPoints - dotsMatchPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                             `🎁 ${dotsRewardLevel === 1 ? 50 : 100 + 50 * (dotsRewardLevel - 1)} XP\n` +
+                             `🔑 ${dotsRewardLevel} مفتاح\n` +
+                             `🔧 ${dotsRewardLevel} من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)`,
+                    confirmText: "حسناً",
+                    onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                  });
+                }
+             }}
+             className={`flex justify-center items-center gap-1.5 px-3 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+               ${isReady ? "bg-green-500 text-white animate-pulse hover:bg-green-600 border border-green-600" : "bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"}`}
+           >
+             <span>🎁</span>
+             <span>استلم الهدايا</span>
+           </button>
+         </div>
+      </div>
+    );
+  };
+
+  const __deprecated_renderDotsRewardBar = () => {
+    if (!room || room.matchType !== "random" || (room.gameState !== "dots_playing" && room.gameState !== "dots_finished")) return null;
+
+    const dotsRewardLevel = me?.dotsRewardLevel || 1;
+    const dotsMatchPoints = me?.dotsMatchPoints || 0;
+    const targetPoints = dotsRewardLevel * 100;
+    const progress = Math.min((dotsMatchPoints / targetPoints) * 100, 100);
+    const isReady = dotsMatchPoints >= targetPoints;
+
+    return (
+      <div className="w-full max-w-md mx-auto mb-2 md:mb-4 px-2">
+        <div className="bg-white rounded-xl md:rounded-2xl p-2 md:p-3 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] border-2 border-gray-200">
+          <div className="flex justify-between items-center mb-1.5 md:mb-2">
+            <div className="flex items-center gap-1 md:gap-2">
+              <div className="bg-purple-100 text-purple-700 px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-xs md:text-sm font-black border border-purple-200 flex items-center gap-1">
+                <span className="text-sm md:text-base">🏆</span>
+                مستوى {dotsRewardLevel}
+              </div>
+            </div>
+            <div className="text-[10px] md:text-xs font-black text-gray-500 bg-gray-100 px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-gray-200">
+              {dotsMatchPoints} / {targetPoints}
+            </div>
+          </div>
+          
+          <div className="relative h-3 md:h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+            <div 
+              className={`absolute top-0 left-0 h-full transition-all duration-1000 ease-out ${isReady ? 'bg-green-500 animate-pulse' : 'bg-gradient-to-r from-purple-400 to-purple-600'}`}
+              style={{ width: `${progress}%` }}
+            >
+              <div className="absolute top-0 left-0 w-full h-full bg-white/20 animate-[shimmer_2s_infinite]"></div>
+            </div>
+          </div>
+
+          <div className="mt-1.5 md:mt-2 text-center text-[10px] md:text-xs text-gray-500 font-bold flex items-center justify-center gap-1">
+             {isReady ? (
+               <button
+                 onClick={() => {
+                   playSound("click");
+                   socket?.emit("claim_dots_reward", { serial: me?.serial });
+                 }}
+                 className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-1 px-3 rounded-lg shadow-sm transition-colors text-xs md:text-sm animate-pulse"
+               >
+                 استلام الجائزة الآن! 🎁
+               </button>
+             ) : (
+               <span className="flex items-center gap-1">
+                 العب واكسب نقاط لفتح هدايا المستوى القادم <span className="text-purple-500">🎁</span>
+               </span>
+             )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderIQRewardBar = () => {
     if (!room || room.matchType !== "random" || (room.gameState !== "iq_playing" && room.gameState !== "iq_finished")) return null;
 
     const targetPoints = iqRewardLevel * 100;
@@ -22721,6 +22927,7 @@ export default function App() {
                               <span>{topPlayers[1].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                               <span>{topPlayers[1].handWins || 0} 🖐</span>
                               <span>{topPlayers[1].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
+                              <span>{topPlayers[1].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
                             </div>
                           </div>
                         </div>
@@ -22776,6 +22983,7 @@ export default function App() {
                               <span>{topPlayers[0].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                               <span>{topPlayers[0].handWins || 0} 🖐</span>
                               <span>{topPlayers[0].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
+                              <span>{topPlayers[0].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
                             </div>
                           </div>
                         </div>
@@ -22825,6 +23033,7 @@ export default function App() {
                               <span>{topPlayers[2].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                               <span>{topPlayers[2].handWins || 0} 🖐</span>
                               <span>{topPlayers[2].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
+                              <span>{topPlayers[2].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
                             </div>
                           </div>
                         </div>
@@ -23426,6 +23635,8 @@ export default function App() {
                               <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.handWins || 0} 🖐</span>
                               <span>•</span>
                               <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
+                              <span>•</span>
+                              <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
                             </div>
                           </div>
                         </div>
@@ -23445,6 +23656,7 @@ export default function App() {
                         { id: "xo", icon: <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span> },
                         { id: "hand", icon: "🖐" },
                         { id: "iq", icon: <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span> },
+                        { id: "dots", icon: <img src="/dots-and-boxes-logo.png" className="w-6 h-6 object-contain" /> },
                       ].map((filter) => (
                         <button
                           key={filter.id}
@@ -23562,6 +23774,13 @@ export default function App() {
                                   dir="rtl"
                                 >
                                   {player.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>
+                                </span>
+                                <span className="text-brown-light">•</span>
+                                <span
+                                  className="bg-purple-50 text-purple-600 md:px-1.5 rounded flex items-center gap-0.5"
+                                  dir="rtl"
+                                >
+                                  {player.dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 object-contain" />
                                 </span>
                               </div>
                             </div>
@@ -25285,7 +25504,338 @@ export default function App() {
               </div>
               <CategoryPageAd />
             </React.Fragment>
-                        ) : room.gameState === "iq_playing" || room.gameState === "iq_finished" ? (
+                        ) : room.gameState === "dots_playing" || room.gameState === "dots_finished" ? (
+              <React.Fragment>
+                <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
+                {renderDotsRewardBar()}
+                {room.gameState === "dots_finished" && room.dotsLevel === 3 ? (
+                  <div className="w-full py-1 flex flex-col items-center justify-center animate-fade-in text-center space-y-6">
+                    <div className="w-full bg-white rounded-2xl p-2 shadow-sm border-2 border-purple-100 flex flex-col items-center gap-2">
+                      <div className="flex items-center justify-center gap-2 text-3xl font-black text-purple-700">
+                        🏆 بطل تخمينة نقطة وخط 🏆
+                      </div>
+                      
+                      <div className="flex w-full items-center justify-center gap-4 my-0.5">
+                        {/* Player 1 Stats */}
+                        <div className="flex flex-col items-center gap-2 p-3 bg-purple-50 rounded-xl border-2 border-purple-200 w-1/2">
+                          <div className="font-black text-lg md:text-xl text-brown-dark truncate max-w-full px-2 text-center">
+                            {room.players.find((p: any) => p.id === room.dotsPlayer1)?.name.split(" ")[0]}
+                          </div>
+                          <div className="text-2xl md:text-3xl font-black text-purple-600 bg-white w-full text-center py-1 rounded-lg border-2 border-purple-200">
+                            {room.dotsMatchWins?.[room.dotsPlayer1 || ""] || 0}
+                          </div>
+                        </div>
+                        
+                        <div className="text-2xl md:text-3xl font-black text-gray-400">VS</div>
+                        
+                        {/* Player 2 Stats */}
+                        <div className="flex flex-col items-center gap-2 p-3 bg-purple-50 rounded-xl border-2 border-purple-200 w-1/2">
+                          <div className="font-black text-lg md:text-xl text-brown-dark truncate max-w-full px-2 text-center">
+                            {room.players.find((p: any) => p.id === room.dotsPlayer2)?.name.split(" ")[0]}
+                          </div>
+                          <div className="text-2xl md:text-3xl font-black text-purple-600 bg-white w-full text-center py-1 rounded-lg border-2 border-purple-200">
+                            {room.dotsMatchWins?.[room.dotsPlayer2 || ""] || 0}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-center font-bold text-black bg-gray-300 px-4 py-2 rounded-lg border border-gray-200">
+                        {(() => {
+                          const p1Wins = room.dotsMatchWins?.[room.dotsPlayer1 || ""] || 0;
+                          const p2Wins = room.dotsMatchWins?.[room.dotsPlayer2 || ""] || 0;
+                          if (p1Wins > p2Wins) {
+                            return `الفائز هو ${room.players.find((p: any) => p.id === room.dotsPlayer1)?.name}! 🎉`;
+                          } else if (p2Wins > p1Wins) {
+                            return `الفائز هو ${room.players.find((p: any) => p.id === room.dotsPlayer2)?.name}! 🎉`;
+                          }
+                          return "تعادل! ماحدش قدر يحسمها! 🤝";
+                        })()}
+                      </div>
+
+                      <div className="flex flex-col gap-2.5 w-full max-w-sm mt-1">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              playSound("clickOpen");
+                              socket?.emit("play_again", { roomId: room.id });
+                            }}
+                            className="flex-1 btn-game bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-[0_4px_0_0_#d1d5db] active:shadow-transparent py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2"
+                          >
+                            تغيير اللعبة
+                          </button>
+                          <button
+                            onClick={() => {
+                              playSound("clickOpen");
+                              socket?.emit("restart_dots", { roomId: room.id });
+                            }}
+                            disabled={((room.adPausedPlayersArray?.length || 0) > 0) || room.dotsRematchRequestedBy?.includes(socket?.id || "")}
+                            className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2
+                              ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
+                                room.dotsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
+                                 ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a] active:shadow-transparent"
+                                 : room.dotsRematchRequestedBy?.includes(socket?.id || "")
+                                   ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a]"
+                                   : "bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
+                          >
+                            {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
+                              : room.dotsRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
+                              : room.dotsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
+                              : "لعب مرة أخري!"}
+                          </button>
+                        </div>
+                        <button
+                          onClick={handleLeaveGame}
+                          className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2"
+                        >
+                          🚪 خروج للرئيسية
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <React.Fragment>
+                    {room.players.length === 2 && (
+                      <div className="flex justify-between items-center w-full mb-1 px-1">
+                        <div className="flex flex-col items-center bg-white border-2 border-red-200 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px]" dir="rtl">
+                          <span className="text-[10px] md:text-xs font-black text-gray-500 max-w-[80px] break-words text-center flex items-center justify-center gap-1">
+                            {(room.players.find((p: any) => p.id === room.dotsPlayer1)?.name || "اللاعب 1").substring(0, 5)}
+                            <span className="w-3 h-3 rounded-sm bg-red-500"></span>
+                          </span>
+                          <span className="text-sm font-black text-red-500">🏆 {room.players.find((p: any) => p.id === room.dotsPlayer1)?.dotsWins || 0}</span>
+                        </div>
+
+                        <div className={`flex justify-center items-center gap-1 mx-2 ${room.gameState !== "dots_finished" ? "border-2 border-green-200 px-3 py-1 rounded-xl shadow-sm min-w-[70px]" : "font-black text-lg text-brown-dark"}`} dir="ltr">
+                            {room.gameState === "dots_finished" ? (
+                               <span>انتهت المباراة</span>
+                            ) : (
+                               <span className={`text-2xl font-black font-mono tracking-wider ${room.timer <= 60 ? "text-red-600" : "text-gray-700"}`}>
+                                 {Math.floor(room.timer / 60)}:{(room.timer % 60).toString().padStart(2, "0")}
+                               </span>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px]" dir="rtl">
+                          <span className="text-[10px] md:text-xs font-black text-gray-500 max-w-[80px] break-words text-center flex items-center justify-center gap-1">
+                            {(room.players.find((p: any) => p.id === room.dotsPlayer2)?.name || "اللاعب 2").substring(0, 5)}
+                            <span className="w-3 h-3 rounded-sm bg-blue-500"></span>
+                          </span>
+                          <span className="text-sm font-black text-blue-600">🏆 {room.players.find((p: any) => p.id === room.dotsPlayer2)?.dotsWins || 0}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-center mb-1 px-2 mt-1">
+                      <p className="text-xs md:text-sm font-bold text-blue-600 bg-blue-50 p-2 rounded-xl border border-blue-100 w-fit mx-auto shadow-sm">
+                        المستوي {room.dotsLevel || 1} - وصل النقط واكسب مربعات اكتر!
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col w-full h-full mb-0.5 bg-white rounded-xl shadow-inner border border-gray-100">
+
+                      <div className="flex-1 w-full flex items-center justify-center p-2 relative">
+                        <div className="relative mx-auto bg-purple-50 p-2 rounded-xl shadow-inner" style={{
+                           width: 'min(100%, 350px)',
+                           aspectRatio: '1/1'
+                        }}>
+                          {(() => {
+                             const size = room.dotsBoardSize || 4;
+                             const dots = [];
+                             for (let r = 0; r < size; r++) {
+                               for (let c = 0; c < size; c++) {
+                                 dots.push({r, c});
+                               }
+                             }
+                             const dotSpacing = 100 / (size - 1);
+                             
+                             return (
+                               <div className="w-full h-full relative">
+                                 {/* Boxes */}
+                                 {(() => {
+                                   const boxes = [];
+                                   for (let r = 0; r < size - 1; r++) {
+                                     for (let c = 0; c < size - 1; c++) {
+                                       const owner = room.dotsBoxes?.[`${r},${c}`];
+                                       if (owner) {
+                                         const isP1 = owner === room.dotsPlayer1;
+                                         boxes.push(
+                                           <div key={`box-${r}-${c}`} className={`absolute transition-none ${isP1 ? 'bg-red-200' : 'bg-blue-200'}`} style={{
+                                              left: `${c * dotSpacing}%`,
+                                              top: `${r * dotSpacing}%`,
+                                              width: `${dotSpacing}%`,
+                                              height: `${dotSpacing}%`,
+                                              transform: 'scale(0.95)'
+                                           }} />
+                                         );
+                                       }
+                                     }
+                                   }
+                                   return boxes;
+                                 })()}
+                                 
+                                 {/* Lines */}
+                                 {(() => {
+                                   const lines = [];
+                                   const myTurn = room.dotsTurn === socket?.id && room.gameState === "dots_playing";
+                                   const activeLineColor = room.dotsTurn === room.dotsPlayer1 ? 'bg-red-400' : 'bg-blue-400';
+                                   const hoverColor = room.dotsTurn === room.dotsPlayer1 ? 'hover:bg-red-200' : 'hover:bg-blue-200';
+                                   
+                                   // Horizontal lines
+                                   for (let r = 0; r < size; r++) {
+                                     for (let c = 0; c < size - 1; c++) {
+                                       const lineId = `${r},${c}-${r},${c+1}`;
+                                       const owner = room.dotsLines?.[lineId];
+                                       const isP1 = owner === room.dotsPlayer1;
+                                       lines.push(
+                                         <div 
+                                            key={`h-${r}-${c}`} 
+                                            onClick={() => {
+                                               if (myTurn && !owner) {
+                                                 playSound("click");
+                                                 // Optimistic update for 0ms visual feedback
+                                                 setRoom(prev => {
+                                                   if (!prev) return prev;
+                                                   return {
+                                                     ...prev,
+                                                     dotsLines: {
+                                                       ...prev.dotsLines,
+                                                       [lineId]: socket?.id
+                                                     }
+                                                   };
+                                                 });
+                                                 socket?.emit("submit_dots_move", { roomId: room.id, r1: r, c1: c, r2: r, c2: c+1 });
+                                               }
+                                            }}
+                                            className={`absolute cursor-pointer ${owner ? (isP1 ? 'bg-red-500 z-10 transition-none' : 'bg-blue-500 z-10 transition-none') : `bg-transparent z-20 ${myTurn ? `transition-colors duration-75 ${hoverColor}` : ''}`}`} 
+                                            style={{
+                                              left: `${c * dotSpacing}%`,
+                                              top: `calc(${r * dotSpacing}% - 6px)`,
+                                              width: `${dotSpacing}%`,
+                                              height: '12px',
+                                              borderRadius: '6px'
+                                            }} 
+                                         />
+                                       );
+                                     }
+                                   }
+                                   
+                                   // Vertical lines
+                                   for (let r = 0; r < size - 1; r++) {
+                                     for (let c = 0; c < size; c++) {
+                                       const lineId = `${r},${c}-${r+1},${c}`;
+                                       const owner = room.dotsLines?.[lineId];
+                                       const isP1 = owner === room.dotsPlayer1;
+                                       lines.push(
+                                         <div 
+                                            key={`v-${r}-${c}`}
+                                            onClick={() => {
+                                               if (myTurn && !owner) {
+                                                 playSound("click");
+                                                 // Optimistic update for 0ms visual feedback
+                                                 setRoom(prev => {
+                                                   if (!prev) return prev;
+                                                   return {
+                                                     ...prev,
+                                                     dotsLines: {
+                                                       ...prev.dotsLines,
+                                                       [lineId]: socket?.id
+                                                     }
+                                                   };
+                                                 });
+                                                 socket?.emit("submit_dots_move", { roomId: room.id, r1: r, c1: c, r2: r+1, c2: c });
+                                               }
+                                            }}
+                                            className={`absolute cursor-pointer ${owner ? (isP1 ? 'bg-red-500 z-10 transition-none' : 'bg-blue-500 z-10 transition-none') : `bg-transparent z-20 ${myTurn ? `transition-colors duration-75 ${hoverColor}` : ''}`}`} 
+                                            style={{
+                                              left: `calc(${c * dotSpacing}% - 6px)`,
+                                              top: `${r * dotSpacing}%`,
+                                              width: '12px',
+                                              height: `${dotSpacing}%`,
+                                              borderRadius: '6px'
+                                            }} 
+                                         />
+                                       );
+                                     }
+                                   }
+                                   return lines;
+                                 })()}
+                                 
+                                 {/* Dots */}
+                                 {dots.map((d, i) => (
+                                   <div key={`dot-${i}`} className={`absolute w-4 h-4 rounded-full z-30 shadow-sm transition-colors duration-300 ${room.dotsTurn === room.dotsPlayer1 ? 'bg-red-500 border-2 border-red-600' : 'bg-blue-500 border-2 border-blue-600'}`} style={{
+                                     left: `calc(${d.c * dotSpacing}% - 8px)`,
+                                     top: `calc(${d.r * dotSpacing}% - 8px)`
+                                   }}></div>
+                                 ))}
+                               </div>
+                             );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {room.gameState === "dots_playing" && (
+                       <div className="text-center my-1 font-bold text-base md:text-lg mb-2 flex flex-col items-center gap-1">
+                          {room.dotsTurn === socket?.id ? (
+                             <span className="text-purple-600 animate-pulse bg-purple-50 px-4 py-1 rounded-full border border-purple-200">دورك الآن للعب! ⏳ {room.dotsTurnTimer}</span>
+                          ) : (
+                             <span className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳ {room.dotsTurnTimer}</span>
+                          )}
+                          <div className="flex gap-4 text-xs mt-1 justify-center">
+                            <span className="text-red-500 font-black px-2 bg-red-50 rounded border border-red-200">مربعاتك: {room.dotsPlayer1 === socket?.id ? room.dotsP1Score : room.dotsP2Score} 🟥</span>
+                            <span className="text-blue-500 font-black px-2 bg-blue-50 rounded border border-blue-200">مربعات الخصم: {room.dotsPlayer1 !== socket?.id ? room.dotsP1Score : room.dotsP2Score} 🟦</span>
+                          </div>
+                       </div>
+                    )}
+                    
+                    {room.gameState === "dots_finished" && (
+                      <React.Fragment>
+                        <div className="text-center my-1 font-bold text-lg md:text-xl text-green-600 bg-green-50 py-2 rounded-xl border border-green-200 mb-2">
+                          {(() => {
+                            if (room.dotsWinner === "draw") return "تعادل في هذا المستوى! 🤝";
+                            if (room.dotsWinner === socket?.id) return "مبروك كسبت المستوى ده! 🎉";
+                            return "حظ أوفر! خصمك كسب المستوى ده 😢";
+                          })()}
+                        </div>
+                        {room.dotsLevel < 3 && (
+                          <div className="flex flex-col gap-2.5 w-full max-w-sm mt-4 mx-auto">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  playSound("clickOpen");
+                                  socket?.emit("play_again", { roomId: room.id });
+                                }}
+                                className="flex-1 btn-game bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-[0_4px_0_0_#d1d5db] active:shadow-transparent py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5"
+                              >
+                                تغيير اللعبة
+                              </button>
+                              <button
+                                onClick={() => {
+                                  playSound("clickOpen");
+                                  socket?.emit("restart_dots", { roomId: room.id });
+                                }}
+                                disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                                className="flex-1 btn-game bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5"
+                              >
+                                {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
+                                  : `انتقل الي المستوي ${(room.dotsLevel || 1) + 1}`}
+                              </button>
+                            </div>
+                            <button
+                              onClick={handleLeaveGame}
+                              className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5"
+                            >
+                              🚪 خروج للرئيسية
+                            </button>
+                          </div>
+                        )}
+                      </React.Fragment>
+                    )}
+                  </React.Fragment>
+                )}
+                </div>
+              </React.Fragment>
+
+            ) : room.gameState === "iq_playing" || room.gameState === "iq_finished" ? (
               <React.Fragment>
                 <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
                 {renderIQRewardBar()}
@@ -25958,6 +26508,37 @@ export default function App() {
                             })()}
                           </div>
                           
+                                                    <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "dots",
+                                })
+                              }
+                              className={`h-full w-full bg-purple-100 hover:bg-purple-200 border-[3px] border-purple-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#a855f7] active:shadow-none active:translate-y-1.5"}`}
+                            >
+                              <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
+                                <img src="/dots-and-boxes-logo.png" className="w-10 h-10 md:w-12 md:h-12 object-contain" alt="dots" />
+                              </div>
+                              <span className="text-[13px] md:text-lg font-black text-purple-700 text-center leading-tight">
+                               تخمينة نقطة وخط
+                              </span>
+                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
+                                (لعبة توصيل النقاط)
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "dots" && oppMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
+                              if (meMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+
                           <div className="relative">
                             <button
                               disabled={room.players.length < 2}
@@ -27300,6 +27881,8 @@ export default function App() {
           room.gameState !== "hand_finished" &&
           room.gameState !== "iq_playing" &&
           room.gameState !== "iq_finished" &&
+          room.gameState !== "dots_playing" &&
+          room.gameState !== "dots_finished" &&
           room.gameState !== "starting" && (
             <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
               {[
