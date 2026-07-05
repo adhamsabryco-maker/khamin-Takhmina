@@ -1,6 +1,6 @@
-import { Filter } from 'bad-words';
+import badWords from 'bad-words';
 
-const englishFilter = new Filter();
+const englishFilter = new badWords.Filter();
 
 // Basic Arabic profanity list (can be expanded)
 const profanityWords = [
