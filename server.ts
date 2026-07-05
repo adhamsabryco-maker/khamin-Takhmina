@@ -4,7 +4,6 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
 import path, { dirname } from "path";
-import { fileURLToPath } from "url";
 import fs from "fs";
 import crypto from "crypto";
 import Database from "better-sqlite3";
@@ -27,11 +26,10 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   }
 }
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+
 
 const storage = multer.diskStorage({
-  destination: path.join(__dirname, "public/uploads/"),
+  destination: path.join(process.cwd(), "public/uploads/"),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(null, "image-" + uniqueSuffix + path.extname(file.originalname));
@@ -943,13 +941,13 @@ async function startServer() {
     app.use(express.json({ limit: "50mb" }));
     app.use(
       "/uploads",
-      express.static(path.join(__dirname, "public/uploads"), {
+      express.static(path.join(process.cwd(), "public/uploads"), {
         maxAge: "1y", // Cache uploads for 1 year
         etag: true,
       }),
     );
     app.use(
-      express.static(path.join(__dirname, "public"), {
+      express.static(path.join(process.cwd(), "public"), {
         maxAge: "1y", // Cache public directory stuff for 1 year
         etag: true,
       }),
@@ -1025,7 +1023,7 @@ async function startServer() {
 
     app.delete("/api/upload/:filename", (req, res) => {
       const { filename } = req.params;
-      const filePath = path.join(__dirname, "public/uploads", filename);
+      const filePath = path.join(process.cwd(), "public/uploads", filename);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         res.json({ success: true });
@@ -1034,7 +1032,7 @@ async function startServer() {
       }
     });
 
-    const APP_VERSION_FILE = path.join(__dirname, "version.json");
+    const APP_VERSION_FILE = path.join(process.cwd(), "version.json");
     let currentVersion = "1.1.5";
     if (fs.existsSync(APP_VERSION_FILE)) {
       try {
@@ -1068,7 +1066,7 @@ async function startServer() {
         "Privacy Policy for Guess Guess game.\n\n1. We collect your basic data such as name and avatar.\n2. We do not share your data with any third party.\n3. Data is used only to improve the gaming experience.",
       isRainGiftEnabled: true,
     };
-    const configPath = path.join(__dirname, "public/uploads/config.json");
+    const configPath = path.join(process.cwd(), "public/uploads/config.json");
 
     // Load initial config from file
     if (fs.existsSync(configPath)) {
@@ -1084,7 +1082,7 @@ async function startServer() {
     }
 
     const botAnswersPath = path.join(
-      __dirname,
+      process.cwd(),
       "public/uploads/bot_answers.json",
     );
     if (fs.existsSync(botAnswersPath)) {
@@ -1205,9 +1203,9 @@ async function startServer() {
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
 
-      const iconFile = path.join(__dirname, "dist", "icon-3.png");
-      const publicIconFile = path.join(__dirname, "public", "icon-3.png");
-      const rootIconFile = path.join(__dirname, "icon-3.png");
+      const iconFile = path.join(process.cwd(), "dist", "icon-3.png");
+      const publicIconFile = path.join(process.cwd(), "public", "icon-3.png");
+      const rootIconFile = path.join(process.cwd(), "icon-3.png");
 
       if (fs.existsSync(iconFile)) {
         res.sendFile(iconFile);
@@ -1336,7 +1334,7 @@ async function startServer() {
       try {
         const newAnswers = req.body;
         const botAnswersPath = path.join(
-          __dirname,
+          process.cwd(),
           "public/uploads/bot_answers.json",
         );
         fs.writeFileSync(botAnswersPath, JSON.stringify(newAnswers, null, 2));
@@ -2102,15 +2100,18 @@ async function startServer() {
         iqWins?: number;
         iqRewardLevel?: number;
         iqMatchPoints?: number;
+        dotsWins?: number;
+        dotsRewardLevel?: number;
+        dotsMatchPoints?: number;
       }
     >();
 
     const playerSockets = new Map<string, string>();
 
-    let dbPath = process.env.DB_PATH || path.join(__dirname, "players.db");
+    let dbPath = process.env.DB_PATH || path.join(process.cwd(), "players.db");
     console.log(`[DB] Using database at: ${dbPath}`);
     console.log(`[DB] Current working directory: ${process.cwd()}`);
-    console.log(`[DB] __dirname: ${__dirname}`);
+    console.log(`[DB] process.cwd(): ${process.cwd()}`);
 
     const dbDir = path.dirname(dbPath);
     try {
@@ -2129,7 +2130,7 @@ async function startServer() {
         err,
       );
       // If we can't create the directory or it's not writable, fallback to local directory
-      const fallbackPath = path.join(__dirname, "players.db");
+      const fallbackPath = path.join(process.cwd(), "players.db");
       console.log(`[DB] Falling back to local database: ${fallbackPath}`);
       dbPath = fallbackPath;
     }
@@ -2346,6 +2347,15 @@ async function startServer() {
     } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN iqMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN dotsWins INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN dotsRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN dotsMatchPoints INTEGER DEFAULT 0`);
     } catch (e) {}
 
     try {
@@ -2893,8 +2903,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3181,6 +3191,9 @@ async function startServer() {
           iqWins: player.iqWins || 0,
           iqRewardLevel: player.iqRewardLevel || 1,
           iqMatchPoints: player.iqMatchPoints || 0,
+          dotsWins: player.dotsWins || 0,
+          dotsRewardLevel: player.dotsRewardLevel || 1,
+          dotsMatchPoints: player.dotsMatchPoints || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3263,6 +3276,9 @@ async function startServer() {
           iqWins: player.iqWins || 0,
           iqRewardLevel: player.iqRewardLevel || 1,
           iqMatchPoints: player.iqMatchPoints || 0,
+          dotsWins: player.dotsWins || 0,
+          dotsRewardLevel: player.dotsRewardLevel || 1,
+          dotsMatchPoints: player.dotsMatchPoints || 0,
         });
       }
     });
@@ -3368,6 +3384,9 @@ async function startServer() {
             iqWins: row.iqWins || 0,
             iqRewardLevel: row.iqRewardLevel || 1,
             iqMatchPoints: row.iqMatchPoints || 0,
+            dotsWins: row.dotsWins || 0,
+            dotsRewardLevel: row.dotsRewardLevel || 1,
+            dotsMatchPoints: row.dotsMatchPoints || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -3920,7 +3939,7 @@ async function startServer() {
         return res.status(403).send("Unauthorized");
       }
 
-      const uploadsPath = path.join(__dirname, "public/uploads");
+      const uploadsPath = path.join(process.cwd(), "public/uploads");
       if (!fs.existsSync(uploadsPath)) {
         return res.status(404).send("Uploads folder not found");
       }
@@ -4854,7 +4873,7 @@ async function startServer() {
     }
 
     function checkBotMatchmaking() {
-      const configPath = path.join(__dirname, "public/uploads/config.json");
+      const configPath = path.join(process.cwd(), "public/uploads/config.json");
       let aiBotEnabled = false;
       if (fs.existsSync(configPath)) {
         try {
@@ -4905,6 +4924,7 @@ async function startServer() {
             xoWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             handWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             iqWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            dotsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             isBot: true,
             persona: botPersona.personality,
             selectedFrame: "",
@@ -5187,7 +5207,7 @@ async function startServer() {
           return;
         }
 
-        const configPath = path.join(__dirname, "public/uploads/config.json");
+        const configPath = path.join(process.cwd(), "public/uploads/config.json");
         let questions: string[] = [];
         let isAskingBranch = false;
         if (fs.existsSync(configPath)) {
@@ -5785,6 +5805,14 @@ async function startServer() {
             room.iqLevel = 1;
             room.iqMatchWins = {};
             initializeIQGame(room);
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "dots") {
+            room.dotsLevel = 1;
+            room.dotsMatchWins = {};
+            initializeDotsGame(room);
             const bot = room.players.find((p: any) => p.isBot);
             if (bot) {
               handleBotEvent(roomId, "room_update", room);
@@ -6494,6 +6522,247 @@ async function startServer() {
         }
 
         // Handle IQ playing action
+        
+        if (room.gameState === "dots_playing" && room.dotsTurn === botPlayer.id) {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            if (!botTimeouts.has(roomId + "_dots_move_timeout")) {
+              botTimeouts.set(
+                roomId + "_dots_move_timeout",
+                setTimeout(() => {
+                  botTimeouts.delete(roomId + "_dots_move_timeout");
+                  const r = rooms.get(roomId);
+                  if (!r || r.gameState !== "dots_playing" || r.dotsTurn !== botPlayer.id) return;
+                  
+                  const size = r.dotsBoardSize;
+                  const availableLines: {r1: number, c1: number, r2: number, c2: number}[] = [];
+                  
+                  // Horizontal lines
+                  for (let rIdx = 0; rIdx < size; rIdx++) {
+                    for (let cIdx = 0; cIdx < size - 1; cIdx++) {
+                      const lineId = `${rIdx},${cIdx}-${rIdx},${cIdx+1}`;
+                      if (!r.dotsLines[lineId]) {
+                        availableLines.push({r1: rIdx, c1: cIdx, r2: rIdx, c2: cIdx+1});
+                      }
+                    }
+                  }
+                  
+                  // Vertical lines
+                  for (let rIdx = 0; rIdx < size - 1; rIdx++) {
+                    for (let cIdx = 0; cIdx < size; cIdx++) {
+                      const lineId = `${rIdx},${cIdx}-${rIdx+1},${cIdx}`;
+                      if (!r.dotsLines[lineId]) {
+                        availableLines.push({r1: rIdx, c1: cIdx, r2: rIdx+1, c2: cIdx});
+                      }
+                    }
+                  }
+                  
+                  if (availableLines.length > 0) {
+                     // VERY basic bot: just pick random line
+                     // Better bot: look for line that completes a box
+                     let chosen = null;
+                     
+                     // 1. Try to find a line that completes a box
+                     for (const line of availableLines) {
+                        const {r1, c1, r2, c2} = line;
+                        let lineId = "";
+                        if (r1 === r2) {
+                          lineId = `${r1},${Math.min(c1, c2)}-${r1},${Math.max(c1, c2)}`;
+                        } else {
+                          lineId = `${Math.min(r1, r2)},${c1}-${Math.max(r1, r2)},${c1}`;
+                        }
+                        
+                        r.dotsLines[lineId] = botPlayer.id; // temp
+                        
+                        let completes = false;
+                        const isBoxComplete = (row: number, col: number) => {
+                          const top = `${row},${col}-${row},${col+1}`;
+                          const bottom = `${row+1},${col}-${row+1},${col+1}`;
+                          const left = `${row},${col}-${row+1},${col}`;
+                          const right = `${row},${col+1}-${row+1},${col+1}`;
+                          return r.dotsLines[top] && r.dotsLines[bottom] && r.dotsLines[left] && r.dotsLines[right];
+                        };
+                        
+                        if (r1 === r2) {
+                          if (r1 - 1 >= 0 && isBoxComplete(r1-1, Math.min(c1, c2))) completes = true;
+                          if (r1 < size - 1 && isBoxComplete(r1, Math.min(c1, c2))) completes = true;
+                        } else {
+                          if (c1 - 1 >= 0 && isBoxComplete(Math.min(r1, r2), c1-1)) completes = true;
+                          if (c1 < size - 1 && isBoxComplete(Math.min(r1, r2), c1)) completes = true;
+                        }
+                        
+                        delete r.dotsLines[lineId]; // remove temp
+                        
+                        if (completes) {
+                           chosen = line;
+                           break;
+                        }
+                     }
+                     
+                     if (!chosen) {
+                        chosen = availableLines[Math.floor(Math.random() * availableLines.length)];
+                     }
+                     
+                     if (chosen) {
+                        const fakeSocket = { id: botPlayer.id } as any;
+                        const handler = (io as any)._events.submit_dots_move || Array.from(io.sockets.sockets.values())[0]?.listeners("submit_dots_move")?.[0];
+                        // The handler in the main block expects 'socket' from the closure, 
+                           // but we can just use the global socket handlers if we mock it correctly.
+                           // Actually, easier to just duplicate the logic or emit internally.
+                           // Since 'socket' is scoped, we can just find the user's socket or dispatch through a helper.
+                           // Let's just directly mutate since it's a bot event handler.
+                           
+                           // Wait, the handler is inside io.on("connection", (socket) => ...)
+                           // But I can't easily call it. Let's just duplicate the move logic for the bot.
+                           
+                           const {r1, c1, r2, c2} = chosen;
+                           let lineId = "";
+                            if (r1 === r2) {
+                              lineId = `${r1},${Math.min(c1, c2)}-${r1},${Math.max(c1, c2)}`;
+                            } else {
+                              lineId = `${Math.min(r1, r2)},${c1}-${Math.max(r1, r2)},${c1}`;
+                            }
+                            
+                            r.dotsLines[lineId] = botPlayer.id;
+                            r.dotsTurnTimer = 15;
+                            
+                            let boxCompleted = false;
+                            
+                            const isBoxComplete = (rRow: number, rCol: number) => {
+                              const top = `${rRow},${rCol}-${rRow},${rCol+1}`;
+                              const bottom = `${rRow+1},${rCol}-${rRow+1},${rCol+1}`;
+                              const left = `${rRow},${rCol}-${rRow+1},${rCol}`;
+                              const right = `${rRow},${rCol+1}-${rRow+1},${rCol+1}`;
+                              return r.dotsLines[top] && r.dotsLines[bottom] && r.dotsLines[left] && r.dotsLines[right];
+                            };
+                            
+                            const checkAndCompleteBox = (rRow: number, rCol: number) => {
+                              if (rRow >= 0 && rRow < size - 1 && rCol >= 0 && rCol < size - 1) {
+                                if (!r.dotsBoxes[`${rRow},${rCol}`] && isBoxComplete(rRow, rCol)) {
+                                  r.dotsBoxes[`${rRow},${rCol}`] = botPlayer.id;
+                                  boxCompleted = true;
+                                  if (botPlayer.id === r.dotsPlayer1) r.dotsP1Score = (r.dotsP1Score || 0) + 1;
+                                  else r.dotsP2Score = (r.dotsP2Score || 0) + 1;
+                                }
+                              }
+                            };
+                            
+                            if (r1 === r2) {
+                              checkAndCompleteBox(r1 - 1, Math.min(c1, c2));
+                              checkAndCompleteBox(r1, Math.min(c1, c2));
+                            } else {
+                              checkAndCompleteBox(Math.min(r1, r2), c1 - 1);
+                              checkAndCompleteBox(Math.min(r1, r2), c1);
+                            }
+                            
+                            if (!boxCompleted) {
+                              r.dotsTurn = r.dotsTurn === r.dotsPlayer1 ? r.dotsPlayer2 : r.dotsPlayer1;
+                            }
+                            
+                            const totalBoxes = (size - 1) * (size - 1);
+                            if (Object.keys(r.dotsBoxes).length === totalBoxes) {
+                              if (r.dotsP1Score > r.dotsP2Score) r.dotsWinner = r.dotsPlayer1;
+                              else if (r.dotsP2Score > r.dotsP1Score) r.dotsWinner = r.dotsPlayer2;
+                              else r.dotsWinner = "draw";
+                              
+                              r.gameState = "dots_finished";
+                              r.dotsMatchWins[r.dotsWinner] = (r.dotsMatchWins[r.dotsWinner] || 0) + 1;
+
+                              if (r.dotsWinner && r.dotsWinner !== "draw") {
+                                const winnerPlayer = r.players.find((p: any) => p.id === r.dotsWinner);
+                                if (winnerPlayer) {
+                                  winnerPlayer.dotsWins = (winnerPlayer.dotsWins || 0) + 1;
+                                  const dbP = allPlayers.get(winnerPlayer.serial);
+                                  if (dbP) {
+                                    dbP.dotsWins = winnerPlayer.dotsWins;
+                                    dbP.dotsMatchPoints = (dbP.dotsMatchPoints || 0) + 10;
+                                    savePlayerData(winnerPlayer.serial);
+                                    io.to(winnerPlayer.id).emit("player_data_update", dbP);
+                                  }
+                                }
+                              }
+
+                              if (r.dotsLevel === 3) {
+                                  const p1ServerPlayer = r.players[0]?.serial ? allPlayers.get(r.players[0].serial) : null;
+                                  const p2ServerPlayer = r.players[1]?.serial ? allPlayers.get(r.players[1].serial) : null;
+                                  
+                                  const p1TotalWins = r.dotsMatchWins[r.dotsPlayer1] || 0;
+                                  const p2TotalWins = r.dotsMatchWins[r.dotsPlayer2] || 0;
+                                  
+                                  if (p1ServerPlayer) {
+                                    p1ServerPlayer.dotsMatchPoints = (p1ServerPlayer.dotsMatchPoints || 0) + 5;
+                                    if (p1TotalWins > p2TotalWins) p1ServerPlayer.dotsMatchPoints += 15;
+                                    else if (p1TotalWins === p2TotalWins) p1ServerPlayer.dotsMatchPoints += 5;
+                                    savePlayerData(r.players[0].serial);
+                                    io.to(r.players[0].id).emit("player_data_update", p1ServerPlayer);
+                                    
+                                    const p1Idx = r.players.findIndex((p: any) => p.id === r.dotsPlayer1);
+                                    if (p1Idx !== -1) r.players[p1Idx].dotsMatchPoints = p1ServerPlayer.dotsMatchPoints;
+                                  }
+                                  
+                                  if (p2ServerPlayer) {
+                                    p2ServerPlayer.dotsMatchPoints = (p2ServerPlayer.dotsMatchPoints || 0) + 5;
+                                    if (p2TotalWins > p1TotalWins) p2ServerPlayer.dotsMatchPoints += 15;
+                                    else if (p1TotalWins === p2TotalWins) p2ServerPlayer.dotsMatchPoints += 5;
+                                    savePlayerData(r.players[1].serial);
+                                    io.to(r.players[1].id).emit("player_data_update", p2ServerPlayer);
+                                    
+                                    const p2Idx = r.players.findIndex((p: any) => p.id === r.dotsPlayer2);
+                                    if (p2Idx !== -1) r.players[p2Idx].dotsMatchPoints = p2ServerPlayer.dotsMatchPoints;
+                                  }
+                              }
+                            }
+                            
+                            sendRoomUpdate(roomId, r);
+                            
+                            // Re-trigger bot if it gets another turn
+                            if (boxCompleted && r.gameState === "dots_playing") {
+                               handleBotEvent(roomId, "room_update", r);
+                            }
+                     }
+                  }
+                }, Math.random() * 2000 + 1000)
+              );
+            }
+          }
+        }
+
+        if (room.gameState === "dots_finished") {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            if (!botTimeouts.has(roomId + "_dots_restart_timeout")) {
+              botTimeouts.set(
+                roomId + "_dots_restart_timeout",
+                setTimeout(() => {
+                  botTimeouts.delete(roomId + "_dots_restart_timeout");
+                  const r = rooms.get(roomId);
+                  if (r && r.gameState === "dots_finished") {
+                    const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+                    if (isAdStillPlaying) return; 
+
+                    if ((r.dotsLevel || 1) >= 3) {
+                      if (!r.dotsRematchRequestedBy) r.dotsRematchRequestedBy = [];
+                      if (!r.dotsRematchRequestedBy.includes(botPlayer.id)) {
+                        r.dotsRematchRequestedBy.push(botPlayer.id);
+                      }
+                      if (r.dotsRematchRequestedBy.length < 2) return;
+                      r.dotsRematchRequestedBy = [];
+                      r.dotsLevel = 1;
+                      r.dotsMatchWins = {};
+                    } else {
+                      r.dotsLevel = (r.dotsLevel || 1) + 1;
+                    }
+
+                    initializeDotsGame(r);
+                    sendRoomUpdate(roomId, r);
+                    handleBotEvent(roomId, "room_update", r);
+                  }
+                }, 4000)
+              );
+            }
+          }
+        }
+
         if (room.gameState === "iq_playing" && room.iqTurn === botPlayer.id) {
           executeBotIQMove(roomId);
         }
@@ -7808,6 +8077,73 @@ async function startServer() {
           }
         }
       }
+    }
+
+        function initializeDotsGame(room: any) {
+      room.gameState = "dots_playing";
+      room.category = "dots";
+      room.dotsLevel = room.dotsLevel || 1;
+      room.dotsMatchWins = room.dotsMatchWins || {};
+      
+      const size = room.dotsLevel === 1 ? 4 : room.dotsLevel === 2 ? 6 : 8; // 4x4, 6x6, 8x8 dots => 3x3, 5x5, 7x7 boxes
+      room.dotsBoardSize = size;
+      room.dotsLines = {}; // "r1,c1-r2,c2" -> playerId
+      room.dotsBoxes = {}; // "r,c" -> playerId
+      
+      room.dotsPlayer1 = room.players[0]?.id;
+      room.dotsPlayer2 = room.players[1]?.id;
+      
+      room.dotsTurn = Math.random() > 0.5 ? room.dotsPlayer1 : room.dotsPlayer2;
+      
+      room.dotsTurnTimer = 15;
+      room.timer = room.dotsLevel === 1 ? 300 : room.dotsLevel === 2 ? 600 : 900; 
+      
+      room.dotsP1Score = 0;
+      room.dotsP2Score = 0;
+      room.dotsWinner = null;
+      room.dotsRematchRequestedBy = [];
+      room.dotsAdPausedPlayers = new Set();
+      room.dotsAdPausedPlayersArray = [];
+      
+      if (botTimeouts.has(room.id + "_dots_move_timeout")) {
+        clearTimeout(botTimeouts.get(room.id + "_dots_move_timeout"));
+        botTimeouts.delete(room.id + "_dots_move_timeout");
+      }
+      if (botTimeouts.has(room.id + "_dots_restart_timeout")) {
+        clearTimeout(botTimeouts.get(room.id + "_dots_restart_timeout"));
+        botTimeouts.delete(room.id + "_dots_restart_timeout");
+      }
+      
+      if (intervals.has(room.id)) clearInterval(intervals.get(room.id));
+      
+      const interval = setInterval(() => {
+        const r = rooms.get(room.id);
+        if (r && r.gameState === "dots_playing") {
+          const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+          if (!isAdPlaying) {
+            r.timer--;
+            r.dotsTurnTimer--;
+            
+            if (r.timer <= 0) {
+              clearInterval(interval);
+              r.dotsWinner = "draw";
+              r.gameState = "dots_finished";
+              r.dotsMatchWins["draw"] = (r.dotsMatchWins["draw"] || 0) + 1;
+              sendRoomUpdate(room.id, r);
+            } else if (r.dotsTurnTimer <= 0) {
+              r.dotsTurnTimer = 15;
+              r.dotsTurn = r.dotsTurn === r.dotsPlayer1 ? r.dotsPlayer2 : r.dotsPlayer1;
+              sendRoomUpdate(room.id, r);
+            } else {
+              io.to(room.id).emit("timer_update", r.timer);
+              io.to(room.id).emit("dots_timer_update", r.dotsTurnTimer);
+            }
+          }
+        }
+      }, 1000);
+      intervals.set(room.id, interval);
+      
+      sendRoomUpdate(room.id, room);
     }
 
     function initializeIQGame(room: any) {
@@ -9407,8 +9743,10 @@ async function startServer() {
               p &&
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
+              room.gameState !== "iq_finished" &&
               room.gameState !== "bus_complete_evaluating" &&
-              room.gameState !== "hand_finished"
+              room.gameState !== "hand_finished" &&
+              room.gameState !== "dots_finished"
             ) {
               activeRoomId = roomId;
               break;
@@ -9432,8 +9770,10 @@ async function startServer() {
               p &&
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
+              room.gameState !== "iq_finished" &&
               room.gameState !== "bus_complete_evaluating" &&
-              room.gameState !== "hand_finished"
+              room.gameState !== "hand_finished" &&
+              room.gameState !== "dots_finished"
             ) {
               const oldSocketId = p.id;
               const opponent = room.players.find((pl: any) => pl.serial !== serial);
@@ -10306,6 +10646,139 @@ async function startServer() {
             }
           } else {
             socket.emit("hand_wrong_guess");
+          }
+        }
+      });
+
+      
+      socket.on("submit_dots_move", ({ roomId, r1, c1, r2, c2 }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "dots_playing" && room.dotsTurn === socket.id) {
+          // Check if ad is playing
+          if (room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0) return;
+          
+          // Ensure coordinates are valid
+          const size = room.dotsBoardSize;
+          if (r1 < 0 || r1 >= size || c1 < 0 || c1 >= size || r2 < 0 || r2 >= size || c2 < 0 || c2 >= size) return;
+          
+          // Ensure points are adjacent (horizontal or vertical)
+          if (!((Math.abs(r1 - r2) === 1 && c1 === c2) || (Math.abs(c1 - c2) === 1 && r1 === r2))) return;
+          
+          // Normalize line ID (smaller row/col first)
+          let lineId = "";
+          if (r1 === r2) {
+            lineId = `${r1},${Math.min(c1, c2)}-${r1},${Math.max(c1, c2)}`;
+          } else {
+            lineId = `${Math.min(r1, r2)},${c1}-${Math.max(r1, r2)},${c1}`;
+          }
+          
+          if (room.dotsLines[lineId]) return; // Line already drawn
+          
+          room.dotsLines[lineId] = socket.id;
+          room.dotsTurnTimer = 15; // Reset timer
+          
+          // Check for completed boxes
+          let boxCompleted = false;
+          
+          // Helper to check if a box is complete
+          const isBoxComplete = (r: number, c: number) => {
+            const top = `${r},${c}-${r},${c+1}`;
+            const bottom = `${r+1},${c}-${r+1},${c+1}`;
+            const left = `${r},${c}-${r+1},${c}`;
+            const right = `${r},${c+1}-${r+1},${c+1}`;
+            return room.dotsLines[top] && room.dotsLines[bottom] && room.dotsLines[left] && room.dotsLines[right];
+          };
+          
+          // A line can complete at most 2 boxes.
+          // If horizontal line (r1===r2), check box above (r1-1, min(c1,c2)) and box below (r1, min(c1,c2))
+          // If vertical line (c1===c2), check box left (min(r1,r2), c1-1) and box right (min(r1,r2), c1)
+          const checkAndCompleteBox = (r: number, c: number) => {
+            if (r >= 0 && r < size - 1 && c >= 0 && c < size - 1) {
+              if (!room.dotsBoxes[`${r},${c}`] && isBoxComplete(r, c)) {
+                room.dotsBoxes[`${r},${c}`] = socket.id;
+                boxCompleted = true;
+                if (socket.id === room.dotsPlayer1) {
+                  room.dotsP1Score = (room.dotsP1Score || 0) + 1;
+                } else {
+                  room.dotsP2Score = (room.dotsP2Score || 0) + 1;
+                }
+              }
+            }
+          };
+          
+          if (r1 === r2) {
+            checkAndCompleteBox(r1 - 1, Math.min(c1, c2)); // above
+            checkAndCompleteBox(r1, Math.min(c1, c2)); // below
+          } else {
+            checkAndCompleteBox(Math.min(r1, r2), c1 - 1); // left
+            checkAndCompleteBox(Math.min(r1, r2), c1); // right
+          }
+          
+          if (!boxCompleted) {
+            // Switch turn
+            room.dotsTurn = room.dotsTurn === room.dotsPlayer1 ? room.dotsPlayer2 : room.dotsPlayer1;
+          }
+          
+          // Check if game is over
+          const totalBoxes = (size - 1) * (size - 1);
+          if (Object.keys(room.dotsBoxes).length === totalBoxes) {
+            if (room.dotsP1Score > room.dotsP2Score) room.dotsWinner = room.dotsPlayer1;
+            else if (room.dotsP2Score > room.dotsP1Score) room.dotsWinner = room.dotsPlayer2;
+            else room.dotsWinner = "draw";
+            
+            room.gameState = "dots_finished";
+            room.dotsMatchWins[room.dotsWinner] = (room.dotsMatchWins[room.dotsWinner] || 0) + 1;
+            
+            if (room.dotsWinner && room.dotsWinner !== "draw") {
+              const winnerPlayer = room.players.find((p: any) => p.id === room.dotsWinner);
+              if (winnerPlayer) {
+                winnerPlayer.dotsWins = (winnerPlayer.dotsWins || 0) + 1;
+                const dbP = allPlayers.get(winnerPlayer.serial);
+                if (dbP) {
+                  dbP.dotsWins = winnerPlayer.dotsWins;
+                  dbP.dotsMatchPoints = (dbP.dotsMatchPoints || 0) + 10;
+                  savePlayerData(winnerPlayer.serial);
+                  io.to(winnerPlayer.id).emit("player_data_update", dbP);
+                }
+              }
+            }
+            
+            // Assign match points on level 3
+            if (room.dotsLevel === 3) {
+                const p1ServerPlayer = room.players[0]?.serial ? allPlayers.get(room.players[0].serial) : null;
+                const p2ServerPlayer = room.players[1]?.serial ? allPlayers.get(room.players[1].serial) : null;
+                
+                const p1TotalWins = room.dotsMatchWins[room.dotsPlayer1] || 0;
+                const p2TotalWins = room.dotsMatchWins[room.dotsPlayer2] || 0;
+                
+                if (p1ServerPlayer) {
+                  p1ServerPlayer.dotsMatchPoints = (p1ServerPlayer.dotsMatchPoints || 0) + 5;
+                  if (p1TotalWins > p2TotalWins) p1ServerPlayer.dotsMatchPoints += 15;
+                  else if (p1TotalWins === p2TotalWins) p1ServerPlayer.dotsMatchPoints += 5;
+                  savePlayerData(room.players[0].serial);
+io.to(room.players[0].id).emit("player_data_update", p1ServerPlayer);
+                  
+                  const p1Idx = room.players.findIndex((p: any) => p.id === room.dotsPlayer1);
+                  if (p1Idx !== -1) room.players[p1Idx].dotsMatchPoints = p1ServerPlayer.dotsMatchPoints;
+                }
+                
+                if (p2ServerPlayer) {
+                  p2ServerPlayer.dotsMatchPoints = (p2ServerPlayer.dotsMatchPoints || 0) + 5;
+                  if (p2TotalWins > p1TotalWins) p2ServerPlayer.dotsMatchPoints += 15;
+                  else if (p1TotalWins === p2TotalWins) p2ServerPlayer.dotsMatchPoints += 5;
+                  savePlayerData(room.players[1].serial);
+io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
+                  
+                  const p2Idx = room.players.findIndex((p: any) => p.id === room.dotsPlayer2);
+                  if (p2Idx !== -1) room.players[p2Idx].dotsMatchPoints = p2ServerPlayer.dotsMatchPoints;
+                }
+            }
+          }
+          
+          sendRoomUpdate(roomId, room);
+          
+          if (room.players.some((p: any) => p.isBot)) {
+             handleBotEvent(roomId, "room_update", room);
           }
         }
       });
@@ -11962,6 +12435,7 @@ async function startServer() {
               room.gameState !== "iq_finished" &&
               room.gameState !== "bus_complete_evaluating" &&
               room.gameState !== "hand_finished" &&
+              room.gameState !== "dots_finished" &&
               room.gameState !== "waiting"
             ) {
               // Player intentionally left during an active game
@@ -11982,7 +12456,8 @@ async function startServer() {
                 room.gameState === "custom_image_upload" ||
                 room.gameState.startsWith("xo_") ||
                 room.gameState.startsWith("hand_") ||
-                room.gameState.startsWith("iq_")
+                room.gameState.startsWith("iq_") ||
+                room.gameState.startsWith("dots_")
               ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
@@ -12163,6 +12638,39 @@ async function startServer() {
         }
       });
 
+      socket.on("restart_dots", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "dots_finished") {
+          if ((room.dotsLevel || 1) >= 3) {
+            if (!room.dotsRematchRequestedBy) room.dotsRematchRequestedBy = [];
+            if (!room.dotsRematchRequestedBy.includes(socket.id)) {
+              room.dotsRematchRequestedBy.push(socket.id);
+            }
+            const botPlayer = room.players.find((p: any) => p.isBot);
+            if (botPlayer && !room.dotsRematchRequestedBy.includes(botPlayer.id)) {
+              room.dotsRematchRequestedBy.push(botPlayer.id);
+            }
+            if (room.dotsRematchRequestedBy.length < 2 && room.players.length === 2) {
+              sendRoomUpdate(roomId, room);
+              return;
+            }
+            room.dotsRematchRequestedBy = [];
+            room.dotsLevel = 1;
+            room.dotsMatchWins = {};
+          } else {
+            room.dotsLevel = (room.dotsLevel || 1) + 1;
+          }
+
+          initializeDotsGame(room);
+          sendRoomUpdate(roomId, room);
+          
+          const bot = room.players.find((p: any) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        }
+      });
+
       socket.on("request_hand_rematch", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (room && room.gameState === "hand_finished") {
@@ -12196,7 +12704,8 @@ async function startServer() {
             room.gameState === "hand_finished" ||
             room.gameState === "bus_complete_evaluating" ||
             room.gameState === "iq_playing" ||
-            room.gameState === "iq_finished")
+            room.gameState === "iq_finished" ||
+            room.gameState === "dots_finished")
         ) {
           // Reset room state
           room.gameState = "waiting";
@@ -12211,6 +12720,21 @@ async function startServer() {
           room.isCustomImageMode = false;
           room.selectionMode = null; // Important: triggers mode selection screen
           room.customImages = {};
+
+          // Reset dots game parameters
+          room.dotsBoardSize = null;
+          room.dotsLines = {};
+          room.dotsBoxes = {};
+          room.dotsPlayer1 = null;
+          room.dotsPlayer2 = null;
+          room.dotsTurn = null;
+          room.dotsTurnTimer = 15;
+          room.dotsP1Score = 0;
+          room.dotsP2Score = 0;
+          room.dotsWinner = null;
+          room.dotsRematchRequestedBy = [];
+          room.dotsLevel = 1;
+          room.dotsMatchWins = {};
 
           // Reset hand game state parameters
           room.handGrid = null;
@@ -12730,54 +13254,84 @@ async function startServer() {
         }
       });
 
-            socket.on("claim_iq_reward", ({ serial }) => {
+                  socket.on("claim_iq_reward", async ({ serial }) => {
         const player = allPlayers.get(serial);
         if (player) {
-          const level = player.iqRewardLevel || 1;
-          const requiredPoints = level * 100;
-          if ((player.iqMatchPoints || 0) >= requiredPoints) {
-            player.iqMatchPoints -= requiredPoints;
-
-            const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
-            player.xp = (player.xp || 0) + xpReward;
-
-            const keysReward = level;
+          const currentLevel = player.iqRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          
+          if ((player.iqMatchPoints || 0) >= targetPoints) {
+            // Deduct points, level up, give rewards
+            player.iqMatchPoints = (player.iqMatchPoints || 0) - targetPoints;
+            player.iqRewardLevel = currentLevel + 1;
+            
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            
+            player.xp += xpReward;
             player.keys = (player.keys || 0) + keysReward;
-
-            if (!player.ownedHelpers) player.ownedHelpers = {};
-            const helpersReward: any = {};
-            [
-              "hint",
-              "word_length",
-              "time_freeze",
-              "word_count",
-              "spy_lens",
-            ].forEach((h) => {
-              player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
-              helpersReward[h] = level;
-            });
-
-            player.iqRewardLevel = level === 10 ? 1 : level + 1;
-
-            const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
-            if (!player.level || newLevel > player.level) {
-              player.level = newLevel;
-            }
-
-            savePlayerData(serial);
-            socket.emit("update_player", player);
+            
+            if (!player.ownedHelpers) player.ownedHelpers = { time_freeze: 0, word_length: 0, word_count: 0, hint: 0, spy_lens: 0 };
+            player.ownedHelpers.time_freeze += helpersReward.time_freeze;
+            player.ownedHelpers.word_length += helpersReward.word_length;
+            player.ownedHelpers.word_count += helpersReward.word_count;
+            player.ownedHelpers.hint += helpersReward.hint;
+            player.ownedHelpers.spy_lens += helpersReward.spy_lens;
+            
+            savePlayerData(player.serial);
+            
             socket.emit("iq_reward_claimed", {
-              xp: xpReward,
-              keys: keysReward,
-              helpers: helpersReward,
               newLevel: player.iqRewardLevel,
               points: player.iqMatchPoints,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+
+      socket.on("claim_dots_reward", async ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.dotsRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          
+          if ((player.dotsMatchPoints || 0) >= targetPoints) {
+            // Deduct points, level up, give rewards
+            player.dotsMatchPoints = (player.dotsMatchPoints || 0) - targetPoints;
+            player.dotsRewardLevel = currentLevel + 1;
+            
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            
+            player.xp += xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            
+            if (!player.ownedHelpers) player.ownedHelpers = { time_freeze: 0, word_length: 0, word_count: 0, hint: 0, spy_lens: 0 };
+            player.ownedHelpers.time_freeze += helpersReward.time_freeze;
+            player.ownedHelpers.word_length += helpersReward.word_length;
+            player.ownedHelpers.word_count += helpersReward.word_count;
+            player.ownedHelpers.hint += helpersReward.hint;
+            player.ownedHelpers.spy_lens += helpersReward.spy_lens;
+            
+            savePlayerData(player.serial);
+            
+            socket.emit("dots_reward_claimed", {
+              newLevel: player.dotsRewardLevel,
+              points: player.dotsMatchPoints,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
             });
           }
         }
       });
       socket.on("claim_xo_reward", ({ serial }) => {
         const player = allPlayers.get(serial);
+
         if (player) {
           const level = player.xoRewardLevel || 1;
           const requiredPoints = level * 100;
@@ -15033,8 +15587,10 @@ async function startServer() {
             if (
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
+              room.gameState !== "iq_finished" &&
               room.gameState !== "bus_complete_evaluating" &&
               room.gameState !== "hand_finished" &&
+              room.gameState !== "dots_finished" &&
               room.gameState !== "waiting"
             ) {
               if (isIntentional) {
@@ -15125,7 +15681,8 @@ async function startServer() {
               room.gameState !== "xo_finished" &&
               room.gameState !== "iq_finished" &&
               room.gameState !== "bus_complete_evaluating" &&
-              room.gameState !== "hand_finished"
+              room.gameState !== "hand_finished" &&
+              room.gameState !== "dots_finished"
             ) {
               io.in(roomId).socketsLeave(roomId);
               rooms.delete(roomId);
@@ -15984,7 +16541,7 @@ async function startServer() {
       app.use(vite.middlewares);
     } else {
       app.use(
-        express.static(path.join(__dirname, "dist"), {
+        express.static(path.join(process.cwd(), "dist"), {
           maxAge: "1y", // Aggressively cache dist assets (which have hashes)
           setHeaders: (res, path) => {
             if (
@@ -16012,7 +16569,7 @@ async function startServer() {
       );
       app.get("*", (req, res) => {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-        const indexPath = path.join(__dirname, "dist", "index.html");
+        const indexPath = path.join(process.cwd(), "dist", "index.html");
         if (fs.existsSync(indexPath)) {
           let content = fs.readFileSync(indexPath, "utf-8");
           const version = configCache.version || "1.1.1";
