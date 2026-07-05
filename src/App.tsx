@@ -5420,10 +5420,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const isGameActive =
-      room?.gameState === "guessing" ||
-      room?.gameState === "discussion" ||
-      room?.gameState === "custom_image_upload";
+    const isGameActive = !!room && room.gameState !== "waiting";
 
     const activeMusic = isGameActive
       ? gameMusicRef.current
@@ -8691,7 +8688,7 @@ export default function App() {
 
   useEffect(() => {
     if (room && room.gameState !== previousGameStateRef.current) {
-      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished") {
+      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished") {
         if (!hasProPackage) {
           matchesPlayedRef.current += 1;
           if (matchesPlayedRef.current >= 3) {
@@ -11299,7 +11296,7 @@ export default function App() {
             className="bg-modal-theme rounded-[2xl] w-full max-w-sm overflow-hidden shadow-2xl relative flex flex-col"
             dir="rtl"
           >
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-3 text-center relative shrink-0 border-b-4 border-black">
+            <div className="bg-purple-600 p-3 pt-3 py-2 text-center relative shrink-0 border-b-4 border-black">
               <button
                 onClick={() => {
                   playSound("clickClose");
@@ -11418,7 +11415,7 @@ export default function App() {
                   </button>
                 )}
               </h2>
-              <div className="text-white/90 text-sm font-bold flex items-center justify-center gap-2 mt-1 mb-3">
+              <div className="text-white/90 bg-gray-200 p-1 text-xs font-bold flex flex-wrap items-center justify-center gap-1 mt-1 mb-1">
                 <span className="bg-black/20 px-2 py-0.5 rounded-md" dir="ltr">
                   Lvl {data.level}
                 </span>
@@ -11487,9 +11484,9 @@ export default function App() {
                 )}
             </div>
 
-            <div className="p-2 space-y-4 bg-gray-50 flex-1 overflow-y-auto max-h-[60vh]">
+            <div className="p-2 pt-1 py-1 space-y-4 bg-gray-50 flex-1 overflow-y-auto max-h-[60vh]">
               {/* Likes Feature */}
-              <div className="bg-white rounded-xl p-2 border-2 border-gray-100 shadow-sm flex items-center justify-between">
+              <div className="bg-white rounded-xl p-1.5 border-2 border-gray-100 shadow-sm flex items-center justify-between mb-1">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
                     <Heart className="w-5 h-5 text-red-500 fill-red-500" />
@@ -22709,7 +22706,7 @@ export default function App() {
                           <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
                             {truncateName(topPlayers[1].name)}
                           </div>
-                          <div className="w-full rank-2-bar h-20 md:h-24 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-2">
+                          <div className="w-full rank-2-bar h-22 md:h-24 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-2">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                               Lvl {getLevel(topPlayers[1].xp || 0)}
                             </div>
@@ -22813,7 +22810,7 @@ export default function App() {
                           <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
                             {truncateName(topPlayers[2].name)}
                           </div>
-                          <div className="w-full rank-3-bar h-16 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
+                          <div className="w-full rank-3-bar h-20 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                               Lvl {getLevel(topPlayers[2].xp || 0)}
                             </div>
@@ -23416,10 +23413,10 @@ export default function App() {
                             <div className="font-black truncate">
                               أنت ({playerName})
                             </div>
-                            <div className="text-[10px] md:text-xs text-white/80 font-bold flex items-center gap-0.5 md:gap-1">
+                            <div className="text-[10px] md:text-xs text-brown-muted font-bold flex flex-wrap items-center justify-center gap-1 md:gap-1.5">
                               <span dir="ltr">Lvl {getLevel(xp)}</span>
                               <span>•</span>
-                              <span>{wins} فوز</span>
+                              <span>{wins} 🏆</span>
                               <span>•</span>
                               <span>{streak} 🔥</span>
                               <span>•</span>
@@ -23444,13 +23441,13 @@ export default function App() {
                     >
                       {[
                         { id: "all", icon: "👥" },
+                        { id: "wins", icon: "🏆" },
+                        { id: "streak", icon: "🔥" },
+                        { id: "likes", icon: "❤️" },
                         { id: "busComplete", icon: "🚌" },
                         { id: "xo", icon: <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span> },
                         { id: "hand", icon: "🖐" },
                         { id: "iq", icon: <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span> },
-                        { id: "wins", icon: "🏆" },
-                        { id: "streak", icon: "🔥" },
-                        { id: "likes", icon: "❤️" },
                       ].map((filter) => (
                         <button
                           key={filter.id}
@@ -26039,7 +26036,7 @@ export default function App() {
                                       playSound("clickOpen");
                                       socket?.emit("confirm_selection_mode", { roomId });
                                    }}
-                                   className="mt-4 w-full bg-green-500 hover:bg-green-600 border-[6px] border-green-600 text-white font-black text-xl md:text-2xl p-4 rounded-3xl transition-all shadow-[0_8px_0_0_#16a34a] active:shadow-none active:translate-y-2 flex justify-center items-center gap-3 relative overflow-hidden group"
+                                   className="mt-2 w-full bg-green-500 hover:bg-green-600 border-[6px] border-green-600 text-white font-black text-xl md:text-2xl p-4 rounded-3xl transition-all shadow-[0_8px_0_0_#16a34a] active:shadow-none active:translate-y-2 flex justify-center items-center gap-3 relative overflow-hidden group"
                                   >
                                     احنا جاهزين 🕹️
                                   </button>
