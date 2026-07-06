@@ -26169,8 +26169,18 @@ export default function App() {
                           onClick={() => {
                              socket?.emit("submit_xo_move", { roomId: room.id, index: idx });
                              playSound("clickOpen");
+                             setRoom(prev => {
+                               if (!prev || !prev.xoBoard) return prev;
+                               const newBoard = [...prev.xoBoard];
+                               newBoard[idx] = prev.xoXPlayer === socket?.id ? "X" : "O";
+                               return {
+                                 ...prev,
+                                 xoBoard: newBoard,
+                                 xoTurn: prev.players.find((p: any) => p.id !== socket?.id)?.id || null
+                               };
+                             });
                           }}
-                          className={`aspect-square flex items-center justify-center font-black rounded-[20%] transition-all duration-200 transform ${sizeClass}
+                          className={`aspect-square flex items-center justify-center font-black rounded-[20%] transition-transform duration-75 transform ${sizeClass}
                             ${cell === null ? "bg-white hover:bg-gray-50 cursor-pointer shadow-sm" : cell === "X" ? "bg-red-50 text-red-500 shadow-sm" : "bg-green-50 text-green-600 shadow-sm"}
                             ${isWinningCell ? "bg-yellow-200 ring-4 ring-yellow-400 scale-105 z-10 animate-bounce" : ""}
                             ${myTurn && cell === null ? "hover:scale-105 hover:shadow-md ring-2 ring-transparent hover:ring-blue-300" : cell !== null ? "" : "cursor-default opacity-80"}
