@@ -5111,10 +5111,19 @@ export default function App() {
   });
   const [spinLetter, setSpinLetter] = useState("؟");
   const [hideBusResults, setHideBusResults] = useState(false);
+  const [showDotsTutorial, setShowDotsTutorial] = useState(false);
   const isOpponentBlockedRef = useRef(isOpponentBlocked);
   useEffect(() => {
     isOpponentBlockedRef.current = isOpponentBlocked;
   }, [isOpponentBlocked]);
+
+  useEffect(() => {
+    if (room?.gameState === "dots_playing" && room.dotsTurn === socket?.id) {
+      if (!localStorage.getItem("dots_tutorial_seen")) {
+        setShowDotsTutorial(true);
+      }
+    }
+  }, [room?.gameState, room?.dotsTurn, socket?.id]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -25651,6 +25660,34 @@ export default function App() {
                              
                              return (
                                <div className="w-full h-full relative">
+                                 {showDotsTutorial && (
+                                   <div 
+                                     className="absolute inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-xl cursor-pointer" 
+                                     onClick={() => {
+                                       setShowDotsTutorial(false);
+                                       localStorage.setItem("dots_tutorial_seen", "true");
+                                     }}
+                                   >
+                                     <div className="bg-white p-4 md:p-6 rounded-2xl shadow-xl border-4 border-blue-200 text-center mx-4">
+                                       <div className="flex justify-center items-center h-16 w-32 mx-auto relative mb-4">
+                                         {/* Dot 1 */}
+                                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-gray-400 rounded-full"></div>
+                                         {/* Dot 2 */}
+                                         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-gray-400 rounded-full"></div>
+                                         {/* Line */}
+                                         <div className="absolute left-3 right-3 top-1/2 -translate-y-1/2 h-2 bg-blue-300 rounded-full"></div>
+                                         {/* Hand Icon */}
+                                         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl z-10 animate-pulse mt-2">👆</div>
+                                       </div>
+                                       <h3 className="font-black text-lg md:text-xl text-blue-600 mb-2">كيفية اللعب؟</h3>
+                                       <p className="font-bold text-gray-700 text-sm md:text-base leading-relaxed">
+                                         اضغط في الفراغ بين أي نقطتين<br/>
+                                         لترسم خطاً وتكمل المربع!
+                                       </p>
+                                       <div className="mt-3 text-xs text-gray-400 font-bold">(اضغط للبدء)</div>
+                                     </div>
+                                   </div>
+                                 )}
                                  {/* Boxes */}
                                  {(() => {
                                    const boxes = [];
