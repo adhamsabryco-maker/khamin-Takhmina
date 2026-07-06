@@ -25668,14 +25668,14 @@ export default function App() {
                                        localStorage.setItem("dots_tutorial_seen", "true");
                                      }}
                                    >
-                                     <div className="bg-white p-4 md:p-6 rounded-2xl shadow-xl border-4 border-blue-200 text-center mx-4">
+                                     <div className="bg-white p-4 md:p-4 rounded-2xl shadow-xl border-4 border-blue-200 text-center mx-4">
                                        <div className="flex justify-center items-center h-16 w-32 mx-auto relative mb-4">
                                          {/* Dot 1 */}
-                                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-gray-400 rounded-full"></div>
+                                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-5 h-5 bg-gray-500 rounded-full z-10"></div>
                                          {/* Dot 2 */}
-                                         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-gray-400 rounded-full"></div>
+                                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-5 h-5 bg-gray-500 rounded-full z-10"></div>
                                          {/* Line */}
-                                         <div className="absolute left-3 right-3 top-1/2 -translate-y-1/2 h-2 bg-blue-300 rounded-full"></div>
+                                         <div className="absolute left-3 right-3 top-1/2 -translate-y-1/2 h-3 bg-blue-400"></div>
                                          {/* Hand Icon */}
                                          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl z-10 animate-pulse mt-2">👆</div>
                                        </div>
@@ -25684,7 +25684,7 @@ export default function App() {
                                          اضغط في الفراغ بين أي نقطتين<br/>
                                          لترسم خطاً وتكمل المربع!
                                        </p>
-                                       <div className="mt-3 text-xs text-gray-400 font-bold">(اضغط للبدء)</div>
+                                       <div className="btn-game btn-danger py-2 mb-2 mt-3 text-x1 text-gray-400 font-bold">(اضغط للبدء)</div>
                                      </div>
                                    </div>
                                  )}
