@@ -6721,7 +6721,7 @@ async function startServer() {
                             }
                      }
                   }
-                }, Math.random() * 2000 + 1000)
+                }, Math.random() * 800 + 600)
               );
             }
           }
@@ -15624,7 +15624,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                       r.gameState === "custom_image_upload" ||
                       r.gameState.startsWith("xo_") ||
                       r.gameState.startsWith("hand_") ||
-                      r.gameState.startsWith("iq_")
+                      r.gameState.startsWith("iq_") ||
+                      r.gameState.startsWith("dots_")
                     ) {
                       io.to(roomId).emit("game_stopped", {
                         reason: "المنافس فقد الاتصال ولم يعد",
