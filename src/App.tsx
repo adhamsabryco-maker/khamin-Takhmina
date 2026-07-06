@@ -25669,11 +25669,11 @@ export default function App() {
                                      }}
                                    >
                                      <div className="bg-white p-4 md:p-4 rounded-2xl shadow-xl border-4 border-blue-200 text-center mx-4">
-                                       <div className="flex justify-center items-center h-16 w-32 mx-auto relative mb-4">
+                                       <div className="flex justify-center items-center h-16 w-32 mx-auto relative mb-2">
                                          {/* Dot 1 */}
                                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-5 h-5 bg-gray-500 rounded-full z-10"></div>
                                          {/* Dot 2 */}
-                                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-5 h-5 bg-gray-500 rounded-full z-10"></div>
+                                         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 bg-gray-500 rounded-full z-10"></div>
                                          {/* Line */}
                                          <div className="absolute left-3 right-3 top-1/2 -translate-y-1/2 h-3 bg-blue-400"></div>
                                          {/* Hand Icon */}
