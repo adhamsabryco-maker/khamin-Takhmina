@@ -3796,6 +3796,7 @@ async function startServer() {
             xoWins: p.xoWins || 0,
             handWins: p.handWins || 0,
             iqWins: p.iqWins || 0,
+            dotsWins: p.dotsWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -4778,6 +4779,9 @@ async function startServer() {
             iqWins: p1ServerPlayer
               ? p1ServerPlayer.iqWins || 0
               : match.p1.iqWins || 0,
+            dotsWins: p1ServerPlayer
+              ? p1ServerPlayer.dotsWins || 0
+              : match.p1.dotsWins || 0,
           },
           {
             id: match.p2.socket.id,
@@ -4839,6 +4843,9 @@ async function startServer() {
             iqWins: p2ServerPlayer
               ? p2ServerPlayer.iqWins || 0
               : match.p2.iqWins || 0,
+            dotsWins: p2ServerPlayer
+              ? p2ServerPlayer.dotsWins || 0
+              : match.p2.dotsWins || 0,
           },
         ],
         gameState: "waiting",
@@ -10094,6 +10101,7 @@ async function startServer() {
               xoWins: serverPlayer.xoWins || 0,
               handWins: serverPlayer.handWins || 0,
               iqWins: serverPlayer.iqWins || 0,
+              dotsWins: serverPlayer.dotsWins || 0,
             };
             room.players.push(player);
 
@@ -14866,6 +14874,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 busCompleteWins: targetPlayer.busCompleteWins || 0,
                 xoWins: targetPlayer.xoWins || 0,
                 handWins: targetPlayer.handWins || 0,
+                iqWins: targetPlayer.iqWins || 0,
+                dotsWins: targetPlayer.dotsWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
@@ -15475,6 +15485,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 xoWins: senderPlayerData.xoWins || 0,
                 handWins: senderPlayerData.handWins || 0,
                 iqWins: senderPlayerData.iqWins || 0,
+                dotsWins: senderPlayerData.dotsWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -15505,6 +15516,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 xoWins: myPlayerData.xoWins || 0,
                 handWins: myPlayerData.handWins || 0,
                 iqWins: myPlayerData.iqWins || 0,
+                dotsWins: myPlayerData.dotsWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
