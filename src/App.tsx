@@ -5565,7 +5565,7 @@ export default function App() {
       }
     }
 
-    if (room && room.gameState === "dots_finished" && prevGameStateRef.current === "dots_playing") {
+    if (room && room.gameState === "dots_finished" && prevGameStateRef.current === "dots_playing" && room.players.find(p => p.id === socket?.id)) {
       if (room.dotsWinner === socket?.id) {
         playSound("win");
       } else if (room.dotsWinner === "draw") {
@@ -11512,7 +11512,7 @@ export default function App() {
                 <span>•</span>
                 <span>{data.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                 <span>•</span>
-                <span>{data.dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                <span>{data.dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain items-center" /></span>
               </div>
 
               {/* Friend Status Indicator / Add Friend Button */}
@@ -22929,7 +22929,7 @@ export default function App() {
                               <span>{topPlayers[1].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                               <span>{topPlayers[1].handWins || 0} 🖐</span>
                               <span>{topPlayers[1].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
-                              <span>{topPlayers[1].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
+                              <span>{topPlayers[1].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -25778,7 +25778,7 @@ export default function App() {
                     {room.gameState === "dots_playing" && (
                        <div className="text-center my-1 font-bold text-base md:text-lg mb-2 flex flex-col items-center gap-1">
                           {room.dotsTurn === socket?.id ? (
-                             <span className="text-purple-600 animate-pulse bg-purple-50 px-4 py-1 rounded-full border border-purple-200">دورك الآن للعب! ⏳ {room.dotsTurnTimer}</span>
+                             <span className="text-purple-600 bg-purple-50 px-4 py-1 rounded-full border border-purple-200">دورك الآن للعب! ⏳ {room.dotsTurnTimer}</span>
                           ) : (
                              <span className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳ {room.dotsTurnTimer}</span>
                           )}
