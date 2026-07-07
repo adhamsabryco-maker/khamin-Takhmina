@@ -6631,6 +6631,7 @@ async function startServer() {
                             }
                             
                             r.dotsLines[lineId] = botPlayer.id;
+                            r.dotsLastMove = lineId; // Record last move
                             r.dotsTurnTimer = 15;
                             
                             let boxCompleted = false;
@@ -6747,17 +6748,16 @@ async function startServer() {
                     const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
                     if (isAdStillPlaying) return; 
 
-                    if (!r.dotsRematchRequestedBy) r.dotsRematchRequestedBy = [];
-                    if (!r.dotsRematchRequestedBy.includes(botPlayer.id)) {
-                      r.dotsRematchRequestedBy.push(botPlayer.id);
-                    }
-                    if (r.dotsRematchRequestedBy.length < 2) {
-                      sendRoomUpdate(roomId, r);
-                      return;
-                    }
-                    r.dotsRematchRequestedBy = [];
-
                     if ((r.dotsLevel || 1) >= 3) {
+                      if (!r.dotsRematchRequestedBy) r.dotsRematchRequestedBy = [];
+                      if (!r.dotsRematchRequestedBy.includes(botPlayer.id)) {
+                        r.dotsRematchRequestedBy.push(botPlayer.id);
+                      }
+                      if (r.dotsRematchRequestedBy.length < 2) {
+                        sendRoomUpdate(roomId, r);
+                        return;
+                      }
+                      r.dotsRematchRequestedBy = [];
                       r.dotsLevel = 1;
                       r.dotsMatchWins = {};
                     } else {
@@ -8100,6 +8100,7 @@ async function startServer() {
       room.dotsBoardSize = size;
       room.dotsLines = {}; // "r1,c1-r2,c2" -> playerId
       room.dotsBoxes = {}; // "r,c" -> playerId
+      room.dotsLastMove = null;
       
       room.dotsPlayer1 = room.players[0]?.id;
       room.dotsPlayer2 = room.players[1]?.id;
@@ -8133,7 +8134,6 @@ async function startServer() {
           const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
           if (!isAdPlaying) {
             r.timer--;
-            r.dotsTurnTimer--;
             
             if (r.timer <= 0) {
               clearInterval(interval);
@@ -8141,13 +8141,8 @@ async function startServer() {
               r.gameState = "dots_finished";
               r.dotsMatchWins["draw"] = (r.dotsMatchWins["draw"] || 0) + 1;
               sendRoomUpdate(room.id, r);
-            } else if (r.dotsTurnTimer <= 0) {
-              r.dotsTurnTimer = 15;
-              r.dotsTurn = r.dotsTurn === r.dotsPlayer1 ? r.dotsPlayer2 : r.dotsPlayer1;
-              sendRoomUpdate(room.id, r);
             } else {
               io.to(room.id).emit("timer_update", r.timer);
-              io.to(room.id).emit("dots_timer_update", r.dotsTurnTimer);
             }
           }
         }
@@ -8498,7 +8493,7 @@ async function startServer() {
 
           // Check for name uniqueness
           for (const p of allPlayers.values()) {
-            if (p.name.toLowerCase() === filteredName.toLowerCase()) {
+            if (p.name && p.name.toLowerCase() === filteredName.toLowerCase()) {
               callback({
                 error: "هذا الاسم مستخدم بالفعل، يرجى اختيار اسم آخر.",
               });
@@ -9220,6 +9215,7 @@ async function startServer() {
               for (const [s, p] of allPlayers.entries()) {
                 if (
                   s !== playerSerial &&
+                  p.name &&
                   p.name.toLowerCase() === filteredName.toLowerCase()
                 ) {
                   if (callback)
@@ -9291,6 +9287,7 @@ async function startServer() {
           for (const [s, p] of allPlayers.entries()) {
             if (
               s !== playerSerial &&
+              p.name &&
               p.name.toLowerCase() === filteredName.toLowerCase()
             ) {
               callback({ available: false });
@@ -10073,9 +10070,10 @@ async function startServer() {
           // Check if player is already in a match
           const isAlreadyInMatch = Array.from(rooms.values()).some(
             (room) =>
+              room.id !== roomId &&
               room.gameState !== "finished" &&
               room.gameState !== "waiting" &&
-              room.players.some((p) => p.serial === serial),
+              room.players.some((p: any) => p.serial === serial),
           );
 
           if (isAlreadyInMatch && !serverPlayer.isAdmin) {
@@ -10737,6 +10735,7 @@ async function startServer() {
           if (room.dotsLines[lineId]) return; // Line already drawn
           
           room.dotsLines[lineId] = socket.id;
+          room.dotsLastMove = lineId; // Record last move
           room.dotsTurnTimer = 15; // Reset timer
           
           // Check for completed boxes
@@ -12603,11 +12602,12 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
         const room = rooms.get(roomId);
         if (room && room.gameState === "xo_finished") {
           if ((room.xoLevel || 1) >= 8) {
+            if (room.players.length < 2) return;
             if (!room.xoRematchRequestedBy) room.xoRematchRequestedBy = [];
             if (!room.xoRematchRequestedBy.includes(socket.id)) {
               room.xoRematchRequestedBy.push(socket.id);
             }
-            if (room.xoRematchRequestedBy.length < 2 && room.players.length === 2) {
+            if (room.xoRematchRequestedBy.length < 2) {
               io.to(roomId).emit("room_update", room);
               return;
             }
@@ -12675,11 +12675,12 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
         const room = rooms.get(roomId);
         if (room && room.gameState === "iq_finished") {
           if ((room.iqLevel || 1) >= 3) {
+            if (room.players.length < 2) return;
             if (!room.iqRematchRequestedBy) room.iqRematchRequestedBy = [];
             if (!room.iqRematchRequestedBy.includes(socket.id)) {
               room.iqRematchRequestedBy.push(socket.id);
             }
-            if (room.iqRematchRequestedBy.length < 2 && room.players.length === 2) {
+            if (room.iqRematchRequestedBy.length < 2) {
               sendRoomUpdate(roomId, room);
               return;
             }
@@ -12703,21 +12704,17 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
       socket.on("restart_dots", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (room && room.gameState === "dots_finished") {
-          if (!room.dotsRematchRequestedBy) room.dotsRematchRequestedBy = [];
-          if (!room.dotsRematchRequestedBy.includes(socket.id)) {
-            room.dotsRematchRequestedBy.push(socket.id);
-          }
-          const botPlayer = room.players.find((p: any) => p.isBot);
-          if (botPlayer && !room.dotsRematchRequestedBy.includes(botPlayer.id)) {
-            room.dotsRematchRequestedBy.push(botPlayer.id);
-          }
-          if (room.dotsRematchRequestedBy.length < 2 && room.players.length === 2) {
-            sendRoomUpdate(roomId, room);
-            return;
-          }
-          room.dotsRematchRequestedBy = [];
-
           if ((room.dotsLevel || 1) >= 3) {
+            if (room.players.length < 2) return;
+            if (!room.dotsRematchRequestedBy) room.dotsRematchRequestedBy = [];
+            if (!room.dotsRematchRequestedBy.includes(socket.id)) {
+              room.dotsRematchRequestedBy.push(socket.id);
+            }
+            if (room.dotsRematchRequestedBy.length < 2) {
+              sendRoomUpdate(roomId, room);
+              return;
+            }
+            room.dotsRematchRequestedBy = [];
             room.dotsLevel = 1;
             room.dotsMatchWins = {};
           } else {
@@ -15508,6 +15505,20 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
             (p) => p.serial === actualMySerial,
           );
           if (myQIndex !== -1) matchmakingQueue.splice(myQIndex, 1);
+
+          // PREVENT DUPLICATE FRIEND ROOMS
+          const existingFriendRoom = Array.from(rooms.values()).find(r => 
+             r.matchType === "friend" && r.gameState !== "finished" &&
+             r.players.some((p: any) => p.serial === actualMySerial) && 
+             r.players.some((p: any) => p.serial === targetSerial)
+          );
+          
+          if (existingFriendRoom) {
+             io.to(targetSocketId).emit("friend_challenge_accepted", { roomId: existingFriendRoom.id });
+             socket.emit("friend_challenge_accepted", { roomId: existingFriendRoom.id });
+             if (callback) callback({ success: true, roomId: existingFriendRoom.id });
+             return;
+          }
 
           const roomId = `friend_room_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
           io.to(targetSocketId).emit("friend_challenge_accepted", { roomId });
