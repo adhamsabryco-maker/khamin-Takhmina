@@ -15,6 +15,7 @@ import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { motion, AnimatePresence, animate } from "motion/react";
 import {
   Upload,
+  WifiOff,
   Trash2,
   Mail,
   User,
@@ -1204,9 +1205,33 @@ export default function App() {
   }, [customConfig.version]);
 
   const [socket, setSocket] = useState<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [showNetworkErrorModal, setShowNetworkErrorModal] = useState(false);
+
+  useEffect(() => {
+    let timeoutId: any = null;
+    const isCurrentlyDisconnected = !isConnected || isConnecting || !!connectionError;
+
+    if (isCurrentlyDisconnected) {
+      // If disconnected, wait 3 seconds before showing the modal to prevent flickering
+      timeoutId = setTimeout(() => {
+        setShowNetworkErrorModal(true);
+      }, 3000);
+    } else {
+      // If connected, hide the modal immediately
+      setShowNetworkErrorModal(false);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isConnected, isConnecting, connectionError]);
+
   const [reconnectWaitingMessage, setReconnectWaitingMessage] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState(
     () => localStorage.getItem("khamin_player_name") || "",
@@ -6060,6 +6085,20 @@ export default function App() {
   };
 
   const connectSocket = useCallback(() => {
+    if (socketRef.current) {
+      try {
+        console.log("Disconnecting existing socket to prevent duplicates...");
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+      } catch (e) {
+        console.error("Error disconnecting existing socket:", e);
+      }
+    }
+
+    setIsConnecting(true);
+    setIsConnected(false);
+    setConnectionError(null);
+
     console.log("Initializing socket connection to:", window.location.origin);
     const newSocket = io(window.location.origin, {
       transports: ["websocket", "polling"],
@@ -6068,6 +6107,7 @@ export default function App() {
       timeout: 20000,
     });
 
+    socketRef.current = newSocket;
     setSocket(newSocket);
 
     newSocket.on("config_updated", () => {
@@ -6207,6 +6247,7 @@ export default function App() {
     });
 
     newSocket.on("connect", () => {
+      if (socketRef.current !== newSocket) return;
       console.log("Socket connected successfully! ID:", newSocket.id);
       setIsConnected(true);
       setIsConnecting(false);
@@ -6630,6 +6671,7 @@ export default function App() {
     });
 
     newSocket.on("connect_error", (err) => {
+      if (socketRef.current !== newSocket) return;
       console.error("Socket connection error:", err);
       setIsConnected(false);
       setIsConnecting(false);
@@ -6639,11 +6681,13 @@ export default function App() {
     });
 
     newSocket.on("disconnect", (reason) => {
+      if (socketRef.current !== newSocket) return;
       console.log("Socket disconnected:", reason);
       setIsConnected(false);
     });
 
     newSocket.on("disconnected_error", (msg: string) => {
+      if (socketRef.current !== newSocket) return;
       setError(msg);
       setIsConnected(false);
     });
@@ -7909,6 +7953,8 @@ export default function App() {
     const newSocket = connectSocket();
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const activeSocket = socketRef.current;
+      if (!activeSocket) return;
       if (isIntentionalLeaveRef.current) return;
       if (
         roomRef.current &&
@@ -7917,10 +7963,10 @@ export default function App() {
       ) {
         e.preventDefault();
         e.returnValue = ""; // Required for Chrome
-        newSocket.emit("intentional_leave", { roomId: roomRef.current.id });
+        activeSocket.emit("intentional_leave", { roomId: roomRef.current.id });
 
         const me = roomRef.current?.players.find(
-          (p: any) => p.id === newSocket.id,
+          (p: any) => p.id === activeSocket.id,
         );
         if (me?.useToken) {
           return "تحذير: إذا انسحبت الآن، ستخسر التخمينة المستخدمة! وتعتبر خاسر. هل تريد حقاً مغادرة اللعبة؟";
@@ -7933,7 +7979,7 @@ export default function App() {
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      newSocket.disconnect();
+      socketRef.current?.disconnect();
     };
   }, [isAppLoading, connectSocket]);
 
@@ -25522,7 +25568,7 @@ export default function App() {
                 {room.gameState === "dots_finished" && room.dotsLevel === 3 ? (
                   <div className="w-full py-1 flex flex-col items-center justify-center animate-fade-in text-center space-y-6">
                     <div className="w-full bg-white rounded-2xl p-2 shadow-sm border-2 border-purple-100 flex flex-col items-center gap-2">
-                      <div className="flex items-center justify-center gap-2 text-3xl font-black text-purple-700">
+                      <div className="flex items-center justify-center gap-2 text-xl font-black text-purple-700">
                         🏆 بطل تخمينة نقطة وخط 🏆
                       </div>
                       
@@ -25729,7 +25775,7 @@ export default function App() {
                                             key={`h-${r}-${c}`} 
                                             onClick={() => {
                                                if (myTurn && !owner) {
-                                                 playSound("click");
+                                                 playSound("handXFill");
                                                  // Optimistic update for 0ms visual feedback
                                                  setRoom(prev => {
                                                    if (!prev) return prev;
@@ -25768,7 +25814,7 @@ export default function App() {
                                             key={`v-${r}-${c}`}
                                             onClick={() => {
                                                if (myTurn && !owner) {
-                                                 playSound("click");
+                                                 playSound("handXFill");
                                                  // Optimistic update for 0ms visual feedback
                                                  setRoom(prev => {
                                                    if (!prev) return prev;
@@ -28621,36 +28667,44 @@ export default function App() {
 
         {/* Connection Status Indicator */}
         <AnimatePresence>
-          {(!isConnected || isConnecting || connectionError) && (
+          {showNetworkErrorModal && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="fixed bottom-4 left-4 z-[6000] flex items-center gap-3 bg-white/90 backdrop-blur-md p-3 rounded-2xl border-2 border-orange-100 shadow-xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
             >
-              {isConnecting ? (
-                <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-              ) : isConnected ? (
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              ) : (
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              )}
-              <span className="text-sm font-black text-main">
-                {isConnecting
-                  ? "جاري الاتصال..."
-                  : isConnected
-                    ? "متصل"
-                    : "غير متصل"}
-              </span>
-              {!isConnected && !isConnecting && (
-                <button
-                  onClick={() => connectSocket()}
-                  className="bg-orange-500 text-white text-xs font-black px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-1"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  إعادة المحاولة
-                </button>
-              )}
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl flex flex-col items-center text-center border-4 border-orange-200"
+              >
+                {isConnecting ? (
+                  <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                ) : (
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-500">
+                    <WifiOff size={32} />
+                  </div>
+                )}
+                <h3 className="text-xl font-black text-gray-800 mb-2">
+                  {isConnecting ? "جاري الاتصال..." : "انقطع الاتصال بالإنترنت!"}
+                </h3>
+                <p className="text-gray-500 text-sm font-bold mb-6 leading-relaxed">
+                  {isConnecting 
+                    ? "يرجى الانتظار، نحاول إعادة الاتصال بالخادم..." 
+                    : "يبدو أن هناك مشكلة في اتصالك بالإنترنت. يرجى التحقق من الشبكة الخاصة بك."}
+                </p>
+                {!isConnected && !isConnecting && (
+                  <button
+                    onClick={() => connectSocket()}
+                    className="w-full bg-orange-500 text-white text-lg font-black px-6 py-4 rounded-2xl hover:bg-orange-600 transition-colors flex items-center justify-center gap-2 shadow-[0_4px_0_0_#c2410c] active:shadow-transparent transform active:translate-y-1"
+                  >
+                    <RefreshCw className="w-5 h-5" />
+                    إعادة المحاولة الآن
+                  </button>
+                )}
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
