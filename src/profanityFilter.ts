@@ -77,7 +77,18 @@ function filterEmojis(text: string): string {
 
 export function filterProfanity(text: string): string {
   if (typeof text !== 'string') return '';
-  let filtered = englishFilter.clean(text);
+  let filtered = text;
+  
+  // Only use englishFilter if there are actual English/Latin alphabetical characters
+  // because bad-words clean() throws TypeError on strings with no word boundaries (like pure Arabic)
+  if (/[a-zA-Z]/.test(text)) {
+    try {
+      filtered = englishFilter.clean(text);
+    } catch (e) {
+      console.error("Error in englishFilter.clean:", e);
+    }
+  }
+
   filtered = filterList(filtered, profanityWords);
   filtered = filterPhoneNumbers(filtered);
   filtered = filterEmojis(filtered);
