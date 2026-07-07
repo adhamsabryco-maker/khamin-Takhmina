@@ -24125,21 +24125,21 @@ export default function App() {
     if (room.handPhase === "picking" || (isSearcher && room.handPhase === "searching")) {
       const isWaitingSearcher = room.handPhase === "picking" && isSearcher;
       return (
-        <div className="w-full flex flex-col hand-bg items-center justify-center p-2">
-          <h2 className="text-sm md:text-base font-black mb-2 text-pink-600 border-2 border-pink-200 bg-pink-50 px-4 py-2 rounded-xl shadow-sm text-center">
+        <div className="w-full flex flex-col hand-bg items-center justify-center p-2 pt-0.5">
+          <h2 className="text-sm md:text-base font-black mb-1 text-pink-600 border-2 border-pink-200 bg-pink-50 px-4 py-0.5 rounded-xl shadow-sm text-center">
             {room.handPhase === "picking" 
               ? (isPicker ? `اختار رقم للمنافس يبحث عنه 🧐 (${room.timer || 0}ث)` : `انتظر قليلاً! المنافس يختار رقم... ⏳ (${room.timer || 0}ث)`) 
               : "ابحث عن الرقم واضغط على الجرس! 🔔"}
           </h2>
+          <div 
+            className="relative w-[85vw] max-w-[360px] mx-auto z-10"
+            style={{ aspectRatio: "229.4/317.85" }}
+          >
           {room.handPhase === "searching" && (
-            <div className="text-2xl md:text-2xl font-black text-red-500 mb-2 animate-pulse drop-shadow-md">
+            <div className="absolute text-xl font-black text-red-500 right-3 animate-pulse">
               الرقم: {room.handTargetNumber}
             </div>
           )}
-          <div 
-            className="relative w-[85vw] max-w-[360px] mx-auto my-2 z-10"
-            style={{ aspectRatio: "229.4/317.85" }}
-          >
             {/* Custom High-Quality Hand Silhouette SVG Path Outline from public/hand.svg */}
             <svg 
               viewBox="0 0 229.4 317.85" 
@@ -24226,7 +24226,7 @@ export default function App() {
           {isSearcher && room.handPhase === "searching" && (
              <button
                onClick={() => socket?.emit("hand_ring_bell", { roomId: room.id })}
-               className={`mt-4 w-20 h-20 md:w-24 md:h-24 rounded-full border-[6px] shadow-[0_8px_0_0_#991b1b] active:shadow-none active:translate-y-[8px] flex items-center justify-center text-white transition-all ${shakeBell ? "animate-shake" : ""} ${room.handSearcherSelected ? (shakeBell ? 'bg-red-500 border-red-700' : 'bg-red-500 border-red-700 animate-bounce') : 'bg-gray-400 border-gray-600'}`}
+               className={`w-20 h-20 md:w-24 md:h-24 rounded-full border-[6px] shadow-[0_8px_0_0_#991b1b] active:shadow-none active:translate-y-[8px] flex items-center justify-center text-white transition-all ${shakeBell ? "animate-shake" : ""} ${room.handSearcherSelected ? (shakeBell ? 'bg-red-500 border-red-700' : 'bg-red-500 border-red-700 animate-bounce') : 'bg-gray-400 border-gray-600'}`}
              >
                <BellRing className="w-8 h-8 md:w-10 md:h-10" />
              </button>
@@ -25576,7 +25576,7 @@ export default function App() {
                         {/* Player 1 Stats */}
                         <div className="flex flex-col items-center gap-2 p-3 bg-purple-50 rounded-xl border-2 border-purple-200 w-1/2">
                           <div className="font-black text-lg md:text-xl text-brown-dark truncate max-w-full px-2 text-center">
-                            {room.players.find((p: any) => p.id === room.dotsPlayer1)?.name.split(" ")[0]}
+                            {(room.players.find((p: any) => p.id === room.dotsPlayer1)?.name || "اللاعب 1").split(" ")[0]}
                           </div>
                           <div className="text-2xl md:text-3xl font-black text-purple-600 bg-white w-full text-center py-1 rounded-lg border-2 border-purple-200">
                             {room.dotsMatchWins?.[room.dotsPlayer1 || ""] || 0}
@@ -25588,7 +25588,7 @@ export default function App() {
                         {/* Player 2 Stats */}
                         <div className="flex flex-col items-center gap-2 p-3 bg-purple-50 rounded-xl border-2 border-purple-200 w-1/2">
                           <div className="font-black text-lg md:text-xl text-brown-dark truncate max-w-full px-2 text-center">
-                            {room.players.find((p: any) => p.id === room.dotsPlayer2)?.name.split(" ")[0]}
+                            {(room.players.find((p: any) => p.id === room.dotsPlayer2)?.name || "اللاعب 2").split(" ")[0]}
                           </div>
                           <div className="text-2xl md:text-3xl font-black text-purple-600 bg-white w-full text-center py-1 rounded-lg border-2 border-purple-200">
                             {room.dotsMatchWins?.[room.dotsPlayer2 || ""] || 0}
@@ -25625,16 +25625,17 @@ export default function App() {
                               playSound("clickOpen");
                               socket?.emit("restart_dots", { roomId: room.id });
                             }}
-                            disabled={((room.adPausedPlayersArray?.length || 0) > 0) || room.dotsRematchRequestedBy?.includes(socket?.id || "")}
+                            disabled={((room.adPausedPlayersArray?.length || 0) > 0) || (room.dotsLevel === 3 && room.dotsRematchRequestedBy?.includes(socket?.id || ""))}
                             className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2
                               ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
-                                room.dotsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
+                                room.dotsLevel === 3 && room.dotsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
                                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a] active:shadow-transparent"
-                                 : room.dotsRematchRequestedBy?.includes(socket?.id || "")
+                                 : room.dotsLevel === 3 && room.dotsRematchRequestedBy?.includes(socket?.id || "")
                                    ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a]"
                                    : "bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
                           >
                             {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
+                              : (room.dotsLevel || 1) < 3 ? `انتقل الي المستوي ${(room.dotsLevel || 1) + 1}`
                               : room.dotsRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
                               : room.dotsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
                               : "لعب مرة أخري!"}
@@ -25770,6 +25771,7 @@ export default function App() {
                                        const lineId = `${r},${c}-${r},${c+1}`;
                                        const owner = room.dotsLines?.[lineId];
                                        const isP1 = owner === room.dotsPlayer1;
+                                       const isLastMove = lineId === room.dotsLastMove;
                                        lines.push(
                                          <div 
                                             key={`h-${r}-${c}`} 
@@ -25784,13 +25786,14 @@ export default function App() {
                                                      dotsLines: {
                                                        ...prev.dotsLines,
                                                        [lineId]: socket?.id
-                                                     }
+                                                     },
+                                                     dotsLastMove: lineId
                                                    };
                                                  });
                                                  socket?.emit("submit_dots_move", { roomId: room.id, r1: r, c1: c, r2: r, c2: c+1 });
                                                }
                                             }}
-                                            className={`absolute cursor-pointer ${owner ? (isP1 ? 'bg-red-500 z-10 transition-none' : 'bg-blue-500 z-10 transition-none') : `bg-transparent z-20 ${myTurn ? `transition-colors duration-75 ${hoverColor}` : ''}`}`} 
+                                            className={`absolute cursor-pointer ${owner ? (isP1 ? `bg-red-500 z-10 ${isLastMove ? 'animate-pulse' : 'transition-none'}` : `bg-blue-500 z-10 ${isLastMove ? 'animate-pulse' : 'transition-none'}`) : `bg-transparent z-20 ${myTurn ? `transition-colors duration-75 ${hoverColor}` : ''}`}`} 
                                             style={{
                                               left: `${c * dotSpacing}%`,
                                               top: `calc(${r * dotSpacing}% - 6px)`,
@@ -25809,6 +25812,7 @@ export default function App() {
                                        const lineId = `${r},${c}-${r+1},${c}`;
                                        const owner = room.dotsLines?.[lineId];
                                        const isP1 = owner === room.dotsPlayer1;
+                                       const isLastMove = lineId === room.dotsLastMove;
                                        lines.push(
                                          <div 
                                             key={`v-${r}-${c}`}
@@ -25823,13 +25827,14 @@ export default function App() {
                                                      dotsLines: {
                                                        ...prev.dotsLines,
                                                        [lineId]: socket?.id
-                                                     }
+                                                     },
+                                                     dotsLastMove: lineId
                                                    };
                                                  });
                                                  socket?.emit("submit_dots_move", { roomId: room.id, r1: r, c1: c, r2: r+1, c2: c });
                                                }
                                             }}
-                                            className={`absolute cursor-pointer ${owner ? (isP1 ? 'bg-red-500 z-10 transition-none' : 'bg-blue-500 z-10 transition-none') : `bg-transparent z-20 ${myTurn ? `transition-colors duration-75 ${hoverColor}` : ''}`}`} 
+                                            className={`absolute cursor-pointer ${owner ? (isP1 ? `bg-red-500 z-10 ${isLastMove ? 'animate-pulse' : 'transition-none'}` : `bg-blue-500 z-10 ${isLastMove ? 'animate-pulse' : 'transition-none'}`) : `bg-transparent z-20 ${myTurn ? `transition-colors duration-75 ${hoverColor}` : ''}`}`} 
                                             style={{
                                               left: `calc(${c * dotSpacing}% - 6px)`,
                                               top: `${r * dotSpacing}%`,
@@ -25861,9 +25866,9 @@ export default function App() {
                     {room.gameState === "dots_playing" && (
                        <div className="text-center my-1 font-bold text-base md:text-lg mb-2 flex flex-col items-center gap-1">
                           {room.dotsTurn === socket?.id ? (
-                             <span className="text-purple-600 bg-purple-50 px-4 py-1 rounded-full border border-purple-200">دورك الآن للعب! ⏳ {room.dotsTurnTimer}</span>
+                             <span className="text-purple-600 bg-purple-50 px-4 py-1 rounded-full border border-purple-200">دورك الآن للعب!</span>
                           ) : (
-                             <span className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳ {room.dotsTurnTimer}</span>
+                             <span className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب...</span>
                           )}
                           <div className="flex gap-4 text-xs mt-1 justify-center">
                             <span className="text-red-500 font-black px-2 bg-red-50 rounded border border-red-200">مربعاتك: {room.dotsPlayer1 === socket?.id ? room.dotsP1Score : room.dotsP2Score} 🟥</span>
