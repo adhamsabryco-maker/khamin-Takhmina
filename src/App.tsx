@@ -89,6 +89,13 @@ import {
 import easyGuessData from "./data/easyGuess.json";
 import busCompleteData from "./data/busCompleteData.json";
 
+const limit99 = (val: number | string | undefined | null): string | number => {
+  if (val === undefined || val === null) return 0;
+  const num = typeof val === "number" ? val : parseInt(val.toString(), 10);
+  if (isNaN(num)) return val;
+  return num > 99 ? "+99" : num;
+};
+
 const SPIN_REWARDS_UI = [
   {
     id: "time_freeze",
@@ -317,7 +324,7 @@ const CategoryPageAd = () => {
   }, []);
 
   return (
-    <div className="w-full mt-4 md:mt-4 flex flex-col items-center justify-center overflow-hidden min-h-[50px] sm:min-h-[90px]">
+    <div className="w-full max-w-md mt-2 md:mt-2 flex flex-col items-center justify-center overflow-hidden min-h-[50px] sm:min-h-[90px]">
       <ins
         ref={adRef}
         className="adsbygoogle w-full"
@@ -11548,26 +11555,10 @@ export default function App() {
                   </button>
                 )}
               </h2>
-              <div className="text-white/90 bg-gray-200 p-1 text-xs font-bold flex flex-wrap items-center justify-center gap-1 mt-1 mb-1">
-                <span className="bg-black/20 px-2 py-0.5 rounded-md" dir="ltr">
+              <div className="flex justify-center items-center mt-1.5 mb-1.5">
+                <span className="text-white bg-black/25 px-3 py-1 rounded-full text-xs font-black shadow-inner" dir="ltr">
                   Lvl {data.level}
                 </span>
-                <span>•</span>
-                <span>{data.wins} فوز</span>
-                <span>•</span>
-                <span>{data.streak} 🔥</span>
-                <span>•</span>
-                <span>{data.likes || 0} ❤️</span>
-                <span>•</span>
-                <span>{data.busCompleteWins || 0} 🚌</span>
-                <span>•</span>
-                <span>{data.xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
-                <span>•</span>
-                <span>{data.handWins || 0} 🖐</span>
-                <span>•</span>
-                <span>{data.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
-                <span>•</span>
-                <span>{data.dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain items-center" /></span>
               </div>
 
               {/* Friend Status Indicator / Add Friend Button */}
@@ -11735,6 +11726,71 @@ export default function App() {
                         {data.ownedHelpers?.hint || 0}
                       </span>
                     </span>
+                  </div>
+                </div>
+
+                {/* Player Stats Block */}
+                <div className="bg-white rounded-xl p-2 mb-2 border-2 border-gray-100 shadow-sm relative">
+                  <h3 className="text-xs font-black text-brown-muted mb-1 text-center">
+                    إحصائيات اللاعب
+                  </h3>
+                  <div className="grid grid-cols-1 gap-0 text-xs font-bold text-gray-700">
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span>🏆</span>
+                        <span className="text-gray-500 font-extrabold">فوز</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.wins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span>🔥</span>
+                        <span className="text-gray-500 font-extrabold">فوز متتالي</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.streak || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span>❤️</span>
+                        <span className="text-gray-500 font-extrabold">إعجابات</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.likes || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span>🚌</span>
+                        <span className="text-gray-500 font-extrabold">تخمينة كومبليت</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.busCompleteWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span><span className="text-red-500 font-black">X</span><span className="text-green-600 font-black">O</span></span>
+                        <span className="text-gray-500 font-extrabold">تخمينة XO</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.xoWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span>🖐</span>
+                        <span className="text-gray-500 font-extrabold">تخمينة كف يد</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.handWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span className="font-black text-[9px] bg-indigo-50 px-1 rounded border border-indigo-100"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>
+                        <span className="text-gray-500 font-extrabold">تخمينة IQ</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.iqWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <img src="/dots-and-boxes-logo.png" className="w-3.5 h-3.5 object-contain inline" />
+                        <span className="text-gray-500 font-extrabold">تخمينة نقطة وخط</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.dotsWins || 0}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -21951,7 +22007,7 @@ export default function App() {
                             response: "accept",
                           });
                         }}
-                        className="flex-1 btn-game btn-success py-3 md:py-4 text-lg md:text-xl animate-pulse"
+                        className="flex-1 btn-game btn-success py-3 md:py-4 text-x1 md:text-xl animate-pulse"
                       >
                         قبول التحدي! ⚔️
                       </button>
@@ -22971,20 +23027,20 @@ export default function App() {
                           </div>
                           <div className="w-full rank-2-bar h-22 md:h-24 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-2">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
-                              Lvl {getLevel(topPlayers[1].xp || 0)}
+                              Lvl {limit99(getLevel(topPlayers[1].xp || 0))}
                             </div>
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex items-center gap-1">
                               <Trophy className="w-2 h-2" />
-                              {topPlayers[1].wins || 0} فوز
+                              {limit99(topPlayers[1].wins || 0)} فوز
                             </div>
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex flex-wrap items-center justify-center gap-1">
-                              <span>{topPlayers[1].streak || 0} 🔥</span>
-                              <span>{topPlayers[1].likes || 0} ❤️</span>
-                              <span>{topPlayers[1].busCompleteWins || 0} 🚌</span>
-                              <span>{topPlayers[1].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
-                              <span>{topPlayers[1].handWins || 0} 🖐</span>
-                              <span>{topPlayers[1].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
-                              <span>{topPlayers[1].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[1].streak || 0)} 🔥</span>
+                              <span>{limit99(topPlayers[1].likes || 0)} ❤️</span>
+                              <span>{limit99(topPlayers[1].busCompleteWins || 0)} 🚌</span>
+                              <span>{limit99(topPlayers[1].xoWins || 0)} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
+                              <span>{limit99(topPlayers[1].handWins || 0)} 🖐</span>
+                              <span>{limit99(topPlayers[1].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
+                              <span>{limit99(topPlayers[1].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -23027,20 +23083,20 @@ export default function App() {
                           </div>
                           <div className="w-full rank-1-bar h-24 md:h-32 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1.5">
                             <div className="text-[9px] md:text-xs font-black text-black/80 px-1 py-0.5 pt-0.5 ">
-                              Lvl {getLevel(topPlayers[0].xp || 0)}
+                              Lvl {limit99(getLevel(topPlayers[0].xp || 0))}
                             </div>
                             <div className="text-[9px] md:text-xs font-black text-black/80 px-1 py-0.5 pt-0.5 flex items-center gap-1">
                               <Trophy className="w-3 h-3" />
-                              {topPlayers[0].wins || 0} فوز
+                              {limit99(topPlayers[0].wins || 0)} فوز
                             </div>
                             <div className="text-[7px] md:text-[9px] font-black text-black/80 px-1 md:px-2 py-1 flex flex-wrap items-center justify-center gap-1">
-                              <span>{topPlayers[0].streak || 0} 🔥</span>
-                              <span>{topPlayers[0].likes || 0} ❤️</span>
-                              <span>{topPlayers[0].busCompleteWins || 0} 🚌</span>
-                              <span>{topPlayers[0].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
-                              <span>{topPlayers[0].handWins || 0} 🖐</span>
-                              <span>{topPlayers[0].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
-                              <span>{topPlayers[0].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[0].streak || 0)} 🔥</span>
+                              <span>{limit99(topPlayers[0].likes || 0)} ❤️</span>
+                              <span>{limit99(topPlayers[0].busCompleteWins || 0)} 🚌</span>
+                              <span>{limit99(topPlayers[0].xoWins || 0)} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
+                              <span>{limit99(topPlayers[0].handWins || 0)} 🖐</span>
+                              <span>{limit99(topPlayers[0].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
+                              <span>{limit99(topPlayers[0].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -23077,20 +23133,20 @@ export default function App() {
                           </div>
                           <div className="w-full rank-3-bar h-20 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.2 md:gap-0.2">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.2 pt-0.2">
-                              Lvl {getLevel(topPlayers[2].xp || 0)}
+                              Lvl {limit99(getLevel(topPlayers[2].xp || 0))}
                             </div>
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.2 pt-0.2 flex items-center gap-1">
                               <Trophy className="w-2 h-2" />
-                              {topPlayers[2].wins || 0} فوز
+                              {limit99(topPlayers[2].wins || 0)} فوز
                             </div>
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-1 md:px-2 py-0.2 pt-0.2 flex flex-wrap items-center justify-center gap-1">
-                              <span>{topPlayers[2].streak || 0} 🔥</span>
-                              <span>{topPlayers[2].likes || 0} ❤️</span>
-                              <span>{topPlayers[2].busCompleteWins || 0} 🚌</span>
-                              <span>{topPlayers[2].xoWins || 0} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
-                              <span>{topPlayers[2].handWins || 0} 🖐</span>
-                              <span>{topPlayers[2].iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
-                              <span>{topPlayers[2].dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[2].streak || 0)} 🔥</span>
+                              <span>{limit99(topPlayers[2].likes || 0)} ❤️</span>
+                              <span>{limit99(topPlayers[2].busCompleteWins || 0)} 🚌</span>
+                              <span>{limit99(topPlayers[2].xoWins || 0)} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
+                              <span>{limit99(topPlayers[2].handWins || 0)} 🖐</span>
+                              <span>{limit99(topPlayers[2].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
+                              <span>{limit99(topPlayers[2].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -23154,21 +23210,21 @@ export default function App() {
                         highestLevelValue,
                         "الأعلي مستوى",
                         "⭐",
-                        (val, p) => getLevel(p.xp),
+                        (val, p) => limit99(getLevel(p.xp)),
                       );
                       addSpecialPlayer(
                         highestStreakPlayers,
                         highestStreakValue,
                         "فوز متتالي",
                         "🔥",
-                        (val, p) => p.streak || val,
+                        (val, p) => limit99(p.streak || val),
                       );
                       addSpecialPlayer(
                         highestLikesPlayers,
                         highestLikesValue,
                         "الأكثر قلوب",
                         "❤️",
-                        (val, p) => p.likes || val,
+                        (val, p) => limit99(p.likes || val),
                       );
 
                       const specialList = Array.from(specialPlayers.values());
@@ -23677,23 +23733,23 @@ export default function App() {
                               أنت ({playerName})
                             </div>
                             <div className="text-[10px] md:text-xs text-brown-muted font-bold flex flex-wrap items-center justify-center gap-1 md:gap-1.5">
-                              <span dir="ltr">Lvl {getLevel(xp)}</span>
+                              <span dir="ltr">Lvl {limit99(getLevel(xp))}</span>
                               <span>•</span>
-                              <span>{wins} 🏆</span>
+                              <span>{limit99(wins)} 🏆</span>
                               <span>•</span>
-                              <span>{streak} 🔥</span>
+                              <span>{limit99(streak)} 🔥</span>
                               <span>•</span>
-                              <span>{likes} ❤️</span>
+                              <span>{limit99(likes)} ❤️</span>
                               <span>•</span>
-                              <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.busCompleteWins || 0} 🚌</span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.busCompleteWins || 0)} 🚌</span>
                               <span>•</span>
-                              <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.xoWins || 0} <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span></span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.xoWins || 0)} <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span></span>
                               <span>•</span>
-                              <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.handWins || 0} 🖐</span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.handWins || 0)} 🖐</span>
                               <span>•</span>
-                              <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                               <span>•</span>
-                              <span>{sortedTopPlayers.find(p => p.serial === playerSerial)?.dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
                             </div>
                           </div>
                         </div>
@@ -23784,60 +23840,60 @@ export default function App() {
                                   className="bg-gray-100 md:px-1.5 rounded text-brown-muted"
                                   dir="ltr"
                                 >
-                                  Lvl {getLevel(player.xp || 0)}
+                                  Lvl {limit99(getLevel(player.xp || 0))}
                                 </span>
                                 <span className="text-brown-light">•</span>
                                 <span className="text-green-600">
-                                  {player.wins} فوز
+                                  {limit99(player.wins || 0)} فوز
                                 </span>
                                 <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-gray-100 md:px-1.5 rounded text-brown-muted"
                                   dir="rtl"
                                 >
-                                  {player.streak || 0} 🔥
+                                  {limit99(player.streak || 0)} 🔥
                                 </span>
                                 <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-red-50 text-red-600 md:px-1.5 rounded"
                                   dir="rtl"
                                 >
-                                  {player.likes || 0} ❤️
+                                  {limit99(player.likes || 0)} ❤️
                                 </span>
                                 <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-blue-50 text-blue-600 md:px-1.5 rounded"
                                   dir="rtl"
                                 >
-                                  {player.busCompleteWins || 0} 🚌
+                                  {limit99(player.busCompleteWins || 0)} 🚌
                                 </span>
                                 <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded"
                                   dir="rtl"
                                 >
-                                  {player.xoWins || 0} <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span>
+                                  {limit99(player.xoWins || 0)} <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                                 </span>
                                 <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded"
                                   dir="rtl"
                                 >
-                                  {player.handWins || 0} 🖐
+                                  {limit99(player.handWins || 0)} 🖐
                                 </span>
                                 <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded"
                                   dir="rtl"
                                 >
-                                  {player.iqWins || 0} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>
+                                  {limit99(player.iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>
                                 </span>
                                 <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-purple-50 text-purple-600 md:px-1.5 rounded flex items-center gap-0.5"
                                   dir="rtl"
                                 >
-                                  {player.dotsWins || 0} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 object-contain" />
+                                  {limit99(player.dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 object-contain" />
                                 </span>
                               </div>
                             </div>
