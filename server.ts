@@ -2103,6 +2103,9 @@ async function startServer() {
         dotsWins?: number;
         dotsRewardLevel?: number;
         dotsMatchPoints?: number;
+        speedCupsWins?: number;
+        speedCupsRewardLevel?: number;
+        speedCupsMatchPoints?: number;
       }
     >();
 
@@ -2356,6 +2359,15 @@ async function startServer() {
     } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN dotsMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN speedCupsWins INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN speedCupsRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN speedCupsMatchPoints INTEGER DEFAULT 0`);
     } catch (e) {}
 
     try {
@@ -2903,8 +2915,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3194,6 +3206,9 @@ async function startServer() {
           dotsWins: player.dotsWins || 0,
           dotsRewardLevel: player.dotsRewardLevel || 1,
           dotsMatchPoints: player.dotsMatchPoints || 0,
+          speedCupsWins: player.speedCupsWins || 0,
+          speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
+          speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3279,6 +3294,9 @@ async function startServer() {
           dotsWins: player.dotsWins || 0,
           dotsRewardLevel: player.dotsRewardLevel || 1,
           dotsMatchPoints: player.dotsMatchPoints || 0,
+          speedCupsWins: player.speedCupsWins || 0,
+          speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
+          speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
         });
       }
     });
@@ -3387,6 +3405,9 @@ async function startServer() {
             dotsWins: row.dotsWins || 0,
             dotsRewardLevel: row.dotsRewardLevel || 1,
             dotsMatchPoints: row.dotsMatchPoints || 0,
+            speedCupsWins: row.speedCupsWins || 0,
+            speedCupsRewardLevel: row.speedCupsRewardLevel || 1,
+            speedCupsMatchPoints: row.speedCupsMatchPoints || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -3797,6 +3818,7 @@ async function startServer() {
             handWins: p.handWins || 0,
             iqWins: p.iqWins || 0,
             dotsWins: p.dotsWins || 0,
+            speedCupsWins: p.speedCupsWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -5824,6 +5846,14 @@ async function startServer() {
             if (bot) {
               handleBotEvent(roomId, "room_update", room);
             }
+          } else if (mode === "speed_cups") {
+            room.speedCupsLevel = 1;
+            room.speedCupsMatchWins = {};
+            initializeSpeedCupsGame(room);
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           } else if (mode === "xo") {
             room.gameState = "xo_playing";
             room.category = "xo";
@@ -6526,6 +6556,149 @@ async function startServer() {
         // Handle XO playing action
         if (room.gameState === "xo_playing" && room.xoTurn === botPlayer.id) {
           executeBotXOMove(roomId);
+        }
+
+        // Handle Speed Cups waiting (auto-start)
+        if (room.gameState === "speed_cups_waiting" && room.category === "speed_cups") {
+          const startKey = roomId + "_speed_cups_bot_start";
+          if (!botTimeouts.has(startKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(startKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "speed_cups_waiting") return;
+              r.speedCupsStartRequestedBy = r.speedCupsStartRequestedBy || [];
+              if (!r.speedCupsStartRequestedBy.includes(botPlayer.id)) {
+                r.speedCupsStartRequestedBy.push(botPlayer.id);
+                if (r.speedCupsStartRequestedBy.length === r.players.length) {
+                  startSpeedCupsCountdown(roomId);
+                } else {
+                  sendRoomUpdate(roomId, r);
+                }
+              }
+            }, 1000 + Math.random() * 1500);
+            botTimeouts.set(startKey, timeout);
+          }
+        }
+
+        // Handle Speed Cups finished (auto-rematch)
+        if (room.gameState === "speed_cups_finished" && room.category === "speed_cups") {
+          const rematchKey = roomId + "_speed_cups_bot_rematch";
+          if (!botTimeouts.has(rematchKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(rematchKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "speed_cups_finished") return;
+              r.speedCupsRematchRequestedBy = r.speedCupsRematchRequestedBy || [];
+              if (!r.speedCupsRematchRequestedBy.includes(botPlayer.id)) {
+                r.speedCupsRematchRequestedBy.push(botPlayer.id);
+                if (r.speedCupsRematchRequestedBy.length === r.players.length) {
+                  startSpeedCupsMatch(roomId);
+                } else {
+                  sendRoomUpdate(roomId, r);
+                }
+              }
+            }, 2500 + Math.random() * 2000); // 2.5 to 4.5 seconds delay before accepting rematch
+            botTimeouts.set(rematchKey, timeout);
+          }
+        }
+
+        // Handle Speed Cups playing action
+        if (room.gameState === "speed_cups_playing") {
+          const isBotP1 = room.players[0]?.id === botPlayer.id;
+          const isBotP2 = room.players.length > 1 && room.players[1]?.id === botPlayer.id;
+          const botDone = isBotP1 ? room.speedCupsP1Done : (isBotP2 ? room.speedCupsP2Done : false);
+
+          if (!botDone) {
+            const botKey = roomId + "_speed_cups_bot_timeout";
+            if (!botTimeouts.has(botKey)) {
+              // Decide reaction delay
+              // Correctness rate: 40% correct, 60% wrong.
+              const isCorrect = Math.random() < 0.40;
+              
+              const currentCard = room.speedCupsCards?.[room.speedCupsCurrentCardIndex];
+              if (currentCard) {
+                let targetStack = [...currentCard.color_order];
+                if (!isCorrect) {
+                  // Make a mistake!
+                  if (Math.random() < 0.7) {
+                    const idx1 = Math.floor(Math.random() * 5);
+                    let idx2 = Math.floor(Math.random() * 5);
+                    while (idx2 === idx1) {
+                      idx2 = Math.floor(Math.random() * 5);
+                    }
+                    const temp = targetStack[idx1];
+                    targetStack[idx1] = targetStack[idx2];
+                    targetStack[idx2] = temp;
+                  } else {
+                    let attempts = 0;
+                    while (attempts < 10) {
+                      targetStack.sort(() => Math.random() - 0.5);
+                      if (JSON.stringify(targetStack) !== JSON.stringify(currentCard.color_order)) {
+                        break;
+                      }
+                      attempts++;
+                    }
+                  }
+                }
+
+                // Function to place the next cup
+                const placeNextCup = (cupIndex: number) => {
+                  const r = rooms.get(roomId);
+                  if (!r || r.gameState !== "speed_cups_playing") return;
+                  if (r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0) {
+                    const timeout = setTimeout(() => placeNextCup(cupIndex), 500);
+                    botTimeouts.set(botKey, timeout);
+                    return;
+                  }
+
+                  if (cupIndex < 5) {
+                    if (isBotP1) {
+                      r.speedCupsP1Stack = r.speedCupsP1Stack || [];
+                      r.speedCupsP1Stack = [...r.speedCupsP1Stack, targetStack[cupIndex]];
+                    } else if (isBotP2) {
+                      r.speedCupsP2Stack = r.speedCupsP2Stack || [];
+                      r.speedCupsP2Stack = [...r.speedCupsP2Stack, targetStack[cupIndex]];
+                    }
+                    sendRoomUpdate(roomId, r);
+
+                    let nextDelay = 250 + Math.random() * 350; // 0.25 to 0.6 seconds base speed
+                    // Human-like variation: occasionally hesitate or slow down, especially in the middle
+                    if (Math.random() > 0.7 || cupIndex === 2 || cupIndex === 3) {
+                      nextDelay += 300 + Math.random() * 600;
+                    }
+                    const timeout = setTimeout(() => placeNextCup(cupIndex + 1), nextDelay);
+                    botTimeouts.set(botKey, timeout);
+                  } else {
+                    // Ring the bell!
+                    const ringDelay = 200 + Math.random() * 400;
+                    const timeout = setTimeout(() => {
+                      botTimeouts.delete(botKey);
+                      const currentR = rooms.get(roomId);
+                      if (!currentR || currentR.gameState !== "speed_cups_playing") return;
+                      if (currentR.adPausedPlayersArray && currentR.adPausedPlayersArray.length > 0) {
+                        const retry = setTimeout(() => placeNextCup(5), 500);
+                        botTimeouts.set(botKey, retry);
+                        return;
+                      }
+
+                      if (isBotP1) {
+                        currentR.speedCupsP1Done = true;
+                        evaluateSpeedCupsRound(roomId, "p1");
+                      } else if (isBotP2) {
+                        currentR.speedCupsP2Done = true;
+                        evaluateSpeedCupsRound(roomId, "p2");
+                      }
+                    }, ringDelay);
+                    botTimeouts.set(botKey, timeout);
+                  }
+                };
+
+                const initialDelay = 600 + Math.random() * 600; // 0.6 to 1.2 seconds before starting
+                const timeout = setTimeout(() => placeNextCup(0), initialDelay);
+                botTimeouts.set(botKey, timeout);
+              }
+            }
+          }
         }
 
         // Handle IQ playing action
@@ -8150,6 +8323,203 @@ async function startServer() {
       intervals.set(room.id, interval);
       
       sendRoomUpdate(room.id, room);
+    }
+
+    function initializeSpeedCupsGame(room: any) {
+      room.gameState = "speed_cups_waiting";
+      room.category = "speed_cups";
+      room.speedCupsLevel = room.speedCupsLevel || 1;
+      room.speedCupsMatchWins = room.speedCupsMatchWins || {};
+      room.speedCupsRematchRequestedBy = [];
+      room.players.forEach((p: any) => {
+        room.speedCupsMatchWins[p.id] = room.speedCupsMatchWins[p.id] || 0;
+      });
+      
+      try {
+        const cardsData = JSON.parse(fs.readFileSync(path.join(process.cwd(), "src/data/speed-cups-cards.json"), "utf8"));
+        let cards = [...cardsData.cards];
+        cards = cards.sort(() => Math.random() - 0.5);
+        room.speedCupsCards = cards;
+        room.speedCupsCurrentCardIndex = 0;
+        room.speedCupsP1Stack = [];
+        room.speedCupsP2Stack = [];
+        room.speedCupsP1Done = false;
+        room.speedCupsP2Done = false;
+      } catch (err) {
+        console.error("Error loading speed cups cards:", err);
+      }
+      
+      sendRoomUpdate(room.id, room);
+    }
+
+    function evaluateSpeedCupsRound(roomId: string, whoRangFirst?: "p1" | "p2" | null) {
+      const room = rooms.get(roomId);
+      if (!room || room.gameState !== "speed_cups_playing") return;
+      
+      // Stop/clear bot timeouts immediately
+      const botKey = roomId + "_speed_cups_bot_timeout";
+      if (botTimeouts.has(botKey)) {
+        clearTimeout(botTimeouts.get(botKey));
+        botTimeouts.delete(botKey);
+      }
+
+      room.gameState = "speed_cups_evaluating";
+      const currentCard = room.speedCupsCards?.[room.speedCupsCurrentCardIndex];
+      if (currentCard) {
+        const correctOrder = currentCard.color_order;
+        
+        const p1Correct = JSON.stringify(room.speedCupsP1Stack) === JSON.stringify(correctOrder);
+        const p2Correct = room.players.length > 1 ? JSON.stringify(room.speedCupsP2Stack) === JSON.stringify(correctOrder) : false;
+        
+        if (whoRangFirst === "p1") {
+          if (p1Correct) {
+            room.speedCupsMatchWins[room.players[0].id] = (room.speedCupsMatchWins[room.players[0].id] || 0) + 1;
+          } else if (p2Correct) {
+            room.speedCupsMatchWins[room.players[1].id] = (room.speedCupsMatchWins[room.players[1].id] || 0) + 1;
+          }
+        } else if (whoRangFirst === "p2") {
+          if (p2Correct) {
+            room.speedCupsMatchWins[room.players[1].id] = (room.speedCupsMatchWins[room.players[1].id] || 0) + 1;
+          } else if (p1Correct) {
+            room.speedCupsMatchWins[room.players[0].id] = (room.speedCupsMatchWins[room.players[0].id] || 0) + 1;
+          }
+        } else {
+          // Timer ran out
+          if (p1Correct && p2Correct) {
+            room.speedCupsMatchWins[room.players[0].id] = (room.speedCupsMatchWins[room.players[0].id] || 0) + 1;
+            if (room.players.length > 1) {
+              room.speedCupsMatchWins[room.players[1].id] = (room.speedCupsMatchWins[room.players[1].id] || 0) + 1;
+            }
+          } else if (p1Correct) {
+            room.speedCupsMatchWins[room.players[0].id] = (room.speedCupsMatchWins[room.players[0].id] || 0) + 1;
+          } else if (p2Correct) {
+            room.speedCupsMatchWins[room.players[1].id] = (room.speedCupsMatchWins[room.players[1].id] || 0) + 1;
+          }
+        }
+      }
+      
+      sendRoomUpdate(roomId, room);
+      
+      setTimeout(() => {
+        const r = rooms.get(roomId);
+        if (!r) return;
+        
+        r.speedCupsCurrentCardIndex = (r.speedCupsCurrentCardIndex || 0) + 1;
+        if (r.speedCupsCurrentCardIndex >= (r.speedCupsCards?.length || 0)) {
+          r.gameState = "speed_cups_finished";
+          // determine winner
+          const p1Wins = r.speedCupsMatchWins[r.players[0].id] || 0;
+          const p2Wins = r.players.length > 1 ? r.speedCupsMatchWins[r.players[1].id] || 0 : 0;
+          if (p1Wins > p2Wins) {
+            r.speedCupsWinner = r.players[0].id;
+          } else if (p2Wins > p1Wins && r.players.length > 1) {
+            r.speedCupsWinner = r.players[1].id;
+          } else {
+            r.speedCupsWinner = "draw";
+          }
+          
+          if (r.speedCupsWinner && r.speedCupsWinner !== "draw") {
+            const winnerPlayer = r.players.find((p: any) => p.id === r.speedCupsWinner);
+            if (winnerPlayer) {
+              winnerPlayer.speedCupsWins = (winnerPlayer.speedCupsWins || 0) + 1;
+              const dbP = allPlayers.get(winnerPlayer.serial);
+              if (dbP) {
+                dbP.speedCupsWins = winnerPlayer.speedCupsWins;
+                dbP.speedCupsMatchPoints = (dbP.speedCupsMatchPoints || 0) + 10;
+                savePlayerData(winnerPlayer.serial);
+                io.to(winnerPlayer.id).emit("player_data_update", dbP);
+              }
+            }
+          }
+          
+          // MatchPoints logic
+          const p1ServerPlayer = allPlayers.get(r.players[0].serial);
+          const p2ServerPlayer = r.players.length > 1 ? allPlayers.get(r.players[1].serial) : null;
+          
+          if (p1ServerPlayer) {
+            p1ServerPlayer.speedCupsMatchPoints = (p1ServerPlayer.speedCupsMatchPoints || 0) + 5;
+            if (p1Wins > p2Wins) p1ServerPlayer.speedCupsMatchPoints += 15;
+            else if (p1Wins === p2Wins) p1ServerPlayer.speedCupsMatchPoints += 5;
+            savePlayerData(r.players[0].serial);
+            io.to(r.players[0].id).emit("player_data_update", p1ServerPlayer);
+            r.players[0].speedCupsMatchPoints = p1ServerPlayer.speedCupsMatchPoints;
+          }
+          if (p2ServerPlayer) {
+            p2ServerPlayer.speedCupsMatchPoints = (p2ServerPlayer.speedCupsMatchPoints || 0) + 5;
+            if (p2Wins > p1Wins) p2ServerPlayer.speedCupsMatchPoints += 15;
+            else if (p1Wins === p2Wins) p2ServerPlayer.speedCupsMatchPoints += 5;
+            savePlayerData(r.players[1].serial);
+            io.to(r.players[1].id).emit("player_data_update", p2ServerPlayer);
+            r.players[1].speedCupsMatchPoints = p2ServerPlayer.speedCupsMatchPoints;
+          }
+          
+        } else {
+          r.speedCupsP1Stack = [];
+          r.speedCupsP2Stack = [];
+          r.speedCupsP1Done = false;
+          r.speedCupsP2Done = false;
+          startSpeedCupsCountdown(roomId);
+        }
+        sendRoomUpdate(roomId, r);
+      }, 3000);
+    }
+
+    function startSpeedCupsCountdown(roomId: string) {
+      const room = rooms.get(roomId);
+      if (!room || room.category !== "speed_cups") return;
+
+      room.gameState = "speed_cups_countdown";
+      room.speedCupsTimer = 3;
+      sendRoomUpdate(roomId, room);
+
+      if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+      let countdown = 3;
+      const interval = setInterval(() => {
+        const r = rooms.get(roomId);
+        if (!r || r.gameState !== "speed_cups_countdown") {
+          clearInterval(interval);
+          return;
+        }
+        if (r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0) return;
+        countdown--;
+        r.speedCupsTimer = countdown;
+        if (countdown <= 0) {
+          clearInterval(interval);
+          r.gameState = "speed_cups_playing";
+          r.speedCupsTimer = 10;
+          sendRoomUpdate(roomId, r);
+          
+          if (r.players.some((p: any) => p.isBot)) {
+            handleBotEvent(roomId, "room_update", r);
+          }
+
+          // start 10s timer
+          let roundTimer = 10;
+          const roundInterval = setInterval(() => {
+            const currentR = rooms.get(roomId);
+            if (!currentR || currentR.gameState !== "speed_cups_playing") {
+              clearInterval(roundInterval);
+              return;
+            }
+            if (currentR.adPausedPlayersArray && currentR.adPausedPlayersArray.length > 0) return;
+            roundTimer--;
+            currentR.speedCupsTimer = roundTimer;
+
+            if (roundTimer <= 0) {
+              clearInterval(roundInterval);
+              // Time's up, evaluate
+              evaluateSpeedCupsRound(roomId);
+            } else {
+              sendRoomUpdate(roomId, currentR);
+            }
+          }, 1000);
+          intervals.set(roomId, roundInterval);
+        } else {
+          sendRoomUpdate(roomId, r);
+        }
+      }, 1000);
+      intervals.set(roomId, interval);
     }
 
     function initializeIQGame(room: any) {
@@ -10154,6 +10524,7 @@ async function startServer() {
               handWins: serverPlayer.handWins || 0,
               iqWins: serverPlayer.iqWins || 0,
               dotsWins: serverPlayer.dotsWins || 0,
+            speedCupsWins: serverPlayer.speedCupsWins || 0,
             };
             room.players.push(player);
 
@@ -11000,6 +11371,90 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
 
             if (room.players.some((p: any) => p.isBot)) {
               handleBotEvent(roomId, "room_update", room);
+            }
+          }
+        }
+      });
+
+      socket.on("speed_cups_start", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.category === "speed_cups" && room.gameState === "speed_cups_waiting") {
+          if (room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0) return;
+          startSpeedCupsCountdown(roomId);
+        }
+      });
+
+      socket.on("speed_cups_click_cup", ({ roomId, color }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "speed_cups_playing") {
+          const isP1 = room.players[0]?.id === socket.id;
+          const isP2 = room.players.length > 1 && room.players[1]?.id === socket.id;
+
+          if (isP1 && !room.speedCupsP1Done) {
+            room.speedCupsP1Stack = room.speedCupsP1Stack || [];
+            if (!room.speedCupsP1Stack.includes(color) && room.speedCupsP1Stack.length < 5) {
+              room.speedCupsP1Stack = [...room.speedCupsP1Stack, color];
+              sendRoomUpdate(roomId, room);
+            }
+          } else if (isP2 && !room.speedCupsP2Done) {
+            room.speedCupsP2Stack = room.speedCupsP2Stack || [];
+            if (!room.speedCupsP2Stack.includes(color) && room.speedCupsP2Stack.length < 5) {
+              room.speedCupsP2Stack = [...room.speedCupsP2Stack, color];
+              sendRoomUpdate(roomId, room);
+            }
+          }
+        }
+      });
+
+      socket.on("speed_cups_clear_cups", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "speed_cups_playing") {
+          const isP1 = room.players[0]?.id === socket.id;
+          const isP2 = room.players.length > 1 && room.players[1]?.id === socket.id;
+
+          if (isP1 && !room.speedCupsP1Done) {
+            room.speedCupsP1Stack = [];
+            sendRoomUpdate(roomId, room);
+          } else if (isP2 && !room.speedCupsP2Done) {
+            room.speedCupsP2Stack = [];
+            sendRoomUpdate(roomId, room);
+          }
+        }
+      });
+
+      socket.on("speed_cups_ring_bell", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "speed_cups_playing") {
+          const isP1 = room.players[0]?.id === socket.id;
+          const isP2 = room.players.length > 1 && room.players[1]?.id === socket.id;
+
+          if (isP1 && !room.speedCupsP1Done && room.speedCupsP1Stack?.length === 5) {
+            room.speedCupsP1Done = true;
+            evaluateSpeedCupsRound(roomId, "p1");
+          } else if (isP2 && !room.speedCupsP2Done && room.speedCupsP2Stack?.length === 5) {
+            room.speedCupsP2Done = true;
+            evaluateSpeedCupsRound(roomId, "p2");
+          }
+        }
+      });
+
+      socket.on("speed_cups_propose_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "speed_cups_finished") {
+          room.speedCupsRematchRequestedBy = room.speedCupsRematchRequestedBy || [];
+          if (!room.speedCupsRematchRequestedBy.includes(socket.id)) {
+            room.speedCupsRematchRequestedBy.push(socket.id);
+            
+            // If the other player is a bot, the bot automatically joins the rematch
+            const botPlayer = room.players.find((p: any) => p.isBot);
+            if (botPlayer && !room.speedCupsRematchRequestedBy.includes(botPlayer.id)) {
+              room.speedCupsRematchRequestedBy.push(botPlayer.id);
+            }
+
+            if (room.speedCupsRematchRequestedBy.length === room.players.length) {
+              initializeSpeedCupsGame(room);
+            } else {
+              sendRoomUpdate(roomId, room);
             }
           }
         }
@@ -12518,7 +12973,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 room.gameState.startsWith("xo_") ||
                 room.gameState.startsWith("hand_") ||
                 room.gameState.startsWith("iq_") ||
-                room.gameState.startsWith("dots_")
+                room.gameState.startsWith("dots_") ||
+                room.gameState.startsWith("speed_cups_")
               ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
@@ -12765,7 +13221,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
             room.gameState === "bus_complete_evaluating" ||
             room.gameState === "iq_playing" ||
             room.gameState === "iq_finished" ||
-            room.gameState === "dots_finished")
+            room.gameState === "dots_finished" ||
+            room.gameState === "speed_cups_finished")
         ) {
           // Reset room state
           room.gameState = "waiting";
@@ -13333,6 +13790,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
             player.keys = (player.keys || 0) + keysReward;
             
             if (!player.ownedHelpers) player.ownedHelpers = { time_freeze: 0, word_length: 0, word_count: 0, hint: 0, spy_lens: 0 };
+            if (!player.ownedHelpers) player.ownedHelpers = { time_freeze: 0, word_length: 0, word_count: 0, hint: 0, spy_lens: 0 };
             player.ownedHelpers.time_freeze += helpersReward.time_freeze;
             player.ownedHelpers.word_length += helpersReward.word_length;
             player.ownedHelpers.word_count += helpersReward.word_count;
@@ -13389,6 +13847,43 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
           }
         }
       });
+      socket.on("claim_speed_cups_reward", async ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.speedCupsRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          
+          if ((player.speedCupsMatchPoints || 0) >= targetPoints) {
+            player.speedCupsMatchPoints = (player.speedCupsMatchPoints || 0) - targetPoints;
+            player.speedCupsRewardLevel = currentLevel + 1;
+            
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            
+            player.xp += xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            
+            if (!player.ownedHelpers) player.ownedHelpers = { time_freeze: 0, word_length: 0, word_count: 0, hint: 0, spy_lens: 0 };
+            player.ownedHelpers.time_freeze += helpersReward.time_freeze;
+            player.ownedHelpers.word_length += helpersReward.word_length;
+            player.ownedHelpers.word_count += helpersReward.word_count;
+            player.ownedHelpers.hint += helpersReward.hint;
+            player.ownedHelpers.spy_lens += helpersReward.spy_lens;
+            
+            savePlayerData(player.serial);
+            
+            socket.emit("speed_cups_reward_claimed", {
+              newLevel: player.speedCupsRewardLevel,
+              points: player.speedCupsMatchPoints,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+
       socket.on("claim_xo_reward", ({ serial }) => {
         const player = allPlayers.get(serial);
 
@@ -14928,6 +15423,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 handWins: targetPlayer.handWins || 0,
                 iqWins: targetPlayer.iqWins || 0,
                 dotsWins: targetPlayer.dotsWins || 0,
+            speedCupsWins: targetPlayer.speedCupsWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
@@ -15552,6 +16048,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 handWins: senderPlayerData.handWins || 0,
                 iqWins: senderPlayerData.iqWins || 0,
                 dotsWins: senderPlayerData.dotsWins || 0,
+            speedCupsWins: senderPlayerData.speedCupsWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -15583,6 +16080,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 handWins: myPlayerData.handWins || 0,
                 iqWins: myPlayerData.iqWins || 0,
                 dotsWins: myPlayerData.dotsWins || 0,
+            speedCupsWins: myPlayerData.speedCupsWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -15668,7 +16166,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
               room.gameState === "iq_finished" ||
               room.gameState === "bus_complete_evaluating" ||
               room.gameState === "hand_finished" ||
-              room.gameState === "dots_finished";
+              room.gameState === "dots_finished" ||
+              room.gameState === "speed_cups_finished";
 
             if (!isIntentional && room.gameState !== "waiting") {
                 room.isWaitingForReconnect = true;
@@ -15685,7 +16184,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                                              r.gameState === "iq_finished" ||
                                              r.gameState === "bus_complete_evaluating" ||
                                              r.gameState === "hand_finished" ||
-                                             r.gameState === "dots_finished";
+                                             r.gameState === "dots_finished" ||
+                                             r.gameState === "speed_cups_finished";
 
                      if (!currentFinished) {
                         if (
@@ -15694,7 +16194,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                           r.gameState.startsWith("xo_") ||
                           r.gameState.startsWith("hand_") ||
                           r.gameState.startsWith("iq_") ||
-                          r.gameState.startsWith("dots_")
+                          r.gameState.startsWith("dots_") ||
+                           r.gameState.startsWith("speed_cups_")
                         ) {
                           io.to(roomId).emit("game_stopped", { reason: "المنافس فقد الاتصال ولم يعد" });
                           if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
@@ -15732,7 +16233,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                   room.gameState.startsWith("xo_") ||
                   room.gameState.startsWith("hand_") ||
                   room.gameState.startsWith("iq_") ||
-                  room.gameState.startsWith("dots_")
+                  room.gameState.startsWith("dots_") ||
+                  room.gameState.startsWith("speed_cups_")
                 ) {
                   io.to(roomId).emit("game_stopped", { reason: "المنافس غادر المباراة" });
                   if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
