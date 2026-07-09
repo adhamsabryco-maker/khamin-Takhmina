@@ -1106,6 +1106,38 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
   const [cupOrder, setCupOrder] = React.useState([...colors]);
   const prevGameStateRef = React.useRef(room.gameState);
 
+  const [localStack, setLocalStack] = React.useState<string[]>([]);
+
+  // Sync local stack with server state
+  React.useEffect(() => {
+    setLocalStack(myStack);
+  }, [JSON.stringify(myStack)]);
+
+  // Preload speed cups assets for zero delay/lag
+  React.useEffect(() => {
+    const staticImages = [
+      "/speed-cups/black-cup.png",
+      "/speed-cups/blue-cup.png",
+      "/speed-cups/green-cup.png",
+      "/speed-cups/red-cup.png",
+      "/speed-cups/yellow-cup.png",
+      "/speed-cups/desktop-bell-before-click.png",
+      "/speed-cups/desktop-bell-after-clicked.png",
+      "/speed-cups/cards-back.png"
+    ];
+    staticImages.forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+
+    if (room.speedCupsCards) {
+      room.speedCupsCards.forEach((card: any) => {
+        const img = new Image();
+        img.src = `/speed-cups/${card.card_name}.png`;
+      });
+    }
+  }, [room.speedCupsCards]);
+
   React.useEffect(() => {
     if (room.gameState === "speed_cups_countdown" && room.speedCupsTimer === 3) {
       setCupOrder([...colors].sort(() => Math.random() - 0.5));
@@ -1157,10 +1189,7 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
     return (
        <div className="w-full py-4 flex flex-col items-center justify-center animate-fade-in text-center space-y-6">
          <div className="space-y-2 mb-2">
-           <h2 className="text-2xl md:text-3xl font-black text-pink-600">انتهت مباراة أكواب السرعة! 🏆</h2>
-           <p className="text-xs md:text-sm font-bold text-gray-500 bg-pink-50 px-3 py-1 rounded-full border border-pink-100 w-fit mx-auto">
-             تم لعب جميع الكروت بنجاح
-           </p>
+           <h2 className="text-xl md:text-2xl font-black text-pink-600">انتهت مباراة أكواب السرعة! 🏆</h2>
          </div>
 
          <div className="w-full bg-white rounded-2xl p-4 shadow-md border-2 border-pink-100 flex flex-col items-center gap-4 max-w-md mx-auto">
@@ -1266,7 +1295,7 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
       {/* Main Board - Side-by-side Layout with Perfectly Aligned Center Column to Prevent Overlaps */}
       <div className="flex flex-row items-end justify-between w-full min-h-[220px] md:min-h-[280px] mb-2">
         {/* Right Stack (Me) */}
-        {renderStack(myStack, myDone, false)}
+        {renderStack(localStack, myDone, false)}
         
         {/* Center Area */}
         <div className="flex flex-col items-center justify-between flex-1 mx-2 h-full py-1">
@@ -1278,17 +1307,22 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
                 <div className="relative flex flex-col items-center">
                   <img src="/speed-cups/cards-back.png" className="w-30 md:w-40 h-auto animate-pulse" />
                   <div className="absolute inset-0 bg-black/45 rounded-xl flex items-center justify-center">
-                    <button 
+                    <motion.button 
                       onClick={() => socket?.emit("speed_cups_start", { roomId: room.id })}
                       disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
-                      className={`font-black text-[14px] md:text-sm px-2.5 py-1.5 rounded-lg shadow-lg border-b-2 active:translate-y-0.5 active:border-b-0 whitespace-nowrap ${
+                      animate={((room.adPausedPlayersArray?.length || 0) > 0) ? {} : { scale: [1, 1.05, 1] }}
+                      transition={((room.adPausedPlayersArray?.length || 0) > 0) ? {} : { repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+                      whileTap={{ scale: 0.95 }}
+                      whileHover={((room.adPausedPlayersArray?.length || 0) > 0) ? {} : { scale: 1.08 }}
+                      className={`font-black text-[14px] md:text-sm px-3 py-2 rounded-lg shadow-lg border-b-2 active:translate-y-0.5 active:border-b-0 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                         ((room.adPausedPlayersArray?.length || 0) > 0)
                         ? "bg-gray-400 text-gray-200 border-gray-600 cursor-not-allowed"
                         : "bg-pink-500 hover:bg-pink-600 text-white border-pink-700"
                       }`}
                     >
-                      {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! 📺" : "ابدأ اللعب وسحب الكروت"}
-                    </button>
+                      <span>{((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! 📺" : "ابدأ اللعب وسحب الكروت"}</span>
+                      {!((room.adPausedPlayersArray?.length || 0) > 0) && <span className="text-base">👆</span>}
+                    </motion.button>
                   </div>
                 </div>
               ) : room.gameState === "speed_cups_countdown" ? (
@@ -1321,7 +1355,7 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
               src={`/speed-cups/desktop-bell-${myDone ? 'after-clicked' : 'before-click'}.png`} 
               className={`w-20 md:w-25 h-auto cursor-pointer transition-all duration-150 ${!myDone && room.gameState === "speed_cups_playing" && !((room.adPausedPlayersArray?.length || 0) > 0) ? "active:scale-90 hover:scale-105" : "opacity-50"}`}
               onClick={() => {
-                if (room.gameState === "speed_cups_playing" && !myDone && myStack.length === 5 && !((room.adPausedPlayersArray?.length || 0) > 0)) {
+                if (room.gameState === "speed_cups_playing" && !myDone && localStack.length === 5 && !((room.adPausedPlayersArray?.length || 0) > 0)) {
                   playSound("deskBell");
                   socket?.emit("speed_cups_ring_bell", { roomId: room.id });
                 }
@@ -1335,29 +1369,31 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
       </div>
 
       {/* Cups to click */}
-      <div className="flex justify-center gap-1.5 md:gap-3 bg-pink-100 p-2 md:p-3 rounded-2xl border-2 border-gray-200 w-full relative overflow-hidden">
+      <div className="flex justify-center gap-2.5 md:gap-3 bg-pink-100 p-2 md:p-3 rounded-2xl border-2 border-gray-200 w-full relative overflow-hidden">
         {room.gameState === "speed_cups_playing" && !myDone && !((room.adPausedPlayersArray?.length || 0) > 0) && (
           <button 
             onClick={() => {
               playSound("clickOpen");
+              setLocalStack([]);
               socket?.emit("speed_cups_clear_cups", { roomId: room.id });
             }}
-            className="absolute top-1 right-1 bg-red-100 text-red-600 border border-red-300 rounded p-1 text-[10px] font-bold z-10"
           >
-            تفريغ
           </button>
         )}
         {cupOrder.map(color => {
-           const isUsed = myStack.includes(color);
+           const isUsed = localStack.includes(color);
            return (
              <button
                key={color}
                disabled={room.gameState !== "speed_cups_playing" || myDone || isUsed || ((room.adPausedPlayersArray?.length || 0) > 0)}
                onClick={() => {
                  playSound("handXFill");
-                 socket?.emit("speed_cups_click_cup", { roomId: room.id, color });
+                 if (!localStack.includes(color) && localStack.length < 5) {
+                   setLocalStack(prev => [...prev, color]);
+                   socket?.emit("speed_cups_click_cup", { roomId: room.id, color });
+                 }
                }}
-               className={`transition-all ${isUsed || room.gameState !== "speed_cups_playing" || ((room.adPausedPlayersArray?.length || 0) > 0) ? 'opacity-30 grayscale cursor-not-allowed' : 'active:scale-90 hover:-translate-y-1'}`}
+               className={`transition-all ${isUsed || room.gameState !== "speed_cups_playing" || ((room.adPausedPlayersArray?.length || 0) > 0) ? 'opacity-30 grayscale cursor-not-allowed' : 'active:scale-90 hover:-translate-y-1 cursor-pointer'}`}
              >
                <img src={`/speed-cups/${color}-cup.png`} className="w-10 md:w-14 h-auto object-contain drop-shadow-md" />
              </button>
@@ -1365,7 +1401,7 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
         })}
       </div>
       <div className="text-[9px] text-red-500 font-bold mt-1 text-center w-full">
-        اللاعب الذي يرتب الألوان ويضغط الجرس أولاً يفوز بالجولة!
+        اللاعب اللي يرتب الألوان ويضغط الجرس الأول يكسب الجولة!
       </div>
     </div>
   );
@@ -12126,12 +12162,19 @@ export default function App() {
                       </span>
                       <span className="font-black text-brown-dark">{data.iqWins || 0}</span>
                     </div>
-                    <div className="flex items-center justify-between bg-gray-50 p-1">
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
                       <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
                         <img src="/dots-and-boxes-logo.png" className="w-3 h-3 object-contain inline" />
                         <span className="text-gray-500 font-extrabold">تخمينة نقطة وخط</span>
                       </span>
                       <span className="font-black text-brown-dark">{data.dotsWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <img src="/speed-cups/speed-cups-logo.png" className="w-3.5 h-3.5 object-contain inline" />
+                        <span className="text-gray-500 font-extrabold">أكواب السرعة</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.speedCupsWins || 0}</span>
                     </div>
                   </div>
                 </div>
