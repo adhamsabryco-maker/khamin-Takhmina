@@ -1107,11 +1107,24 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
   const prevGameStateRef = React.useRef(room.gameState);
 
   const [localStack, setLocalStack] = React.useState<string[]>([]);
+  const localStackRef = React.useRef<string[]>([]);
+  const isInitialSyncRef = React.useRef(true);
+
+  React.useEffect(() => {
+    isInitialSyncRef.current = true;
+  }, [room.id]);
 
   // Sync local stack with server state
   React.useEffect(() => {
-    setLocalStack(myStack);
-  }, [JSON.stringify(myStack)]);
+    const isPlaying = room.gameState === "speed_cups_playing";
+    const isReset = myStack.length === 0;
+    
+    if (!isPlaying || isReset || isInitialSyncRef.current) {
+      setLocalStack(myStack);
+      localStackRef.current = myStack;
+      isInitialSyncRef.current = false;
+    }
+  }, [JSON.stringify(myStack), room.gameState, room.speedCupsCurrentCardIndex]);
 
   // Preload speed cups assets for zero delay/lag
   React.useEffect(() => {
@@ -1159,6 +1172,15 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
 
   const currentCard = room.speedCupsCards?.[room.speedCupsCurrentCardIndex];
   
+  const handleClearStack = () => {
+    if (room.gameState === "speed_cups_playing" && !myDone && !((room.adPausedPlayersArray?.length || 0) > 0)) {
+      playSound("clickClose");
+      setLocalStack([]);
+      localStackRef.current = [];
+      socket?.emit("speed_cups_clear_cups", { roomId: room.id });
+    }
+  };
+
   const renderStack = (stack: string[], done: boolean, isOpponent: boolean) => {
     const isEvaluating = room.gameState === "speed_cups_evaluating";
     let isCorrect = false;
@@ -1166,8 +1188,13 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
       isCorrect = JSON.stringify(stack) === JSON.stringify(currentCard.color_order);
     }
     
+    const isClickable = !isOpponent && !myDone && room.gameState === "speed_cups_playing" && stack.length > 0;
+    
     return (
-      <div className="flex flex-col items-center justify-end h-40 md:h-48 w-12 md:w-16 relative">
+      <div 
+        onClick={isClickable ? handleClearStack : undefined}
+        className={`flex flex-col items-center justify-end h-40 md:h-48 w-12 md:w-16 relative ${isClickable ? "cursor-pointer" : ""}`}
+      >
         {isEvaluating && (
           <div className="absolute -top-10 z-20 flex items-center justify-center bg-white border-2 border-pink-200 rounded-full w-10 h-10 shadow-md animate-bounce">
             <span className="text-xl leading-none">{isCorrect ? "✔️" : "❌"}</span>
@@ -1378,8 +1405,11 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
                disabled={room.gameState !== "speed_cups_playing" || myDone || isUsed || ((room.adPausedPlayersArray?.length || 0) > 0)}
                onClick={() => {
                  playSound("handXFill");
-                 if (!localStack.includes(color) && localStack.length < 5) {
-                   setLocalStack(prev => [...prev, color]);
+                 const currentLocalStack = localStackRef.current;
+                 if (!currentLocalStack.includes(color) && currentLocalStack.length < 5) {
+                   const newStack = [...currentLocalStack, color];
+                   localStackRef.current = newStack;
+                   setLocalStack(newStack);
                    socket?.emit("speed_cups_click_cup", { roomId: room.id, color });
                  }
                }}
@@ -3897,8 +3927,22 @@ export default function App() {
 
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [friendSearchQuery, setFriendSearchQuery] = useState("");
-  const [friendsList, setFriendsList] = useState<any[]>([]);
-  const [friendsTotal, setFriendsTotal] = useState(0);
+  const [friendsList, setFriendsList] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("khamin_friends_list");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [friendsTotal, setFriendsTotal] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("khamin_friends_total");
+      return saved ? parseInt(saved, 10) || 0 : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
   const [friendsPage, setFriendsPage] = useState(1);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
@@ -4011,8 +4055,7 @@ export default function App() {
   // Poll friends list for online status
   useEffect(() => {
     if (socket && playerSerial) {
-      const pollRate = showFriendsModal ? 5000 : 35000;
-      const interval = setInterval(() => {
+      const fetchFriends = () => {
         socket.emit(
           "get_friends",
           { serial: playerSerial, limit: Math.max(10, friendsList.length) },
@@ -4020,10 +4063,18 @@ export default function App() {
             if (res.success) {
               setFriendsList(res.friends || []);
               setFriendsTotal(res.total || 0);
+              localStorage.setItem("khamin_friends_list", JSON.stringify(res.friends || []));
+              localStorage.setItem("khamin_friends_total", (res.total || 0).toString());
             }
           },
         );
-      }, pollRate);
+      };
+
+      // Fetch immediately on mount / dependency changes to avoid any delay!
+      fetchFriends();
+
+      const pollRate = showFriendsModal ? 5000 : 12000;
+      const interval = setInterval(fetchFriends, pollRate);
       return () => clearInterval(interval);
     }
   }, [socket, playerSerial, friendsList.length, showFriendsModal]);
@@ -8234,17 +8285,17 @@ export default function App() {
           setLoadingProgress(100);
           localStorage.setItem("khamin_game_version", serverVersion);
 
-          // Unregister all service workers to force fetching new files
+          // Update all service workers instead of unregistering to preserve push notifications subscription!
           if ("serviceWorker" in navigator) {
             try {
               const registrations =
                 await navigator.serviceWorker.getRegistrations();
               for (let registration of registrations) {
-                console.log("[DEBUG] Unregistering SW:", registration.scope);
-                await registration.unregister();
+                console.log("[DEBUG] Updating SW:", registration.scope);
+                await registration.update();
               }
             } catch (err) {
-              console.error("Error unregistering service worker:", err);
+              console.error("Error updating service worker:", err);
             }
           }
 
@@ -21436,12 +21487,12 @@ export default function App() {
           <button
             onClick={async () => {
               try {
-                // Unregister all Service Workers
+                // Update all Service Workers to preserve push notifications subscription
                 if ("serviceWorker" in navigator) {
                   const registrations =
                     await navigator.serviceWorker.getRegistrations();
                   for (const registration of registrations) {
-                    await registration.unregister();
+                    await registration.update();
                   }
                 }
 
@@ -29031,7 +29082,7 @@ export default function App() {
                             const registrations =
                               await navigator.serviceWorker.getRegistrations();
                             for (let registration of registrations) {
-                              await registration.unregister();
+                              await registration.update();
                             }
                           }
 
