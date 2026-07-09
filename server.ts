@@ -14208,17 +14208,32 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
         );
         if (admin?.isAdmin || socket.data?.isAdmin) {
           const activeRooms = Array.from(rooms.entries())
-            .filter(
-              ([id, room]) =>
-                room.gameState !== "waiting" && room.gameState !== "finished",
-            )
+            .filter(([id, room]) => {
+              if (!room || !room.gameState) return false;
+              const state = room.gameState.toLowerCase();
+              // Exclude finished or waiting states across all game modes
+              if (
+                state === "waiting" ||
+                state === "finished" ||
+                state.includes("finished") ||
+                state.includes("waiting")
+              ) {
+                return false;
+              }
+              // Only return rooms that have active players
+              if (!room.players || room.players.length === 0) {
+                return false;
+              }
+              return true;
+            })
             .map(([id, room]) => ({
               id,
-              players: room.players.map((p) => ({
+              players: (room.players || []).filter(Boolean).map((p) => ({
                 name: p.name,
                 serial: p.serial,
                 avatar: p.avatar,
-                xp: p.xp,
+                xp: p.xp || 0,
+                selectedFrame: p.selectedFrame || "",
               })),
               gameState: room.gameState,
               startTime: room.startTime,
