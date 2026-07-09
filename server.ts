@@ -6566,39 +6566,56 @@ async function startServer() {
               botTimeouts.delete(startKey);
               const r = rooms.get(roomId);
               if (!r || r.gameState !== "speed_cups_waiting") return;
-              r.speedCupsStartRequestedBy = r.speedCupsStartRequestedBy || [];
-              if (!r.speedCupsStartRequestedBy.includes(botPlayer.id)) {
-                r.speedCupsStartRequestedBy.push(botPlayer.id);
-                if (r.speedCupsStartRequestedBy.length === r.players.length) {
-                  startSpeedCupsCountdown(roomId);
-                } else {
-                  sendRoomUpdate(roomId, r);
-                }
-              }
-            }, 1000 + Math.random() * 1500);
+              
+              const isAdPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+              if (isAdPlaying) return;
+
+              startSpeedCupsCountdown(roomId);
+            }, 5000 + Math.random() * 2000); // 5 to 7 seconds delay before bot auto-starts
             botTimeouts.set(startKey, timeout);
+          }
+        }
+
+        if (room.gameState !== "speed_cups_waiting" || (room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0)) {
+          if (botTimeouts.has(roomId + "_speed_cups_bot_start")) {
+            clearTimeout(botTimeouts.get(roomId + "_speed_cups_bot_start"));
+            botTimeouts.delete(roomId + "_speed_cups_bot_start");
           }
         }
 
         // Handle Speed Cups finished (auto-rematch)
         if (room.gameState === "speed_cups_finished" && room.category === "speed_cups") {
-          const rematchKey = roomId + "_speed_cups_bot_rematch";
-          if (!botTimeouts.has(rematchKey)) {
-            const timeout = setTimeout(() => {
-              botTimeouts.delete(rematchKey);
-              const r = rooms.get(roomId);
-              if (!r || r.gameState !== "speed_cups_finished") return;
-              r.speedCupsRematchRequestedBy = r.speedCupsRematchRequestedBy || [];
-              if (!r.speedCupsRematchRequestedBy.includes(botPlayer.id)) {
-                r.speedCupsRematchRequestedBy.push(botPlayer.id);
-                if (r.speedCupsRematchRequestedBy.length === r.players.length) {
-                  startSpeedCupsMatch(roomId);
-                } else {
-                  sendRoomUpdate(roomId, r);
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            const rematchKey = roomId + "_speed_cups_bot_rematch";
+            if (!botTimeouts.has(rematchKey)) {
+              const timeout = setTimeout(() => {
+                botTimeouts.delete(rematchKey);
+                const r = rooms.get(roomId);
+                if (!r || r.gameState !== "speed_cups_finished") return;
+                
+                const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+                if (isAdStillPlaying) return; // double check
+
+                r.speedCupsRematchRequestedBy = r.speedCupsRematchRequestedBy || [];
+                if (!r.speedCupsRematchRequestedBy.includes(botPlayer.id)) {
+                  r.speedCupsRematchRequestedBy.push(botPlayer.id);
+                  if (r.speedCupsRematchRequestedBy.length === r.players.length) {
+                    initializeSpeedCupsGame(r);
+                  } else {
+                    sendRoomUpdate(roomId, r);
+                  }
                 }
-              }
-            }, 2500 + Math.random() * 2000); // 2.5 to 4.5 seconds delay before accepting rematch
-            botTimeouts.set(rematchKey, timeout);
+              }, 2500 + Math.random() * 2000); // 2.5 to 4.5 seconds delay before accepting rematch
+              botTimeouts.set(rematchKey, timeout);
+            }
+          }
+        }
+        
+        if (room.gameState !== "speed_cups_finished" || (room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0)) {
+          if (botTimeouts.has(roomId + "_speed_cups_bot_rematch")) {
+            clearTimeout(botTimeouts.get(roomId + "_speed_cups_bot_rematch"));
+            botTimeouts.delete(roomId + "_speed_cups_bot_rematch");
           }
         }
 
@@ -8461,6 +8478,9 @@ async function startServer() {
           startSpeedCupsCountdown(roomId);
         }
         sendRoomUpdate(roomId, r);
+        if (r.gameState === "speed_cups_finished" && r.players.some((p: any) => p.isBot)) {
+          handleBotEvent(roomId, "room_update", r);
+        }
       }, 3000);
     }
 
@@ -11445,7 +11465,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
           if (!room.speedCupsRematchRequestedBy.includes(socket.id)) {
             room.speedCupsRematchRequestedBy.push(socket.id);
             
-            // If the other player is a bot, the bot automatically joins the rematch
+            // If the other player is a bot, the bot automatically and immediately joins the rematch
             const botPlayer = room.players.find((p: any) => p.isBot);
             if (botPlayer && !room.speedCupsRematchRequestedBy.includes(botPlayer.id)) {
               room.speedCupsRematchRequestedBy.push(botPlayer.id);
@@ -13292,6 +13312,18 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
           room.busCompleteChangeLetterRequestBy = null;
           room.busCompleteSubmittedPlayers = [];
           room.busCompleteViewersCount = 0;
+
+          // Reset speed cups parameters
+          room.speedCupsLevel = 1;
+          room.speedCupsMatchWins = {};
+          room.speedCupsRematchRequestedBy = [];
+          room.speedCupsCards = [];
+          room.speedCupsCurrentCardIndex = 0;
+          room.speedCupsP1Stack = [];
+          room.speedCupsP2Stack = [];
+          room.speedCupsP1Done = false;
+          room.speedCupsP2Done = false;
+          room.speedCupsWinner = null;
 
           // Reset players state
           room.players.forEach((p: any) => {
