@@ -1251,7 +1251,7 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
                  className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2
                    ${room.speedCupsRematchRequestedBy?.includes(myId) || ((room.adPausedPlayersArray?.length || 0) > 0)
                      ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed border border-gray-200"
-                     : "bg-pink-100 hover:bg-pink-200 text-pink-700 shadow-[0_4px_0_0_#fbcfe8] active:shadow-transparent border border-pink-200"}`}
+                     : (!room.speedCupsRematchRequestedBy?.includes(myId) && room.speedCupsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== myId)?.id || "")) ? "bg-pink-200 hover:bg-pink-300 text-pink-800 shadow-[0_4px_0_0_#fbcfe8] active:shadow-transparent border-2 border-pink-400 animate-pulse" : "bg-pink-100 hover:bg-pink-200 text-pink-700 shadow-[0_4px_0_0_#fbcfe8] active:shadow-transparent border border-pink-200"}`}
                >
                  {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
                   : room.speedCupsRematchRequestedBy?.includes(myId) ? "في انتظار الخصم..."
@@ -1370,16 +1370,6 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
 
       {/* Cups to click */}
       <div className="flex justify-center gap-2.5 md:gap-3 bg-pink-100 p-2 md:p-3 rounded-2xl border-2 border-gray-200 w-full relative overflow-hidden">
-        {room.gameState === "speed_cups_playing" && !myDone && !((room.adPausedPlayersArray?.length || 0) > 0) && (
-          <button 
-            onClick={() => {
-              playSound("clickOpen");
-              setLocalStack([]);
-              socket?.emit("speed_cups_clear_cups", { roomId: room.id });
-            }}
-          >
-          </button>
-        )}
         {cupOrder.map(color => {
            const isUsed = localStack.includes(color);
            return (
