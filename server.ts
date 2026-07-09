@@ -6602,6 +6602,10 @@ async function startServer() {
                   r.speedCupsRematchRequestedBy.push(botPlayer.id);
                   if (r.speedCupsRematchRequestedBy.length === r.players.length) {
                     initializeSpeedCupsGame(r);
+                    const bot = r.players.find((p: any) => p.isBot);
+                    if (bot) {
+                      handleBotEvent(roomId, "room_update", r);
+                    }
                   } else {
                     sendRoomUpdate(roomId, r);
                   }
@@ -11473,6 +11477,10 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
 
             if (room.speedCupsRematchRequestedBy.length === room.players.length) {
               initializeSpeedCupsGame(room);
+              const bot = room.players.find((p: any) => p.isBot);
+              if (bot) {
+                handleBotEvent(roomId, "room_update", room);
+              }
             } else {
               sendRoomUpdate(roomId, room);
             }
