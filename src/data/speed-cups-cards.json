@@ -1,0 +1,254 @@
+{
+  "cards": [
+    {
+      "card_name": "parrot",
+      "color_order": [
+        "black",
+        "blue",
+        "yellow",
+        "green",
+        "red"
+      ]
+    },
+    {
+      "card_name": "car",
+      "color_order": [
+        "green",
+        "blue",
+        "red",
+        "yellow",
+        "black"
+      ]
+   },
+    {
+      "card_name": "back-bag",
+      "color_order": [
+        "black",
+        "blue",
+        "yellow",
+        "green",
+        "red"
+      ]
+   },
+    {
+      "card_name": "helicopter",
+      "color_order": [
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "black"
+      ]
+   },
+    {
+      "card_name": "owl",
+      "color_order": [
+        "yellow",
+        "black",
+        "green",
+        "blue",
+        "red"
+      ]
+   },
+    {
+      "card_name": "butterfly",
+      "color_order": [
+        "black",
+        "yellow",
+        "green",
+        "red",
+        "blue"
+      ]
+   },
+    {
+      "card_name": "giraffe",
+      "color_order": [
+        "black",
+        "blue",
+        "yellow",
+        "green",
+        "red"
+      ]
+   },
+    {
+      "card_name": "camera",
+      "color_order": [
+        "blue",
+        "yellow",
+        "black",
+        "red",
+        "green"
+      ]
+   },
+    {
+      "card_name": "elephant",
+      "color_order": [
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "black"
+      ]
+    },
+    {
+      "card_name": "train",
+      "color_order": [
+        "blue",
+        "green",
+        "yellow",
+        "red",
+        "black"
+      ]
+   },
+    {
+      "card_name": "rocket",
+      "color_order": [
+        "black",
+        "blue",
+        "green",
+        "red",
+        "yellow"
+      ]
+   },
+    {
+      "card_name": "cactus",
+      "color_order": [
+        "blue",
+        "yellow",
+        "red",
+        "black",
+        "green"
+      ]
+   },
+    {
+      "card_name": "dolce",
+      "color_order": [
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "black"
+      ]
+   },
+    {
+      "card_name": "fish",
+      "color_order": [
+        "green",
+        "red",
+        "black",
+        "yellow",
+        "blue"
+      ]
+   },
+    {
+      "card_name": "bag",
+      "color_order": [
+        "black",
+        "blue",
+        "yellow",
+        "green",
+        "red"
+      ]
+   },
+    {
+      "card_name": "balloon",
+      "color_order": [
+        "blue",
+        "yellow",
+        "black",
+        "green",
+        "red"
+      ]
+   },
+    {
+      "card_name": "drum",
+      "color_order": [
+        "black",
+        "blue",
+        "yellow",
+        "green",
+        "red"
+      ]
+    },
+    {
+      "card_name": "ice-cream",
+      "color_order": [
+        "blue",
+        "yellow",
+        "green",
+        "black",
+        "red"
+      ]
+   },
+    {
+      "card_name": "flower",
+      "color_order": [
+        "black",
+        "blue",
+        "yellow",
+        "green",
+        "red"
+      ]
+   },
+    {
+      "card_name": "star",
+      "color_order": [
+        "red",
+        "yellow",
+        "blue",
+        "green",
+        "black"
+      ]
+   },
+    {
+      "card_name": "umbrella",
+      "color_order": [
+        "black",
+        "blue",
+        "yellow",
+        "green",
+        "red"
+      ]
+   },
+    {
+      "card_name": "penguin",
+      "color_order": [
+        "blue",
+        "green",
+        "yellow",
+        "black",
+        "red"
+      ]
+   },
+    {
+      "card_name": "paper-airplane",
+      "color_order": [
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "black"
+      ]
+   },
+    {
+      "card_name": "boat",
+      "color_order": [
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "black"
+      ]
+   },
+    {
+      "card_name": "house",
+      "color_order": [
+        "red",
+        "yellow",
+        "blue",
+        "green",
+        "black"
+      ]
+    }
+  ]
+}
