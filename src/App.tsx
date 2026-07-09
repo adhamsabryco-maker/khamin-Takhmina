@@ -408,6 +408,7 @@ const SOUNDS = {
   lobbyBackground: "/sounds/lobby-background-music.mp3",
   gameBackground: "/sounds/start-game-background-music.mp3",
   deskBell: "/sounds/desk-bell.mp3",
+  countdownBeep: "/sounds/countdown-beep.mp3",
 };
 
 interface ThemeConfig {
@@ -644,7 +645,7 @@ interface Room {
   currentTurn?: string | null;
   waitingForAnswerFrom?: string | null;
   matchType?: "random" | "private" | "friend" | string;
-  selectionMode?: "ready" | "custom" | "bus_complete" | "xo" | "hand_khamin" | null;
+  selectionMode?: "ready" | "custom" | "bus_complete" | "xo" | "hand_khamin" | "iq" | "dots" | "speed_cups" | null;
   busCompleteLetter?: string;
   busCompleteWinner?: string;
   busCompleteHideResults?: boolean;
@@ -1085,6 +1086,291 @@ const CityImage = ({
   );
 };
 
+const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: any, socket: any, me: any, myId: string, onLeave: () => void, playSound: any }) => {
+  const isP1 = room.players[0]?.id === myId;
+  const isP2 = room.players.length > 1 && room.players[1]?.id === myId;
+  
+  const myStack = isP1 ? room.speedCupsP1Stack || [] : (isP2 ? room.speedCupsP2Stack || [] : []);
+  const myDone = isP1 ? room.speedCupsP1Done : (isP2 ? room.speedCupsP2Done : false);
+  const oppStack = isP1 ? room.speedCupsP2Stack || [] : (isP2 ? room.speedCupsP1Stack || [] : []);
+  const oppDone = isP1 ? room.speedCupsP2Done : (isP2 ? room.speedCupsP1Done : false);
+  
+  const p1Wins = room.speedCupsMatchWins?.[room.players[0]?.id] || 0;
+  const p2Wins = room.players.length > 1 ? room.speedCupsMatchWins?.[room.players[1]?.id] || 0 : 0;
+  const myWins = isP1 ? p1Wins : (isP2 ? p2Wins : 0);
+  const oppWins = isP1 ? p2Wins : (isP2 ? p1Wins : 0);
+
+  const colors = ["black", "blue", "green", "red", "yellow"];
+  
+  // Local state for cup positions (shuffled at round start)
+  const [cupOrder, setCupOrder] = React.useState([...colors]);
+  const prevGameStateRef = React.useRef(room.gameState);
+
+  React.useEffect(() => {
+    if (room.gameState === "speed_cups_countdown" && room.speedCupsTimer === 3) {
+      setCupOrder([...colors].sort(() => Math.random() - 0.5));
+    }
+
+    if (room.gameState === "speed_cups_evaluating" && prevGameStateRef.current !== "speed_cups_evaluating") {
+      const currentCard = room.speedCupsCards?.[room.speedCupsCurrentCardIndex];
+      if (currentCard) {
+        const isCorrect = JSON.stringify(myStack) === JSON.stringify(currentCard.color_order);
+        if (isCorrect) {
+          playSound("correct");
+        } else {
+          playSound("wrong");
+        }
+      }
+    }
+    prevGameStateRef.current = room.gameState;
+  }, [room.gameState, room.speedCupsTimer, room.speedCupsCards, room.speedCupsCurrentCardIndex, myStack, playSound]);
+
+  const currentCard = room.speedCupsCards?.[room.speedCupsCurrentCardIndex];
+  
+  const renderStack = (stack: string[], done: boolean, isOpponent: boolean) => {
+    const isEvaluating = room.gameState === "speed_cups_evaluating";
+    let isCorrect = false;
+    if (isEvaluating && currentCard) {
+      isCorrect = JSON.stringify(stack) === JSON.stringify(currentCard.color_order);
+    }
+    
+    return (
+      <div className="flex flex-col items-center justify-end h-40 md:h-48 w-12 md:w-16 relative">
+        {isEvaluating && (
+          <div className="absolute -top-10 z-20 flex items-center justify-center bg-white border-2 border-pink-200 rounded-full w-10 h-10 shadow-md animate-bounce">
+            <span className="text-xl leading-none">{isCorrect ? "✔️" : "❌"}</span>
+          </div>
+        )}
+        <div className="relative w-full h-full flex flex-col justify-end">
+          {stack.map((color, idx) => (
+            <div key={idx} className="absolute w-full flex justify-center" style={{ bottom: `${idx * 14}px`, zIndex: idx }}>
+               <img src={`/speed-cups/${color}-cup.png`} className="w-10 md:w-14 h-auto object-contain" />
+            </div>
+          ))}
+        </div>
+        <span className="text-[10px] font-bold text-gray-500 mt-1">{isOpponent ? "الخصم" : "أنت"}</span>
+      </div>
+    );
+  };
+
+  if (room.gameState === "speed_cups_finished") {
+    return (
+       <div className="w-full py-4 flex flex-col items-center justify-center animate-fade-in text-center space-y-6">
+         <div className="space-y-2 mb-2">
+           <h2 className="text-2xl md:text-3xl font-black text-pink-600">انتهت مباراة أكواب السرعة! 🏆</h2>
+           <p className="text-xs md:text-sm font-bold text-gray-500 bg-pink-50 px-3 py-1 rounded-full border border-pink-100 w-fit mx-auto">
+             تم لعب جميع الكروت بنجاح
+           </p>
+         </div>
+
+         <div className="w-full bg-white rounded-2xl p-4 shadow-md border-2 border-pink-100 flex flex-col items-center gap-4 max-w-md mx-auto">
+           <div className="flex w-full items-center justify-center gap-4">
+             {/* Player 1 Stats */}
+             <div className="flex flex-col items-center gap-2 p-3 bg-pink-50/50 rounded-xl border-2 border-pink-100 w-1/2">
+               <div className="font-black text-base text-pink-700 truncate max-w-full px-2">
+                 {isP1 ? "أنت" : (room.players[0]?.name || "اللاعب 1").split(" ")[0]}
+               </div>
+               <div className="text-3xl font-black text-pink-600 bg-white w-full text-center py-1.5 rounded-lg border border-pink-200">
+                 {p1Wins}
+               </div>
+             </div>
+             
+             <div className="text-xl font-black text-gray-300 font-mono">VS</div>
+             
+             {/* Player 2 Stats */}
+             <div className="flex flex-col items-center gap-2 p-3 bg-gray-50 rounded-xl border-2 border-gray-200 w-1/2">
+               <div className="font-black text-base text-gray-700 truncate max-w-full px-2">
+                 {!isP1 ? "أنت" : (room.players[1]?.name || "الخصم").split(" ")[0]}
+               </div>
+               <div className="text-3xl font-black text-gray-600 bg-white w-full text-center py-1.5 rounded-lg border border-gray-200">
+                 {p2Wins}
+               </div>
+             </div>
+           </div>
+
+           <div className="text-center font-black text-base md:text-lg text-white bg-pink-500 border-b-4 border-pink-700 px-6 py-2.5 rounded-xl shadow-md w-full">
+             {room.speedCupsWinner === "draw" ? (
+               "النتيجة النهائية تعادل! 🤝"
+             ) : room.speedCupsWinner === myId ? (
+               "لقد فزت بالمباراة! 🎉"
+             ) : (
+               "حظ أوفر المرة القادمة! 😔"
+             )}
+           </div>
+
+           <div className="flex flex-col gap-3 w-full mt-2">
+             <div className="flex gap-2 w-full">
+               <button
+                 onClick={() => {
+                   playSound("clickOpen");
+                   socket?.emit("play_again", { roomId: room.id });
+                 }}
+                 disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                 className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2 border border-gray-200
+                   ${((room.adPausedPlayersArray?.length || 0) > 0)
+                     ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed"
+                     : "bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-[0_4px_0_0_#d1d5db] active:shadow-transparent"}`}
+               >
+                 تغيير اللعبة
+               </button>
+               <button
+                 onClick={() => {
+                   playSound("clickOpen");
+                   socket?.emit("speed_cups_propose_rematch", { roomId: room.id });
+                 }}
+                 disabled={room.speedCupsRematchRequestedBy?.includes(myId) || ((room.adPausedPlayersArray?.length || 0) > 0)}
+                 className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2
+                   ${room.speedCupsRematchRequestedBy?.includes(myId) || ((room.adPausedPlayersArray?.length || 0) > 0)
+                     ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed border border-gray-200"
+                     : "bg-pink-100 hover:bg-pink-200 text-pink-700 shadow-[0_4px_0_0_#fbcfe8] active:shadow-transparent border border-pink-200"}`}
+               >
+                 {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
+                  : room.speedCupsRematchRequestedBy?.includes(myId) ? "في انتظار الخصم..."
+                  : room.speedCupsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== myId)?.id || "") ? "🎮 المنافس جاهز للعب"
+                  : "لعب مرة أخرى!"}
+               </button>
+             </div>
+             <button
+               onClick={onLeave}
+               className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2 border border-red-200"
+             >
+               🚪 خروج للرئيسية
+             </button>
+           </div>
+         </div>
+       </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center w-full relative select-none">
+      <div className="flex items-center justify-between w-full px-2">
+        <div className="flex flex-col items-center bg-gray-100 rounded-lg p-1.5 px-3">
+          <span className="text-[10px] text-gray-500 font-bold">نقاطك</span>
+          <span className="text-lg font-black text-pink-600">{myWins}</span>
+        </div>
+
+            {/* Cards count indicator above cards */}
+            {room.gameState !== "speed_cups_finished" && room.speedCupsCards && (
+              <div className="text-[10px] md:text-xs font-black text-pink-600 bg-pink-50 items-center h-8 flex justify-between border border-pink-200 rounded-full px-2.5 py-0.5 mb-2 whitespace-nowrap shadow-sm">
+                الكروت: {(room.speedCupsCurrentCardIndex || 0) + 1} / {room.speedCupsCards.length}
+              </div>
+            )}
+
+        <div className="flex flex-col items-center bg-gray-100 rounded-lg p-1.5 px-3">
+          <span className="text-[10px] text-gray-500 font-bold">نقاط الخصم</span>
+          <span className="text-lg font-black text-gray-700">{oppWins}</span>
+        </div>
+      </div>
+
+      {/* Main Board - Side-by-side Layout with Perfectly Aligned Center Column to Prevent Overlaps */}
+      <div className="flex flex-row items-end justify-between w-full min-h-[220px] md:min-h-[280px] mb-2">
+        {/* Right Stack (Me) */}
+        {renderStack(myStack, myDone, false)}
+        
+        {/* Center Area */}
+        <div className="flex flex-col items-center justify-between flex-1 mx-2 h-full py-1">
+          {/* Card Area */}
+          <div className="flex flex-col items-center justify-start flex-1 min-h-0 w-full">
+
+            <div className="relative flex items-center justify-center">
+              {room.gameState === "speed_cups_waiting" ? (
+                <div className="relative flex flex-col items-center">
+                  <img src="/speed-cups/cards-back.png" className="w-30 md:w-40 h-auto animate-pulse" />
+                  <div className="absolute inset-0 bg-black/45 rounded-xl flex items-center justify-center">
+                    <button 
+                      onClick={() => socket?.emit("speed_cups_start", { roomId: room.id })}
+                      disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                      className={`font-black text-[14px] md:text-sm px-2.5 py-1.5 rounded-lg shadow-lg border-b-2 active:translate-y-0.5 active:border-b-0 whitespace-nowrap ${
+                        ((room.adPausedPlayersArray?.length || 0) > 0)
+                        ? "bg-gray-400 text-gray-200 border-gray-600 cursor-not-allowed"
+                        : "bg-pink-500 hover:bg-pink-600 text-white border-pink-700"
+                      }`}
+                    >
+                      {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! 📺" : "ابدأ اللعب وسحب الكروت"}
+                    </button>
+                  </div>
+                </div>
+              ) : room.gameState === "speed_cups_countdown" ? (
+                <div className="relative">
+                  <img src="/speed-cups/cards-back.png" className="w-30 md:w-40 h-auto filter brightness-75" />
+                  <div className="absolute inset-0 flex items-center justify-center animate-scale-in">
+                    <div className="text-3xl md:text-4xl font-black text-white">
+                      {room.speedCupsTimer}
+                    </div>
+                  </div>
+                </div>
+              ) : (room.gameState === "speed_cups_playing" || room.gameState === "speed_cups_evaluating") ? (
+                <div className="relative animate-scale-in">
+                  <img src={`/speed-cups/${currentCard?.card_name}.png`} className="w-30 md:w-40 h-auto" />
+                  {room.gameState === "speed_cups_playing" && (
+                    <div className="absolute -top-2.5 -right-2.5 bg-red-500 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center text-[10px]">
+                      {room.speedCupsTimer}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <img src="/speed-cups/cards-back.png" className="w-20 md:w-28 h-auto opacity-40 grayscale" />
+              )}
+            </div>
+          </div>
+          
+          {/* Bell Area - Positioned below card area with guaranteed vertical margin */}
+          <div className="mt-4 mb-1 flex justify-center">
+            <img 
+              src={`/speed-cups/desktop-bell-${myDone ? 'after-clicked' : 'before-click'}.png`} 
+              className={`w-20 md:w-25 h-auto cursor-pointer transition-all duration-150 ${!myDone && room.gameState === "speed_cups_playing" && !((room.adPausedPlayersArray?.length || 0) > 0) ? "active:scale-90 hover:scale-105" : "opacity-50"}`}
+              onClick={() => {
+                if (room.gameState === "speed_cups_playing" && !myDone && myStack.length === 5 && !((room.adPausedPlayersArray?.length || 0) > 0)) {
+                  playSound("deskBell");
+                  socket?.emit("speed_cups_ring_bell", { roomId: room.id });
+                }
+              }}
+            />
+          </div>
+        </div>
+        
+        {/* Left Stack (Opponent) */}
+        {renderStack(oppStack, oppDone, true)}
+      </div>
+
+      {/* Cups to click */}
+      <div className="flex justify-center gap-1.5 md:gap-3 bg-pink-100 p-2 md:p-3 rounded-2xl border-2 border-gray-200 w-full relative overflow-hidden">
+        {room.gameState === "speed_cups_playing" && !myDone && !((room.adPausedPlayersArray?.length || 0) > 0) && (
+          <button 
+            onClick={() => {
+              playSound("clickOpen");
+              socket?.emit("speed_cups_clear_cups", { roomId: room.id });
+            }}
+            className="absolute top-1 right-1 bg-red-100 text-red-600 border border-red-300 rounded p-1 text-[10px] font-bold z-10"
+          >
+            تفريغ
+          </button>
+        )}
+        {cupOrder.map(color => {
+           const isUsed = myStack.includes(color);
+           return (
+             <button
+               key={color}
+               disabled={room.gameState !== "speed_cups_playing" || myDone || isUsed || ((room.adPausedPlayersArray?.length || 0) > 0)}
+               onClick={() => {
+                 playSound("handXFill");
+                 socket?.emit("speed_cups_click_cup", { roomId: room.id, color });
+               }}
+               className={`transition-all ${isUsed || room.gameState !== "speed_cups_playing" || ((room.adPausedPlayersArray?.length || 0) > 0) ? 'opacity-30 grayscale cursor-not-allowed' : 'active:scale-90 hover:-translate-y-1'}`}
+             >
+               <img src={`/speed-cups/${color}-cup.png`} className="w-10 md:w-14 h-auto object-contain drop-shadow-md" />
+             </button>
+           );
+        })}
+      </div>
+      <div className="text-[9px] text-red-500 font-bold mt-1 text-center w-full">
+        اللاعب الذي يرتب الألوان ويضغط الجرس أولاً يفوز بالجولة!
+      </div>
+    </div>
+  );
+};
+
 let sessionAdFailuresCount = parseInt(
   localStorage.getItem("khamin_ad_failures") || "0",
 );
@@ -1352,6 +1638,12 @@ export default function App() {
   );
   const [dotsMatchPoints, setDotsMatchPoints] = useState(
     () => parseInt(localStorage.getItem("khamin_dots_match_points") || "0") || 0,
+  );
+  const [speedCupsRewardLevel, setSpeedCupsRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_speed_cups_reward_level") || "1") || 1,
+  );
+  const [speedCupsMatchPoints, setSpeedCupsMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_speed_cups_match_points") || "0") || 0,
   );
   const [handRewardLevel, setHandRewardLevel] = useState(
     () => parseInt(localStorage.getItem("khamin_hand_reward_level") || "1") || 1,
@@ -1914,7 +2206,7 @@ export default function App() {
   });
 
   const [leaderboardFilter, setLeaderboardFilter] = useState<
-    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "wins" | "streak" | "likes"
+    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "speedCups" | "wins" | "streak" | "likes"
   >("all");
   const [leaderboardVisibleCount, setLeaderboardVisibleCount] = useState(10);
 
@@ -1937,6 +2229,8 @@ export default function App() {
       sorted.sort((a, b) => (b.iqWins || 0) - (a.iqWins || 0));
     } else if (leaderboardFilter === "dots") {
       sorted.sort((a, b) => (b.dotsWins || 0) - (a.dotsWins || 0));
+    } else if (leaderboardFilter === "speedCups") {
+      sorted.sort((a, b) => (b.speedCupsWins || 0) - (a.speedCupsWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -5616,6 +5910,16 @@ export default function App() {
       }
     }
 
+    if (room && room.gameState === "speed_cups_finished" && (prevGameStateRef.current === "speed_cups_playing" || prevGameStateRef.current === "speed_cups_evaluating")) {
+      if (room.speedCupsWinner === socket?.id) {
+        playSound("win");
+      } else if (room.speedCupsWinner === "draw") {
+        playSound("pop");
+      } else {
+        playSound("lose");
+      }
+    }
+
 
     if (room && room.gameState === "bus_complete_evaluating" && prevGameStateRef.current === "bus_complete_playing") {
       if (room.busCompleteWinner === socket?.id) {
@@ -6375,6 +6679,14 @@ export default function App() {
                 setDotsMatchPoints(data.dotsMatchPoints);
                 localStorage.setItem("khamin_dots_match_points", data.dotsMatchPoints.toString());
               }
+              if (data.speedCupsRewardLevel != null) {
+                setSpeedCupsRewardLevel(data.speedCupsRewardLevel);
+                localStorage.setItem("khamin_speed_cups_reward_level", data.speedCupsRewardLevel.toString());
+              }
+              if (data.speedCupsMatchPoints != null) {
+                setSpeedCupsMatchPoints(data.speedCupsMatchPoints);
+                localStorage.setItem("khamin_speed_cups_match_points", data.speedCupsMatchPoints.toString());
+              }
               if (data.handRewardLevel != null) {
                 setHandRewardLevel(data.handRewardLevel);
                 localStorage.setItem("khamin_hand_reward_level", data.handRewardLevel.toString());
@@ -6774,6 +7086,14 @@ export default function App() {
               if (data.dotsMatchPoints != null) {
                 setDotsMatchPoints(data.dotsMatchPoints);
                 localStorage.setItem("khamin_dots_match_points", data.dotsMatchPoints.toString());
+              }
+              if (data.speedCupsRewardLevel != null) {
+                setSpeedCupsRewardLevel(data.speedCupsRewardLevel);
+                localStorage.setItem("khamin_speed_cups_reward_level", data.speedCupsRewardLevel.toString());
+              }
+              if (data.speedCupsMatchPoints != null) {
+                setSpeedCupsMatchPoints(data.speedCupsMatchPoints);
+                localStorage.setItem("khamin_speed_cups_match_points", data.speedCupsMatchPoints.toString());
               }
       if (data.handRewardLevel != null) {
         setHandRewardLevel(data.handRewardLevel);
@@ -8033,7 +8353,22 @@ export default function App() {
     } else {
       stopSound("tick");
     }
-  }, [room?.timer, room?.gameState, playSound, stopSound]);
+
+    // Speed cups countdown
+    if (room.gameState === "speed_cups_countdown" && room.speedCupsTimer === 3) {
+      if (lastTickTimeRef.current.speedCupsCountdown !== 3) {
+        playSound("countdownBeep", 0.6);
+        lastTickTimeRef.current.speedCupsCountdown = 3;
+      }
+    } else if (room.gameState === "speed_cups_playing") {
+      if (lastTickTimeRef.current.speedCupsCountdown !== -2) {
+        stopSound("countdownBeep");
+        lastTickTimeRef.current.speedCupsCountdown = -2;
+      }
+    } else if (room.gameState !== "speed_cups_countdown") {
+      lastTickTimeRef.current.speedCupsCountdown = -1;
+    }
+  }, [room?.timer, room?.speedCupsTimer, room?.gameState, playSound, stopSound]);
 
   // Clock ticking for bus_complete_playing last minute
   useEffect(() => {
@@ -8826,7 +9161,7 @@ export default function App() {
 
   useEffect(() => {
     if (room && room.gameState !== previousGameStateRef.current) {
-      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished") {
+      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished") {
         if (!hasProPackage) {
           matchesPlayedRef.current += 1;
           if (matchesPlayedRef.current >= 3) {
@@ -9751,7 +10086,8 @@ export default function App() {
       room?.gameState === "bus_complete_playing" ||
       room?.gameState === "bus_complete_evaluating" ||
       room?.gameState === "hand_playing" ||
-      room?.gameState === "hand_finished";
+      room?.gameState === "hand_finished" ||
+      room?.gameState?.startsWith("speed_cups_");
 
     const me = room?.players.find((p) => p.id === socket?.id);
 
@@ -11730,24 +12066,30 @@ export default function App() {
                 </div>
 
                 {/* Player Stats Block */}
-                <div className="bg-white rounded-xl p-2 mb-2 border-2 border-gray-100 shadow-sm relative">
+                <div className="bg-white rounded-xl p-2 px-1 mb-2 border-2 border-gray-100 shadow-sm relative">
                   <h3 className="text-xs font-black text-brown-muted mb-1 text-center">
                     إحصائيات اللاعب
                   </h3>
                   <div className="grid grid-cols-1 gap-0 text-xs font-bold text-gray-700">
-                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                    <div className="bg-gray-300 p-1">
                       <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
-                        <span>🏆</span>
-                        <span className="text-gray-500 font-extrabold">فوز</span>
+                        <span>🖼️</span>
+                        <span className="text-[14px] text-black font-extrabold">فئات التخمين</span>
                       </span>
-                      <span className="font-black text-brown-dark">{data.wins || 0}</span>
-                    </div>
-                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
-                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
-                        <span>🔥</span>
-                        <span className="text-gray-500 font-extrabold">فوز متتالي</span>
-                      </span>
-                      <span className="font-black text-brown-dark">{data.streak || 0}</span>
+                      <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50 pr-6">
+                        <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                          <span>🏆</span>
+                          <span className="text-gray-500 font-extrabold">فوز</span>
+                        </span>
+                        <span className="font-black text-brown-dark">{data.wins || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50 pr-6">
+                        <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                          <span>🔥</span>
+                          <span className="text-gray-500 font-extrabold">فوز متتالي</span>
+                        </span>
+                        <span className="font-black text-brown-dark">{data.streak || 0}</span>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
                       <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
@@ -11779,14 +12121,14 @@ export default function App() {
                     </div>
                     <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
                       <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
-                        <span className="font-black text-[9px] bg-indigo-50 px-1 rounded border border-indigo-100"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>
+                        <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>
                         <span className="text-gray-500 font-extrabold">تخمينة IQ</span>
                       </span>
                       <span className="font-black text-brown-dark">{data.iqWins || 0}</span>
                     </div>
                     <div className="flex items-center justify-between bg-gray-50 p-1">
                       <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
-                        <img src="/dots-and-boxes-logo.png" className="w-3.5 h-3.5 object-contain inline" />
+                        <img src="/dots-and-boxes-logo.png" className="w-3 h-3 object-contain inline" />
                         <span className="text-gray-500 font-extrabold">تخمينة نقطة وخط</span>
                       </span>
                       <span className="font-black text-brown-dark">{data.dotsWins || 0}</span>
@@ -20566,6 +20908,63 @@ export default function App() {
   };
 
   
+
+  const renderSpeedCupsRewardBar = () => {
+    if (!room || room.matchType !== "random" || (!room.gameState.startsWith("speed_cups_"))) return null;
+
+    const targetPoints = speedCupsRewardLevel * 100;
+    const progress = Math.min((speedCupsMatchPoints / targetPoints) * 100, 100);
+    const isReady = speedCupsMatchPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-pink-50 to-rose-50 border-2 border-pink-200 rounded-xl p-2 relative overflow-hidden transition-all shadow-sm">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-pink-100/50 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex sm:flex-row items-center justify-between gap-2 z-10 w-full">
+           <div className="flex items-center gap-2 font-bold text-pink-800 text-sm">
+             <span>المستوي {speedCupsRewardLevel}</span>
+             <span className="text-xs bg-white px-1.5 py-0.5 rounded-md border border-pink-200" dir="ltr">
+               {speedCupsMatchPoints} / {targetPoints}
+             </span>
+           </div>
+           
+           <button
+             onClick={() => {
+                if (isReady) {
+                  socket?.emit("claim_speed_cups_reward", { serial: playerSerial });
+                  setCustomConfirm({
+                    show: true,
+                    title: `تهانينا! 🎉`,
+                    message: `تم استلام مكافأة المستوى ${speedCupsRewardLevel} في أكواب السرعة بنجاح!`,
+                    confirmText: "رائع!",
+                    onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                  });
+                } else {
+                  setCustomConfirm({
+                    show: true,
+                    title: `المستوي ${speedCupsRewardLevel}`,
+                    message: `متبقي ${targetPoints - speedCupsMatchPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                             `🎁 ${speedCupsRewardLevel === 1 ? 50 : 100 + 50 * (speedCupsRewardLevel - 1)} XP\n` +
+                             `🔑 ${speedCupsRewardLevel} مفتاح\n` +
+                             `🔧 ${speedCupsRewardLevel} من كل وسيلة مساعدة`,
+                    confirmText: "حسناً",
+                    onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                  });
+                }
+             }}
+             className={`relative overflow-hidden group px-3 py-1 text-xs md:text-sm font-black rounded-lg transition-all shadow-sm active:scale-95 ${isReady ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-400 hover:to-rose-400 border-b-4 border-pink-700 active:border-b-0' : 'bg-white text-gray-400 border-2 border-gray-200 hover:bg-gray-50'}`}
+           >
+             {isReady && <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform" />}
+             {isReady ? 'استلام الهدايا 🎁' : 'صندوق الهدايا 🔒'}
+           </button>
+         </div>
+      </div>
+    );
+  };
+
+  
   const renderDotsRewardBar = () => {
     if (!room || room.matchType !== "random" || (room.gameState !== "dots_playing" && room.gameState !== "dots_finished")) return null;
 
@@ -23041,6 +23440,7 @@ export default function App() {
                               <span>{limit99(topPlayers[1].handWins || 0)} 🖐</span>
                               <span>{limit99(topPlayers[1].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                               <span>{limit99(topPlayers[1].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[1].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -23097,6 +23497,7 @@ export default function App() {
                               <span>{limit99(topPlayers[0].handWins || 0)} 🖐</span>
                               <span>{limit99(topPlayers[0].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                               <span>{limit99(topPlayers[0].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[0].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -23147,6 +23548,7 @@ export default function App() {
                               <span>{limit99(topPlayers[2].handWins || 0)} 🖐</span>
                               <span>{limit99(topPlayers[2].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                               <span>{limit99(topPlayers[2].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[2].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -23750,6 +24152,8 @@ export default function App() {
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                               <span>•</span>
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
+                              <span>•</span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-3 h-3 inline object-contain" /></span>
                             </div>
                           </div>
                         </div>
@@ -23770,6 +24174,7 @@ export default function App() {
                         { id: "hand", icon: "🖐" },
                         { id: "iq", icon: <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span> },
                         { id: "dots", icon: <img src="/dots-and-boxes-logo.png" className="w-6 h-6 object-contain" /> },
+                        { id: "speedCups", icon: <img src="/speed-cups/speed-cups-logo.png" className="w-6 h-6 object-contain" /> },
                       ].map((filter) => (
                         <button
                           key={filter.id}
@@ -23894,6 +24299,13 @@ export default function App() {
                                   dir="rtl"
                                 >
                                   {limit99(player.dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 object-contain" />
+                                </span>
+                                <span className="text-brown-light">•</span>
+                                <span
+                                  className="bg-pink-50 text-pink-600 md:px-1.5 rounded flex items-center gap-0.5"
+                                  dir="rtl"
+                                >
+                                  {limit99(player.speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-3 h-3 object-contain" />
                                 </span>
                               </div>
                             </div>
@@ -25617,7 +26029,18 @@ export default function App() {
               </div>
               <CategoryPageAd />
             </React.Fragment>
-                        ) : room.gameState === "dots_playing" || room.gameState === "dots_finished" ? (
+            
+            ) : room.gameState.startsWith("speed_cups_") ? (
+              <React.Fragment>
+                <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
+                {renderSpeedCupsRewardBar()}
+                
+                <SpeedCupsBoard room={room} socket={socket} me={me} myId={socket?.id || ""} onLeave={handleLeaveGame} playSound={playSound} />
+                
+                </div>
+              </React.Fragment>
+
+            ) : room.gameState === "dots_playing" || room.gameState === "dots_finished" ? (
               <React.Fragment>
                 <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
                 {renderDotsRewardBar()}
@@ -26691,6 +27114,37 @@ export default function App() {
                               if (meMode === "dots" && oppMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
                               if (meMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
                               if (oppMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "speed_cups",
+                                })
+                              }
+                              className={`h-full w-full bg-pink-100 hover:bg-pink-200 border-[3px] border-pink-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#ec4899] active:shadow-none active:translate-y-1.5"}`}
+                            >
+                              <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
+                                <img src="/speed-cups/speed-cups-logo.png" className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-md" alt="speed cups" />
+                              </div>
+                              <span className="text-[13px] md:text-lg font-black text-pink-700 text-center leading-tight">
+                               أكواب السرعة
+                              </span>
+                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
+                                (سرعة ترتيب الألوان)
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "speed_cups" && oppMode === "speed_cups") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
+                              if (meMode === "speed_cups") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "speed_cups") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -28039,6 +28493,7 @@ export default function App() {
           room.gameState !== "iq_finished" &&
           room.gameState !== "dots_playing" &&
           room.gameState !== "dots_finished" &&
+          !room.gameState.startsWith("speed_cups_") &&
           room.gameState !== "starting" && (
             <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
               {[
