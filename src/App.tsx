@@ -392,7 +392,7 @@ const SOUNDS = {
   chestOpen: "/sounds/chestOpen.mp3",
   shakingBox: "/sounds/shakingBox.mp3",
   bell: "/sounds/bell.mp3",
-  correct: "/sounds/correct.mp3",
+  correctAnswer: "/sounds/correct-answer.mp3",
   wrong: "/sounds/wrong.mp3",
   message: "/sounds/message.mp3",
   clickOpen: "/sounds/click-open.mp3",
@@ -1161,7 +1161,7 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
       if (currentCard) {
         const isCorrect = JSON.stringify(myStack) === JSON.stringify(currentCard.color_order);
         if (isCorrect) {
-          playSound("correct");
+          playSound("correctAnswer");
         } else {
           playSound("wrong");
         }
@@ -5988,6 +5988,8 @@ export default function App() {
     }
 
     if (room && room.gameState === "speed_cups_finished" && (prevGameStateRef.current === "speed_cups_playing" || prevGameStateRef.current === "speed_cups_evaluating")) {
+      stopSound("correct");
+      stopSound("wrong");
       if (room.speedCupsWinner === socket?.id) {
         playSound("win");
       } else if (room.speedCupsWinner === "draw") {
@@ -7698,7 +7700,7 @@ export default function App() {
           setFunnyFilter(null);
         }, 2000);
       } else {
-        playSound("correct");
+        playSound("correctAnswer");
       }
     });
 
@@ -20376,7 +20378,7 @@ export default function App() {
               `تم إرسال الهدايا إلى ${showGiftModal.name} بنجاح!`,
               "نجاح",
             );
-            playSound("correct");
+            playSound("correctAnswer");
             setShowGiftModal(null);
             setGiftAmounts({ keys: "", tokens: "", helpers: {} });
           } else {
