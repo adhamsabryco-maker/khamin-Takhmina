@@ -26438,9 +26438,9 @@ export default function App() {
                     {room.gameState === "dots_playing" && (
                        <div className="text-center my-1 font-bold text-base md:text-lg mb-2 flex flex-col items-center gap-1">
                           {room.dotsTurn === socket?.id ? (
-                             <span className="text-purple-600 bg-purple-50 px-4 py-1 rounded-full border border-purple-200">دورك الآن للعب!</span>
+                             <span key="dots-turn-mine" className="text-purple-600 bg-purple-50 px-4 py-1 rounded-full border border-purple-200">دورك الآن للعب!</span>
                           ) : (
-                             <span className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب...</span>
+                             <span key="dots-turn-opponent" className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب...</span>
                           )}
                           <div className="flex gap-4 text-xs mt-1 justify-center">
                             <span className="text-red-500 font-black px-2 bg-red-50 rounded border border-red-200">مربعاتك: {room.dotsPlayer1 === socket?.id ? room.dotsP1Score : room.dotsP2Score} 🟥</span>
@@ -26695,9 +26695,9 @@ export default function App() {
                     {room.gameState === "iq_playing" && (
                        <div className="text-center my-1 font-bold text-base md:text-lg mb-2 flex flex-col items-center gap-1">
                           {room.iqTurn === socket?.id ? (
-                             <span className="text-blue-600 animate-pulse bg-blue-50 px-4 py-1 rounded-full border border-blue-200">دورك الآن للعب! ⏳ {room.iqTurnTimer}</span>
+                             <span key="iq-turn-mine" className="text-blue-600 animate-pulse bg-blue-50 px-4 py-1 rounded-full border border-blue-200">دورك الآن للعب! ⏳ {room.iqTurnTimer}</span>
                           ) : (
-                             <span className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳ {room.iqTurnTimer}</span>
+                             <span key="iq-turn-opponent" className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳ {room.iqTurnTimer}</span>
                           )}
                           
                           <div className="flex gap-4 text-sm mt-1">
@@ -26856,9 +26856,9 @@ export default function App() {
                 {room.gameState === "xo_playing" && (
                    <div className="text-center my-2 font-bold text-base md:text-lg mb-2">
                       {room.xoTurn === socket?.id ? (
-                         <span className="text-blue-600 animate-pulse bg-blue-50 px-4 py-1 rounded-full border border-blue-200">دورك الآن للعب! 🎮</span>
+                         <span key="xo-turn-mine" className="text-blue-600 animate-pulse bg-blue-50 px-4 py-1 rounded-full border border-blue-200">دورك الآن للعب! 🎮</span>
                       ) : (
-                         <span className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳</span>
+                         <span key="xo-turn-opponent" className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳</span>
                       )}
                    </div>
                 )}
