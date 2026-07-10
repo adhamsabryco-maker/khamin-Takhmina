@@ -10,7 +10,7 @@ import { createPortal } from "react-dom";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { GoogleGenAI } from "@google/genai";
 import { io, Socket } from "socket.io-client";
-import { Facebook, Youtube, Instagram, Heart, Hand, BellRing } from "lucide-react";
+import { Facebook, Youtube, Instagram, Heart, Hand, BellRing, RefreshCw } from "lucide-react";
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { motion, AnimatePresence, animate } from "motion/react";
 import {
@@ -4084,30 +4084,37 @@ export default function App() {
     if (
       socket &&
       playerSerial &&
-      showFriendsModal &&
-      friendsList.length === (friendsPage - 1) * 10
+      showFriendsModal
     ) {
-      setFriendsLoading(true);
-      socket.emit(
-        "get_friends",
-        { serial: playerSerial, page: friendsPage },
-        (res: any) => {
-          if (res.success) {
-            if (friendsPage === 1) {
-              setFriendsList(res.friends || []);
-            } else {
-              setFriendsList((prev) => {
-                const newFriends = (res.friends || []).filter(
-                  (f: any) => !prev.some((p) => p.serial === f.serial),
-                );
-                return [...prev, ...newFriends];
-              });
+      console.log("Pagination Check:", {
+        friendsListLength: friendsList.length,
+        friendsPage,
+        expectedLength: (friendsPage - 1) * 10,
+        friendsTotal,
+      });
+      if (friendsList.length >= (friendsPage - 1) * 10) {
+        setFriendsLoading(true);
+        socket.emit(
+          "get_friends",
+          { serial: playerSerial, page: friendsPage },
+          (res: any) => {
+            if (res.success) {
+              if (friendsPage === 1) {
+                setFriendsList(res.friends || []);
+              } else {
+                setFriendsList((prev) => {
+                  const newFriends = (res.friends || []).filter(
+                    (f: any) => !prev.some((p) => p.serial === f.serial),
+                  );
+                  return [...prev, ...newFriends];
+                });
+              }
+              setFriendsTotal(res.total || 0);
             }
-            setFriendsTotal(res.total || 0);
-          }
-          setFriendsLoading(false);
-        },
-      );
+            setFriendsLoading(false);
+          },
+        );
+      }
     }
   }, [showFriendsModal, friendsPage, socket, playerSerial]);
 
@@ -11096,8 +11103,8 @@ export default function App() {
                 className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar"
                 onScroll={(e) => {
                   const bottom =
-                    e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
-                    e.currentTarget.clientHeight;
+                    e.currentTarget.scrollHeight - e.currentTarget.scrollTop <=
+                    e.currentTarget.clientHeight + 5;
                   if (
                     bottom &&
                     !friendsLoading &&
@@ -23510,7 +23517,7 @@ export default function App() {
                           <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
                             {truncateName(topPlayers[1].name)}
                           </div>
-                          <div className="w-full rank-2-bar h-22 md:h-24 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-2">
+                          <div className="w-full rank-2-bar h-22 md:h-24 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-0.5">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                               Lvl {limit99(getLevel(topPlayers[1].xp || 0))}
                             </div>
