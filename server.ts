@@ -6398,6 +6398,7 @@ async function startServer() {
 
         // Simulate first flip
         r.iqFlipped = [idx1];
+        r.iqTurnTimer = 10;
         if (!r.iqSeen.includes(idx1)) {
           r.iqSeen.push(idx1);
         }
@@ -8663,7 +8664,9 @@ async function startServer() {
           const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
           if (!isAdPlaying) {
             r.timer--;
-            r.iqTurnTimer--;
+            if (!r.iqFlipped || r.iqFlipped.length < 2) {
+              r.iqTurnTimer--;
+            }
             
             if (r.timer <= 0) {
               clearInterval(interval);
@@ -11248,6 +11251,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
           
           if (!room.iqFlipped.includes(index) && !room.iqMatched.includes(index) && room.iqFlipped.length < 2) {
             room.iqFlipped.push(index);
+            room.iqTurnTimer = 10;
             if (!room.iqSeen.includes(index)) {
               room.iqSeen.push(index);
             }
