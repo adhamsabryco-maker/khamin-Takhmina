@@ -26694,7 +26694,9 @@ export default function App() {
                     
                     {room.gameState === "iq_playing" && (
                        <div className="text-center my-1 font-bold text-base md:text-lg mb-2 flex flex-col items-center gap-1">
-                          {room.iqTurn === socket?.id ? (
+                          {room.iqFlipped?.length === 2 ? (
+                             <span className="text-yellow-600 animate-pulse bg-yellow-50 px-4 py-1 rounded-full border border-yellow-200">جاري التحقق... ⏳ {room.iqTurnTimer}</span>
+                          ) : room.iqTurn === socket?.id ? (
                              <span className="text-blue-600 animate-pulse bg-blue-50 px-4 py-1 rounded-full border border-blue-200">دورك الآن للعب! ⏳ {room.iqTurnTimer}</span>
                           ) : (
                              <span className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳ {room.iqTurnTimer}</span>
