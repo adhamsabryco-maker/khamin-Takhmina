@@ -4431,6 +4431,31 @@ async function startServer() {
       }
     });
 
+    app.get("/api/image/:id", (req, res) => {
+      try {
+        const image = db.prepare("SELECT data FROM custom_images WHERE id = ?").get(req.params.id) as any;
+        if (!image || !image.data) {
+          return res.status(404).send("Not found");
+        }
+        
+        const base64DataMatch = image.data.match(/^data:(image\/\w+);base64,(.*)$/);
+        if (base64DataMatch) {
+          const contentType = base64DataMatch[1];
+          const imgBuffer = Buffer.from(base64DataMatch[2], 'base64');
+          res.writeHead(200, {
+            'Content-Type': contentType,
+            'Content-Length': imgBuffer.length
+          });
+          res.end(imgBuffer);
+        } else {
+          res.status(400).send("Invalid image data");
+        }
+      } catch (error) {
+        console.error("Error serving image:", error);
+        res.status(500).send("Server error");
+      }
+    });
+
     app.get("/api/admin/images", (req, res) => {
       try {
         // First ensure the column exists, just in case
@@ -8572,7 +8597,7 @@ async function startServer() {
       
       let allImages = [];
       try {
-        allImages = db.prepare("SELECT data as image FROM custom_images WHERE category = ?").all(selectedCategory) as any[];
+        allImages = db.prepare("SELECT id as image FROM custom_images WHERE category = ?").all(selectedCategory) as any[];
       } catch (e) {
         console.error("Error loading images for category:", selectedCategory, e);
       }
@@ -8585,7 +8610,7 @@ async function startServer() {
           
           if (activeCategories.length > 0) {
             const fallbackCategory = activeCategories[Math.floor(Math.random() * activeCategories.length)];
-            allImages = db.prepare("SELECT data as image FROM custom_images WHERE category = ?").all(fallbackCategory) as any[];
+            allImages = db.prepare("SELECT id as image FROM custom_images WHERE category = ?").all(fallbackCategory) as any[];
             selectedCategory = fallbackCategory;
           }
         } catch (e) {
