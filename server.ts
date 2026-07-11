@@ -16255,16 +16255,20 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                           io.to(roomId).emit("game_stopped", { reason: "المنافس فقد الاتصال ولم يعد" });
                           if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
                           rooms.delete(roomId);
+                          return;
                         } else {
                           endGame(roomId, opponent ? opponent.name : "المنافس", true);
                         }
-                     } else {
-                        const idx = r.players.findIndex((p) => p.serial === leavingPlayer.serial);
+                     }
+                     
+                     const rAfter = rooms.get(roomId);
+                     if (rAfter) {
+                        const idx = rAfter.players.findIndex((p) => p.serial === leavingPlayer.serial);
                         if (idx !== -1) {
-                          r.players.splice(idx, 1);
+                          rAfter.players.splice(idx, 1);
                           io.to(roomId).emit("player_left", { playerSerial: leavingPlayer.serial });
-                          io.to(roomId).emit("room_update", r);
-                          if (r.players.length === 0) {
+                          io.to(roomId).emit("room_update", rAfter);
+                          if (rAfter.players.length === 0 || rAfter.players.every((p: any) => p.isBot)) {
                             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
                             rooms.delete(roomId);
                           }
