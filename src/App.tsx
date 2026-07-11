@@ -5864,7 +5864,8 @@ export default function App() {
       room.gameState === "hand_finished" ||
       room.gameState === "speed_cups_playing" ||
       room.gameState === "speed_cups_evaluating" ||
-      room.gameState === "speed_cups_finished" 
+      room.gameState === "speed_cups_finished" ||
+      room.gameState === "speed_cups_countdown"
     );
 
     const activeMusic = isGameActive
