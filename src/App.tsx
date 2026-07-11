@@ -1415,7 +1415,7 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
                }}
                className={`transition-all ${isUsed || room.gameState !== "speed_cups_playing" || ((room.adPausedPlayersArray?.length || 0) > 0) ? 'opacity-30 grayscale cursor-not-allowed' : 'active:scale-90 hover:-translate-y-1 cursor-pointer'}`}
              >
-               <img src={`/speed-cups/${color}-cup.png`} className="w-10 md:w-14 h-auto object-contain drop-shadow-md" />
+               <img src={`/speed-cups/${color}-cup.png`} className="w-10 md:w-14 h-auto object-contain" />
              </button>
            );
         })}
@@ -5861,7 +5861,9 @@ export default function App() {
       room.gameState === "bus_complete_spin" ||
       room.gameState === "bus_complete_finished" ||
       room.gameState === "hand_playing" ||
-      room.gameState === "hand_finished"
+      room.gameState === "hand_finished" ||
+      room.gameState === "speed_cups_playing" ||
+      room.gameState === "speed_cups_finished"
     );
 
     const activeMusic = isGameActive
