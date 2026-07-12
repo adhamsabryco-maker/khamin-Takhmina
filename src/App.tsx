@@ -56,7 +56,6 @@ import {
   UserMinus,
   UserPlus,
   UserCheck,
-  RefreshCw,
   Smile,
   Loader2,
   LogOut,
@@ -1556,9 +1555,20 @@ export default function App() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [isReadyToPlay, setIsReadyToPlay] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showNetworkErrorModal, setShowNetworkErrorModal] = useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+
+  useEffect(() => {
+    if (isConnected) {
+      const timer = setTimeout(() => setIsReadyToPlay(true), 2000);
+      return () => clearTimeout(timer);
+    } else {
+      setIsReadyToPlay(false);
+    }
+  }, [isConnected]);
 
   useEffect(() => {
     let timeoutId: any = null;
@@ -7988,7 +7998,10 @@ export default function App() {
       setChatInput("");
     });
 
-    newSocket.on("error", (msg) => setError(msg));
+    newSocket.on("error", (msg) => {
+      setError(msg);
+      setIsJoiningRoom(false);
+    });
 
     newSocket.on("auth_error", () => {
       clearPlayerData();
@@ -8531,6 +8544,8 @@ export default function App() {
     localStorage.setItem("khamin_player_name", playerName);
     localStorage.setItem("khamin_player_age", playerAge.toString());
     setIsPrivate(true);
+    
+    setIsJoiningRoom(true);
     socket?.emit("join_room", {
       roomId,
       playerName,
@@ -8543,6 +8558,8 @@ export default function App() {
       serial: playerSerial,
     });
     setIsOpponentBlocked(false);
+    
+    setTimeout(() => setIsJoiningRoom(false), 3000);
   };
 
   const handleRandomMatch = () => {
@@ -24074,10 +24091,10 @@ export default function App() {
                       />
                       <button
                         onClick={handleJoin}
-                        disabled={!isConnected}
-                        className={`btn-game btn-secondary px-4 md:px-6 py-2 md:py-3 text-base md:text-lg ${!isConnected ? "opacity-50 cursor-not-allowed" : ""}`}
+                        disabled={!isReadyToPlay || isJoiningRoom}
+                        className={`btn-game btn-secondary px-4 md:px-6 py-2 md:py-3 text-base md:text-lg ${(!isReadyToPlay || isJoiningRoom) ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
-                        {isConnected ? "دخول" : "جاري الاتصال..."}
+                        {!isReadyToPlay ? "جاري الاتصال..." : isJoiningRoom ? "جاري الدخول..." : "دخول"}
                       </button>
                     </div>
                   </div>
@@ -24096,14 +24113,14 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleRandomMatch}
-                      disabled={!isConnected}
-                      className={`flex-1 btn-game btn-primary py-4 md:py-4 text-sm md:text-xl gap-1 md:gap-3 cursor-pointer touch-manipulation ${!isConnected ? "opacity-50 cursor-not-allowed" : ""}`}
+                      disabled={!isReadyToPlay}
+                      className={`flex-1 btn-game btn-primary py-4 md:py-4 text-sm md:text-xl gap-1 md:gap-3 cursor-pointer touch-manipulation ${!isReadyToPlay ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                       <div className="flex items-center gap-1.5" dir="ltr">
                         <span className="large-emoji">🔍</span>
                       </div>
                       <span>
-                        {isConnected ? "بحث عشوائي" : "جاري الاتصال..."}
+                        {isReadyToPlay ? "بحث عشوائي" : "جاري الاتصال..."}
                       </span>
                     </button>
 
