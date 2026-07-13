@@ -1462,7 +1462,7 @@ export default function App() {
         window.adConfig({
           preloadAdBreaks: "on",
           sound: "on",
-          maxAdContentRating: "PG",
+          maxAdContentRating: "T",
           onReady: () => {
             console.log("H5 Games Ads ready");
           },
