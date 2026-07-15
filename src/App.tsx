@@ -294,8 +294,10 @@ const SPIN_REWARDS_UI = [
   },
 ];
 
-const CategoryPageAd = () => {
+const CategoryPageAd = ({ isAdmin, isPro }: { isAdmin?: boolean; isPro?: boolean }) => {
   const adRef = useRef<HTMLModElement>(null);
+
+  if (isAdmin || isPro) return null;
 
   useEffect(() => {
     let interval: any;
@@ -408,6 +410,9 @@ const SOUNDS = {
   gameBackground: "/sounds/start-game-background-music.mp3",
   deskBell: "/sounds/desk-bell.mp3",
   countdownBeep: "/sounds/countdown-beep.mp3",
+  boomSingleTick: "/sounds/boom-single-tick.mp3",
+  bombFuse: "/sounds/bomb-fuse.mp3",
+  bombExplosion: "/sounds/bomb-explosion.mp3",
 };
 
 interface ThemeConfig {
@@ -616,7 +621,10 @@ interface Room {
     | "xo_playing"
     | "xo_finished"
     | "hand_playing"
-    | "hand_finished";
+    | "hand_finished"
+    | "bomb_party_playing"
+    | "bomb_party_finished";
+  bombParty?: any;
   handGrid?: (string | null)[];
   handPickerId?: string | null;
   handSearcherId?: string | null;
@@ -644,7 +652,7 @@ interface Room {
   currentTurn?: string | null;
   waitingForAnswerFrom?: string | null;
   matchType?: "random" | "private" | "friend" | string;
-  selectionMode?: "ready" | "custom" | "bus_complete" | "xo" | "hand_khamin" | "iq" | "dots" | "speed_cups" | null;
+  selectionMode?: "ready" | "custom" | "bus_complete" | "xo" | "hand_khamin" | "iq" | "dots" | "speed_cups" | "bomb_party" | null;
   busCompleteLetter?: string;
   busCompleteWinner?: string;
   busCompleteHideResults?: boolean;
@@ -1687,6 +1695,7 @@ export default function App() {
   const [busCompleteMatchPoints, setBusCompleteMatchPoints] = useState(
     () => parseInt(localStorage.getItem("khamin_bus_match_points") || "0") || 0,
   );
+
   const [xoRewardLevel, setXoRewardLevel] = useState(
     () => parseInt(localStorage.getItem("khamin_xo_reward_level") || "1") || 1,
   );
@@ -2272,7 +2281,7 @@ export default function App() {
   });
 
   const [leaderboardFilter, setLeaderboardFilter] = useState<
-    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "speedCups" | "wins" | "streak" | "likes"
+    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "speedCups" | "bombParty" | "wins" | "streak" | "likes"
   >("all");
   const [leaderboardVisibleCount, setLeaderboardVisibleCount] = useState(10);
 
@@ -2287,6 +2296,8 @@ export default function App() {
     let sorted = [...topPlayers];
     if (leaderboardFilter === "busComplete") {
       sorted.sort((a, b) => (b.busCompleteWins || 0) - (a.busCompleteWins || 0));
+    } else if (leaderboardFilter === "bombParty") {
+      sorted.sort((a, b) => (b.bombPartyWins || 0) - (a.bombPartyWins || 0));
     } else if (leaderboardFilter === "xo") {
       sorted.sort((a, b) => (b.xoWins || 0) - (a.xoWins || 0));
     } else if (leaderboardFilter === "hand") {
@@ -3314,6 +3325,9 @@ export default function App() {
 
   const [roomId, setRoomId] = useState("");
   const [room, setRoom] = useState<Room | null>(null);
+  const [bombExplosionFrame, setBombExplosionFrame] = useState<number | null>(null);
+
+
   
   const [handPickerLocalSelected, setHandPickerLocalSelected] = useState<number | null>(null);
   useEffect(() => {
@@ -5843,6 +5857,12 @@ export default function App() {
           volume: musicVolume,
           html5: true,
         });
+      } else if (key === "bombFuse") {
+        audioRef.current[key] = new Howl({
+          src: [url],
+          loop: true,
+          preload: true,
+        });
       } else {
         audioRef.current[key] = new Howl({ src: [url], preload: true });
       }
@@ -5860,6 +5880,8 @@ export default function App() {
         const isGameActive = !!room && (
       room.gameState === "playing" ||
       room.gameState === "finished" ||
+      room.gameState === "bomb_party_playing" ||
+      room.gameState === "bomb_party_finished" ||
       room.gameState === "xo_playing" ||
       room.gameState === "xo_finished" ||
       room.gameState === "iq_playing" ||
@@ -5960,6 +5982,46 @@ export default function App() {
     }
   }, [room?.gameState, room?.handPhase, room?.handPickerId, socket?.id, playSound, stopSound]);
 
+  // Loop bombFuse sound during active Bomb Party play phase
+  useEffect(() => {
+    if (room?.gameState === "bomb_party_playing") {
+      playSound("bombFuse");
+    } else {
+      stopSound("bombFuse");
+    }
+  }, [room?.gameState, playSound, stopSound]);
+
+  // Synchronized ticking of boomSingleTick with the bomb's heartbeat pulse
+  useEffect(() => {
+    if (room?.gameState !== "bomb_party_playing" || !room?.bombParty || room?.bombParty?.gameOver) {
+      return;
+    }
+
+    let timeoutId: any;
+
+    const tick = () => {
+      playSound("boomSingleTick");
+
+      // Calculate elapsed time directly using Date.now() to avoid state dependencies
+      const elapsed = Math.max(0, Date.now() - room.bombParty!.bombStartTime);
+      const remainingMs = Math.max(0, room.bombParty!.turnTimeLimit - elapsed);
+      const turnLimitSec = (room.bombParty!.turnTimeLimit || 10000) / 1000;
+      const ratio = Math.max(0, Math.min(1, (remainingMs / 1000) / turnLimitSec));
+      
+      // Calmer pulse duration: from 1.2s down to 0.5s
+      const pulseDuration = 0.5 + 0.7 * ratio;
+
+      timeoutId = setTimeout(tick, pulseDuration * 1000);
+    };
+
+    // Schedule the first tick shortly
+    timeoutId = setTimeout(tick, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [room?.gameState, room?.bombParty?.bombStartTime, room?.bombParty?.turnTimeLimit, room?.bombParty?.gameOver, playSound]);
+
   const prevGameStateRef = useRef<string | null>(null);
   const prevHandGridCountRef = useRef<number>(0);
   const prevHandNextIdxRef = useRef<number>(-1);
@@ -5978,6 +6040,35 @@ export default function App() {
   }, [room?.gameState, room?.handGrid, room?.handPickerId, socket?.id, playSound]);
 
   useEffect(() => {
+    
+    if (room && room.gameState === "bomb_party_finished" && prevGameStateRef.current === "bomb_party_playing") {
+      const winnerId = room.bombParty?.matchWinnerId;
+      const isDraw = !winnerId;
+      const isMeWinner = winnerId === socket?.id;
+      
+      if (isMeWinner) {
+        playSound("win");
+        setBombPartyMatchPoints(prev => prev + 10); // Winner gets 10 points to match standard games
+      } else if (isDraw) {
+        playSound("pop");
+      } else {
+        playSound("bombExplosion");
+        
+        // Trigger 9-frame explosion sequence (100ms per frame)
+        let currentFrame = 1;
+        setBombExplosionFrame(1);
+        const interval = setInterval(() => {
+          currentFrame += 1;
+          if (currentFrame <= 9) {
+            setBombExplosionFrame(currentFrame);
+          } else {
+            clearInterval(interval);
+            setBombExplosionFrame(null);
+          }
+        }, 100);
+      }
+    }
+
     if (room && room.gameState === "xo_finished" && prevGameStateRef.current === "xo_playing") {
       if (room.xoWinner === socket?.id) {
         playSound("win");
@@ -6622,6 +6713,25 @@ export default function App() {
       if (data.newLevel != null) {
         setXoRewardLevel(data.newLevel);
         localStorage.setItem("khamin_xo_reward_level", data.newLevel.toString());
+      }
+    });
+
+    newSocket.on("bomb_party_reward_claimed", (data: any) => {
+      playSound("prize");
+      setCustomConfirm({
+         show: true,
+         title: "تم استلام هدايا قنبلة التخمين بنجاح! 🎁",
+         message: "تم ترقية مستوى هدايا قنبلة التخمين إلى " + data.newLevel + "!\n\n" +
+                  "حصلت على:\n" +
+                  "⭐ " + data.xp + " خبرة\n" +
+                  "🔑 " + data.keys + " مفاتيح\n" +
+                  "🔧 " + (data.newLevel > 1 ? data.newLevel - 1 : 10) + " من كل وسيلة مساعدة",
+         confirmText: "رائع!",
+         onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+      });
+      if (data.newLevel != null) {
+        setBombPartyRewardLevel(data.newLevel);
+        localStorage.setItem("khamin_bomb_reward_level", data.newLevel.toString());
       }
     });
 
@@ -9268,7 +9378,7 @@ export default function App() {
 
   useEffect(() => {
     if (room && room.gameState !== previousGameStateRef.current) {
-      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished") {
+      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished" || room.gameState === "bomb_party_finished") {
         if (!hasProPackage) {
           matchesPlayedRef.current += 1;
           if (matchesPlayedRef.current >= 3) {
@@ -10182,6 +10292,9 @@ export default function App() {
       room?.gameState === "guessing" ||
       room?.gameState === "discussion" ||
       room?.gameState === "custom_image_upload" ||
+      room?.gameState === "bomb_party_setup" ||
+      room?.gameState === "bomb_party_playing" ||
+      room?.gameState === "bomb_party_finished" ||
       room?.gameState === "xo_playing" ||
       room?.gameState === "xo_finished" ||
       room?.gameState === "iq_playing" ||
@@ -10204,7 +10317,12 @@ export default function App() {
       if (me?.useToken && (room?.gameState === "guessing" || room?.gameState === "discussion")) {
         message =
           "تحذير: إذا انسحبت الآن، ستخسر التخمينة المستخدمة! وتعتبر خاسر. هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟";
-      } else if (room?.gameState === "guessing" || room?.gameState === "discussion" || room?.gameState === "custom_image_upload") {
+      } else if (
+        room?.gameState === "guessing" ||
+        room?.gameState === "discussion" ||
+        room?.gameState === "custom_image_upload" ||
+        room?.gameState === "bomb_party_playing"
+      ) {
         message =
           "انسحابك من المبارة تعتبر خاسر. هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟";
       }
@@ -12239,6 +12357,13 @@ export default function App() {
                         <span className="text-gray-500 font-extrabold">تخمينة نقطة وخط</span>
                       </span>
                       <span className="font-black text-brown-dark">{data.dotsWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span>💣</span>
+                        <span className="text-gray-500 font-extrabold">قنبلة التخمين</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.bombPartyWins || 0}</span>
                     </div>
                     <div className="flex items-center justify-between bg-gray-50 p-1">
                       <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
@@ -21279,6 +21404,106 @@ export default function App() {
   };
 
 
+
+  const [bombPartyRewardLevel, setBombPartyRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_bomb_reward_level") || "1") || 1
+  );
+  const [bombPartyMatchPoints, setBombPartyMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_bomb_match_points") || "0") || 0
+  );
+
+  useEffect(() => {
+    localStorage.setItem("khamin_bomb_reward_level", bombPartyRewardLevel.toString());
+  }, [bombPartyRewardLevel]);
+
+  useEffect(() => {
+    localStorage.setItem("khamin_bomb_match_points", bombPartyMatchPoints.toString());
+  }, [bombPartyMatchPoints]);
+
+  const claimBombPartyReward = () => {
+    const targetPoints = bombPartyRewardLevel * 100;
+    if (bombPartyMatchPoints >= targetPoints) {
+      const remainingPoints = Math.max(0, bombPartyMatchPoints - targetPoints);
+      setBombPartyMatchPoints(remainingPoints);
+      localStorage.setItem("khamin_bomb_match_points", remainingPoints.toString());
+      setBombPartyRewardLevel((prev) => prev + 1);
+      localStorage.setItem("khamin_bomb_reward_level", (bombPartyRewardLevel + 1).toString());
+    }
+  };
+
+  const renderBombPartyRewardBar = () => {
+    if (!room || room.matchType !== "random" || (room.gameState !== "bomb_party_playing" && room.gameState !== "bomb_party_finished")) return null;
+
+    const targetPoints = bombPartyRewardLevel * 100;
+    const progress = Math.min((bombPartyMatchPoints / targetPoints) * 100, 100);
+    const isReady = bombPartyMatchPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl p-2 relative overflow-hidden transition-all shadow-sm">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-red-100/50 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex sm:flex-row items-center justify-between gap-2 z-10 w-full">
+            <div className="flex items-center gap-2 font-bold text-red-800 text-sm">
+              <span>المستوي {bombPartyRewardLevel}</span>
+              <span className="text-xs bg-white px-1.5 py-0.5 rounded-md border border-red-200" dir="ltr">
+                {bombPartyMatchPoints} / {targetPoints}
+              </span>
+            </div>
+            
+            <button
+              onClick={() => {
+                 if (isReady) {
+                   setCustomConfirm({
+                      show: true,
+                      title: "مبروك! 🎉 اكتملت نقاط المستوي " + bombPartyRewardLevel,
+                      message: "يمكنك استلام هدايا هذا المستوى الآن، هل تود مشاهدة الإعلان؟\n\n" +
+                               "🎁 " + (bombPartyRewardLevel === 1 ? 50 : 100 + 50 * (bombPartyRewardLevel - 1)) + " XP\n" +
+                               "🔑 " + bombPartyRewardLevel + " مفتاح\n" +
+                               "🔧 " + bombPartyRewardLevel + " من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)",
+                      confirmText: "نعم مشاهدة الاعلان",
+                      cancelText: "الغاء",
+                      onConfirm: () => {
+                        setCustomConfirm((prev) => ({ ...prev, show: false }));
+                        socket?.emit("bus_complete_ad_start", { roomId: room.id }); // reuse visual ad lock
+                        showBusCompleteAd(
+                          () => {
+                             socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: true });
+                             socket?.emit("claim_bomb_party_reward", { serial: socket?.data?.serial || playerSerial, level: bombPartyRewardLevel });
+                             claimBombPartyReward();
+                          },
+                          () => {
+                             socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: false });
+                             showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+                          }
+                        );
+                      }
+                   });
+                 } else {
+                   setCustomConfirm({
+                     show: true,
+                     title: `المستوي ${bombPartyRewardLevel}`,
+                     message: `متبقي ${targetPoints - bombPartyMatchPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                              `🎁 ${bombPartyRewardLevel === 1 ? 50 : 100 + 50 * (bombPartyRewardLevel - 1)} XP\n` +
+                              `🔑 ${bombPartyRewardLevel} مفتاح\n` +
+                              `🔧 ${bombPartyRewardLevel} من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)`,
+                     confirmText: "حسناً",
+                     onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                   });
+                 }
+              }}
+              className={`flex justify-center items-center gap-1.5 px-3 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+                ${isReady ? "bg-green-500 text-white animate-pulse hover:bg-green-600 border border-green-600 cursor-pointer" : "bg-white text-red-600 border border-red-200 hover:bg-red-50 cursor-pointer"}`}
+            >
+              <span>🎁</span>
+              <span>استلم الهدايا</span>
+            </button>
+          </div>
+       </div>
+    );
+  };
+
   const renderXORewardBar = () => {
     if (!room || room.matchType !== "random" || (room.gameState !== "xo_playing" && room.gameState !== "xo_finished")) return null;
 
@@ -22616,7 +22841,7 @@ export default function App() {
             )}
           </div>
 
-          <CategoryPageAd />
+          <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
 
           {renderModals()}
         </div>
@@ -22681,18 +22906,7 @@ export default function App() {
 
     return (
       <div className="fixed inset-0 bg-black/85 z-[10000] overflow-hidden h-screen w-screen touch-none select-none flex justify-center">
-        <style>{`
-          @keyframes fall {
-            0% { transform: translateY(-100px); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(110vh); opacity: 0; }
-          }
-          .gift-fall {
-            animation: fall linear forwards;
-            will-change: transform, opacity;
-          }
-        `}</style>
+        
 
         <div className="relative w-full max-w-md h-full mx-auto">
           {/* Header with Timer and Close Button */}
@@ -23555,6 +23769,7 @@ export default function App() {
                               <span>{limit99(topPlayers[1].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                               <span>{limit99(topPlayers[1].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[1].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[1].bombPartyWins || 0)} 💣</span>
                             </div>
                           </div>
                         </div>
@@ -23612,6 +23827,7 @@ export default function App() {
                               <span>{limit99(topPlayers[0].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                               <span>{limit99(topPlayers[0].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[0].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[0].bombPartyWins || 0)} 💣</span>
                             </div>
                           </div>
                         </div>
@@ -23663,6 +23879,7 @@ export default function App() {
                               <span>{limit99(topPlayers[2].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
                               <span>{limit99(topPlayers[2].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[2].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[2].bombPartyWins || 0)} 💣</span>
                             </div>
                           </div>
                         </div>
@@ -24268,6 +24485,8 @@ export default function App() {
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 inline object-contain" /></span>
                               <span>•</span>
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-3 h-3 inline object-contain" /></span>
+                              <span>•</span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.bombPartyWins || 0)} 💣</span>
                             </div>
                           </div>
                         </div>
@@ -24288,6 +24507,7 @@ export default function App() {
                         { id: "hand", icon: "🖐" },
                         { id: "iq", icon: <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span> },
                         { id: "dots", icon: <img src="/dots-and-boxes-logo.png" className="w-6 h-6 object-contain" /> },
+                        { id: "bombParty", icon: "💣" },
                         { id: "speedCups", icon: <img src="/speed-cups/speed-cups-logo.png" className="w-6 h-6 object-contain" /> },
                       ].map((filter) => (
                         <button
@@ -24420,6 +24640,13 @@ export default function App() {
                                   dir="rtl"
                                 >
                                   {limit99(player.speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-3 h-3 object-contain" />
+                                </span>
+                                <span className="text-brown-light">•</span>
+                                <span
+                                  className="bg-red-50 text-red-600 md:px-1.5 rounded flex items-center gap-0.5"
+                                  dir="rtl"
+                                >
+                                  {limit99(player.bombPartyWins || 0)} 💣
                                 </span>
                               </div>
                             </div>
@@ -24975,7 +25202,11 @@ export default function App() {
               room.gameState !== "bus_complete_spin" &&
               room.gameState !== "bus_complete_playing" &&
               room.gameState !== "bus_complete_evaluating" &&
-              room.gameState !== "xo_playing" &&
+              room.gameState !== "bomb_party_playing" &&
+              room.gameState !== "bomb_party_finished" &&
+              room.gameState !== "bomb_party_playing" &&
+          room.gameState !== "bomb_party_finished" &&
+          room.gameState !== "xo_playing" &&
               room.gameState !== "xo_finished" &&
               room.gameState !== "starting" && (
                 <div
@@ -25986,7 +26217,7 @@ export default function App() {
                   </>
                 )}
               </div>
-              <CategoryPageAd />
+              <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
             </React.Fragment>
             ) : room.gameState === "bus_complete_evaluating" ? (
               <React.Fragment>
@@ -26141,7 +26372,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <CategoryPageAd />
+              <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
             </React.Fragment>
             
             ) : room.gameState.startsWith("speed_cups_") ? (
@@ -26789,8 +27020,390 @@ export default function App() {
                   </React.Fragment>
                 )}
                 </div>
-                <CategoryPageAd />
+                <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
               </React.Fragment>
+
+            ) : room.gameState === "bomb_party_setup" || room.gameState === "bomb_party_playing" || room.gameState === "bomb_party_finished" ? (
+              <React.Fragment>
+                <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto] bg-gray-900 border-red-500">
+                {renderBombPartyRewardBar()}
+                
+                {room.players.length === 2 && (
+                  <div className="flex justify-between items-center w-full mb-1 px-1 relative z-20" dir="ltr">
+                    <div className={`flex flex-col items-center ${room.bombParty?.turnPlayerId === room.players[1].id ? 'bg-red-900 border-red-400' : 'bg-gray-800 border-red-500'} border-2 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px] text-white transition-colors`}>
+                      <span className="text-[10px] md:text-xs font-black text-gray-300 max-w-[80px] break-words text-center flex items-center justify-center gap-1" dir="rtl">
+                        {(room.players[1].name || "اللاعب").substring(0, 8)}
+                      </span>
+                      <span className="text-sm font-black text-red-500" dir="rtl">🏆 {room.players[1].bombPartyWins || 0}</span>
+                    </div>
+
+                    <div className={`flex flex-col items-center ${room.bombParty?.turnPlayerId === room.players[0].id ? 'bg-red-900 border-red-400' : 'bg-gray-800 border-red-500'} border-2 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px] text-white transition-colors`}>
+                      <span className="text-[10px] md:text-xs font-black text-gray-300 max-w-[80px] break-words text-center flex items-center justify-center gap-1" dir="rtl">
+                        {(room.players[0].name || "اللاعب").substring(0, 8)}
+                      </span>
+                      <span className="text-sm font-black text-red-500" dir="rtl">🏆 {room.players[0].bombPartyWins || 0}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Animated Burning Fuses & Fire Sparks */}
+                {room.players.length === 2 && room.gameState === "bomb_party_playing" && (
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-15" viewBox="0 0 400 320">
+                    {/* Left Fuse Burnt/Ash Trace */}
+                    {(() => {
+                      const p1Id = room.players[1]?.id;
+                      const p1Incorrect = room.bombParty?.stats?.[p1Id]?.incorrect || 0;
+                      return (
+                        <path
+                          d="M 200,78 q 0,-43 -62.2,10.7 q -31,32.3 -62,0 t -30.8,-53.7"
+                          fill="none"
+                          stroke="#374151"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeDasharray="2 3"
+                          className="opacity-40"
+                        />
+                      );
+                    })()}
+
+                    {/* Left Fuse Active (Unburnt rope) */}
+                    {(() => {
+                      const p1Id = room.players[1]?.id;
+                      const p1Incorrect = room.bombParty?.stats?.[p1Id]?.incorrect || 0;
+                      const t1 = Math.min(1.0, p1Incorrect * 0.2);
+                      return (
+                        <path
+                          d="M 200,78 q 0,-43 -62.2,10.7 q -31,32.3 -62,0 t -30.8,-53.7"
+                          fill="none"
+                          stroke="#d97706"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          pathLength={100}
+                          strokeDasharray={`${((1 - t1) * 100).toFixed(2)} ${(t1 * 100).toFixed(2)}`}
+                          className="opacity-90"
+                        />
+                      );
+                    })()}
+
+                    {/* Right Fuse Burnt/Ash Trace */}
+                    {(() => {
+                      const p0Id = room.players[0]?.id;
+                      const p0Incorrect = room.bombParty?.stats?.[p0Id]?.incorrect || 0;
+                      return (
+                        <path
+                          d="M 200,78 q 0,-43 62.2,10.7 q 31,32.3 62,0 t 30.8,-53.7"
+                          fill="none"
+                          stroke="#374151"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeDasharray="2 3"
+                          className="opacity-40"
+                        />
+                      );
+                    })()}
+
+                    {/* Right Fuse Active (Unburnt rope) */}
+                    {(() => {
+                      const p0Id = room.players[0]?.id;
+                      const p0Incorrect = room.bombParty?.stats?.[p0Id]?.incorrect || 0;
+                      const t0 = Math.min(1.0, p0Incorrect * 0.2);
+                      return (
+                        <path
+                          d="M 200,78 q 0,-43 62.2,10.7 q 31,32.3 62,0 t 30.8,-53.7"
+                          fill="none"
+                          stroke="#d97706"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          pathLength={100}
+                          strokeDasharray={`${((1 - t0) * 100).toFixed(2)} ${(t0 * 100).toFixed(2)}`}
+                          className="opacity-90"
+                        />
+                      );
+                    })()}
+
+                    {/* Left Spark (Fiery rotating & vibrating star) */}
+                    {(() => {
+                      const p1Id = room.players[1]?.id;
+                      const p1Incorrect = room.bombParty?.stats?.[p1Id]?.incorrect || 0;
+                      const t1 = Math.min(1.0, p1Incorrect * 0.2);
+                      const pt = getThreeSegmentBezierPoint(1 - t1, true);
+                      // If completely burned up, hide the spark
+                      if (t1 >= 1.0) return null;
+                      return (
+                        <motion.g
+                          animate={{
+                            x: [pt.x - 2, pt.x + 2, pt.x - 1, pt.x + 1, pt.x],
+                            y: [pt.y + 1, pt.y - 1, pt.y + 2, pt.y - 2, pt.y],
+                            scale: [1, 1.15, 0.9, 1.1, 0.95, 1],
+                            rotate: [0, 90, 180, 270, 360]
+                          }}
+                          transition={{
+                            repeat: Infinity,
+                            duration: 0.25,
+                            ease: "linear"
+                          }}
+                        >
+                          <path d={getStarburstPath(0, 0, 7, 16, 6)} fill="#ef4444" className="blur-[0.5px]" />
+                          <path d={getStarburstPath(0, 0, 7, 11, 4.5)} fill="#f97316" />
+                          <path d={getStarburstPath(0, 0, 7, 6, 2.5)} fill="#facc15" />
+                          <circle cx="0" cy="0" r="1.5" fill="#ffffff" />
+                        </motion.g>
+                      );
+                    })()}
+
+                    {/* Right Spark (Fiery rotating & vibrating star) */}
+                    {(() => {
+                      const p0Id = room.players[0]?.id;
+                      const p0Incorrect = room.bombParty?.stats?.[p0Id]?.incorrect || 0;
+                      const t0 = Math.min(1.0, p0Incorrect * 0.2);
+                      const pt = getThreeSegmentBezierPoint(1 - t0, false);
+                      // If completely burned up, hide the spark
+                      if (t0 >= 1.0) return null;
+                      return (
+                        <motion.g
+                          animate={{
+                            x: [pt.x - 2, pt.x + 2, pt.x - 1, pt.x + 1, pt.x],
+                            y: [pt.y + 1, pt.y - 1, pt.y + 2, pt.y - 2, pt.y],
+                            scale: [1, 1.15, 0.9, 1.1, 0.95, 1],
+                            rotate: [0, 90, 180, 270, 360]
+                          }}
+                          transition={{
+                            repeat: Infinity,
+                            duration: 0.25,
+                            ease: "linear"
+                          }}
+                        >
+                          <path d={getStarburstPath(0, 0, 7, 16, 6)} fill="#ef4444" className="blur-[0.5px]" />
+                          <path d={getStarburstPath(0, 0, 7, 11, 4.5)} fill="#f97316" />
+                          <path d={getStarburstPath(0, 0, 7, 6, 2.5)} fill="#facc15" />
+                          <circle cx="0" cy="0" r="1.5" fill="#ffffff" />
+                        </motion.g>
+                      );
+                    })()}
+                  </svg>
+                )}
+
+                {room.gameState === "bomb_party_setup" && (
+                  <div className="flex-1 flex flex-col items-center justify-center py-4 px-4 text-center space-y-6">
+                    <motion.div
+                      animate={{ scale: [1, 1.05, 1] }}
+                      transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                      className="text-6xl md:text-7xl"
+                    >
+                      💣
+                    </motion.div>
+                    
+                    <div className="space-y-2">
+                      <h3 className="text-xl md:text-2xl font-black text-black">جاهز تبدأ اللعبة؟</h3>
+                      <p className="text-xs md:text-sm font-bold text-gray-500 max-w-xs mx-auto">
+                        القنبلة على وشك الاشتعال! لازم تخمن الكلمة بسرعة قبل ما القنبلة تفرقع فيك!
+                      </p>
+                    </div>
+
+                    <button
+                      disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                      onClick={() => {
+                        playSound("clickOpen");
+                        socket?.emit("start_bomb_party", { roomId: room.id });
+                      }}
+                      className={`w-full max-w-xs ${
+                        ((room.adPausedPlayersArray?.length || 0) > 0)
+                          ? "bg-gray-300 border-gray-400 text-gray-500 shadow-none cursor-not-allowed"
+                          : "bg-red-500 hover:bg-red-600 border-red-600 shadow-[0_6px_0_0_#b91c1c] active:shadow-none active:translate-y-1.5"
+                      } border-[6px] text-white font-black text-x1 md:text-xl py-2.5 px-2 rounded-2xl transition-all flex justify-center items-center gap-2 relative overflow-hidden group`}
+                    >
+                      {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺" : "ولع الفتيل🔥, وابدأ التخمين"}
+                    </button>
+                  </div>
+                )}
+
+                {room.gameState === "bomb_party_playing" && (
+                  <div className="flex-1 flex flex-col items-center justify-center relative min-h-[220px]">
+                    {/* Background Overlays for Active Player Turns (smooth transitions) */}
+                    <div 
+                      className={`absolute left-0 top-0 bottom-0 w-1/2 transition-colors duration-500 z-0
+                        ${room.bombParty?.turnPlayerId === room.players[1]?.id ? 'bg-blue-500/10' : 'bg-transparent'}
+                      `}
+                    />
+                    <div 
+                      className={`absolute right-0 top-0 bottom-0 w-1/2 transition-colors duration-500 z-0
+                        ${room.bombParty?.turnPlayerId === room.players[0]?.id ? 'bg-green-500/10' : 'bg-transparent'}
+                      `}
+                    />
+
+                    
+                    <div className="relative flex flex-col items-center">
+                      
+                      {/* Bomb Container with integrated Arrow */}
+                      <div className="relative flex items-center justify-center pt-12 w-42 h-42">
+                        {/* 45 Degree Arrow Centered at the Bomb pointing to the active player - enlarged and offset for perfect visibility */}
+                        <motion.div
+                          className="absolute pointer-events-none z-5"
+                          animate={{
+                            rotate: room.bombParty?.turnPlayerId === room.players[1]?.id ? -45 : 45,
+                          }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 100,
+                            damping: 14
+                          }}
+                          style={{
+                            width: "230px",
+                            height: "230px",
+                            transformOrigin: "center center"
+                          }}
+                        >
+                          <svg viewBox="0 0 100 150" fill="none" className="w-full h-full text-red-500">
+                            {/* Arrow Head */}
+                            <path d="M34 24 L50 2 L66 24 Z" fill="currentColor" />
+                            {/* Arrow Shaft (Longer Stem) */}
+                            <polygon points="48,50 52,50 55,24 45,24" fill="currentColor" />
+                            {/* Pivot Circle */}
+                            <circle cx="50" cy="50" r="6" fill="currentColor" />
+                          </svg>
+                        </motion.div>
+                        
+                        {/* Pulsing Bomb Sphere with zero shadows and real-time accelerating CSS pulse */}
+                        <BombTimer room={room} />
+                      </div>
+
+                      <div className="mt-2 flex flex-col items-center gap-1">
+                        <span className="text-xs text-gray-500 font-bold">الحروف المطلوبة:</span>
+                        <span className="text-[11px] text-red-500 font-bold mb-1">خمن كلمة يكون فيها الحروف دي, بسرعة!</span>
+                        <div className="bg-red-500 text-white text-3xl font-black px-6 py-1.5 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.5)] tracking-widest min-w-[120px] text-center">
+                          {room.bombParty?.currentSubstring}
+                        </div>
+                      </div>
+
+                      <BombPartyControls room={room} socket={socket} />
+                    </div>
+                  </div>
+                )}
+
+                {room.gameState === "bomb_party_finished" && (
+                  <div className="flex-1 flex flex-col items-center justify-center p-2 relative">
+                    {bombExplosionFrame !== null && (
+                      <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none overflow-hidden bg-transparent">
+                        <motion.div
+                          initial={{ scale: 0.1, opacity: 0 }}
+                          animate={{ 
+                            scale: [0.1, 1.2, 2.5, 3.8], 
+                            opacity: [0, 1, 1, 0] 
+                          }}
+                          transition={{ duration: 0.9, ease: "easeOut" }}
+                          className="flex items-center justify-center bg-transparent"
+                        >
+                          <img
+                            src={`/bomb-explosion/bomb-explosion-${bombExplosionFrame}.png`}
+                            alt="bomb explosion"
+                            className="w-[85vw] h-[85vw] md:w-[65vw] md:h-[65vw] max-w-[950px] max-h-[950px] object-contain bg-transparent"
+                          />
+                        </motion.div>
+                      </div>
+                    )}
+                    <h2 className="text-xl font-black text-gray-600 mb-2">انتهي وقت القنبلة!</h2>
+                    <div className="text-xl md:text-2xl font-bold text-blue-700 mb-2">
+                      الفائز: {room.bombParty?.matchWinnerId ? (room.players.find((p: any) => p.id === room.bombParty.matchWinnerId)?.name || "اللاعب") : "تعادل"}
+                    </div>
+
+                    {/* Arabic Comic End Game Status Messages */}
+                    {(() => {
+                      const winnerId = room.bombParty?.matchWinnerId;
+                      const isDraw = !winnerId;
+                      const isMeWinner = winnerId === socket?.id;
+
+                      let comicMsg = "";
+                      let msgColor = "";
+
+                      if (isDraw) {
+                        comicMsg = "🤝 تعادل! ولا حد فيكم قدر يغلب التاني!";
+                        msgColor = "text-yellow-500";
+                      } else if (isMeWinner) {
+                        comicMsg = "🥳 مبروك لحقت نفسك وكسبت المباراة!";
+                        msgColor = "text-green-600";
+                      } else {
+                        comicMsg = "💥 القنبلة فرقعت في وشك وخسرت المباراة!";
+                        msgColor = "text-red-500";
+                      }
+
+                      return (
+                        <p className={`text-xs md:text-sm font-black ${msgColor} text-center max-w-sm px-4 mb-1 leading-relaxed`}>
+                          {comicMsg}
+                        </p>
+                      );
+                    })()}
+
+                    {/* Stats Table for Correct/Incorrect answers */}
+                    <div className="bg-gray-800/80 border border-gray-700 p-2 rounded-2xl w-full max-w-sm mb-3 space-y-3 shadow-md">
+                      <div className="grid grid-cols-2 gap-3" dir="rtl">
+                        {room.players.map((p: any) => {
+                          const pStats = room.bombParty?.stats?.[p.id] || { correct: 0, incorrect: 0 };
+                          return (
+                            <div key={p.id} className="bg-gray-900/50 p-3 rounded-xl border border-gray-700 flex flex-col items-center">
+                              <span className="text-xs text-gray-200 font-extrabold mb-1.5 truncate max-w-[120px]">{p.name || "اللاعب"}</span>
+                              <div className="flex flex-col gap-1 text-[11px] text-center font-bold">
+                                <span className="text-green-400">✅ {pStats.correct || 0} صح</span>
+                                <span className="text-red-400">❌ {pStats.incorrect || 0} خطأ</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 justify-center mt-auto w-full">
+                      <button
+                        disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                        onClick={() => socket?.emit("select_private_mode", { roomId: room.id, mode: null })}
+                        className={`flex-1 min-w-[120px] max-w-md ${
+                          ((room.adPausedPlayersArray?.length || 0) > 0)
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
+                            : "bg-purple-500 hover:bg-purple-600 text-white"
+                        } font-black py-2.5 px-1 rounded-xl shadow-sm transition-all active:scale-95 text-xs md:text-sm`}
+                      >
+                        🎮 تغيير اللعبة
+                      </button>
+
+                      <div className="relative flex-1 min-w-[120px] max-w-md">
+                        <button
+                          disabled={((room.adPausedPlayersArray?.length || 0) > 0) || room.bombParty?.rematchRequestedBy?.includes(socket?.id || "")}
+                          onClick={() => socket?.emit("request_bomb_party_rematch", { roomId: room.id })}
+                          className={`w-full ${
+                            ((room.adPausedPlayersArray?.length || 0) > 0)
+                              ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
+                              : room.bombParty?.rematchRequestedBy?.includes(socket?.id || "")
+                                ? "bg-green-500 hover:bg-green-600 text-white"
+                                : "bg-orange-500 hover:bg-orange-600 text-white"
+                          } font-black py-2.5 px-1 rounded-xl shadow-sm transition-all active:scale-95 text-xs md:text-sm`}
+                        >
+                          {((room.adPausedPlayersArray?.length || 0) > 0)
+                            ? "انتظر! المنافس يشاهد إعلان 📺"
+                            : room.bombParty?.rematchRequestedBy?.includes(socket?.id || "")
+                              ? "⏳ في الانتظار..."
+                              : room.bombParty?.rematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
+                                ? "🎮 المنافس جاهز للعب"
+                                : "🔄 لعب مرة أخري"}
+                        </button>
+                      </div>
+
+                      <button
+                        disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                        onClick={handleLeaveGame}
+                        className={`w-full max-w-md ${
+                          ((room.adPausedPlayersArray?.length || 0) > 0)
+                            ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                            : "bg-red-100 hover:bg-red-200 text-red-700"
+                        } font-black py-2.5 px-3 rounded-xl shadow-sm transition-all active:scale-95 text-sm md:text-base`}
+                      >
+                        🚪 خروج للرئيسية
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </div>
+                <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
+              </React.Fragment>
+
             ) : room.gameState === "xo_playing" || room.gameState === "xo_finished" ? (
               <React.Fragment>
                 <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto]">
@@ -26974,7 +27587,7 @@ export default function App() {
                    </div>
                 )}
                 </div>
-                <CategoryPageAd />
+                <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
               </React.Fragment>
             ) : room.gameState === "hand_playing" || room.gameState === "hand_finished" ? (
               <React.Fragment>
@@ -27068,6 +27681,7 @@ export default function App() {
                           </div>
                           
                           <div className="grid grid-cols-2 gap-3 md:gap-4">
+
                             <div className="relative">
                             <button
                               disabled={room.players.length < 2}
@@ -27322,6 +27936,39 @@ export default function App() {
                               if (meMode === "hand_khamin" && oppMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-pink-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
                               if (meMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
                               if (oppMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+                          
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "bomb_party",
+                                })
+                              }
+                              className={`h-full w-full bg-red-100 hover:bg-red-200 border-[3px] border-red-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#ef4444] active:shadow-none active:translate-y-1.5"}`}
+                            >
+                              <span
+                                className={`text-3xl md:text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
+                              >
+                                💣
+                              </span>
+                              <span className="text-[13px] md:text-lg font-black text-red-700 text-center leading-tight">
+                               قنبلة التخمين
+                              </span>
+                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
+                                (لعبة التخمين والسرعة والذكاء)
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "bomb_party" && oppMode === "bomb_party") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
+                              if (meMode === "bomb_party") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "bomb_party") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -27776,7 +28423,7 @@ export default function App() {
                 </div>
 
                 {/* Guess Category Page Static Ad - Outside the box */}
-                <CategoryPageAd />
+                <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
               </React.Fragment>
             ) : (
               <div className="relative w-full flex flex-col items-center">
@@ -28607,6 +29254,7 @@ export default function App() {
           room.gameState !== "iq_finished" &&
           room.gameState !== "dots_playing" &&
           room.gameState !== "dots_finished" &&
+          !room.gameState.startsWith("bomb_party_") &&
           !room.gameState.startsWith("speed_cups_") &&
           room.gameState !== "starting" && (
             <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
@@ -29431,3 +30079,197 @@ export default function App() {
     </>
   );
 }
+
+
+const BombPartyControls = ({ room, socket }: { room: any, socket: any }) => {
+  const [bombPartyGuess, setBombPartyGuess] = useState("");
+  const bombInputRef = useRef<HTMLInputElement>(null);
+  const [bombPartyErrorShake, setBombPartyErrorShake] = useState(false);
+
+  useEffect(() => {
+    socket?.on("bomb_party_error", () => {
+      setBombPartyErrorShake(true);
+      const audio = new Audio('/sounds/wrong.mp3');
+      audio.play().catch(e => console.log('Audio play failed:', e));
+      setTimeout(() => setBombPartyErrorShake(false), 500);
+    });
+    socket?.on("bomb_exploded", () => {
+      const audio = new Audio('/sounds/pop.mp3');
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    });
+    socket?.on("bomb_party_correct_guess", (data: any) => {
+      setBombPartyGuess("");
+      if (data && data.playerId === socket?.id) {
+        const audio = new Audio('/sounds/correct-answer.mp3');
+        audio.play().catch(e => console.log('Audio play failed:', e));
+      }
+      setTimeout(() => bombInputRef.current?.focus(), 50);
+    });
+    return () => {
+      socket?.off("bomb_party_error");
+      socket?.off("bomb_exploded");
+      socket?.off("bomb_party_correct_guess");
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (room?.gameState === "bomb_party_playing") {
+      setBombPartyGuess("");
+      if (room?.bombParty?.turnPlayerId === socket?.id) {
+        setTimeout(() => bombInputRef.current?.focus(), 50);
+      }
+    }
+  }, [room?.bombParty?.turnPlayerId, room?.gameState, socket?.id]);
+
+  const submitBombPartyGuess = () => {
+    if (!bombPartyGuess.trim()) return;
+    if (room.bombParty?.explodedPlayerId) return;
+    socket?.emit("bomb_party_guess", { roomId: room?.id, word: bombPartyGuess });
+  };
+
+  return (
+    <div className="mt-4 flex flex-col items-center w-full max-w-xs gap-2.5">
+      <input
+        ref={bombInputRef}
+        type="text"
+        value={bombPartyGuess}
+        onChange={(e) => setBombPartyGuess(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') submitBombPartyGuess();
+        }}
+        placeholder={room.bombParty?.turnPlayerId === socket?.id ? "خمن الكلمة..." : "انتظر دورك..."}
+        disabled={room.bombParty?.turnPlayerId !== socket?.id}
+        className={`w-full text-center text-lg p-2.5 rounded-xl border-2 outline-none font-bold transition-all
+          ${room.bombParty?.turnPlayerId === socket?.id 
+            ? 'bg-white border-red-500 text-black shadow-[0_0_10px_rgba(239,68,68,0.3)]' 
+            : 'bg-gray-800 border-gray-700 text-gray-500'}
+        `}
+      />
+      <button
+        onClick={submitBombPartyGuess}
+        disabled={room.bombParty?.turnPlayerId !== socket?.id || !bombPartyGuess.trim() || !!room.bombParty?.explodedPlayerId}
+        className={`w-full py-2.5 rounded-xl font-black text-base text-white transition-all
+          ${room.bombParty?.turnPlayerId === socket?.id 
+            ? bombPartyErrorShake ? 'bg-red-600 animate-shake' : 'bg-red-500 hover:bg-red-600 active:scale-95 shadow-[0_4px_0_0_#991b1b]'
+            : 'bg-gray-700 text-gray-500 cursor-not-allowed'}
+        `}
+      >
+        ارمي القنبلة بسرعة!
+      </button>
+    </div>
+  );
+};
+
+const getCubicBezierPoint = (t: number, p0: {x: number, y: number}, p1: {x: number, y: number}, p2: {x: number, y: number}, p3: {x: number, y: number}) => {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const mt3 = mt2 * mt;
+  const t2 = t * t;
+  const t3 = t2 * t;
+
+  return {
+    x: mt3 * p0.x + 3 * mt2 * t * p1.x + 3 * mt * t2 * p2.x + t3 * p3.x,
+    y: mt3 * p0.y + 3 * mt2 * t * p1.y + 3 * mt * t2 * p2.y + t3 * p3.y,
+  };
+};
+
+const getQuadraticBezierPoint = (t: number, p0: {x: number, y: number}, p1: {x: number, y: number}, p2: {x: number, y: number}) => {
+  const mt = 1 - t;
+  return {
+    x: mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x,
+    y: mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y,
+  };
+};
+
+const getThreeSegmentBezierPoint = (u: number, isLeft: boolean) => {
+  if (u <= 1/3) {
+    const localT = u * 3;
+    const p0 = { x: 200, y: 78 };
+    const p1 = { x: 200, y: 35 };
+    const p2 = isLeft ? { x: 137.8, y: 88.7 } : { x: 262.2, y: 88.7 };
+    return getQuadraticBezierPoint(localT, p0, p1, p2);
+  } else if (u <= 2/3) {
+    const localT = (u - 1/3) * 3;
+    const p0 = isLeft ? { x: 137.8, y: 88.7 } : { x: 262.2, y: 88.7 };
+    const p1 = isLeft ? { x: 106.8, y: 121 } : { x: 293.2, y: 121 };
+    const p2 = isLeft ? { x: 75.8, y: 88.7 } : { x: 324.2, y: 88.7 };
+    return getQuadraticBezierPoint(localT, p0, p1, p2);
+  } else {
+    const localT = Math.min(1.0, (u - 2/3) * 3);
+    const p0 = isLeft ? { x: 75.8, y: 88.7 } : { x: 324.2, y: 88.7 };
+    const p1 = isLeft ? { x: 44.8, y: 56.4 } : { x: 355.2, y: 56.4 };
+    const p2 = isLeft ? { x: 45, y: 35 } : { x: 355, y: 35 };
+    return getQuadraticBezierPoint(localT, p0, p1, p2);
+  }
+};
+
+const getStarburstPath = (cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number) => {
+  let rot = (Math.PI / 2) * 3;
+  let x = cx;
+  let y = cy;
+  const step = Math.PI / spikes;
+  let path = `M ${cx} ${cy - outerRadius} `;
+
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
+    path += `L ${x} ${y} `;
+    rot += step;
+
+    x = cx + Math.cos(rot) * innerRadius;
+    y = cy + Math.sin(rot) * innerRadius;
+    path += `L ${x} ${y} `;
+    rot += step;
+  }
+  path += "Z";
+  return path;
+};
+
+const BombTimer = ({ room }: { room: any }) => {
+  const [bombPartyTimeLeft, setBombPartyTimeLeft] = useState(10);
+  
+  useEffect(() => {
+    let interval: any;
+    if (room && room.gameState === "bomb_party_playing" && room.bombParty && !room.bombParty.gameOver) {
+      interval = setInterval(() => {
+        const elapsed = Math.max(0, Date.now() - room.bombParty.bombStartTime);
+        const remaining = Math.max(0, room.bombParty.turnTimeLimit - elapsed);
+        const cappedRemaining = Math.min(room.bombParty.turnTimeLimit, remaining);
+        setBombPartyTimeLeft(cappedRemaining / 1000);
+      }, 50);
+    }
+    return () => clearInterval(interval);
+  }, [room?.gameState, room?.bombParty?.bombStartTime, room?.bombParty?.turnTimeLimit, room?.bombParty?.gameOver]);
+
+  const turnLimitSec = (room.bombParty?.turnTimeLimit || 10000) / 1000;
+  const ratio = Math.max(0, Math.min(1, bombPartyTimeLeft / turnLimitSec));
+  const pulseDuration = 0.2 + 1.3 * ratio; 
+  const pulseScale = 1 + 0.06 * (1 - ratio); 
+
+  return (
+    <React.Fragment>
+      <style>{`
+        @keyframes bomb-pulse-dynamic {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(${pulseScale}); }
+        }
+      `}</style>
+      <div
+        className="w-25 h-25 rounded-full bg-neutral-800 border-4 border-neutral-700 relative flex items-center justify-center z-25"
+        style={{
+          boxShadow: "none",
+          animation: `bomb-pulse-dynamic ${pulseDuration}s ease-in-out infinite`
+        }}
+      >
+        <div className="w-6 h-3 bg-neutral-700 rounded-t-sm absolute -top-3 left-1/2 -translate-x-1/2 border-x-2 border-t-2 border-neutral-600" />
+        
+        <div className="flex flex-col items-center select-none">
+          <span className={`text-4xl font-black ${bombPartyTimeLeft < 3 ? 'text-red-500 animate-pulse' : 'text-amber-500'} tracking-tighter font-mono`}>
+            {Math.ceil(bombPartyTimeLeft)}
+          </span>
+          <span className="text-[9px] font-black text-gray-400 mt-0.5 uppercase tracking-wider">ثانية</span>
+        </div>
+      </div>
+    </React.Fragment>
+  );
+};
