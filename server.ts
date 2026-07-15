@@ -42,6 +42,41 @@ import { filterProfanity, filterGameTerms } from "./src/profanityFilter";
 import { GoogleGenAI } from "@google/genai";
 import { COLLECTION_DATA } from "./collectionData";
 
+
+let bombPartyNextTurn: any;
+
+let BOMB_PARTY_WORDS: string[] = [];
+let NORMALIZED_BOMB_PARTY_WORDS: { original: string, normalized: string }[] = [];
+try {
+  BOMB_PARTY_WORDS = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/data/bomb-party-words.json'), 'utf8'));
+  // Pre-compute normalized words for fast lookups
+  for (const w of BOMB_PARTY_WORDS) {
+    NORMALIZED_BOMB_PARTY_WORDS.push({ original: w, normalized: normalizeEgyptian(w) });
+  }
+} catch (e) {
+  console.error("Failed to load bomb party words:", e);
+}
+
+function getBombPartySubstring(usedWords) {
+  if (!BOMB_PARTY_WORDS || BOMB_PARTY_WORDS.length === 0) return "اب";
+  
+  // Try 50 times to find a random substring that exists in multiple words
+  for (let i = 0; i < 50; i++) {
+    const randomWord = BOMB_PARTY_WORDS[Math.floor(Math.random() * BOMB_PARTY_WORDS.length)];
+    const len = Math.floor(Math.random() * 2) + 2; // 2 or 3 letters
+    if (randomWord.length < len) continue;
+    const startIndex = Math.floor(Math.random() * (randomWord.length - len + 1));
+    const substr = randomWord.substring(startIndex, startIndex + len);
+    
+    // Check how many words have it
+    const matches = BOMB_PARTY_WORDS.filter(w => w.includes(substr) && !usedWords.includes(w));
+    if (matches.length > 5) {
+      return substr;
+    }
+  }
+  return "ال"; // Fallback
+}
+
 const SPIN_REWARDS = [
   {
     id: "time_freeze",
@@ -820,6 +855,7 @@ function normalizeEgyptian(text: string): string {
     .replace(/ؤ/g, "و")
     .replace(/ئ/g, "ي")
     .replace(/لآ/g, "لا")
+    .replace(/[ـ]/g, "")
     .replace(/[؟?]/g, "")
     .trim();
 }
@@ -2106,6 +2142,7 @@ async function startServer() {
         speedCupsWins?: number;
         speedCupsRewardLevel?: number;
         speedCupsMatchPoints?: number;
+        bombPartyWins?: number;
       }
     >();
 
@@ -2369,6 +2406,10 @@ async function startServer() {
     try {
       db.exec(`ALTER TABLE players ADD COLUMN speedCupsMatchPoints INTEGER DEFAULT 0`);
     } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN bombPartyWins INTEGER DEFAULT 0`);
+    } catch (e) {}
+
 
     try {
       db.exec(`ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0`);
@@ -2915,8 +2956,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3209,6 +3250,7 @@ async function startServer() {
           speedCupsWins: player.speedCupsWins || 0,
           speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
           speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
+          bombPartyWins: player.bombPartyWins || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3297,6 +3339,7 @@ async function startServer() {
           speedCupsWins: player.speedCupsWins || 0,
           speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
           speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
+          bombPartyWins: player.bombPartyWins || 0,
         });
       }
     });
@@ -3408,6 +3451,7 @@ async function startServer() {
             speedCupsWins: row.speedCupsWins || 0,
             speedCupsRewardLevel: row.speedCupsRewardLevel || 1,
             speedCupsMatchPoints: row.speedCupsMatchPoints || 0,
+            bombPartyWins: row.bombPartyWins || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -3819,6 +3863,7 @@ async function startServer() {
             iqWins: p.iqWins || 0,
             dotsWins: p.dotsWins || 0,
             speedCupsWins: p.speedCupsWins || 0,
+            bombPartyWins: p.bombPartyWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -5854,6 +5899,27 @@ async function startServer() {
             if (bot) {
               handleBotEvent(roomId, "room_update", room);
             }
+          
+          } else if (mode === "bomb_party") {
+            room.gameState = "bomb_party_setup";
+            room.category = "bomb_party";
+            const startingPlayerIndex = Math.floor(Math.random() * room.players.length);
+            room.bombParty = {
+              turnPlayerId: room.players[startingPlayerIndex].id,
+              bombStartTime: Date.now(),
+              turnTimeLimit: 10000,
+              matchWins: {},
+              usedWords: [],
+              currentSubstring: getBombPartySubstring([]),
+              explodedPlayerId: null,
+              gameOver: false,
+              winThreshold: 3
+            };
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           } else if (mode === "xo") {
             room.gameState = "xo_playing";
             room.category = "xo";
@@ -6620,6 +6686,114 @@ async function startServer() {
           if (botTimeouts.has(roomId + "_speed_cups_bot_rematch")) {
             clearTimeout(botTimeouts.get(roomId + "_speed_cups_bot_rematch"));
             botTimeouts.delete(roomId + "_speed_cups_bot_rematch");
+          }
+        }
+
+        // Handle Bomb Party active playing turn for the bot
+        if (room.gameState === "bomb_party_playing" && room.bombParty && room.bombParty.turnPlayerId === botPlayer.id && !room.bombParty.explodedPlayerId && !room.bombParty.gameOver) {
+          const botKey = roomId + "_bomb_party_bot_timeout";
+          if (!botTimeouts.has(botKey)) {
+            // Determine success or fail: 40% chance of success (so bot plays smart but loses more than it wins!)
+            const willSucceed = Math.random() < 0.40;
+
+            if (willSucceed) {
+              const substrNormal = normalizeEgyptian(room.bombParty.currentSubstring);
+              const validWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => {
+                return w.normalized.includes(substrNormal) && !room.bombParty.usedWords.includes(w.original);
+              });
+
+              if (validWords.length > 0) {
+                // Select a valid word randomly
+                const chosenWord = validWords[Math.floor(Math.random() * validWords.length)].original;
+
+                // Human-like response delay: 2.5 to 5.5 seconds, but always at least 1.5 seconds before turnTimeLimit
+                const timeLeft = room.bombParty.turnTimeLimit - (Date.now() - room.bombParty.bombStartTime);
+                const delay = Math.max(500, Math.min(timeLeft - 1500, 2500 + Math.random() * 3000));
+
+                const timeout = setTimeout(() => {
+                  botTimeouts.delete(botKey);
+                  const r = rooms.get(roomId);
+                  if (!r || r.gameState !== "bomb_party_playing" || r.bombParty.explodedPlayerId || r.bombParty.turnPlayerId !== botPlayer.id) return;
+
+                  // Execute guess directly on server
+                  const guess = normalizeEgyptian(chosenWord);
+                  const validWordObj = NORMALIZED_BOMB_PARTY_WORDS.find(w => w.normalized === guess)?.original;
+                  if (validWordObj) {
+                    r.bombParty.usedWords.push(validWordObj);
+
+                    // Increment bot's correct count
+                    if (!r.bombParty.stats) r.bombParty.stats = {};
+                    if (!r.bombParty.stats[botPlayer.id]) r.bombParty.stats[botPlayer.id] = { correct: 0, incorrect: 0 };
+                    r.bombParty.stats[botPlayer.id].correct++;
+
+                    io.to(roomId).emit("bomb_party_correct_guess", { playerId: botPlayer.id, word: validWordObj });
+
+                    bombPartyNextTurn(r, io, roomId);
+                  }
+                }, delay);
+                botTimeouts.set(botKey, timeout);
+              }
+            } else {
+              // Bot decides to fail this round (does nothing, letting the bomb explode!)
+              console.log(`[Bomb Party Bot] Bot chose to fail this round to let player win!`);
+            }
+          }
+        }
+
+        if (room.gameState !== "bomb_party_playing" || !room.bombParty || room.bombParty.turnPlayerId !== botPlayer.id || room.bombParty.explodedPlayerId) {
+          if (botTimeouts.has(roomId + "_bomb_party_bot_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_bomb_party_bot_timeout"));
+            botTimeouts.delete(roomId + "_bomb_party_bot_timeout");
+          }
+        }
+
+        // Handle Bomb Party finished action (bot auto-requests rematch)
+        if (room.gameState === "bomb_party_finished" && room.category === "bomb_party") {
+          const rematchKey = roomId + "_bomb_party_bot_rematch";
+          if (!botTimeouts.has(rematchKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(rematchKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "bomb_party_finished") return;
+              
+              r.bombParty.rematchRequestedBy = r.bombParty.rematchRequestedBy || [];
+              if (!r.bombParty.rematchRequestedBy.includes(botPlayer.id)) {
+                r.bombParty.rematchRequestedBy.push(botPlayer.id);
+                
+                if (r.bombParty.rematchRequestedBy.length === r.players.length) {
+                  // Restart match starting with setup screen
+                  r.gameState = "bomb_party_setup";
+                  const startingPlayerIndex = Math.floor(Math.random() * r.players.length);
+                  r.bombParty = {
+                    turnPlayerId: r.players[startingPlayerIndex].id,
+                    bombStartTime: Date.now(),
+                    turnTimeLimit: 10000,
+                    matchWins: {},
+                    usedWords: [],
+                    currentSubstring: getBombPartySubstring([]),
+                    explodedPlayerId: null,
+                    gameOver: false,
+                    winThreshold: 3,
+                    rematchRequestedBy: []
+                  };
+                  io.to(roomId).emit("room_update", r);
+                  io.to(roomId).emit("bomb_party_rematch_started");
+                  
+                  // Trigger bot's event if it's the bot's turn or setup screen is open
+                  handleBotEvent(roomId, "room_update", r);
+                } else {
+                  io.to(roomId).emit("room_update", r);
+                }
+              }
+            }, 2500 + Math.random() * 2000); // 2.5 to 4.5 seconds delay before accepting rematch
+            botTimeouts.set(rematchKey, timeout);
+          }
+        }
+
+        if (room.gameState !== "bomb_party_finished") {
+          if (botTimeouts.has(roomId + "_bomb_party_bot_rematch")) {
+            clearTimeout(botTimeouts.get(roomId + "_bomb_party_bot_rematch"));
+            botTimeouts.delete(roomId + "_bomb_party_bot_rematch");
           }
         }
 
@@ -10548,7 +10722,8 @@ async function startServer() {
               handWins: serverPlayer.handWins || 0,
               iqWins: serverPlayer.iqWins || 0,
               dotsWins: serverPlayer.dotsWins || 0,
-            speedCupsWins: serverPlayer.speedCupsWins || 0,
+              speedCupsWins: serverPlayer.speedCupsWins || 0,
+              bombPartyWins: serverPlayer.bombPartyWins || 0,
             };
             room.players.push(player);
 
@@ -10639,6 +10814,28 @@ async function startServer() {
             room.iqLevel = 1;
             room.iqMatchWins = {};
             initializeIQGame(room);
+            const opponent = room.players.find((p: any) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          
+          } else if (mode === "bomb_party") {
+            room.gameState = "bomb_party_setup";
+            room.category = "bomb_party";
+            const startingPlayerIndex = Math.floor(Math.random() * room.players.length);
+            room.bombParty = {
+              turnPlayerId: room.players[startingPlayerIndex].id,
+              bombStartTime: Date.now(),
+              turnTimeLimit: 10000,
+              matchWins: {},
+              usedWords: [],
+              currentSubstring: getBombPartySubstring([]),
+              explodedPlayerId: null,
+              gameOver: false,
+              winThreshold: 3,
+              stats: {}
+            };
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
             const opponent = room.players.find((p: any) => p.id !== socket.id);
             if (opponent && opponent.isBot) {
               handleBotEvent(roomId, "room_update", room);
@@ -13215,6 +13412,208 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
         }
       });
 
+      
+// Define a helper for switching turns and handling game over in Bomb Party
+bombPartyNextTurn = function(room: any, io: any, roomId: string) {
+  // 1. Decrease time by 1s
+  room.bombParty.turnTimeLimit -= 1000;
+
+  // 2. Check if match is over (reached 0)
+  if (room.bombParty.turnTimeLimit < 1000) {
+    room.bombParty.gameOver = true;
+    room.gameState = "bomb_party_finished";
+    
+    // Calculate match winner
+    const p1Id = room.players[0].id;
+    const p2Id = room.players[1].id;
+    const p1Stats = room.bombParty.stats?.[p1Id] || { correct: 0, incorrect: 0 };
+    const p2Stats = room.bombParty.stats?.[p2Id] || { correct: 0, incorrect: 0 };
+    
+    let matchWinnerId = null;
+    if (p1Stats.correct > p2Stats.correct) matchWinnerId = p1Id;
+    else if (p2Stats.correct > p1Stats.correct) matchWinnerId = p2Id;
+    
+    room.bombParty.matchWinnerId = matchWinnerId;
+    
+    if (matchWinnerId) {
+      room.bombParty.matchWins = room.bombParty.matchWins || {};
+      room.bombParty.matchWins[matchWinnerId] = (room.bombParty.matchWins[matchWinnerId] || 0) + 1;
+      
+      const winnerPlayer = room.players.find((p: any) => p.id === matchWinnerId);
+      if (winnerPlayer) {
+        winnerPlayer.bombPartyWins = (winnerPlayer.bombPartyWins || 0) + 1;
+        const pRecord = allPlayers.get(winnerPlayer.serial);
+        if (pRecord) {
+          pRecord.bombPartyWins = winnerPlayer.bombPartyWins;
+          savePlayerData(pRecord.serial);
+        }
+      }
+    }
+    
+    io.to(roomId).emit("room_update", room);
+    handleBotEvent(roomId, "room_update", room);
+    return;
+  }
+  
+  // 3. Not over, switch turn
+  room.bombParty.explodedPlayerId = null; // Clear explosion state if any
+  room.bombParty.currentSubstring = getBombPartySubstring(room.bombParty.usedWords || []);
+  const opponent = room.players.find((p: any) => p.id !== room.bombParty.turnPlayerId);
+  if (opponent) {
+    room.bombParty.turnPlayerId = opponent.id;
+  }
+  room.bombParty.bombStartTime = Date.now();
+  io.to(roomId).emit("room_update", room);
+  handleBotEvent(roomId, "room_update", room);
+}
+      socket.on("bomb_party_guess", ({ roomId, word }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "bomb_party_playing" || room.bombParty.explodedPlayerId) return;
+        
+        if (room.bombParty.turnPlayerId !== socket.id) return;
+        
+        const guess = normalizeEgyptian(word);
+        const validWordObj = NORMALIZED_BOMB_PARTY_WORDS.find(w => w.normalized === guess)?.original;
+        
+        if (validWordObj) {
+          const substrNormal = normalizeEgyptian(room.bombParty.currentSubstring);
+          if (guess.includes(substrNormal)) {
+            if (!room.bombParty.usedWords.includes(validWordObj)) {
+              // Valid guess!
+              room.bombParty.usedWords.push(validWordObj);
+              
+              // Increment player's correct guess count
+              if (!room.bombParty.stats) room.bombParty.stats = {};
+              if (!room.bombParty.stats[socket.id]) room.bombParty.stats[socket.id] = { correct: 0, incorrect: 0 };
+              room.bombParty.stats[socket.id].correct++;
+
+              io.to(roomId).emit("bomb_party_correct_guess", { playerId: socket.id, word: validWordObj });
+
+              bombPartyNextTurn(room, io, roomId);
+              return;
+            } else {
+              // Increment player's incorrect guess count (already used word)
+              if (!room.bombParty.stats) room.bombParty.stats = {};
+              if (!room.bombParty.stats[socket.id]) room.bombParty.stats[socket.id] = { correct: 0, incorrect: 0 };
+              room.bombParty.stats[socket.id].incorrect++;
+
+              socket.emit("bomb_party_error", { reason: "الكلمة دي اتقالت قبل كدا!" });
+              return;
+            }
+          } else {
+            // Increment player's incorrect guess count (doesn't contain requested letters)
+            if (!room.bombParty.stats) room.bombParty.stats = {};
+            if (!room.bombParty.stats[socket.id]) room.bombParty.stats[socket.id] = { correct: 0, incorrect: 0 };
+            room.bombParty.stats[socket.id].incorrect++;
+
+            socket.emit("bomb_party_error", { reason: "الكلمة مش بتحتوي على الحروف المطلوبة!" });
+            return;
+          }
+        } else {
+          // Increment player's incorrect guess count (not in dictionary)
+          if (!room.bombParty.stats) room.bombParty.stats = {};
+          if (!room.bombParty.stats[socket.id]) room.bombParty.stats[socket.id] = { correct: 0, incorrect: 0 };
+          room.bombParty.stats[socket.id].incorrect++;
+
+          socket.emit("bomb_party_error", { reason: "كلمة غير موجودة في القاموس!" });
+          return;
+        }
+      });
+
+      socket.on("request_bomb_party_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "bomb_party_finished") return;
+
+        if (!room.bombParty.rematchRequestedBy) {
+          room.bombParty.rematchRequestedBy = [];
+        }
+
+        if (!room.bombParty.rematchRequestedBy.includes(socket.id)) {
+          room.bombParty.rematchRequestedBy.push(socket.id);
+        }
+
+        if (room.bombParty.rematchRequestedBy.length === 2) {
+          // Restart match starting with setup screen
+          room.gameState = "bomb_party_setup";
+          const startingPlayerIndex = Math.floor(Math.random() * room.players.length);
+          room.bombParty = {
+            turnPlayerId: room.players[startingPlayerIndex].id,
+            bombStartTime: Date.now(),
+            turnTimeLimit: 10000,
+            matchWins: {},
+            usedWords: [],
+            currentSubstring: getBombPartySubstring([]),
+            explodedPlayerId: null,
+            gameOver: false,
+            winThreshold: 3,
+            rematchRequestedBy: [],
+            stats: {}
+          };
+          io.to(roomId).emit("room_update", room);
+          io.to(roomId).emit("bomb_party_rematch_started");
+          
+          handleBotEvent(roomId, "room_update", room);
+        } else {
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("start_bomb_party", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "bomb_party_setup") return;
+        
+        room.gameState = "bomb_party_playing";
+        room.bombParty.bombStartTime = Date.now();
+        
+        // Start the countdown interval!
+        if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+        const interval = setInterval(() => {
+          const r = rooms.get(roomId);
+          if (!r || r.gameState !== "bomb_party_playing") {
+            clearInterval(interval);
+            return;
+          }
+          
+          if (!r.bombParty.explodedPlayerId && !r.bombParty.gameOver) {
+            const now = Date.now();
+            // Allow a tiny 150ms grace period for network latency, making it feel practically instant and allowing last-moment clicks perfectly
+            if (now - r.bombParty.bombStartTime > r.bombParty.turnTimeLimit + 150) {
+              // Bomb exploded!
+              r.bombParty.explodedPlayerId = r.bombParty.turnPlayerId;
+              
+              // Increment incorrect guess count for timeout
+              if (!r.bombParty.stats) r.bombParty.stats = {};
+              if (!r.bombParty.stats[r.bombParty.turnPlayerId]) r.bombParty.stats[r.bombParty.turnPlayerId] = { correct: 0, incorrect: 0 };
+              r.bombParty.stats[r.bombParty.turnPlayerId].incorrect++;
+
+              // Determine if the game will be over based on if time limit is < 2000
+              // Since turnTimeLimit decreases by 1000, if it is 1000 right now, next turn it becomes 0 (<1000)
+              const willBeGameOver = (r.bombParty.turnTimeLimit - 1000) < 1000;
+              
+              io.to(roomId).emit("room_update", r);
+              io.to(roomId).emit("bomb_exploded", { 
+                loserId: r.bombParty.turnPlayerId, 
+                gameOver: willBeGameOver
+              });
+              
+              // Transition quickly after exactly 1 second (instead of 3 seconds) for a snappier feel
+              setTimeout(() => {
+                const currentRoom = rooms.get(roomId);
+                if (currentRoom && currentRoom.gameState === "bomb_party_playing") {
+                  bombPartyNextTurn(currentRoom, io, roomId);
+                }
+              }, 1000);
+            }
+          }
+        }, 30);
+        intervals.set(roomId, interval);
+        
+        io.to(roomId).emit("room_update", room);
+        
+        // Notify bot of the game start
+        handleBotEvent(roomId, "room_update", room);
+      });
+
       socket.on("request_hand_rematch", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (room && room.gameState === "hand_finished") {
@@ -13921,6 +14320,45 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
               helpers: helpersReward
             });
           }
+        }
+      });
+
+      socket.on("claim_bomb_party_reward", ({ serial, level }) => {
+        const player = allPlayers.get(serial);
+
+        if (player) {
+          const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
+          player.xp = (player.xp || 0) + xpReward;
+
+          const keysReward = level;
+          player.keys = (player.keys || 0) + keysReward;
+
+          if (!player.ownedHelpers) player.ownedHelpers = {};
+          const helpersReward: any = {};
+          [
+            "hint",
+            "word_length",
+            "time_freeze",
+            "word_count",
+            "spy_lens",
+          ].forEach((h) => {
+            player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
+            helpersReward[h] = level;
+          });
+
+          const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+          if (!player.level || newLevel > player.level) {
+            player.level = newLevel;
+          }
+
+          savePlayerData(serial);
+          socket.emit("update_player", player);
+          socket.emit("bomb_party_reward_claimed", {
+            xp: xpReward,
+            keys: keysReward,
+            helpers: helpersReward,
+            newLevel: level + 1,
+          });
         }
       });
 
@@ -15479,6 +15917,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 iqWins: targetPlayer.iqWins || 0,
                 dotsWins: targetPlayer.dotsWins || 0,
             speedCupsWins: targetPlayer.speedCupsWins || 0,
+            bombPartyWins: targetPlayer.bombPartyWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
@@ -16104,6 +16543,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 iqWins: senderPlayerData.iqWins || 0,
                 dotsWins: senderPlayerData.dotsWins || 0,
             speedCupsWins: senderPlayerData.speedCupsWins || 0,
+            bombPartyWins: senderPlayerData.bombPartyWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -16136,6 +16576,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 iqWins: myPlayerData.iqWins || 0,
                 dotsWins: myPlayerData.dotsWins || 0,
             speedCupsWins: myPlayerData.speedCupsWins || 0,
+            bombPartyWins: myPlayerData.bombPartyWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -16222,7 +16663,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
               room.gameState === "bus_complete_evaluating" ||
               room.gameState === "hand_finished" ||
               room.gameState === "dots_finished" ||
-              room.gameState === "speed_cups_finished";
+              room.gameState === "speed_cups_finished" ||
+              room.gameState === "bomb_party_finished";
 
             if (!isIntentional && room.gameState !== "waiting") {
                 room.isWaitingForReconnect = true;
@@ -16240,7 +16682,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                                              r.gameState === "bus_complete_evaluating" ||
                                              r.gameState === "hand_finished" ||
                                              r.gameState === "dots_finished" ||
-                                             r.gameState === "speed_cups_finished";
+                                             r.gameState === "speed_cups_finished" ||
+                                             r.gameState === "bomb_party_finished";
 
                      if (!currentFinished) {
                         if (
@@ -16250,7 +16693,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                           r.gameState.startsWith("hand_") ||
                           r.gameState.startsWith("iq_") ||
                           r.gameState.startsWith("dots_") ||
-                           r.gameState.startsWith("speed_cups_")
+                           r.gameState.startsWith("speed_cups_") ||
+                           r.gameState.startsWith("bomb_party_")
                         ) {
                           io.to(roomId).emit("game_stopped", { reason: "المنافس فقد الاتصال ولم يعد" });
                           if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
@@ -16293,7 +16737,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                   room.gameState.startsWith("hand_") ||
                   room.gameState.startsWith("iq_") ||
                   room.gameState.startsWith("dots_") ||
-                  room.gameState.startsWith("speed_cups_")
+                  room.gameState.startsWith("speed_cups_") ||
+                  room.gameState.startsWith("bomb_party_")
                 ) {
                   io.to(roomId).emit("game_stopped", { reason: "المنافس غادر المباراة" });
                   if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
