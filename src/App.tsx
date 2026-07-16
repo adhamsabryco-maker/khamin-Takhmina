@@ -12358,19 +12358,19 @@ export default function App() {
                       </span>
                       <span className="font-black text-brown-dark">{data.dotsWins || 0}</span>
                     </div>
-                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
-                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
-                        <span>💣</span>
-                        <span className="text-gray-500 font-extrabold">قنبلة التخمين</span>
-                      </span>
-                      <span className="font-black text-brown-dark">{data.bombPartyWins || 0}</span>
-                    </div>
                     <div className="flex items-center justify-between bg-gray-50 p-1">
                       <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
                         <img src="/speed-cups/speed-cups-logo.png" className="w-3.5 h-3.5 object-contain inline" />
                         <span className="text-gray-500 font-extrabold">أكواب السرعة</span>
                       </span>
                       <span className="font-black text-brown-dark">{data.speedCupsWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span>💣</span>
+                        <span className="text-gray-500 font-extrabold">قنبلة التخمين</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.bombPartyWins || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -24465,7 +24465,7 @@ export default function App() {
                             <div className="font-black truncate">
                               أنت ({playerName})
                             </div>
-                            <div className="text-[10px] md:text-xs text-brown-muted font-bold flex flex-wrap items-center justify-center gap-1 md:gap-1.5">
+                            <div className="text-[10px] md:text-xs text-brown-muted font-bold flex flex-wrap items-center justify-center gap-1 md:gap-1">
                               <span dir="ltr">Lvl {limit99(getLevel(xp))}</span>
                               <span>•</span>
                               <span>{limit99(wins)} 🏆</span>
@@ -24507,8 +24507,8 @@ export default function App() {
                         { id: "hand", icon: "🖐" },
                         { id: "iq", icon: <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span> },
                         { id: "dots", icon: <img src="/dots-and-boxes-logo.png" className="w-6 h-6 object-contain" /> },
-                        { id: "bombParty", icon: "💣" },
                         { id: "speedCups", icon: <img src="/speed-cups/speed-cups-logo.png" className="w-6 h-6 object-contain" /> },
+                        { id: "bombParty", icon: "💣" },
                       ].map((filter) => (
                         <button
                           key={filter.id}
@@ -27127,8 +27127,6 @@ export default function App() {
                       const p1Incorrect = room.bombParty?.stats?.[p1Id]?.incorrect || 0;
                       const t1 = Math.min(1.0, p1Incorrect * 0.2);
                       const pt = getThreeSegmentBezierPoint(1 - t1, true);
-                      // If completely burned up, hide the spark
-                      if (t1 >= 1.0) return null;
                       return (
                         <motion.g
                           animate={{
@@ -27157,8 +27155,6 @@ export default function App() {
                       const p0Incorrect = room.bombParty?.stats?.[p0Id]?.incorrect || 0;
                       const t0 = Math.min(1.0, p0Incorrect * 0.2);
                       const pt = getThreeSegmentBezierPoint(1 - t0, false);
-                      // If completely burned up, hide the spark
-                      if (t0 >= 1.0) return null;
                       return (
                         <motion.g
                           animate={{
@@ -27196,7 +27192,10 @@ export default function App() {
                     <div className="space-y-2">
                       <h3 className="text-xl md:text-2xl font-black text-black">جاهز تبدأ اللعبة؟</h3>
                       <p className="text-xs md:text-sm font-bold text-gray-500 max-w-xs mx-auto">
-                        القنبلة على وشك الاشتعال! لازم تخمن الكلمة بسرعة قبل ما القنبلة تفرقع فيك!
+                        القنبلة على وشك الاشتعال!
+                      </p>
+                      <p className="text-xs md:text-sm font-black text-gray-700 max-w-xs mx-auto">
+                       لازم تخمن كلمة بسرعة من الحروف اللي هتظهر قدامك قبل ما القنبلة تفرقع في وشك 😂!
                       </p>
                     </div>
 
@@ -27248,16 +27247,16 @@ export default function App() {
                             damping: 14
                           }}
                           style={{
-                            width: "230px",
-                            height: "230px",
+                            width: "250px",
+                            height: "250px",
                             transformOrigin: "center center"
                           }}
                         >
                           <svg viewBox="0 0 100 150" fill="none" className="w-full h-full text-red-500">
                             {/* Arrow Head */}
-                            <path d="M34 24 L50 2 L66 24 Z" fill="currentColor" />
+                            <path d="M38 14 L50 1 L62 14 Z" fill="currentColor" />
                             {/* Arrow Shaft (Longer Stem) */}
-                            <polygon points="48,50 52,50 55,24 45,24" fill="currentColor" />
+                            <polygon points="48,50 52,50 54,14 46,14" fill="currentColor" />
                             {/* Pivot Circle */}
                             <circle cx="50" cy="50" r="6" fill="currentColor" />
                           </svg>
@@ -27269,7 +27268,7 @@ export default function App() {
 
                       <div className="mt-2 flex flex-col items-center gap-1">
                         <span className="text-xs text-gray-500 font-bold">الحروف المطلوبة:</span>
-                        <span className="text-[11px] text-red-500 font-bold mb-1">خمن كلمة يكون فيها الحروف دي, بسرعة!</span>
+                        <span className="text-[12px] text-red-500 font-bold mb-1">خمن كلمة يكون فيها الحروف دي, بسرعة!</span>
                         <div className="bg-red-500 text-white text-3xl font-black px-6 py-1.5 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.5)] tracking-widest min-w-[120px] text-center">
                           {room.bombParty?.currentSubstring}
                         </div>
