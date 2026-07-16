@@ -4849,6 +4849,12 @@ async function startServer() {
             dotsWins: p1ServerPlayer
               ? p1ServerPlayer.dotsWins || 0
               : match.p1.dotsWins || 0,
+            speedCupsWins: p1ServerPlayer
+              ? p1ServerPlayer.speedCupsWins || 0
+              : match.p1.speedCupsWins || 0,
+            bombPartyWins: p1ServerPlayer
+              ? p1ServerPlayer.bombPartyWins || 0
+              : match.p1.bombPartyWins || 0,
           },
           {
             id: match.p2.socket.id,
@@ -4913,6 +4919,12 @@ async function startServer() {
             dotsWins: p2ServerPlayer
               ? p2ServerPlayer.dotsWins || 0
               : match.p2.dotsWins || 0,
+            speedCupsWins: p2ServerPlayer
+              ? p2ServerPlayer.speedCupsWins || 0
+              : match.p2.speedCupsWins || 0,
+            bombPartyWins: p2ServerPlayer
+              ? p2ServerPlayer.bombPartyWins || 0
+              : match.p2.bombPartyWins || 0,
           },
         ],
         gameState: "waiting",
@@ -4999,6 +5011,8 @@ async function startServer() {
             handWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             iqWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             dotsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            speedCupsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            bombPartyWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             isBot: true,
             persona: botPersona.personality,
             selectedFrame: "",
@@ -13493,27 +13507,18 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
               return;
             } else {
               // Increment player's incorrect guess count (already used word)
-              if (!room.bombParty.stats) room.bombParty.stats = {};
-              if (!room.bombParty.stats[socket.id]) room.bombParty.stats[socket.id] = { correct: 0, incorrect: 0 };
-              room.bombParty.stats[socket.id].incorrect++;
 
               socket.emit("bomb_party_error", { reason: "الكلمة دي اتقالت قبل كدا!" });
               return;
             }
           } else {
             // Increment player's incorrect guess count (doesn't contain requested letters)
-            if (!room.bombParty.stats) room.bombParty.stats = {};
-            if (!room.bombParty.stats[socket.id]) room.bombParty.stats[socket.id] = { correct: 0, incorrect: 0 };
-            room.bombParty.stats[socket.id].incorrect++;
 
             socket.emit("bomb_party_error", { reason: "الكلمة مش بتحتوي على الحروف المطلوبة!" });
             return;
           }
         } else {
           // Increment player's incorrect guess count (not in dictionary)
-          if (!room.bombParty.stats) room.bombParty.stats = {};
-          if (!room.bombParty.stats[socket.id]) room.bombParty.stats[socket.id] = { correct: 0, incorrect: 0 };
-          room.bombParty.stats[socket.id].incorrect++;
 
           socket.emit("bomb_party_error", { reason: "كلمة غير موجودة في القاموس!" });
           return;
