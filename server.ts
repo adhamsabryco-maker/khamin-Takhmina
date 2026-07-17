@@ -10364,7 +10364,6 @@ async function startServer() {
               room.gameState !== "finished" &&
               room.gameState !== "xo_finished" &&
               room.gameState !== "iq_finished" &&
-              room.gameState !== "bus_complete_evaluating" &&
               room.gameState !== "hand_finished" &&
               room.gameState !== "dots_finished"
             ) {
