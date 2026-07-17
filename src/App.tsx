@@ -1506,6 +1506,19 @@ export default function App() {
     return String(total);
   };
 
+  useEffect(() => {
+    const lastOpenedStore = localStorage.getItem("khamin_last_opened_store");
+    if (!lastOpenedStore) {
+      setHasNewStoreOffers(true);
+    } else {
+      const lastOpenedTime = parseInt(lastOpenedStore);
+      const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
+      if (Date.now() - lastOpenedTime > ONE_WEEK) {
+        setHasNewStoreOffers(true);
+      }
+    }
+  }, []);
+
   // Re-enabled version check but without forcing reloads
   useEffect(() => {
     if (
@@ -1853,6 +1866,7 @@ export default function App() {
   const [complaintText, setComplaintText] = useState("");
   const [canSendComplaint, setCanSendComplaint] = useState(true);
   const [showShopModal, setShowShopModal] = useState(false);
+  const [hasNewStoreOffers, setHasNewStoreOffers] = useState(false);
   const [showCheckoutPage, setShowCheckoutPage] = useState(false);
   const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
   const [selectedWalletItem, setSelectedWalletItem] = useState<string | null>(
@@ -5324,6 +5338,8 @@ export default function App() {
       playSound("clickOpen");
       closeAllModals();
       setShowShopModal(true);
+      setHasNewStoreOffers(false);
+      localStorage.setItem("khamin_last_opened_store", Date.now().toString());
     }
   };
 
@@ -22619,10 +22635,16 @@ export default function App() {
               {/* Shop Button */}
               <button
                 onClick={toggleShop}
-                className="w-9 h-9 md:w-10 md:h-10 bg-orange-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-orange-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                className="relative w-9 h-9 md:w-10 md:h-10 bg-orange-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-orange-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                 title="المتجر"
               >
                 <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
+                {hasNewStoreOffers && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+                  </span>
+                )}
               </button>
 
               {/* Notifications Button */}
@@ -23366,10 +23388,16 @@ export default function App() {
             {/* Shop Button */}
             <button
               onClick={toggleShop}
-              className="w-9 h-9 md:w-10 md:h-10 bg-orange-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-orange-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              className="relative w-9 h-9 md:w-10 md:h-10 bg-orange-100 text-black border-2 border-black rounded-xl flex items-center justify-center hover:bg-orange-200 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               title="المتجر"
             >
               <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
+              {hasNewStoreOffers && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+                </span>
+              )}
             </button>
 
             {/* Notifications Button */}
