@@ -2575,11 +2575,22 @@ export default function App() {
 
   const [spectatingRoomId, setSpectatingRoomId] = useState<string | null>(null);
   const spectatingRoomIdRef = useRef<string | null>(null);
+  const spectatorChatEndRef = useRef<HTMLDivElement>(null);
+  const [spectatorRoomData, setSpectatorRoomData] = useState<any>(null);
 
   const updateSpectatingRoomId = (id: string | null) => {
     setSpectatingRoomId(id);
     spectatingRoomIdRef.current = id;
   };
+
+  useEffect(() => {
+    if (spectatorChatEndRef.current) {
+      const parent = spectatorChatEndRef.current.parentElement;
+      if (parent) {
+        parent.scrollTop = parent.scrollHeight;
+      }
+    }
+  }, [spectatorRoomData?.chatHistory]);
 
   useEffect(() => {
     if (spectatingRoomId && activeRooms.length === 0 && socket) {
@@ -2588,7 +2599,6 @@ export default function App() {
       });
     }
   }, [spectatingRoomId, socket, activeRooms.length]);
-  const [spectatorRoomData, setSpectatorRoomData] = useState<any>(null);
   const [pendingAvatars, setPendingAvatars] = useState<
     { serial: string; name: string; level: number; pendingAvatar: string }[]
   >([]);
@@ -22398,6 +22408,7 @@ export default function App() {
                       ),
                     )
                   )}
+                  <div ref={spectatorChatEndRef} />
                 </div>
 
                 <div className="p-4 bg-red-500/10 border-t border-red-500/20">
