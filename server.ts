@@ -14955,7 +14955,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         },
       );
 
-      socket.on("send_gift", ({ serial, targetSerial, gifts }, callback) => {
+      socket.on("send_gift", async ({ serial, targetSerial, gifts }, callback) => {
         if (!serial || !targetSerial || !gifts)
           return callback({ error: "Missing parameters" });
         const sender = allPlayers.get(serial);
@@ -15151,6 +15151,59 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
               });
               break;
             }
+          }
+
+          // Send phone push notification for gift
+          try {
+            const subscriptions = db
+              .prepare("SELECT subscription FROM push_subscriptions WHERE serial = ?")
+              .all(targetSerial) as any[];
+
+            if (subscriptions.length > 0) {
+              const HELPER_NAMES_AR: Record<string, string> = {
+                word_length: "كاشف الحروف",
+                word_count: "عدد الكلمات",
+                time_freeze: "تجميد الوقت",
+                hint: "تلميح",
+                spy_lens: "الجاسوس",
+              };
+              const helpersArray = Object.entries(validHelpers || {})
+                .map(([id, amount]) => {
+                  const arabName = HELPER_NAMES_AR[id];
+                  return arabName ? `${amount} ${arabName}` : null;
+                })
+                .filter(Boolean);
+              const itemsString = [
+                keysToSend > 0 ? `${keysToSend} مفاتيح` : null,
+                tokensToSend > 0 ? `${tokensToSend} تخمينات` : null,
+                ...helpersArray,
+              ]
+                .filter(Boolean)
+                .join(" | ");
+
+              const payload = JSON.stringify({
+                title: "هدية جديدة! 🎁",
+                body: `${sender.name} أرسل لك هدايا: ${itemsString}`,
+                url: "/",
+              });
+
+              for (const sub of subscriptions) {
+                try {
+                  const subscription = JSON.parse(sub.subscription);
+                  await webpush.sendNotification(subscription, payload);
+                } catch (err: any) {
+                  if (err.statusCode === 410 || err.statusCode === 404) {
+                    db.prepare(
+                      "DELETE FROM push_subscriptions WHERE subscription = ?",
+                    ).run(sub.subscription);
+                  } else {
+                    console.error("Push Gift Error:", err.statusCode, err.body || err.message);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error sending gift push notification:", e);
           }
 
           callback({ success: true });
@@ -16223,43 +16276,42 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             io.to(targetSocketId).emit("friend_request_received", {
               senderSerial: actualMySerial,
             });
-          } else {
-            try {
-              const senderPlayer = db
-                .prepare("SELECT name FROM players WHERE serial = ?")
-                .get(actualMySerial) as any;
-              const subscriptions = db
-                .prepare("SELECT subscription FROM push_subscriptions WHERE serial = ?")
-                .all(targetSerial) as any[];
+          }
+          try {
+            const senderPlayer = db
+              .prepare("SELECT name FROM players WHERE serial = ?")
+              .get(actualMySerial) as any;
+            const subscriptions = db
+              .prepare("SELECT subscription FROM push_subscriptions WHERE serial = ?")
+              .all(targetSerial) as any[];
 
-              if (subscriptions.length > 0 && senderPlayer) {
-                const payload = JSON.stringify({
-                  title: "طلب صداقة جديد 👥",
-                  body: `${senderPlayer.name} أرسل لك طلب صداقة وينتظر الرد.`,
-                  url: "/",
-                });
+            if (subscriptions.length > 0 && senderPlayer) {
+              const payload = JSON.stringify({
+                title: "طلب صداقة جديد 👥",
+                body: `${senderPlayer.name} أرسل لك طلب صداقة وينتظر الرد.`,
+                url: "/",
+              });
 
-                for (const sub of subscriptions) {
-                  try {
-                    const subscription = JSON.parse(sub.subscription);
-                    await webpush.sendNotification(subscription, payload);
-                  } catch (err: any) {
-                    if (err.statusCode === 410 || err.statusCode === 404) {
-                      db.prepare(
-                        "DELETE FROM push_subscriptions WHERE subscription = ?",
-                      ).run(sub.subscription);
-                    } else {
-                      console.error("Push Friend Error:", err.statusCode, err.body || err.message);
-                    }
+              for (const sub of subscriptions) {
+                try {
+                  const subscription = JSON.parse(sub.subscription);
+                  await webpush.sendNotification(subscription, payload);
+                } catch (err: any) {
+                  if (err.statusCode === 410 || err.statusCode === 404) {
+                    db.prepare(
+                      "DELETE FROM push_subscriptions WHERE subscription = ?",
+                    ).run(sub.subscription);
+                  } else {
+                    console.error("Push Friend Error:", err.statusCode, err.body || err.message);
                   }
                 }
               }
-            } catch (e) {
-              console.error(
-                "Error sending friend request push notification:",
-                e,
-              );
             }
+          } catch (e) {
+            console.error(
+              "Error sending friend request push notification:",
+              e,
+            );
           }
           callback({ success: true });
         } catch (e) {
