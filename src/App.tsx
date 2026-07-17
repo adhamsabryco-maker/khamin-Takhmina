@@ -5543,6 +5543,7 @@ export default function App() {
     inanimate: "",
     country: "",
   });
+  const hasRestoredBusDraftRef = useRef(false);
   const [spinLetter, setSpinLetter] = useState("؟");
   const [hideBusResults, setHideBusResults] = useState(false);
   const [showDotsTutorial, setShowDotsTutorial] = useState(false);
@@ -6134,6 +6135,21 @@ export default function App() {
 
     prevGameStateRef.current = room?.gameState || null;
   }, [room?.gameState, room?.xoWinner, room?.iqWinner, room?.busCompleteWinner, room?.handWinner, socket?.id, playSound]);
+
+  useEffect(() => {
+    if (room?.gameState === "bus_complete_playing" && socket?.id && room?.busCompleteDraftAnswers?.[socket.id]) {
+       if (!hasRestoredBusDraftRef.current) {
+         const drafts = room.busCompleteDraftAnswers[socket.id];
+         const currentEmpty = Object.values(busAnswers).every(v => !v);
+         if (currentEmpty && drafts && Object.values(drafts).some(v => v)) {
+             setBusAnswers(drafts);
+             hasRestoredBusDraftRef.current = true;
+         }
+       }
+    } else if (room?.gameState !== "bus_complete_playing") {
+       hasRestoredBusDraftRef.current = false;
+    }
+  }, [room?.gameState, room?.busCompleteDraftAnswers, socket?.id]);
 
   const clearPlayerData = () => {
     // Clear all localStorage items related to the game
@@ -26015,10 +26031,11 @@ export default function App() {
                                 )
                               }
                               onChange={(e) =>
-                                setBusAnswers((prev) => ({
-                                  ...prev,
-                                  [item.key]: e.target.value,
-                                }))
+                                setBusAnswers((prev) => {
+                                  const newAns = { ...prev, [item.key]: e.target.value };
+                                  socket?.emit("update_bus_answers_draft", { roomId: room.id, answers: newAns });
+                                  return newAns;
+                                })
                               }
                               dir="rtl"
                             />
@@ -26110,10 +26127,11 @@ export default function App() {
                                                                 words.length,
                                                             )
                                                           ];
-                                                        setBusAnswers((prev) => ({
-                                                          ...prev,
-                                                          [item.key]: randomWord,
-                                                        }));
+                                                        setBusAnswers((prev) => {
+                                                          const newAns = { ...prev, [item.key]: randomWord };
+                                                          socket?.emit("update_bus_answers_draft", { roomId: room.id, answers: newAns });
+                                                          return newAns;
+                                                        });
                                                       }
                                                     }
                                                   }
