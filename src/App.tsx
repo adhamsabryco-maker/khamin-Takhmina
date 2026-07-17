@@ -10358,8 +10358,16 @@ export default function App() {
         () => {
           isIntentionalLeaveRef.current = true;
           socket?.emit("intentional_leave", { roomId });
-          socket?.emit("leave_room", { roomId }, () => {
+          let forced = false;
+          const forceTimeout = setTimeout(() => {
+            forced = true;
             resetToHome();
+          }, 600);
+          socket?.emit("leave_room", { roomId }, () => {
+            if (!forced) {
+              clearTimeout(forceTimeout);
+              resetToHome();
+            }
           });
         },
         "تأكيد الخروج",
@@ -10369,8 +10377,16 @@ export default function App() {
 
     isIntentionalLeaveRef.current = true;
     socket?.emit("intentional_leave", { roomId });
-    socket?.emit("leave_room", { roomId }, () => {
+    let forced = false;
+    const forceTimeout = setTimeout(() => {
+      forced = true;
       resetToHome();
+    }, 600);
+    socket?.emit("leave_room", { roomId }, () => {
+      if (!forced) {
+        clearTimeout(forceTimeout);
+        resetToHome();
+      }
     });
   };
 
@@ -28495,14 +28511,14 @@ export default function App() {
                                   (me?.helpersUsedCount || 0) < 3;
                                 return (
                                   <div className="flex flex-col items-center gap-1 mt-2">
-                                    <span className="text-[13px] text-brown-muted font-bold">
+                                    <span className="text-[13px] text-black font-bold">
                                       اختار اجابة او خمن بنفسك
                                     </span>
                                     <div className="relative w-full">
                                       {/* Blur Overlay */}
                                       {isQuickGuessLocked && (
-                                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
-                                          <span className="text-[12px] font-bold text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
+                                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/20 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
+                                          <span className="text-[12px] font-black text-red-600 text-center px-4 leading-tight">
                                             يجب استخدام على الاقل 3 وسائل مساعدة
                                             لفتح اختيارات الإجابات السريعة
                                           </span>
@@ -28697,14 +28713,14 @@ export default function App() {
                                     (me?.helpersUsedCount || 0) < 3;
                                   return (
                                     <div className="flex flex-col items-center gap-1 mt-1">
-                                      <span className="text-[13px] text-brown-muted font-bold">
+                                      <span className="text-[13px] text-black font-bold">
                                         اختار اجابة او خمن بنفسك
                                       </span>
                                       <div className="relative w-full">
                                         {/* Blur Overlay */}
                                         {isQuickGuessLocked && (
-                                          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
-                                            <span className="text-[12px] font-bold text-orange-600 text-center px-4 leading-tight drop-shadow-sm">
+                                          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/20 backdrop-blur-md rounded-xl border-2 border-dashed border-orange-200">
+                                            <span className="text-[12px] font-black text-red-600 text-center px-4 leading-tight">
                                               يجب استخدام على الاقل 3 وسائل
                                               مساعدة لفتح اختيارات الإجابات
                                               السريعة
@@ -30088,8 +30104,16 @@ export default function App() {
                    if (room?.id) {
                       isIntentionalLeaveRef.current = true;
                       socket?.emit("intentional_leave", { roomId: room.id });
-                      socket?.emit("leave_room", { roomId: room.id }, () => {
+                      let forced = false;
+                      const forceTimeout = setTimeout(() => {
+                         forced = true;
                          resetToHome();
+                      }, 600);
+                      socket?.emit("leave_room", { roomId: room.id }, () => {
+                         if (!forced) {
+                            clearTimeout(forceTimeout);
+                            resetToHome();
+                         }
                       });
                    } else {
                       resetToHome();
