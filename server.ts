@@ -6722,7 +6722,10 @@ async function startServer() {
 
                 // Human-like response delay: 2.5 to 5.5 seconds, but always at least 1.5 seconds before turnTimeLimit
                 const timeLeft = room.bombParty.turnTimeLimit - (Date.now() - room.bombParty.bombStartTime);
-                const delay = Math.max(500, Math.min(timeLeft - 1500, 2500 + Math.random() * 3000));
+                let delay = 2500 + Math.random() * 3000;
+                if (delay > timeLeft - 500) {
+                  delay = Math.max(1800, Math.max(100, timeLeft - 500));
+                }
 
                 const timeout = setTimeout(() => {
                   botTimeouts.delete(botKey);
@@ -10479,6 +10482,38 @@ async function startServer() {
                   room.customImages[socket.id] = room.customImages[oldSocketId];
                   delete room.customImages[oldSocketId];
                 }
+
+                if (room.speedCupsWinner === oldSocketId) room.speedCupsWinner = socket.id;
+                if (room.speedCupsMatchWins && room.speedCupsMatchWins[oldSocketId] !== undefined) {
+                  room.speedCupsMatchWins[socket.id] = room.speedCupsMatchWins[oldSocketId];
+                  delete room.speedCupsMatchWins[oldSocketId];
+                }
+                if (room.speedCupsRematchRequestedBy) {
+                  room.speedCupsRematchRequestedBy = room.speedCupsRematchRequestedBy.map((id: any) => id === oldSocketId ? socket.id : id);
+                }
+
+                if (room.bombParty) {
+                  if (room.bombParty.turnPlayerId === oldSocketId) room.bombParty.turnPlayerId = socket.id;
+                  if (room.bombParty.explodedPlayerId === oldSocketId) room.bombParty.explodedPlayerId = socket.id;
+                  
+                  if (room.bombParty.stats && room.bombParty.stats[oldSocketId] !== undefined) {
+                    room.bombParty.stats[socket.id] = room.bombParty.stats[oldSocketId];
+                    delete room.bombParty.stats[oldSocketId];
+                  }
+                  if (room.bombParty.matchWins && room.bombParty.matchWins[oldSocketId] !== undefined) {
+                    room.bombParty.matchWins[socket.id] = room.bombParty.matchWins[oldSocketId];
+                    delete room.bombParty.matchWins[oldSocketId];
+                  }
+                  if (room.bombParty.rematchRequestedBy) {
+                    room.bombParty.rematchRequestedBy = room.bombParty.rematchRequestedBy.map((id: any) => id === oldSocketId ? socket.id : id);
+                  }
+                }
+                
+                if (room.busCompleteDraftAnswers && room.busCompleteDraftAnswers[oldSocketId] !== undefined) {
+                  room.busCompleteDraftAnswers[socket.id] = room.busCompleteDraftAnswers[oldSocketId];
+                  delete room.busCompleteDraftAnswers[oldSocketId];
+                }
+
                 if (room.adPausedPlayers && room.adPausedPlayers.has(oldSocketId)) {
                   room.adPausedPlayers.delete(oldSocketId);
                   room.adPausedPlayers.add(socket.id);
@@ -11063,6 +11098,14 @@ async function startServer() {
         }
       });
 
+      socket.on("update_bus_answers_draft", ({ roomId, answers }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "bus_complete_playing") {
+          room.busCompleteDraftAnswers = room.busCompleteDraftAnswers || {};
+          room.busCompleteDraftAnswers[socket.id] = answers;
+        }
+      });
+
       socket.on("submit_bus_complete", ({ roomId, answers }) => {
         const room = rooms.get(roomId);
         if (room && room.gameState === "bus_complete_playing") {
@@ -11319,26 +11362,42 @@ async function startServer() {
       
       socket.on("submit_dots_move", ({ roomId, r1, c1, r2, c2 }) => {
         const room = rooms.get(roomId);
-        if (room && room.gameState === "dots_playing" && room.dotsTurn === socket.id) {
-          // Check if ad is playing
-          if (room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0) return;
-          
-          // Ensure coordinates are valid
-          const size = room.dotsBoardSize;
-          if (r1 < 0 || r1 >= size || c1 < 0 || c1 >= size || r2 < 0 || r2 >= size || c2 < 0 || c2 >= size) return;
-          
-          // Ensure points are adjacent (horizontal or vertical)
-          if (!((Math.abs(r1 - r2) === 1 && c1 === c2) || (Math.abs(c1 - c2) === 1 && r1 === r2))) return;
-          
-          // Normalize line ID (smaller row/col first)
-          let lineId = "";
-          if (r1 === r2) {
-            lineId = `${r1},${Math.min(c1, c2)}-${r1},${Math.max(c1, c2)}`;
-          } else {
-            lineId = `${Math.min(r1, r2)},${c1}-${Math.max(r1, r2)},${c1}`;
-          }
-          
-          if (room.dotsLines[lineId]) return; // Line already drawn
+        if (!room || room.gameState !== "dots_playing" || room.dotsTurn !== socket.id) {
+          if (room) socket.emit("room_update", room);
+          return;
+        }
+
+        // Check if ad is playing
+        if (room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0) {
+          socket.emit("room_update", room);
+          return;
+        }
+        
+        // Ensure coordinates are valid
+        const size = room.dotsBoardSize;
+        if (r1 < 0 || r1 >= size || c1 < 0 || c1 >= size || r2 < 0 || r2 >= size || c2 < 0 || c2 >= size) {
+          socket.emit("room_update", room);
+          return;
+        }
+        
+        // Ensure points are adjacent (horizontal or vertical)
+        if (!((Math.abs(r1 - r2) === 1 && c1 === c2) || (Math.abs(c1 - c2) === 1 && r1 === r2))) {
+          socket.emit("room_update", room);
+          return;
+        }
+        
+        // Normalize line ID (smaller row/col first)
+        let lineId = "";
+        if (r1 === r2) {
+          lineId = `${r1},${Math.min(c1, c2)}-${r1},${Math.max(c1, c2)}`;
+        } else {
+          lineId = `${Math.min(r1, r2)},${c1}-${Math.max(r1, r2)},${c1}`;
+        }
+        
+        if (room.dotsLines[lineId]) {
+          socket.emit("room_update", room);
+          return; // Line already drawn
+        }
           
           room.dotsLines[lineId] = socket.id;
           room.dotsLastMove = lineId; // Record last move
@@ -11447,7 +11506,6 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
           if (room.players.some((p: any) => p.isBot)) {
              handleBotEvent(roomId, "room_update", room);
           }
-        }
       });
 
       socket.on("submit_iq_move", ({ roomId, index }) => {
