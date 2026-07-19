@@ -27101,6 +27101,7 @@ export default function App() {
                 <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto] bg-gray-900 border-red-500">
                 {renderBombPartyRewardBar()}
                 
+                <div className="relative flex-1 flex flex-col w-full h-full space-y-2 md:space-y-3">
                 {room.players.length === 2 && (
                   <div className="flex justify-between items-center w-full mb-1 px-1 relative z-20" dir="ltr">
                     <div className={`flex flex-col items-center ${room.bombParty?.turnPlayerId === room.players[1].id ? 'bg-red-900 border-red-400' : 'bg-gray-800 border-red-500'} border-2 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px] text-white transition-colors`}>
@@ -27121,7 +27122,7 @@ export default function App() {
 
                 {/* Animated Burning Fuses & Fire Sparks */}
                 {room.players.length === 2 && room.gameState === "bomb_party_playing" && (
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-15" viewBox="0 0 400 320">
+                  <svg className="absolute left-0 w-full pointer-events-none z-15" style={{ top: '-64px', height: 'calc(100% + 64px)' }} viewBox="0 0 400 320">
                     {/* Left Fuse Burnt/Ash Trace */}
                     {(() => {
                       const p1Id = room.players[1]?.id;
@@ -27472,6 +27473,7 @@ export default function App() {
                     </div>
                   </div>
                 )}
+                </div>
                 </div>
                 <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
               </React.Fragment>
