@@ -849,6 +849,7 @@ const isSameWeek = (d1: number, d2: number) => {
 };
 
 import { CheckoutPage } from "./components/CheckoutPage";
+import WordleGame from "./WordleGame";
 
 function normalizeEgyptian(text: string): string {
   if (!text) return "";
@@ -1926,8 +1927,16 @@ export default function App() {
     canWatch: false,
     loading: true,
   });
+  const [keyAdStatus, setKeyAdStatus] = useState({
+    adsWatched: 0,
+    maxAds: 5,
+    canWatch: false,
+    loading: true,
+  });
   const [isCooldown, setIsCooldown] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(0);
+  const [isKeyCooldown, setIsKeyCooldown] = useState(false);
+  const [keyCooldownTime, setKeyCooldownTime] = useState(0);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -1942,11 +1951,28 @@ export default function App() {
   }, [isCooldown, cooldownTime]);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isKeyCooldown && keyCooldownTime > 0) {
+      timer = setInterval(() => {
+        setKeyCooldownTime((prev) => prev - 1);
+      }, 1000);
+    } else if (keyCooldownTime === 0) {
+      setIsKeyCooldown(false);
+    }
+    return () => clearInterval(timer);
+  }, [isKeyCooldown, keyCooldownTime]);
+
+  useEffect(() => {
     if (socket && isConnected && playerSerial) {
       socket.emit("check_ad_status", { serial: playerSerial });
+      socket.emit("check_key_ad_status", { serial: playerSerial });
 
       socket.on("ad_status", (status) => {
         setAdStatus({ ...status, loading: false });
+      });
+
+      socket.on("key_ad_status", (status) => {
+        setKeyAdStatus({ ...status, loading: false });
       });
 
       socket.on("ad_success", (data) => {
@@ -1959,6 +1985,17 @@ export default function App() {
         }));
         playSound("win");
         showAlert("تمت إضافة التخمينة بنجاح! 🎉", "نجاح");
+      });
+
+      socket.on("key_ad_success", (data) => {
+        localStorage.setItem("khamin_keys", data.keys.toString());
+        setKeyAdStatus((prev) => ({
+          ...prev,
+          adsWatched: data.adsWatched,
+          canWatch: data.adsWatched < data.maxAds,
+        }));
+        playSound("win");
+        showAlert("تمت إضافة المفتاح بنجاح! 🎉", "نجاح");
       });
 
       socket.on("ad_error", (msg) => {
@@ -1980,7 +2017,9 @@ export default function App() {
 
       return () => {
         socket.off("ad_status");
+        socket.off("key_ad_status");
         socket.off("ad_success");
+        socket.off("key_ad_success");
         socket.off("ad_error");
         socket.off("rain_gift_error");
       };
@@ -2295,7 +2334,7 @@ export default function App() {
   });
 
   const [leaderboardFilter, setLeaderboardFilter] = useState<
-    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "speedCups" | "bombParty" | "wins" | "streak" | "likes"
+    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "speedCups" | "bombParty" | "wordle" | "wins" | "streak" | "likes"
   >("all");
   const [leaderboardVisibleCount, setLeaderboardVisibleCount] = useState(10);
 
@@ -2322,6 +2361,8 @@ export default function App() {
       sorted.sort((a, b) => (b.dotsWins || 0) - (a.dotsWins || 0));
     } else if (leaderboardFilter === "speedCups") {
       sorted.sort((a, b) => (b.speedCupsWins || 0) - (a.speedCupsWins || 0));
+    } else if (leaderboardFilter === "wordle") {
+      sorted.sort((a, b) => (b.wordleWins || 0) - (a.wordleWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -6713,7 +6754,7 @@ export default function App() {
       }
     });
 
-        newSocket.on("iq_reward_claimed", (data: any) => {
+    newSocket.on("iq_reward_claimed", (data: any) => {
       playSound("prize");
       setCustomConfirm({
          show: true,
@@ -6734,6 +6775,29 @@ export default function App() {
         setIqRewardLevel(data.newLevel);
         localStorage.setItem("khamin_iq_reward_level", data.newLevel.toString());
       }
+    });
+
+    newSocket.on("wordle_reward_claimed", (data: any) => {
+      playSound("prize");
+      if (data.points != null) {
+        setWordleMatchPoints(data.points);
+        localStorage.setItem("khamin_wordle_match_points", data.points.toString());
+      }
+      if (data.newLevel != null) {
+        setWordleRewardLevel(data.newLevel);
+        localStorage.setItem("khamin_wordle_reward_level", data.newLevel.toString());
+      }
+      setCustomConfirm({
+         show: true,
+         title: "تم استلام هدايا تخمينة كلمة لي بنجاح! 🎁",
+         message: "تم ترقية مستوى هدايا تخمينة كلمة لي إلى " + data.newLevel + "!\n\n" +
+                  "حصلت على:\n" +
+                  "⭐ " + data.xp + " خبرة\n" +
+                  "🔑 " + data.keys + " مفاتيح\n" +
+                  "🔧 " + data.newLevel + " من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)",
+         confirmText: "رائع!",
+         onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+      });
     });
     newSocket.on("xo_reward_claimed", (data: any) => {
       playSound("prize");
@@ -7354,6 +7418,14 @@ export default function App() {
       if (data.handMatchPoints != null) {
         setHandMatchPoints(data.handMatchPoints);
         localStorage.setItem("khamin_hand_match_points", data.handMatchPoints.toString());
+      }
+      if (data.wordleRewardLevel != null) {
+        setWordleRewardLevel(data.wordleRewardLevel);
+        localStorage.setItem("khamin_wordle_reward_level", data.wordleRewardLevel.toString());
+      }
+      if (data.wordleMatchPoints != null) {
+        setWordleMatchPoints(data.wordleMatchPoints);
+        localStorage.setItem("khamin_wordle_match_points", data.wordleMatchPoints.toString());
       }
       if (data.likes != null) {
         setLikes(data.likes);
@@ -9131,6 +9203,170 @@ export default function App() {
 
   const adTriggeredRef = useRef(false);
 
+  const handleWatchKeyAd = () => {
+    console.log("handleWatchKeyAd called. Current keyAdStatus:", keyAdStatus);
+
+    if (adTriggeredRef.current || isGlobalAdLoading) return;
+    if (isKeyCooldown) {
+      showAlert("يرجى الانتظار 30 ثانية قبل مشاهدة الإعلان التالي!", "تنبيه");
+      return;
+    }
+
+    if (!keyAdStatus.canWatch) {
+      console.log("Cannot watch key ad: limit reached");
+      showAlert("انتهت المحاولات لهذا اليوم!", "تنبيه");
+      return;
+    }
+
+    // Close confirmation modal immediately to prevent "fixed window" issue
+    setShowAdConfirmation(false);
+
+    // Set triggered to true immediately to prevent double clicks
+    adTriggeredRef.current = true;
+    setIsGlobalAdLoading(true);
+
+    let localAdTriggered = false;
+    const startAdProcess = () => {
+      if (localAdTriggered) return;
+      localAdTriggered = true;
+      setIsGlobalAdLoading(false);
+      socket?.emit("start_ad_watch", { serial: playerSerial });
+    };
+
+    let adSafetyTimeout: NodeJS.Timeout;
+    const onAdComplete = () => {
+      clearTimeout(adSafetyTimeout);
+      adTriggeredRef.current = false;
+      setIsGlobalAdLoading(false);
+
+      // Trigger cooldown after ad finishes
+      setIsKeyCooldown(true);
+      setKeyCooldownTime(30);
+
+      socket?.emit("watch_key_ad_request", { serial: playerSerial });
+    };
+
+    const startMockAd = () => {
+      console.log("Falling back to mock ad");
+      startAdProcess();
+      setMockAdProviderState({
+        onComplete: () => {
+          onAdComplete();
+        },
+        onDismissed: () => {
+          clearTimeout(adSafetyTimeout);
+          adTriggeredRef.current = false;
+          setIsGlobalAdLoading(false);
+          showAlert(
+            "تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.",
+            "تنبيه",
+          );
+        },
+      });
+    };
+
+    const handleAdUnavailable = () => {
+      setIsGlobalAdLoading(false);
+      if (sessionAdFailuresCount < 2) {
+        sessionAdFailuresCount += 1;
+        localStorage.setItem(
+          "khamin_ad_failures",
+          sessionAdFailuresCount.toString(),
+        );
+        showAlert("عذراً، انتظر قليلاً وحاول مرة أخرى", "تنبيه");
+        adTriggeredRef.current = false;
+        return;
+      }
+      sessionAdFailuresCount = 0;
+      localStorage.setItem("khamin_ad_failures", "0");
+      console.warn(
+        "Google Ads unavailable, falling back to mock ad temporarily",
+      );
+      startMockAd();
+    };
+
+    // Call real AdSense adBreak if available
+    if (typeof window.adBreak === "function") {
+      console.log("Calling Google AdSense adBreak");
+      // Set a safety timeout: if AdSense doesn't trigger beforeAd within 12 seconds, use fallback
+      const adTimeout = setTimeout(() => {
+        if (!localAdTriggered) {
+          console.warn("AdSense adBreak timed out, using fallback");
+          handleAdUnavailable();
+        }
+      }, 12000);
+
+      try {
+        window.adBreak({
+          type: "reward",
+          name: "get_key",
+          beforeAd: () => {
+            console.log("AdSense: beforeAd");
+            clearTimeout(adTimeout);
+            if (localAdTriggered) {
+              console.log("AdSense started late, closing mock ad");
+              setMockAdProviderState(null);
+            }
+            localAdTriggered = false;
+            setIsGlobalAdLoading(false);
+            startAdProcess();
+
+            // Safety timeout: if ad doesn't finish or dismiss within 60 seconds, resume game
+            adSafetyTimeout = setTimeout(() => {
+              console.warn("AdSense ad stuck, resuming game");
+              setIsGlobalAdLoading(false);
+              adTriggeredRef.current = false;
+              showAlert("حدث خطأ أثناء تحميل الإعلان.", "خطأ");
+            }, 60000);
+          },
+          afterAd: () => {
+            console.log("AdSense: afterAd");
+          },
+          beforeReward: (showAdFn: any) => {
+            console.log("AdSense: beforeReward");
+            showAdFn();
+          },
+          adDismissed: () => {
+            console.log("AdSense: adDismissed");
+            clearTimeout(adSafetyTimeout);
+            adTriggeredRef.current = false;
+            setIsGlobalAdLoading(false);
+            showAlert(
+              "تم إغلاق الإعلان قبل الاكتمال. لن تحصل على مكافأة.",
+              "تنبيه",
+            );
+          },
+          adViewed: () => {
+            console.log("AdSense: adViewed");
+            sessionAdFailuresCount = 0;
+            localStorage.setItem("khamin_ad_failures", "0");
+            onAdComplete();
+          },
+          adBreakDone: (placementInfo: any) => {
+            console.log("AdSense: adBreakDone", placementInfo);
+            setIsGlobalAdLoading(false);
+            // If adBreakDone is called but ad was never triggered, it means no ad was available
+            if (!localAdTriggered) {
+              clearTimeout(adTimeout);
+              console.warn(
+                "AdSense adBreakDone called without triggering ad, using fallback",
+              );
+              handleAdUnavailable();
+            } else {
+              adTriggeredRef.current = false;
+            }
+          },
+        });
+      } catch (error) {
+        console.error("Error calling window.adBreak:", error);
+        clearTimeout(adTimeout);
+        handleAdUnavailable();
+      }
+    } else {
+      // Fallback if AdSense is blocked or not loaded
+      handleAdUnavailable();
+    }
+  };
   const handleWatchAd = () => {
     console.log("handleWatchAd called. Current adStatus:", adStatus);
 
@@ -9420,7 +9656,7 @@ export default function App() {
 
   useEffect(() => {
     if (room && room.gameState !== previousGameStateRef.current) {
-      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished" || room.gameState === "bomb_party_finished") {
+      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished" || room.gameState === "bomb_party_finished" || room.gameState === "wordle_finished") {
         if (!hasProPackage) {
           matchesPlayedRef.current += 1;
           if (matchesPlayedRef.current >= 3) {
@@ -10349,7 +10585,10 @@ export default function App() {
       room?.gameState === "bus_complete_evaluating" ||
       room?.gameState === "hand_playing" ||
       room?.gameState === "hand_finished" ||
-      room?.gameState?.startsWith("speed_cups_");
+      room?.gameState?.startsWith("speed_cups_") ||
+      room?.gameState === "wordle_setup" ||
+      room?.gameState === "wordle_playing" ||
+      room?.gameState === "wordle_finished";
 
     const me = room?.players.find((p) => p.id === socket?.id);
 
@@ -12430,6 +12669,13 @@ export default function App() {
                       </span>
                       <span className="font-black text-brown-dark">{data.bombPartyWins || 0}</span>
                     </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <img src="/word-le-logo.png" className="w-3.5 h-3.5 object-contain inline" />
+                        <span className="text-gray-500 font-extrabold">تخمينة كلمة لي</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.wordleWins || 0}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -13279,6 +13525,57 @@ export default function App() {
                       </button>
                     </div>
                   )}
+
+                  {/* Free Ad Reward - Keys - Any Level */}
+                  <div className="flex items-center justify-between py-3 p-2 md:p-4 border-2 border-game box-game relative overflow-hidden mb-4">
+                    <div
+                      className="absolute top-0 left-0 bg-accent-yellow text-black text-[10px] font-bold px-1 py-0.5 rounded-bl-xl shadow-sm z-10"
+                      dir="ltr"
+                    >
+                      مجاناً (لجميع المستويات)
+                    </div>
+                    <div className="flex items-center gap-1.5 relative z-10">
+                      <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center shadow-sm border border-yellow-300 animate-pulse">
+                        <Key className="w-6 h-6 text-yellow-600" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-[13px] md:text-lg text-brown-dark">
+                          شاهد إعلان = 1 مفتاح
+                        </div>
+                        <div className="text-xs font-bold text-brown-muted">
+                          متبقي لك اليوم:{" "}
+                          <span className="text-yellow-600">
+                            {5 - keyAdStatus.adsWatched}/5
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleWatchKeyAd}
+                      disabled={
+                        isKeyCooldown ||
+                        !keyAdStatus.canWatch ||
+                        isGlobalAdLoading
+                      }
+                      className={`px-2 py-1 rounded-xl font-black text-sm transition-all shadow-md relative z-10 flex items-center justify-center gap-1 ${
+                        !isKeyCooldown &&
+                        keyAdStatus.canWatch &&
+                        !isGlobalAdLoading
+                          ? "bg-yellow-500 text-white hover:scale-105 active:scale-95 shadow-[0_4px_0_0_#ca8a04]"
+                          : "bg-gray-300 text-brown-muted cursor-not-allowed shadow-[0_4px_0_0_#9ca3af]"
+                      }`}
+                    >
+                      {isGlobalAdLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isKeyCooldown ? (
+                        `${keyCooldownTime}s`
+                      ) : keyAdStatus.canWatch ? (
+                        "مشاهدة"
+                      ) : (
+                        "انتهى اليوم"
+                      )}
+                    </button>
+                  </div>
 
                   {/* Keys Exchange Package */}
                   <div className="flex items-center justify-between p-2 md:p-4 border-2 border-yellow-200 rounded-2xl bg-yellow-50 mb-4 transition-colors box-game relative">
@@ -21463,6 +21760,21 @@ export default function App() {
 
 
 
+  const [wordleRewardLevel, setWordleRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_wordle_reward_level") || "1") || 1
+  );
+  const [wordleMatchPoints, setWordleMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_wordle_match_points") || "0") || 0
+  );
+
+  useEffect(() => {
+    localStorage.setItem("khamin_wordle_reward_level", wordleRewardLevel.toString());
+  }, [wordleRewardLevel]);
+
+  useEffect(() => {
+    localStorage.setItem("khamin_wordle_match_points", wordleMatchPoints.toString());
+  }, [wordleMatchPoints]);
+
   const [bombPartyRewardLevel, setBombPartyRewardLevel] = useState(
     () => parseInt(localStorage.getItem("khamin_bomb_reward_level") || "1") || 1
   );
@@ -21487,6 +21799,79 @@ export default function App() {
       setBombPartyRewardLevel((prev) => prev + 1);
       localStorage.setItem("khamin_bomb_reward_level", (bombPartyRewardLevel + 1).toString());
     }
+  };
+
+  const renderWordleRewardBar = () => {
+    if (!room || room.matchType !== "random" || (room.gameState !== "wordle_playing" && room.gameState !== "wordle_finished")) return null;
+    const currentLevel = wordleRewardLevel;
+    const currentPoints = wordleMatchPoints;
+    const targetPoints = currentLevel * 100;
+    const progress = Math.min((currentPoints / targetPoints) * 100, 100);
+    const isReady = currentPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-xl p-2 relative overflow-hidden transition-all shadow-sm">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-emerald-100/50 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex sm:flex-row items-center justify-between gap-2 z-10 w-full">
+            <div className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
+              <span>المستوي {currentLevel}</span>
+              <span className="text-xs bg-white px-1.5 py-0.5 rounded-md border border-emerald-200" dir="ltr">
+                {currentPoints} / {targetPoints}
+              </span>
+            </div>
+            
+            <button
+              onClick={() => {
+                 if (isReady) {
+                   setCustomConfirm({
+                      show: true,
+                      title: "مبروك! 🎉 اكتملت نقاط المستوي " + currentLevel,
+                      message: "يمكنك استلام هدايا هذا المستوى الآن، هل تود مشاهدة الإعلان؟\n\n" +
+                               "🎁 " + (currentLevel === 1 ? 50 : 100 + 50 * (currentLevel - 1)) + " XP\n" +
+                               "🔑 " + currentLevel + " مفتاح\n" +
+                               "🔧 " + currentLevel + " من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)",
+                      confirmText: "نعم مشاهدة الاعلان",
+                      cancelText: "الغاء",
+                      onConfirm: () => {
+                        setCustomConfirm((prev) => ({ ...prev, show: false }));
+                        socket?.emit("bus_complete_ad_start", { roomId: room.id }); // reuse visual ad lock
+                        showBusCompleteAd(
+                          () => {
+                             socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: true });
+                             socket?.emit("claim_wordle_reward", { serial: socket?.data?.serial || playerSerial });
+                          },
+                          () => {
+                             socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: false });
+                             showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+                          }
+                        );
+                      }
+                   });
+                 } else {
+                   setCustomConfirm({
+                     show: true,
+                     title: `المستوي ${currentLevel}`,
+                     message: `متبقي ${targetPoints - currentPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                              `🎁 ${currentLevel === 1 ? 50 : 100 + 50 * (currentLevel - 1)} XP\n` +
+                              `🔑 ${currentLevel} مفتاح\n` +
+                              `🔧 ${currentLevel} من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)`,
+                     confirmText: "حسناً",
+                     onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                   });
+                 }
+              }}
+              className={`flex justify-center items-center gap-1.5 px-3 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+                ${isReady ? "bg-green-500 text-white animate-pulse hover:bg-green-600 border border-green-600 cursor-pointer" : "bg-white text-red-600 border border-red-200 hover:bg-red-50 cursor-pointer"}`}
+            >
+              <span>🎁</span>
+              <span>استلم الهدايا</span>
+            </button>
+          </div>
+       </div>
+    );
   };
 
   const renderBombPartyRewardBar = () => {
@@ -23841,6 +24226,7 @@ export default function App() {
                               <span>{limit99(topPlayers[1].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[1].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[1].bombPartyWins || 0)} 💣</span>
+                              <span>{limit99(topPlayers[1].wordleWins || 0)} 🟩</span>
                             </div>
                           </div>
                         </div>
@@ -23899,6 +24285,7 @@ export default function App() {
                               <span>{limit99(topPlayers[0].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[0].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[0].bombPartyWins || 0)} 💣</span>
+                              <span>{limit99(topPlayers[0].wordleWins || 0)} <img src="/word-le-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -23951,6 +24338,7 @@ export default function App() {
                               <span>{limit99(topPlayers[2].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[2].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[2].bombPartyWins || 0)} 💣</span>
+                              <span>{limit99(topPlayers[2].wordleWins || 0)} 🟩</span>
                             </div>
                           </div>
                         </div>
@@ -24558,6 +24946,8 @@ export default function App() {
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-3 h-3 inline object-contain" /></span>
                               <span>•</span>
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.bombPartyWins || 0)} 💣</span>
+                              <span>•</span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.wordleWins || 0)} <img src="/word-le-logo.png" className="w-3 h-3 inline object-contain" /></span>
                             </div>
                           </div>
                         </div>
@@ -24580,6 +24970,7 @@ export default function App() {
                         { id: "dots", icon: <img src="/dots-and-boxes-logo.png" className="w-6 h-6 object-contain" /> },
                         { id: "speedCups", icon: <img src="/speed-cups/speed-cups-logo.png" className="w-6 h-6 object-contain" /> },
                         { id: "bombParty", icon: "💣" },
+                        { id: "wordle", icon: "🟩" },
                       ].map((filter) => (
                         <button
                           key={filter.id}
@@ -24718,6 +25109,13 @@ export default function App() {
                                   dir="rtl"
                                 >
                                   {limit99(player.bombPartyWins || 0)} 💣
+                                </span>
+                                <span className="text-brown-light">•</span>
+                                <span
+                                  className="bg-emerald-50 text-emerald-600 md:px-1.5 rounded flex items-center gap-0.5"
+                                  dir="rtl"
+                                >
+                                  {limit99(player.wordleWins || 0)} <img src="/word-le-logo.png" className="w-3 h-3 object-contain" />
                                 </span>
                               </div>
                             </div>
@@ -27670,6 +28068,18 @@ export default function App() {
                   {renderHandGame()}
                 </div>
               </React.Fragment>
+            ) : room.gameState === "wordle_setup" || room.gameState === "wordle_playing" || room.gameState === "wordle_finished" ? (
+              <WordleGame
+                room={room}
+                socket={socket}
+                playerSerial={playerSerial}
+                isAdmin={isAdmin}
+                hasProPackage={hasProPackage}
+                CategoryPageAd={CategoryPageAd}
+                renderWordleRewardBar={renderWordleRewardBar}
+                playSound={playSound}
+                handleLeaveGame={handleLeaveGame}
+              />
             ) : room.gameState === "waiting" ? (
               <React.Fragment>
                 <div className="w-full card-game p-3 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden">
@@ -27788,6 +28198,38 @@ export default function App() {
                               return null;
                             })()}
                           </div>
+                          {/* Wordle Game */}
+                          <div className="relative h-[110px] md:h-[130px]">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "wordle",
+                                })
+                              }
+                              className={`h-full w-full bg-emerald-100 hover:bg-emerald-200 border-[3px] border-emerald-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#10b981] active:shadow-none active:translate-y-1.5"}`}
+                            >
+                              <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
+                                <img src="/word-le-logo.png" className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-md" alt="wordle" />
+                              </div>
+                              <span className="text-[13px] md:text-lg font-black text-emerald-700 text-center leading-tight">
+                                تخمينة كلمة لي
+                              </span>
+                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
+                                (خمن الكلمة المخفية)
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "wordle" && oppMode === "wordle") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
+                              if (meMode === "wordle") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "wordle") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+
 
                           {isPrivate && (
                             <div className="relative">
@@ -29314,23 +29756,9 @@ export default function App() {
         </AnimatePresence>
 
         {/* Help Cards (Bottom Left) - Vertical Stack */}
-        {room.gameState !== "waiting" &&
-          room.gameState !== "custom_image_upload" &&
-          room.gameState !== "bus_complete_setup" &&
-          room.gameState !== "bus_complete_spin" &&
-          room.gameState !== "bus_complete_playing" &&
-          room.gameState !== "bus_complete_evaluating" &&
-          room.gameState !== "xo_playing" &&
-          room.gameState !== "xo_finished" &&
-          room.gameState !== "hand_playing" &&
-          room.gameState !== "hand_finished" &&
-          room.gameState !== "iq_playing" &&
-          room.gameState !== "iq_finished" &&
-          room.gameState !== "dots_playing" &&
-          room.gameState !== "dots_finished" &&
-          !room.gameState.startsWith("bomb_party_") &&
-          !room.gameState.startsWith("speed_cups_") &&
-          room.gameState !== "starting" && (
+        {(room.gameState === "playing" ||
+          room.gameState === "guessing" ||
+          room.gameState === "discussion") && (
             <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
               {[
                 {
@@ -29659,7 +30087,7 @@ export default function App() {
 
         {/* Finished Screen Overlay */}
         <AnimatePresence>
-          {room.gameState === "finished" && (
+          {room.gameState === "finished" && (room.matchType === "random" || room.selectionMode === "ready" || room.selectionMode === "custom") && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

@@ -311,8 +311,7 @@ body::after {
   box-shadow: none !important;
 }
 
-.bg-white\/20, .bg-white\/10, .bg-white\/50, .bg-white\/80, .bg-white\/90,
-.bg-gray-50, .bg-gray-100, .bg-gray-200 {
+.bg-white\/20, .bg-white\/10, .bg-white\/50, .bg-white\/80, .bg-white\/90 {
   background-color: #fff !important;
   color: #000 !important;
 }
