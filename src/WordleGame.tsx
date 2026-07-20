@@ -207,11 +207,11 @@ export default function WordleGame({
 
   const getKeyClass = (char: string) => {
     const status = letterStatuses[char];
-    const base = "flex-1 min-w-0 h-8 sm:h-10 rounded-md font-bold text-[9px] xs:text-xs sm:text-sm md:text-base transition-all active:scale-95 flex items-center justify-center border-b-[2px] p-0 ";
+    const base = "flex-1 min-w-0 h-12 sm:h-14 font-black text-[15px] sm:text-lg transition-all active:scale-95 flex items-center justify-center p-0 border-b-2 ";
     if (status === 'correct') return base + "bg-green-500 text-white border-green-600 shadow-sm";
     if (status === 'present') return base + "bg-yellow-400 text-brown-dark border-yellow-500 shadow-sm";
     if (status === 'absent') return base + "bg-gray-300 text-gray-500 border-gray-400 opacity-60 line-through";
-    return base + "bg-white text-emerald-800 border-gray-200 hover:bg-emerald-50";
+    return base + "bg-white text-emerald-800 border-gray-300 hover:bg-emerald-50 shadow-sm";
   };
 
   const handleKeyClick = (char: string) => {
@@ -237,7 +237,7 @@ export default function WordleGame({
 
   return (
     <React.Fragment>
-      <div className="w-full card-game p-3 md:p-4 text-center space-y-3 md:space-y-4 relative overflow-hidden flex flex-col min-h-[auto] bg-gradient-to-b from-gray-50 to-emerald-50/20 border-emerald-500 rounded-3xl shadow-xl">
+      <div className="w-full card-game p-0.5 sm:p-3 md:p-4 text-center space-y-3 md:space-y-4 relative overflow-hidden flex flex-col min-h-[auto] bg-gradient-to-b from-gray-50 to-emerald-50/20 border-emerald-500 rounded-3xl shadow-xl">
         {renderWordleRewardBar && renderWordleRewardBar()}
         
         {/* Waiting / Lobby Screen */}
@@ -284,7 +284,7 @@ export default function WordleGame({
                     if (playSound) playSound("clickOpen");
                     socket?.emit("start_wordle", { roomId: room.id });
                   }}
-                  className="btn-game w-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_4px_0_0_#047857] active:shadow-transparent py-3.5 px-6 text-x1 font-black rounded-2xl transition-all hover:scale-102 flex items-center justify-center gap-2"
+                  className="btn-game w-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_4px_0_0_#047857] active:shadow-transparent py-3.5 px-2 text-x1 font-black rounded-2xl transition-all hover:scale-102 flex items-center justify-center gap-2"
                 >
                   👍 موافقة وبدء اللعب والتخمين
                 </button>
@@ -346,13 +346,13 @@ export default function WordleGame({
             {/* Show grid and keyboard ONLY during active play */}
             {room.gameState === "wordle_playing" && (
               <div className="flex flex-col gap-3 w-full justify-center items-center">
-                <div className="w-full max-w-lg bg-emerald-50/50 border-[3px] border-emerald-200 rounded-2xl p-2 flex flex-col items-center shadow-sm relative">
+                <div className="w-full max-w-lg bg-emerald-50/50 flex flex-col items-center relative">
                   {renderGuesses(myGuesses)}
                   
-                  <div className="mt-4 w-full flex flex-col gap-3">
+                  <div className="bg-black/50 mt-1 w-full p-0.5 flex flex-col gap-3">
 
                     {/* Custom Keyboard */}
-                    <div className="w-full flex flex-col gap-1 bg-gray-100/80 p-1 md:p-2 rounded-2xl border border-gray-200 shadow-inner overflow-hidden" dir="rtl">
+                    <div className="bg-gray-200 w-full flex flex-col gap-1 sm:gap-1.5 overflow-hidden" dir="rtl">
                       {ARABIC_KEYS.map((row, rIdx) => (
                         <div key={rIdx} className="flex gap-[2px] sm:gap-1 justify-center w-full">
                           {row.map((char) => (
@@ -369,14 +369,14 @@ export default function WordleGame({
                       <div className="flex gap-2 mt-2 w-full justify-center">
                         <button
                           onClick={handleBackspace}
-                          className="flex-1 bg-red-100 text-red-700 border-b-2 border-red-300 hover:bg-red-200 h-9 md:h-11 rounded-xl font-black text-xs md:text-base active:scale-95 transition-all flex items-center justify-center gap-1"
+                          className="flex-1 bg-red-100 text-red-700 border-b-4 border-red-300 hover:bg-red-200 h-10 md:h-12 rounded-xl font-bold text-sm md:text-base active:scale-95 transition-all flex items-center justify-center gap-1"
                         >
                           🔙 مسح
                         </button>
                         <button
                           onClick={() => handleGuessSubmit()}
                           disabled={guess.length !== room.wordle.targetWord.length}
-                          className="flex-[2] bg-emerald-500 text-white border-b-2 border-emerald-600 hover:bg-emerald-600 disabled:opacity-50 h-9 md:h-11 rounded-xl font-black text-xs md:text-base active:scale-95 transition-all flex items-center justify-center gap-1 shadow-md shadow-emerald-200"
+                          className="flex-[2] bg-emerald-500 text-white border-b-4 border-emerald-600 hover:bg-emerald-600 disabled:opacity-50 h-10 md:h-12 rounded-xl font-bold text-sm md:text-base active:scale-95 transition-all flex items-center justify-center gap-1 shadow-md shadow-emerald-200"
                         >
                           ✅ تأكيد الكلمة ({guess.length}/{room.wordle.targetWord.length})
                         </button>

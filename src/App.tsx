@@ -5965,7 +5965,10 @@ export default function App() {
       room.gameState === "speed_cups_playing" ||
       room.gameState === "speed_cups_evaluating" ||
       room.gameState === "speed_cups_finished" ||
-      room.gameState === "speed_cups_countdown"
+      room.gameState === "speed_cups_countdown" ||
+      room.gameState === "wordle_setup" ||
+      room.gameState === "wordle_playing" ||
+      room.gameState === "wordle_finished"
     );
 
     const activeMusic = isGameActive
@@ -24970,7 +24973,7 @@ export default function App() {
                         { id: "dots", icon: <img src="/dots-and-boxes-logo.png" className="w-6 h-6 object-contain" /> },
                         { id: "speedCups", icon: <img src="/speed-cups/speed-cups-logo.png" className="w-6 h-6 object-contain" /> },
                         { id: "bombParty", icon: "💣" },
-                        { id: "wordle", icon: "🟩" },
+                        { id: "wordle", icon: <img src="/word-le-logo.png" className="w-6 h-6 object-contain" /> },
                       ].map((filter) => (
                         <button
                           key={filter.id}
@@ -28164,7 +28167,7 @@ export default function App() {
                             </h3>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-3 md:gap-4">
+                          <div className="grid grid-cols-4 gap-2 md:gap-3">
 
                             <div className="relative">
                             <button
@@ -28183,53 +28186,18 @@ export default function App() {
                                 😉
                               </span>
                               <span className="text-[13px] md:text-lg font-black text-accent-orange text-center leading-tight">
-                                فئات جاهزة للتخمين
-                              </span>
-                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
-                                (مبتدئين، أبطال، محترفين...)
+                                فئات جاهزة
                               </span>
                             </button>
                             {(() => {
                               const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
                               const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                              if (meMode === "ready" && oppMode === "ready") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
-                              if (meMode === "ready") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
-                              if (oppMode === "ready") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              if (meMode === "ready" && oppMode === "ready") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "ready") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "ready") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
-                          {/* Wordle Game */}
-                          <div className="relative h-[110px] md:h-[130px]">
-                            <button
-                              disabled={room.players.length < 2}
-                              onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "wordle",
-                                })
-                              }
-                              className={`h-full w-full bg-emerald-100 hover:bg-emerald-200 border-[3px] border-emerald-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#10b981] active:shadow-none active:translate-y-1.5"}`}
-                            >
-                              <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
-                                <img src="/word-le-logo.png" className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-md" alt="wordle" />
-                              </div>
-                              <span className="text-[13px] md:text-lg font-black text-emerald-700 text-center leading-tight">
-                                تخمينة كلمة لي
-                              </span>
-                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
-                                (خمن الكلمة المخفية)
-                              </span>
-                            </button>
-                            {(() => {
-                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
-                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                              if (meMode === "wordle" && oppMode === "wordle") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
-                              if (meMode === "wordle") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
-                              if (oppMode === "wordle") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
-                              return null;
-                            })()}
-                          </div>
-
 
                           {isPrivate && (
                             <div className="relative">
@@ -28249,22 +28217,48 @@ export default function App() {
                                   😎
                                 </span>
                                 <span className="text-[13px] md:text-lg font-black text-purple-600 text-center leading-tight">
-                                  ارفع صورة يخمنها
-                                </span>
-                                <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
-                                  (كل لاعب يرفع صورة للتاني)
+                                  ارفع صورة
                                 </span>
                               </button>
                               {(() => {
                                 const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
                                 const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                                if (meMode === "custom" && oppMode === "custom") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
-                                if (meMode === "custom") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
-                                if (oppMode === "custom") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                                if (meMode === "custom" && oppMode === "custom") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                                if (meMode === "custom") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                                if (oppMode === "custom") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                                 return null;
                               })()}
                             </div>
                           )}
+
+                          {/* Wordle Game */}
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "wordle",
+                                })
+                              }
+                              className={`h-full w-full bg-emerald-100 hover:bg-emerald-200 border-[3px] border-emerald-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#10b981] active:shadow-none active:translate-y-1.5"}`}
+                            >
+                              <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
+                                <img src="/word-le-logo.png" className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-md" alt="wordle" />
+                              </div>
+                              <span className="text-[13px] md:text-lg font-black text-emerald-700 text-center leading-tight">
+                                تخمينة كلمة لي
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "wordle" && oppMode === "wordle") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "wordle") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "wordle") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
 
                           <div className="relative">
                             <button
@@ -28285,16 +28279,13 @@ export default function App() {
                               <span className="text-[13px] md:text-lg font-black text-blue-600 text-center leading-tight">
                                 تخمينة كومبليت
                               </span>
-                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
-                                (لعبة الحروف والكلمات السريعة)
-                              </span>
                             </button>
                             {(() => {
                               const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
                               const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                              if (meMode === "bus_complete" && oppMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
-                              if (meMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
-                              if (oppMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              if (meMode === "bus_complete" && oppMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "bus_complete") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -28317,16 +28308,13 @@ export default function App() {
                               <span className="text-[13px] md:text-lg font-black text-green-700 text-center leading-tight">
                                تخمينة XO
                               </span>
-                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
-                                (اللعبة الكلاسيكية للذكاء والسرعة)
-                              </span>
                             </button>
                             {(() => {
                               const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
                               const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                              if (meMode === "xo" && oppMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
-                              if (meMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
-                              if (oppMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              if (meMode === "xo" && oppMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "xo") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -28346,18 +28334,15 @@ export default function App() {
                                 <img src="/dots-and-boxes-logo.png" className="w-10 h-10 md:w-12 md:h-12 object-contain" alt="dots" />
                               </div>
                               <span className="text-[13px] md:text-lg font-black text-purple-700 text-center leading-tight">
-                               تخمينة نقطة وخط
-                              </span>
-                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
-                                (لعبة توصيل النقاط)
+                               نقطة وخط
                               </span>
                             </button>
                             {(() => {
                               const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
                               const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                              if (meMode === "dots" && oppMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
-                              if (meMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
-                              if (oppMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              if (meMode === "dots" && oppMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "dots") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -28379,16 +28364,13 @@ export default function App() {
                               <span className="text-[13px] md:text-lg font-black text-pink-700 text-center leading-tight">
                                أكواب السرعة
                               </span>
-                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
-                                (سرعة ترتيب الألوان)
-                              </span>
                             </button>
                             {(() => {
                               const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
                               const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                              if (meMode === "speed_cups" && oppMode === "speed_cups") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
-                              if (meMode === "speed_cups") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
-                              if (oppMode === "speed_cups") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              if (meMode === "speed_cups" && oppMode === "speed_cups") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "speed_cups") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "speed_cups") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -28411,16 +28393,13 @@ export default function App() {
                               <span className="text-[13px] md:text-lg font-black text-blue-700 text-center leading-tight">
                                تخمينة IQ
                               </span>
-                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
-                                (لعبة تطابق الصور والذاكرة)
-                              </span>
                             </button>
                             {(() => {
                               const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
                               const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                              if (meMode === "iq" && oppMode === "iq") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
-                              if (meMode === "iq") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
-                              if (oppMode === "iq") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              if (meMode === "iq" && oppMode === "iq") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "iq") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "iq") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -28442,16 +28421,13 @@ export default function App() {
                               <span className="text-[13px] md:text-lg font-black text-pink-700 text-center leading-tight">
                                 تخمينة كف يد
                               </span>
-                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
-                                (سرعة بديهة وملاحظة)
-                              </span>
                             </button>
                             {(() => {
                               const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
                               const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                              if (meMode === "hand_khamin" && oppMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-pink-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
-                              if (meMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
-                              if (oppMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              if (meMode === "hand_khamin" && oppMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-pink-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "hand_khamin") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
@@ -28475,16 +28451,13 @@ export default function App() {
                               <span className="text-[13px] md:text-lg font-black text-red-700 text-center leading-tight">
                                قنبلة التخمين
                               </span>
-                              <span className="text-[9px] md:text-xs text-brown-muted text-center leading-tight">
-                                (لعبة التخمين والسرعة والذكاء)
-                              </span>
                             </button>
                             {(() => {
                               const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
                               const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                              if (meMode === "bomb_party" && oppMode === "bomb_party") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">متفق علية!</span>;
-                              if (meMode === "bomb_party") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
-                              if (oppMode === "bomb_party") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-xs md:text-sm font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              if (meMode === "bomb_party" && oppMode === "bomb_party") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "bomb_party") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "bomb_party") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
