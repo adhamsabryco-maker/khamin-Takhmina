@@ -24226,7 +24226,7 @@ export default function App() {
                               <span>{limit99(topPlayers[1].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[1].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[1].bombPartyWins || 0)} 💣</span>
-                              <span>{limit99(topPlayers[1].wordleWins || 0)} 🟩</span>
+                              <span>{limit99(topPlayers[1].wordleWins || 0)} <img src="/word-le-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -24338,7 +24338,7 @@ export default function App() {
                               <span>{limit99(topPlayers[2].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[2].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[2].bombPartyWins || 0)} 💣</span>
-                              <span>{limit99(topPlayers[2].wordleWins || 0)} 🟩</span>
+                              <span>{limit99(topPlayers[2].wordleWins || 0)} <img src="/word-le-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
