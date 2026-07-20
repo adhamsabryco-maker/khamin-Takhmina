@@ -48,7 +48,9 @@ let bombPartyNextTurn: any;
 let BOMB_PARTY_WORDS: string[] = [];
 let NORMALIZED_BOMB_PARTY_WORDS: { original: string, normalized: string }[] = [];
 try {
-  BOMB_PARTY_WORDS = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/data/bomb-party-words.json'), 'utf8'));
+  const rawWords: string[] = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/data/bomb-party-words.json'), 'utf8'));
+  // Strip Arabic diacritics (Tashkeel) from the words on load
+  BOMB_PARTY_WORDS = rawWords.map(w => w.replace(/[\u064B-\u0652\u0670]/g, ""));
   // Pre-compute normalized words for fast lookups
   for (const w of BOMB_PARTY_WORDS) {
     NORMALIZED_BOMB_PARTY_WORDS.push({ original: w, normalized: normalizeEgyptian(w) });
@@ -849,6 +851,7 @@ process.on("unhandledRejection", (reason, promise) => {
 function normalizeEgyptian(text: string): string {
   if (!text) return "";
   return text
+    .replace(/[\u064B-\u0652\u0670]/g, "")
     .replace(/[أإآ]/g, "ا")
     .replace(/ة/g, "ه")
     .replace(/ى/g, "ي")
@@ -2069,6 +2072,8 @@ async function startServer() {
         tokens?: number;
         adsWatchedToday?: number;
         lastAdWatchDate?: string;
+        keyAdsWatchedToday?: number;
+        lastKeyAdWatchDate?: string;
         adWatchStartTime?: number;
         dailyQuestStreak?: number;
         lastDailyClaim?: number;
@@ -2143,6 +2148,9 @@ async function startServer() {
         speedCupsRewardLevel?: number;
         speedCupsMatchPoints?: number;
         bombPartyWins?: number;
+        wordleWins?: number;
+        wordleRewardLevel?: number;
+        wordleMatchPoints?: number;
       }
     >();
 
@@ -2409,6 +2417,15 @@ async function startServer() {
     try {
       db.exec(`ALTER TABLE players ADD COLUMN bombPartyWins INTEGER DEFAULT 0`);
     } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN wordleWins INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN wordleRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN wordleMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {}
 
 
     try {
@@ -2427,6 +2444,14 @@ async function startServer() {
     } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT`);
+    } catch (e) {}
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN keyAdsWatchedToday INTEGER DEFAULT 0`,
+      );
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN lastKeyAdWatchDate TEXT`);
     } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'`);
@@ -2956,8 +2981,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3183,6 +3208,8 @@ async function startServer() {
             player.randomXp !== undefined ? player.randomXp : player.xp || 0,
           adsWatchedToday: player.adsWatchedToday || 0,
           lastAdWatchDate: player.lastAdWatchDate || null,
+          keyAdsWatchedToday: player.keyAdsWatchedToday || 0,
+          lastKeyAdWatchDate: player.lastKeyAdWatchDate || null,
           ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
           dailyQuestStreak: player.dailyQuestStreak || 1,
           streak: player.streak || 0,
@@ -3251,6 +3278,9 @@ async function startServer() {
           speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
           speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
           bombPartyWins: player.bombPartyWins || 0,
+          wordleWins: player.wordleWins || 0,
+          wordleRewardLevel: player.wordleRewardLevel || 1,
+          wordleMatchPoints: player.wordleMatchPoints || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3273,6 +3303,8 @@ async function startServer() {
             player.randomXp !== undefined ? player.randomXp : player.xp || 0,
           adsWatchedToday: player.adsWatchedToday || 0,
           lastAdWatchDate: player.lastAdWatchDate || null,
+          keyAdsWatchedToday: player.keyAdsWatchedToday || 0,
+          lastKeyAdWatchDate: player.lastKeyAdWatchDate || null,
           ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
           dailyQuestStreak: player.dailyQuestStreak || 1,
           lastDailyClaim: player.lastDailyClaim || 0,
@@ -3340,6 +3372,9 @@ async function startServer() {
           speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
           speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
           bombPartyWins: player.bombPartyWins || 0,
+          wordleWins: player.wordleWins || 0,
+          wordleRewardLevel: player.wordleRewardLevel || 1,
+          wordleMatchPoints: player.wordleMatchPoints || 0,
         });
       }
     });
@@ -3388,6 +3423,8 @@ async function startServer() {
             tokens: row.tokens || 0,
             adsWatchedToday: row.adsWatchedToday || 0,
             lastAdWatchDate: row.lastAdWatchDate || null,
+            keyAdsWatchedToday: row.keyAdsWatchedToday || 0,
+            lastKeyAdWatchDate: row.lastKeyAdWatchDate || null,
             ownedHelpers: JSON.parse(row.ownedHelpers || "{}"),
             dailyQuestStreak: row.dailyQuestStreak || 1,
             lastDailyClaim: row.lastDailyClaim || 0,
@@ -3452,6 +3489,9 @@ async function startServer() {
             speedCupsRewardLevel: row.speedCupsRewardLevel || 1,
             speedCupsMatchPoints: row.speedCupsMatchPoints || 0,
             bombPartyWins: row.bombPartyWins || 0,
+            wordleWins: row.wordleWins || 0,
+            wordleRewardLevel: row.wordleRewardLevel || 1,
+            wordleMatchPoints: row.wordleMatchPoints || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -3864,6 +3904,7 @@ async function startServer() {
             dotsWins: p.dotsWins || 0,
             speedCupsWins: p.speedCupsWins || 0,
             bombPartyWins: p.bombPartyWins || 0,
+            wordleWins: p.wordleWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -4855,6 +4896,9 @@ async function startServer() {
             bombPartyWins: p1ServerPlayer
               ? p1ServerPlayer.bombPartyWins || 0
               : match.p1.bombPartyWins || 0,
+            wordleWins: p1ServerPlayer
+              ? p1ServerPlayer.wordleWins || 0
+              : match.p1.wordleWins || 0,
           },
           {
             id: match.p2.socket.id,
@@ -4925,6 +4969,9 @@ async function startServer() {
             bombPartyWins: p2ServerPlayer
               ? p2ServerPlayer.bombPartyWins || 0
               : match.p2.bombPartyWins || 0,
+            wordleWins: p2ServerPlayer
+              ? p2ServerPlayer.wordleWins || 0
+              : match.p2.wordleWins || 0,
           },
         ],
         gameState: "waiting",
@@ -5013,6 +5060,7 @@ async function startServer() {
             dotsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             speedCupsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             bombPartyWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            wordleWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             isBot: true,
             persona: botPersona.personality,
             selectedFrame: "",
@@ -5914,6 +5962,29 @@ async function startServer() {
               handleBotEvent(roomId, "room_update", room);
             }
           
+          } else if (mode === "wordle") {
+            room.gameState = "wordle_setup";
+            room.category = "wordle";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+            const readyPlayers = [];
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              readyPlayers.push(bot.id);
+            }
+
+            room.wordle = {
+              targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5).length)].original,
+              guesses: {},
+              winnerId: null,
+              startTime: Date.now(),
+              gameOver: false,
+              readyPlayers: readyPlayers
+            };
+            
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           } else if (mode === "bomb_party") {
             room.gameState = "bomb_party_setup";
             room.category = "bomb_party";
@@ -6811,6 +6882,177 @@ async function startServer() {
           if (botTimeouts.has(roomId + "_bomb_party_bot_rematch")) {
             clearTimeout(botTimeouts.get(roomId + "_bomb_party_bot_rematch"));
             botTimeouts.delete(roomId + "_bomb_party_bot_rematch");
+          }
+        }
+
+        // Handle Wordle playing action
+        if (room.gameState === "wordle_playing" && room.wordle && !room.wordle.gameOver) {
+          const botKey = roomId + "_wordle_bot_guess_timeout";
+          if (!botTimeouts.has(botKey)) {
+            const delay = 35000 + Math.random() * 30000;
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(botKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "wordle_playing" || r.wordle.gameOver) return;
+
+              const botGuesses = r.wordle.guesses?.[botPlayer.id] || [];
+              const targetLen = r.wordle.targetWord.length;
+
+              let pool = NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === targetLen);
+              
+              if (botGuesses.length > 0) {
+                const lastGuessObj = botGuesses[botGuesses.length - 1];
+                const lastGuess = normalizeEgyptian(lastGuessObj.word);
+                const lastResult = lastGuessObj.result;
+
+                pool = pool.filter(w => {
+                  const normWord = w.normalized;
+                  if (normWord.length !== targetLen) return false;
+
+                  for (let i = 0; i < targetLen; i++) {
+                    const status = lastResult[i];
+                    const char = lastGuess[i];
+                    if (status === "correct") {
+                      if (normWord[i] !== char) return false;
+                    } else if (status === "present") {
+                      if (!normWord.includes(char) || normWord[i] === char) return false;
+                    } else if (status === "absent") {
+                      const isElsewhere = lastResult.some((status2, idx2) => idx2 !== i && (status2 === "correct" || status2 === "present") && lastGuess[idx2] === char);
+                      if (isElsewhere) {
+                        if (normWord[i] === char) return false;
+                      } else {
+                        if (normWord.includes(char)) return false;
+                      }
+                    }
+                  }
+                  return true;
+                });
+              }
+
+              if (pool.length === 0) {
+                pool = NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === targetLen);
+              }
+
+              let chosenWordObj = pool[Math.floor(Math.random() * pool.length)];
+
+              const currentTurnCount = botGuesses.length;
+              const targetNormal = normalizeEgyptian(r.wordle.targetWord);
+              
+              const findTargetChance = [0.01, 0.04, 0.08, 0.12, 0.16, 0.22][Math.min(currentTurnCount, 5)];
+              if (Math.random() < findTargetChance) {
+                const targetObj = NORMALIZED_BOMB_PARTY_WORDS.find(w => w.normalized === targetNormal);
+                if (targetObj) {
+                  chosenWordObj = targetObj;
+                }
+              }
+
+              if (chosenWordObj) {
+                const guessWord = chosenWordObj.original;
+                const guessNorm = normalizeEgyptian(guessWord);
+                const targetWordNorm = normalizeEgyptian(r.wordle.targetWord);
+
+                const result = new Array(guessNorm.length).fill("absent");
+                const targetLetters = targetWordNorm.split("");
+                
+                for (let i = 0; i < guessNorm.length; i++) {
+                  if (guessNorm[i] === targetLetters[i]) {
+                    result[i] = "correct";
+                    targetLetters[i] = null;
+                  }
+                }
+                
+                for (let i = 0; i < guessNorm.length; i++) {
+                  if (result[i] !== "correct") {
+                    const idx = targetLetters.indexOf(guessNorm[i]);
+                    if (idx !== -1) {
+                      result[i] = "present";
+                      targetLetters[idx] = null;
+                    }
+                  }
+                }
+
+                if (!r.wordle.guesses) r.wordle.guesses = {};
+                if (!r.wordle.guesses[botPlayer.id]) r.wordle.guesses[botPlayer.id] = [];
+                r.wordle.guesses[botPlayer.id].push({ word: guessWord, result });
+
+                io.to(roomId).emit("wordle_guess_result", {
+                  playerId: botPlayer.id,
+                  guess: { word: guessWord, result }
+                });
+
+                if (result.every(res => res === "correct")) {
+                  r.wordle.gameOver = true;
+                  r.wordle.winnerId = botPlayer.id;
+                  r.gameState = "wordle_finished";
+                  io.to(roomId).emit("wordle_finished", { winnerId: botPlayer.id, word: r.wordle.targetWord });
+                  
+                  const winnerPlayer = r.players.find((p: any) => p.id === botPlayer.id);
+                  if (winnerPlayer) {
+                    winnerPlayer.wordleWins = (winnerPlayer.wordleWins || 0) + 1;
+                  }
+                }
+
+                io.to(roomId).emit("room_update", r);
+                handleBotEvent(roomId, "room_update", r);
+              }
+            }, delay);
+            botTimeouts.set(botKey, timeout);
+          }
+        }
+
+        if (room.gameState !== "wordle_playing" || !room.wordle || room.wordle.gameOver) {
+          if (botTimeouts.has(roomId + "_wordle_bot_guess_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_wordle_bot_guess_timeout"));
+            botTimeouts.delete(roomId + "_wordle_bot_guess_timeout");
+          }
+        }
+
+        if (room.gameState === "wordle_finished" && room.category === "wordle") {
+          const rematchKey = roomId + "_wordle_bot_rematch";
+          if (!botTimeouts.has(rematchKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(rematchKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "wordle_finished") return;
+
+              r.wordle.rematchRequestedBy = r.wordle.rematchRequestedBy || [];
+              if (!r.wordle.rematchRequestedBy.includes(botPlayer.id)) {
+                r.wordle.rematchRequestedBy.push(botPlayer.id);
+
+                if (r.wordle.rematchRequestedBy.length === r.players.length) {
+                  r.gameState = "wordle_setup";
+                  
+                  const readyPlayers = [];
+                  const bot = r.players.find((p: any) => p.isBot);
+                  if (bot) {
+                    readyPlayers.push(bot.id);
+                  }
+
+                  r.wordle = {
+                    targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5).length)].original,
+                    guesses: {},
+                    winnerId: null,
+                    startTime: Date.now(),
+                    rematchRequestedBy: [],
+                    gameOver: false,
+                    readyPlayers: readyPlayers
+                  };
+                  io.to(roomId).emit("room_update", r);
+                  io.to(roomId).emit("wordle_rematch_started");
+                  handleBotEvent(roomId, "room_update", r);
+                } else {
+                  io.to(roomId).emit("room_update", r);
+                }
+              }
+            }, 8000 + Math.random() * 3000);
+            botTimeouts.set(rematchKey, timeout);
+          }
+        }
+
+        if (room.gameState !== "wordle_finished") {
+          if (botTimeouts.has(roomId + "_wordle_bot_rematch")) {
+            clearTimeout(botTimeouts.get(roomId + "_wordle_bot_rematch"));
+            botTimeouts.delete(roomId + "_wordle_bot_rematch");
           }
         }
 
@@ -9230,6 +9472,65 @@ async function startServer() {
         });
       });
 
+      socket.on("watch_key_ad_request", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+
+        // SECURITY: Check if they actually waited
+        if (
+          !player.adWatchStartTime ||
+          Date.now() - player.adWatchStartTime < 4000
+        ) {
+          socket.emit("ad_error", "يجب مشاهدة الإعلان بالكامل!");
+          return;
+        }
+
+        player.adWatchStartTime = 0; // Reset
+
+        // 2. Check Date & Reset if needed
+        const today = new Date().toISOString().split("T")[0];
+        if (player.lastKeyAdWatchDate !== today) {
+          player.keyAdsWatchedToday = 0;
+          player.lastKeyAdWatchDate = today;
+        }
+
+        // 3. Check Limit
+        if ((player.keyAdsWatchedToday || 0) >= 5) {
+          socket.emit("ad_error", "لقد استهلكت جميع المحاولات اليومية (5/5)");
+          return;
+        }
+
+        // 4. Grant Reward
+        player.keyAdsWatchedToday = (player.keyAdsWatchedToday || 0) + 1;
+        player.keys = (player.keys || 0) + 1;
+        savePlayerData(serial); // Persist changes
+
+        socket.emit("key_ad_success", {
+          keys: player.keys,
+          adsWatched: player.keyAdsWatchedToday,
+          maxAds: 5,
+        });
+      });
+
+      socket.on("check_key_ad_status", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+
+        const today = new Date().toISOString().split("T")[0];
+        if (player.lastKeyAdWatchDate !== today) {
+          player.keyAdsWatchedToday = 0;
+          player.lastKeyAdWatchDate = today;
+          savePlayerData(serial);
+        }
+
+        socket.emit("key_ad_status", {
+          adsWatched: player.keyAdsWatchedToday || 0,
+          maxAds: 5,
+          canWatch:
+            (player.keyAdsWatchedToday || 0) < 5,
+        });
+      });
+
       socket.on("get_spin_status", ({ serial }) => {
         const player = allPlayers.get(serial);
         if (!player) return;
@@ -10867,6 +11168,29 @@ async function startServer() {
               handleBotEvent(roomId, "room_update", room);
             }
           
+          } else if (mode === "wordle") {
+            room.gameState = "wordle_setup";
+            room.category = "wordle";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            
+            const readyPlayers = [];
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              readyPlayers.push(bot.id);
+            }
+
+            room.wordle = {
+              targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5).length)].original,
+              guesses: {},
+              winnerId: null,
+              startTime: Date.now(),
+              gameOver: false,
+              readyPlayers: readyPlayers
+            };
+            
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           } else if (mode === "bomb_party") {
             room.gameState = "bomb_party_setup";
             room.category = "bomb_party";
@@ -13676,6 +14000,236 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         handleBotEvent(roomId, "room_update", room);
       });
 
+      socket.on("start_wordle", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "wordle_setup") return;
+        
+        if (!room.wordle.readyPlayers) {
+          room.wordle.readyPlayers = [];
+        }
+        
+        const player = room.players.find((p: any) => p.socketId === socket.id || p.id === socket.id);
+        if (player && !room.wordle.readyPlayers.includes(player.id)) {
+          room.wordle.readyPlayers.push(player.id);
+        }
+        
+        // Auto-ready any bots
+        const bots = room.players.filter((p: any) => p.isBot);
+        bots.forEach((b: any) => {
+          if (!room.wordle.readyPlayers.includes(b.id)) {
+            room.wordle.readyPlayers.push(b.id);
+          }
+        });
+        
+        if (room.wordle.readyPlayers.length >= room.players.length) {
+          room.gameState = "wordle_playing";
+          room.wordle.startTime = Date.now();
+          room.wordle.gameOver = false;
+          
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+          const interval = setInterval(() => {
+            const r = rooms.get(roomId);
+            if (!r || r.gameState !== "wordle_playing") {
+              clearInterval(interval);
+              return;
+            }
+            if (Date.now() - r.wordle.startTime > 10 * 60 * 1000) {
+              // Time is up, it's a draw
+              r.wordle.gameOver = true;
+              r.gameState = "wordle_finished";
+              io.to(roomId).emit("room_update", r);
+              io.to(roomId).emit("wordle_finished", { winnerId: null, word: r.wordle.targetWord });
+            }
+          }, 1000);
+          intervals.set(roomId, interval);
+        }
+        
+        io.to(roomId).emit("room_update", room);
+        handleBotEvent(roomId, "room_update", room);
+      });
+
+      socket.on("wordle_guess", ({ roomId, word }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "wordle_playing" || room.wordle.gameOver) return;
+        
+        const guess = normalizeEgyptian(word);
+        
+        // Ensure the word is valid length (same length as targetWord)
+        const targetWord = normalizeEgyptian(room.wordle.targetWord);
+        if (guess.length !== targetWord.length) return;
+        
+        // Ensure it's in the dictionary or fallback to original word
+        const validWordObj = NORMALIZED_BOMB_PARTY_WORDS.find(w => w.normalized === guess)?.original || word;
+
+        // Calculate wordle result array
+        const result = new Array(guess.length).fill("absent");
+        const targetLetters = targetWord.split("");
+        
+        // First pass: exact matches
+        for (let i = 0; i < guess.length; i++) {
+          if (guess[i] === targetLetters[i]) {
+            result[i] = "correct";
+            targetLetters[i] = null;
+          }
+        }
+        
+        // Second pass: partial matches
+        for (let i = 0; i < guess.length; i++) {
+          if (result[i] !== "correct") {
+            const index = targetLetters.indexOf(guess[i]);
+            if (index !== -1) {
+              result[i] = "present";
+              targetLetters[index] = null;
+            }
+          }
+        }
+        
+        if (!room.wordle.guesses[socket.id]) room.wordle.guesses[socket.id] = [];
+        room.wordle.guesses[socket.id].push({ word: validWordObj, result });
+        
+        // Send guess update back to clients
+        io.to(roomId).emit("wordle_guess_result", {
+          playerId: socket.id,
+          guess: { word: validWordObj, result }
+        });
+        
+        if (result.every(r => r === "correct")) {
+          room.wordle.gameOver = true;
+          room.wordle.winnerId = socket.id;
+          room.gameState = "wordle_finished";
+          
+          const winnerPlayer = room.players.find((p: any) => p.id === socket.id);
+          if (winnerPlayer) {
+            winnerPlayer.wordleWins = (winnerPlayer.wordleWins || 0) + 1;
+            const dbP = allPlayers.get(winnerPlayer.serial);
+            if (dbP) {
+              dbP.wordleWins = winnerPlayer.wordleWins;
+              dbP.wordleMatchPoints = (dbP.wordleMatchPoints || 0) + 10;
+              savePlayerData(winnerPlayer.serial);
+              io.to(winnerPlayer.id).emit("player_data_update", dbP);
+            }
+          }
+          
+          io.to(roomId).emit("wordle_finished", { winnerId: socket.id, word: room.wordle.targetWord });
+        }
+        
+        io.to(roomId).emit("room_update", room);
+        handleBotEvent(roomId, "room_update", room);
+      });
+
+      socket.on("request_wordle_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "wordle_finished") return;
+        if (!room.wordle.rematchRequestedBy) {
+          room.wordle.rematchRequestedBy = [];
+        }
+        if (!room.wordle.rematchRequestedBy.includes(socket.id)) {
+          room.wordle.rematchRequestedBy.push(socket.id);
+        }
+
+        const botPlayer = room.players.find((p: any) => p.isBot);
+        if (botPlayer && !room.wordle.rematchRequestedBy.includes(botPlayer.id)) {
+          const rematchKey = roomId + "_wordle_bot_rematch";
+          if (botTimeouts.has(rematchKey)) {
+            clearTimeout(botTimeouts.get(rematchKey));
+            botTimeouts.delete(rematchKey);
+          }
+          const timeout = setTimeout(() => {
+            botTimeouts.delete(rematchKey);
+            const r = rooms.get(roomId);
+            if (!r || r.gameState !== "wordle_finished") return;
+            r.wordle.rematchRequestedBy = r.wordle.rematchRequestedBy || [];
+            if (!r.wordle.rematchRequestedBy.includes(botPlayer.id)) {
+              r.wordle.rematchRequestedBy.push(botPlayer.id);
+            }
+            if (r.wordle.rematchRequestedBy.length === r.players.length) {
+              r.gameState = "wordle_setup";
+              const readyPlayers = [];
+              const bot = r.players.find((p: any) => p.isBot);
+              if (bot) {
+                readyPlayers.push(bot.id);
+              }
+              r.wordle = {
+                targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5).length)].original,
+                guesses: {},
+                winnerId: null,
+                startTime: Date.now(),
+                rematchRequestedBy: [],
+                gameOver: false,
+                readyPlayers: readyPlayers
+              };
+              if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+              io.to(roomId).emit("room_update", r);
+              io.to(roomId).emit("wordle_rematch_started");
+              handleBotEvent(roomId, "room_update", r);
+            } else {
+              io.to(roomId).emit("room_update", r);
+            }
+          }, 1000 + Math.random() * 500);
+          botTimeouts.set(rematchKey, timeout);
+        }
+
+        if (room.wordle.rematchRequestedBy.length === 2) {
+          room.gameState = "wordle_setup";
+          
+          const readyPlayers = [];
+          const bot = room.players.find((p: any) => p.isBot);
+          if (bot) {
+            readyPlayers.push(bot.id);
+          }
+
+          room.wordle = {
+            targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5).length)].original,
+            guesses: {},
+            winnerId: null,
+            startTime: Date.now(),
+            rematchRequestedBy: [],
+            gameOver: false,
+            readyPlayers: readyPlayers
+          };
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+          io.to(roomId).emit("room_update", room);
+          io.to(roomId).emit("wordle_rematch_started");
+          handleBotEvent(roomId, "room_update", room);
+        } else {
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      
+      socket.on("claim_wordle_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.wordleRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          
+          if ((player.wordleMatchPoints || 0) >= targetPoints) {
+            player.wordleMatchPoints = (player.wordleMatchPoints || 0) - targetPoints;
+            player.wordleRewardLevel = currentLevel + 1;
+            
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            
+            player.xp = (player.xp || 0) + xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            for (const [helperId, amount] of Object.entries(helpersReward)) {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + amount;
+            }
+            
+            savePlayerData(serial);
+            socket.emit("player_data_update", player);
+            socket.emit("wordle_reward_claimed", {
+              newLevel: currentLevel + 1,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
       socket.on("request_hand_rematch", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (room && room.gameState === "hand_finished") {
@@ -16033,6 +16587,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
                 dotsWins: targetPlayer.dotsWins || 0,
             speedCupsWins: targetPlayer.speedCupsWins || 0,
             bombPartyWins: targetPlayer.bombPartyWins || 0,
+            wordleWins: targetPlayer.wordleWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
@@ -16658,6 +17213,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
                 dotsWins: senderPlayerData.dotsWins || 0,
             speedCupsWins: senderPlayerData.speedCupsWins || 0,
             bombPartyWins: senderPlayerData.bombPartyWins || 0,
+            wordleWins: senderPlayerData.wordleWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -16691,6 +17247,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
                 dotsWins: myPlayerData.dotsWins || 0,
             speedCupsWins: myPlayerData.speedCupsWins || 0,
             bombPartyWins: myPlayerData.bombPartyWins || 0,
+            wordleWins: myPlayerData.wordleWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -16778,7 +17335,8 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
               room.gameState === "hand_finished" ||
               room.gameState === "dots_finished" ||
               room.gameState === "speed_cups_finished" ||
-              room.gameState === "bomb_party_finished";
+              room.gameState === "bomb_party_finished" ||
+              room.gameState === "wordle_finished";
 
             if (!isIntentional && room.gameState !== "waiting") {
                 room.isWaitingForReconnect = true;
@@ -16797,7 +17355,8 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
                                              r.gameState === "hand_finished" ||
                                              r.gameState === "dots_finished" ||
                                              r.gameState === "speed_cups_finished" ||
-                                             r.gameState === "bomb_party_finished";
+                                             r.gameState === "bomb_party_finished" ||
+                                             r.gameState === "wordle_finished";
 
                      if (!currentFinished) {
                         if (
