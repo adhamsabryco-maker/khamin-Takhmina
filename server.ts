@@ -49,11 +49,11 @@ let BOMB_PARTY_WORDS: string[] = [];
 let NORMALIZED_BOMB_PARTY_WORDS: { original: string, normalized: string }[] = [];
 try {
   const rawWords: string[] = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/data/bomb-party-words.json'), 'utf8'));
-  // Strip Arabic diacritics (Tashkeel) from the words on load
-  BOMB_PARTY_WORDS = rawWords.map(w => w.replace(/[\u064B-\u0652\u0670]/g, ""));
+  // Strip Arabic diacritics (Tashkeel) and trim whitespace from the words on load
+  BOMB_PARTY_WORDS = rawWords.map(w => w.trim().replace(/[\u064B-\u0652\u0670]/g, ""));
   // Pre-compute normalized words for fast lookups
   for (const w of BOMB_PARTY_WORDS) {
-    NORMALIZED_BOMB_PARTY_WORDS.push({ original: w, normalized: normalizeEgyptian(w) });
+    if (w) NORMALIZED_BOMB_PARTY_WORDS.push({ original: w, normalized: normalizeEgyptian(w) });
   }
 } catch (e) {
   console.error("Failed to load bomb party words:", e);
@@ -5974,7 +5974,7 @@ async function startServer() {
             }
 
             room.wordle = {
-              targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5).length)].original,
+              targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5).length)].original,
               guesses: {},
               winnerId: null,
               startTime: Date.now(),
@@ -7029,7 +7029,7 @@ async function startServer() {
                   }
 
                   r.wordle = {
-                    targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5).length)].original,
+                    targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5).length)].original,
                     guesses: {},
                     winnerId: null,
                     startTime: Date.now(),
@@ -11180,7 +11180,7 @@ async function startServer() {
             }
 
             room.wordle = {
-              targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5).length)].original,
+              targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5).length)].original,
               guesses: {},
               winnerId: null,
               startTime: Date.now(),
@@ -14150,7 +14150,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
                 readyPlayers.push(bot.id);
               }
               r.wordle = {
-                targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5).length)].original,
+                targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5).length)].original,
                 guesses: {},
                 winnerId: null,
                 startTime: Date.now(),
@@ -14179,7 +14179,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
           }
 
           room.wordle = {
-            targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.original.length === 5).length)].original,
+            targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5).length)].original,
             guesses: {},
             winnerId: null,
             startTime: Date.now(),
