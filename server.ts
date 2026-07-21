@@ -2151,6 +2151,9 @@ async function startServer() {
         wordleWins?: number;
         wordleRewardLevel?: number;
         wordleMatchPoints?: number;
+        connectFourWordsWins?: number;
+        connectFourWordsRewardLevel?: number;
+        connectFourWordsMatchPoints?: number;
       }
     >();
 
@@ -2425,6 +2428,15 @@ async function startServer() {
     } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN wordleMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN connectFourWordsWins INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN connectFourWordsRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN connectFourWordsMatchPoints INTEGER DEFAULT 0`);
     } catch (e) {}
 
 
@@ -2981,8 +2993,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints, @connectFourWordsWins, @connectFourWordsRewardLevel, @connectFourWordsMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3281,6 +3293,9 @@ async function startServer() {
           wordleWins: player.wordleWins || 0,
           wordleRewardLevel: player.wordleRewardLevel || 1,
           wordleMatchPoints: player.wordleMatchPoints || 0,
+          connectFourWordsWins: player.connectFourWordsWins || 0,
+          connectFourWordsRewardLevel: player.connectFourWordsRewardLevel || 1,
+          connectFourWordsMatchPoints: player.connectFourWordsMatchPoints || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3375,6 +3390,9 @@ async function startServer() {
           wordleWins: player.wordleWins || 0,
           wordleRewardLevel: player.wordleRewardLevel || 1,
           wordleMatchPoints: player.wordleMatchPoints || 0,
+          connectFourWordsWins: player.connectFourWordsWins || 0,
+          connectFourWordsRewardLevel: player.connectFourWordsRewardLevel || 1,
+          connectFourWordsMatchPoints: player.connectFourWordsMatchPoints || 0,
         });
       }
     });
@@ -3492,6 +3510,9 @@ async function startServer() {
             wordleWins: row.wordleWins || 0,
             wordleRewardLevel: row.wordleRewardLevel || 1,
             wordleMatchPoints: row.wordleMatchPoints || 0,
+            connectFourWordsWins: row.connectFourWordsWins || 0,
+            connectFourWordsRewardLevel: row.connectFourWordsRewardLevel || 1,
+            connectFourWordsMatchPoints: row.connectFourWordsMatchPoints || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -3905,6 +3926,7 @@ async function startServer() {
             speedCupsWins: p.speedCupsWins || 0,
             bombPartyWins: p.bombPartyWins || 0,
             wordleWins: p.wordleWins || 0,
+            connectFourWordsWins: p.connectFourWordsWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -4899,6 +4921,9 @@ async function startServer() {
             wordleWins: p1ServerPlayer
               ? p1ServerPlayer.wordleWins || 0
               : match.p1.wordleWins || 0,
+            connectFourWordsWins: p1ServerPlayer
+              ? p1ServerPlayer.connectFourWordsWins || 0
+              : match.p1.connectFourWordsWins || 0,
           },
           {
             id: match.p2.socket.id,
@@ -4972,6 +4997,9 @@ async function startServer() {
             wordleWins: p2ServerPlayer
               ? p2ServerPlayer.wordleWins || 0
               : match.p2.wordleWins || 0,
+            connectFourWordsWins: p2ServerPlayer
+              ? p2ServerPlayer.connectFourWordsWins || 0
+              : match.p2.connectFourWordsWins || 0,
           },
         ],
         gameState: "waiting",
@@ -5061,6 +5089,7 @@ async function startServer() {
             speedCupsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             bombPartyWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             wordleWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            connectFourWordsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             isBot: true,
             persona: botPersona.personality,
             selectedFrame: "",
@@ -5962,6 +5991,28 @@ async function startServer() {
               handleBotEvent(roomId, "room_update", room);
             }
           
+          
+          } else if (mode === "connect_four_words") {
+            room.gameState = "connect_four_words_setup";
+            room.category = "connect_four_words";
+            // Find a 4 letter word
+            const validWords = NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 4);
+            const targetWordObj = validWords[Math.floor(Math.random() * validWords.length)];
+            const targetWord = targetWordObj ? targetWordObj.original : "كرسي";
+            
+            room.connectFourWords = {
+              targetWord,
+              letters: targetWord.split(''), // Not shuffled for now
+              board: Array(6).fill(null).map(() => Array(7).fill({ playerId: null, letter: null })),
+              turn: room.players[0].id,
+              winnerId: null,
+              winningCells: null,
+              readyPlayers: [],
+              rematchRequestedBy: [],
+              startTime: null
+            };
+            io.to(roomId).emit("room_update", room);
+
           } else if (mode === "wordle") {
             room.gameState = "wordle_setup";
             room.category = "wordle";
@@ -6777,6 +6828,7 @@ async function startServer() {
         // Handle Bomb Party active playing turn for the bot
         if (room.gameState === "bomb_party_playing" && room.bombParty && room.bombParty.turnPlayerId === botPlayer.id && !room.bombParty.explodedPlayerId && !room.bombParty.gameOver) {
           const botKey = roomId + "_bomb_party_bot_timeout";
+          console.log("[BOT] Timeout not active, setting timeout...");
           if (!botTimeouts.has(botKey)) {
             // Determine success or fail: 40% chance of success (so bot plays smart but loses more than it wins!)
             const willSucceed = Math.random() < 0.40;
@@ -6882,6 +6934,400 @@ async function startServer() {
           if (botTimeouts.has(roomId + "_bomb_party_bot_rematch")) {
             clearTimeout(botTimeouts.get(roomId + "_bomb_party_bot_rematch"));
             botTimeouts.delete(roomId + "_bomb_party_bot_rematch");
+          }
+        }
+
+        
+        // Handle Connect Four Words playing action
+        if (room.gameState === "connect_four_words_playing" && room.connectFourWords && room.connectFourWords.turn === botPlayer.id) {
+          console.log("[BOT] Connect four words bot turn triggered!");
+          const botKey = roomId + "_connect_four_words_bot_drop";
+          if (!botTimeouts.has(botKey)) {
+            const startTime = room.connectFourWords.startTime || Date.now();
+            const elapsedMin = (Date.now() - startTime) / (60 * 1000);
+            const progressRatio = Math.min(elapsedMin / 10, 1);
+            // Dynamic delay: early stage: ~1.2s to ~2.0s; late stage: ~3.0s to ~4.5s
+            const baseDelay = 1200 + progressRatio * 1800;
+            const randDelay = 800 + progressRatio * 700;
+            const delay = baseDelay + Math.random() * randDelay;
+
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(botKey);
+              const r = rooms.get(roomId);
+              console.log("[BOT] Timeout fired!");
+              if (!r || r.gameState !== "connect_four_words_playing" || r.connectFourWords.turn !== botPlayer.id) {
+                  console.log("[BOT] Validation failed in timeout:", {exists: !!r, state: r?.gameState, turn: r?.connectFourWords?.turn, botId: botPlayer.id});
+                  return;
+              }
+
+              // Find available columns
+              const availableCols: number[] = [];
+              for (let c = 0; c < 7; c++) {
+                if (!r.connectFourWords.board[0][c].playerId) {
+                  availableCols.push(c);
+                }
+              }
+              if (availableCols.length === 0) return;
+
+              const targetWord = r.connectFourWords.targetWord;
+              const targetNormalized = normalizeEgyptian(targetWord);
+              const targetReversed = targetNormalized.split('').reverse().join('');
+              const board = r.connectFourWords.board;
+              const letters = r.connectFourWords.letters;
+              const humanPlayer = r.players.find((p: any) => p.id !== botPlayer.id);
+              const humanId = humanPlayer ? humanPlayer.id : "human";
+
+              // Count filled cells
+              let filledCount = 0;
+              for (let row = 0; row < 6; row++) {
+                for (let col = 0; col < 7; col++) {
+                  if (board[row][col].playerId) filledCount++;
+                }
+              }
+
+              const elapsedSeconds = (Date.now() - startTime) / 1000;
+              const isAdvancedStage = (filledCount >= 14 || elapsedSeconds >= 300);
+
+              // Mistake/forgetfulness probability scales up in the advanced stage
+              let mistakeRate = 0.02;
+              if (isAdvancedStage) {
+                mistakeRate = Math.min(0.35, 0.05 + (filledCount - 12) * 0.025 + (elapsedSeconds / 600) * 0.15);
+              }
+
+              // Helper to check if a virtual move results in immediate win
+              const checkWinForVirtualMove = (col: number, letter: string, playerId: string) => {
+                let targetR = -1;
+                for (let row = 5; row >= 0; row--) {
+                  if (!board[row][col].playerId) {
+                    targetR = row;
+                    break;
+                  }
+                }
+                if (targetR === -1) return false;
+
+                const tempBoard = board.map(row => row.map(cell => ({ ...cell })));
+                tempBoard[targetR][col] = { playerId, letter };
+
+                const checkLine = (r: number, c: number, dr: number, dc: number) => {
+                  let str = "";
+                  for (let i = 0; i < 4; i++) {
+                    const nr = r + dr * i;
+                    const nc = c + dc * i;
+                    if (nr >= 0 && nr < 6 && nc >= 0 && nc < 7) {
+                      const cell = tempBoard[nr][nc];
+                      if (cell.playerId === playerId && cell.letter) {
+                        str += normalizeEgyptian(cell.letter);
+                      } else {
+                        break;
+                      }
+                    }
+                  }
+                  return (str === targetNormalized || str === targetReversed);
+                };
+
+                for (let r = 0; r < 6; r++) {
+                  for (let c = 0; c < 7; c++) {
+                    if (checkLine(r, c, 0, 1) || checkLine(r, c, 1, 0) || checkLine(r, c, 1, 1) || checkLine(r, c, 1, -1)) {
+                      return true;
+                    }
+                  }
+                }
+                return false;
+              };
+
+              // Helper to evaluate a move for heuristic path-building and blocking
+              const evaluateMoveHeuristic = (col: number, letter: string, playerId: string) => {
+                let targetR = -1;
+                for (let row = 5; row >= 0; row--) {
+                  if (!board[row][col].playerId) {
+                    targetR = row;
+                    break;
+                  }
+                }
+                if (targetR === -1) return -1;
+
+                let score = 0;
+                const directions = [
+                  { dr: 0, dc: 1 },
+                  { dr: 1, dc: 0 },
+                  { dr: 1, dc: 1 },
+                  { dr: 1, dc: -1 }
+                ];
+
+                for (const { dr, dc } of directions) {
+                  for (let step = 0; step < 4; step++) {
+                    const startRow = targetR - dr * step;
+                    const startCol = col - dc * step;
+
+                    let isValidLine = true;
+                    for (let i = 0; i < 4; i++) {
+                      const nr = startRow + dr * i;
+                      const nc = startCol + dc * i;
+                      if (nr < 0 || nr >= 6 || nc < 0 || nc >= 7) {
+                        isValidLine = false;
+                        break;
+                      }
+                    }
+                    if (!isValidLine) continue;
+
+                    const checkCompatibilityForWord = (word: string) => {
+                      let matchingCount = 0;
+                      for (let i = 0; i < 4; i++) {
+                        const nr = startRow + dr * i;
+                        const nc = startCol + dc * i;
+                        const expectedLetter = word[i];
+
+                        if (nr === targetR && nc === col) {
+                          if (normalizeEgyptian(letter) === expectedLetter) {
+                            matchingCount++;
+                          } else {
+                            return -1;
+                          }
+                          continue;
+                        }
+
+                        const cell = board[nr][nc];
+                        if (cell.playerId) {
+                          if (cell.playerId !== playerId || normalizeEgyptian(cell.letter) !== expectedLetter) {
+                            return -1;
+                          }
+                          matchingCount++;
+                        }
+                      }
+                      return matchingCount;
+                    };
+
+                    const matchNormal = checkCompatibilityForWord(targetNormalized);
+                    const matchReversed = checkCompatibilityForWord(targetReversed);
+
+                    const bestMatch = Math.max(matchNormal, matchReversed);
+                    if (bestMatch >= 0) {
+                      if (bestMatch === 4) score += 10000;
+                      else if (bestMatch === 3) score += 100;
+                      else if (bestMatch === 2) score += 10;
+                      else score += 1;
+                    }
+                  }
+                }
+                return score;
+              };
+
+              interface BotMove {
+                col: number;
+                letter: string;
+              }
+              const allPossibleMoves: BotMove[] = [];
+              for (const c of availableCols) {
+                for (const l of letters) {
+                  allPossibleMoves.push({ col: c, letter: l });
+                }
+              }
+
+              // Winning moves for Bot and immediate Opponent Wins to block
+              const winningMoves: BotMove[] = [];
+              const opponentWinningMovesInColumns: { [col: number]: { letter: string }[] } = {};
+
+              for (const move of allPossibleMoves) {
+                if (checkWinForVirtualMove(move.col, move.letter, botPlayer.id)) {
+                  winningMoves.push(move);
+                }
+              }
+
+              for (const c of availableCols) {
+                for (const l of letters) {
+                  if (checkWinForVirtualMove(c, l, humanId)) {
+                    if (!opponentWinningMovesInColumns[c]) {
+                      opponentWinningMovesInColumns[c] = [];
+                    }
+                    opponentWinningMovesInColumns[c].push({ letter: l });
+                  }
+                }
+              }
+
+              const hasOpponentThreats = Object.keys(opponentWinningMovesInColumns).length > 0;
+              const isConfused = Math.random() < mistakeRate;
+
+              let finalMove: BotMove | null = null;
+
+              if (!isConfused) {
+                if (winningMoves.length > 0) {
+                  finalMove = winningMoves[Math.floor(Math.random() * winningMoves.length)];
+                  console.log("[BOT] Choosing winning move:", finalMove);
+                } else if (hasOpponentThreats) {
+                  const threatenedCols = Object.keys(opponentWinningMovesInColumns).map(Number);
+                  const colToBlock = threatenedCols[Math.floor(Math.random() * threatenedCols.length)];
+                  let bestLetterForBlock = letters[0];
+                  let bestBlockScore = -1;
+                  for (const l of letters) {
+                    const score = evaluateMoveHeuristic(colToBlock, l, botPlayer.id);
+                    if (score > bestBlockScore) {
+                      bestBlockScore = score;
+                      bestLetterForBlock = l;
+                    }
+                  }
+                  finalMove = { col: colToBlock, letter: bestLetterForBlock };
+                  console.log("[BOT] Blocking opponent win in column:", colToBlock, "with letter:", bestLetterForBlock);
+                }
+              } else {
+                console.log("[BOT] Mistake triggered! Bot overlooked immediate win/block.");
+              }
+
+              // Heuristic/Strategic play if no critical move decided
+              if (!finalMove) {
+                interface ScoredMove extends BotMove {
+                  score: number;
+                }
+                const scoredMoves: ScoredMove[] = [];
+                const defenseWeight = isAdvancedStage ? 1.0 : 1.5;
+
+                for (const move of allPossibleMoves) {
+                  const offenseScore = evaluateMoveHeuristic(move.col, move.letter, botPlayer.id);
+                  const defenseScore = evaluateMoveHeuristic(move.col, move.letter, humanId);
+
+                  let moveScore = offenseScore + defenseWeight * defenseScore;
+
+                  // Safety check: avoid setting up an immediate win on top of our move
+                  let targetR = -1;
+                  for (let row = 5; row >= 0; row--) {
+                    if (!board[row][move.col].playerId) {
+                      targetR = row;
+                      break;
+                    }
+                  }
+
+                  if (targetR > 0) {
+                    const tempBoard = board.map(row => row.map(cell => ({ ...cell })));
+                    tempBoard[targetR][move.col] = { playerId: botPlayer.id, letter: move.letter };
+
+                    let setsUpOpponentWin = false;
+                    const checkWinForOpponentAbove = (oppLetter: string) => {
+                      const tempBoardAbove = tempBoard.map(row => row.map(cell => ({ ...cell })));
+                      tempBoardAbove[targetR - 1][move.col] = { playerId: humanId, letter: oppLetter };
+
+                      const checkLine = (r: number, c: number, dr: number, dc: number) => {
+                        let str = "";
+                        for (let i = 0; i < 4; i++) {
+                          const nr = r + dr * i;
+                          const nc = c + dc * i;
+                          if (nr >= 0 && nr < 6 && nc >= 0 && nc < 7) {
+                            const cell = tempBoardAbove[nr][nc];
+                            if (cell.playerId === humanId && cell.letter) {
+                              str += normalizeEgyptian(cell.letter);
+                            } else {
+                              break;
+                            }
+                          }
+                        }
+                        return (str === targetNormalized || str === targetReversed);
+                      };
+
+                      for (let r = 0; r < 6; r++) {
+                        for (let c = 0; c < 7; c++) {
+                          if (checkLine(r, c, 0, 1) || checkLine(r, c, 1, 0) || checkLine(r, c, 1, 1) || checkLine(r, c, 1, -1)) {
+                            return true;
+                          }
+                        }
+                      }
+                      return false;
+                    };
+
+                    for (const l of letters) {
+                      if (checkWinForOpponentAbove(l)) {
+                        setsUpOpponentWin = true;
+                        break;
+                      }
+                    }
+
+                    if (setsUpOpponentWin) {
+                      moveScore -= 5000;
+                    }
+                  }
+
+                  scoredMoves.push({ ...move, score: moveScore });
+                }
+
+                scoredMoves.sort((a, b) => b.score - a.score);
+                const bestScore = scoredMoves[0].score;
+                const bestMoves = scoredMoves.filter(m => m.score >= bestScore - 2);
+                finalMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+              }
+
+              const colIndex = finalMove.col;
+              const letter = finalMove.letter;
+
+              // Find bottom-most empty cell
+              let targetRow = -1;
+              for (let row = 5; row >= 0; row--) {
+                if (!r.connectFourWords.board[row][colIndex].playerId) {
+                  targetRow = row;
+                  break;
+                }
+              }
+
+              if (targetRow !== -1) {
+                r.connectFourWords.board[targetRow][colIndex] = { playerId: botPlayer.id, letter };
+
+                // Check for win
+                let winningCells = null;
+                const checkLine = (row, col, dr, dc) => {
+                  let str = "";
+                  let cells = [];
+                  for (let i = 0; i < 4; i++) {
+                    const nr = row + dr * i;
+                    const nc = col + dc * i;
+                    if (nr >= 0 && nr < 6 && nc >= 0 && nc < 7) {
+                      const cell = board[nr][nc];
+                      if (cell.playerId === botPlayer.id && cell.letter) {
+                        str += normalizeEgyptian(cell.letter);
+                        cells.push({ r: nr, c: nc });
+                      } else {
+                        break;
+                      }
+                    }
+                  }
+                  if (str === targetNormalized || str === targetReversed) return cells;
+                  return null;
+                };
+
+                for (let row = 0; row < 6; row++) {
+                  for (let col = 0; col < 7; col++) {
+                    winningCells = winningCells || checkLine(row, col, 0, 1) || checkLine(row, col, 1, 0) || checkLine(row, col, 1, 1) || checkLine(row, col, 1, -1);
+                    if (winningCells) break;
+                  }
+                  if (winningCells) break;
+                }
+
+                if (winningCells) {
+                  r.gameState = "connect_four_words_finished";
+                  r.connectFourWords.winnerId = botPlayer.id;
+                  r.connectFourWords.winningCells = winningCells;
+                  
+                  const winnerPlayer = r.players.find((p) => p.id === botPlayer.id);
+                  if (winnerPlayer) {
+                    winnerPlayer.connectFourWordsWins = (winnerPlayer.connectFourWordsWins || 0) + 1;
+                  }
+                } else {
+                  // Check draw
+                  let isFull = true;
+                  for (let c = 0; c < 7; c++) {
+                    if (!board[0][c].playerId) {
+                      isFull = false;
+                      break;
+                    }
+                  }
+                  if (isFull) {
+                    r.gameState = "connect_four_words_finished";
+                    r.connectFourWords.winnerId = "draw";
+                  } else {
+                    const opp = r.players.find(p => p.id !== botPlayer.id);
+                    if (opp) r.connectFourWords.turn = opp.id;
+                  }
+                }
+
+                io.to(roomId).emit("room_update", r);
+              }
+            }, delay);
+            botTimeouts.set(botKey, timeout);
           }
         }
 
@@ -7007,7 +7453,7 @@ async function startServer() {
           }
         }
 
-        if (room.gameState === "wordle_finished" && room.category === "wordle") {
+        if (room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished" && room.category === "wordle") {
           const rematchKey = roomId + "_wordle_bot_rematch";
           if (!botTimeouts.has(rematchKey)) {
             const timeout = setTimeout(() => {
@@ -8322,7 +8768,7 @@ async function startServer() {
                 ) {
                   // Choose randomly between "ready" and "bus_complete"
                   const proposed =
-                    Math.random() < 0.5 ? "ready" : "bus_complete";
+                    Math.random() < 0.5 ? "ready" : "connect_four_words";
                   bp.selectedSelectionMode = proposed;
                   io.to(roomId).emit("room_update", r);
                 }
@@ -11168,6 +11614,28 @@ async function startServer() {
               handleBotEvent(roomId, "room_update", room);
             }
           
+          
+          } else if (mode === "connect_four_words") {
+            room.gameState = "connect_four_words_setup";
+            room.category = "connect_four_words";
+            // Find a 4 letter word
+            const validWords = NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 4);
+            const targetWordObj = validWords[Math.floor(Math.random() * validWords.length)];
+            const targetWord = targetWordObj ? targetWordObj.original : "كرسي";
+            
+            room.connectFourWords = {
+              targetWord,
+              letters: targetWord.split(''), // Not shuffled for now
+              board: Array(6).fill(null).map(() => Array(7).fill({ playerId: null, letter: null })),
+              turn: room.players[0].id,
+              winnerId: null,
+              winningCells: null,
+              readyPlayers: [],
+              rematchRequestedBy: [],
+              startTime: null
+            };
+            io.to(roomId).emit("room_update", room);
+
           } else if (mode === "wordle") {
             room.gameState = "wordle_setup";
             room.category = "wordle";
@@ -14000,6 +14468,189 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         handleBotEvent(roomId, "room_update", room);
       });
 
+      
+      // --- CONNECT FOUR WORDS HANDLERS ---
+      socket.on("start_connect_four_words", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "connect_four_words_setup") return;
+        
+        const player = room.players.find(p => p.socketId === socket.id || p.id === socket.id);
+        const pId = player ? player.id : socket.id;
+        if (!room.connectFourWords.readyPlayers.includes(pId)) {
+          room.connectFourWords.readyPlayers.push(pId);
+        }
+
+        const isBotRoom = room.players.some(p => p.isBot);
+        if (room.connectFourWords.readyPlayers.length === 2 || isBotRoom) {
+          room.gameState = "connect_four_words_playing";
+          room.connectFourWords.startTime = Date.now();
+          
+          if (intervals.has(roomId)) {
+             clearInterval(intervals.get(roomId));
+          }
+          const interval = setInterval(() => {
+             const r = rooms.get(roomId);
+             if (!r || r.gameState !== "connect_four_words_playing") {
+                 clearInterval(interval);
+                 intervals.delete(roomId);
+                 return;
+             }
+             if (r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0) return; // Optional if we want to pause timer during ad
+             
+             if (Date.now() - r.connectFourWords.startTime >= 10 * 60 * 1000) {
+                 r.gameState = "connect_four_words_finished";
+                 r.connectFourWords.winnerId = null; // Draw
+                 clearInterval(interval);
+                 intervals.delete(roomId);
+                 io.to(roomId).emit("room_update", r);
+                 const bot = r.players.find(p => p.isBot);
+                 if (bot) handleBotEvent(roomId, "room_update", r);
+             }
+          }, 1000);
+          intervals.set(roomId, interval);
+        }
+        
+        io.to(roomId).emit("room_update", room);
+        const bot = room.players.find(p => p.isBot);
+        if (bot) handleBotEvent(roomId, "room_update", room);
+      });
+
+      socket.on("connect_four_words_drop", ({ roomId, colIndex, letter }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "connect_four_words_playing") return;
+        if (room.connectFourWords.turn !== socket.id) return;
+        
+        // Find bottom-most empty cell
+        let targetRow = -1;
+        for (let r = 5; r >= 0; r--) {
+          if (!room.connectFourWords.board[r][colIndex].playerId) {
+            targetRow = r;
+            break;
+          }
+        }
+        
+        if (targetRow === -1) return; // Column full
+        
+        room.connectFourWords.board[targetRow][colIndex] = { playerId: socket.id, letter };
+        
+        // Check for win
+        const board = room.connectFourWords.board;
+        const targetNormalized = normalizeEgyptian(room.connectFourWords.targetWord);
+        const targetReversed = targetNormalized.split('').reverse().join('');
+        
+        let winningCells = null;
+        
+        const checkLine = (r, c, dr, dc) => {
+          let str = "";
+          let cells = [];
+          for (let i = 0; i < 4; i++) {
+            const nr = r + dr * i;
+            const nc = c + dc * i;
+            if (nr >= 0 && nr < 6 && nc >= 0 && nc < 7) {
+              const cell = board[nr][nc];
+              if (cell.playerId === socket.id && cell.letter) {
+                str += normalizeEgyptian(cell.letter);
+                cells.push({ r: nr, c: nc });
+              } else {
+                break;
+              }
+            }
+          }
+          if (str === targetNormalized || str === targetReversed) return cells;
+          return null;
+        };
+
+        // Check all directions
+        for (let r = 0; r < 6; r++) {
+          for (let c = 0; c < 7; c++) {
+            winningCells = winningCells || checkLine(r, c, 0, 1) || checkLine(r, c, 1, 0) || checkLine(r, c, 1, 1) || checkLine(r, c, 1, -1);
+            if (winningCells) break;
+          }
+          if (winningCells) break;
+        }
+
+        if (winningCells) {
+          room.gameState = "connect_four_words_finished";
+          room.connectFourWords.winnerId = socket.id;
+          room.connectFourWords.winningCells = winningCells;
+          
+          const winnerIndex = room.players.findIndex(p => p.id === socket.id);
+          const opponentIndex = room.players.findIndex(p => p.id !== socket.id);
+          
+          if (winnerIndex !== -1 && !room.players[winnerIndex].isBot) {
+              // Add wins
+              const s = room.players[winnerIndex].serial;
+              try {
+                  db.prepare('UPDATE players SET connectFourWordsWins = connectFourWordsWins + 1, connectFourWordsMatchPoints = connectFourWordsMatchPoints + 10 WHERE serial = ?').run(s);
+                  room.players[winnerIndex].connectFourWordsWins = (room.players[winnerIndex].connectFourWordsWins || 0) + 1;
+                  const dbP = allPlayers.get(s);
+                  if (dbP) {
+                    dbP.connectFourWordsWins = room.players[winnerIndex].connectFourWordsWins;
+                    dbP.connectFourWordsMatchPoints = (dbP.connectFourWordsMatchPoints || 0) + 10;
+                    savePlayerData(s);
+                    io.to(room.players[winnerIndex].id).emit("player_data_update", dbP);
+                  }
+              } catch (e) {}
+          }
+          
+        } else {
+            // Check for draw (board full)
+            let isFull = true;
+            for (let c = 0; c < 7; c++) {
+              if (!board[0][c].playerId) {
+                  isFull = false;
+                  break;
+              }
+            }
+            if (isFull) {
+              room.gameState = "connect_four_words_finished";
+              room.connectFourWords.winnerId = "draw";
+            } else {
+              // Switch turn
+              const opponent = room.players.find(p => p.id !== socket.id);
+              if (opponent) room.connectFourWords.turn = opponent.id;
+            }
+        }
+        
+        io.to(roomId).emit("room_update", room);
+        const bot = room.players.find(p => p.isBot);
+        if (bot) handleBotEvent(roomId, "room_update", room);
+      });
+
+      socket.on("request_connect_four_words_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "connect_four_words_finished") return;
+        const player = room.players.find(p => p.socketId === socket.id || p.id === socket.id);
+        const pId = player ? player.id : socket.id;
+        if (!room.connectFourWords.rematchRequestedBy.includes(pId)) {
+          room.connectFourWords.rematchRequestedBy.push(pId);
+        }
+        
+        const isBotRoom = room.players.some(p => p.isBot);
+        if (room.connectFourWords.rematchRequestedBy.length === 2 || isBotRoom) {
+          room.gameState = "connect_four_words_setup";
+          const validWords = NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 4);
+          const targetWordObj = validWords[Math.floor(Math.random() * validWords.length)];
+          const targetWord = targetWordObj ? targetWordObj.original : "كرسي";
+          
+          room.connectFourWords = {
+              targetWord,
+              letters: targetWord.split(''),
+              board: Array(6).fill(null).map(() => Array(7).fill({ playerId: null, letter: null })),
+              turn: room.players[0].id,
+              winnerId: null,
+              winningCells: null,
+              readyPlayers: [],
+              rematchRequestedBy: [],
+              startTime: null
+          };
+        }
+        io.to(roomId).emit("room_update", room);
+        const bot = room.players.find(p => p.isBot);
+        if (bot) handleBotEvent(roomId, "room_update", room);
+      });
+      // ------------------------------------
+
       socket.on("start_wordle", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (!room || room.gameState !== "wordle_setup") return;
@@ -14227,6 +14878,34 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
               keys: keysReward,
               helpers: helpersReward
             });
+
+socket.on("claim_connect_four_words_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.connectFourWordsRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          
+          if ((player.connectFourWordsMatchPoints || 0) >= targetPoints) {
+            player.connectFourWordsMatchPoints = (player.connectFourWordsMatchPoints || 0) - targetPoints;
+            player.connectFourWordsRewardLevel = currentLevel + 1;
+            
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            
+            player.xp = (player.xp || 0) + xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            for (const [helperId, amount] of Object.entries(helpersReward)) {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + amount;
+            }
+            
+            savePlayerData(serial);
+            socket.emit("player_data_update", player);
+          }
+        }
+      });
           }
         }
       });
@@ -16588,6 +17267,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             speedCupsWins: targetPlayer.speedCupsWins || 0,
             bombPartyWins: targetPlayer.bombPartyWins || 0,
             wordleWins: targetPlayer.wordleWins || 0,
+            connectFourWordsWins: targetPlayer.connectFourWordsWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
@@ -17214,6 +17894,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             speedCupsWins: senderPlayerData.speedCupsWins || 0,
             bombPartyWins: senderPlayerData.bombPartyWins || 0,
             wordleWins: senderPlayerData.wordleWins || 0,
+            connectFourWordsWins: senderPlayerData.connectFourWordsWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -17248,6 +17929,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             speedCupsWins: myPlayerData.speedCupsWins || 0,
             bombPartyWins: myPlayerData.bombPartyWins || 0,
             wordleWins: myPlayerData.wordleWins || 0,
+            connectFourWordsWins: myPlayerData.connectFourWordsWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -17336,7 +18018,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
               room.gameState === "dots_finished" ||
               room.gameState === "speed_cups_finished" ||
               room.gameState === "bomb_party_finished" ||
-              room.gameState === "wordle_finished";
+              room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished";
 
             if (!isIntentional && room.gameState !== "waiting") {
                 room.isWaitingForReconnect = true;
@@ -17356,7 +18038,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
                                              r.gameState === "dots_finished" ||
                                              r.gameState === "speed_cups_finished" ||
                                              r.gameState === "bomb_party_finished" ||
-                                             r.gameState === "wordle_finished";
+                                             r.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished";
 
                      if (!currentFinished) {
                         if (
