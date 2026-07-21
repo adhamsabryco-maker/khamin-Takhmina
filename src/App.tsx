@@ -23843,7 +23843,7 @@ export default function App() {
             className="w-full max-w-md py-2"
           >
             {/* Profile Card */}
-            <div className="player-card flex flex-col p-3 md:p-4 mb-4 md:mb-4 w-full">
+            <div className="player-card flex flex-col p-2 md:p-3 mb-4 md:mb-4 w-full">
               <AnimatedXp xp={xp} joined={joined}>
                 {(displayXp) => (
                   <div className="flex items-center gap-2 md:gap-4 flex-row-reverse w-full">
@@ -24080,97 +24080,97 @@ export default function App() {
                   playSound("clickOpen");
                   setShowFriendsModal(true);
                 }}
-                className="w-full px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black rounded-lg text-sm transition-colors border border-blue-200 flex items-center justify-center gap-2"
+                className="w-full px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black rounded-lg text-sm transition-colors border border-blue-200 flex items-center justify-center mb-2 gap-2"
               >
                 <Users
                   className={`w-4 h-4 ${friendsList.some((f) => f.isOnline) ? "text-green-500 fill-green-500" : ""}`}
                 />
                 الأصدقاء ({friendsTotal})
               </button>
-            </div>
 
-            {/* Collection Icons - Moved outside player card */}
-            <div className="flex items-center justify-center gap-1.5 mb-4 flex-wrap">
-              {COLLECTION_DATA.map((cat) => {
-                const hasAny = playerCollection.some((c) => {
-                  const catImages = cat.stages.flatMap((s) =>
-                    s.images.map((img) => normalizeEgyptian(img).toLowerCase()),
-                  );
-                  return catImages.includes(c.image_name);
-                });
-
-                const currentCount = cat.stages
-                  .flatMap((s) => s.images)
-                  .reduce((acc, img) => {
-                    const norm = normalizeEgyptian(img).toLowerCase();
-                    const count =
-                      playerCollection.find((c) => c.image_name === norm)
-                        ?.count || 0;
-                    return acc + count;
-                  }, 0);
-
-                const hasNewImage =
-                  currentCount > (seenCategoryCounts[cat.id] || 0);
-
-                const hasClaimableReward = cat.stages.some((stage) => {
-                  const isClaimed = claimedCollectionRewards.some(
-                    (r) => r.category_id === cat.id && r.stage === stage.stage,
-                  );
-                  if (isClaimed) return false;
-
-                  const isStageComplete = stage.images.every((imgName) => {
-                    const norm = normalizeEgyptian(imgName).toLowerCase();
-                    const count =
-                      playerCollection.find((c) => c.image_name === norm)
-                        ?.count || 0;
-                    return count >= 5;
+              {/* Collection Icons - Moved outside player card */}
+              <div className="flex items-center justify-center gap-1 md:gap-1.5 flex-wrap">
+                {COLLECTION_DATA.map((cat) => {
+                  const hasAny = playerCollection.some((c) => {
+                    const catImages = cat.stages.flatMap((s) =>
+                      s.images.map((img) => normalizeEgyptian(img).toLowerCase()),
+                    );
+                    return catImages.includes(c.image_name);
                   });
 
-                  return isStageComplete;
-                });
+                  const currentCount = cat.stages
+                    .flatMap((s) => s.images)
+                    .reduce((acc, img) => {
+                      const norm = normalizeEgyptian(img).toLowerCase();
+                      const count =
+                        playerCollection.find((c) => c.image_name === norm)
+                          ?.count || 0;
+                      return acc + count;
+                    }, 0);
 
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      playSound("clickOpen");
-                      setShowCollectionModal(cat.id);
-                      if (hasNewImage) {
-                        const newCounts = {
-                          ...seenCategoryCounts,
-                          [cat.id]: currentCount,
-                        };
-                        setSeenCategoryCounts(newCounts);
-                        localStorage.setItem(
-                          "khamin_seen_category_counts",
-                          JSON.stringify(newCounts),
-                        );
-                      }
-                    }}
-                    className={`relative w-9 h-9 md:w-11 md:h-11 rounded-xl border-2 border-black flex items-center justify-center text-lg md:text-xl transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none ${
-                      hasAny
-                        ? "bg-white opacity-100"
-                        : "bg-white opacity-70 grayscale"
-                    }`}
-                  >
-                    {cat.icon}
-                    {(hasClaimableReward || hasNewImage) && (
-                      <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                  const hasNewImage =
+                    currentCount > (seenCategoryCounts[cat.id] || 0);
+
+                  const hasClaimableReward = cat.stages.some((stage) => {
+                    const isClaimed = claimedCollectionRewards.some(
+                      (r) => r.category_id === cat.id && r.stage === stage.stage,
+                    );
+                    if (isClaimed) return false;
+
+                    const isStageComplete = stage.images.every((imgName) => {
+                      const norm = normalizeEgyptian(imgName).toLowerCase();
+                      const count =
+                        playerCollection.find((c) => c.image_name === norm)
+                          ?.count || 0;
+                      return count >= 5;
+                    });
+
+                    return isStageComplete;
+                  });
+
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        playSound("clickOpen");
+                        setShowCollectionModal(cat.id);
+                        if (hasNewImage) {
+                          const newCounts = {
+                            ...seenCategoryCounts,
+                            [cat.id]: currentCount,
+                          };
+                          setSeenCategoryCounts(newCounts);
+                          localStorage.setItem(
+                            "khamin_seen_category_counts",
+                            JSON.stringify(newCounts),
+                          );
+                        }
+                      }}
+                      className={`relative w-9 h-9 md:w-11 md:h-11 rounded-xl border-2 border-black flex items-center justify-center text-lg md:text-xl transition-all active:translate-y-0.5 active:shadow-none ${
+                        hasAny
+                          ? "bg-white opacity-100"
+                          : "bg-white opacity-70 grayscale"
+                      }`}
+                    >
+                      {cat.icon}
+                      {(hasClaimableReward || hasNewImage) && (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="card-game p-3 md:p-5">
+            <div className="card-game p-2 md:p-3">
               <div className="space-y-4 md:space-y-6">
                 {/* Top Players Section */}
                 <div className="flex flex-col gap-2">
                   {/* Podium Box with Integrated Header */}
-                  <div className="box-game px-3 md:px-5 pb-2 pt-4 mt-2 relative">
+                  <div className="box-game px-2 md:px-3 pb-2 pt-4 relative">
                     {/* Integrated Header */}
                     <div className="flex items-center justify-between flex-row-reverse mb-8 pb-2">
                       <h2 className="text-sm md:text-base font-black text-main flex items-center gap-2">
@@ -24349,7 +24349,7 @@ export default function App() {
                     </div>
 
                     <div className="text-center">
-                      <p className="text-[8px] md:text-[10px] font-bold text-black-400 py-1 px-1 inline-block">
+                      <p className="text-[8px] md:text-[10px] font-bold text-black-400 inline-block">
                         الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي
                         📊
                       </p>
@@ -24958,7 +24958,7 @@ export default function App() {
                     )}
 
                     <div
-                      className="flex items-center justify-center gap-2 py-1 px-2 bg-gray-100"
+                      className="flex items-center justify-center gap-0.5 md:gap-1 py-1 px-2 bg-gray-200"
                       dir="rtl"
                     >
                       {[
@@ -25046,74 +25046,63 @@ export default function App() {
                                 >
                                   Lvl {limit99(getLevel(player.xp || 0))}
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span className="text-green-600">
                                   {limit99(player.wins || 0)} فوز
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-gray-100 md:px-1.5 rounded text-brown-muted"
                                   dir="rtl"
                                 >
                                   {limit99(player.streak || 0)} 🔥
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-red-50 text-red-600 md:px-1.5 rounded"
                                   dir="rtl"
                                 >
                                   {limit99(player.likes || 0)} ❤️
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-blue-50 text-blue-600 md:px-1.5 rounded"
                                   dir="rtl"
                                 >
                                   {limit99(player.busCompleteWins || 0)} 🚌
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded"
                                   dir="rtl"
                                 >
                                   {limit99(player.xoWins || 0)} <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span>
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded"
                                   dir="rtl"
                                 >
                                   {limit99(player.handWins || 0)} 🖐
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded"
                                   dir="rtl"
                                 >
                                   {limit99(player.iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-purple-50 text-purple-600 md:px-1.5 rounded flex items-center gap-0.5"
                                   dir="rtl"
                                 >
                                   {limit99(player.dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-3 h-3 object-contain" />
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-pink-50 text-pink-600 md:px-1.5 rounded flex items-center gap-0.5"
                                   dir="rtl"
                                 >
                                   {limit99(player.speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-3 h-3 object-contain" />
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-red-50 text-red-600 md:px-1.5 rounded flex items-center gap-0.5"
                                   dir="rtl"
                                 >
                                   {limit99(player.bombPartyWins || 0)} 💣
                                 </span>
-                                <span className="text-brown-light">•</span>
                                 <span
                                   className="bg-emerald-50 text-emerald-600 md:px-1.5 rounded flex items-center gap-0.5"
                                   dir="rtl"
@@ -26067,7 +26056,7 @@ export default function App() {
           {/* Center Content: Image or Waiting UI */}
           <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl relative my-0.5 min-h-0">
             {room.gameState === "custom_image_upload" ? (
-              <div className="w-full card-game p-3 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden flex flex-col min-h-[400px]">
+              <div className="w-full card-game p-2 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden flex flex-col min-h-[400px]">
                 <div className="absolute top-0 left-0 w-full h-1 bg-purple-200">
                   <div
                     className="h-full bg-purple-500 transition-all duration-1000"
@@ -28124,7 +28113,7 @@ export default function App() {
 
                   <div className="space-y-4">
                     {isPrivate && room.players.length < 2 && (
-                      <div className="bg-blue-50 border-2 border-blue-200 p-3 py-0.5 mb-2 shadow-sm rounded-2xl text-accent-blue font-black text-sm md:text-base">
+                      <div className="bg-blue-50 border-2 border-blue-200 p-3 py-0.5 mb-1 shadow-sm rounded-2xl text-accent-blue font-black text-sm md:text-base">
                         ابعت كود الغرفة
                         <div className="relative inline-block">
                           <AnimatePresence>
@@ -28162,12 +28151,12 @@ export default function App() {
                       {(!room.selectionMode || room.selectionMode === null) ? (
                         <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 pt-1">
                           <div className="text-center">
-                            <h3 className="box-game p-2 font-black text-accent-orange text-2xl md:text-3xl drop-shadow-sm">
+                            <h3 className="box-game p-1 font-black text-accent-orange text-1xl md:text-2xl drop-shadow-sm">
                               ألعاب خمن تخمينة
                             </h3>
                           </div>
                           
-                          <div className="grid grid-cols-4 gap-2 md:gap-3">
+                          <div className="grid grid-cols-4 gap-1 md:gap-2">
 
                             <div className="relative">
                             <button
@@ -28244,10 +28233,10 @@ export default function App() {
                               className={`h-full w-full bg-emerald-100 hover:bg-emerald-200 border-[3px] border-emerald-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#10b981] active:shadow-none active:translate-y-1.5"}`}
                             >
                               <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
-                                <img src="/word-le-logo.png" className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-md" alt="wordle" />
+                                <img src="/word-le-logo.png" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" alt="wordle" />
                               </div>
                               <span className="text-[13px] md:text-lg font-black text-emerald-700 text-center leading-tight">
-                                تخمينة كلمة لي
+                                تخمينة كلمة
                               </span>
                             </button>
                             {(() => {
@@ -28331,7 +28320,7 @@ export default function App() {
                               className={`h-full w-full bg-purple-100 hover:bg-purple-200 border-[3px] border-purple-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#a855f7] active:shadow-none active:translate-y-1.5"}`}
                             >
                               <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
-                                <img src="/dots-and-boxes-logo.png" className="w-10 h-10 md:w-12 md:h-12 object-contain" alt="dots" />
+                                <img src="/dots-and-boxes-logo.png" className="w-8 h-8 md:w-10 md:h-10 object-contain" alt="dots" />
                               </div>
                               <span className="text-[13px] md:text-lg font-black text-purple-700 text-center leading-tight">
                                نقطة وخط
@@ -28359,7 +28348,7 @@ export default function App() {
                               className={`h-full w-full bg-pink-100 hover:bg-pink-200 border-[3px] border-pink-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#ec4899] active:shadow-none active:translate-y-1.5"}`}
                             >
                               <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
-                                <img src="/speed-cups/speed-cups-logo.png" className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-md" alt="speed cups" />
+                                <img src="/speed-cups/speed-cups-logo.png" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" alt="speed cups" />
                               </div>
                               <span className="text-[13px] md:text-lg font-black text-pink-700 text-center leading-tight">
                                أكواب السرعة
