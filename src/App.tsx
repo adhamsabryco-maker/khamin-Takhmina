@@ -850,6 +850,7 @@ const isSameWeek = (d1: number, d2: number) => {
 
 import { CheckoutPage } from "./components/CheckoutPage";
 import WordleGame from "./WordleGame";
+import ConnectFourWordsGame from "./ConnectFourWordsGame";
 
 function normalizeEgyptian(text: string): string {
   if (!text) return "";
@@ -2334,7 +2335,7 @@ export default function App() {
   });
 
   const [leaderboardFilter, setLeaderboardFilter] = useState<
-    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "speedCups" | "bombParty" | "wordle" | "wins" | "streak" | "likes"
+    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "speedCups" | "bombParty" | "wordle" | "connectFourWords" | "wins" | "streak" | "likes"
   >("all");
   const [leaderboardVisibleCount, setLeaderboardVisibleCount] = useState(10);
 
@@ -2363,6 +2364,8 @@ export default function App() {
       sorted.sort((a, b) => (b.speedCupsWins || 0) - (a.speedCupsWins || 0));
     } else if (leaderboardFilter === "wordle") {
       sorted.sort((a, b) => (b.wordleWins || 0) - (a.wordleWins || 0));
+    } else if (leaderboardFilter === "connectFourWords") {
+      sorted.sort((a, b) => (b.connectFourWordsWins || 0) - (a.connectFourWordsWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -5968,7 +5971,10 @@ export default function App() {
       room.gameState === "speed_cups_countdown" ||
       room.gameState === "wordle_setup" ||
       room.gameState === "wordle_playing" ||
-      room.gameState === "wordle_finished"
+      room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished" ||
+      room.gameState === "connect_four_words_setup" ||
+      room.gameState === "connect_four_words_playing" ||
+      room.gameState === "connect_four_words_finished"
     );
 
     const activeMusic = isGameActive
@@ -7429,6 +7435,14 @@ export default function App() {
       if (data.wordleMatchPoints != null) {
         setWordleMatchPoints(data.wordleMatchPoints);
         localStorage.setItem("khamin_wordle_match_points", data.wordleMatchPoints.toString());
+      }
+if (data.connectFourWordsRewardLevel != null) {
+        setConnectFourWordsRewardLevel(data.connectFourWordsRewardLevel);
+        localStorage.setItem("khamin_cfw_reward_level", data.connectFourWordsRewardLevel.toString());
+      }
+      if (data.connectFourWordsMatchPoints != null) {
+        setConnectFourWordsMatchPoints(data.connectFourWordsMatchPoints);
+        localStorage.setItem("khamin_cfw_match_points", data.connectFourWordsMatchPoints.toString());
       }
       if (data.likes != null) {
         setLikes(data.likes);
@@ -9659,7 +9673,7 @@ export default function App() {
 
   useEffect(() => {
     if (room && room.gameState !== previousGameStateRef.current) {
-      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished" || room.gameState === "bomb_party_finished" || room.gameState === "wordle_finished") {
+      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished" || room.gameState === "bomb_party_finished" || room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished") {
         if (!hasProPackage) {
           matchesPlayedRef.current += 1;
           if (matchesPlayedRef.current >= 3) {
@@ -10591,7 +10605,10 @@ export default function App() {
       room?.gameState?.startsWith("speed_cups_") ||
       room?.gameState === "wordle_setup" ||
       room?.gameState === "wordle_playing" ||
-      room?.gameState === "wordle_finished";
+      room?.gameState === "wordle_finished" ||
+      room?.gameState === "connect_four_words_setup" ||
+      room?.gameState === "connect_four_words_playing" ||
+      room?.gameState === "connect_four_words_finished";
 
     const me = room?.players.find((p) => p.id === socket?.id);
 
@@ -12678,6 +12695,13 @@ export default function App() {
                         <span className="text-gray-500 font-extrabold">تخمينة كلمة لي</span>
                       </span>
                       <span className="font-black text-brown-dark">{data.wordleWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <img src="/connect-4-logo.png" className="w-3.5 h-3.5 object-contain inline" />
+                        <span className="text-gray-500 font-extrabold">تخمينة 4 حروف</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.connectFourWordsWins || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -21769,6 +21793,12 @@ export default function App() {
   const [wordleMatchPoints, setWordleMatchPoints] = useState(
     () => parseInt(localStorage.getItem("khamin_wordle_match_points") || "0") || 0
   );
+const [connectFourWordsRewardLevel, setConnectFourWordsRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_cfw_reward_level") || "1") || 1
+  );
+  const [connectFourWordsMatchPoints, setConnectFourWordsMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_cfw_match_points") || "0") || 0
+  );
 
   useEffect(() => {
     localStorage.setItem("khamin_wordle_reward_level", wordleRewardLevel.toString());
@@ -21777,6 +21807,12 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("khamin_wordle_match_points", wordleMatchPoints.toString());
   }, [wordleMatchPoints]);
+useEffect(() => {
+    localStorage.setItem("khamin_cfw_reward_level", connectFourWordsRewardLevel.toString());
+  }, [connectFourWordsRewardLevel]);
+  useEffect(() => {
+    localStorage.setItem("khamin_cfw_match_points", connectFourWordsMatchPoints.toString());
+  }, [connectFourWordsMatchPoints]);
 
   const [bombPartyRewardLevel, setBombPartyRewardLevel] = useState(
     () => parseInt(localStorage.getItem("khamin_bomb_reward_level") || "1") || 1
@@ -21877,7 +21913,79 @@ export default function App() {
     );
   };
 
-  const renderBombPartyRewardBar = () => {
+const renderConnectFourWordsRewardBar = () => {
+    if (!room || room.matchType !== "random" || (room.gameState !== "connect_four_words_playing" && room.gameState !== "connect_four_words_finished")) return null;
+    const currentLevel = connectFourWordsRewardLevel;
+    const currentPoints = connectFourWordsMatchPoints;
+    const targetPoints = currentLevel * 100;
+    const progress = Math.min((currentPoints / targetPoints) * 100, 100);
+    const isReady = currentPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-2 relative overflow-hidden transition-all shadow-sm">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-blue-100/50 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex sm:flex-row items-center justify-between gap-2 z-10 w-full">
+            <div className="flex items-center gap-2 font-bold text-blue-800 text-sm">
+              <span>المستوي {currentLevel}</span>
+              <span className="text-xs bg-white px-1.5 py-0.5 rounded-md border border-blue-200" dir="ltr">
+                {currentPoints} / {targetPoints}
+              </span>
+            </div>
+            
+            <button
+              onClick={() => {
+                 if (isReady) {
+                   setCustomConfirm({
+                      show: true,
+                      title: "مبروك! 🎉 اكتملت نقاط المستوي " + currentLevel,
+                      message: "يمكنك استلام هدايا هذا المستوى الآن، هل تود مشاهدة الإعلان؟\n\n" +
+                               "🎁 " + (currentLevel === 1 ? 50 : 100 + 50 * (currentLevel - 1)) + " XP\n" +
+                               "🔑 " + currentLevel + " مفتاح\n" +
+                               "🔧 " + currentLevel + " من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)",
+                      confirmText: "نعم مشاهدة الاعلان",
+                      cancelText: "الغاء",
+                      onConfirm: () => {
+                        setCustomConfirm((prev) => ({ ...prev, show: false }));
+                        socket?.emit("bus_complete_ad_start", { roomId: room.id }); 
+                        showBusCompleteAd(
+                          () => {
+                             socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: true });
+                             socket?.emit("claim_connect_four_words_reward", { serial: socket?.data?.serial || playerSerial });
+                          },
+                          () => {
+                             socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: false });
+                             showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+                          }
+                        );
+                      }
+                   });
+                 } else {
+                   setCustomConfirm({
+                     show: true,
+                     title: `المستوي ${currentLevel}`,
+                     message: `متبقي ${targetPoints - currentPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                              `🎁 ${currentLevel === 1 ? 50 : 100 + 50 * (currentLevel - 1)} XP\n` +
+                              `🔑 ${currentLevel} مفتاح\n` +
+                              `🔧 ${currentLevel} من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)`,
+                     confirmText: "حسناً",
+                     onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                   });
+                 }
+              }}
+              className={`flex justify-center items-center gap-1.5 px-3 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+                ${isReady ? "bg-green-500 text-white animate-pulse hover:bg-green-600 border border-green-600 cursor-pointer" : "bg-white text-red-600 border border-red-200 hover:bg-red-50 cursor-pointer"}`}
+            >
+              <span>🎁</span>
+              <span>استلم الهدايا</span>
+            </button>
+          </div>
+       </div>
+    );
+  };
+const renderBombPartyRewardBar = () => {
     if (!room || room.matchType !== "random" || (room.gameState !== "bomb_party_playing" && room.gameState !== "bomb_party_finished")) return null;
 
     const targetPoints = bombPartyRewardLevel * 100;
@@ -24230,6 +24338,7 @@ export default function App() {
                               <span>{limit99(topPlayers[1].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[1].bombPartyWins || 0)} 💣</span>
                               <span>{limit99(topPlayers[1].wordleWins || 0)} <img src="/word-le-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[1].connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -24289,6 +24398,7 @@ export default function App() {
                               <span>{limit99(topPlayers[0].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[0].bombPartyWins || 0)} 💣</span>
                               <span>{limit99(topPlayers[0].wordleWins || 0)} <img src="/word-le-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[0].connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -24342,6 +24452,7 @@ export default function App() {
                               <span>{limit99(topPlayers[2].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                               <span>{limit99(topPlayers[2].bombPartyWins || 0)} 💣</span>
                               <span>{limit99(topPlayers[2].wordleWins || 0)} <img src="/word-le-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
+                              <span>{limit99(topPlayers[2].connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -24951,6 +25062,8 @@ export default function App() {
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.bombPartyWins || 0)} 💣</span>
                               <span>•</span>
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.wordleWins || 0)} <img src="/word-le-logo.png" className="w-3 h-3 inline object-contain" /></span>
+                              <span>•</span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-3 h-3 inline object-contain" /></span>
                             </div>
                           </div>
                         </div>
@@ -24974,6 +25087,7 @@ export default function App() {
                         { id: "speedCups", icon: <img src="/speed-cups/speed-cups-logo.png" className="w-6 h-6 object-contain" /> },
                         { id: "bombParty", icon: "💣" },
                         { id: "wordle", icon: <img src="/word-le-logo.png" className="w-6 h-6 object-contain" /> },
+                        { id: "connectFourWords", icon: <img src="/connect-4-logo.png" className="w-6 h-6 object-contain" /> },
                       ].map((filter) => (
                         <button
                           key={filter.id}
@@ -25108,6 +25222,9 @@ export default function App() {
                                   dir="rtl"
                                 >
                                   {limit99(player.wordleWins || 0)} <img src="/word-le-logo.png" className="w-3 h-3 object-contain" />
+                                </span>
+                                <span className="bg-blue-50 text-blue-600 md:px-1.5 rounded flex items-center gap-0.5" dir="rtl">
+                                  {limit99(player.connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-3 h-3 object-contain" />
                                 </span>
                               </div>
                             </div>
@@ -28060,6 +28177,20 @@ export default function App() {
                   {renderHandGame()}
                 </div>
               </React.Fragment>
+            
+            ) : room.gameState === "connect_four_words_setup" || room.gameState === "connect_four_words_playing" || room.gameState === "connect_four_words_finished" ? (
+              <ConnectFourWordsGame
+                room={room}
+                socket={socket}
+                playerSerial={playerSerial}
+                isAdmin={isAdmin}
+                hasProPackage={hasProPackage}
+                CategoryPageAd={CategoryPageAd}
+                renderConnectFourWordsRewardBar={renderConnectFourWordsRewardBar}
+                playSound={playSound}
+                handleLeaveGame={handleLeaveGame}
+              />
+
             ) : room.gameState === "wordle_setup" || room.gameState === "wordle_playing" || room.gameState === "wordle_finished" ? (
               <WordleGame
                 room={room}
@@ -28248,6 +28379,36 @@ export default function App() {
                               return null;
                             })()}
                           </div>
+
+
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "connect_four_words",
+                                })
+                              }
+                              className={`h-full w-full bg-blue-100 hover:bg-blue-200 border-[3px] border-blue-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#3b82f6] active:shadow-none active:translate-y-1.5"}`}
+                            >
+                              <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
+                                <img src="/connect-4-logo.png" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" alt="connect_four_words" />
+                              </div>
+                              <span className="text-[13px] md:text-lg font-black text-blue-700 text-center leading-tight">
+                                تخمينة 4 حروف
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "connect_four_words" && oppMode === "connect_four_words") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "connect_four_words") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "connect_four_words") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+
 
                           <div className="relative">
                             <button
