@@ -6988,10 +6988,10 @@ async function startServer() {
               const elapsedSeconds = (Date.now() - startTime) / 1000;
               const isAdvancedStage = (filledCount >= 14 || elapsedSeconds >= 300);
 
-              // Mistake/forgetfulness probability scales up in the advanced stage
-              let mistakeRate = 0.02;
+              // Mistake/forgetfulness probability gives human players a realistic, fun chance to win
+              let mistakeRate = 0.18; // 18% base chance of an oversight or suboptimal play
               if (isAdvancedStage) {
-                mistakeRate = Math.min(0.35, 0.05 + (filledCount - 12) * 0.025 + (elapsedSeconds / 600) * 0.15);
+                mistakeRate = Math.min(0.35, 0.20 + (filledCount - 10) * 0.02 + (elapsedSeconds / 600) * 0.10);
               }
 
               // Helper to check if a virtual move results in immediate win
@@ -7151,22 +7151,30 @@ async function startServer() {
 
               if (!isConfused) {
                 if (winningMoves.length > 0) {
-                  finalMove = winningMoves[Math.floor(Math.random() * winningMoves.length)];
-                  console.log("[BOT] Choosing winning move:", finalMove);
-                } else if (hasOpponentThreats) {
-                  const threatenedCols = Object.keys(opponentWinningMovesInColumns).map(Number);
-                  const colToBlock = threatenedCols[Math.floor(Math.random() * threatenedCols.length)];
-                  let bestLetterForBlock = letters[0];
-                  let bestBlockScore = -1;
-                  for (const l of letters) {
-                    const score = evaluateMoveHeuristic(colToBlock, l, botPlayer.id);
-                    if (score > bestBlockScore) {
-                      bestBlockScore = score;
-                      bestLetterForBlock = l;
-                    }
+                  // High chance to take winning move (85%)
+                  if (Math.random() < 0.85) {
+                    finalMove = winningMoves[Math.floor(Math.random() * winningMoves.length)];
+                    console.log("[BOT] Choosing winning move:", finalMove);
                   }
-                  finalMove = { col: colToBlock, letter: bestLetterForBlock };
-                  console.log("[BOT] Blocking opponent win in column:", colToBlock, "with letter:", bestLetterForBlock);
+                } else if (hasOpponentThreats) {
+                  // 75% chance to block, 25% chance to miss or pursue own goal
+                  if (Math.random() < 0.75) {
+                    const threatenedCols = Object.keys(opponentWinningMovesInColumns).map(Number);
+                    const colToBlock = threatenedCols[Math.floor(Math.random() * threatenedCols.length)];
+                    let bestLetterForBlock = letters[0];
+                    let bestBlockScore = -1;
+                    for (const l of letters) {
+                      const score = evaluateMoveHeuristic(colToBlock, l, botPlayer.id);
+                      if (score > bestBlockScore) {
+                        bestBlockScore = score;
+                        bestLetterForBlock = l;
+                      }
+                    }
+                    finalMove = { col: colToBlock, letter: bestLetterForBlock };
+                    console.log("[BOT] Blocking opponent win in column:", colToBlock, "with letter:", bestLetterForBlock);
+                  } else {
+                    console.log("[BOT] Bot overlooked opponent threat to focus on building its word.");
+                  }
                 }
               } else {
                 console.log("[BOT] Mistake triggered! Bot overlooked immediate win/block.");
@@ -7178,7 +7186,7 @@ async function startServer() {
                   score: number;
                 }
                 const scoredMoves: ScoredMove[] = [];
-                const defenseWeight = isAdvancedStage ? 1.0 : 1.5;
+                const defenseWeight = isAdvancedStage ? 1.0 : 1.3;
 
                 for (const move of allPossibleMoves) {
                   const offenseScore = evaluateMoveHeuristic(move.col, move.letter, botPlayer.id);
@@ -7239,7 +7247,10 @@ async function startServer() {
                     }
 
                     if (setsUpOpponentWin) {
-                      moveScore -= 5000;
+                      // 60% chance to penalize setup move, 40% chance bot misses the trap
+                      if (Math.random() < 0.60) {
+                        moveScore -= 250;
+                      }
                     }
                   }
 
@@ -7248,7 +7259,8 @@ async function startServer() {
 
                 scoredMoves.sort((a, b) => b.score - a.score);
                 const bestScore = scoredMoves[0].score;
-                const bestMoves = scoredMoves.filter(m => m.score >= bestScore - 2);
+                const threshold = Math.max(bestScore - 20, bestScore * 0.65);
+                const bestMoves = scoredMoves.filter(m => m.score >= threshold);
                 finalMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
               }
 
