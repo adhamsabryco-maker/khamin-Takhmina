@@ -401,6 +401,7 @@ const SOUNDS = {
   tick: "/sounds/tick.mp3",
   clockTicking: "/sounds/clock-ticking.mp3",
   handXFill: "/sounds/hand-x-fill.mp3",
+  connect4Fall: "/sounds/playing-connect-4.mp3",
   luckyReels: "/sounds/lucky-reels-sound-effect.mp3",
   spinStart: "/sounds/lucky-reels-sound-effect.mp3",
   proArrival: "/sounds/proArrival.mp3",
@@ -25071,36 +25072,59 @@ const renderBombPartyRewardBar = () => {
                     )}
 
                     <div
-                      className="flex items-center justify-center gap-0.5 md:gap-1 py-1 px-2 bg-gray-200"
+                      className="flex flex-col gap-1.5 py-2 px-2 bg-gray-200 border-b border-gray-300"
                       dir="rtl"
                     >
-                      {[
-                        { id: "all", icon: "👥" },
-                        { id: "wins", icon: "🏆" },
-                        { id: "streak", icon: "🔥" },
-                        { id: "likes", icon: "❤️" },
-                        { id: "busComplete", icon: "🚌" },
-                        { id: "xo", icon: <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span> },
-                        { id: "hand", icon: "🖐" },
-                        { id: "iq", icon: <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span> },
-                        { id: "dots", icon: <img src="/dots-and-boxes-logo.png" className="w-6 h-6 object-contain" /> },
-                        { id: "speedCups", icon: <img src="/speed-cups/speed-cups-logo.png" className="w-6 h-6 object-contain" /> },
-                        { id: "bombParty", icon: "💣" },
-                        { id: "wordle", icon: <img src="/word-le-logo.png" className="w-6 h-6 object-contain" /> },
-                        { id: "connectFourWords", icon: <img src="/connect-4-logo.png" className="w-6 h-6 object-contain" /> },
-                      ].map((filter) => (
-                        <button
-                          key={filter.id}
-                          onClick={() => setLeaderboardFilter(filter.id as any)}
-                          className={`flex-1 max-w-[4rem] h-10 flex items-center justify-center rounded-xl font-black text-xl transition-all border-b-4 ${
-                            leaderboardFilter === filter.id
-                              ? "bg-orange-500 text-white border-orange-600 shadow-sm -translate-y-1"
-                              : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
-                          }`}
-                        >
-                          {filter.icon}
-                        </button>
-                      ))}
+                      {/* Row 1: General Stats & Classic Categories */}
+                      <div className="flex items-center justify-center gap-1 sm:gap-1.5 flex-wrap">
+                        {[
+                          { id: "all", icon: "👥", title: "الكل" },
+                          { id: "wins", icon: "🏆", title: "إجمالي الفوز" },
+                          { id: "streak", icon: "🔥", title: "الانتصارات المتتالية" },
+                          { id: "likes", icon: "❤️", title: "الإعجابات" },
+                          { id: "busComplete", icon: "🚌", title: "حافلة الكلمات" },
+                          { id: "xo", icon: <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span>, title: "XO" },
+                          { id: "hand", icon: "🖐", title: "يد واحدة" },
+                        ].map((filter) => (
+                          <button
+                            key={filter.id}
+                            onClick={() => setLeaderboardFilter(filter.id as any)}
+                            title={filter.title}
+                            className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl font-black text-lg sm:text-xl transition-all border-b-4 shrink-0 ${
+                              leaderboardFilter === filter.id
+                                ? "bg-orange-500 text-white border-orange-600 shadow-sm -translate-y-0.5"
+                                : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                            }`}
+                          >
+                            {filter.icon}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Row 2: Specialized Games */}
+                      <div className="flex items-center justify-center gap-1 sm:gap-1.5 flex-wrap">
+                        {[
+                          { id: "iq", icon: <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>, title: "اختبار الذكاء" },
+                          { id: "dots", icon: <img src="/dots-and-boxes-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "سياج الكلمات" },
+                          { id: "speedCups", icon: <img src="/speed-cups/speed-cups-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "أكواب السرعة" },
+                          { id: "bombParty", icon: "💣", title: "قنبلة الحروف" },
+                          { id: "wordle", icon: <img src="/word-le-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "تخمينة الكلمات" },
+                          { id: "connectFourWords", icon: <img src="/connect-4-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "تخمينة 4 حروف" },
+                        ].map((filter) => (
+                          <button
+                            key={filter.id}
+                            onClick={() => setLeaderboardFilter(filter.id as any)}
+                            title={filter.title}
+                            className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl font-black text-lg sm:text-xl transition-all border-b-4 shrink-0 ${
+                              leaderboardFilter === filter.id
+                                ? "bg-orange-500 text-white border-orange-600 shadow-sm -translate-y-0.5"
+                                : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                            }`}
+                          >
+                            {filter.icon}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 

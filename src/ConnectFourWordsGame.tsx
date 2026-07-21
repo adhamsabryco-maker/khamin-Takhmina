@@ -80,7 +80,7 @@ export default function ConnectFourWordsGame({
         setLastDroppedCell({ ...newlyAdded, timestamp: Date.now() });
         // If the newly added piece belongs to the opponent/bot, play the drop sound for us to hear
         if (newlyAdded.playerId !== myId && playSound) {
-          playSound("handXFill");
+          playSound("connect4Fall");
         }
       }
     }
@@ -140,7 +140,7 @@ export default function ConnectFourWordsGame({
     }
     
     if (targetRow !== -1) {
-      if (playSound) playSound("handXFill");
+      if (playSound) playSound("connect4Fall");
       socket?.emit("connect_four_words_drop", { roomId: room.id, colIndex, letter: selectedLetter });
       setSelectedLetter(null);
     }
@@ -307,7 +307,7 @@ export default function ConnectFourWordsGame({
                              return (
                                  <div key={`${rIndex}-${cIndex}`} 
                                       onClick={() => handleCellClick(cIndex)}
-                                      className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 relative cursor-pointer hover:opacity-100 overflow-visible flex items-center justify-center">
+                                      className="w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 relative cursor-pointer hover:opacity-100 overflow-visible flex items-center justify-center">
                                       
                                       {/* 1. Underlay for empty slot (white circle with inset shadow) */}
                                       {!cell.playerId && (
