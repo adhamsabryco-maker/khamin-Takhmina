@@ -5960,6 +5960,11 @@ async function startServer() {
             room.category = "تخمينة كومبليت";
             room.busCompleteLetter = null;
             room.busCompleteSubmittedPlayers = [];
+            room.busCompleteAnswers = {};
+            room.busCompleteDraftAnswers = {};
+            room.busCompleteScores = {};
+            room.busCompleteSubmitTimes = {};
+            room.busCompleteWinner = null;
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
 
             const bot = room.players.find((p: any) => p.isBot);
@@ -8403,6 +8408,11 @@ async function startServer() {
                   r.busCompleteLetter = null;
                   r.busCompleteSubmittedPlayers = [];
                   r.busCompleteRematchRequestedBy = [];
+                  r.busCompleteAnswers = {};
+                  r.busCompleteDraftAnswers = {};
+                  r.busCompleteScores = {};
+                  r.busCompleteSubmitTimes = {};
+                  r.busCompleteWinner = null;
                   if (intervals.has(roomId))
                     clearInterval(intervals.get(roomId));
                   handleBotEvent(roomId, "room_update", r);
@@ -11624,6 +11634,11 @@ async function startServer() {
             room.category = "تخمينة كومبليت";
             room.busCompleteLetter = null;
             room.busCompleteSubmittedPlayers = [];
+            room.busCompleteAnswers = {};
+            room.busCompleteDraftAnswers = {};
+            room.busCompleteScores = {};
+            room.busCompleteSubmitTimes = {};
+            room.busCompleteWinner = null;
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
 
             // Trigger bot logic for the new game
@@ -11797,6 +11812,11 @@ async function startServer() {
             room.busCompleteLetter = null;
             room.busCompleteSubmittedPlayers = [];
             room.busCompleteRematchRequestedBy = [];
+            room.busCompleteAnswers = {};
+            room.busCompleteDraftAnswers = {};
+            room.busCompleteScores = {};
+            room.busCompleteSubmitTimes = {};
+            room.busCompleteWinner = null;
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
 
             // Trigger bot logic for the new game
@@ -11851,6 +11871,7 @@ async function startServer() {
           room.busCompleteLetter = undefined;
           room.busCompleteSubmittedPlayers = [];
           room.busCompleteAnswers = {};
+          room.busCompleteDraftAnswers = {};
           if (room.timerInterval) clearInterval(room.timerInterval);
           io.to(roomId).emit("room_update", room);
         }
