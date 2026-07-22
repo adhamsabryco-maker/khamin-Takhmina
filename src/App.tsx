@@ -10583,6 +10583,47 @@ if (data.connectFourWordsRewardLevel != null) {
     }
   };
 
+  const showAd = (roomId: string, playerId: string, callback: () => void, onStart?: () => void, onEnd?: () => void) => {
+    if (typeof (window as any).adBreak === "function") {
+      try {
+        let adViewed = false;
+        (window as any).adBreak({
+          type: "reward",
+          name: "wordle_hint",
+          beforeAd: () => {
+            Howler.mute(true);
+            if (onStart) onStart();
+          },
+          afterAd: () => {
+            Howler.mute(false);
+            if (onEnd) onEnd();
+          },
+          beforeReward: (showAdFn: any) => {
+            showAdFn();
+          },
+          adViewed: () => {
+            adViewed = true;
+            callback();
+          },
+          adDismissed: () => {
+            if (!adViewed) {
+              showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+            }
+          }
+        });
+      } catch (err) {
+        console.error(err);
+        if (onStart) onStart();
+        if (onEnd) onEnd();
+        callback();
+      }
+    } else {
+      if (onStart) onStart();
+      if (onEnd) onEnd();
+      callback();
+    }
+  };
+
   const handleLeaveGame = () => {
     playSound("clickOpen");
     const isGameActive =
@@ -28200,6 +28241,9 @@ const renderBombPartyRewardBar = () => {
                 renderWordleRewardBar={renderWordleRewardBar}
                 playSound={playSound}
                 handleLeaveGame={handleLeaveGame}
+                showAlert={showAlert}
+                showConfirm={showConfirm}
+                showAd={showAd}
               />
             ) : room.gameState === "waiting" ? (
               <React.Fragment>

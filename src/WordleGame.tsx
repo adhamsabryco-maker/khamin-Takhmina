@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import bombPartyWords from './data/bomb-party-words.json';
 
 export default function WordleGame({
   room,
@@ -9,10 +10,24 @@ export default function WordleGame({
   CategoryPageAd,
   renderWordleRewardBar,
   playSound,
-  handleLeaveGame
+  handleLeaveGame,
+  showAlert,
+  showConfirm,
+  showAd
 }: any) {
   const [guess, setGuess] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
+  const [shakeRow, setShakeRow] = useState(false);
+  const [showNotWordMsg, setShowNotWordMsg] = useState(false);
+  const [hintCooldown, setHintCooldown] = useState(0);
+  const [revealedHints, setRevealedHints] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (hintCooldown > 0) {
+      const timer = setTimeout(() => setHintCooldown(hintCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [hintCooldown]);
   
   const me = room.players.find((p: any) => p.serial === playerSerial || p.id === socket?.id);
   const opp = room.players.find((p: any) => p.serial !== playerSerial && p.id !== socket?.id);
@@ -20,15 +35,69 @@ export default function WordleGame({
   const myId = me?.id;
   const oppId = opp?.id;
 
+  const targetLength = room.wordle?.targetWord?.length || 5;
   const myGuesses = room.wordle?.guesses?.[myId] || [];
+
+  const knownCorrectIndices = new Set<number>();
+  myGuesses.forEach((g: any) => {
+    g.result.forEach((res: string, idx: number) => {
+      if (res === 'correct') knownCorrectIndices.add(idx);
+    });
+  });
+
+  let nextHintIdx = -1;
+  if (room.wordle?.targetWord) {
+    for (let i = 0; i < targetLength; i++) {
+      if (!knownCorrectIndices.has(i) && !revealedHints.includes(i)) {
+        nextHintIdx = i;
+        break;
+      }
+    }
+  }
+
+  const requestHint = () => {
+    if (hintCooldown > 0 || nextHintIdx === -1) return;
+
+    const orderNames = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس'];
+    const letterOrder = orderNames[nextHintIdx] || 'التالي';
+
+    showConfirm(
+      `هل تود مشاهدة إعلان لمعرفة الحرف ${letterOrder}؟`,
+      () => {
+        showAd(room.id, myId, () => {
+          setRevealedHints(prev => [...prev, nextHintIdx]);
+          setHintCooldown(30);
+          if (playSound) playSound("levelUp");
+          
+          setGuess(prevGuess => {
+             const guessChars = prevGuess.split('');
+             if (nextHintIdx < guessChars.length) {
+               guessChars[nextHintIdx] = room.wordle.targetWord[nextHintIdx];
+               return guessChars.join('');
+             } else if (nextHintIdx === prevGuess.length) {
+                return prevGuess + room.wordle.targetWord[nextHintIdx];
+             }
+             return prevGuess;
+          });
+        }, () => {
+          socket?.emit("wordle_pause", room.id);
+        }, () => {
+          socket?.emit("wordle_resume", room.id);
+        });
+      },
+      "وسيلة مساعدة"
+    );
+  };
 
   const prevMyGuessesCount = useRef(myGuesses.length);
   const prevGameState = useRef(room.gameState);
   const guessesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Clear typed guess when gameState or targetWord changes to clean up the grid completely
+  // Clear typed guess and hints when gameState or targetWord changes to clean up the grid completely
   useEffect(() => {
     setGuess('');
+    setRevealedHints([]);
+    setHintCooldown(0);
   }, [room.gameState, room.wordle?.targetWord]);
 
   // Time limit of 10 minutes
@@ -40,7 +109,12 @@ export default function WordleGame({
 
     const updateTimer = () => {
       const duration = 10 * 60 * 1000;
-      const elapsed = Date.now() - room.wordle.startTime;
+      let elapsed = 0;
+      if (room.wordle.pausedAt) {
+         elapsed = room.wordle.pausedAt - room.wordle.startTime;
+      } else {
+         elapsed = Date.now() - room.wordle.startTime;
+      }
       const remaining = Math.max(0, Math.floor((duration - elapsed) / 1000));
       setTimeLeft(remaining);
     };
@@ -48,7 +122,7 @@ export default function WordleGame({
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [room.gameState, room.wordle?.startTime]);
+  }, [room.gameState, room.wordle?.startTime, room.wordle?.pausedAt]);
 
   // Auto-scroll the grid container to the bottom when guess count increases
   useEffect(() => {
@@ -94,6 +168,15 @@ export default function WordleGame({
     if (!guess.trim()) return;
     if (guess.length !== room.wordle.targetWord.length) return;
     
+    if (!bombPartyWords.includes(guess)) {
+      if (playSound) playSound("wrong");
+      setShakeRow(true);
+      setShowNotWordMsg(true);
+      setTimeout(() => setShakeRow(false), 500);
+      setTimeout(() => setShowNotWordMsg(false), 3000);
+      return;
+    }
+
     if (playSound) playSound("clickOpen");
     socket?.emit("wordle_guess", { roomId: room.id, word: guess });
     setGuess('');
@@ -131,12 +214,32 @@ export default function WordleGame({
     if (room.gameState === "wordle_playing" && guesses.length < totalRows) {
       const activeRowCells = [];
       for (let idx = 0; idx < targetLength; idx++) {
-        const char = guess[idx] || "";
+        const isTyped = idx < guess.length;
+        let char = '';
+        let isHinted = false;
+        let isKnown = false;
+
+        if (isTyped) {
+           char = guess[idx];
+        } else if (revealedHints.includes(idx)) {
+           char = room.wordle.targetWord[idx];
+           isHinted = true;
+        } else if (knownCorrectIndices.has(idx)) {
+           char = room.wordle.targetWord[idx];
+           isKnown = true;
+        }
+
         activeRowCells.push(
           <div
             key={`active-cell-${idx}`}
-            className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center font-black text-lg md:text-2xl rounded-xl border-b-4 transition-all ${
-              char ? "bg-white border-emerald-400 text-emerald-800 scale-105 shadow-sm" : "bg-white border-gray-100 text-gray-300"
+            className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center font-black text-lg md:text-2xl rounded-xl border-b-4 transition-all duration-200 ${
+              isTyped
+                ? "bg-white border-emerald-400 text-emerald-800 scale-105 shadow-sm"
+                : isHinted
+                  ? "bg-yellow-100/80 border-yellow-400 text-yellow-700 scale-105 hint-glow"
+                  : isKnown
+                    ? "bg-emerald-50/80 border-emerald-300 text-emerald-600 scale-105"
+                    : "bg-white border-gray-100 text-gray-300"
             }`}
           >
             {char || "-"}
@@ -144,7 +247,12 @@ export default function WordleGame({
         );
       }
       rows.push(
-        <div key="active-row" className="flex gap-1 justify-center animate-pulse" dir="rtl">
+        <div key="active-row" className={`flex gap-1 justify-center relative ${shakeRow ? 'animate-shake' : 'animate-pulse'}`} dir="rtl">
+          {showNotWordMsg && (
+             <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap z-50 animate-fadeInOut">
+               ليست كلمة
+             </div>
+          )}
           {activeRowCells}
         </div>
       );
@@ -207,7 +315,7 @@ export default function WordleGame({
 
   const getKeyClass = (char: string) => {
     const status = letterStatuses[char];
-    const base = "flex-1 min-w-0 h-12 sm:h-14 font-black text-[15px] sm:text-lg transition-all active:scale-95 flex items-center justify-center p-0 border-b-2 ";
+    const base = "flex-1 min-w-0 h-11 sm:h-13 font-black text-sm sm:text-lg rounded-lg sm:rounded-xl transition-all active:scale-95 flex items-center justify-center p-0 border-b-2 ";
     if (status === 'correct') return base + "bg-green-500 text-white border-green-600 shadow-sm";
     if (status === 'present') return base + "bg-yellow-400 text-brown-dark border-yellow-500 shadow-sm";
     if (status === 'absent') return base + "bg-gray-300 text-gray-500 border-gray-400 opacity-60 line-through";
@@ -226,6 +334,32 @@ export default function WordleGame({
     if (playSound) playSound("pop");
     setGuess(prev => prev.slice(0, -1));
   };
+
+  useEffect(() => {
+    if (room.gameState !== "wordle_playing") return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input field (e.g. chat)
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        handleGuessSubmit();
+      } else if (e.key === 'Backspace') {
+        handleBackspace();
+      } else {
+        const char = e.key;
+        // Check if the typed character is an Arabic letter in our keys
+        if (ARABIC_KEYS.flat().includes(char)) {
+          handleKeyClick(char);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [room.gameState, guess, handleGuessSubmit]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -347,14 +481,39 @@ export default function WordleGame({
             {room.gameState === "wordle_playing" && (
               <div className="flex flex-col gap-3 w-full justify-center items-center">
                 <div className="w-full max-w-lg bg-emerald-50/50 flex flex-col items-center relative">
-                  {renderGuesses(myGuesses)}
+                  {/* Grid Container */}
+                  <div className="relative inline-block w-full max-w-sm mx-auto mb-2">
+                    <div className="flex flex-col gap-1 justify-center items-center w-full">
+                       {renderGuesses(myGuesses)}
+                    </div>
+                    
+                    {/* Hint Button */}
+                    {!room.wordle?.gameOver && nextHintIdx !== -1 && (
+                      <button
+                        onClick={requestHint}
+                        disabled={hintCooldown > 0}
+                        className={`absolute -bottom-2 -right-2 sm:-right-4 w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-transform z-10 ${
+                          hintCooldown > 0 
+                            ? 'bg-gray-300 border-gray-400 cursor-not-allowed opacity-80' 
+                            : 'bg-yellow-400 border-yellow-600 hover:scale-110 active:scale-95'
+                        }`}
+                      >
+                        💡
+                        {hintCooldown > 0 && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full text-white text-sm font-black">
+                            {hintCooldown}
+                          </div>
+                        )}
+                      </button>
+                    )}
+                  </div>
                   
-                  <div className="bg-black/50 mt-1 w-full p-0.5 flex flex-col gap-3">
+                  <div className="bg-gray-100/90 dark:bg-black/40 mt-1 w-full p-1.5 sm:p-2.5 rounded-2xl flex flex-col gap-2">
 
                     {/* Custom Keyboard */}
-                    <div className="bg-gray-200 w-full flex flex-col gap-1 sm:gap-1.5 overflow-hidden" dir="rtl">
+                    <div className="bg-gray-200/90 p-1.5 sm:p-2 rounded-2xl w-full flex flex-col gap-1.5 sm:gap-2 overflow-hidden shadow-inner" dir="rtl">
                       {ARABIC_KEYS.map((row, rIdx) => (
-                        <div key={rIdx} className="flex gap-[2px] sm:gap-1 justify-center w-full">
+                        <div key={rIdx} className="flex gap-1 sm:gap-1.5 justify-center w-full">
                           {row.map((char) => (
                             <button
                               key={char}
@@ -366,7 +525,7 @@ export default function WordleGame({
                           ))}
                         </div>
                       ))}
-                      <div className="flex gap-2 mt-2 w-full justify-center">
+                      <div className="flex gap-2 mt-1.5 w-full justify-center">
                         <button
                           onClick={handleBackspace}
                           className="flex-1 bg-red-100 text-red-700 border-b-4 border-red-300 hover:bg-red-200 h-10 md:h-12 rounded-xl font-bold text-sm md:text-base active:scale-95 transition-all flex items-center justify-center gap-1"
