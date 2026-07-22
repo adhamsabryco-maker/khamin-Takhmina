@@ -10587,10 +10587,12 @@ if (data.connectFourWordsRewardLevel != null) {
     if (typeof (window as any).adBreak === "function") {
       try {
         let adViewed = false;
+        let adStarted = false;
         (window as any).adBreak({
           type: "reward",
           name: "wordle_hint",
           beforeAd: () => {
+            adStarted = true;
             Howler.mute(true);
             if (onStart) onStart();
           },
@@ -10606,9 +10608,15 @@ if (data.connectFourWordsRewardLevel != null) {
             callback();
           },
           adDismissed: () => {
-            if (!adViewed) {
+            if (!adViewed && adStarted) {
               showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
             }
+          },
+          adBreakDone: (placementInfo: any) => {
+             if (placementInfo && placementInfo.breakStatus !== 'viewed' && !adStarted) {
+                // If ad didn't start (not ready, capped, error), just fallback to giving reward.
+                callback();
+             }
           }
         });
       } catch (err) {
