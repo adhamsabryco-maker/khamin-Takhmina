@@ -492,7 +492,7 @@ export default function WordleGame({
                       <button
                         onClick={requestHint}
                         disabled={hintCooldown > 0}
-                        className={`absolute -bottom-2 -right-2 sm:-right-4 w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-transform z-10 ${
+                        className={`absolute -bottom-2 right-2 sm:right-2 w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-transform z-10 ${
                           hintCooldown > 0 
                             ? 'bg-gray-300 border-gray-400 cursor-not-allowed opacity-80' 
                             : 'bg-yellow-400 border-yellow-600 hover:scale-110 active:scale-95'
