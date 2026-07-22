@@ -402,6 +402,7 @@ const SOUNDS = {
   clockTicking: "/sounds/clock-ticking.mp3",
   handXFill: "/sounds/hand-x-fill.mp3",
   connect4Fall: "/sounds/playing-connect-4.mp3",
+  connect4PickPiece: "/sounds/connect-4-pick-piece.mp3",
   luckyReels: "/sounds/lucky-reels-sound-effect.mp3",
   spinStart: "/sounds/lucky-reels-sound-effect.mp3",
   proArrival: "/sounds/proArrival.mp3",
@@ -24320,7 +24321,7 @@ const renderBombPartyRewardBar = () => {
                           <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
                             {truncateName(topPlayers[1].name)}
                           </div>
-                          <div className="w-full rank-2-bar h-22 md:h-24 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-0.5">
+                          <div className="w-full rank-2-bar h-22 md:h-24 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.5 md:gap-1">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5">
                               Lvl {limit99(getLevel(topPlayers[1].xp || 0))}
                             </div>
@@ -24331,15 +24332,6 @@ const renderBombPartyRewardBar = () => {
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.5 flex flex-wrap items-center justify-center gap-1">
                               <span>{limit99(topPlayers[1].streak || 0)} 🔥</span>
                               <span>{limit99(topPlayers[1].likes || 0)} ❤️</span>
-                              <span>{limit99(topPlayers[1].busCompleteWins || 0)} 🚌</span>
-                              <span>{limit99(topPlayers[1].xoWins || 0)} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
-                              <span>{limit99(topPlayers[1].handWins || 0)} 🖐</span>
-                              <span>{limit99(topPlayers[1].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
-                              <span>{limit99(topPlayers[1].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
-                              <span>{limit99(topPlayers[1].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
-                              <span>{limit99(topPlayers[1].bombPartyWins || 0)} 💣</span>
-                              <span>{limit99(topPlayers[1].wordleWins || 0)} <img src="/word-le-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
-                              <span>{limit99(topPlayers[1].connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -24391,15 +24383,6 @@ const renderBombPartyRewardBar = () => {
                             <div className="text-[7px] md:text-[9px] font-black text-black/80 px-1 md:px-2 py-1 flex flex-wrap items-center justify-center gap-1">
                               <span>{limit99(topPlayers[0].streak || 0)} 🔥</span>
                               <span>{limit99(topPlayers[0].likes || 0)} ❤️</span>
-                              <span>{limit99(topPlayers[0].busCompleteWins || 0)} 🚌</span>
-                              <span>{limit99(topPlayers[0].xoWins || 0)} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
-                              <span>{limit99(topPlayers[0].handWins || 0)} 🖐</span>
-                              <span>{limit99(topPlayers[0].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
-                              <span>{limit99(topPlayers[0].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
-                              <span>{limit99(topPlayers[0].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
-                              <span>{limit99(topPlayers[0].bombPartyWins || 0)} 💣</span>
-                              <span>{limit99(topPlayers[0].wordleWins || 0)} <img src="/word-le-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
-                              <span>{limit99(topPlayers[0].connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>
@@ -24434,7 +24417,7 @@ const renderBombPartyRewardBar = () => {
                           <div className="text-[10px] md:text-xs font-black text-main truncate w-full text-center max-w-[80px] md:max-w-[100px]">
                             {truncateName(topPlayers[2].name)}
                           </div>
-                          <div className="w-full rank-3-bar h-20 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-0.2 md:gap-0.2">
+                          <div className="w-full rank-3-bar h-20 md:h-20 rounded-t-xl mt-1 shadow-inner border-t-4 flex flex-col items-center justify-center gap-1 md:gap-1.5">
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-2 py-0.2 pt-0.2">
                               Lvl {limit99(getLevel(topPlayers[2].xp || 0))}
                             </div>
@@ -24445,15 +24428,6 @@ const renderBombPartyRewardBar = () => {
                             <div className="text-[8px] md:text-[9px] font-black text-black/80 px-1 md:px-2 py-0.2 pt-0.2 flex flex-wrap items-center justify-center gap-1">
                               <span>{limit99(topPlayers[2].streak || 0)} 🔥</span>
                               <span>{limit99(topPlayers[2].likes || 0)} ❤️</span>
-                              <span>{limit99(topPlayers[2].busCompleteWins || 0)} 🚌</span>
-                              <span>{limit99(topPlayers[2].xoWins || 0)} <span className="text-red-500">X</span><span className="text-green-600">O</span></span>
-                              <span>{limit99(topPlayers[2].handWins || 0)} 🖐</span>
-                              <span>{limit99(topPlayers[2].iqWins || 0)} <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span></span>
-                              <span>{limit99(topPlayers[2].dotsWins || 0)} <img src="/dots-and-boxes-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
-                              <span>{limit99(topPlayers[2].speedCupsWins || 0)} <img src="/speed-cups/speed-cups-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
-                              <span>{limit99(topPlayers[2].bombPartyWins || 0)} 💣</span>
-                              <span>{limit99(topPlayers[2].wordleWins || 0)} <img src="/word-le-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
-                              <span>{limit99(topPlayers[2].connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-2 h-2 inline object-contain items-center" /></span>
                             </div>
                           </div>
                         </div>

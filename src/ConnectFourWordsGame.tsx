@@ -379,7 +379,7 @@ export default function ConnectFourWordsGame({
                                 onClick={() => {
                                     if (isMyTurn) {
                                         setSelectedLetter(char);
-                                        if (playSound) playSound("pop");
+                                        if (playSound) playSound("connect4PickPiece");
                                     }
                                 }}
                                 disabled={!isMyTurn || ((room.adPausedPlayersArray?.length || 0) > 0)}
