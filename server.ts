@@ -7347,7 +7347,7 @@ async function startServer() {
         if (room.gameState === "wordle_playing" && room.wordle && !room.wordle.gameOver) {
           const botKey = roomId + "_wordle_bot_guess_timeout";
           if (!botTimeouts.has(botKey)) {
-            const delay = 35000 + Math.random() * 30000;
+            const delay = 60000 + Math.random() * 30000;
             const timeout = setTimeout(() => {
               botTimeouts.delete(botKey);
               const r = rooms.get(roomId);
@@ -7392,15 +7392,29 @@ async function startServer() {
               }
 
               let chosenWordObj = pool[Math.floor(Math.random() * pool.length)];
-
+              
               const currentTurnCount = botGuesses.length;
               const targetNormal = normalizeEgyptian(r.wordle.targetWord);
               
-              const findTargetChance = [0.01, 0.04, 0.08, 0.12, 0.16, 0.22][Math.min(currentTurnCount, 5)];
-              if (Math.random() < findTargetChance) {
-                const targetObj = NORMALIZED_BOMB_PARTY_WORDS.find(w => w.normalized === targetNormal);
-                if (targetObj) {
-                  chosenWordObj = targetObj;
+              const elapsedTime = Date.now() - (r.wordle.startTime || Date.now());
+              const timeRemaining = (10 * 60 * 1000) - elapsedTime;
+              const isLastMinute = timeRemaining < 60 * 1000;
+              const isLastGuess = currentTurnCount >= 5;
+              
+              if (isLastMinute || isLastGuess) {
+                const findTargetChance = isLastMinute ? 0.75 : 0.25;
+                if (Math.random() < findTargetChance) {
+                  const targetObj = NORMALIZED_BOMB_PARTY_WORDS.find(w => w.normalized === targetNormal);
+                  if (targetObj) {
+                    chosenWordObj = targetObj;
+                  }
+                }
+              }
+              
+              if (chosenWordObj && chosenWordObj.normalized === targetNormal && !isLastMinute && !isLastGuess) {
+                const altPool = pool.filter(w => w.normalized !== targetNormal);
+                if (altPool.length > 0) {
+                  chosenWordObj = altPool[Math.floor(Math.random() * altPool.length)];
                 }
               }
 
@@ -14696,6 +14710,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
               clearInterval(interval);
               return;
             }
+            if (r.wordle.pausedAt) return; // Do not tick while paused
             if (Date.now() - r.wordle.startTime > 10 * 60 * 1000) {
               // Time is up, it's a draw
               r.wordle.gameOver = true;
@@ -14709,6 +14724,25 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         
         io.to(roomId).emit("room_update", room);
         handleBotEvent(roomId, "room_update", room);
+      });
+
+      socket.on("wordle_pause", (roomId) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "wordle_playing" || room.wordle.gameOver) return;
+        if (!room.wordle.pausedAt) {
+           room.wordle.pausedAt = Date.now();
+           io.to(roomId).emit("room_update", room);
+        }
+      });
+      
+      socket.on("wordle_resume", (roomId) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "wordle_playing" || room.wordle.gameOver) return;
+        if (room.wordle.pausedAt) {
+           room.wordle.startTime += (Date.now() - room.wordle.pausedAt);
+           room.wordle.pausedAt = null;
+           io.to(roomId).emit("room_update", room);
+        }
       });
 
       socket.on("wordle_guess", ({ roomId, word }) => {
