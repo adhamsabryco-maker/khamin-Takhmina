@@ -26486,10 +26486,10 @@ const renderBombPartyRewardBar = () => {
                       dir="rtl"
                     >
                       <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">
-                        {room.players[1]?.name || "لاعب 2"}
+                        {room.players[0]?.name || "لاعب 1"}
                       </span>
                       <span className="text-sm font-black text-green-600">
-                        🏆 {room.players[1]?.busCompleteWins || 0}
+                        🏆 {room.players[0]?.busCompleteWins || 0}
                       </span>
                     </div>
 
@@ -26519,16 +26519,15 @@ const renderBombPartyRewardBar = () => {
                         )}
                       </div>
                     )}
-
                     <div
                       className="flex flex-col items-center bg-white border-2 border-green-200 px-3 py-0.5 rounded-xl shadow-sm min-w-[70px]"
                       dir="rtl"
                     >
                       <span className="text-[10px] font-bold text-gray-400 max-w-[80px] truncate">
-                        {room.players[0]?.name || "لاعب 1"}
+                        {room.players[1]?.name || "لاعب 2"}
                       </span>
                       <span className="text-sm font-black text-green-600">
-                        🏆 {room.players[0]?.busCompleteWins || 0}
+                        🏆 {room.players[1]?.busCompleteWins || 0}
                       </span>
                     </div>
                   </div>
