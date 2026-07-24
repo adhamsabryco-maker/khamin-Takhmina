@@ -2154,6 +2154,9 @@ async function startServer() {
         connectFourWordsWins?: number;
         connectFourWordsRewardLevel?: number;
         connectFourWordsMatchPoints?: number;
+        spaceWarWins?: number;
+        spaceWarRewardLevel?: number;
+        spaceWarMatchPoints?: number;
       }
     >();
 
@@ -2437,6 +2440,15 @@ async function startServer() {
     } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN connectFourWordsMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN spaceWarWins INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN spaceWarRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN spaceWarMatchPoints INTEGER DEFAULT 0`);
     } catch (e) {}
 
 
@@ -2993,8 +3005,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints, @connectFourWordsWins, @connectFourWordsRewardLevel, @connectFourWordsMatchPoints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints, spaceWarWins, spaceWarRewardLevel, spaceWarMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints, @connectFourWordsWins, @connectFourWordsRewardLevel, @connectFourWordsMatchPoints, @spaceWarWins, @spaceWarRewardLevel, @spaceWarMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3296,6 +3308,9 @@ async function startServer() {
           connectFourWordsWins: player.connectFourWordsWins || 0,
           connectFourWordsRewardLevel: player.connectFourWordsRewardLevel || 1,
           connectFourWordsMatchPoints: player.connectFourWordsMatchPoints || 0,
+          spaceWarWins: player.spaceWarWins || 0,
+          spaceWarRewardLevel: player.spaceWarRewardLevel || 1,
+          spaceWarMatchPoints: player.spaceWarMatchPoints || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3393,6 +3408,9 @@ async function startServer() {
           connectFourWordsWins: player.connectFourWordsWins || 0,
           connectFourWordsRewardLevel: player.connectFourWordsRewardLevel || 1,
           connectFourWordsMatchPoints: player.connectFourWordsMatchPoints || 0,
+          spaceWarWins: player.spaceWarWins || 0,
+          spaceWarRewardLevel: player.spaceWarRewardLevel || 1,
+          spaceWarMatchPoints: player.spaceWarMatchPoints || 0,
         });
       }
     });
@@ -3513,6 +3531,9 @@ async function startServer() {
             connectFourWordsWins: row.connectFourWordsWins || 0,
             connectFourWordsRewardLevel: row.connectFourWordsRewardLevel || 1,
             connectFourWordsMatchPoints: row.connectFourWordsMatchPoints || 0,
+            spaceWarWins: row.spaceWarWins || 0,
+            spaceWarRewardLevel: row.spaceWarRewardLevel || 1,
+            spaceWarMatchPoints: row.spaceWarMatchPoints || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -3927,6 +3948,7 @@ async function startServer() {
             bombPartyWins: p.bombPartyWins || 0,
             wordleWins: p.wordleWins || 0,
             connectFourWordsWins: p.connectFourWordsWins || 0,
+            spaceWarWins: p.spaceWarWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -4924,6 +4946,9 @@ async function startServer() {
             connectFourWordsWins: p1ServerPlayer
               ? p1ServerPlayer.connectFourWordsWins || 0
               : match.p1.connectFourWordsWins || 0,
+            spaceWarWins: p1ServerPlayer
+              ? p1ServerPlayer.spaceWarWins || 0
+              : match.p1.spaceWarWins || 0,
           },
           {
             id: match.p2.socket.id,
@@ -5000,6 +5025,9 @@ async function startServer() {
             connectFourWordsWins: p2ServerPlayer
               ? p2ServerPlayer.connectFourWordsWins || 0
               : match.p2.connectFourWordsWins || 0,
+            spaceWarWins: p2ServerPlayer
+              ? p2ServerPlayer.spaceWarWins || 0
+              : match.p2.spaceWarWins || 0,
           },
         ],
         gameState: "waiting",
@@ -5090,6 +5118,7 @@ async function startServer() {
             bombPartyWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             wordleWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             connectFourWordsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            spaceWarWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             isBot: true,
             persona: botPersona.personality,
             selectedFrame: "",
@@ -6017,6 +6046,108 @@ async function startServer() {
               startTime: null
             };
             io.to(roomId).emit("room_update", room);
+          } else if (mode === "space_war") {
+            room.gameState = "space_war_setup";
+            room.category = "space_war";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            
+            const readyPlayers: string[] = [];
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              readyPlayers.push(bot.id);
+            }
+            
+            const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w: any) => 
+              w.normalized.length >= 3 && 
+              w.normalized.length <= 5 && 
+              !w.original.includes(" ") && 
+              !w.normalized.includes(" ") && 
+              !w.original.includes("-")
+            );
+            room.spaceWar = {
+              p1Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p2Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p1Revealed: [],
+              p2Revealed: [],
+              readyPlayers,
+              startTime: null,
+              winnerId: null,
+              rematchRequestedBy: [],
+              gameOver: false
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "iq") {
+            room.iqLevel = 1;
+            room.iqMatchWins = {};
+            initializeIQGame(room);
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "dots") {
+            room.dotsLevel = 1;
+            room.dotsMatchWins = {};
+            initializeDotsGame(room);
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "speed_cups") {
+            room.speedCupsLevel = 1;
+            room.speedCupsMatchWins = {};
+            initializeSpeedCupsGame(room);
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          
+          
+          } else if (mode === "connect_four_words") {
+            room.gameState = "connect_four_words_setup";
+            room.category = "connect_four_words";
+            // Find a 4 letter word
+            const validWords = NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 4);
+            const targetWordObj = validWords[Math.floor(Math.random() * validWords.length)];
+            const targetWord = targetWordObj ? targetWordObj.original : "كرسي";
+            
+            room.connectFourWords = {
+              targetWord,
+              letters: targetWord.split(''), // Not shuffled for now
+              board: Array(6).fill(null).map(() => Array(7).fill({ playerId: null, letter: null })),
+              turn: room.players[0].id,
+              winnerId: null,
+              winningCells: null,
+              readyPlayers: [],
+              rematchRequestedBy: [],
+              startTime: null
+            };
+            io.to(roomId).emit("room_update", room);
+          } else if (mode === "space_war") {
+            room.gameState = "space_war_setup";
+            room.category = "space_war";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            
+            const readyPlayers: string[] = [];
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              readyPlayers.push(bot.id);
+            }
+            
+            const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w: any) => w.normalized.length >= 3 && w.normalized.length <= 5 && !w.original.includes(" ") && !w.normalized.includes(" ") && !w.original.includes("-"));
+            room.spaceWar = {
+              p1Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p2Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              readyPlayers,
+              startTime: null,
+              winnerId: null,
+              rematchRequestedBy: [],
+              gameOver: false
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) handleBotEvent(roomId, "room_update", room);
 
           } else if (mode === "wordle") {
             room.gameState = "wordle_setup";
@@ -6713,6 +6844,23 @@ async function startServer() {
           })),
         );
         return;
+      }
+
+      
+      if (room.gameState === "space_war_playing" && !room.spaceWar.gameOver) {
+         const jamKey = roomId + "_spacewar_jam_timeout";
+         if (!botTimeouts.has(jamKey)) {
+             const jamDelay = 5000 + Math.random() * 10000;
+             const timeout = setTimeout(() => {
+                 botTimeouts.delete(jamKey);
+                 const r = rooms.get(roomId);
+                 if (r && r.gameState === "space_war_playing" && !r.spaceWar.gameOver) {
+                     io.to(roomId).emit("space_war_powerup", { roomId: r.id, type: 'jam', from: botPlayer.id });
+                     handleBotEvent(roomId, "room_update", r); // Re-trigger for next jam
+                 }
+             }, jamDelay);
+             botTimeouts.set(jamKey, timeout);
+         }
       }
 
       if (event === "bus_complete_letter_change_requested") {
@@ -11555,6 +11703,9 @@ async function startServer() {
               dotsWins: serverPlayer.dotsWins || 0,
               speedCupsWins: serverPlayer.speedCupsWins || 0,
               bombPartyWins: serverPlayer.bombPartyWins || 0,
+              wordleWins: serverPlayer.wordleWins || 0,
+              connectFourWordsWins: serverPlayer.connectFourWordsWins || 0,
+              spaceWarWins: serverPlayer.spaceWarWins || 0,
             };
             room.players.push(player);
 
@@ -11676,6 +11827,29 @@ async function startServer() {
               startTime: null
             };
             io.to(roomId).emit("room_update", room);
+          } else if (mode === "space_war") {
+            room.gameState = "space_war_setup";
+            room.category = "space_war";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            
+            const readyPlayers: string[] = [];
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              readyPlayers.push(bot.id);
+            }
+            
+            const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w: any) => w.normalized.length >= 3 && w.normalized.length <= 5 && !w.original.includes(" ") && !w.normalized.includes(" ") && !w.original.includes("-"));
+            room.spaceWar = {
+              p1Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p2Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              readyPlayers,
+              startTime: null,
+              winnerId: null,
+              rematchRequestedBy: [],
+              gameOver: false
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) handleBotEvent(roomId, "room_update", room);
 
           } else if (mode === "wordle") {
             room.gameState = "wordle_setup";
@@ -14628,11 +14802,9 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
               // Add wins
               const s = room.players[winnerIndex].serial;
               try {
-                  db.prepare('UPDATE players SET connectFourWordsWins = connectFourWordsWins + 1, connectFourWordsMatchPoints = connectFourWordsMatchPoints + 10 WHERE serial = ?').run(s);
-                  room.players[winnerIndex].connectFourWordsWins = (room.players[winnerIndex].connectFourWordsWins || 0) + 1;
                   const dbP = allPlayers.get(s);
                   if (dbP) {
-                    dbP.connectFourWordsWins = room.players[winnerIndex].connectFourWordsWins;
+                    dbP.connectFourWordsWins = (dbP.connectFourWordsWins || 0) + 1;
                     dbP.connectFourWordsMatchPoints = (dbP.connectFourWordsMatchPoints || 0) + 10;
                     savePlayerData(s);
                     io.to(room.players[winnerIndex].id).emit("player_data_update", dbP);
@@ -15011,10 +15183,15 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             room.gameState === "iq_playing" ||
             room.gameState === "iq_finished" ||
             room.gameState === "dots_finished" ||
-            room.gameState === "speed_cups_finished")
+            room.gameState === "speed_cups_finished" ||
+            room.gameState === "space_war_finished" ||
+            room.gameState === "bomb_party_finished" ||
+            room.gameState === "connect_four_words_finished" ||
+            room.gameState === "wordle_finished")
         ) {
           // Reset room state
           room.gameState = "waiting";
+          room.spaceWar = null;
           room.timer = 120; // Increased timer for selection
           room.winnerId = null;
           room.isPaused = false;
@@ -17335,6 +17512,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             bombPartyWins: targetPlayer.bombPartyWins || 0,
             wordleWins: targetPlayer.wordleWins || 0,
             connectFourWordsWins: targetPlayer.connectFourWordsWins || 0,
+            spaceWarWins: targetPlayer.spaceWarWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
@@ -17962,6 +18140,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             bombPartyWins: senderPlayerData.bombPartyWins || 0,
             wordleWins: senderPlayerData.wordleWins || 0,
             connectFourWordsWins: senderPlayerData.connectFourWordsWins || 0,
+            spaceWarWins: senderPlayerData.spaceWarWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -17997,6 +18176,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             bombPartyWins: myPlayerData.bombPartyWins || 0,
             wordleWins: myPlayerData.wordleWins || 0,
             connectFourWordsWins: myPlayerData.connectFourWordsWins || 0,
+            spaceWarWins: myPlayerData.spaceWarWins || 0,
                 score: 0,
                 helperCharge: 0,
                 isReady: false,
@@ -18029,6 +18209,286 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             player.intentionallyLeft = true;
             // We don't disconnect here, we let the client disconnect or navigate
           }
+        }
+      });
+
+      
+      socket.on("space_war_ready", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_setup" && room.spaceWar) {
+          if (!room.spaceWar.readyPlayers.includes(socket.id)) {
+            room.spaceWar.readyPlayers.push(socket.id);
+          }
+          if (room.spaceWar.readyPlayers.length === 2) {
+            room.gameState = "space_war_playing";
+            room.spaceWar.startTime = Date.now();
+            // Assign bot word if bot
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) handleBotEvent(roomId, "room_update", room);
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("space_war_bot_missed", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          const botPlayer = room.players.find((p) => p.isBot);
+          if (botPlayer) {
+            if (!room.spaceWar.p1Revealed) room.spaceWar.p1Revealed = [];
+            if (!room.spaceWar.p1Revealed.includes(index)) {
+              room.spaceWar.p1Revealed.push(index);
+              
+              // Check if Human's word is 100% revealed on Bot's side -> Bot failed to defend, Human Wins!
+              if (room.spaceWar.p1Word && room.spaceWar.p1Revealed.length >= room.spaceWar.p1Word.length) {
+                const humanPlayer = room.players.find((p) => !p.isBot);
+                room.gameState = "space_war_finished";
+                room.spaceWar.winnerId = humanPlayer ? humanPlayer.id : null;
+                room.spaceWar.gameOver = true;
+                
+                if (humanPlayer) {
+                   const p = allPlayers.get(humanPlayer.serial) as any;
+                   if (p) {
+                      p.spaceWarWins = (p.spaceWarWins || 0) + 1;
+                      p.spaceWarMatchPoints = (p.spaceWarMatchPoints || 0) + 10;
+                      savePlayerData(p.serial);
+                      socket.emit("player_data_update", p);
+                   }
+                }
+              }
+              io.to(roomId).emit("room_update", room);
+            }
+          }
+        }
+      });
+
+      socket.on("space_war_lose", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          const opponent = room.players.find((p) => p.id !== socket.id);
+          room.gameState = "space_war_finished";
+          room.spaceWar.winnerId = opponent ? opponent.id : null;
+          room.spaceWar.gameOver = true;
+          
+          if (opponent && !opponent.isBot) {
+             const p = allPlayers.get(opponent.serial) as any;
+             if (p) {
+                p.spaceWarWins = (p.spaceWarWins || 0) + 1;
+                p.spaceWarMatchPoints = (p.spaceWarMatchPoints || 0) + 10;
+                savePlayerData(p.serial);
+                const oppSocketId = playerSockets.get(opponent.serial);
+                if (oppSocketId) {
+                   io.to(oppSocketId).emit("player_data_update", p);
+                }
+             }
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("space_war_timeup", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          room.gameState = "space_war_finished";
+          room.spaceWar.gameOver = true;
+
+          const p1Count = (room.spaceWar.p1Revealed || []).length;
+          const p2Count = (room.spaceWar.p2Revealed || []).length;
+
+          // p1Revealed = letters collected at P2's board by P1. p2Revealed = letters collected at P1's board by P2.
+          if (p1Count > p2Count) {
+            // P1 collected more letters at P2's board -> P1 wins!
+            room.spaceWar.winnerId = room.players[0].id;
+          } else if (p2Count > p1Count) {
+            // P2 collected more letters at P1's board -> P2 wins!
+            room.spaceWar.winnerId = room.players[1] ? room.players[1].id : null;
+          } else {
+            // Equal -> Tie / Draw
+            room.spaceWar.winnerId = null;
+          }
+
+          if (room.spaceWar.winnerId) {
+            const winner = room.players.find((p) => p.id === room.spaceWar.winnerId);
+            if (winner && !winner.isBot) {
+              const p = allPlayers.get(winner.serial) as any;
+              if (p) {
+                p.spaceWarWins = (p.spaceWarWins || 0) + 1;
+                p.spaceWarMatchPoints = (p.spaceWarMatchPoints || 0) + 10;
+                savePlayerData(p.serial);
+                const winSocketId = playerSockets.get(winner.serial);
+                if (winSocketId) {
+                  io.to(winSocketId).emit("player_data_update", p);
+                }
+              }
+            }
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("claim_space_war_reward", ({ serial }) => {
+        const player = allPlayers.get(serial) as any;
+        if (player) {
+          const currentLevel = player.spaceWarRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          
+          if ((player.spaceWarMatchPoints || 0) >= targetPoints) {
+            player.spaceWarMatchPoints = (player.spaceWarMatchPoints || 0) - targetPoints;
+            player.spaceWarRewardLevel = currentLevel + 1;
+            
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            
+            player.xp = (player.xp || 0) + xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            for (const [helperId, amount] of Object.entries(helpersReward)) {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + amount;
+            }
+            
+            savePlayerData(serial);
+            socket.emit("player_data_update", player);
+            socket.emit("space_war_reward_claimed", {
+              newLevel: currentLevel + 1,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+
+      socket.on("space_war_powerup", ({ roomId, type }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          socket.to(roomId).emit("space_war_powerup_received", { senderId: socket.id, type });
+        }
+      });
+
+      socket.on("space_war_reveal_index", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          const isP1 = room.players[0].id === socket.id;
+          const key = isP1 ? "p2Revealed" : "p1Revealed";
+          const wordKey = isP1 ? "p2Word" : "p1Word";
+          if (!room.spaceWar[key]) room.spaceWar[key] = [];
+          if (!room.spaceWar[key].includes(index)) {
+            room.spaceWar[key].push(index);
+            
+            // Check if opponent's word is 100% revealed -> Emitting player failed to destroy opponent's word, so Opponent Wins!
+            const oppWordObj = room.spaceWar[wordKey];
+            if (oppWordObj && room.spaceWar[key].length >= oppWordObj.length) {
+              const opponent = room.players.find((p) => p.id !== socket.id);
+              room.gameState = "space_war_finished";
+              room.spaceWar.winnerId = opponent ? opponent.id : null;
+              room.spaceWar.gameOver = true;
+              
+              if (opponent && !opponent.isBot) {
+                 const p = allPlayers.get(opponent.serial) as any;
+                 if (p) {
+                    p.spaceWarWins = (p.spaceWarWins || 0) + 1;
+                    p.spaceWarMatchPoints = (p.spaceWarMatchPoints || 0) + 10;
+                    savePlayerData(p.serial);
+                    const oppSocketId = playerSockets.get(opponent.serial);
+                    if (oppSocketId) {
+                       io.to(oppSocketId).emit("player_data_update", p);
+                    }
+                 }
+              }
+            }
+            io.to(roomId).emit("room_update", room);
+          }
+        }
+      });
+
+      socket.on("space_war_unreveal_index", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          const isP1 = room.players[0].id === socket.id;
+          const key = isP1 ? "p1Revealed" : "p2Revealed";
+          if (room.spaceWar[key]) {
+            room.spaceWar[key] = room.spaceWar[key].filter((i: number) => i !== index);
+            io.to(roomId).emit("room_update", room);
+          }
+        }
+      });
+
+      socket.on("request_space_war_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_finished" && room.spaceWar) {
+          if (!room.spaceWar.rematchRequestedBy.includes(socket.id)) {
+            room.spaceWar.rematchRequestedBy.push(socket.id);
+          }
+          if (room.spaceWar.rematchRequestedBy.length === 2) {
+            room.gameState = "space_war_setup";
+            const bot = room.players.find((p) => p.isBot);
+            const readyPlayers = bot ? [bot.id] : [];
+            const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => 
+              w.normalized.length >= 4 && 
+              w.normalized.length <= 7 && 
+              !w.original.includes(" ") && 
+              !w.normalized.includes(" ") && 
+              !w.original.includes("-")
+            );
+            room.spaceWar = {
+              p1Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p2Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p1Revealed: [],
+              p2Revealed: [],
+              readyPlayers,
+              startTime: null,
+              winnerId: null,
+              rematchRequestedBy: [],
+              gameOver: false
+            };
+            if (bot) handleBotEvent(roomId, "room_update", room);
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      
+      socket.on("bot_event", ({ roomId, type, gameType }) => {
+        const room = rooms.get(roomId);
+        if (!room) return;
+        const botPlayer = room.players.find((p) => p.isBot);
+        if (!botPlayer) return;
+
+        if (type === "play_again" && gameType === "space_war") {
+           // Wait 1-2 seconds then bot plays again
+           setTimeout(() => {
+              const r = rooms.get(roomId);
+              if (!r) return;
+              if (r.gameState === "space_war_finished") {
+                  if (!r.spaceWar.rematchRequestedBy) r.spaceWar.rematchRequestedBy = [];
+                  if (!r.spaceWar.rematchRequestedBy.includes(botPlayer.id)) {
+                     r.spaceWar.rematchRequestedBy.push(botPlayer.id);
+                     if (r.spaceWar.rematchRequestedBy.length === 2) {
+                        r.gameState = "space_war_playing";
+                        r.spaceWar.startTime = Date.now();
+                        r.spaceWar.winnerId = null;
+                        r.spaceWar.rematchRequestedBy = [];
+                        r.spaceWar.gameOver = false;
+                        
+                        r.spaceWar.p1Revealed = [];
+                        r.spaceWar.p2Revealed = [];
+                        // Pick new words
+                        const swWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w: any) => w.normalized.length >= 3 && w.normalized.length <= 5 && !w.original.includes(" ") && !w.normalized.includes(" ") && !w.original.includes("-"));
+                        const p1WordObj = swWords[Math.floor(Math.random() * swWords.length)];
+                        const p2WordObj = swWords[Math.floor(Math.random() * swWords.length)];
+                        r.spaceWar.p1Word = p1WordObj.original;
+                        r.spaceWar.p2Word = p2WordObj.original;
+                        
+                        io.to(roomId).emit("room_update", r);
+                        handleBotEvent(roomId, "room_update", r);
+                     } else {
+                        io.to(roomId).emit("room_update", r);
+                     }
+                  }
+              }
+           }, 1500);
         }
       });
 
