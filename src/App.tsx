@@ -395,6 +395,7 @@ const SOUNDS = {
   bell: "/sounds/bell.mp3",
   correctAnswer: "/sounds/correct-answer.mp3",
   wrong: "/sounds/wrong.mp3",
+  alarm: "/sounds/alarm.mp3",
   message: "/sounds/message.mp3",
   clickOpen: "/sounds/click-open.mp3",
   clickClose: "/sounds/click-close.mp3",
@@ -402,6 +403,8 @@ const SOUNDS = {
   clockTicking: "/sounds/clock-ticking.mp3",
   handXFill: "/sounds/hand-x-fill.mp3",
   connect4Fall: "/sounds/playing-connect-4.mp3",
+  "rocket-laser-single-shoot": "/sounds/rocket-laser-single-shoot.mp3",
+  "space-war-rocket-level-upgrade": "/sounds/space-war-rocket-level-upgrade.mp3",
   connect4PickPiece: "/sounds/connect-4-pick-piece.mp3",
   luckyReels: "/sounds/lucky-reels-sound-effect.mp3",
   spinStart: "/sounds/lucky-reels-sound-effect.mp3",
@@ -415,6 +418,7 @@ const SOUNDS = {
   boomSingleTick: "/sounds/boom-single-tick.mp3",
   bombFuse: "/sounds/bomb-fuse.mp3",
   bombExplosion: "/sounds/bomb-explosion.mp3",
+  boomingExplosion: "/sounds/booming-explosion.mp3",
 };
 
 interface ThemeConfig {
@@ -602,6 +606,12 @@ interface Player {
   xoWins?: number;
   handWins?: number;
   iqWins?: number;
+  dotsWins?: number;
+  speedCupsWins?: number;
+  bombPartyWins?: number;
+  wordleWins?: number;
+  connectFourWordsWins?: number;
+  spaceWarWins?: number;
   selectedSelectionMode?: string;
 }
 
@@ -625,7 +635,10 @@ interface Room {
     | "hand_playing"
     | "hand_finished"
     | "bomb_party_playing"
-    | "bomb_party_finished";
+    | "bomb_party_finished"
+    | "space_war_setup"
+    | "space_war_playing"
+    | "space_war_finished";
   bombParty?: any;
   handGrid?: (string | null)[];
   handPickerId?: string | null;
@@ -853,6 +866,7 @@ const isSameWeek = (d1: number, d2: number) => {
 import { CheckoutPage } from "./components/CheckoutPage";
 import WordleGame from "./WordleGame";
 import ConnectFourWordsGame from "./ConnectFourWordsGame";
+import SpaceWarGame from "./SpaceWarGame";
 
 function normalizeEgyptian(text: string): string {
   if (!text) return "";
@@ -2337,7 +2351,7 @@ export default function App() {
   });
 
   const [leaderboardFilter, setLeaderboardFilter] = useState<
-    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "speedCups" | "bombParty" | "wordle" | "connectFourWords" | "wins" | "streak" | "likes"
+    "all" | "busComplete" | "xo" | "hand" | "iq" | "dots" | "speedCups" | "bombParty" | "wordle" | "connectFourWords" | "spaceWar" | "wins" | "streak" | "likes"
   >("all");
   const [leaderboardVisibleCount, setLeaderboardVisibleCount] = useState(10);
 
@@ -2368,6 +2382,8 @@ export default function App() {
       sorted.sort((a, b) => (b.wordleWins || 0) - (a.wordleWins || 0));
     } else if (leaderboardFilter === "connectFourWords") {
       sorted.sort((a, b) => (b.connectFourWordsWins || 0) - (a.connectFourWordsWins || 0));
+    } else if (leaderboardFilter === "spaceWar") {
+      sorted.sort((a, b) => (b.spaceWarWins || 0) - (a.spaceWarWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -4743,6 +4759,7 @@ export default function App() {
             type: "reward",
             name: "lucky_wheel_spin",
             beforeAd: () => {
+            (window as any).adStartTime = Date.now();
               clearTimeout(adTimeout);
               if (adFinished) setMockAdProviderState(null);
               adFinished = false;
@@ -7446,6 +7463,14 @@ if (data.connectFourWordsRewardLevel != null) {
         setConnectFourWordsMatchPoints(data.connectFourWordsMatchPoints);
         localStorage.setItem("khamin_cfw_match_points", data.connectFourWordsMatchPoints.toString());
       }
+      if (data.spaceWarRewardLevel != null) {
+        setSpaceWarRewardLevel(data.spaceWarRewardLevel);
+        localStorage.setItem("khamin_space_war_reward_level", data.spaceWarRewardLevel.toString());
+      }
+      if (data.spaceWarMatchPoints != null) {
+        setSpaceWarMatchPoints(data.spaceWarMatchPoints);
+        localStorage.setItem("khamin_space_war_match_points", data.spaceWarMatchPoints.toString());
+      }
       if (data.likes != null) {
         setLikes(data.likes);
         localStorage.setItem("khamin_likes", data.likes.toString());
@@ -9675,7 +9700,7 @@ if (data.connectFourWordsRewardLevel != null) {
 
   useEffect(() => {
     if (room && room.gameState !== previousGameStateRef.current) {
-      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished" || room.gameState === "bomb_party_finished" || room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished") {
+      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished" || room.gameState === "bomb_party_finished" || room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished" || room.gameState === "space_war_finished") {
         if (!hasProPackage) {
           matchesPlayedRef.current += 1;
           if (matchesPlayedRef.current >= 3) {
@@ -10565,6 +10590,14 @@ if (data.connectFourWordsRewardLevel != null) {
     setIsWatchingCategoryAd(false);
     setShowCategoryAdButton(false);
     setShowMatchIntro(false);
+    setBusAnswers({
+      boy: "",
+      girl: "",
+      animal: "",
+      plant: "",
+      inanimate: "",
+      country: "",
+    });
     setReadyPowerUps([]);
     setCooldowns({
       quick_guess: 0,
@@ -10609,7 +10642,13 @@ if (data.connectFourWordsRewardLevel != null) {
           },
           adDismissed: () => {
             if (!adViewed && adStarted) {
-              showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+               const playTime = Date.now() - (window as any).adStartTime;
+               if (playTime < 2000) {
+                 // Closed too fast, probably an error
+                 callback();
+               } else {
+                 showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+               }
             }
           },
           adBreakDone: (placementInfo: any) => {
@@ -12753,6 +12792,13 @@ if (data.connectFourWordsRewardLevel != null) {
                         <span className="text-gray-500 font-extrabold">تخمينة 4 حروف</span>
                       </span>
                       <span className="font-black text-brown-dark">{data.connectFourWordsWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span className="w-3.5 h-3.5 inline text-center">🚀</span>
+                        <span className="text-gray-500 font-extrabold">حرب الفضاء</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.spaceWarWins || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -21844,11 +21890,17 @@ if (data.connectFourWordsRewardLevel != null) {
   const [wordleMatchPoints, setWordleMatchPoints] = useState(
     () => parseInt(localStorage.getItem("khamin_wordle_match_points") || "0") || 0
   );
-const [connectFourWordsRewardLevel, setConnectFourWordsRewardLevel] = useState(
+  const [connectFourWordsRewardLevel, setConnectFourWordsRewardLevel] = useState(
     () => parseInt(localStorage.getItem("khamin_cfw_reward_level") || "1") || 1
   );
   const [connectFourWordsMatchPoints, setConnectFourWordsMatchPoints] = useState(
     () => parseInt(localStorage.getItem("khamin_cfw_match_points") || "0") || 0
+  );
+  const [spaceWarRewardLevel, setSpaceWarRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_space_war_reward_level") || "1") || 1
+  );
+  const [spaceWarMatchPoints, setSpaceWarMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_space_war_match_points") || "0") || 0
   );
 
   useEffect(() => {
@@ -21858,12 +21910,18 @@ const [connectFourWordsRewardLevel, setConnectFourWordsRewardLevel] = useState(
   useEffect(() => {
     localStorage.setItem("khamin_wordle_match_points", wordleMatchPoints.toString());
   }, [wordleMatchPoints]);
-useEffect(() => {
+  useEffect(() => {
     localStorage.setItem("khamin_cfw_reward_level", connectFourWordsRewardLevel.toString());
   }, [connectFourWordsRewardLevel]);
   useEffect(() => {
     localStorage.setItem("khamin_cfw_match_points", connectFourWordsMatchPoints.toString());
   }, [connectFourWordsMatchPoints]);
+  useEffect(() => {
+    localStorage.setItem("khamin_space_war_reward_level", spaceWarRewardLevel.toString());
+  }, [spaceWarRewardLevel]);
+  useEffect(() => {
+    localStorage.setItem("khamin_space_war_match_points", spaceWarMatchPoints.toString());
+  }, [spaceWarMatchPoints]);
 
   const [bombPartyRewardLevel, setBombPartyRewardLevel] = useState(
     () => parseInt(localStorage.getItem("khamin_bomb_reward_level") || "1") || 1
@@ -22106,6 +22164,77 @@ const renderBombPartyRewardBar = () => {
             </button>
           </div>
        </div>
+    );
+  };
+
+  const renderSpaceWarRewardBar = () => {
+    if (!room || (room.gameState !== "space_war_playing" && room.gameState !== "space_war_finished")) return null;
+
+    const currentLevel = spaceWarRewardLevel;
+    const currentPoints = spaceWarMatchPoints;
+    const targetPoints = currentLevel * 100;
+    const progress = Math.min((currentPoints / targetPoints) * 100, 100);
+    const isReady = currentPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-indigo-950/90 to-purple-950/90 border-2 border-indigo-500/80 rounded-xl p-2 relative overflow-hidden transition-all shadow-md text-white">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-indigo-500/30 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex items-center justify-between gap-1 z-10 w-full">
+            <div className="flex items-center gap-2 font-black text-xs sm:text-sm text-yellow-300">
+              <span>مستوى الجوائز {currentLevel}</span>
+              <span className="text-xs bg-black/60 px-1 py-0.5 rounded-md border border-indigo-400 text-white" dir="ltr">
+                {currentPoints} / {targetPoints}
+              </span>
+            </div>
+            
+            <button
+              onClick={() => {
+                 if (isReady) {
+                   setCustomConfirm({
+                      show: true,
+                      title: "مبروك! 🎉 اكتملت نقاط المستوي " + currentLevel,
+                      message: "يمكنك استلام هدايا هذا المستوى الآن، هل تود مشاهدة الإعلان؟\n\n" +
+                               "🎁 " + (currentLevel === 1 ? 50 : 100 + 50 * (currentLevel - 1)) + " XP\n" +
+                               "🔑 " + currentLevel + " مفتاح\n" +
+                               "🔧 " + currentLevel + " من كل وسيلة مساعدة",
+                      confirmText: "نعم مشاهدة الاعلان",
+                      cancelText: "إلغاء",
+                      onConfirm: () => {
+                        setCustomConfirm(prev => ({...prev, show: false}));
+                        showBusCompleteAd(
+                           () => {
+                              socket?.emit("claim_space_war_reward", { serial: playerSerial });
+                           },
+                           () => {
+                              showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+                           }
+                        );
+                      }
+                   });
+                 } else {
+                   setCustomConfirm({
+                      show: true,
+                      title: `المستوي ${currentLevel}`,
+                      message: `متبقي ${targetPoints - currentPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                               `🎁 ${currentLevel === 1 ? 50 : 100 + 50 * (currentLevel - 1)} XP\n` +
+                               `🔑 ${currentLevel} مفتاح\n` +
+                               `🔧 ${currentLevel} من كل وسيلة مساعدة`,
+                      confirmText: "حسناً",
+                      onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                   });
+                 }
+              }}
+              className={`flex justify-center items-center gap-1 px-1 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+                ${isReady ? "bg-amber-400 text-slate-950 animate-pulse hover:bg-amber-300 border border-amber-200 cursor-pointer" : "bg-indigo-900/80 text-yellow-300 border border-indigo-600 hover:bg-indigo-800 cursor-pointer"}`}
+            >
+              <span>🎁</span>
+              <span>استلم الهدايا</span>
+            </button>
+         </div>
+      </div>
     );
   };
 
@@ -25088,6 +25217,8 @@ const renderBombPartyRewardBar = () => {
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.wordleWins || 0)} <img src="/word-le-logo.png" className="w-3 h-3 inline object-contain" /></span>
                               <span>•</span>
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-3 h-3 inline object-contain" /></span>
+                              <span>•</span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.spaceWarWins || 0)} 🚀</span>
                             </div>
                           </div>
                         </div>
@@ -25133,6 +25264,7 @@ const renderBombPartyRewardBar = () => {
                           { id: "bombParty", icon: "💣", title: "قنبلة الحروف" },
                           { id: "wordle", icon: <img src="/word-le-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "تخمينة الكلمات" },
                           { id: "connectFourWords", icon: <img src="/connect-4-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "تخمينة 4 حروف" },
+                          { id: "spaceWar", icon: "🚀", title: "حرب الفضاء" },
                         ].map((filter) => (
                           <button
                             key={filter.id}
@@ -25272,6 +25404,9 @@ const renderBombPartyRewardBar = () => {
                                 </span>
                                 <span className="bg-blue-50 text-blue-600 md:px-1.5 rounded flex items-center gap-0.5" dir="rtl">
                                   {limit99(player.connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-3 h-3 object-contain" />
+                                </span>
+                                <span className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded flex items-center gap-0.5" dir="rtl">
+                                  {limit99(player.spaceWarWins || 0)} 🚀
                                 </span>
                               </div>
                             </div>
@@ -25983,8 +26118,9 @@ const renderBombPartyRewardBar = () => {
 
         <main className={`flex-1 relative flex flex-col items-center py-2 px-2 mx-auto w-full overflow-hidden ${room?.category === "iq" ? "max-w-md" : "max-w-md"}`}>
           {/* Players Header (VS Mode) */}
-          <div className="w-full flex items-center justify-center gap-3 md:gap-6 py-2 px-4 bg-white/60 backdrop-blur-md rounded-[32px] border-4 border-white shadow-xl mb-4 relative z-50">
-            {/* Player (Me) */}
+          {room?.gameState !== "space_war_playing" && (
+            <div className="w-full flex items-center justify-center gap-3 md:gap-6 py-2 px-4 bg-white/60 backdrop-blur-md rounded-[32px] border-4 border-white shadow-xl mb-4 relative z-50">
+              {/* Player (Me) */}
             <div className="flex flex-col items-center relative">
               {me && (
                 <>
@@ -26163,6 +26299,7 @@ const renderBombPartyRewardBar = () => {
               )}
             </div>
           </div>
+          )}
 
           {judgmentRequest && (
             <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
@@ -28252,6 +28389,19 @@ const renderBombPartyRewardBar = () => {
                 showConfirm={showConfirm}
                 showAd={showAd}
               />
+            ) : room.gameState === "space_war_setup" || room.gameState === "space_war_playing" || room.gameState === "space_war_finished" ? (
+              <SpaceWarGame
+                room={room}
+                socket={socket}
+                playerSerial={playerSerial}
+                isAdmin={isAdmin}
+                hasProPackage={hasProPackage}
+                playSound={playSound}
+                handleLeaveGame={handleLeaveGame}
+                showAd={showAd}
+                showAlert={showAlert}
+                renderSpaceWarRewardBar={renderSpaceWarRewardBar}
+              />
             ) : room.gameState === "waiting" ? (
               <React.Fragment>
                 <div className="w-full card-game p-3 md:p-3 text-center space-y-3 md:space-y-5 relative overflow-hidden">
@@ -28454,6 +28604,34 @@ const renderBombPartyRewardBar = () => {
                               if (meMode === "connect_four_words" && oppMode === "connect_four_words") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
                               if (meMode === "connect_four_words") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
                               if (oppMode === "connect_four_words") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "space_war",
+                                })
+                              }
+                              className={`h-full w-full bg-slate-800 hover:bg-slate-900 border-[3px] border-slate-600 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#475569] active:shadow-none active:translate-y-1.5"}`}
+                            >
+                              <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
+                                <span className="text-3xl md:text-4xl drop-shadow-md">🚀</span>
+                              </div>
+                              <span className="text-[13px] md:text-lg font-black text-slate-200 text-center leading-tight">
+                                حرب الفضاء
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "space_war" && oppMode === "space_war") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "space_war") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "space_war") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
                               return null;
                             })()}
                           </div>
