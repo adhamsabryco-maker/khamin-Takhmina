@@ -17,6 +17,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rocketRef = useRef<HTMLImageElement>(null);
+  const joystickKnobRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
   
   const myId = socket?.id;
@@ -707,6 +708,21 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
   }, []);
 
   // Joystick handlers
+  const updateKnobDOM = () => {
+     if (!joystickKnobRef.current) return;
+     const state = gameStateRef.current;
+     let knobX = 50;
+     let knobY = 50;
+     if (state.joystick.active && state.joystick.originX !== 0) {
+       const dx = state.joystick.currentX - state.joystick.originX;
+       const dy = state.joystick.currentY - state.joystick.originY;
+       knobX = 50 + (dx / 35) * 40;
+       knobY = 50 + (dy / 35) * 40;
+     }
+     joystickKnobRef.current.style.left = `${knobX}%`;
+     joystickKnobRef.current.style.top = `${knobY}%`;
+  };
+
   const handleJoystickPointerDown = (e: React.PointerEvent) => {
      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch {}
      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -716,6 +732,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
      state.joystick.originY = rect.top + rect.height / 2;
      state.joystick.currentX = e.clientX;
      state.joystick.currentY = e.clientY;
+     updateKnobDOM();
   };
 
   const handleJoystickPointerMove = (e: React.PointerEvent) => {
@@ -733,6 +750,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
         state.joystick.currentX = state.joystick.originX + dx;
         state.joystick.currentY = state.joystick.originY + dy;
+        updateKnobDOM();
      }
   };
 
@@ -744,6 +762,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
      state.joystick.currentY = state.joystick.originY;
      state.vx = 0;
      state.vy = 0;
+     updateKnobDOM();
   };
 
   // Playfield direct drag/touch controls
@@ -1189,6 +1208,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
             <div className="absolute right-1 border-t-[4px] border-b-[4px] border-l-[6px] border-transparent border-l-indigo-400/60 pointer-events-none"></div>
 
             <div 
+              ref={joystickKnobRef}
               className="absolute w-8 h-8 bg-purple-500 border-2 border-indigo-200 rounded-full pointer-events-none transition-none"
               style={{
                 left: `${knobX}%`,
