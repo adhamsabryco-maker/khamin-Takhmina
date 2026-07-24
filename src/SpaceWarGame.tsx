@@ -919,7 +919,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       
       {/* SETUP / INSTRUCTIONS */}
       {room?.gameState === 'space_war_setup' && (
-        <div className="absolute inset-0 bg-[#07071a]/95 z-40 flex flex-col items-center justify-between p-2 text-white text-right" dir="rtl">
+        <div className="absolute inset-0 bg-[#07071a]/95 z-40 flex flex-col items-center justify-between p-2 overflow-y-auto text-white text-right" dir="rtl">
           
           <div className="w-full text-center space-y-1">
             <div className="inline-flex items-center gap-2 bg-indigo-900/60 border border-indigo-500/50 px-4 py-1.5 rounded-full shadow-lg">
