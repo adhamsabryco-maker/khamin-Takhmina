@@ -18415,6 +18415,16 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
         }
       });
 
+      socket.on("space_war_bot_unreveal_index", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          if (room.spaceWar.p2Revealed) {
+            room.spaceWar.p2Revealed = room.spaceWar.p2Revealed.filter((i: number) => i !== index);
+            io.to(roomId).emit("room_update", room);
+          }
+        }
+      });
+
       socket.on("request_space_war_rematch", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (room && room.gameState === "space_war_finished" && room.spaceWar) {
