@@ -11,7 +11,7 @@ const LETTER_SIZE = 32;
 
 const ARABIC_LETTERS = "ابتثجحخدذرزسشصضطظعغفقكلمنهويأإآؤئء".split('');
 
-export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, playSound, handleLeaveGame, renderSpaceWarRewardBar }: any) {
+export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, playSound, hasProPackage, CategoryPageAd, showAlert, showConfirm, showAd, handleLeaveGame, renderSpaceWarRewardBar }: any) {
   const [freezeCountdown, setFreezeCountdown] = useState(0);
   const [speedCountdown, setSpeedCountdown] = useState(0);
 
@@ -29,6 +29,11 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
   const oppWord = isPlayer1 ? room?.spaceWar?.p2Word : room?.spaceWar?.p1Word;
   const myRevealed = (isPlayer1 ? room?.spaceWar?.p1Revealed : room?.spaceWar?.p2Revealed) || [];
   const oppRevealed = (isPlayer1 ? room?.spaceWar?.p2Revealed : room?.spaceWar?.p1Revealed) || [];
+  
+  const oppRevealedRef = useRef(oppRevealed);
+  useEffect(() => {
+    oppRevealedRef.current = oppRevealed;
+  }, [oppRevealed]);
   
   const [rocketLevel, setRocketLevel] = useState(1);
   const [score, setScore] = useState(0);
@@ -163,12 +168,20 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
   // Reset game state on new match
   useEffect(() => {
+    const state = gameStateRef.current;
+    state.joystick = { active: false, originX: 0, originY: 0, currentX: 0, currentY: 0 };
+    state.vx = 0;
+    state.vy = 0;
+    state.keys = {};
+    state.isTouchDragging = false;
+    if (joystickKnobRef.current) {
+      joystickKnobRef.current.style.left = '50%';
+      joystickKnobRef.current.style.top = '50%';
+    }
+
     if (room?.gameState === 'space_war_playing' || room?.gameState === 'space_war_setup') {
-      const state = gameStateRef.current;
       state.x = GAME_WIDTH / 2 - ROCKET_WIDTH / 2;
       state.y = GAME_HEIGHT - ROCKET_HEIGHT - 30;
-      state.vx = 0;
-      state.vy = 0;
       state.lasers = [];
       state.letters = [];
       state.upgrades = [];
@@ -180,7 +193,6 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       state.jamEndTime = 0;
       state.upgradeEndTime = 0;
       state.lastBotPowerupTime = Date.now();
-      state.keys = {};
       
       setRocketLevel(1);
       setScore(0);
@@ -497,6 +509,13 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
         if (exploded && !b.hit) {
           b.hit = true;
           if (playSound) playSound("boomingExplosion");
+
+          // When a bomb is destroyed by the player, unreveal a letter from oppRevealed (the opponent's word displayed on this player's screen)
+          const currentOppRevealed = oppRevealedRef.current || [];
+          if (currentOppRevealed.length > 0) {
+            const unrevealIdx = currentOppRevealed[currentOppRevealed.length - 1];
+            socket?.emit("space_war_unreveal_index", { roomId: room.id, index: unrevealIdx });
+          }
 
           for (let i = 0; i < 20; i++) {
             state.particles.push({
@@ -934,7 +953,8 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
   const isReady = room?.spaceWar?.readyPlayers?.includes(myId);
 
   return (
-    <div id="spacewar-container" className="w-full h-[80dvh] min-h-[450px] max-h-[800px] max-w-[500px] mx-auto bg-[#0a0a2a] relative overflow-hidden flex flex-col select-none touch-none rounded-2xl shadow-2xl border-4 border-indigo-900" style={{ touchAction: 'none' }}>
+    <React.Fragment>
+      <div id="spacewar-container" className="w-full h-[80dvh] min-h-[450px] max-h-[800px] max-w-[500px] mx-auto bg-[#0a0a2a] relative overflow-hidden flex flex-col select-none touch-none rounded-2xl shadow-2xl border-4 border-indigo-900" style={{ touchAction: 'none' }}>
       
       {/* SETUP / INSTRUCTIONS */}
       {room?.gameState === 'space_war_setup' && (
@@ -1036,10 +1056,9 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
               )}
             </button>
           </div>
-
-        </div>
+        </div>  
       )}
-
+      
       {/* Words Status Top Header */}
       <div className="absolute top-1 left-0 w-full flex flex-col items-center z-10 pointer-events-none">
          <div className="bg-black/90 border-2 border-indigo-500/80 rounded-2xl p-2 px-3 flex items-center justify-between pointer-events-auto w-full max-w-[420px]" dir="rtl">
@@ -1219,7 +1238,13 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
          </div>
 
       </div>
+      </div>
 
-    </div>
+      {room?.gameState === 'space_war_setup' && CategoryPageAd && (
+        <div className="w-full flex justify-center flex-shrink-0 mt-2">
+          <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
+        </div>
+      )}
+    </React.Fragment>
   );
 }

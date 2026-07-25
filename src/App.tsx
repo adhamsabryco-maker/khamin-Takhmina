@@ -28396,6 +28396,7 @@ const renderBombPartyRewardBar = () => {
                 playerSerial={playerSerial}
                 isAdmin={isAdmin}
                 hasProPackage={hasProPackage}
+                CategoryPageAd={CategoryPageAd}
                 playSound={playSound}
                 handleLeaveGame={handleLeaveGame}
                 showAd={showAd}
