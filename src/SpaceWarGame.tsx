@@ -823,51 +823,6 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
      updateKnobDOM();
   };
 
-  // Playfield direct drag/touch controls
-  const handlePlayfieldPointerDown = (e: React.PointerEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'BUTTON' || target.closest('button')) return;
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect || rect.width === 0 || rect.height === 0) return;
-    const scaleX = GAME_WIDTH / rect.width;
-    const scaleY = GAME_HEIGHT / rect.height;
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top) * scaleY;
-    if (isNaN(clickX) || isNaN(clickY)) return;
-    
-    const state = gameStateRef.current;
-    state.isTouchDragging = true;
-    const newX = Math.max(0, Math.min(GAME_WIDTH - ROCKET_WIDTH, clickX - ROCKET_WIDTH / 2));
-    const newY = Math.max(0, Math.min(GAME_HEIGHT - ROCKET_HEIGHT, clickY - ROCKET_HEIGHT / 2));
-    if (!isNaN(newX) && !isNaN(newY)) {
-      state.x = newX;
-      state.y = newY;
-    }
-  };
-
-  const handlePlayfieldPointerMove = (e: React.PointerEvent) => {
-    const state = gameStateRef.current;
-    if (!state.isTouchDragging) return;
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect || rect.width === 0 || rect.height === 0) return;
-    const scaleX = GAME_WIDTH / rect.width;
-    const scaleY = GAME_HEIGHT / rect.height;
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top) * scaleY;
-    if (isNaN(clickX) || isNaN(clickY)) return;
-
-    const newX = Math.max(0, Math.min(GAME_WIDTH - ROCKET_WIDTH, clickX - ROCKET_WIDTH / 2));
-    const newY = Math.max(0, Math.min(GAME_HEIGHT - ROCKET_HEIGHT, clickY - ROCKET_HEIGHT / 2));
-    if (!isNaN(newX) && !isNaN(newY)) {
-      state.x = newX;
-      state.y = newY;
-    }
-  };
-
-  const handlePlayfieldPointerUp = () => {
-    gameStateRef.current.isTouchDragging = false;
-  };
-
   const getRocketSrc = () => {
     if (rocketLevel === 3) {
       return isPlayer1 ? "/rockets/blue-rocket-lvl-3.gif" : "/rockets/red-rocket-lvl-3.gif";
@@ -1120,12 +1075,12 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       
       {/* Words Status Top Header */}
       <div className="absolute top-1 left-0 w-full flex flex-col items-center z-10 pointer-events-none px-2">
-         <div className="bg-black/90 border-2 border-indigo-500/80 rounded-2xl p-1.5 px-2.5 flex items-center justify-between pointer-events-auto w-full max-w-[440px] gap-1" dir="rtl">
+         <div className="bg-black/50 border-2 border-indigo-500/80 p-1 px-1 flex items-center justify-between pointer-events-auto w-full max-w-[440px] gap-0.5" dir="rtl">
             <div className="flex items-center gap-1 font-black text-amber-300 text-xs sm:text-sm shrink-0">
               <span className="hidden sm:inline">كلمة المنافس:</span>
             </div>
 
-            <div className="flex gap-1 overflow-x-auto py-0.5">
+            <div className="flex gap-1 flex-wrap justify-center py-0.5" spellCheck={false}>
               {oppWord?.split('').map((char: string, idx: number) => {
                 const isRevealed = oppRevealed.includes(idx);
                 return (
@@ -1179,9 +1134,6 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       {/* Game Play Canvas Wrapper */}
       <div 
         ref={gamePlayContainerRef}
-        onPointerDown={handlePlayfieldPointerDown}
-        onPointerMove={handlePlayfieldPointerMove}
-        onPointerUp={handlePlayfieldPointerUp}
         className="relative w-full flex-1 bg-[url('/space-bg.jpg')] bg-cover bg-center overflow-hidden min-h-0 select-none"
       >
         {/* Icy Glow Overlay during Time Freeze */}
