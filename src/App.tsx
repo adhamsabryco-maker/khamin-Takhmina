@@ -10698,7 +10698,8 @@ if (data.connectFourWordsRewardLevel != null) {
       room?.gameState === "wordle_finished" ||
       room?.gameState === "connect_four_words_setup" ||
       room?.gameState === "connect_four_words_playing" ||
-      room?.gameState === "connect_four_words_finished";
+      room?.gameState === "connect_four_words_finished" ||
+      room?.gameState?.startsWith("space_war_");
 
     const me = room?.players.find((p) => p.id === socket?.id);
 
@@ -10712,7 +10713,8 @@ if (data.connectFourWordsRewardLevel != null) {
         room?.gameState === "guessing" ||
         room?.gameState === "discussion" ||
         room?.gameState === "custom_image_upload" ||
-        room?.gameState === "bomb_party_playing"
+        room?.gameState === "bomb_party_playing" ||
+        room?.gameState?.startsWith("space_war_")
       ) {
         message =
           "انسحابك من المبارة تعتبر خاسر. هل تريد حقاً مغادرة اللعبة والعودة للرئيسية؟";

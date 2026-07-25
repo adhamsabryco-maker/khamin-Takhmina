@@ -16,9 +16,38 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
   const [speedCountdown, setSpeedCountdown] = useState(0);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gamePlayContainerRef = useRef<HTMLDivElement>(null);
   const rocketRef = useRef<HTMLImageElement>(null);
   const joystickKnobRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
+
+  // ResizeObserver to ensure canvas pixel resolution exactly matches container pixel size (1:1 rendering, no squishing, full background coverage)
+  useEffect(() => {
+    const container = gamePlayContainerRef.current;
+    if (!container) return;
+
+    const updateSize = () => {
+      const rect = container.getBoundingClientRect();
+      const w = Math.round(rect.width);
+      const h = Math.round(rect.height);
+      if (w > 0 && h > 0) {
+        if (canvasRef.current) {
+          if (canvasRef.current.width !== w || canvasRef.current.height !== h) {
+            canvasRef.current.width = w;
+            canvasRef.current.height = h;
+            const state = gameStateRef.current;
+            state.x = Math.max(0, Math.min(w - ROCKET_WIDTH, state.x));
+            state.y = Math.max(0, Math.min(h - ROCKET_HEIGHT, state.y));
+          }
+        }
+      }
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(() => updateSize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
   
   const myId = socket?.id;
   const isPlayer1 = room?.players[0]?.id === myId;
@@ -29,11 +58,18 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
   const oppWord = isPlayer1 ? room?.spaceWar?.p2Word : room?.spaceWar?.p1Word;
   const myRevealed = (isPlayer1 ? room?.spaceWar?.p1Revealed : room?.spaceWar?.p2Revealed) || [];
   const oppRevealed = (isPlayer1 ? room?.spaceWar?.p2Revealed : room?.spaceWar?.p1Revealed) || [];
-  
+
+  const myRevealedRef = useRef(myRevealed);
+  useEffect(() => {
+    myRevealedRef.current = myRevealed;
+  }, [myRevealed]);
+
   const oppRevealedRef = useRef(oppRevealed);
   useEffect(() => {
     oppRevealedRef.current = oppRevealed;
   }, [oppRevealed]);
+
+  const usePowerupRef = useRef<(type: 'speed' | 'slow' | 'bomb' | 'jam') => void>(() => {});
   
   const [rocketLevel, setRocketLevel] = useState(1);
   const [score, setScore] = useState(0);
@@ -151,7 +187,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       const isJammed = now < botJammedUntilRef.current;
       const isBombed = now < botBombedUntilRef.current;
 
-      // Base miss probability per tick (checks every ~3 seconds)
+      // Base miss probability per tick (checks every 12 seconds for balanced 2-min match pacing)
       let missProbability = 0.15;
       if (isJammed && isBombed) missProbability = 0.85;
       else if (isJammed) missProbability = 0.70;
@@ -161,7 +197,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
         const missIdx = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
         socket?.emit("space_war_bot_missed", { roomId: room.id, index: missIdx });
       }
-    }, 3000);
+    }, 12000);
 
     return () => clearInterval(botInterval);
   }, [isBotMatch, room?.gameState, room?.spaceWar?.gameOver, room?.spaceWar?.p1Word, room?.spaceWar?.p1Revealed, room?.id, socket]);
@@ -180,8 +216,10 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
     }
 
     if (room?.gameState === 'space_war_playing' || room?.gameState === 'space_war_setup') {
-      state.x = GAME_WIDTH / 2 - ROCKET_WIDTH / 2;
-      state.y = GAME_HEIGHT - ROCKET_HEIGHT - 30;
+      const gw = canvasRef.current?.width || GAME_WIDTH;
+      const gh = canvasRef.current?.height || GAME_HEIGHT;
+      state.x = gw / 2 - ROCKET_WIDTH / 2;
+      state.y = gh - ROCKET_HEIGHT - 30;
       state.lasers = [];
       state.letters = [];
       state.upgrades = [];
@@ -209,6 +247,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       if (senderId === myId) return;
       const type = data.type;
       const state = gameStateRef.current;
+      const gw = canvasRef.current?.width || GAME_WIDTH;
       if (type === 'slow') {
         state.slowFactor = 0.3;
         setFreezeCountdown(10);
@@ -217,7 +256,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
         if (playSound) playSound("pop");
         for (let i = 0; i < 5; i++) {
            state.bombs.push({
-             x: 20 + Math.random() * (GAME_WIDTH - 60),
+             x: 20 + Math.random() * (gw - 60),
              y: -50 - Math.random() * 250,
              vy: 85 + Math.random() * 35,
              size: 28,
@@ -230,7 +269,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
         if (playSound) playSound("alarm");
         for (let i = 0; i < 6; i++) {
            state.letters.push({
-             x: Math.random() * (GAME_WIDTH - LETTER_SIZE),
+             x: Math.random() * (gw - LETTER_SIZE),
              y: -Math.random() * 200,
              char: ARABIC_LETTERS[Math.floor(Math.random() * ARABIC_LETTERS.length)],
              vy: 60 + Math.random() * 30,
@@ -276,6 +315,10 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
     socket?.emit("space_war_powerup", { roomId: room.id, type, from: myId });
   };
 
+  useEffect(() => {
+    usePowerupRef.current = usePowerup;
+  }, [usePowerup]);
+
   const updateGame = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -292,6 +335,8 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       const state = gameStateRef.current;
       const now = Date.now();
       const dt = 16 / 1000;
+      const gw = canvas.width || GAME_WIDTH;
+      const gh = canvas.height || GAME_HEIGHT;
 
       // Handle Bot Powerups (Charges & Fires every ~10-14 seconds)
       if (isBotMatch) {
@@ -301,7 +346,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
           if (chosen === 'bomb') {
             for (let i = 0; i < 5; i++) {
               state.bombs.push({
-                x: 20 + Math.random() * (GAME_WIDTH - 60),
+                x: 20 + Math.random() * (gw - 60),
                 y: -50 - Math.random() * 180,
                 vy: 85 + Math.random() * 35,
                 size: 28,
@@ -338,25 +383,25 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
         const speed = 240;
         let vx = 0;
         let vy = 0;
-        if (state.keys['ArrowLeft'] || state.keys['a'] || state.keys['A']) vx -= speed;
-        if (state.keys['ArrowRight'] || state.keys['d'] || state.keys['D']) vx += speed;
-        if (state.keys['ArrowUp'] || state.keys['w'] || state.keys['W']) vy -= speed;
-        if (state.keys['ArrowDown'] || state.keys['s'] || state.keys['S']) vy += speed;
+        if (state.keys['ArrowLeft']) vx -= speed;
+        if (state.keys['ArrowRight']) vx += speed;
+        if (state.keys['ArrowUp']) vy -= speed;
+        if (state.keys['ArrowDown']) vy += speed;
         state.vx = vx;
         state.vy = vy;
       }
 
       state.x += state.vx * dt;
       state.y += state.vy * dt;
-      state.x = Math.max(0, Math.min(GAME_WIDTH - ROCKET_WIDTH, state.x));
-      state.y = Math.max(0, Math.min(GAME_HEIGHT - ROCKET_HEIGHT, state.y));
+      state.x = Math.max(0, Math.min(gw - ROCKET_WIDTH, state.x));
+      state.y = Math.max(0, Math.min(gh - ROCKET_HEIGHT, state.y));
 
       // Sync Rocket DOM Position
       if (rocketRef.current) {
-         const percentX = (state.x / GAME_WIDTH) * 100;
-         const percentY = (state.y / GAME_HEIGHT) * 100;
-         rocketRef.current.style.left = `${percentX}%`;
-         rocketRef.current.style.top = `${percentY}%`;
+         rocketRef.current.style.left = `${state.x}px`;
+         rocketRef.current.style.top = `${state.y}px`;
+         rocketRef.current.style.width = `${ROCKET_WIDTH}px`;
+         rocketRef.current.style.height = `${ROCKET_HEIGHT}px`;
       }
 
       // Shooting logic
@@ -397,7 +442,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       // Spawn falling rocket upgrades (🚀)
       if (Math.random() < 0.003 * state.slowFactor && state.upgrades.length < 2) {
         state.upgrades.push({
-          x: Math.random() * (GAME_WIDTH - 30),
+          x: Math.random() * (gw - 30),
           y: -30,
           vy: 60 * state.slowFactor,
           size: 28
@@ -424,7 +469,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
         const baseVy = 50 + Math.random() * 30;
         state.letters.push({
-          x: Math.random() * (GAME_WIDTH - LETTER_SIZE),
+          x: Math.random() * (gw - LETTER_SIZE),
           y: -LETTER_SIZE,
           char,
           baseVy,
@@ -510,10 +555,10 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
           b.hit = true;
           if (playSound) playSound("boomingExplosion");
 
-          // When a bomb is destroyed by the player, unreveal a letter from oppRevealed (the opponent's word displayed on this player's screen)
-          const currentOppRevealed = oppRevealedRef.current || [];
-          if (currentOppRevealed.length > 0) {
-            const unrevealIdx = currentOppRevealed[currentOppRevealed.length - 1];
+          // When a bomb is destroyed by the player, unreveal a letter from myRevealed (erasing player's word progress on opponent's screen)
+          const currentMyRevealed = myRevealedRef.current || [];
+          if (currentMyRevealed.length > 0) {
+            const unrevealIdx = currentMyRevealed[currentMyRevealed.length - 1];
             socket?.emit("space_war_unreveal_index", { roomId: room.id, index: unrevealIdx });
           }
 
@@ -529,7 +574,6 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
           }
         }
       });
-      state.bombs = state.bombs.filter(b => !b.hit && b.y < GAME_HEIGHT);
 
       // Move letters & handle collisions
       let hitAny = false;
@@ -611,7 +655,9 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
       if (hitAny && playSound) playSound("hammer");
 
-      state.letters = state.letters.filter(l => !l.hit && l.y < GAME_HEIGHT);
+      state.upgrades = state.upgrades.filter(u => !u.hit && u.y < gh);
+      state.bombs = state.bombs.filter(b => !b.hit && b.y < gh);
+      state.letters = state.letters.filter(l => !l.hit && l.y < gh);
 
       // Particles
       state.particles.forEach(p => {
@@ -622,7 +668,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       state.particles = state.particles.filter(p => p.life > 0);
 
       // Render Frame
-      ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      ctx.clearRect(0, 0, gw, gh);
 
       // Render lasers
       ctx.fillStyle = '#60a5fa';
@@ -710,13 +756,29 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
   // Global Keyboard Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key ? e.key.toLowerCase() : '';
+      const code = e.code;
       gameStateRef.current.keys[e.key] = true;
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+      if (code) gameStateRef.current.keys[code] = true;
+
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(code) || 
+          ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'q', 'w', 'e', 'r', 'ض', 'ص', 'ث', 'ق'].includes(key)) {
          e.preventDefault();
       }
+      if (e.key === ' ' || e.key === 'Spacebar' || code === 'Space') {
+         gameStateRef.current.keys['Shoot'] = true;
+      }
+      if (code === 'KeyQ' || key === 'q' || key === 'ض') usePowerupRef.current('jam');
+      if (code === 'KeyW' || key === 'w' || key === 'ص') usePowerupRef.current('bomb');
+      if (code === 'KeyE' || key === 'e' || key === 'ث') usePowerupRef.current('slow');
+      if (code === 'KeyR' || key === 'r' || key === 'ق') usePowerupRef.current('speed');
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       gameStateRef.current.keys[e.key] = false;
+      if (e.code) gameStateRef.current.keys[e.code] = false;
+      if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') {
+         gameStateRef.current.keys['Shoot'] = false;
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
@@ -1018,15 +1080,36 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
               </div>
             </div>
 
-            <div className="bg-indigo-950/80 border border-indigo-800/80 rounded-2xl p-1 mb-1 shadow-md space-y-1">
-              <div className="flex items-center gap-2 text-pink-400 font-black text-sm">
+            <div className="bg-indigo-950/80 border border-indigo-800/80 rounded-2xl p-1.5 mb-1 shadow-md space-y-1.5">
+              <div className="flex items-center gap-2 text-pink-400 font-black text-xs md:text-sm">
                 <Gamepad2 className="w-4 h-4" />
-                <span>أدوات التحكم:</span>
+                <span>أدوات التحكم (موبايل و كمبيوتر):</span>
               </div>
-              <p className="text-xs text-slate-200 leading-relaxed font-semibold">
-                🕹️ <span className="text-indigo-300 font-bold">عصا التحكم (على اليسار)</span><br />
-                🎯 <span className="text-red-300 font-bold">زر الإطلاق (على اليمين)</span>
-              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-slate-200 font-semibold">
+                <div className="bg-indigo-900/40 p-1.5 rounded-xl border border-indigo-700/40 space-y-0.5">
+                  <div className="text-amber-300 font-bold">📱 الموبايل:</div>
+                  <div>🕹️ <span className="text-indigo-300 font-bold">عصا التحكم</span> للتحريك</div>
+                  <div>🎯 <span className="text-red-300 font-bold">زر الإطلاق</span> للإطلاق</div>
+                  <div>✨ لمس متعدّد <span className="text-cyan-300 font-bold">للمساعدة</span></div>
+                </div>
+                <div className="bg-indigo-900/40 p-1.5 rounded-xl border border-indigo-700/40 space-y-1">
+                  <div className="text-amber-300 font-bold">💻 الكمبيوتر (الكيبورد):</div>
+                  <div className="flex items-center gap-1">
+                    <span>⌨️ الحركة:</span>
+                    <span className="bg-slate-800 px-1 py-0.5 rounded border border-slate-600 font-mono text-[9px] text-yellow-300">← ↑ → ↓</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>🚀 الإطلاق:</span>
+                    <span className="bg-slate-800 px-1 py-0.5 rounded border border-slate-600 font-mono text-[9px] text-red-300">Space (المسافة)</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 text-[9px] pt-0.5">
+                    <span className="bg-purple-950 border border-purple-500 px-1 rounded font-bold text-purple-200">Q: تشويش</span>
+                    <span className="bg-red-950 border border-red-500 px-1 rounded font-bold text-red-200">W: قنابل</span>
+                    <span className="bg-cyan-950 border border-cyan-500 px-1 rounded font-bold text-cyan-200">E: تجميد</span>
+                    <span className="bg-yellow-950 border border-yellow-500 px-1 rounded font-bold text-yellow-200">R: سريع</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -1060,14 +1143,14 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       )}
       
       {/* Words Status Top Header */}
-      <div className="absolute top-1 left-0 w-full flex flex-col items-center z-10 pointer-events-none">
-         <div className="bg-black/90 border-2 border-indigo-500/80 rounded-2xl p-2 px-3 flex items-center justify-between pointer-events-auto w-full max-w-[420px]" dir="rtl">
-            <div className="flex items-center gap-1 font-black text-amber-300 text-xs sm:text-sm">
+      <div className="absolute top-1 left-0 w-full flex flex-col items-center z-10 pointer-events-none px-2">
+         <div className="bg-black/90 border-2 border-indigo-500/80 rounded-2xl p-1.5 px-2.5 flex items-center justify-between pointer-events-auto w-full max-w-[440px] gap-1" dir="rtl">
+            <div className="flex items-center gap-1 font-black text-amber-300 text-xs sm:text-sm shrink-0">
               <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-              <span>كلمة المنافس:</span>
+              <span className="hidden sm:inline">كلمة المنافس:</span>
             </div>
 
-            <div className="flex gap-1">
+            <div className="flex gap-1 overflow-x-auto py-0.5">
               {oppWord?.split('').map((char: string, idx: number) => {
                 const isRevealed = oppRevealed.includes(idx);
                 return (
@@ -1086,7 +1169,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
             </div>
 
             {/* 2-Minute Match Countdown Timer */}
-            <div className="flex items-center gap-1 bg-indigo-950 border border-indigo-700/80 px-2 py-0.5 rounded-xl text-xs font-black text-cyan-300 shadow">
+            <div className="flex items-center gap-1 bg-indigo-950 border border-indigo-700/80 px-2 py-0.5 rounded-xl text-xs font-black text-cyan-300 shadow shrink-0">
               <Clock className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
               <span>{formatTime(matchTimeLeft)}</span>
             </div>
@@ -1120,39 +1203,33 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
       {/* Game Play Canvas Wrapper */}
       <div 
-        className="relative w-full flex-1 bg-[url('/space-bg.jpg')] bg-cover bg-center overflow-hidden flex items-center justify-center min-h-0 select-none"
+        ref={gamePlayContainerRef}
+        className="relative w-full flex-1 bg-[url('/space-bg.jpg')] bg-cover bg-center overflow-hidden min-h-0 select-none"
       >
-        <div 
-          className="relative max-w-full max-h-full overflow-hidden" 
-          style={{ aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}`, height: '100%' }}
-        >
-          {/* Icy Glow Overlay during Time Freeze */}
-          {freezeCountdown > 0 && (
-            <div className="absolute inset-0 pointer-events-none z-10 animate-pulse" />
-          )}
+        {/* Icy Glow Overlay during Time Freeze */}
+        {freezeCountdown > 0 && (
+          <div className="absolute inset-0 pointer-events-none z-10 animate-pulse border-2 border-cyan-400/50" />
+        )}
 
-          {/* Canvas */}
-          <canvas
-             ref={canvasRef}
-             width={GAME_WIDTH}
-             height={GAME_HEIGHT}
-             className="w-full h-full block"
-          />
-          
-          {/* DOM Rocket */}
-          <img
-             ref={rocketRef}
-             src={getRocketSrc()}
-             alt="Rocket"
-             className="absolute z-10 pointer-events-none transition-none object-contain"
-             style={{
-                width: `${(ROCKET_WIDTH / GAME_WIDTH) * 100}%`,
-                height: `${(ROCKET_HEIGHT / GAME_HEIGHT) * 100}%`,
-                left: '43.75%',
-                top: '82%',
-             }}
-          />
-        </div>
+        {/* Canvas */}
+        <canvas
+           ref={canvasRef}
+           className="w-full h-full block"
+        />
+        
+        {/* DOM Rocket */}
+        <img
+           ref={rocketRef}
+           src={getRocketSrc()}
+           alt="Rocket"
+           className="absolute z-10 pointer-events-none transition-none object-contain"
+           style={{
+              width: `${ROCKET_WIDTH}px`,
+              height: `${ROCKET_HEIGHT}px`,
+              left: '0px',
+              top: '0px',
+           }}
+        />
       </div>
 
       {/* Sleek Controls & Helpers Bar */}
@@ -1160,54 +1237,77 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
          
          {/* Left: Fire Button */}
          <button
-            onPointerDown={() => gameStateRef.current.keys['Shoot'] = true}
-            onPointerUp={() => gameStateRef.current.keys['Shoot'] = false}
-            onPointerLeave={() => gameStateRef.current.keys['Shoot'] = false}
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); gameStateRef.current.keys['Shoot'] = true; }}
+            onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); gameStateRef.current.keys['Shoot'] = false; }}
+            onPointerCancel={(e) => { e.preventDefault(); e.stopPropagation(); gameStateRef.current.keys['Shoot'] = false; }}
+            onPointerLeave={(e) => { e.preventDefault(); e.stopPropagation(); gameStateRef.current.keys['Shoot'] = false; }}
+            onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); gameStateRef.current.keys['Shoot'] = true; }}
+            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); gameStateRef.current.keys['Shoot'] = false; }}
             className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 border-2 border-red-300 shadow-[0_0_15px_rgba(225,29,72,0.6)] flex items-center justify-center active:scale-90 transition-transform select-none touch-none shrink-0"
          >
             <Target className="w-8 h-8 text-white pointer-events-none drop-shadow" />
          </button>
 
-         {/* Center: Power-up Helpers Bar */}
-         <div className="flex items-center gap-1 md:gap-1.5 bg-indigo-950/60 p-1.5 rounded-2xl border border-indigo-800/70">
+         {/* Center: Power-up Helpers Bar (Q - W - E - R) */}
+         <div className="flex items-center gap-1 md:gap-1.5 bg-indigo-950/60 p-1.5 rounded-2xl border border-indigo-800/70 select-none touch-none" dir="ltr">
             
-            {/* Speed */}
-            <div className="relative group cursor-pointer" onClick={() => usePowerup('speed')}>
-               <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border ${powerups.speed >= 100 ? 'bg-yellow-400 border-yellow-200 animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.8)]' : 'bg-gray-800 border-gray-700'}`}>
-                  <Zap className={`w-4 h-4 ${powerups.speed >= 100 ? 'text-slate-950' : 'text-gray-500'}`} />
+            {/* Q: Jamming */}
+            <div 
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('jam'); }}
+              onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('jam'); }}
+              className="relative group cursor-pointer select-none touch-none"
+            >
+               <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border ${powerups.jam >= 100 ? 'bg-purple-500 border-purple-200 animate-pulse shadow-[0_0_10px_rgba(168,85,247,0.8)]' : 'bg-gray-800 border-gray-700'}`}>
+                  <WifiOff className={`w-4 h-4 ${powerups.jam >= 100 ? 'text-white' : 'text-gray-500'}`} />
                </div>
-               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden">
-                  <div className="h-full bg-yellow-400 transition-all duration-300" style={{ width: `${powerups.speed}%` }}></div>
-               </div>
-            </div>
-            
-            {/* Time Freeze Helper */}
-            <div className="relative group cursor-pointer" onClick={() => usePowerup('slow')}>
-               <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border ${powerups.slow >= 100 ? 'bg-cyan-400 border-cyan-200 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'bg-gray-800 border-gray-700'}`}>
-                  <Snowflake className={`w-4 h-4 ${powerups.slow >= 100 ? 'text-slate-950' : 'text-gray-500'}`} />
-               </div>
-               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${powerups.slow}%` }}></div>
+               <span className="absolute -top-1.5 -right-1 bg-purple-950/90 border-[0.5px] border-purple-400/20 text-purple-200 text-[8px] font-normal px-1 rounded-full pointer-events-none">Q</span>
+               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden pointer-events-none">
+                  <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${powerups.jam}%` }}></div>
                </div>
             </div>
 
-            {/* Bomb */}
-            <div className="relative group cursor-pointer" onClick={() => usePowerup('bomb')}>
+            {/* W: Bomb */}
+            <div 
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('bomb'); }}
+              onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('bomb'); }}
+              className="relative group cursor-pointer select-none touch-none"
+            >
                <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border ${powerups.bomb >= 100 ? 'bg-red-500 border-red-200 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-gray-800 border-gray-700'}`}>
                   <Bomb className={`w-4 h-4 ${powerups.bomb >= 100 ? 'text-white' : 'text-gray-500'}`} />
                </div>
-               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden">
+               <span className="absolute -top-1.5 -right-1 bg-red-950/90 border-[0.5px] border-red-400/20 text-red-200 text-[8px] font-normal px-1 rounded-full pointer-events-none">W</span>
+               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden pointer-events-none">
                   <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${powerups.bomb}%` }}></div>
                </div>
             </div>
 
-            {/* Jamming */}
-            <div className="relative group cursor-pointer" onClick={() => usePowerup('jam')}>
-               <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border ${powerups.jam >= 100 ? 'bg-purple-500 border-purple-200 animate-pulse shadow-[0_0_10px_rgba(168,85,247,0.8)]' : 'bg-gray-800 border-gray-700'}`}>
-                  <WifiOff className={`w-4 h-4 ${powerups.jam >= 100 ? 'text-white' : 'text-gray-500'}`} />
+            {/* E: Time Freeze Helper */}
+            <div 
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('slow'); }}
+              onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('slow'); }}
+              className="relative group cursor-pointer select-none touch-none"
+            >
+               <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border ${powerups.slow >= 100 ? 'bg-cyan-400 border-cyan-200 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'bg-gray-800 border-gray-700'}`}>
+                  <Snowflake className={`w-4 h-4 ${powerups.slow >= 100 ? 'text-slate-950' : 'text-gray-500'}`} />
                </div>
-               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden">
-                  <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${powerups.jam}%` }}></div>
+               <span className="absolute -top-1.5 -right-1 bg-cyan-950/90 border-[0.5px] border-cyan-400/20 text-cyan-200 text-[8px] font-normal px-1 rounded-full pointer-events-none">E</span>
+               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden pointer-events-none">
+                  <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${powerups.slow}%` }}></div>
+               </div>
+            </div>
+
+            {/* R: Fast Fire Speed */}
+            <div 
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('speed'); }}
+              onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('speed'); }}
+              className="relative group cursor-pointer select-none touch-none"
+            >
+               <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border ${powerups.speed >= 100 ? 'bg-yellow-400 border-yellow-200 animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.8)]' : 'bg-gray-800 border-gray-700'}`}>
+                  <Zap className={`w-4 h-4 ${powerups.speed >= 100 ? 'text-slate-950' : 'text-gray-500'}`} />
+               </div>
+               <span className="absolute -top-1.5 -right-1 bg-yellow-950/90 border-[0.5px] border-yellow-400/20 text-yellow-200 text-[8px] font-normal px-1 rounded-full pointer-events-none">R</span>
+               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden pointer-events-none">
+                  <div className="h-full bg-yellow-400 transition-all duration-300" style={{ width: `${powerups.speed}%` }}></div>
                </div>
             </div>
 
