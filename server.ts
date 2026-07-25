@@ -18407,7 +18407,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
         const room = rooms.get(roomId);
         if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
           const isP1 = room.players[0].id === socket.id;
-          const key = isP1 ? "p2Revealed" : "p1Revealed";
+          const key = isP1 ? "p1Revealed" : "p2Revealed";
           if (room.spaceWar[key]) {
             room.spaceWar[key] = room.spaceWar[key].filter((i: number) => i !== index);
             io.to(roomId).emit("room_update", room);
