@@ -20,34 +20,6 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
   const rocketRef = useRef<HTMLImageElement>(null);
   const joystickKnobRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
-
-  // ResizeObserver to ensure canvas pixel resolution exactly matches container pixel size (1:1 rendering, no squishing, full background coverage)
-  useEffect(() => {
-    const container = gamePlayContainerRef.current;
-    if (!container) return;
-
-    const updateSize = () => {
-      const rect = container.getBoundingClientRect();
-      const w = Math.round(rect.width);
-      const h = Math.round(rect.height);
-      if (w > 0 && h > 0) {
-        if (canvasRef.current) {
-          if (canvasRef.current.width !== w || canvasRef.current.height !== h) {
-            canvasRef.current.width = w;
-            canvasRef.current.height = h;
-            const state = gameStateRef.current;
-            state.x = Math.max(0, Math.min(w - ROCKET_WIDTH, state.x));
-            state.y = Math.max(0, Math.min(h - ROCKET_HEIGHT, state.y));
-          }
-        }
-      }
-    };
-
-    updateSize();
-    const observer = new ResizeObserver(() => updateSize());
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
   
   const myId = socket?.id;
   const isPlayer1 = room?.players[0]?.id === myId;
@@ -216,10 +188,12 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
     }
 
     if (room?.gameState === 'space_war_playing' || room?.gameState === 'space_war_setup') {
-      const gw = canvasRef.current?.width || GAME_WIDTH;
-      const gh = canvasRef.current?.height || GAME_HEIGHT;
-      state.x = gw / 2 - ROCKET_WIDTH / 2;
-      state.y = gh - ROCKET_HEIGHT - 30;
+      if (canvasRef.current) {
+        canvasRef.current.width = GAME_WIDTH;
+        canvasRef.current.height = GAME_HEIGHT;
+      }
+      state.x = GAME_WIDTH / 2 - ROCKET_WIDTH / 2;
+      state.y = GAME_HEIGHT - ROCKET_HEIGHT - 30;
       state.lasers = [];
       state.letters = [];
       state.upgrades = [];
@@ -335,8 +309,11 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       const state = gameStateRef.current;
       const now = Date.now();
       const dt = 16 / 1000;
-      const gw = canvas.width || GAME_WIDTH;
-      const gh = canvas.height || GAME_HEIGHT;
+      const gw = GAME_WIDTH;
+      const gh = GAME_HEIGHT;
+
+      if (canvas.width !== GAME_WIDTH) canvas.width = GAME_WIDTH;
+      if (canvas.height !== GAME_HEIGHT) canvas.height = GAME_HEIGHT;
 
       // Handle Bot Powerups (Charges & Fires every ~10-14 seconds)
       if (isBotMatch) {
@@ -398,10 +375,10 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
       // Sync Rocket DOM Position
       if (rocketRef.current) {
-         rocketRef.current.style.left = `${state.x}px`;
-         rocketRef.current.style.top = `${state.y}px`;
-         rocketRef.current.style.width = `${ROCKET_WIDTH}px`;
-         rocketRef.current.style.height = `${ROCKET_HEIGHT}px`;
+         rocketRef.current.style.left = `${(state.x / GAME_WIDTH) * 100}%`;
+         rocketRef.current.style.top = `${(state.y / GAME_HEIGHT) * 100}%`;
+         rocketRef.current.style.width = `${(ROCKET_WIDTH / GAME_WIDTH) * 100}%`;
+         rocketRef.current.style.height = `${(ROCKET_HEIGHT / GAME_HEIGHT) * 100}%`;
       }
 
       // Shooting logic
@@ -1090,23 +1067,22 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
                   <div className="text-amber-300 font-bold">📱 الموبايل:</div>
                   <div>🕹️ <span className="text-indigo-300 font-bold">عصا التحكم</span> للتحريك</div>
                   <div>🎯 <span className="text-red-300 font-bold">زر الإطلاق</span> للإطلاق</div>
-                  <div>✨ لمس متعدّد <span className="text-cyan-300 font-bold">للمساعدة</span></div>
                 </div>
                 <div className="bg-indigo-900/40 p-1.5 rounded-xl border border-indigo-700/40 space-y-1">
                   <div className="text-amber-300 font-bold">💻 الكمبيوتر (الكيبورد):</div>
                   <div className="flex items-center gap-1">
                     <span>⌨️ الحركة:</span>
-                    <span className="bg-slate-800 px-1 py-0.5 rounded border border-slate-600 font-mono text-[9px] text-yellow-300">← ↑ → ↓</span>
+                    <span className="bg-slate-800 px-1 py-0.5 rounded border-[0.5px] flex items-center justify-center border-slate-600 font-mono text-[9px] text-yellow-300">← ↑ → ↓</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <span>🚀 الإطلاق:</span>
-                    <span className="bg-slate-800 px-1 py-0.5 rounded border border-slate-600 font-mono text-[9px] text-red-300">Space (المسافة)</span>
+                    <span className="bg-slate-800 px-1 py-0.5 rounded border-[0.5px] flex items-center justify-center border-slate-600 font-mono text-[9px] text-red-300">Space (المسافة)</span>
                   </div>
                   <div className="flex flex-wrap gap-1 text-[9px] pt-0.5">
-                    <span className="bg-purple-950 border border-purple-500 px-1 rounded font-bold text-purple-200">Q: تشويش</span>
-                    <span className="bg-red-950 border border-red-500 px-1 rounded font-bold text-red-200">W: قنابل</span>
-                    <span className="bg-cyan-950 border border-cyan-500 px-1 rounded font-bold text-cyan-200">E: تجميد</span>
-                    <span className="bg-yellow-950 border border-yellow-500 px-1 rounded font-bold text-yellow-200">R: سريع</span>
+                    <span className="bg-purple-950 border-[0.5px] flex items-center justify-center border-purple-500 px-1 rounded font-bold text-purple-200">Q: تشويش</span>
+                    <span className="bg-red-950 border-[0.5px] flex items-center justify-center border-red-500 px-1 rounded font-bold text-red-200">W: قنابل</span>
+                    <span className="bg-cyan-950 border-[0.5px] flex items-center justify-center border-cyan-500 px-1 rounded font-bold text-cyan-200">E: تجميد</span>
+                    <span className="bg-yellow-950 border-[0.5px] flex items-center justify-center border-yellow-500 px-1 rounded font-bold text-yellow-200">R: سريع</span>
                   </div>
                 </div>
               </div>
@@ -1146,7 +1122,6 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       <div className="absolute top-1 left-0 w-full flex flex-col items-center z-10 pointer-events-none px-2">
          <div className="bg-black/90 border-2 border-indigo-500/80 rounded-2xl p-1.5 px-2.5 flex items-center justify-between pointer-events-auto w-full max-w-[440px] gap-1" dir="rtl">
             <div className="flex items-center gap-1 font-black text-amber-300 text-xs sm:text-sm shrink-0">
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden sm:inline">كلمة المنافس:</span>
             </div>
 
@@ -1204,6 +1179,9 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       {/* Game Play Canvas Wrapper */}
       <div 
         ref={gamePlayContainerRef}
+        onPointerDown={handlePlayfieldPointerDown}
+        onPointerMove={handlePlayfieldPointerMove}
+        onPointerUp={handlePlayfieldPointerUp}
         className="relative w-full flex-1 bg-[url('/space-bg.jpg')] bg-cover bg-center overflow-hidden min-h-0 select-none"
       >
         {/* Icy Glow Overlay during Time Freeze */}
@@ -1214,6 +1192,8 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
         {/* Canvas */}
         <canvas
            ref={canvasRef}
+           width={GAME_WIDTH}
+           height={GAME_HEIGHT}
            className="w-full h-full block"
         />
         
@@ -1224,10 +1204,10 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
            alt="Rocket"
            className="absolute z-10 pointer-events-none transition-none object-contain"
            style={{
-              width: `${ROCKET_WIDTH}px`,
-              height: `${ROCKET_HEIGHT}px`,
-              left: '0px',
-              top: '0px',
+              width: `${(ROCKET_WIDTH / GAME_WIDTH) * 100}%`,
+              height: `${(ROCKET_HEIGHT / GAME_HEIGHT) * 100}%`,
+              left: `${((GAME_WIDTH / 2 - ROCKET_WIDTH / 2) / GAME_WIDTH) * 100}%`,
+              top: `${((GAME_HEIGHT - ROCKET_HEIGHT - 30) / GAME_HEIGHT) * 100}%`,
            }}
         />
       </div>
