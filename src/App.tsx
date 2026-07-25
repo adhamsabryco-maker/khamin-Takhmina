@@ -25958,19 +25958,7 @@ const renderBombPartyRewardBar = () => {
 
           {/* Game Info (Center) */}
           <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-2 mx-2">
-            {room.gameState !== "waiting" &&
-              room.gameState !== "custom_image_upload" &&
-              room.gameState !== "bus_complete_setup" &&
-              room.gameState !== "bus_complete_spin" &&
-              room.gameState !== "bus_complete_playing" &&
-              room.gameState !== "bus_complete_evaluating" &&
-              room.gameState !== "bomb_party_playing" &&
-              room.gameState !== "bomb_party_finished" &&
-              room.gameState !== "bomb_party_playing" &&
-          room.gameState !== "bomb_party_finished" &&
-          room.gameState !== "xo_playing" &&
-              room.gameState !== "xo_finished" &&
-              room.gameState !== "starting" && (
+            {(room.gameState === "guessing" || room.gameState === "discussion") && (
                 <div
                   className={`flex items-center justify-center min-w-[70px] md:min-w-[80px] gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-full text-sm md:text-base font-black transition-colors border-2 ${room.isFrozen ? "bg-cyan-100 text-cyan-600 border-cyan-200 animate-pulse" : room.timer <= 10 && room.gameState === "guessing" ? "bg-red-100 text-red-600 border-red-200 animate-pulse" : "bg-gray-100 text-brown-muted border-gray-200"}`}
                 >

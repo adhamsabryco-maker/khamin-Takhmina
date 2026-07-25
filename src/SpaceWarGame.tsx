@@ -75,6 +75,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
     upgradeEndTime: 0,
     isTouchDragging: false,
     lastBotPowerupTime: Date.now(),
+    lastUpgradeSpawnTime: 0,
     joystick: { active: false, originX: 0, originY: 0, currentX: 0, currentY: 0 }
   });
 
@@ -205,6 +206,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       state.jamEndTime = 0;
       state.upgradeEndTime = 0;
       state.lastBotPowerupTime = Date.now();
+      state.lastUpgradeSpawnTime = 0;
       
       setRocketLevel(1);
       setScore(0);
@@ -416,14 +418,27 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       state.lasers.forEach(l => l.y += l.vy * dt);
       state.lasers = state.lasers.filter(l => l.y > -LASER_HEIGHT);
 
-      // Spawn falling rocket upgrades (🚀)
-      if (Math.random() < 0.003 * state.slowFactor && state.upgrades.length < 2) {
+      // Spawn falling rocket upgrades (🚀) (Max 1 on screen, min 5 seconds between spawns)
+      if (now - state.lastUpgradeSpawnTime > 5000 && Math.random() < 0.003 * state.slowFactor && state.upgrades.length < 1) {
         state.upgrades.push({
           x: Math.random() * (gw - 30),
           y: -30,
           vy: 60 * state.slowFactor,
           size: 28
         });
+        state.lastUpgradeSpawnTime = now;
+      }
+
+      // Handle Bot dodging bombs (sometimes failing and getting hit)
+      if (isBotMatch && botBombedUntilRef.current > now) {
+         if (Math.random() < 0.005) { // Roughly ~30% chance per second to hit a bomb while bombed
+            // Bot hit a bomb, we must unreveal one letter from its word!
+            const currentBotRevealed = oppRevealedRef.current || [];
+            if (currentBotRevealed.length > 0) {
+              const unrevealIdx = currentBotRevealed[currentBotRevealed.length - 1];
+              socket?.emit("space_war_bot_unreveal_index", { roomId: room.id, index: unrevealIdx });
+            }
+         }
       }
 
       // Spawn falling letters for OPPONENT'S WORD (oppWord)
@@ -1077,7 +1092,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       <div className="absolute top-1 left-0 w-full flex flex-col items-center z-10 pointer-events-none px-2">
          <div className="bg-black/50 border-2 border-indigo-500/80 p-1 px-1 flex items-center justify-between pointer-events-auto w-full max-w-[440px] gap-0.5" dir="rtl">
             <div className="flex items-center gap-1 font-black text-amber-300 text-xs sm:text-sm shrink-0">
-              <span className="hidden sm:inline">كلمة المنافس:</span>
+              <span className="sm:inline">كلمة المنافس:</span>
             </div>
 
             <div className="flex gap-1 flex-wrap justify-center py-0.5" spellCheck={false}>
