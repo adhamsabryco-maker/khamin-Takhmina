@@ -5993,7 +5993,10 @@ export default function App() {
       room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished" ||
       room.gameState === "connect_four_words_setup" ||
       room.gameState === "connect_four_words_playing" ||
-      room.gameState === "connect_four_words_finished"
+      room.gameState === "connect_four_words_finished" ||
+      room.gameState === "space_war_setup" ||
+      room.gameState === "space_war_playing" ||
+      room.gameState === "space_war_finished"
     );
 
     const activeMusic = isGameActive
@@ -27779,7 +27782,9 @@ const renderBombPartyRewardBar = () => {
             ) : room.gameState === "bomb_party_setup" || room.gameState === "bomb_party_playing" || room.gameState === "bomb_party_finished" ? (
               <React.Fragment>
                 <div className="w-full card-game p-2 md:p-3 text-center space-y-2 md:space-y-3 relative overflow-hidden flex flex-col min-h-[auto] bg-gray-900 border-red-500">
-                {renderBombPartyRewardBar()}
+                <div className={room.gameState === "bomb_party_finished" ? "block w-full" : "hidden"}>
+                  {renderBombPartyRewardBar()}
+                </div>
                 
                 <div className="relative flex-1 flex flex-col w-full h-full space-y-2 md:space-y-3">
                 {room.players.length === 2 && (
@@ -27802,7 +27807,7 @@ const renderBombPartyRewardBar = () => {
 
                 {/* Animated Burning Fuses & Fire Sparks */}
                 {room.players.length === 2 && room.gameState === "bomb_party_playing" && (
-                  <svg className="absolute left-0 w-full pointer-events-none z-15" style={{ top: '-64px', height: 'calc(100% + 64px)' }} viewBox="0 0 400 320">
+                  <svg className="absolute left-0 w-full pointer-events-none z-15 -top-[78px] md:-top-[64px] h-[calc(100%+78px)] md:h-[calc(100%+64px)]" viewBox="0 0 400 320">
                     {/* Left Fuse Burnt/Ash Trace */}
                     {(() => {
                       const p1Id = room.players[1]?.id;
@@ -27824,7 +27829,7 @@ const renderBombPartyRewardBar = () => {
                     {(() => {
                       const p1Id = room.players[1]?.id;
                       const p1Incorrect = room.bombParty?.stats?.[p1Id]?.incorrect || 0;
-                      const t1 = Math.min(1.0, p1Incorrect * 0.2);
+                      const t1 = Math.min(1.0, p1Incorrect * 0.1);
                       return (
                         <path
                           d="M 200,78 q 0,-43 -62.2,10.7 q -31,32.3 -62,0 t -30.8,-53.7"
@@ -27860,7 +27865,7 @@ const renderBombPartyRewardBar = () => {
                     {(() => {
                       const p0Id = room.players[0]?.id;
                       const p0Incorrect = room.bombParty?.stats?.[p0Id]?.incorrect || 0;
-                      const t0 = Math.min(1.0, p0Incorrect * 0.2);
+                      const t0 = Math.min(1.0, p0Incorrect * 0.1);
                       return (
                         <path
                           d="M 200,78 q 0,-43 62.2,10.7 q 31,32.3 62,0 t 30.8,-53.7"
@@ -27879,7 +27884,7 @@ const renderBombPartyRewardBar = () => {
                     {(() => {
                       const p1Id = room.players[1]?.id;
                       const p1Incorrect = room.bombParty?.stats?.[p1Id]?.incorrect || 0;
-                      const t1 = Math.min(1.0, p1Incorrect * 0.2);
+                      const t1 = Math.min(1.0, p1Incorrect * 0.1);
                       const pt = getThreeSegmentBezierPoint(1 - t1, true);
                       return (
                         <motion.g
@@ -27907,7 +27912,7 @@ const renderBombPartyRewardBar = () => {
                     {(() => {
                       const p0Id = room.players[0]?.id;
                       const p0Incorrect = room.bombParty?.stats?.[p0Id]?.incorrect || 0;
-                      const t0 = Math.min(1.0, p0Incorrect * 0.2);
+                      const t0 = Math.min(1.0, p0Incorrect * 0.1);
                       const pt = getThreeSegmentBezierPoint(1 - t0, false);
                       return (
                         <motion.g
@@ -30965,9 +30970,9 @@ const BombPartyControls = ({ room, socket }: { room: any, socket: any }) => {
 
   useEffect(() => {
     if (room?.gameState === "bomb_party_playing") {
-      setBombPartyGuess("");
-      if (room?.bombParty?.turnPlayerId === socket?.id) {
-        setTimeout(() => bombInputRef.current?.focus(), 50);
+      setTimeout(() => bombInputRef.current?.focus(), 50);
+      if (room?.bombParty?.turnPlayerId !== socket?.id) {
+        setBombPartyGuess("");
       }
     }
   }, [room?.bombParty?.turnPlayerId, room?.gameState, socket?.id]);
@@ -30983,17 +30988,25 @@ const BombPartyControls = ({ room, socket }: { room: any, socket: any }) => {
       <input
         ref={bombInputRef}
         type="text"
-        value={bombPartyGuess}
-        onChange={(e) => setBombPartyGuess(e.target.value)}
+        value={room.bombParty?.turnPlayerId === socket?.id ? bombPartyGuess : ""}
+        onChange={(e) => {
+          if (room.bombParty?.turnPlayerId === socket?.id) {
+            setBombPartyGuess(e.target.value);
+          }
+        }}
+        onBeforeInput={(e) => {
+          if (room.bombParty?.turnPlayerId !== socket?.id) {
+            e.preventDefault();
+          }
+        }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') submitBombPartyGuess();
+          if (e.key === 'Enter' && room.bombParty?.turnPlayerId === socket?.id) submitBombPartyGuess();
         }}
         placeholder={room.bombParty?.turnPlayerId === socket?.id ? "خمن الكلمة..." : "انتظر دورك..."}
-        disabled={room.bombParty?.turnPlayerId !== socket?.id}
         className={`w-full text-center text-lg p-2.5 rounded-xl border-2 outline-none font-bold transition-all
           ${room.bombParty?.turnPlayerId === socket?.id 
             ? 'bg-white border-red-500 text-black shadow-[0_0_10px_rgba(239,68,68,0.3)]' 
-            : 'bg-gray-800 border-gray-700 text-gray-500'}
+            : 'bg-gray-800 border-gray-700 text-gray-500 select-none'}
         `}
       />
       <button
@@ -31092,7 +31105,7 @@ const BombTimer = ({ room }: { room: any }) => {
     return () => clearInterval(interval);
   }, [room?.gameState, room?.bombParty?.bombStartTime, room?.bombParty?.turnTimeLimit, room?.bombParty?.gameOver]);
 
-  const turnLimitSec = (room.bombParty?.turnTimeLimit || 10000) / 1000;
+  const turnLimitSec = (room.bombParty?.turnTimeLimit || 20000) / 1000;
   const ratio = Math.max(0, Math.min(1, bombPartyTimeLeft / turnLimitSec));
   const pulseDuration = 0.2 + 1.3 * ratio; 
   const pulseScale = 1 + 0.06 * (1 - ratio); 

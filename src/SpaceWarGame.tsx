@@ -280,7 +280,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       setFreezeCountdown(10);
     } else if (type === 'jam' && isBotMatch) {
       botJammedUntilRef.current = Date.now() + 8000;
-      setBotStatusText('المنافس تعرض للتشويش! ⚡ (زادت فرصة تفويت الحروف)');
+      setBotStatusText('المنافس تعرض للتشويش! 📡 (زادت فرصة تفويت الحروف)');
       setTimeout(() => setBotStatusText(''), 8000);
     } else if (type === 'bomb' && isBotMatch) {
       botBombedUntilRef.current = Date.now() + 7000;
@@ -337,7 +337,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
           } else {
             state.isJamming = true;
             state.jamEndTime = now + 6000;
-            setBotStatusText('المنافس شحن واستخدم التشويش ضدك! ⚡');
+            setBotStatusText('المنافس شحن واستخدم التشويش ضدك! 📡');
             setTimeout(() => setBotStatusText(''), 6000);
           }
         }
