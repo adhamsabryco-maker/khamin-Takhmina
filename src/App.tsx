@@ -16,6 +16,8 @@ import { motion, AnimatePresence, animate } from "motion/react";
 import {
   Upload,
   WifiOff,
+  Box,
+  ShieldPlus,
   Trash2,
   Mail,
   User,
@@ -24750,7 +24752,7 @@ const renderBombPartyRewardBar = () => {
                               </div>
 
                               <span
-                                className={`font-black text-main w-full text-center truncate px-0.5 shrink-0 ${specialList.length === 3 ? "text-[8px] md:text-xs" : "text-[10px] md:text-xs"}`}
+                                className={`font-black text-main w-full text-center truncate px-0.5 shrink-0 ${specialList.length === 3 ? "text-[8px] md:text-xs" : "text-[10px] md:text-xs"}`} dir="ltr"
                               >
                                 {truncateName(player.name)}
                               </span>

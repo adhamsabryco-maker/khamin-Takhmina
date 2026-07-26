@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Zap, Bomb, Target, WifiOff, Rocket, Sparkles, Gamepad2, Snowflake, ShieldCheck, ShieldAlert, Clock } from "lucide-react";
+import { Zap, Bomb, Target, WifiOff, Rocket, Sparkles, Gamepad2, Snowflake, ShieldCheck, ShieldAlert, Clock, Box, Swords, ShieldPlus } from "lucide-react";
 
 const GAME_WIDTH = 400;
 const GAME_HEIGHT = 450;
@@ -24,6 +24,15 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
   const rocketRef = useRef<HTMLImageElement>(null);
   const joystickKnobRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
+  
+  const roomGameStateRef = useRef(room?.gameState);
+  roomGameStateRef.current = room?.gameState;
+
+  const playGameSound = useCallback((soundName: string) => {
+    if (roomGameStateRef.current === 'space_war_playing' && playSound) {
+      playSound(soundName);
+    }
+  }, [playSound]);
   
   const myId = socket?.id;
   const isPlayer1 = room?.players[0]?.id === myId;
@@ -247,15 +256,15 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       if (type === 'slow') {
         state.slowFactor = 0.3;
         setFreezeCountdown(10);
-        if (playSound) playSound("clockTicking");
+        playGameSound("clockTicking");
       } else if (type === 'bomb') {
-        if (playSound) playSound("alarm");
+        playGameSound("alarm");
         setBombWarning(true);
         setTimeout(() => {
           setBombWarning(false);
           const state = gameStateRef.current;
           const gw = canvasRef.current?.width || GAME_WIDTH;
-          if (playSound) playSound("pop");
+          playGameSound("pop");
           for (let i = 0; i < 5; i++) {
              state.bombs.push({
                x: 20 + Math.random() * (gw - 60),
@@ -269,7 +278,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       } else if (type === 'jam') {
         state.isJamming = true;
         state.jamEndTime = Date.now() + 6000;
-        if (playSound) playSound("alarm");
+        playGameSound("alarm");
         for (let i = 0; i < 6; i++) {
            state.letters.push({
              x: Math.random() * (gw - LETTER_SIZE),
@@ -281,13 +290,13 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
            });
         }
       } else if (type === 'freeze') {
-        if (playSound) playSound("alarm");
+        playGameSound("alarm");
         setFreezeWarning(true);
         setTimeout(() => {
           setFreezeWarning(false);
           const state = gameStateRef.current;
           const gw = canvasRef.current?.width || GAME_WIDTH;
-          if (playSound) playSound("pop");
+          playGameSound("pop");
           for (let i = 0; i < 5; i++) {
              state.snows.push({
                x: 20 + Math.random() * (gw - 60),
@@ -308,7 +317,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       socket.off("space_war_powerup_received", handlePowerup);
       socket.off("space_war_powerup", handlePowerup);
     };
-  }, [socket, myId, playSound]);
+  }, [socket, myId, playGameSound]);
 
   // Activate Powerup Helper
   const usePowerup = (type: 'speed' | 'slow' | 'bomb' | 'jam' | 'freeze') => {
@@ -319,7 +328,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
     if (type === 'speed') {
       gameStateRef.current.speedEndTime = Date.now() + 8000;
       setSpeedCountdown(8);
-      if (playSound) playSound("rocket-laser-single-shoot");
+      playGameSound("rocket-laser-single-shoot");
     } else if (type === 'slow') {
       gameStateRef.current.slowFactor = 0.25;
       setFreezeCountdown(10);
@@ -374,13 +383,13 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
           const chosen = randomVal < 0.33 ? 'bomb' : randomVal < 0.66 ? 'jam' : 'freeze';
           if (chosen === 'bomb') {
             setBotStatusText('المنافس يحضر القنبلة! 💣');
-            if (playSound) playSound("alarm");
+            playGameSound("alarm");
             setBombWarning(true);
             setTimeout(() => {
               setBombWarning(false);
               const state = gameStateRef.current;
               const gw = canvasRef.current?.width || GAME_WIDTH;
-              if (playSound) playSound("pop");
+              playGameSound("pop");
               for (let i = 0; i < 5; i++) {
                 state.bombs.push({
                   x: 20 + Math.random() * (gw - 60),
@@ -396,13 +405,13 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
             setTimeout(() => setBotStatusText(''), 5000);
           } else if (chosen === 'freeze') {
             setBotStatusText('المنافس يحضر وسيلة التجميد! 🧊');
-            if (playSound) playSound("alarm");
+            playGameSound("alarm");
             setFreezeWarning(true);
             setTimeout(() => {
               setFreezeWarning(false);
               const state = gameStateRef.current;
               const gw = canvasRef.current?.width || GAME_WIDTH;
-              if (playSound) playSound("pop");
+              playGameSound("pop");
               for (let i = 0; i < 5; i++) {
                 state.snows.push({
                   x: 20 + Math.random() * (gw - 60),
@@ -494,11 +503,9 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
       if (!state.isFrozen && (state.keys['Shoot'] || state.keys[' '] || isSpeedBoosted) && now - state.lastShootTime > fireDelay) {
         state.lastShootTime = now;
-        if (playSound) {
-           playSound("rocket-laser-single-shoot");
-           if (rocketLevel >= 2 && !isSpeedBoosted) setTimeout(() => playSound("rocket-laser-single-shoot"), 80);
-           if (rocketLevel >= 3 && !isSpeedBoosted) setTimeout(() => playSound("rocket-laser-single-shoot"), 160);
-        }
+        playGameSound("rocket-laser-single-shoot");
+        if (rocketLevel >= 2 && !isSpeedBoosted) setTimeout(() => playGameSound("rocket-laser-single-shoot"), 80);
+        if (rocketLevel >= 3 && !isSpeedBoosted) setTimeout(() => playGameSound("rocket-laser-single-shoot"), 160);
         
         const fireLaser = (offsetX: number) => {
            state.lasers.push({
@@ -606,7 +613,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
           u.hit = true;
           setRocketLevel(prev => Math.min(3, prev + 1));
           state.upgradeEndTime = now + 10000;
-          if (playSound) playSound("space-war-rocket-level-upgrade");
+          playGameSound("space-war-rocket-level-upgrade");
 
           for (let i = 0; i < 12; i++) {
              state.particles.push({
@@ -650,7 +657,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
         if (exploded && !b.hit) {
           b.hit = true;
-          if (playSound) playSound("boomingExplosion");
+          playGameSound("boomingExplosion");
 
           // When a bomb is destroyed by the player, unreveal a letter from myRevealed (erasing player's word progress on opponent's screen)
           const currentMyRevealed = myRevealedRef.current || [];
@@ -700,7 +707,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
         if (hit && !s.hit) {
           s.hit = true;
-          if (playSound) playSound("pop");
+          playGameSound("pop");
 
           // Freeze player
           state.isFrozen = true;
@@ -794,13 +801,13 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
             if (matchIndices.length > 0) {
               const revealIdx = matchIndices[0];
               socket?.emit("space_war_reveal_index", { roomId: room.id, index: revealIdx });
-              if (playSound) playSound("pop");
+              playGameSound("pop");
             }
           }
         }
       });
 
-      if (hitAny && playSound) playSound("hammer");
+      if (hitAny) playGameSound("hammer");
 
       state.upgrades = state.upgrades.filter(u => !u.hit && u.y < gh);
       state.bombs = state.bombs.filter(b => !b.hit && b.y < gh);
@@ -1080,7 +1087,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
                     <span className="font-black text-white">{oppPlayerObj?.name || "المنافس"}</span>
                  </div>
                  <div className="flex justify-between items-center text-sm border-b border-indigo-800/60 pb-2">
-                    <span className="text-indigo-300 font-bold">كلمتك (المحمية):</span>
+                    <span className="text-indigo-300 font-bold">كلمتك:</span>
                     <span className="font-black text-emerald-300 tracking-widest">{myWord || "—"}</span>
                  </div>
                  <div className="flex justify-between items-center text-sm border-b border-indigo-800/60 pb-2">
@@ -1170,7 +1177,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
             <div className="bg-indigo-950/80 border border-indigo-800/80 rounded-2xl p-1 mb-1 shadow-md space-y-1">
               <div className="flex items-center gap-2 text-cyan-400 font-black text-sm">
-                <Snowflake className="w-4 h-4" />
+                <ShieldPlus className="w-4 h-4" />
                 <span>وسائل المساعدة والترقيات:</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-200 font-bold">
@@ -1188,26 +1195,33 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
                     <div className="text-[10px] text-slate-300 font-normal">تسقط من السماء لتطوير الصاروخ!</div>
                   </div>
                 </div>
+                <div className="bg-indigo-900/50 p-2 rounded-xl border border-indigo-700/50 flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-yellow-400 shrink-0" />
+                  <div>
+                    <div className="text-yellow-300">ليزر تلقائي ⚡</div>
+                    <div className="text-[10px] text-slate-300 font-normal">تزودك بسرعة طلقات الليزر!</div>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="bg-indigo-950/80 border border-indigo-800/80 rounded-2xl p-1 mb-1 shadow-md space-y-1">
               <div className="flex items-center gap-2 text-emerald-400 font-black text-sm">
-                <Zap className="w-4 h-4" />
+                <Swords className="w-4 h-4" />
                 <span>قدرات التشويش والقنابل:</span>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-[11px] text-slate-200 font-semibold">
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-2 text-[11px] text-slate-200 font-semibold">
                 <div className="flex items-center gap-1.5 bg-indigo-900/40 p-1.5 rounded-xl">
                   <Bomb className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                  <span>قنابل للمنافس 💣 (احذرها!)</span>
+                  <span>القنابل تمسح الحروف</span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-indigo-900/40 p-1.5 rounded-xl">
                   <WifiOff className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span>تشويش الحروف 📡</span>
+                  <span>التشويش يزيد عدد الحروف</span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-indigo-900/40 p-1.5 rounded-xl">
-                  <span className="text-[12px] opacity-80 shrink-0">🧊</span>
-                  <span>تجميد المنافس 🧊 (يشل حركته)</span>
+                  <Box className="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="cyan" />
+                  <span>تجميد صاروخ المنافس</span>
                 </div>
               </div>
             </div>
@@ -1395,7 +1409,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
             <Target className="w-8 h-8 text-white pointer-events-none drop-shadow" />
          </button>
 
-         {/* Center: Power-up Helpers Bar (Q - W - E - R) */}
+         {/* Center: Power-up Helpers Bar (Q - W - E - T - R) */}
          <div className="flex items-center gap-1 md:gap-1.5 bg-indigo-950/60 p-1.5 rounded-2xl border border-indigo-800/70 select-none touch-none" dir="ltr">
             
             {/* Q: Jamming */}
@@ -1410,7 +1424,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
                </div>
                <span className="absolute -top-1.5 -right-1 bg-purple-950/90 border-[0.5px] border-purple-400/20 text-purple-200 text-[8px] font-normal px-1 rounded-full pointer-events-none">Q</span>
                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden pointer-events-none">
-                  <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${powerups.jam}%` }}></div>
+                  <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${powerups.jam}%` }} dir="rtl"></div>
                </div>
             </div>
 
@@ -1426,7 +1440,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
                </div>
                <span className="absolute -top-1.5 -right-1 bg-red-950/90 border-[0.5px] border-red-400/20 text-red-200 text-[8px] font-normal px-1 rounded-full pointer-events-none">W</span>
                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden pointer-events-none">
-                  <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${powerups.bomb}%` }}></div>
+                  <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${powerups.bomb}%` }} dir="rtl"></div>
                </div>
             </div>
 
@@ -1442,23 +1456,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
                </div>
                <span className="absolute -top-1.5 -right-1 bg-cyan-950/90 border-[0.5px] border-cyan-400/20 text-cyan-200 text-[8px] font-normal px-1 rounded-full pointer-events-none">E</span>
                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden pointer-events-none">
-                  <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${powerups.slow}%` }}></div>
-               </div>
-            </div>
-
-            {/* T: Freeze Ship Helper */}
-            <div 
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('freeze'); }}
-              onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('freeze'); }}
-              className={`relative group cursor-pointer select-none touch-none ${isFrozenState ? 'opacity-50 pointer-events-none' : ''}`}
-            >
-               {isFrozenState && <div className="absolute inset-0 bg-sky-200/50 rounded-full z-10 pointer-events-none"></div>}
-               <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border ${powerups.freeze >= 100 ? 'bg-sky-400 border-sky-200 animate-pulse shadow-[0_0_10px_rgba(56,189,248,0.8)]' : 'bg-gray-800 border-gray-700'}`}>
-                  <span className={`text-[12px] md:text-[14px] ${powerups.freeze >= 100 ? 'text-slate-950 opacity-100' : 'opacity-40 grayscale'} transition-all`}>🧊</span>
-               </div>
-               <span className="absolute -top-1.5 -right-1 bg-sky-950/90 border-[0.5px] border-sky-400/20 text-sky-200 text-[8px] font-normal px-1 rounded-full pointer-events-none">T</span>
-               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden pointer-events-none">
-                  <div className="h-full bg-sky-400 transition-all duration-300" style={{ width: `${powerups.freeze}%` }}></div>
+                  <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${powerups.slow}%` }} dir="rtl"></div>
                </div>
             </div>
 
@@ -1474,10 +1472,26 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
                </div>
                <span className="absolute -top-1.5 -right-1 bg-yellow-950/90 border-[0.5px] border-yellow-400/20 text-yellow-200 text-[8px] font-normal px-1 rounded-full pointer-events-none">R</span>
                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden pointer-events-none">
-                  <div className="h-full bg-yellow-400 transition-all duration-300" style={{ width: `${powerups.speed}%` }}></div>
+                  <div className="h-full bg-yellow-400 transition-all duration-300" style={{ width: `${powerups.speed}%` }} dir="rtl"></div>
                </div>
             </div>
 
+            {/* T: Freeze Ship Helper */}
+            <div 
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('freeze'); }}
+              onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); usePowerup('freeze'); }}
+              className={`relative group cursor-pointer select-none touch-none ${isFrozenState ? 'opacity-50 pointer-events-none' : ''}`}
+            >
+               {isFrozenState && <div className="absolute inset-0 bg-sky-200/50 rounded-full z-10 pointer-events-none"></div>}
+               <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border ${powerups.freeze >= 100 ? 'bg-sky-400 border-sky-200 animate-pulse shadow-[0_0_10px_rgba(56,189,248,0.8)]' : 'bg-gray-800 border-gray-700'}`}>
+                  <Box className={`w-4 h-4 ${powerups.freeze >= 100 ? 'text-slate-950' : 'text-gray-500'}`} />
+               </div>
+               <span className="absolute -top-1.5 -right-1 bg-sky-950/90 border-[0.5px] border-sky-400/20 text-sky-200 text-[8px] font-normal px-1 rounded-full pointer-events-none">T</span>
+               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-gray-900 rounded-full overflow-hidden pointer-events-none">
+                  <div className="h-full bg-sky-400 transition-all duration-300" style={{ width: `${powerups.freeze}%` }} dir="rtl"></div>
+               </div>
+            </div>
+            
          </div>
 
          {/* Right: Circular Virtual Joystick */}
