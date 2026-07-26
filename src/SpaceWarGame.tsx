@@ -13,6 +13,7 @@ const ARABIC_LETTERS = "ابتثجحخدذرزسشصضطظعغفقكلمنهوي
 
 export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, playSound, hasProPackage, CategoryPageAd, showAlert, showConfirm, showAd, handleLeaveGame, renderSpaceWarRewardBar }: any) {
   const [freezeCountdown, setFreezeCountdown] = useState(0);
+  const [bombWarning, setBombWarning] = useState(false);
   const [speedCountdown, setSpeedCountdown] = useState(0);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -229,16 +230,23 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
         setFreezeCountdown(10);
         if (playSound) playSound("clockTicking");
       } else if (type === 'bomb') {
-        if (playSound) playSound("pop");
-        for (let i = 0; i < 5; i++) {
-           state.bombs.push({
-             x: 20 + Math.random() * (gw - 60),
-             y: -50 - Math.random() * 250,
-             vy: 85 + Math.random() * 35,
-             size: 28,
-             hit: false
-           });
-        }
+        if (playSound) playSound("alarm");
+        setBombWarning(true);
+        setTimeout(() => {
+          setBombWarning(false);
+          const state = gameStateRef.current;
+          const gw = canvasRef.current?.width || GAME_WIDTH;
+          if (playSound) playSound("pop");
+          for (let i = 0; i < 5; i++) {
+             state.bombs.push({
+               x: 20 + Math.random() * (gw - 60),
+               y: -50 - Math.random() * 250,
+               vy: 85 + Math.random() * 35,
+               size: 28,
+               hit: false
+             });
+          }
+        }, 1500);
       } else if (type === 'jam') {
         state.isJamming = true;
         state.jamEndTime = Date.now() + 6000;
@@ -323,16 +331,26 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
           state.lastBotPowerupTime = now;
           const chosen = Math.random() < 0.5 ? 'bomb' : 'jam';
           if (chosen === 'bomb') {
-            for (let i = 0; i < 5; i++) {
-              state.bombs.push({
-                x: 20 + Math.random() * (gw - 60),
-                y: -50 - Math.random() * 180,
-                vy: 85 + Math.random() * 35,
-                size: 28,
-                hit: false
-              });
-            }
-            setBotStatusText('المنافس شحن واستخدم القنبلة ضدك! 💣');
+            setBotStatusText('المنافس يحضر القنبلة! 💣');
+            if (playSound) playSound("alarm");
+            setBombWarning(true);
+            setTimeout(() => {
+              setBombWarning(false);
+              const state = gameStateRef.current;
+              const gw = canvasRef.current?.width || GAME_WIDTH;
+              if (playSound) playSound("pop");
+              for (let i = 0; i < 5; i++) {
+                state.bombs.push({
+                  x: 20 + Math.random() * (gw - 60),
+                  y: -50 - Math.random() * 180,
+                  vy: 85 + Math.random() * 35,
+                  size: 28,
+                  hit: false
+                });
+              }
+              setBotStatusText('المنافس أطلق القنابل ضدك! 💣');
+              setTimeout(() => setBotStatusText(''), 3000);
+            }, 1500);
             setTimeout(() => setBotStatusText(''), 5000);
           } else {
             state.isJamming = true;
@@ -1154,6 +1172,13 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
         {/* Icy Glow Overlay during Time Freeze */}
         {freezeCountdown > 0 && (
           <div className="absolute inset-0 pointer-events-none z-10 animate-pulse border-2 border-cyan-400/50" />
+        )}
+        
+        {bombWarning && (
+          <div className="absolute inset-0 pointer-events-none z-10 flex justify-between overflow-hidden">
+            <div className="w-4 h-full bg-red-600/60 blur-md animate-pulse shadow-[0_0_20px_10px_rgba(220,38,38,0.7)]"></div>
+            <div className="w-4 h-full bg-red-600/60 blur-md animate-pulse shadow-[0_0_20px_10px_rgba(220,38,38,0.7)]"></div>
+          </div>
         )}
 
         {/* Canvas */}
