@@ -6179,7 +6179,7 @@ async function startServer() {
             room.bombParty = {
               turnPlayerId: room.players[startingPlayerIndex].id,
               bombStartTime: Date.now(),
-              turnTimeLimit: 10000,
+              turnTimeLimit: 20000,
               matchWins: {},
               usedWords: [],
               currentSubstring: getBombPartySubstring([]),
@@ -7060,7 +7060,7 @@ async function startServer() {
                   r.bombParty = {
                     turnPlayerId: r.players[startingPlayerIndex].id,
                     bombStartTime: Date.now(),
-                    turnTimeLimit: 10000,
+                    turnTimeLimit: 20000,
                     matchWins: {},
                     usedWords: [],
                     currentSubstring: getBombPartySubstring([]),
@@ -11881,7 +11881,7 @@ async function startServer() {
             room.bombParty = {
               turnPlayerId: room.players[startingPlayerIndex].id,
               bombStartTime: Date.now(),
-              turnTimeLimit: 10000,
+              turnTimeLimit: 20000,
               matchWins: {},
               usedWords: [],
               currentSubstring: getBombPartySubstring([]),
@@ -14614,7 +14614,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
           room.bombParty = {
             turnPlayerId: room.players[startingPlayerIndex].id,
             bombStartTime: Date.now(),
-            turnTimeLimit: 10000,
+            turnTimeLimit: 20000,
             matchWins: {},
             usedWords: [],
             currentSubstring: getBombPartySubstring([]),
