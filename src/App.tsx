@@ -28160,7 +28160,9 @@ const renderBombPartyRewardBar = () => {
                 )}
                 </div>
                 </div>
-                <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
+                <div className={room.gameState === "bomb_party_playing" ? "hidden md:block w-full" : "w-full"}>
+                  <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
+                </div>
               </React.Fragment>
 
             ) : room.gameState === "xo_playing" || room.gameState === "xo_finished" ? (
@@ -31090,7 +31092,7 @@ const getStarburstPath = (cx: number, cy: number, spikes: number, outerRadius: n
 };
 
 const BombTimer = ({ room }: { room: any }) => {
-  const [bombPartyTimeLeft, setBombPartyTimeLeft] = useState(10);
+  const [bombPartyTimeLeft, setBombPartyTimeLeft] = useState(20);
   
   useEffect(() => {
     let interval: any;
