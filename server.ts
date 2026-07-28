@@ -2126,6 +2126,7 @@ async function startServer() {
         lastActiveAt?: number;
         hideMyInfo?: number;
         hideFriendRequests?: number;
+  disableGuessChat?: number;
         secretToken?: string;
         busCompleteWins?: number;
         busCompleteUsedLetters?: string[];
@@ -2605,6 +2606,11 @@ async function startServer() {
       );
     } catch (e) {}
     try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN disableGuessChat INTEGER DEFAULT 0`
+      );
+    } catch (e) {}
+    try {
       db.exec(`ALTER TABLE players ADD COLUMN secretToken TEXT`);
     } catch (e) {}
     try {
@@ -3005,8 +3011,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints, spaceWarWins, spaceWarRewardLevel, spaceWarMatchPoints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints, @connectFourWordsWins, @connectFourWordsRewardLevel, @connectFourWordsMatchPoints, @spaceWarWins, @spaceWarRewardLevel, @spaceWarMatchPoints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, disableGuessChat, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints, spaceWarWins, spaceWarRewardLevel, spaceWarMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @disableGuessChat, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints, @connectFourWordsWins, @connectFourWordsRewardLevel, @connectFourWordsMatchPoints, @spaceWarWins, @spaceWarRewardLevel, @spaceWarMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3263,10 +3269,8 @@ async function startServer() {
               ? player.notificationsEnabled
               : 0,
           hideMyInfo: player.hideMyInfo !== undefined ? player.hideMyInfo : 0,
-          hideFriendRequests:
-            player.hideFriendRequests !== undefined
-              ? player.hideFriendRequests
-              : 0,
+          hideFriendRequests: player.hideFriendRequests !== undefined ? player.hideFriendRequests : 0,
+          disableGuessChat: player.disableGuessChat !== undefined ? player.disableGuessChat : 0,
           secretToken: player.secretToken || null,
           lastSpinDate: player.lastSpinDate || null,
           dailySpinCount: player.dailySpinCount || 0,
@@ -3363,10 +3367,8 @@ async function startServer() {
               ? player.notificationsEnabled
               : 0,
           hideMyInfo: player.hideMyInfo !== undefined ? player.hideMyInfo : 0,
-          hideFriendRequests:
-            player.hideFriendRequests !== undefined
-              ? player.hideFriendRequests
-              : 0,
+          hideFriendRequests: player.hideFriendRequests !== undefined ? player.hideFriendRequests : 0,
+          disableGuessChat: player.disableGuessChat !== undefined ? player.disableGuessChat : 0,
           secretToken: player.secretToken || null,
           lastSpinDate: player.lastSpinDate || null,
           dailySpinCount: player.dailySpinCount || 0,
@@ -3488,8 +3490,8 @@ async function startServer() {
                 ? row.notificationsEnabled
                 : 0,
             hideMyInfo: row.hideMyInfo !== undefined ? row.hideMyInfo : 0,
-            hideFriendRequests:
-              row.hideFriendRequests !== undefined ? row.hideFriendRequests : 0,
+            hideFriendRequests: row.hideFriendRequests !== undefined ? row.hideFriendRequests : 0,
+            disableGuessChat: row.disableGuessChat !== undefined ? row.disableGuessChat : 0,
             secretToken: row.secretToken || null,
             lastSpinDate: row.lastSpinDate || null,
             dailySpinCount: row.dailySpinCount || 0,
@@ -4808,6 +4810,7 @@ async function startServer() {
               joinedAt: Date.now(),
               status: "searching",
               isBot: true,
+              disableGuessChat: 1,
               persona: botPersona.personality,
               socket: {
                 id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
@@ -4919,6 +4922,7 @@ async function startServer() {
             hideFriendRequests: p1ServerPlayer
               ? p1ServerPlayer.hideFriendRequests || 0
               : 0,
+            disableGuessChat: match.p1.isBot ? 1 : (p1ServerPlayer ? p1ServerPlayer.disableGuessChat || 0 : 0),
             busCompleteWins: p1ServerPlayer
               ? p1ServerPlayer.busCompleteWins || 0
               : 0,
@@ -4998,6 +5002,7 @@ async function startServer() {
             hideFriendRequests: p2ServerPlayer
               ? p2ServerPlayer.hideFriendRequests || 0
               : 0,
+            disableGuessChat: match.p2.isBot ? 1 : (p2ServerPlayer ? p2ServerPlayer.disableGuessChat || 0 : 0),
             busCompleteWins: p2ServerPlayer
               ? p2ServerPlayer.busCompleteWins || 0
               : 0,
@@ -5120,6 +5125,7 @@ async function startServer() {
             connectFourWordsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             spaceWarWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
             isBot: true,
+            disableGuessChat: 1,
             persona: botPersona.personality,
             selectedFrame: "",
             socket: {
@@ -10871,14 +10877,25 @@ async function startServer() {
 
       socket.on(
         "update_player_privacy",
-        ({ serial, hideMyInfo, hideFriendRequests }) => {
+        ({ serial, hideMyInfo, hideFriendRequests, disableGuessChat }) => {
           const player = allPlayers.get(serial);
           if (player) {
             if (hideMyInfo !== undefined)
               player.hideMyInfo = hideMyInfo ? 1 : 0;
             if (hideFriendRequests !== undefined)
               player.hideFriendRequests = hideFriendRequests ? 1 : 0;
+            if (disableGuessChat !== undefined)
+              player.disableGuessChat = disableGuessChat ? 1 : 0;
             savePlayerData(serial);
+          }
+          if (disableGuessChat !== undefined) {
+            rooms.forEach((room) => {
+              const p = room.players?.find((rp: any) => rp.serial === serial || rp.id === socket.id);
+              if (p) {
+                p.disableGuessChat = disableGuessChat ? 1 : 0;
+                io.to(room.id).emit("room_update", room);
+              }
+            });
           }
         },
       );
@@ -13218,7 +13235,8 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
           const sender = room.players.find((p: any) => p.id === socket.id);
           if (!sender) return;
 
-          const messageToSend = text;
+          const messageToSend = filterProfanity(text);
+          const originalText = text;
 
           console.log(`Broadcasting chat to room ${roomId}`);
 
@@ -13284,6 +13302,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
             senderId: socket.id,
             senderName: sender.name,
             text: messageToSend,
+            originalText: originalText,
             timestamp: Date.now(),
           });
           if (room.chatHistory.length > 500) room.chatHistory.shift();
@@ -13749,7 +13768,9 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                     ? `بمشاهدة إعلان لاستلام مكافأة`
                     : powerUpName === "فتح فئات التخمين"
                       ? `بمشاهدة إعلان لفتح فئات التخمين`
-                      : `بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"`;
+                      : powerUpName === "فتح شات الدردشة"
+                        ? `بمشاهدة إعلان لفتح شات الدردشة`
+                        : `بمشاهدة إعلان لفتح وسيلة مساعدة "${powerUpName}"`;
                 io.to(roomId).emit("chat_bubble", {
                   senderId: "system",
                   text: `${verb} ${sender.name} ${actionText}، انتظر قليلاً.`,
