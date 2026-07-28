@@ -1917,6 +1917,11 @@ export default function App() {
     return saved !== null ? saved === "true" : false;
   });
 
+  const [disableGuessChat, setDisableGuessChat] = useState(() => {
+    const saved = localStorage.getItem("khamin_disable_guess_chat");
+    return saved !== null ? saved === "true" : false;
+  });
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       setIsDocumentHidden(document.hidden);
@@ -3837,6 +3842,19 @@ export default function App() {
         serial: playerSerial,
         hideFriendRequests: newValue,
       });
+    } 
+  };
+
+  const toggleDisableGuessChat = () => {
+    const newValue = !disableGuessChat;
+    setDisableGuessChat(newValue);
+    playSound("clickOpen");
+    localStorage.setItem("khamin_disable_guess_chat", newValue.toString());
+    if (socket && isConnected) {
+      socket.emit("update_player_privacy", {
+        serial: playerSerial,
+        disableGuessChat: newValue,
+      });
     }
   };
 
@@ -5573,6 +5591,14 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [isOpponentTyping, setIsOpponentTyping] = useState(false);
   const [showEmotes, setShowEmotes] = useState(false);
+  const [guessChatUnlocked, setGuessChatUnlocked] = useState(false);
+  const [showGuessChatLockAlert, setShowGuessChatLockAlert] = useState(false);
+
+  useEffect(() => {
+    if (!room || room.gameState === "waiting" || room.selectionMode === "ready") {
+      setGuessChatUnlocked(false);
+    }
+  }, [room?.id, room?.gameState, room?.selectionMode]);
 
   // Typing logic
   useEffect(() => {
@@ -9230,7 +9256,29 @@ if (data.connectFourWordsRewardLevel != null) {
     setJudgmentRequest(null);
   };
 
+  
+  const handleWatchAdForGuessChat = () => {
+    playSound("clickOpen");
+    if (socket && room?.id) {
+      socket.emit("ad_started", { roomId: room.id, powerUpName: "فتح شات الدردشة" });
+    }
+    showAd(
+      room?.id || "",
+      socket?.id || "",
+      () => {
+        setGuessChatUnlocked(true);
+      },
+      undefined,
+      () => {
+        if (socket && room?.id) {
+          socket.emit("ad_ended", { roomId: room.id });
+        }
+      }
+    );
+  };
+
   const handleSendChat = (e: React.FormEvent) => {
+
     e.preventDefault();
     if (!chatInput.trim()) return;
     playSound("clickOpen");
@@ -10622,15 +10670,41 @@ if (data.connectFourWordsRewardLevel != null) {
   };
 
   const showAd = (roomId: string, playerId: string, callback: () => void, onStart?: () => void, onEnd?: () => void) => {
+    let adViewed = false;
+    let adStarted = false;
+    let adHandled = false;
+
+    const handleAdDismissed = () => {
+      if (adHandled) return;
+      adHandled = true;
+      Howler.mute(false);
+      if (onEnd) onEnd();
+      showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+    };
+
+    const handleAdFailedOrNotReady = () => {
+      if (adHandled) return;
+      adHandled = true;
+      Howler.mute(false);
+      if (onEnd) onEnd();
+      setMockAdProviderState({
+        onComplete: () => {
+          callback();
+        },
+        onDismissed: () => {
+          showAlert("يجب مشاهدة الإعلان كاملاً للحصول على المكافأة.", "تنبيه");
+        },
+      });
+    };
+
     if (typeof (window as any).adBreak === "function") {
       try {
-        let adViewed = false;
-        let adStarted = false;
         (window as any).adBreak({
           type: "reward",
-          name: "wordle_hint",
+          name: "rewarded_ad",
           beforeAd: () => {
             adStarted = true;
+            (window as any).adStartTime = Date.now();
             Howler.mute(true);
             if (onStart) onStart();
           },
@@ -10642,37 +10716,44 @@ if (data.connectFourWordsRewardLevel != null) {
             showAdFn();
           },
           adViewed: () => {
+            if (adHandled) return;
             adViewed = true;
+            adHandled = true;
+            Howler.mute(false);
+            if (onEnd) onEnd();
             callback();
           },
           adDismissed: () => {
-            if (!adViewed && adStarted) {
-               const playTime = Date.now() - (window as any).adStartTime;
-               if (playTime < 2000) {
-                 // Closed too fast, probably an error
-                 callback();
-               } else {
-                 showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
-               }
+            if (!adViewed) {
+              handleAdDismissed();
             }
           },
           adBreakDone: (placementInfo: any) => {
-             if (placementInfo && placementInfo.breakStatus !== 'viewed' && !adStarted) {
-                // If ad didn't start (not ready, capped, error), just fallback to giving reward.
-                callback();
-             }
+            if (!adViewed && !adHandled) {
+              if (adStarted) {
+                handleAdDismissed();
+              } else {
+                handleAdFailedOrNotReady();
+              }
+            }
           }
         });
       } catch (err) {
         console.error(err);
-        if (onStart) onStart();
-        if (onEnd) onEnd();
-        callback();
+        handleAdFailedOrNotReady();
       }
     } else {
-      if (onStart) onStart();
-      if (onEnd) onEnd();
-      callback();
+      setMockAdProviderState({
+        onComplete: () => {
+          if (onStart) onStart();
+          if (onEnd) onEnd();
+          callback();
+        },
+        onDismissed: () => {
+          if (onEnd) onEnd();
+          showAlert("يجب مشاهدة الإعلان كاملاً للحصول على المكافأة.", "تنبيه");
+        },
+      });
     }
   };
 
@@ -14938,6 +15019,25 @@ if (data.connectFourWordsRewardLevel != null) {
                       >
                         <div
                           className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border-2 border-black transition-all ${hideFriendRequests ? "right-0.5" : "left-0.5"}`}
+                        ></div>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between flex-row-reverse">
+                      <div className="flex items-center gap-2 flex-row-reverse">
+                        <div className="w-8 h-8 bg-purple-500 rounded-xl flex items-center justify-center text-white shadow-sm border-2 border-black">
+                          <Lock className="w-4 h-4" />
+                        </div>
+                        <span className="text-sm font-black text-brown-muted">
+                          منع شات الدردشة (لعبة فئات التخمين)
+                        </span>
+                      </div>
+                      <button
+                        onClick={toggleDisableGuessChat}
+                        className={`w-12 h-6 rounded-full border-2 border-black transition-all relative ${disableGuessChat ? "bg-accent-green" : "bg-gray-300"}`}
+                      >
+                        <div
+                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border-2 border-black transition-all ${disableGuessChat ? "right-0.5" : "left-0.5"}`}
                         ></div>
                       </button>
                     </div>
@@ -23117,7 +23217,7 @@ const renderBombPartyRewardBar = () => {
                             </span>
                           </div>
                           <div className="bg-white/10 text-white px-4 py-2 rounded-2xl text-sm font-bold max-w-[80%] break-words">
-                            {msg.text}
+                            {msg.senderId === socket?.id ? (msg.originalText || msg.text) : msg.text}
                           </div>
                         </div>
                       ),
@@ -26509,7 +26609,7 @@ const renderBombPartyRewardBar = () => {
                               <div
                                 className={`leading-tight whitespace-pre-wrap ${msg.senderId === socket?.id ? "text-right" : "text-left"}`}
                               >
-                                {msg.text}
+                                {msg.senderId === socket?.id ? (msg.originalText || msg.text) : msg.text}
                               </div>
                             </div>
                           </div>
@@ -26566,6 +26666,23 @@ const renderBombPartyRewardBar = () => {
                               socket?.emit("stop_typing", { roomId: room!.id });
                               typingTimeoutRef.current = null;
                             }, 1500);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              if (customChatInput.trim() && socket && room) {
+                                playSound("clickOpen");
+                                socket.emit("send_chat", {
+                                  roomId: room.id,
+                                  text: customChatInput,
+                                });
+                                setCustomChatInput("");
+                                if (typingTimeoutRef.current)
+                                  clearTimeout(typingTimeoutRef.current);
+                                socket.emit("stop_typing", { roomId: room.id });
+                                typingTimeoutRef.current = null;
+                              }
+                            }
                           }}
                           placeholder="اكتب هنا..."
                           className="flex-1 bg-white border border-gray-300 rounded-full px-5 py-3 text-sm focus:outline-none focus:border-purple-400 font-bold shadow-inner"
@@ -28844,20 +28961,26 @@ const renderBombPartyRewardBar = () => {
                           {(() => {
                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
-                             if (meMode && meMode === oppMode) {
-                               return (
-                                 <button
-                                   onClick={() => {
-                                      playSound("clickOpen");
-                                      socket?.emit("confirm_selection_mode", { roomId });
-                                   }}
-                                   className="mt-2 w-full bg-green-500 hover:bg-green-600 border-[6px] border-green-600 text-white font-black text-xl md:text-2xl p-4 rounded-3xl transition-all shadow-[0_8px_0_0_#16a34a] active:shadow-none active:translate-y-2 flex justify-center items-center gap-3 relative overflow-hidden group"
-                                  >
-                                    احنا جاهزين 🕹️
-                                  </button>
-                               );
-                             }
-                             return null;
+                             const isReady = !!(meMode && meMode === oppMode);
+                             return (
+                               <button
+                                 type="button"
+                                 disabled={!isReady}
+                                 onClick={() => {
+                                   if (isReady) {
+                                     playSound("clickOpen");
+                                     socket?.emit("confirm_selection_mode", { roomId });
+                                   }
+                                 }}
+                                 className={`mt-2 w-full text-white font-black text-xl md:text-2xl p-4 rounded-3xl transition-all flex justify-center items-center gap-3 relative overflow-hidden group ${
+                                   isReady
+                                     ? "bg-green-500 hover:bg-green-600 border-[6px] border-green-600 shadow-[0_8px_0_0_#16a34a] active:shadow-none active:translate-y-2 cursor-pointer"
+                                     : "bg-gray-400 border-[6px] border-gray-500 opacity-70 cursor-not-allowed shadow-none"
+                                 }`}
+                               >
+                                 احنا جاهزين 🕹️
+                               </button>
+                             );
                           })()}
                         </div>
                       ) : !hasWatchedCategoryAd &&
@@ -29134,6 +29257,29 @@ const renderBombPartyRewardBar = () => {
                           )}
                         </>
                       )}
+
+                      {/* Toggle for disabling guess chat on category selection page */}
+                      {room.selectionMode === "ready" && (
+                        <div className="flex items-center justify-between bg-purple-50/80 p-1 border-2 border-purple-100 mt-1 shadow-sm">
+                          <div className="flex items-center gap-2 flex-row-reverse">
+                            <div className="w-8 h-8 bg-purple-500 rounded-xl flex items-center justify-center text-white shadow-sm border-2 border-black shrink-0">
+                              <Lock className="w-4 h-4" />
+                            </div>
+                            <span className="text-xs md:text-sm font-black text-brown-muted">
+                              منع شات الدردشة
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={toggleDisableGuessChat}
+                            className={`w-12 h-6 rounded-full border-2 border-black transition-all relative shrink-0 ${disableGuessChat ? "bg-accent-green" : "bg-gray-300"}`}
+                          >
+                            <div
+                              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border-2 border-black transition-all ${disableGuessChat ? "right-0.5" : "left-0.5"}`}
+                            ></div>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Standard Unified Chat Box - Used in choice phase */}
@@ -29171,7 +29317,7 @@ const renderBombPartyRewardBar = () => {
                                     <div
                                       className={`leading-tight whitespace-pre-wrap ${msg.senderId === socket?.id ? "text-right" : "text-left"}`}
                                     >
-                                      {msg.text}
+                                      {msg.senderId === socket?.id ? (msg.originalText || msg.text) : msg.text}
                                     </div>
                                   </div>
                                 </div>
@@ -29269,21 +29415,27 @@ const renderBombPartyRewardBar = () => {
                         </div>
                       )}
 
-                    {/* Start Game Button - Shown when consensus reached */}
-                    {consensusReached && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="w-full mt-6 flex flex-col items-center gap-4"
-                      >
+                    {/* Start Game Button - Visible only during Category Selection mode */}
+                    {room.selectionMode === "ready" && (
+                      <div className="w-full mt-2 flex flex-col items-center gap-4">
                         <button
-                          onClick={handleStartGame}
-                          className="w-full py-5 bg-accent-green hover:bg-green-600 text-white rounded-2xl font-black text-2xl shadow-[0_6px_0_0_#15803d] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-3 group"
+                          type="button"
+                          disabled={!consensusReached}
+                          onClick={() => {
+                            if (consensusReached) {
+                              handleStartGame();
+                            }
+                          }}
+                          className={`w-full py-4 text-white rounded-2xl font-black text-2xl transition-all flex items-center justify-center gap-3 group ${
+                            consensusReached
+                              ? "bg-accent-green hover:bg-green-600 shadow-[0_6px_0_0_#15803d] active:shadow-none active:translate-y-1 cursor-pointer"
+                              : "bg-gray-400 border-2 border-gray-500 opacity-70 cursor-not-allowed shadow-none"
+                          }`}
                         >
                           <Play className="w-8 h-8 fill-current group-hover:scale-110 transition-transform" />
                           بدأ اللعب
                         </button>
-                      </motion.div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -29595,7 +29747,7 @@ const renderBombPartyRewardBar = () => {
                   room.gameState !== "finished" &&
                   room.gameState !== "guessing" && (
                     <>
-                      <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner flex flex-col h-50 md:h-64 mt-4 z-20 relative">
+                      <div className="w-[75%] md:w-full bg-[#E5DDD5] rounded-2xl border-4 border-white shadow-inner flex flex-col h-[250px] md:h-[320px] mt-2 z-20 relative overflow-hidden">
                         {isMutedByOpponent && (
                           <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white">
                             <Lock className="w-12 h-12 mb-2 text-red-400" />
@@ -29604,7 +29756,7 @@ const renderBombPartyRewardBar = () => {
                             </span>
                           </div>
                         )}
-                        <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+                        <div className="flex-1 min-h-[150px] overflow-y-auto p-3 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
                           {chatHistory.length === 0 ? (
                             <div className="h-full flex items-center justify-center text-brown-light font-bold text-sm italic">
                               اسأل المنافس وخمن الاجابة...
@@ -29626,7 +29778,7 @@ const renderBombPartyRewardBar = () => {
                                   <div
                                     className={`leading-tight whitespace-pre-wrap ${msg.senderId === socket?.id ? "text-right" : "text-left"}`}
                                   >
-                                    {msg.text}
+                                    {msg.senderId === socket?.id ? (msg.originalText || msg.text) : msg.text}
                                   </div>
                                 </div>
                               </div>
@@ -29650,7 +29802,6 @@ const renderBombPartyRewardBar = () => {
                           onSubmit={(e) => {
                             e.preventDefault();
                             if (
-                              room?.matchType === "private" &&
                               customChatInput.trim()
                             ) {
                               playSound("clickOpen");
@@ -29665,9 +29816,9 @@ const renderBombPartyRewardBar = () => {
                               typingTimeoutRef.current = null;
                             }
                           }}
-                          className="p-1.5 bg-[#F0F0F0] flex gap-2 border-t border-gray-200 relative items-center"
+                          className="p-1.5 py-0.5 bg-[#F0F0F0] flex flex-col gap-1 border-t border-gray-200 relative w-full shrink-0"
                         >
-                          <div className="flex-1 flex gap-2 py-1">
+                          <div className="w-full flex gap-2 items-center">
                             {room?.matchType === "private" ? (
                               <div className="flex-1 flex items-center gap-2">
                                 <button
@@ -29699,6 +29850,23 @@ const renderBombPartyRewardBar = () => {
                                       1500,
                                     );
                                   }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                      e.preventDefault();
+                                      if (customChatInput.trim() && socket && room) {
+                                        playSound("clickOpen");
+                                        socket.emit("send_chat", {
+                                          roomId: room.id,
+                                          text: customChatInput,
+                                        });
+                                        setCustomChatInput("");
+                                        if (typingTimeoutRef.current)
+                                          clearTimeout(typingTimeoutRef.current);
+                                        socket.emit("stop_typing", { roomId: room.id });
+                                        typingTimeoutRef.current = null;
+                                      }
+                                    }
+                                  }}
                                   placeholder="اكتب هنا..."
                                   className="flex-1 bg-white border border-gray-300 rounded-full px-5 py-3 text-sm focus:outline-none focus:border-purple-400 font-bold shadow-inner"
                                 />
@@ -29706,6 +29874,7 @@ const renderBombPartyRewardBar = () => {
                             ) : (
                               <>
                                 <button
+                                  type="button"
                                   disabled={
                                     isMutedByOpponent ||
                                     isQuickResponseDisabled ||
@@ -29741,12 +29910,13 @@ const renderBombPartyRewardBar = () => {
                                         }, 3000);
                                     }
                                   }}
-                                  className={`flex-1 py-1 md:py-1.5 px-4 rounded-xl font-black text-[13px] md:text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes("آه") ? "bg-green-500 text-white border-green-600 scale-105" : "bg-white text-green-600 border-green-500 hover:bg-green-50"}`}
+                                  className={`flex-1 py-0.5 md:py-1.5 px-4 rounded-xl font-black text-[13px] md:text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes("آه") ? "bg-green-500 text-white border-green-600 scale-105" : "bg-white text-green-600 border-green-500 hover:bg-green-50"}`}
                                 >
                                   آه
                                 </button>
 
                                 <button
+                                  type="button"
                                   disabled={
                                     isMutedByOpponent ||
                                     isQuickResponseDisabled ||
@@ -29782,45 +29952,122 @@ const renderBombPartyRewardBar = () => {
                                         }, 3000);
                                     }
                                   }}
-                                  className={`flex-1 py-1 md:py-1.5 px-4 rounded-xl font-black text-[13px] md:text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes("لأ") ? "bg-red-500 text-white border-red-600 scale-105" : "bg-white text-red-600 border-red-500 hover:bg-red-50"}`}
+                                  className={`flex-1 py-0.5 md:py-1.5 px-4 rounded-xl font-black text-[13px] md:text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50 border-2 ${clickedResponses.includes("لأ") ? "bg-red-500 text-white border-red-600 scale-105" : "bg-white text-red-600 border-red-500 hover:bg-red-50"}`}
                                 >
                                   لأ
                                 </button>
                               </>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              playSound("clickOpen");
-                              setShowEmotes(!showEmotes);
-                            }}
-                            className="bg-white text-brown-muted p-2 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all w-10 h-10 flex items-center justify-center shrink-0"
-                          >
-                            <Smile className="w-5 h-5" />
-                          </button>
-                          {showEmotes && (
-                            <div className="absolute bottom-full left-2 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-1 w-48 z-50">
-                              {EMOTES.map((emote) => (
-                                <button
-                                  key={emote}
-                                  type="button"
-                                  onClick={() => {
-                                    playSound("clickOpen");
-                                    socket?.emit("send_emote", {
-                                      roomId: room!.id,
-                                      emote,
-                                    });
-                                    setShowEmotes(false);
-                                  }}
-                                  className="text-1xl hover:scale-125 transition-transform p-1"
-                                >
-                                  {emote}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </form>
+                          {room?.matchType !== "private" && (
+    <div className="w-full flex items-center gap-1 mt-1 mb-0.5 relative">
+      <button
+        type="submit"
+        disabled={!customChatInput.trim() || !guessChatUnlocked || (opponent?.disableGuessChat === 1 || opponent?.disableGuessChat === true || opponent?.isBot)}
+        className="bg-purple-500 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 text-white rounded-full border-2 border-purple-600 shadow-md active:scale-95 transition-transform disabled:opacity-50 shrink-0 z-10"
+      >
+        <Send className="w-4 h-4 ltr:-scale-x-100" />
+      </button>
+
+      <div className="flex-1 relative">
+        <input
+          type="text"
+          value={customChatInput}
+          disabled={!guessChatUnlocked || (opponent?.disableGuessChat === 1 || opponent?.disableGuessChat === true || opponent?.isBot)}
+          onChange={(e) => {
+            setCustomChatInput(e.target.value);
+            if (!typingTimeoutRef.current) {
+              socket?.emit("typing", { roomId: room!.id });
+            } else {
+              clearTimeout(typingTimeoutRef.current);
+            }
+            typingTimeoutRef.current = setTimeout(() => {
+              socket?.emit("stop_typing", { roomId: room!.id });
+              typingTimeoutRef.current = null;
+            }, 1500);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (
+                customChatInput.trim() &&
+                guessChatUnlocked &&
+                !(opponent?.disableGuessChat === 1 || opponent?.disableGuessChat === true || opponent?.isBot)
+              ) {
+                playSound("clickOpen");
+                socket?.emit("send_chat", {
+                  roomId: room!.id,
+                  text: customChatInput,
+                });
+                setCustomChatInput("");
+                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                socket?.emit("stop_typing", { roomId: room!.id });
+                typingTimeoutRef.current = null;
+              }
+            }
+          }}
+          placeholder="اكتب رسالتك..."
+          className="w-full bg-white border border-gray-300 rounded-full px-2 md:px-4 py-1 md:py-2 text-sm focus:outline-none focus:border-purple-400 font-bold shadow-inner disabled:bg-gray-100 disabled:text-transparent"
+        />
+        
+        {(!guessChatUnlocked || (opponent?.disableGuessChat === 1 || opponent?.disableGuessChat === true || opponent?.isBot)) && (
+          <div 
+            onClick={() => {
+              if (!guessChatUnlocked) {
+                 handleWatchAdForGuessChat();
+              } else if (opponent?.disableGuessChat === 1 || opponent?.disableGuessChat === true || opponent?.isBot) {
+                 setShowGuessChatLockAlert(true);
+              }
+            }}
+            className="absolute inset-0 z-10 flex items-center justify-center rounded-full cursor-pointer overflow-hidden backdrop-blur-sm bg-white/60 border-2 border-gray-300 transition-all hover:bg-white/40"
+          >
+            <Lock className="w-3 h-3 md:w-4 md:h-4 text-gray-700 ml-1" />
+            <span className="text-[9px] md:text-xs font-black text-gray-800 drop-shadow-md">
+               {(!guessChatUnlocked) 
+                 ? "شاهد اعلان لفتح الشات 📺" 
+                 : "المنافس مانع شات الدردشة"}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="relative z-10 shrink-0">
+        <button
+          type="button"
+          onClick={() => {
+            playSound("clickOpen");
+            setShowEmotes(!showEmotes);
+          }}
+          className="bg-white text-brown-muted p-2 rounded-full shadow-sm hover:bg-gray-50 active:scale-95 transition-all w-9 h-9 md:w-10 md:h-10 flex items-center justify-center border-2 border-gray-200"
+        >
+          <Smile className="w-5 h-5" />
+        </button>
+        {showEmotes && (
+          <div className="absolute bottom-full left-0 mb-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-200 grid grid-cols-4 gap-1 w-48 z-50">
+            {EMOTES.map((emote) => (
+              <button
+                key={emote}
+                type="button"
+                onClick={() => {
+                  playSound("clickOpen");
+                  socket?.emit("send_emote", {
+                    roomId: room!.id,
+                    emote,
+                  });
+                  setShowEmotes(false);
+                }}
+                className="text-1xl hover:scale-125 transition-transform p-1"
+              >
+                {emote}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+
+</form>
                       </div>
 
                       {/* Quick Chat Reels */}
@@ -29976,7 +30223,7 @@ const renderBombPartyRewardBar = () => {
                                       roomId: room!.id,
                                     });
                                   }}
-                                  className={`rounded-xl p-0 text-center font-bold text-[13px] md:text-sm shadow-sm transition-all overflow-hidden relative h-10 md:h-12 flex items-center justify-center border-2 ${room.currentTurn === socket?.id ? "bg-white border-orange-300 text-orange-800 hover:bg-orange-50 active:scale-95" : "bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed"}`}
+                                  className={`rounded-xl p-0 text-center font-bold text-[13px] md:text-sm shadow-sm transition-all overflow-hidden relative h-9 md:h-12 flex items-center justify-center border-2 ${room.currentTurn === socket?.id ? "bg-white border-orange-300 text-orange-800 hover:bg-orange-50 active:scale-95" : "bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed"}`}
                                 >
                                   تخطي الدور (لا يوجد أسئلة)
                                 </button>
@@ -30107,8 +30354,8 @@ const renderBombPartyRewardBar = () => {
 
         {/* Help Cards (Bottom Left) - Vertical Stack */}
         {(room.gameState === "playing" ||
-          room.gameState === "guessing" ||
-          room.gameState === "discussion") && (
+          room.gameState === "discussion") &&
+         !room.isPaused && (
             <div className="fixed bottom-20 left-2 md:bottom-6 md:left-6 flex flex-col-reverse gap-2 md:gap-3 z-[200]">
               {[
                 {
@@ -30896,6 +31143,35 @@ const renderBombPartyRewardBar = () => {
                 setMockAdProviderState(null);
               }}
             />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showGuessChatLockAlert && (
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-3xl p-6 max-w-sm w-full text-center border-4 border-red-300 shadow-2xl flex flex-col items-center gap-4 dir-rtl"
+              >
+                <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center border-2 border-red-300">
+                  <Lock className="w-8 h-8 text-red-500" />
+                </div>
+                <h3 className="text-xl font-black text-gray-800">
+                  المنافس مانع شات الدردشة
+                </h3>
+                <p className="text-sm font-bold text-gray-600">
+                  المنافس قام بتفعيل خاصية منع شات الدردشة لهذا اللقاء.
+                </p>
+                <button
+                  onClick={() => setShowGuessChatLockAlert(false)}
+                  className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black text-base shadow-md active:scale-95 transition-transform"
+                >
+                  حسناً
+                </button>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 
