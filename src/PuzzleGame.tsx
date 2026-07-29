@@ -42,7 +42,6 @@ export default function PuzzleGame({
   const [roundBannerText, setRoundBannerText] = useState<string | null>(null);
 
   const playedFinishSoundRef = useRef(false);
-  const shownAdRef = useRef(false);
 
   // Play game end sound (win, lose, draw) & Show Google Ad after 3 rounds
   useEffect(() => {
@@ -54,21 +53,13 @@ export default function PuzzleGame({
         } else if (myTotalScore < oppTotalScore) {
           if (playSound) playSound("lose");
         } else {
-          if (playSound) playSound("draw");
-        }
-      }
-      if (!shownAdRef.current) {
-        shownAdRef.current = true;
-        const myId = me?.id || socket?.id;
-        if (showAd && myId) {
-          showAd(room.id, myId, () => {});
+          if (playSound) playSound("pop");
         }
       }
     } else {
       playedFinishSoundRef.current = false;
-      shownAdRef.current = false;
     }
-  }, [room.gameState, myTotalScore, oppTotalScore, playSound, showAd, room.id, me?.id, socket?.id]);
+  }, [room.gameState, myTotalScore, oppTotalScore, playSound, room.id, me?.id, socket?.id]);
 
   // Clock ticking sound during Last Chance (20 seconds timer)
   useEffect(() => {
@@ -204,18 +195,27 @@ export default function PuzzleGame({
            <ul className="text-gray-300 text-sm md:text-base space-y-3 text-right" dir="rtl">
               <li>1. المباراة 3 جولات بصور مختلفة.</li>
               <li>2. قم بتركيب 49 قطعة بازل في أماكنها الصحيحة.</li>
-              <li>3. إذا ضغطت "انا خلصت 🧩"، سيتم تفعيل عداد 60 ثانية للخصم!</li>
+              <li>3. إذا ضغطت "انا خلصت 🧩"، سيتم تفعيل عداد 20 ثانية للخصم!</li>
            </ul>
         </div>
-        <button
-          onClick={() => {
-            if (playSound) playSound("clickOpen");
-            socket?.emit("start_puzzle", { roomId: room.id });
-          }}
-          className="bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_4px_0_0_#4338ca] active:shadow-transparent py-4 px-8 text-xl font-black rounded-2xl transition-all w-full mb-2"
-        >
-          ابدأ التجميع 🧩
-        </button>
+        {room.puzzle?.startRequestedBy?.includes(me?.id) || room.puzzle?.startRequestedBy?.includes(socket?.id) || (me?.id && room.puzzle?.startRequestedBy?.includes(me.id)) ? (
+          <button
+            disabled
+            className="bg-gray-600 text-white shadow-[0_4px_0_0_#4b5563] py-4 px-8 text-xl font-black rounded-2xl transition-all w-full mb-2 opacity-75"
+          >
+            في انتظار الخصم...
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              if (playSound) playSound("clickOpen");
+              socket?.emit("start_puzzle", { roomId: room.id });
+            }}
+            className="bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_4px_0_0_#4338ca] active:shadow-transparent py-4 px-8 text-xl font-black rounded-2xl transition-all w-full mb-2"
+          >
+            ابدأ التجميع 🧩
+          </button>
+        )}
         <button
           onClick={handleLeaveGame}
           className="bg-red-500 hover:bg-red-600 text-gray-900 hover:text-white shadow-[0_4px_0_0_#4338ca] active:shadow-transparent py-4 px-8 font-bold transition-all w-full mb-2"

@@ -641,7 +641,10 @@ interface Room {
     | "bomb_party_finished"
     | "space_war_setup"
     | "space_war_playing"
-    | "space_war_finished";
+    | "space_war_finished"
+    | "puzzle_setup"
+    | "puzzle_playing"
+    | "puzzle_finished";
   bombParty?: any;
   handGrid?: (string | null)[];
   handPickerId?: string | null;
@@ -6022,7 +6025,7 @@ export default function App() {
       room.gameState === "speed_cups_countdown" ||
       room.gameState === "wordle_setup" ||
       room.gameState === "wordle_playing" ||
-      room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished" ||
+      room.gameState === "wordle_finished" ||
       room.gameState === "connect_four_words_setup" ||
       room.gameState === "connect_four_words_playing" ||
       room.gameState === "connect_four_words_finished" ||
@@ -9768,7 +9771,7 @@ if (data.connectFourWordsRewardLevel != null) {
 
   useEffect(() => {
     if (room && room.gameState !== previousGameStateRef.current) {
-      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished" || room.gameState === "bomb_party_finished" || room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished" || room.gameState === "space_war_finished") {
+      if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished" || room.gameState === "bomb_party_finished" || room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished" || room.gameState === "space_war_finished" || room.gameState === "puzzle_finished") {
         if (!hasProPackage) {
           matchesPlayedRef.current += 1;
           if (matchesPlayedRef.current >= 3) {
