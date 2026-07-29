@@ -39,23 +39,33 @@ export default function PuzzleGame({
   const [roundBannerText, setRoundBannerText] = useState<string | null>(null);
 
   const playedFinishSoundRef = useRef(false);
+  const shownAdRef = useRef(false);
 
-  // Play game end sound (win, lose, draw)
+  // Play game end sound (win, lose, draw) & Show Google Ad after 3 rounds
   useEffect(() => {
-    if (room.gameState === "puzzle_finished" && !playedFinishSoundRef.current) {
-      playedFinishSoundRef.current = true;
-      if (myTotalScore > oppTotalScore) {
-        if (playSound) playSound("win");
-      } else if (myTotalScore < oppTotalScore) {
-        if (playSound) playSound("lose");
-      } else {
-        if (playSound) playSound("draw");
+    if (room.gameState === "puzzle_finished") {
+      if (!playedFinishSoundRef.current) {
+        playedFinishSoundRef.current = true;
+        if (myTotalScore > oppTotalScore) {
+          if (playSound) playSound("win");
+        } else if (myTotalScore < oppTotalScore) {
+          if (playSound) playSound("lose");
+        } else {
+          if (playSound) playSound("draw");
+        }
       }
-    }
-    if (room.gameState !== "puzzle_finished") {
+      if (!shownAdRef.current) {
+        shownAdRef.current = true;
+        const myId = me?.id || socket?.id;
+        if (showAd && myId) {
+          showAd(room.id, myId, () => {});
+        }
+      }
+    } else {
       playedFinishSoundRef.current = false;
+      shownAdRef.current = false;
     }
-  }, [room.gameState, myTotalScore, oppTotalScore, playSound]);
+  }, [room.gameState, myTotalScore, oppTotalScore, playSound, showAd, room.id, me?.id, socket?.id]);
 
   // Clock ticking sound during Last Chance (20 seconds timer)
   useEffect(() => {
@@ -144,7 +154,7 @@ export default function PuzzleGame({
     if (placedPieces.includes(cellIdx)) return;
 
     if (selectedPiece === cellIdx) {
-      if (playSound) playSound("clickOpen");
+      if (playSound) playSound("pop");
       const nextPlaced = [...placedPieces, cellIdx];
       setPlacedPieces(nextPlaced);
       
@@ -160,7 +170,7 @@ export default function PuzzleGame({
          setPage(newTotalPages - 1);
       }
     } else {
-      if (playSound) playSound("hammer");
+      if (playSound) playSound("wrong");
       if (navigator.vibrate) navigator.vibrate(200);
       const el = document.getElementById(`cell-${cellIdx}`);
       if (el) {
@@ -172,7 +182,7 @@ export default function PuzzleGame({
 
   const handleDone = () => {
     if (placedPieces.length < 49) return;
-    if (playSound) playSound("clickOpen");
+    if (playSound) playSound("bell");
     socket?.emit("puzzle_done", { roomId: room.id });
   };
 
@@ -214,6 +224,12 @@ export default function PuzzleGame({
   }
 
   if (room.gameState === "puzzle_finished") {
+    const myId = me?.id || socket?.id;
+    const oppId = opp?.id;
+    const rematchList = room.puzzle?.rematchRequestedBy || [];
+    const myRequestedRematch = rematchList.includes(myId);
+    const oppRequestedRematch = oppId && rematchList.includes(oppId);
+
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 w-full max-w-lg mx-auto p-6">
         <h1 className="text-4xl font-black text-white mb-2">انتهت المباراة! 🏁</h1>
@@ -229,12 +245,49 @@ export default function PuzzleGame({
            </div>
         </div>
         
-        <button
-          onClick={handleLeaveGame}
-          className="bg-gray-700 hover:bg-gray-600 text-white shadow-[0_4px_0_0_#4b5563] active:shadow-transparent py-4 px-8 text-xl font-black rounded-2xl transition-all w-full"
-        >
-          العودة للرئيسية
-        </button>
+        {/* Match result buttons (تغيير اللعبة - لعب مرة أخرى - خروج للرئيسية) */}
+        <div className="flex flex-col gap-3 w-full max-w-sm">
+          <div className="flex gap-2 w-full">
+            {/* تغيير اللعبة */}
+            <button
+              onClick={() => {
+                if (playSound) playSound("clickOpen");
+                socket?.emit("select_private_mode", { roomId: room.id, mode: null });
+              }}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white shadow-[0_4px_0_0_#6b21a8] active:shadow-transparent py-3.5 px-2 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer"
+            >
+              🎮 تغيير اللعبة
+            </button>
+
+            {/* لعب مرة أخرى */}
+            <button
+              onClick={() => {
+                if (playSound) playSound("clickOpen");
+                socket?.emit("request_puzzle_rematch", { roomId: room.id });
+              }}
+              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_4px_0_0_#047857] active:shadow-transparent py-3.5 px-2 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer"
+            >
+              {myRequestedRematch ? (
+                <span className="animate-pulse">🔄 بانتظار الخصم...</span>
+              ) : oppRequestedRematch ? (
+                <span>🤝 الخصم جاهز!</span>
+              ) : (
+                <span>🔄 لعب مرة أخرى</span>
+              )}
+            </button>
+          </div>
+
+          {/* خروج للرئيسية */}
+          <button
+            onClick={() => {
+              if (playSound) playSound("clickOpen");
+              if (handleLeaveGame) handleLeaveGame();
+            }}
+            className="w-full bg-red-500 hover:bg-red-600 text-white shadow-[0_4px_0_0_#991b1b] active:shadow-transparent py-3.5 px-6 text-base font-black rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            🚪 خروج للرئيسية
+          </button>
+        </div>
       </div>
     );
   }
@@ -383,7 +436,7 @@ export default function PuzzleGame({
             <div className="flex justify-between w-full items-center">
                <span className="text-gray-300 font-bold text-xs md:text-sm">عدد القطع ({availablePieces.length})</span>
                <button 
-                  onClick={() => { if (playSound) playSound("clickOpen"); setPage((p) => (p + 1) % (totalPages || 1)); }}
+                  onClick={() => { if (playSound) playSound("chestOpen"); setPage((p) => (p + 1) % (totalPages || 1)); }}
                   className="bg-gray-700 hover:bg-gray-600 text-white text-xs md:text-sm py-1 px-2 rounded-lg active:scale-95 transition-transform font-bold border border-gray-600 z-50 relative"
                >
                   🔄 تغيير القطع ({page + 1}/{totalPages || 1})
@@ -407,7 +460,7 @@ export default function PuzzleGame({
                            initial={{ opacity: 0, scale: 0 }}
                            animate={{ opacity: 1, scale: isSelected ? 1.15 : 1 }}
                            exit={{ opacity: 0, scale: 0 }}
-                           onClick={() => { if (playSound) playSound("clickOpen"); setSelectedPiece(isSelected ? null : pieceIdx); }}
+                           onClick={() => { if (playSound) playSound("handXFill"); setSelectedPiece(isSelected ? null : pieceIdx); }}
                            className={`relative cursor-pointer transition-all ${isSelected ? 'z-50' : 'z-10 hover:z-20'}`}
                            style={{
                               width: `clamp(42px, ${(p.w / 696) * 70}vw, ${(p.w / 696) * 350}px)`,
