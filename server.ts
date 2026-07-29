@@ -7767,39 +7767,39 @@ async function startServer() {
               }
 
               // Decide delay for NEXT step based on Round difficulty & total duration
-              let delay = 4000;
+              let delay = 3500;
               if (r.puzzle.lastChanceStartTime) {
-                // Last Chance frantic rush (2s - 3.5s)
-                delay = 2000 + Math.random() * 1500;
+                // Last Chance frantic rush (1.5s - 2.8s)
+                delay = 1500 + Math.random() * 1300;
               } else if (r.puzzle.currentRound === 1) {
-                // Round 1 (5 minutes = 300s limit): ~5.5s average per piece
+                // Round 1 (5 minutes limit): ~3.5s - 5.5s per move
                 const rand = Math.random();
-                if (rand < 0.25) {
-                  delay = 2500 + Math.random() * 1500; // Quick placement (2.5s - 4s)
-                } else if (rand < 0.65) {
-                  delay = 4500 + Math.random() * 3000; // Normal search (4.5s - 7.5s)
+                if (rand < 0.35) {
+                  delay = 2000 + Math.random() * 1500; // Fast placement (2s - 3.5s)
+                } else if (rand < 0.75) {
+                  delay = 3500 + Math.random() * 2000; // Normal search (3.5s - 5.5s)
                 } else {
-                  delay = 8000 + Math.random() * 5000; // Hesitation / searching (8s - 13s)
+                  delay = 6000 + Math.random() * 3000; // Searching for piece (6s - 9s)
                 }
               } else if (r.puzzle.currentRound === 2) {
-                // Round 2 (10 minutes = 600s limit): ~12s average per piece
+                // Round 2 (10 minutes limit): ~5.5s - 8.5s per move
                 const rand = Math.random();
-                if (rand < 0.20) {
-                  delay = 4500 + Math.random() * 3000; // Quick placement (4.5s - 7.5s)
-                } else if (rand < 0.60) {
-                  delay = 9000 + Math.random() * 6000; // Normal search (9s - 15s)
+                if (rand < 0.30) {
+                  delay = 3000 + Math.random() * 2000; // Fast placement (3s - 5s)
+                } else if (rand < 0.70) {
+                  delay = 5500 + Math.random() * 3000; // Normal search (5.5s - 8.5s)
                 } else {
-                  delay = 16000 + Math.random() * 10000; // Hard piece searching (16s - 26s)
+                  delay = 9000 + Math.random() * 5000; // Searching (9s - 14s)
                 }
               } else {
-                // Round 3 (15 minutes = 900s limit): ~18s average per piece
+                // Round 3 (15 minutes limit): ~7.5s - 11.5s per move
                 const rand = Math.random();
-                if (rand < 0.15) {
-                  delay = 7000 + Math.random() * 4000; // Quick placement (7s - 11s)
-                } else if (rand < 0.55) {
-                  delay = 14000 + Math.random() * 8000; // Normal search (14s - 22s)
+                if (rand < 0.25) {
+                  delay = 4000 + Math.random() * 2500; // Fast placement (4s - 6.5s)
+                } else if (rand < 0.70) {
+                  delay = 7500 + Math.random() * 4000; // Normal search (7.5s - 11.5s)
                 } else {
-                  delay = 24000 + Math.random() * 14000; // Complex pattern search (24s - 38s)
+                  delay = 12000 + Math.random() * 6000; // Pattern search (12s - 18s)
                 }
               }
 
@@ -15087,7 +15087,10 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         room.puzzle.roundStartTime = Date.now();
         room.puzzle.lastChanceStartTime = null;
         room.puzzle.playersProgress = {};
+        room.puzzle.botPieces = {};
         io.to(roomId).emit("room_update", room);
+        const bot = room.players.find((p: any) => p.isBot);
+        if (bot) handleBotEvent(roomId, "room_update", room);
       });
 
       socket.on("puzzle_progress", ({ roomId, progress }) => {
@@ -15104,6 +15107,8 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         if (!room.puzzle.lastChanceStartTime) {
            room.puzzle.lastChanceStartTime = Date.now();
            io.to(roomId).emit("room_update", room);
+           const bot = room.players.find((p: any) => p.isBot);
+           if (bot) handleBotEvent(roomId, "room_update", room);
         }
       });
 
@@ -15117,16 +15122,19 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         }
         
         // Next round or game over
+        const bot = room.players.find((p: any) => p.isBot);
         if (room.puzzle.currentRound < 3) {
            room.puzzle.currentRound++;
            room.puzzle.roundStartTime = Date.now();
            room.puzzle.lastChanceStartTime = null;
            room.puzzle.playersProgress = {};
            io.to(roomId).emit("room_update", room);
+           if (bot) handleBotEvent(roomId, "room_update", room);
         } else {
            room.gameState = "puzzle_finished";
            room.puzzle.gameOver = true;
            io.to(roomId).emit("room_update", room);
+           if (bot) handleBotEvent(roomId, "room_update", room);
         }
       });
       // ----------------------------
