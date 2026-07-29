@@ -6167,9 +6167,12 @@ async function startServer() {
               gameOver: false
             };
             try {
-               const imagesResult = db.prepare("SELECT data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all();
+               const imagesResult = db.prepare("SELECT name, data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all() as any[];
                if(imagesResult && imagesResult.length > 0) {
-                  room.puzzle.images = imagesResult.map(r => r.image);
+                  room.puzzle.images = imagesResult.map((r, idx) => ({
+                     name: r.name || ("صورة الجولة " + (idx + 1)),
+                     image: r.image
+                  }));
                   while(room.puzzle.images.length < 3) {
                      room.puzzle.images.push(room.puzzle.images[0]); // fallback if <3 images in db
                   }
@@ -12041,9 +12044,12 @@ async function startServer() {
               gameOver: false
             };
             try {
-               const imagesResult = db.prepare("SELECT data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all();
+               const imagesResult = db.prepare("SELECT name, data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all() as any[];
                if(imagesResult && imagesResult.length > 0) {
-                  room.puzzle.images = imagesResult.map(r => r.image);
+                  room.puzzle.images = imagesResult.map((r, idx) => ({
+                     name: r.name || ("صورة الجولة " + (idx + 1)),
+                     image: r.image
+                  }));
                   while(room.puzzle.images.length < 3) {
                      room.puzzle.images.push(room.puzzle.images[0]); // fallback if <3 images in db
                   }
