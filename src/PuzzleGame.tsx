@@ -18,7 +18,9 @@ export default function PuzzleGame({
   const opp = room.players.find((p: any) => p.serial !== playerSerial && p.id !== socket?.id);
 
   const round = room.puzzle?.currentRound || 1;
-  const image = room.puzzle?.images?.[round - 1];
+  const rawImage = room.puzzle?.images?.[round - 1];
+  const image = typeof rawImage === 'object' && rawImage ? rawImage.image : rawImage;
+  const imageName = typeof rawImage === 'object' && rawImage ? rawImage.name : null;
   const roundStartTime = room.puzzle?.roundStartTime;
   const lastChanceStartTime = room.puzzle?.lastChanceStartTime;
   const playersProgress = room.puzzle?.playersProgress || {};
@@ -230,23 +232,70 @@ export default function PuzzleGame({
     const myRequestedRematch = rematchList.includes(myId);
     const oppRequestedRematch = oppId && rematchList.includes(oppId);
 
+    const myName = me?.displayName || me?.name || "أنا";
+    const oppName = opp?.displayName || opp?.name || "الخصم";
+
+    const isTie = myTotalScore === oppTotalScore;
+    const iWon = myTotalScore > oppTotalScore;
+    const winnerName = iWon ? myName : oppName;
+    const loserName = iWon ? oppName : myName;
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 w-full max-w-lg mx-auto p-6">
-        <h1 className="text-4xl font-black text-white mb-2">انتهت المباراة! 🏁</h1>
-        <div className="flex gap-8 my-8">
-           <div className="flex flex-col items-center">
-              <span className="text-xl font-black text-emerald-400">{me?.displayName || "أنا"}</span>
-              <span className="text-3xl text-white mt-2 font-bold">{myTotalScore} <span className="text-sm">نقطة</span></span>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 w-full max-w-lg mx-auto p-6 text-center">
+        <h1 className="text-3xl md:text-4xl font-black text-white mb-2">انتهت المباراة! 🏁</h1>
+        
+        {/* Match Winner Announcement Banner */}
+        <div className="w-full bg-gray-800/90 border-2 border-gray-700 rounded-2xl p-4 my-3 flex flex-col items-center shadow-xl">
+          {isTie ? (
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-3xl">🤝</span>
+              <span className="text-xl md:text-2xl font-black text-yellow-400">مباراة متكافئة - تعادل!</span>
+              <span className="text-sm md:text-base text-gray-300 font-bold mt-1">
+                تعادل بين <span className="text-emerald-400 font-black">{myName}</span> و <span className="text-rose-400 font-black">{oppName}</span>
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-3xl">🏆</span>
+              <span className="text-xl md:text-2xl font-black text-emerald-400">الفائز: {winnerName}</span>
+              <span className="text-xs md:text-sm text-gray-400 font-bold mt-0.5">
+                حظاً أوفراً للاعب <span className="text-rose-400 font-black">{loserName}</span>
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Players Score Cards */}
+        <div className="grid grid-cols-2 gap-3 w-full my-3">
+           {/* My Score Card */}
+           <div className={`flex flex-col items-center p-3.5 rounded-2xl border transition-all ${iWon && !isTie ? 'bg-emerald-500/15 border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.25)]' : isTie ? 'bg-yellow-500/15 border-yellow-500/40' : 'bg-gray-800/80 border-gray-700'}`}>
+              <div className="flex items-center gap-1">
+                {iWon && !isTie && <span className="text-sm">👑</span>}
+                <span className="text-base md:text-lg font-black text-emerald-400 truncate max-w-[120px]">{myName}</span>
+              </div>
+              <span className="text-3xl md:text-4xl text-white mt-1 font-black">{myTotalScore}</span>
+              <span className="text-xs text-gray-400 font-bold mt-0.5">نقطة</span>
+              {iWon && !isTie && <span className="mt-2 text-[11px] font-black bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">الفائز 🏆</span>}
+              {!iWon && !isTie && <span className="mt-2 text-[11px] font-black bg-gray-700/50 text-gray-400 px-2 py-0.5 rounded-full border border-gray-600">المركز الثاني</span>}
+              {isTie && <span className="mt-2 text-[11px] font-black bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30">تعادل 🤝</span>}
            </div>
-           <div className="text-4xl text-gray-600 font-black">-</div>
-           <div className="flex flex-col items-center">
-              <span className="text-xl font-black text-rose-400">{opp?.displayName || "الخصم"}</span>
-              <span className="text-3xl text-white mt-2 font-bold">{oppTotalScore} <span className="text-sm">نقطة</span></span>
+
+           {/* Opponent Score Card */}
+           <div className={`flex flex-col items-center p-3.5 rounded-2xl border transition-all ${!iWon && !isTie ? 'bg-emerald-500/15 border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.25)]' : isTie ? 'bg-yellow-500/15 border-yellow-500/40' : 'bg-gray-800/80 border-gray-700'}`}>
+              <div className="flex items-center gap-1">
+                {!iWon && !isTie && <span className="text-sm">👑</span>}
+                <span className="text-base md:text-lg font-black text-rose-400 truncate max-w-[120px]">{oppName}</span>
+              </div>
+              <span className="text-3xl md:text-4xl text-white mt-1 font-black">{oppTotalScore}</span>
+              <span className="text-xs text-gray-400 font-bold mt-0.5">نقطة</span>
+              {!iWon && !isTie && <span className="mt-2 text-[11px] font-black bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">الفائز 🏆</span>}
+              {iWon && !isTie && <span className="mt-2 text-[11px] font-black bg-gray-700/50 text-gray-400 px-2 py-0.5 rounded-full border border-gray-600">المركز الثاني</span>}
+              {isTie && <span className="mt-2 text-[11px] font-black bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30">تعادل 🤝</span>}
            </div>
         </div>
         
         {/* Match result buttons (تغيير اللعبة - لعب مرة أخرى - خروج للرئيسية) */}
-        <div className="flex flex-col gap-3 w-full max-w-sm">
+        <div className="flex flex-col gap-3 w-full max-w-sm mt-2">
           <div className="flex gap-2 w-full">
             {/* تغيير اللعبة */}
             <button
@@ -430,9 +479,26 @@ export default function PuzzleGame({
          </div>
       </div>
 
-      {/* Available Pieces (Bottom Drawer) */}
+      {/* Available Pieces (Bottom Drawer) OR Completion Image Name Banner */}
       <div className="w-full px-2 z-10">
-         <div className="flex flex-col items-center">
+        {placedPieces.length >= 49 ? (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full h-[170px] sm:h-[185px] md:h-[210px] shrink-0 rounded-2xl bg-gradient-to-br from-emerald-950 via-gray-900 to-amber-950/80 border-2 border-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.3)] flex flex-col items-center justify-center p-4 text-center relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.15),transparent_70%)] pointer-events-none" />
+            <span className="text-3xl md:text-4xl mb-1 animate-bounce">🎉</span>
+            <span className="text-amber-300 font-black text-sm md:text-base mb-1 drop-shadow-sm">
+              أحسنت! أتممت كشف الصورة بنجاح
+            </span>
+            <div className="bg-gray-950/80 text-white font-black text-lg md:text-2xl px-5 py-2 rounded-2xl border border-amber-400/50 mt-1 max-w-[90%] truncate shadow-inner flex items-center gap-2">
+              <span>🖼️</span>
+              <span className="text-yellow-200">{imageName || `صورة الجولة ${round}`}</span>
+            </div>
+          </motion.div>
+        ) : (
+          <div className="flex flex-col items-center">
             <div className="flex justify-between w-full items-center">
                <span className="text-gray-300 font-bold text-xs md:text-sm">عدد القطع ({availablePieces.length})</span>
                <button 
@@ -500,7 +566,8 @@ export default function PuzzleGame({
                   <div className="text-gray-500 flex items-center justify-center text-sm font-bold w-full h-full">لا يوجد قطع إضافية</div>
                )}
             </div>
-         </div>
+          </div>
+        )}
       </div>
       
       {/* Done Button */}
