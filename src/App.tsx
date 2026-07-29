@@ -614,6 +614,7 @@ interface Player {
   wordleWins?: number;
   connectFourWordsWins?: number;
   spaceWarWins?: number;
+  puzzleWins?: number;
   selectedSelectionMode?: string;
 }
 
@@ -2392,6 +2393,8 @@ export default function App() {
       sorted.sort((a, b) => (b.connectFourWordsWins || 0) - (a.connectFourWordsWins || 0));
     } else if (leaderboardFilter === "spaceWar") {
       sorted.sort((a, b) => (b.spaceWarWins || 0) - (a.spaceWarWins || 0));
+    } else if (leaderboardFilter === "puzzle") {
+      sorted.sort((a, b) => (b.puzzleWins || 0) - (a.puzzleWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -7505,6 +7508,14 @@ if (data.connectFourWordsRewardLevel != null) {
       if (data.spaceWarMatchPoints != null) {
         setSpaceWarMatchPoints(data.spaceWarMatchPoints);
         localStorage.setItem("khamin_space_war_match_points", data.spaceWarMatchPoints.toString());
+      }
+      if (data.puzzleRewardLevel != null) {
+        setPuzzleRewardLevel(data.puzzleRewardLevel);
+        localStorage.setItem("khamin_puzzle_reward_level", data.puzzleRewardLevel.toString());
+      }
+      if (data.puzzleMatchPoints != null) {
+        setPuzzleMatchPoints(data.puzzleMatchPoints);
+        localStorage.setItem("khamin_puzzle_match_points", data.puzzleMatchPoints.toString());
       }
       if (data.likes != null) {
         setLikes(data.likes);
@@ -12894,6 +12905,13 @@ if (data.connectFourWordsRewardLevel != null) {
                         <span className="text-gray-500 font-extrabold">حرب الفضاء</span>
                       </span>
                       <span className="font-black text-brown-dark">{data.spaceWarWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span className="w-3.5 h-3.5 inline text-center">🧩</span>
+                        <span className="text-gray-500 font-extrabold">تخمينة puzzle</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.puzzleWins || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -22016,6 +22034,12 @@ if (data.connectFourWordsRewardLevel != null) {
   const [spaceWarMatchPoints, setSpaceWarMatchPoints] = useState(
     () => parseInt(localStorage.getItem("khamin_space_war_match_points") || "0") || 0
   );
+  const [puzzleRewardLevel, setPuzzleRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_puzzle_reward_level") || "1") || 1
+  );
+  const [puzzleMatchPoints, setPuzzleMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_puzzle_match_points") || "0") || 0
+  );
 
   useEffect(() => {
     localStorage.setItem("khamin_wordle_reward_level", wordleRewardLevel.toString());
@@ -22036,6 +22060,12 @@ if (data.connectFourWordsRewardLevel != null) {
   useEffect(() => {
     localStorage.setItem("khamin_space_war_match_points", spaceWarMatchPoints.toString());
   }, [spaceWarMatchPoints]);
+  useEffect(() => {
+    localStorage.setItem("khamin_puzzle_reward_level", puzzleRewardLevel.toString());
+  }, [puzzleRewardLevel]);
+  useEffect(() => {
+    localStorage.setItem("khamin_puzzle_match_points", puzzleMatchPoints.toString());
+  }, [puzzleMatchPoints]);
 
   const [bombPartyRewardLevel, setBombPartyRewardLevel] = useState(
     () => parseInt(localStorage.getItem("khamin_bomb_reward_level") || "1") || 1
@@ -22343,6 +22373,77 @@ const renderBombPartyRewardBar = () => {
               }}
               className={`flex justify-center items-center gap-1 px-1 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
                 ${isReady ? "bg-amber-400 text-slate-950 animate-pulse hover:bg-amber-300 border border-amber-200 cursor-pointer" : "bg-indigo-900/80 text-yellow-300 border border-indigo-600 hover:bg-indigo-800 cursor-pointer"}`}
+            >
+              <span>🎁</span>
+              <span>استلم الهدايا</span>
+            </button>
+         </div>
+      </div>
+    );
+  };
+
+  const renderPuzzleRewardBar = () => {
+    if (!room || (room.gameState !== "puzzle_playing" && room.gameState !== "puzzle_finished")) return null;
+
+    const currentLevel = puzzleRewardLevel;
+    const currentPoints = puzzleMatchPoints;
+    const targetPoints = currentLevel * 100;
+    const progress = Math.min((currentPoints / targetPoints) * 100, 100);
+    const isReady = currentPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-amber-950/90 to-orange-950/90 border-2 border-amber-500/80 rounded-xl p-2 relative overflow-hidden transition-all shadow-md text-white">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-amber-500/30 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex items-center justify-between gap-1 z-10 w-full">
+            <div className="flex items-center gap-2 font-black text-xs sm:text-sm text-yellow-300">
+              <span>مستوى الجوائز {currentLevel}</span>
+              <span className="text-xs bg-black/60 px-1 py-0.5 rounded-md border border-amber-400 text-white" dir="ltr">
+                {currentPoints} / {targetPoints}
+              </span>
+            </div>
+            
+            <button
+              onClick={() => {
+                 if (isReady) {
+                   setCustomConfirm({
+                      show: true,
+                      title: "مبروك! 🎉 اكتملت نقاط المستوي " + currentLevel,
+                      message: "يمكنك استلام هدايا هذا المستوى الآن، هل تود مشاهدة الإعلان؟\n\n" +
+                               "🎁 " + (currentLevel === 1 ? 50 : 100 + 50 * (currentLevel - 1)) + " XP\n" +
+                               "🔑 " + currentLevel + " مفتاح\n" +
+                               "🔧 " + currentLevel + " من كل وسيلة مساعدة",
+                      confirmText: "نعم مشاهدة الاعلان",
+                      cancelText: "إلغاء",
+                      onConfirm: () => {
+                        setCustomConfirm(prev => ({...prev, show: false}));
+                        showBusCompleteAd(
+                           () => {
+                              socket?.emit("claim_puzzle_reward", { serial: playerSerial });
+                           },
+                           () => {
+                              showAlert("لم يكتمل الإعلان للحصول على المكافأة.", "عذراً");
+                           }
+                        );
+                      }
+                   });
+                 } else {
+                   setCustomConfirm({
+                      show: true,
+                      title: `المستوي ${currentLevel}`,
+                      message: `متبقي ${targetPoints - currentPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                               `🎁 ${currentLevel === 1 ? 50 : 100 + 50 * (currentLevel - 1)} XP\n` +
+                               `🔑 ${currentLevel} مفتاح\n` +
+                               `🔧 ${currentLevel} من كل وسيلة مساعدة`,
+                      confirmText: "حسناً",
+                      onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                   });
+                 }
+              }}
+              className={`flex justify-center items-center gap-1 px-1 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+                ${isReady ? "bg-amber-400 text-slate-950 animate-pulse hover:bg-amber-300 border border-amber-200 cursor-pointer" : "bg-amber-900/80 text-yellow-300 border border-amber-600 hover:bg-amber-800 cursor-pointer"}`}
             >
               <span>🎁</span>
               <span>استلم الهدايا</span>
@@ -25333,6 +25434,8 @@ const renderBombPartyRewardBar = () => {
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.connectFourWordsWins || 0)} <img src="/connect-4-logo.png" className="w-3 h-3 inline object-contain" /></span>
                               <span>•</span>
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.spaceWarWins || 0)} 🚀</span>
+                              <span>•</span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.puzzleWins || 0)} 🧩</span>
                             </div>
                           </div>
                         </div>
@@ -25379,6 +25482,7 @@ const renderBombPartyRewardBar = () => {
                           { id: "wordle", icon: <img src="/word-le-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "تخمينة الكلمات" },
                           { id: "connectFourWords", icon: <img src="/connect-4-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "تخمينة 4 حروف" },
                           { id: "spaceWar", icon: "🚀", title: "حرب الفضاء" },
+                          { id: "puzzle", icon: "🧩", title: "تخمينة puzzle" },
                         ].map((filter) => (
                           <button
                             key={filter.id}
@@ -25521,6 +25625,9 @@ const renderBombPartyRewardBar = () => {
                                 </span>
                                 <span className="bg-indigo-50 text-indigo-600 md:px-1.5 rounded flex items-center gap-0.5" dir="rtl">
                                   {limit99(player.spaceWarWins || 0)} 🚀
+                                </span>
+                                <span className="bg-amber-50 text-amber-600 md:px-1.5 rounded flex items-center gap-0.5" dir="rtl">
+                                  {limit99(player.puzzleWins || 0)} 🧩
                                 </span>
                               </div>
                             </div>
@@ -28510,6 +28617,7 @@ const renderBombPartyRewardBar = () => {
                 showAlert={showAlert}
                 showConfirm={showConfirm}
                 showAd={showAd}
+                renderPuzzleRewardBar={renderPuzzleRewardBar}
               />
             ) : room.gameState === "wordle_setup" || room.gameState === "wordle_playing" || room.gameState === "wordle_finished" ? (
               <WordleGame

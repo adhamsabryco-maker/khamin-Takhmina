@@ -12,7 +12,8 @@ export default function PuzzleGame({
   handleLeaveGame,
   showAlert,
   showConfirm,
-  showAd
+  showAd,
+  renderPuzzleRewardBar
 }: any) {
   const me = room.players.find((p: any) => p.serial === playerSerial || p.id === socket?.id);
   const opp = room.players.find((p: any) => p.serial !== playerSerial && p.id !== socket?.id);
@@ -293,6 +294,13 @@ export default function PuzzleGame({
               {isTie && <span className="mt-2 text-[11px] font-black bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30">تعادل 🤝</span>}
            </div>
         </div>
+
+        {/* Reward Level Gift Bar */}
+        {renderPuzzleRewardBar && (
+          <div className="w-full my-1">
+            {renderPuzzleRewardBar()}
+          </div>
+        )}
         
         {/* Match result buttons (تغيير اللعبة - لعب مرة أخرى - خروج للرئيسية) */}
         <div className="flex flex-col gap-3 w-full max-w-sm mt-2">
