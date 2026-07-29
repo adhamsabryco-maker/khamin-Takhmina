@@ -2158,6 +2158,9 @@ async function startServer() {
         spaceWarWins?: number;
         spaceWarRewardLevel?: number;
         spaceWarMatchPoints?: number;
+        puzzleWins?: number;
+        puzzleRewardLevel?: number;
+        puzzleMatchPoints?: number;
       }
     >();
 
@@ -2450,6 +2453,15 @@ async function startServer() {
     } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN spaceWarMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN puzzleWins INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN puzzleRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN puzzleMatchPoints INTEGER DEFAULT 0`);
     } catch (e) {}
 
 
@@ -3011,8 +3023,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, disableGuessChat, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints, spaceWarWins, spaceWarRewardLevel, spaceWarMatchPoints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @disableGuessChat, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints, @connectFourWordsWins, @connectFourWordsRewardLevel, @connectFourWordsMatchPoints, @spaceWarWins, @spaceWarRewardLevel, @spaceWarMatchPoints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, disableGuessChat, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints, spaceWarWins, spaceWarRewardLevel, spaceWarMatchPoints, puzzleWins, puzzleRewardLevel, puzzleMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @disableGuessChat, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints, @connectFourWordsWins, @connectFourWordsRewardLevel, @connectFourWordsMatchPoints, @spaceWarWins, @spaceWarRewardLevel, @spaceWarMatchPoints, @puzzleWins, @puzzleRewardLevel, @puzzleMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3315,6 +3327,9 @@ async function startServer() {
           spaceWarWins: player.spaceWarWins || 0,
           spaceWarRewardLevel: player.spaceWarRewardLevel || 1,
           spaceWarMatchPoints: player.spaceWarMatchPoints || 0,
+          puzzleWins: player.puzzleWins || 0,
+          puzzleRewardLevel: player.puzzleRewardLevel || 1,
+          puzzleMatchPoints: player.puzzleMatchPoints || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3413,6 +3428,9 @@ async function startServer() {
           spaceWarWins: player.spaceWarWins || 0,
           spaceWarRewardLevel: player.spaceWarRewardLevel || 1,
           spaceWarMatchPoints: player.spaceWarMatchPoints || 0,
+          puzzleWins: player.puzzleWins || 0,
+          puzzleRewardLevel: player.puzzleRewardLevel || 1,
+          puzzleMatchPoints: player.puzzleMatchPoints || 0,
         });
       }
     });
@@ -3536,6 +3554,9 @@ async function startServer() {
             spaceWarWins: row.spaceWarWins || 0,
             spaceWarRewardLevel: row.spaceWarRewardLevel || 1,
             spaceWarMatchPoints: row.spaceWarMatchPoints || 0,
+            puzzleWins: row.puzzleWins || 0,
+            puzzleRewardLevel: row.puzzleRewardLevel || 1,
+            puzzleMatchPoints: row.puzzleMatchPoints || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -3951,6 +3972,7 @@ async function startServer() {
             wordleWins: p.wordleWins || 0,
             connectFourWordsWins: p.connectFourWordsWins || 0,
             spaceWarWins: p.spaceWarWins || 0,
+            puzzleWins: p.puzzleWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -4953,6 +4975,9 @@ async function startServer() {
             spaceWarWins: p1ServerPlayer
               ? p1ServerPlayer.spaceWarWins || 0
               : match.p1.spaceWarWins || 0,
+            puzzleWins: p1ServerPlayer
+              ? p1ServerPlayer.puzzleWins || 0
+              : match.p1.puzzleWins || 0,
           },
           {
             id: match.p2.socket.id,
@@ -5033,6 +5058,9 @@ async function startServer() {
             spaceWarWins: p2ServerPlayer
               ? p2ServerPlayer.spaceWarWins || 0
               : match.p2.spaceWarWins || 0,
+            puzzleWins: p2ServerPlayer
+              ? p2ServerPlayer.puzzleWins || 0
+              : match.p2.puzzleWins || 0,
           },
         ],
         gameState: "waiting",
@@ -11887,6 +11915,7 @@ async function startServer() {
               wordleWins: serverPlayer.wordleWins || 0,
               connectFourWordsWins: serverPlayer.connectFourWordsWins || 0,
               spaceWarWins: serverPlayer.spaceWarWins || 0,
+              puzzleWins: serverPlayer.puzzleWins || 0,
             };
             room.players.push(player);
 
@@ -17852,6 +17881,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             wordleWins: targetPlayer.wordleWins || 0,
             connectFourWordsWins: targetPlayer.connectFourWordsWins || 0,
             spaceWarWins: targetPlayer.spaceWarWins || 0,
+            puzzleWins: targetPlayer.puzzleWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
@@ -18662,6 +18692,40 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             }
           }
           io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("claim_puzzle_reward", ({ serial }) => {
+        const player = allPlayers.get(serial) as any;
+        if (player) {
+          const currentLevel = player.puzzleRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+
+          if ((player.puzzleMatchPoints || 0) >= targetPoints) {
+            player.puzzleMatchPoints = (player.puzzleMatchPoints || 0) - targetPoints;
+            player.puzzleRewardLevel = currentLevel >= 10 ? 1 : currentLevel + 1;
+
+            const xpReward = 50 * currentLevel;
+            const keysReward = currentLevel;
+            const helpersReward = { time_freeze: currentLevel, word_length: currentLevel, word_count: currentLevel, hint: currentLevel, spy_lens: currentLevel };
+
+            player.xp = (player.xp || 0) + xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            for (const [helperId, amount] of Object.entries(helpersReward)) {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + amount;
+            }
+
+            savePlayerData(serial);
+            socket.emit("player_data_update", player);
+            socket.emit("puzzle_reward_claimed", {
+              newLevel: player.puzzleRewardLevel,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
         }
       });
 
