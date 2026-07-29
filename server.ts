@@ -6155,6 +6155,32 @@ async function startServer() {
             io.to(roomId).emit("room_update", room);
             if (bot) handleBotEvent(roomId, "room_update", room);
 
+          } else if (mode === "puzzle") {
+            room.gameState = "puzzle_setup";
+            room.category = "puzzle";
+            room.puzzle = {
+              currentRound: 1,
+              images: [],
+              roundStartTime: Date.now(),
+              lastChanceStartTime: null,
+              playersProgress: {},
+              gameOver: false
+            };
+            try {
+               const imagesResult = db.prepare("SELECT data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all();
+               if(imagesResult && imagesResult.length > 0) {
+                  room.puzzle.images = imagesResult.map(r => r.image);
+                  while(room.puzzle.images.length < 3) {
+                     room.puzzle.images.push(room.puzzle.images[0]); // fallback if <3 images in db
+                  }
+               }
+            } catch(e) {}
+            
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+
           } else if (mode === "wordle") {
             room.gameState = "wordle_setup";
             room.category = "wordle";
@@ -7684,6 +7710,141 @@ async function startServer() {
           if (botTimeouts.has(roomId + "_wordle_bot_rematch")) {
             clearTimeout(botTimeouts.get(roomId + "_wordle_bot_rematch"));
             botTimeouts.delete(roomId + "_wordle_bot_rematch");
+          }
+        }
+
+        // Handle Puzzle setup action (auto-start puzzle for bot)
+        if (room.gameState === "puzzle_setup") {
+          const setupKey = roomId + "_puzzle_bot_setup";
+          if (!botTimeouts.has(setupKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(setupKey);
+              const r = rooms.get(roomId);
+              if (r && r.gameState === "puzzle_setup") {
+                r.gameState = "puzzle_playing";
+                r.puzzle.roundStartTime = Date.now();
+                r.puzzle.lastChanceStartTime = null;
+                r.puzzle.playersProgress = {};
+                io.to(roomId).emit("room_update", r);
+                const bot = r.players.find((p: any) => p.isBot);
+                if (bot) handleBotEvent(roomId, "room_update", r);
+              }
+            }, 1500);
+            botTimeouts.set(setupKey, timeout);
+          }
+        }
+
+        if (room.gameState !== "puzzle_setup") {
+          if (botTimeouts.has(roomId + "_puzzle_bot_setup")) {
+            clearTimeout(botTimeouts.get(roomId + "_puzzle_bot_setup"));
+            botTimeouts.delete(roomId + "_puzzle_bot_setup");
+          }
+        }
+
+        // Handle Puzzle playing action (human-like bot playing logic)
+        if (room.gameState === "puzzle_playing") {
+          const puzzleBotKey = roomId + "_puzzle_bot_step";
+          if (!botTimeouts.has(puzzleBotKey)) {
+            const runBotStep = () => {
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "puzzle_playing") {
+                botTimeouts.delete(puzzleBotKey);
+                return;
+              }
+
+              if (!r.puzzle.botPieces) r.puzzle.botPieces = {};
+              const currentPieces = r.puzzle.botPieces[r.puzzle.currentRound] || 0;
+
+              let limit = 5 * 60 * 1000;
+              if (r.puzzle.currentRound === 2) limit = 10 * 60 * 1000;
+              else if (r.puzzle.currentRound === 3) limit = 15 * 60 * 1000;
+
+              let remaining = 0;
+              if (r.puzzle.lastChanceStartTime) {
+                remaining = Math.max(0, 20 * 1000 - (Date.now() - r.puzzle.lastChanceStartTime));
+              } else if (r.puzzle.roundStartTime) {
+                remaining = Math.max(0, limit - (Date.now() - r.puzzle.roundStartTime));
+              }
+
+              // Decide delay for NEXT step based on Round difficulty & total duration
+              let delay = 4000;
+              if (r.puzzle.lastChanceStartTime) {
+                // Last Chance frantic rush (2s - 3.5s)
+                delay = 2000 + Math.random() * 1500;
+              } else if (r.puzzle.currentRound === 1) {
+                // Round 1 (5 minutes = 300s limit): ~5.5s average per piece
+                const rand = Math.random();
+                if (rand < 0.25) {
+                  delay = 2500 + Math.random() * 1500; // Quick placement (2.5s - 4s)
+                } else if (rand < 0.65) {
+                  delay = 4500 + Math.random() * 3000; // Normal search (4.5s - 7.5s)
+                } else {
+                  delay = 8000 + Math.random() * 5000; // Hesitation / searching (8s - 13s)
+                }
+              } else if (r.puzzle.currentRound === 2) {
+                // Round 2 (10 minutes = 600s limit): ~12s average per piece
+                const rand = Math.random();
+                if (rand < 0.20) {
+                  delay = 4500 + Math.random() * 3000; // Quick placement (4.5s - 7.5s)
+                } else if (rand < 0.60) {
+                  delay = 9000 + Math.random() * 6000; // Normal search (9s - 15s)
+                } else {
+                  delay = 16000 + Math.random() * 10000; // Hard piece searching (16s - 26s)
+                }
+              } else {
+                // Round 3 (15 minutes = 900s limit): ~18s average per piece
+                const rand = Math.random();
+                if (rand < 0.15) {
+                  delay = 7000 + Math.random() * 4000; // Quick placement (7s - 11s)
+                } else if (rand < 0.55) {
+                  delay = 14000 + Math.random() * 8000; // Normal search (14s - 22s)
+                } else {
+                  delay = 24000 + Math.random() * 14000; // Complex pattern search (24s - 38s)
+                }
+              }
+
+              // Advance pieces
+              if (currentPieces < 48) {
+                const added = (Math.random() < 0.15 && currentPieces < 47) ? 2 : 1;
+                const nextPieces = Math.min(48, currentPieces + added);
+                r.puzzle.botPieces[r.puzzle.currentRound] = nextPieces;
+                const nextProgress = Math.floor((nextPieces / 49) * 100);
+
+                if (!r.puzzle.playersProgress) r.puzzle.playersProgress = {};
+                r.puzzle.playersProgress[botPlayer.id] = nextProgress;
+                io.to(roomId).emit("room_update", r);
+              } else if (currentPieces >= 48) {
+                // At 48 pieces (98%), only place the 49th piece when remaining time <= 4s
+                if (remaining <= 4000 && remaining > 0) {
+                  r.puzzle.botPieces[r.puzzle.currentRound] = 49;
+                  if (!r.puzzle.playersProgress) r.puzzle.playersProgress = {};
+                  r.puzzle.playersProgress[botPlayer.id] = 100;
+                  if (!r.puzzle.lastChanceStartTime) {
+                    r.puzzle.lastChanceStartTime = Date.now();
+                  }
+                  io.to(roomId).emit("room_update", r);
+                  botTimeouts.delete(puzzleBotKey);
+                  return;
+                } else {
+                  delay = 1000; // Check timer every second
+                }
+              }
+
+              const timeout = setTimeout(runBotStep, delay);
+              botTimeouts.set(puzzleBotKey, timeout);
+            };
+
+            // Start first step with initial 2s delay
+            const firstTimeout = setTimeout(runBotStep, 2000);
+            botTimeouts.set(puzzleBotKey, firstTimeout);
+          }
+        }
+
+        if (room.gameState !== "puzzle_playing") {
+          const puzzleBotKey = roomId + "_puzzle_bot_step";
+          if (botTimeouts.has(puzzleBotKey)) {
+            clearTimeout(botTimeouts.get(puzzleBotKey));
+            botTimeouts.delete(puzzleBotKey);
           }
         }
 
@@ -11868,6 +12029,32 @@ async function startServer() {
             io.to(roomId).emit("room_update", room);
             if (bot) handleBotEvent(roomId, "room_update", room);
 
+          } else if (mode === "puzzle") {
+            room.gameState = "puzzle_setup";
+            room.category = "puzzle";
+            room.puzzle = {
+              currentRound: 1,
+              images: [],
+              roundStartTime: Date.now(),
+              lastChanceStartTime: null,
+              playersProgress: {},
+              gameOver: false
+            };
+            try {
+               const imagesResult = db.prepare("SELECT data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all();
+               if(imagesResult && imagesResult.length > 0) {
+                  room.puzzle.images = imagesResult.map(r => r.image);
+                  while(room.puzzle.images.length < 3) {
+                     room.puzzle.images.push(room.puzzle.images[0]); // fallback if <3 images in db
+                  }
+               }
+            } catch(e) {}
+            
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+
           } else if (mode === "wordle") {
             room.gameState = "wordle_setup";
             room.category = "wordle";
@@ -14890,6 +15077,59 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         if (bot) handleBotEvent(roomId, "room_update", room);
       });
       // ------------------------------------
+
+      
+      // --- Puzzle Game Events ---
+      socket.on("start_puzzle", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "puzzle_setup") return;
+        room.gameState = "puzzle_playing";
+        room.puzzle.roundStartTime = Date.now();
+        room.puzzle.lastChanceStartTime = null;
+        room.puzzle.playersProgress = {};
+        io.to(roomId).emit("room_update", room);
+      });
+
+      socket.on("puzzle_progress", ({ roomId, progress }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "puzzle_playing") return;
+        if (!room.puzzle.playersProgress) room.puzzle.playersProgress = {};
+        room.puzzle.playersProgress[socket.id] = progress;
+        io.to(roomId).emit("room_update", room);
+      });
+
+      socket.on("puzzle_done", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "puzzle_playing") return;
+        if (!room.puzzle.lastChanceStartTime) {
+           room.puzzle.lastChanceStartTime = Date.now();
+           io.to(roomId).emit("room_update", room);
+        }
+      });
+
+      socket.on("puzzle_round_end", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "puzzle_playing") return;
+
+        if (!room.puzzle.totalScores) room.puzzle.totalScores = {};
+        for (const pid of Object.keys(room.puzzle.playersProgress || {})) {
+           room.puzzle.totalScores[pid] = (room.puzzle.totalScores[pid] || 0) + (room.puzzle.playersProgress[pid] || 0);
+        }
+        
+        // Next round or game over
+        if (room.puzzle.currentRound < 3) {
+           room.puzzle.currentRound++;
+           room.puzzle.roundStartTime = Date.now();
+           room.puzzle.lastChanceStartTime = null;
+           room.puzzle.playersProgress = {};
+           io.to(roomId).emit("room_update", room);
+        } else {
+           room.gameState = "puzzle_finished";
+           room.puzzle.gameOver = true;
+           io.to(roomId).emit("room_update", room);
+        }
+      });
+      // ----------------------------
 
       socket.on("start_wordle", ({ roomId }) => {
         const room = rooms.get(roomId);
