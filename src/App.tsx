@@ -869,6 +869,7 @@ import { CheckoutPage } from "./components/CheckoutPage";
 import WordleGame from "./WordleGame";
 import ConnectFourWordsGame from "./ConnectFourWordsGame";
 import SpaceWarGame from "./SpaceWarGame";
+import PuzzleGame from "./PuzzleGame";
 
 function normalizeEgyptian(text: string): string {
   if (!text) return "";
@@ -6024,7 +6025,10 @@ export default function App() {
       room.gameState === "connect_four_words_finished" ||
       room.gameState === "space_war_setup" ||
       room.gameState === "space_war_playing" ||
-      room.gameState === "space_war_finished"
+      room.gameState === "space_war_finished" ||
+      room.gameState === "puzzle_setup" ||
+      room.gameState === "puzzle_playing" ||
+      room.gameState === "puzzle_finished"
     );
 
     const activeMusic = isGameActive
@@ -10785,7 +10789,10 @@ if (data.connectFourWordsRewardLevel != null) {
       room?.gameState === "connect_four_words_setup" ||
       room?.gameState === "connect_four_words_playing" ||
       room?.gameState === "connect_four_words_finished" ||
-      room?.gameState?.startsWith("space_war_");
+      room?.gameState?.startsWith("space_war_") ||
+      room?.gameState === "puzzle_setup" ||
+      room?.gameState === "puzzle_playing" ||
+      room?.gameState === "puzzle_finished";
 
     const me = room?.players.find((p) => p.id === socket?.id);
 
@@ -26213,7 +26220,7 @@ const renderBombPartyRewardBar = () => {
 
         <main className={`flex-1 relative flex flex-col items-center py-2 px-2 mx-auto w-full overflow-hidden ${room?.category === "iq" ? "max-w-md" : "max-w-md"}`}>
           {/* Players Header (VS Mode) */}
-          {room?.gameState !== "space_war_playing" && (
+          {room?.gameState !== "space_war_playing" && !room?.gameState?.startsWith("puzzle") && (
             <div className="w-full flex items-center justify-center gap-3 md:gap-6 py-2 px-4 bg-white/60 backdrop-blur-md rounded-[32px] border-4 border-white shadow-xl mb-4 relative z-50">
               {/* Player (Me) */}
             <div className="flex flex-col items-center relative">
@@ -28490,6 +28497,20 @@ const renderBombPartyRewardBar = () => {
                 handleLeaveGame={handleLeaveGame}
               />
 
+
+            ) : room.gameState === "puzzle_setup" || room.gameState === "puzzle_playing" || room.gameState === "puzzle_finished" ? (
+              <PuzzleGame
+                room={room}
+                socket={socket}
+                playerSerial={playerSerial}
+                isAdmin={isAdmin}
+                playSound={playSound}
+                stopSound={stopSound}
+                handleLeaveGame={handleLeaveGame}
+                showAlert={showAlert}
+                showConfirm={showConfirm}
+                showAd={showAd}
+              />
             ) : room.gameState === "wordle_setup" || room.gameState === "wordle_playing" || room.gameState === "wordle_finished" ? (
               <WordleGame
                 room={room}
@@ -28666,6 +28687,36 @@ const renderBombPartyRewardBar = () => {
                               })()}
                             </div>
                           )}
+
+                          
+                          {/* Puzzle Game */}
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "puzzle",
+                                })
+                              }
+                              className={`h-full w-full bg-indigo-100 hover:bg-indigo-200 border-[3px] border-indigo-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#6366f1] active:shadow-none active:translate-y-1.5"}`}
+                            >
+                              <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
+                                <span className="text-3xl md:text-4xl drop-shadow-md">🧩</span>
+                              </div>
+                              <span className="text-[13px] md:text-lg font-black text-indigo-700 text-center leading-tight">
+                                تخمينة Puzzle
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "puzzle" && oppMode === "puzzle") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "puzzle") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "puzzle") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
 
                           {/* Wordle Game */}
                           <div className="relative">
