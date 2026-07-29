@@ -15137,6 +15137,70 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
            if (bot) handleBotEvent(roomId, "room_update", room);
         }
       });
+
+      socket.on("request_puzzle_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "puzzle_finished") return;
+        if (!room.puzzle.rematchRequestedBy) {
+          room.puzzle.rematchRequestedBy = [];
+        }
+        const player = room.players.find((p: any) => p.socketId === socket.id || p.id === socket.id);
+        const pId = player ? player.id : socket.id;
+        if (!room.puzzle.rematchRequestedBy.includes(pId)) {
+          room.puzzle.rematchRequestedBy.push(pId);
+        }
+
+        const botPlayer = room.players.find((p: any) => p.isBot);
+        if (botPlayer && !room.puzzle.rematchRequestedBy.includes(botPlayer.id)) {
+          const rematchKey = roomId + "_puzzle_bot_rematch";
+          if (botTimeouts.has(rematchKey)) {
+            clearTimeout(botTimeouts.get(rematchKey));
+            botTimeouts.delete(rematchKey);
+          }
+          const timeout = setTimeout(() => {
+            botTimeouts.delete(rematchKey);
+            const r = rooms.get(roomId);
+            if (!r || r.gameState !== "puzzle_finished") return;
+            r.puzzle.rematchRequestedBy = r.puzzle.rematchRequestedBy || [];
+            if (!r.puzzle.rematchRequestedBy.includes(botPlayer.id)) {
+              r.puzzle.rematchRequestedBy.push(botPlayer.id);
+            }
+            if (r.puzzle.rematchRequestedBy.length >= r.players.length) {
+              r.gameState = "puzzle_setup";
+              r.puzzle = {
+                currentRound: 1,
+                roundStartTime: null,
+                lastChanceStartTime: null,
+                playersProgress: {},
+                totalScores: {},
+                images: r.puzzle.images || [],
+                botPieces: {},
+                rematchRequestedBy: [],
+                gameOver: false
+              };
+            }
+            io.to(roomId).emit("room_update", r);
+            if (botPlayer) handleBotEvent(roomId, "room_update", r);
+          }, 1000);
+          botTimeouts.set(rematchKey, timeout);
+        } else if (room.puzzle.rematchRequestedBy.length >= room.players.length) {
+          room.gameState = "puzzle_setup";
+          room.puzzle = {
+            currentRound: 1,
+            roundStartTime: null,
+            lastChanceStartTime: null,
+            playersProgress: {},
+            totalScores: {},
+            images: room.puzzle.images || [],
+            botPieces: {},
+            rematchRequestedBy: [],
+            gameOver: false
+          };
+        }
+
+        io.to(roomId).emit("room_update", room);
+        if (botPlayer) handleBotEvent(roomId, "room_update", room);
+      });
       // ----------------------------
 
       socket.on("start_wordle", ({ roomId }) => {
