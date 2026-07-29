@@ -6107,7 +6107,8 @@ async function startServer() {
               startTime: null,
               winnerId: null,
               rematchRequestedBy: [],
-              gameOver: false
+              gameOver: false,
+              startRequestedBy: []
             };
             io.to(roomId).emit("room_update", room);
             if (bot) {
@@ -6178,7 +6179,8 @@ async function startServer() {
               startTime: null,
               winnerId: null,
               rematchRequestedBy: [],
-              gameOver: false
+              gameOver: false,
+              startRequestedBy: []
             };
             io.to(roomId).emit("room_update", room);
             if (bot) handleBotEvent(roomId, "room_update", room);
@@ -6192,7 +6194,8 @@ async function startServer() {
               roundStartTime: Date.now(),
               lastChanceStartTime: null,
               playersProgress: {},
-              gameOver: false
+              gameOver: false,
+              startRequestedBy: []
             };
             try {
                const imagesResult = db.prepare("SELECT name, data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all() as any[];
@@ -6229,6 +6232,7 @@ async function startServer() {
               winnerId: null,
               startTime: Date.now(),
               gameOver: false,
+              startRequestedBy: [],
               readyPlayers: readyPlayers
             };
             
@@ -6248,6 +6252,7 @@ async function startServer() {
               currentSubstring: getBombPartySubstring([]),
               explodedPlayerId: null,
               gameOver: false,
+              startRequestedBy: [],
               winThreshold: 3
             };
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
@@ -7129,6 +7134,7 @@ async function startServer() {
                     currentSubstring: getBombPartySubstring([]),
                     explodedPlayerId: null,
                     gameOver: false,
+              startRequestedBy: [],
                     winThreshold: 3,
                     rematchRequestedBy: []
                   };
@@ -7723,6 +7729,7 @@ async function startServer() {
                     startTime: Date.now(),
                     rematchRequestedBy: [],
                     gameOver: false,
+              startRequestedBy: [],
                     readyPlayers: readyPlayers
                   };
                   io.to(roomId).emit("room_update", r);
@@ -7752,13 +7759,22 @@ async function startServer() {
               botTimeouts.delete(setupKey);
               const r = rooms.get(roomId);
               if (r && r.gameState === "puzzle_setup") {
-                r.gameState = "puzzle_playing";
-                r.puzzle.roundStartTime = Date.now();
-                r.puzzle.lastChanceStartTime = null;
-                r.puzzle.playersProgress = {};
+                r.puzzle.startRequestedBy = r.puzzle.startRequestedBy || [];
+                const botPlayer = r.players.find((p: any) => p.isBot);
+                if (botPlayer && !r.puzzle.startRequestedBy.includes(botPlayer.id)) {
+                  r.puzzle.startRequestedBy.push(botPlayer.id);
+                }
+                if (r.puzzle.startRequestedBy.length >= r.players.length) {
+                  r.gameState = "puzzle_playing";
+                  r.puzzle.roundStartTime = Date.now();
+                  r.puzzle.lastChanceStartTime = null;
+                  r.puzzle.playersProgress = {};
+                  r.puzzle.botPieces = {};
+                }
                 io.to(roomId).emit("room_update", r);
-                const bot = r.players.find((p: any) => p.isBot);
-                if (bot) handleBotEvent(roomId, "room_update", r);
+                if (botPlayer && r.gameState === "puzzle_playing") {
+                  handleBotEvent(roomId, "room_update", r);
+                }
               }
             }, 1500);
             botTimeouts.set(setupKey, timeout);
@@ -12056,7 +12072,8 @@ async function startServer() {
               startTime: null,
               winnerId: null,
               rematchRequestedBy: [],
-              gameOver: false
+              gameOver: false,
+              startRequestedBy: []
             };
             io.to(roomId).emit("room_update", room);
             if (bot) handleBotEvent(roomId, "room_update", room);
@@ -12070,7 +12087,8 @@ async function startServer() {
               roundStartTime: Date.now(),
               lastChanceStartTime: null,
               playersProgress: {},
-              gameOver: false
+              gameOver: false,
+              startRequestedBy: []
             };
             try {
                const imagesResult = db.prepare("SELECT name, data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all() as any[];
@@ -12107,6 +12125,7 @@ async function startServer() {
               winnerId: null,
               startTime: Date.now(),
               gameOver: false,
+              startRequestedBy: [],
               readyPlayers: readyPlayers
             };
             
@@ -12126,6 +12145,7 @@ async function startServer() {
               currentSubstring: getBombPartySubstring([]),
               explodedPlayerId: null,
               gameOver: false,
+              startRequestedBy: [],
               winThreshold: 3,
               stats: {}
             };
@@ -14863,6 +14883,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             currentSubstring: getBombPartySubstring([]),
             explodedPlayerId: null,
             gameOver: false,
+              startRequestedBy: [],
             winThreshold: 3,
             rematchRequestedBy: [],
             stats: {}
@@ -15118,14 +15139,60 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
       socket.on("start_puzzle", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (!room || room.gameState !== "puzzle_setup") return;
-        room.gameState = "puzzle_playing";
-        room.puzzle.roundStartTime = Date.now();
-        room.puzzle.lastChanceStartTime = null;
-        room.puzzle.playersProgress = {};
-        room.puzzle.botPieces = {};
+        
+        room.puzzle.startRequestedBy = room.puzzle.startRequestedBy || [];
+        const player = room.players.find((p: any) => p.socketId === socket.id || p.id === socket.id);
+        const pId = player ? player.id : socket.id;
+        
+        if (!room.puzzle.startRequestedBy.includes(pId)) {
+          room.puzzle.startRequestedBy.push(pId);
+        }
+        if (player && player.id && !room.puzzle.startRequestedBy.includes(player.id)) {
+          room.puzzle.startRequestedBy.push(player.id);
+        }
+        if (!room.puzzle.startRequestedBy.includes(socket.id)) {
+          room.puzzle.startRequestedBy.push(socket.id);
+        }
+
+        const botPlayer = room.players.find((p: any) => p.isBot);
+        if (botPlayer && !room.puzzle.startRequestedBy.includes(botPlayer.id)) {
+          const startKey = roomId + "_puzzle_bot_start";
+          if (botTimeouts.has(startKey)) {
+             clearTimeout(botTimeouts.get(startKey));
+             botTimeouts.delete(startKey);
+          }
+          const timeout = setTimeout(() => {
+             botTimeouts.delete(startKey);
+             const r = rooms.get(roomId);
+             if (!r || r.gameState !== "puzzle_setup") return;
+             
+             r.puzzle.startRequestedBy = r.puzzle.startRequestedBy || [];
+             if (!r.puzzle.startRequestedBy.includes(botPlayer.id)) {
+                r.puzzle.startRequestedBy.push(botPlayer.id);
+             }
+             if (r.puzzle.startRequestedBy.length >= r.players.length) {
+                r.gameState = "puzzle_playing";
+                r.puzzle.roundStartTime = Date.now();
+                r.puzzle.lastChanceStartTime = null;
+                r.puzzle.playersProgress = {};
+                r.puzzle.botPieces = {};
+             }
+             io.to(roomId).emit("room_update", r);
+             if (botPlayer && r.gameState === "puzzle_playing") handleBotEvent(roomId, "room_update", r);
+          }, 1000);
+          botTimeouts.set(startKey, timeout);
+        } else if (room.puzzle.startRequestedBy.length >= room.players.length) {
+           room.gameState = "puzzle_playing";
+           room.puzzle.roundStartTime = Date.now();
+           room.puzzle.lastChanceStartTime = null;
+           room.puzzle.playersProgress = {};
+           room.puzzle.botPieces = {};
+           if (botPlayer) {
+              handleBotEvent(roomId, "room_update", room);
+           }
+        }
+
         io.to(roomId).emit("room_update", room);
-        const bot = room.players.find((p: any) => p.isBot);
-        if (bot) handleBotEvent(roomId, "room_update", room);
       });
 
       socket.on("puzzle_progress", ({ roomId, progress }) => {
@@ -15156,6 +15223,12 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
            room.puzzle.totalScores[pid] = (room.puzzle.totalScores[pid] || 0) + (room.puzzle.playersProgress[pid] || 0);
         }
         
+        const puzzleBotKey = roomId + "_puzzle_bot_step";
+        if (botTimeouts.has(puzzleBotKey)) {
+           clearTimeout(botTimeouts.get(puzzleBotKey));
+           botTimeouts.delete(puzzleBotKey);
+        }
+
         // Next round or game over
         const bot = room.players.find((p: any) => p.isBot);
         if (room.puzzle.currentRound < 3) {
@@ -15163,6 +15236,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
            room.puzzle.roundStartTime = Date.now();
            room.puzzle.lastChanceStartTime = null;
            room.puzzle.playersProgress = {};
+           room.puzzle.botPieces = {};
            io.to(roomId).emit("room_update", room);
            if (bot) handleBotEvent(roomId, "room_update", room);
         } else {
@@ -15211,7 +15285,8 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
                 images: r.puzzle.images || [],
                 botPieces: {},
                 rematchRequestedBy: [],
-                gameOver: false
+                gameOver: false,
+              startRequestedBy: []
               };
             }
             io.to(roomId).emit("room_update", r);
@@ -15229,7 +15304,8 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             images: room.puzzle.images || [],
             botPieces: {},
             rematchRequestedBy: [],
-            gameOver: false
+            gameOver: false,
+              startRequestedBy: []
           };
         }
 
@@ -15414,6 +15490,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
                 startTime: Date.now(),
                 rematchRequestedBy: [],
                 gameOver: false,
+              startRequestedBy: [],
                 readyPlayers: readyPlayers
               };
               if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
@@ -15443,6 +15520,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             startTime: Date.now(),
             rematchRequestedBy: [],
             gameOver: false,
+              startRequestedBy: [],
             readyPlayers: readyPlayers
           };
           if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
@@ -18854,7 +18932,8 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
               startTime: null,
               winnerId: null,
               rematchRequestedBy: [],
-              gameOver: false
+              gameOver: false,
+              startRequestedBy: []
             };
             if (bot) handleBotEvent(roomId, "room_update", room);
           }
