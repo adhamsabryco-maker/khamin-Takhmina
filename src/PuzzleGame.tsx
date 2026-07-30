@@ -41,6 +41,14 @@ export default function PuzzleGame({
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [roundBannerText, setRoundBannerText] = useState<string | null>(null);
 
+  const [tutorialCompleted, setTutorialCompleted] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("khamin_puzzle_tutorial_completed") === "true";
+    } catch (e) {
+      return false;
+    }
+  });
+
   const playedFinishSoundRef = useRef(false);
 
   // Play game end sound (win, lose, draw) & Show Google Ad after 3 rounds
@@ -143,6 +151,9 @@ export default function PuzzleGame({
   const currentAvailable = availablePieces.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
   const totalPages = Math.ceil(availablePieces.length / ITEMS_PER_PAGE);
 
+  const tutorialTargetPiece = currentAvailable.length > 0 ? currentAvailable[0] : (availablePieces.length > 0 ? availablePieces[0] : null);
+  const targetPieceData = selectedPiece !== null ? puzzlePiecesData[selectedPiece] : null;
+
   const handleCellClick = (cellIdx: number) => {
     if (selectedPiece === null) return;
     if (placedPieces.includes(cellIdx)) return;
@@ -158,6 +169,13 @@ export default function PuzzleGame({
       const newAvailable = availablePieces.filter(p => p !== cellIdx);
       setAvailablePieces(newAvailable);
       setSelectedPiece(null);
+
+      if (!tutorialCompleted) {
+        try {
+          localStorage.setItem("khamin_puzzle_tutorial_completed", "true");
+        } catch (e) {}
+        setTutorialCompleted(true);
+      }
       
       const newTotalPages = Math.ceil(newAvailable.length / ITEMS_PER_PAGE);
       if (page >= newTotalPages && newTotalPages > 0) {
@@ -242,23 +260,23 @@ export default function PuzzleGame({
     const loserName = iWon ? oppName : myName;
 
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 w-full max-w-lg mx-auto p-6 text-center">
-        <h1 className="text-3xl md:text-4xl font-black text-white mb-2">انتهت المباراة! 🏁</h1>
+      <div className="flex flex-col bg-gray-900 items-center justify-center w-full max-w-lg mx-auto py-4 px-3 text-center my-auto min-h-[85vh]">
+        <h1 className="text-2xl md:text-3xl font-black text-white mb-1">انتهت المباراة! 🏁</h1>
         
         {/* Match Winner Announcement Banner */}
-        <div className="w-full bg-gray-800/90 border-2 border-gray-700 rounded-2xl p-4 my-3 flex flex-col items-center shadow-xl">
+        <div className="w-full bg-gray-800/90 border-2 border-gray-700 rounded-2xl p-3 my-2 flex flex-col items-center shadow-xl">
           {isTie ? (
             <div className="flex flex-col items-center gap-1">
-              <span className="text-3xl">🤝</span>
-              <span className="text-xl md:text-2xl font-black text-yellow-400">مباراة متكافئة - تعادل!</span>
-              <span className="text-sm md:text-base text-gray-300 font-bold mt-1">
+              <span className="text-2xl">🤝</span>
+              <span className="text-lg md:text-xl font-black text-yellow-400">مباراة متكافئة - تعادل!</span>
+              <span className="text-xs md:text-sm text-gray-300 font-bold mt-0.5">
                 تعادل بين <span className="text-emerald-400 font-black">{myName}</span> و <span className="text-rose-400 font-black">{oppName}</span>
               </span>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-1">
-              <span className="text-3xl">🏆</span>
-              <span className="text-xl md:text-2xl font-black text-emerald-400">الفائز: {winnerName}</span>
+              <span className="text-2xl">🏆</span>
+              <span className="text-lg md:text-xl font-black text-emerald-400">الفائز: {winnerName}</span>
               <span className="text-xs md:text-sm text-gray-400 font-bold mt-0.5">
                 حظاً أوفراً للاعب <span className="text-rose-400 font-black">{loserName}</span>
               </span>
@@ -267,31 +285,31 @@ export default function PuzzleGame({
         </div>
 
         {/* Players Score Cards */}
-        <div className="grid grid-cols-2 gap-3 w-full my-3">
+        <div className="grid grid-cols-2 gap-2.5 w-full my-2">
            {/* My Score Card */}
-           <div className={`flex flex-col items-center p-3.5 rounded-2xl border transition-all ${iWon && !isTie ? 'bg-emerald-500/15 border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.25)]' : isTie ? 'bg-yellow-500/15 border-yellow-500/40' : 'bg-gray-800/80 border-gray-700'}`}>
+           <div className={`flex flex-col items-center p-2.5 md:p-3.5 rounded-2xl border transition-all ${iWon && !isTie ? 'bg-emerald-500/15 border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.25)]' : isTie ? 'bg-yellow-500/15 border-yellow-500/40' : 'bg-gray-800/80 border-gray-700'}`}>
               <div className="flex items-center gap-1">
-                {iWon && !isTie && <span className="text-sm">👑</span>}
-                <span className="text-base md:text-lg font-black text-emerald-400 truncate max-w-[120px]">{myName}</span>
+                {iWon && !isTie && <span className="text-xs">👑</span>}
+                <span className="text-sm md:text-base font-black text-emerald-400 truncate max-w-[110px]">{myName}</span>
               </div>
-              <span className="text-3xl md:text-4xl text-white mt-1 font-black">{myTotalScore}</span>
-              <span className="text-xs text-gray-400 font-bold mt-0.5">نقطة</span>
-              {iWon && !isTie && <span className="mt-2 text-[11px] font-black bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">الفائز 🏆</span>}
-              {!iWon && !isTie && <span className="mt-2 text-[11px] font-black bg-gray-700/50 text-gray-400 px-2 py-0.5 rounded-full border border-gray-600">المركز الثاني</span>}
-              {isTie && <span className="mt-2 text-[11px] font-black bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30">تعادل 🤝</span>}
+              <span className="text-2xl md:text-3xl text-white mt-0.5 font-black">{myTotalScore}</span>
+              <span className="text-[10px] md:text-xs text-gray-400 font-bold">نقطة</span>
+              {iWon && !isTie && <span className="mt-1 text-[10px] md:text-[11px] font-black bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">الفائز 🏆</span>}
+              {!iWon && !isTie && <span className="mt-1 text-[10px] md:text-[11px] font-black bg-gray-700/50 text-gray-400 px-2 py-0.5 rounded-full border border-gray-600">المركز الثاني</span>}
+              {isTie && <span className="mt-1 text-[10px] md:text-[11px] font-black bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30">تعادل 🤝</span>}
            </div>
 
            {/* Opponent Score Card */}
-           <div className={`flex flex-col items-center p-3.5 rounded-2xl border transition-all ${!iWon && !isTie ? 'bg-emerald-500/15 border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.25)]' : isTie ? 'bg-yellow-500/15 border-yellow-500/40' : 'bg-gray-800/80 border-gray-700'}`}>
+           <div className={`flex flex-col items-center p-2.5 md:p-3.5 rounded-2xl border transition-all ${!iWon && !isTie ? 'bg-emerald-500/15 border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.25)]' : isTie ? 'bg-yellow-500/15 border-yellow-500/40' : 'bg-gray-800/80 border-gray-700'}`}>
               <div className="flex items-center gap-1">
-                {!iWon && !isTie && <span className="text-sm">👑</span>}
-                <span className="text-base md:text-lg font-black text-rose-400 truncate max-w-[120px]">{oppName}</span>
+                {!iWon && !isTie && <span className="text-xs">👑</span>}
+                <span className="text-sm md:text-base font-black text-rose-400 truncate max-w-[110px]">{oppName}</span>
               </div>
-              <span className="text-3xl md:text-4xl text-white mt-1 font-black">{oppTotalScore}</span>
-              <span className="text-xs text-gray-400 font-bold mt-0.5">نقطة</span>
-              {!iWon && !isTie && <span className="mt-2 text-[11px] font-black bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">الفائز 🏆</span>}
-              {iWon && !isTie && <span className="mt-2 text-[11px] font-black bg-gray-700/50 text-gray-400 px-2 py-0.5 rounded-full border border-gray-600">المركز الثاني</span>}
-              {isTie && <span className="mt-2 text-[11px] font-black bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30">تعادل 🤝</span>}
+              <span className="text-2xl md:text-3xl text-white mt-0.5 font-black">{oppTotalScore}</span>
+              <span className="text-[10px] md:text-xs text-gray-400 font-bold">نقطة</span>
+              {!iWon && !isTie && <span className="mt-1 text-[10px] md:text-[11px] font-black bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">الفائز 🏆</span>}
+              {iWon && !isTie && <span className="mt-1 text-[10px] md:text-[11px] font-black bg-gray-700/50 text-gray-400 px-2 py-0.5 rounded-full border border-gray-600">المركز الثاني</span>}
+              {isTie && <span className="mt-1 text-[10px] md:text-[11px] font-black bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30">تعادل 🤝</span>}
            </div>
         </div>
 
@@ -302,8 +320,15 @@ export default function PuzzleGame({
           </div>
         )}
         
+        {/* Opponent ready status banner */}
+        {oppRequestedRematch && !myRequestedRematch && (
+          <div className="w-full bg-emerald-950/90 border border-emerald-500/80 rounded-xl py-1.5 px-3 text-center my-1 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+            <span className="text-xs md:text-sm font-black text-emerald-300">🤝 الخصم جاهز وفي انتظارك لإعادة اللعب!</span>
+          </div>
+        )}
+        
         {/* Match result buttons (تغيير اللعبة - لعب مرة أخرى - خروج للرئيسية) */}
-        <div className="flex flex-col gap-3 w-full max-w-sm mt-2">
+        <div className="flex flex-col gap-2.5 w-full max-w-sm mt-1">
           <div className="flex gap-2 w-full">
             {/* تغيير اللعبة */}
             <button
@@ -311,23 +336,30 @@ export default function PuzzleGame({
                 if (playSound) playSound("clickOpen");
                 socket?.emit("select_private_mode", { roomId: room.id, mode: null });
               }}
-              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white shadow-[0_4px_0_0_#6b21a8] active:shadow-transparent py-3.5 px-2 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer"
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white shadow-[0_3px_0_0_#6b21a8] active:shadow-transparent py-3 px-2 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer"
             >
               🎮 تغيير اللعبة
             </button>
 
             {/* لعب مرة أخرى */}
             <button
+              disabled={myRequestedRematch}
               onClick={() => {
                 if (playSound) playSound("clickOpen");
                 socket?.emit("request_puzzle_rematch", { roomId: room.id });
               }}
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_4px_0_0_#047857] active:shadow-transparent py-3.5 px-2 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer"
+              className={`flex-1 text-white py-3 px-2 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                myRequestedRematch
+                  ? "bg-gray-600 shadow-none opacity-80 cursor-not-allowed"
+                  : oppRequestedRematch
+                  ? "bg-emerald-500 hover:bg-emerald-600 shadow-[0_3px_0_0_#047857] animate-pulse"
+                  : "bg-emerald-500 hover:bg-emerald-600 shadow-[0_3px_0_0_#047857]"
+              }`}
             >
               {myRequestedRematch ? (
-                <span className="animate-pulse">🔄 بانتظار الخصم...</span>
+                <span className="animate-pulse">⏳ بانتظار الخصم...</span>
               ) : oppRequestedRematch ? (
-                <span>🤝 الخصم جاهز!</span>
+                <span className="animate-pulse">🎮 قبول ولعب مرة أخرى</span>
               ) : (
                 <span>🔄 لعب مرة أخرى</span>
               )}
@@ -340,7 +372,7 @@ export default function PuzzleGame({
               if (playSound) playSound("clickOpen");
               if (handleLeaveGame) handleLeaveGame();
             }}
-            className="w-full bg-red-500 hover:bg-red-600 text-white shadow-[0_4px_0_0_#991b1b] active:shadow-transparent py-3.5 px-6 text-base font-black rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+            className="w-full bg-red-500 hover:bg-red-600 text-white shadow-[0_3px_0_0_#991b1b] active:shadow-transparent py-3 px-4 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             🚪 خروج للرئيسية
           </button>
@@ -392,10 +424,20 @@ export default function PuzzleGame({
             </div>
             
             {/* Timer & Round */}
-            <div className="flex flex-col justify-center items-center px-2 md:px-4 shrink-0">
-               <div className={`text-xl font-black ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-yellow-400'}`}>{formatTime(timeLeft)}</div>
-               <div className="text-xs text-gray-400">جولة {round}/3</div>
-               {lastChanceStartTime && <div className="text-[9px] md:text-[10px] text-red-400 font-bold animate-pulse mt-0.5">فرصة أخيرة!</div>}
+            <div className="flex flex-col justify-center items-center px-2 md:px-4 shrink-0 min-w-[95px]">
+               {lastChanceStartTime ? (
+                  <div className="flex flex-col items-center bg-red-950/90 border border-red-500/70 px-0.5 py-0.5">
+                     <span className="text-sm font-black text-red-400 font-mono leading-none">{formatTime(timeLeft)}</span>
+                     <span className="text-[8px] md:text-[9px] text-gray-300 font-bold mt-0.5">جولة {round}/3</span>
+                  </div>
+               ) : (
+                  <div className="flex flex-col items-center">
+                     <div className={`text-xl font-black font-mono ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-yellow-400'}`}>
+                        {formatTime(timeLeft)}
+                     </div>
+                     <div className="text-xs text-gray-400 font-bold">جولة {round}/3</div>
+                  </div>
+               )}
             </div>
 
             {/* Player 2 (Opponent) */}
@@ -414,7 +456,7 @@ export default function PuzzleGame({
       </div>
 
       {/* Puzzle Grid */}
-      <div className="relative p-1 md:p-2 rounded-xl mx-auto z-10 w-full max-w-[400px]">
+      <div className="relative px-1 md:px-3 rounded-xl mx-auto z-10 w-full max-w-[400px]">
          <div className="w-full aspect-square relative z-10 bg-gray-900/90 rounded-lg shadow-inner overflow-hidden border border-gray-700">
             <svg viewBox="0 0 696 696" className="w-full h-full relative z-10 overflow-hidden">
                <defs>
@@ -474,7 +516,32 @@ export default function PuzzleGame({
                      />
                   );
                })}
+
+               {/* Tutorial Target Cell Highlight on Grid */}
+               {selectedPiece !== null && !tutorialCompleted && targetPieceData && (
+                  <path 
+                     d={targetPieceData.d} 
+                     fill="rgba(250,204,21,0.35)" 
+                     stroke="#facc15" 
+                     strokeWidth="4" 
+                     vectorEffect="non-scaling-stroke"
+                     className="animate-pulse pointer-events-none z-40" 
+                  />
+               )}
             </svg>
+            
+            {/* Tutorial Finger Pointing on Grid Target Cell 👇 */}
+            {selectedPiece !== null && !tutorialCompleted && targetPieceData && (
+               <div 
+                  className="absolute z-50 pointer-events-none flex flex-col items-center animate-bounce -translate-x-1/2 -translate-y-full"
+                  style={{
+                     left: `${((targetPieceData.minX + targetPieceData.w / 2) / 696) * 100}%`,
+                     top: `${((targetPieceData.minY + targetPieceData.h / 2) / 696) * 100}%`
+                  }}
+               >
+                  <span className="text-2xl md:text-3xl">👇</span>
+               </div>
+            )}
             
             {/* Preview Overlay */}
             <div className={`absolute inset-0 pointer-events-none transition-opacity duration-1000 ${previewState === 'clear' ? 'opacity-100' : previewState === 'transparent' ? 'opacity-25' : 'opacity-0'} z-30`}>
@@ -493,7 +560,7 @@ export default function PuzzleGame({
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full h-[170px] sm:h-[185px] md:h-[210px] shrink-0 rounded-2xl bg-gradient-to-br from-emerald-950 via-gray-900 to-amber-950/80 border-2 border-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.3)] flex flex-col items-center justify-center p-4 text-center relative overflow-hidden"
+            className="w-full h-[150px] md:h-[175px] shrink-0 rounded-2xl bg-gradient-to-br from-emerald-950 via-gray-900 to-amber-950/80 border-2 border-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.3)] flex flex-col items-center justify-center p-4 text-center relative overflow-hidden"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.15),transparent_70%)] pointer-events-none" />
             <span className="text-3xl md:text-4xl mb-1 animate-bounce">🎉</span>
@@ -507,79 +574,81 @@ export default function PuzzleGame({
           </motion.div>
         ) : (
           <div className="flex flex-col items-center">
-            <div className="flex justify-between w-full items-center">
-               <span className="text-gray-300 font-bold text-xs md:text-sm">عدد القطع ({availablePieces.length})</span>
-               <button 
-                  onClick={() => { if (playSound) playSound("chestOpen"); setPage((p) => (p + 1) % (totalPages || 1)); }}
-                  className="bg-gray-700 hover:bg-gray-600 text-white text-xs md:text-sm py-1 px-2 rounded-lg active:scale-95 transition-transform font-bold border border-gray-600 z-50 relative"
-               >
-                  🔄 تغيير القطع ({page + 1}/{totalPages || 1})
-               </button>
-            </div>
-            
-            <div className="w-full h-[170px] sm:h-[185px] md:h-[210px] shrink-0 rounded-lg bg-gray-900/50 border border-gray-700 overflow-hidden flex flex-wrap justify-center items-center content-center relative">
-               <AnimatePresence>
-                  {currentAvailable.map(pieceIdx => {
-                     const p = puzzlePiecesData[pieceIdx];
-                     if (!p) return null;
 
-                     const rotate = ((pieceIdx * 47) % 40) - 20; // -20 to 20 deg for cleaner layout
-                     const tx = ((pieceIdx * 13) % 10) - 5;
-                     const ty = ((pieceIdx * 29) % 10) - 5;
-                     const isSelected = selectedPiece === pieceIdx;
-                     
-                     return (
-                        <motion.div
-                           key={pieceIdx}
-                           initial={{ opacity: 0, scale: 0 }}
-                           animate={{ opacity: 1, scale: isSelected ? 1.15 : 1 }}
-                           exit={{ opacity: 0, scale: 0 }}
-                           onClick={() => { if (playSound) playSound("handXFill"); setSelectedPiece(isSelected ? null : pieceIdx); }}
-                           className={`relative cursor-pointer transition-all ${isSelected ? 'z-50' : 'z-10 hover:z-20'}`}
-                           style={{
-                              width: `clamp(42px, ${(p.w / 696) * 70}vw, ${(p.w / 696) * 350}px)`,
-                              height: `clamp(42px, ${(p.h / 696) * 70}vw, ${(p.h / 696) * 350}px)`,
-                              margin: '2px',
-                              transform: `translate(${tx}px, ${ty}px) rotate(${rotate}deg)`,
-                           }}
-                        >
-                           <svg viewBox={`${p.minX} ${p.minY} ${p.w} ${p.h}`} className="w-full h-full overflow-visible">
-                              <defs>
-                                 <clipPath id={`drawer-clip-${p.id}`}>
-                                    <path d={p.d} />
-                                 </clipPath>
-                              </defs>
-                              <image 
-                                 href={image} 
-                                 width="696" 
-                                 height="696" 
-                                 preserveAspectRatio="none"
-                                 clipPath={`url(#drawer-clip-${p.id})`} 
-                              />
-                              {/* Glowing edge outline on selection (No drop-shadow) */}
-                              <path 
-                                 d={p.d} 
-                                 fill="none" 
-                                 stroke={isSelected ? "#facc15" : "rgba(255,255,255,0.25)"} 
-                                 strokeWidth={isSelected ? "3.5" : "1"} 
-                                 vectorEffect="non-scaling-stroke"
-                                 className={isSelected ? "animate-pulse" : ""}
-                              />
-                           </svg>
-                        </motion.div>
-                     );
-                  })}
-               </AnimatePresence>
-               {currentAvailable.length === 0 && (
-                  <div className="text-gray-500 flex items-center justify-center text-sm font-bold w-full h-full">لا يوجد قطع إضافية</div>
-               )}
-            </div>
+             <div className="flex justify-between w-full items-center mb-1">
+                <span className="text-gray-300 font-bold text-xs md:text-sm">عدد القطع ({availablePieces.length})</span>
+                <button 
+                   onClick={() => { if (playSound) playSound("chestOpen"); setPage((p) => (p + 1) % (totalPages || 1)); }}
+                   className="bg-gray-700 hover:bg-gray-600 text-white text-xs md:text-sm py-1 px-2 rounded-lg active:scale-95 transition-transform font-bold border border-gray-600 z-50 relative"
+                >
+                   🔄 تغيير القطع ({page + 1}/{totalPages || 1})
+                </button>
+             </div>
+             
+             <div className="w-full h-[150px] md:h-[175px] shrink-0 rounded-lg bg-gray-900/50 border border-gray-700 overflow-hidden grid grid-cols-5 grid-rows-2 gap-1 p-1 items-center justify-items-center relative">
+                {Array.from({ length: 10 }).map((_, slotIdx) => {
+                   const pieceIdx = currentAvailable[slotIdx];
+                   if (pieceIdx === undefined) {
+                      return <div key={`empty-slot-${slotIdx}`} className="w-full h-full" />;
+                   }
+
+                   const p = puzzlePiecesData[pieceIdx];
+                   if (!p) return <div key={`empty-slot-${slotIdx}`} className="w-full h-full" />;
+
+                   const isSelected = selectedPiece === pieceIdx;
+                   const isTutorialPiece = !tutorialCompleted && selectedPiece === null && pieceIdx === tutorialTargetPiece;
+
+                   return (
+                      <div key={pieceIdx} className="w-full h-full flex items-center justify-center relative overflow-visible">
+                         <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: isSelected ? 1.15 : 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            onClick={() => { if (playSound) playSound("handXFill"); setSelectedPiece(isSelected ? null : pieceIdx); }}
+                            className={`relative cursor-pointer transition-all w-full h-full flex items-center justify-center p-0.5 ${isSelected ? 'z-50' : 'z-10 hover:z-20'} ${
+                               isTutorialPiece ? 'ring-2 md:ring-4 ring-yellow-400 ring-offset-1 ring-offset-gray-900 rounded-lg animate-pulse shadow-[0_0_15px_rgba(250,204,21,0.9)] bg-yellow-400/20 z-40' : ''
+                            }`}
+                         >
+                            {isTutorialPiece && (
+                               <div className="absolute -right-2 top-1/2 -translate-y-1/2 z-50 text-xl md:text-2xl animate-bounce pointer-events-none">👈</div>
+                            )}
+                            <svg viewBox={`${p.minX} ${p.minY} ${p.w} ${p.h}`} className="w-full h-full max-w-[55px] max-h-[55px] overflow-visible">
+                               <defs>
+                                  <clipPath id={`drawer-clip-${p.id}`}>
+                                     <path d={p.d} />
+                                  </clipPath>
+                               </defs>
+                               <image 
+                                  href={image} 
+                                  width="696" 
+                                  height="696" 
+                                  preserveAspectRatio="none"
+                                  clipPath={`url(#drawer-clip-${p.id})`} 
+                               />
+                               {/* Glowing edge outline on selection / tutorial */}
+                               <path 
+                                  d={p.d} 
+                                  fill="none" 
+                                  stroke={isSelected || isTutorialPiece ? "#facc15" : "rgba(255,255,255,0.25)"} 
+                                  strokeWidth={isSelected || isTutorialPiece ? "3.5" : "1"} 
+                                  vectorEffect="non-scaling-stroke"
+                                  className={isSelected || isTutorialPiece ? "animate-pulse" : ""}
+                               />
+                            </svg>
+                         </motion.div>
+                      </div>
+                   );
+                })}
+                {currentAvailable.length === 0 && (
+                   <div className="absolute inset-0 text-gray-500 flex items-center justify-center text-sm font-bold w-full h-full">لا يوجد قطع إضافية</div>
+                )}
+             </div>
           </div>
         )}
       </div>
       
       {/* Done Button */}
-      <div className="mt-2 md:mt-3 z-10">
+      <div className="mt-2 md:mt-2 z-10">
          <button
             disabled={placedPieces.length < 49 || !!lastChanceStartTime}
             onClick={handleDone}
