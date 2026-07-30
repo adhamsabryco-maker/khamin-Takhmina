@@ -3232,6 +3232,25 @@ async function startServer() {
       }
     }
 
+    function getRandomPuzzleImages() {
+      try {
+        const imagesResult = db.prepare("SELECT name, data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all() as any[];
+        if (imagesResult && imagesResult.length > 0) {
+          const imgs = imagesResult.map((r: any, idx: number) => ({
+            name: r.name || ("صورة الجولة " + (idx + 1)),
+            image: r.image
+          }));
+          while (imgs.length < 3) {
+            imgs.push(imgs[0]);
+          }
+          return imgs;
+        }
+      } catch (e) {
+        console.error("Error fetching puzzle images:", e);
+      }
+      return [];
+    }
+
     function savePlayerData(serial: string) {
       try {
         const player = allPlayers.get(serial);
@@ -6190,25 +6209,13 @@ async function startServer() {
             room.category = "puzzle";
             room.puzzle = {
               currentRound: 1,
-              images: [],
+              images: getRandomPuzzleImages(),
               roundStartTime: Date.now(),
               lastChanceStartTime: null,
               playersProgress: {},
               gameOver: false,
               startRequestedBy: []
             };
-            try {
-               const imagesResult = db.prepare("SELECT name, data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all() as any[];
-               if(imagesResult && imagesResult.length > 0) {
-                  room.puzzle.images = imagesResult.map((r, idx) => ({
-                     name: r.name || ("صورة الجولة " + (idx + 1)),
-                     image: r.image
-                  }));
-                  while(room.puzzle.images.length < 3) {
-                     room.puzzle.images.push(room.puzzle.images[0]); // fallback if <3 images in db
-                  }
-               }
-            } catch(e) {}
             
             const bot = room.players.find((p) => p.isBot);
             if (bot) {
@@ -12083,25 +12090,13 @@ async function startServer() {
             room.category = "puzzle";
             room.puzzle = {
               currentRound: 1,
-              images: [],
+              images: getRandomPuzzleImages(),
               roundStartTime: Date.now(),
               lastChanceStartTime: null,
               playersProgress: {},
               gameOver: false,
               startRequestedBy: []
             };
-            try {
-               const imagesResult = db.prepare("SELECT name, data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all() as any[];
-               if(imagesResult && imagesResult.length > 0) {
-                  room.puzzle.images = imagesResult.map((r, idx) => ({
-                     name: r.name || ("صورة الجولة " + (idx + 1)),
-                     image: r.image
-                  }));
-                  while(room.puzzle.images.length < 3) {
-                     room.puzzle.images.push(room.puzzle.images[0]); // fallback if <3 images in db
-                  }
-               }
-            } catch(e) {}
             
             const bot = room.players.find((p) => p.isBot);
             if (bot) {
@@ -15242,6 +15237,35 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         } else {
            room.gameState = "puzzle_finished";
            room.puzzle.gameOver = true;
+
+           let maxScore = -1;
+           let winners: any[] = [];
+           for (const p of room.players) {
+             const pScore = room.puzzle.totalScores?.[p.id] || 0;
+             if (pScore > maxScore) {
+               maxScore = pScore;
+               winners = [p];
+             } else if (pScore === maxScore && maxScore > 0) {
+               winners.push(p);
+             }
+           }
+
+           if (winners.length === 1) {
+             const winnerPlayer = winners[0];
+             room.puzzle.winnerId = winnerPlayer.id;
+             winnerPlayer.puzzleWins = (winnerPlayer.puzzleWins || 0) + 1;
+             winnerPlayer.puzzleMatchPoints = (winnerPlayer.puzzleMatchPoints || 0) + 10;
+             if (!winnerPlayer.isBot && winnerPlayer.serial) {
+               const dbP = allPlayers.get(winnerPlayer.serial);
+               if (dbP) {
+                 dbP.puzzleWins = winnerPlayer.puzzleWins;
+                 dbP.puzzleMatchPoints = winnerPlayer.puzzleMatchPoints;
+                 savePlayerData(winnerPlayer.serial);
+                 io.to(winnerPlayer.socketId || winnerPlayer.id).emit("player_data_update", dbP);
+               }
+             }
+           }
+
            io.to(roomId).emit("room_update", room);
            if (bot) handleBotEvent(roomId, "room_update", room);
         }
@@ -15282,11 +15306,11 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
                 lastChanceStartTime: null,
                 playersProgress: {},
                 totalScores: {},
-                images: r.puzzle.images || [],
+                images: getRandomPuzzleImages(),
                 botPieces: {},
                 rematchRequestedBy: [],
                 gameOver: false,
-              startRequestedBy: []
+                startRequestedBy: []
               };
             }
             io.to(roomId).emit("room_update", r);
@@ -15301,11 +15325,11 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             lastChanceStartTime: null,
             playersProgress: {},
             totalScores: {},
-            images: room.puzzle.images || [],
+            images: getRandomPuzzleImages(),
             botPieces: {},
             rematchRequestedBy: [],
             gameOver: false,
-              startRequestedBy: []
+            startRequestedBy: []
           };
         }
 
