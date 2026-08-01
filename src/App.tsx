@@ -14025,9 +14025,23 @@ if (data.connectFourWordsRewardLevel != null) {
               </div>
 
               <div className="space-y-2 text-brown-muted font-bold max-h-[60vh] overflow-y-auto p-2 pr-2 custom-scrollbar">
-                <p className="flex text-center items-center justify-center">
+                <p className="flex text-sm text-center items-center justify-center">
                   كلما فزت في مباريات أكثر، كلما حصلت على XP وارتفع مستواك!
                 </p>
+
+                {/* Leaderboard rankings */}
+                <div className="box-game p-3">
+                  <h3 className="text-lg font-black text-red-600 mb-2 flex items-center gap-2">
+                    <div className="text-xl relative top-0.5">📊</div>
+                    ترتيب أبطال التخمين
+                  </h3>
+                  <p className="text-sm leading-relaxed">
+                    الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي 
+                    يتحدث الترتيب كل 24 ساعة, وجائزة قيمة أسبوعية اذا استمر اللاعب
+                    في الحفاظ علي الترتيب الاول كل أسبوع.
+                  </p>
+                </div>
+
                 {/* Takhmina Coins */}
                 <div className="box-game p-3">
                   <h3 className="text-lg font-black text-yellow-600 mb-2 flex items-center gap-2">
@@ -14066,7 +14080,15 @@ if (data.connectFourWordsRewardLevel != null) {
                   </h3>
                   <p className="text-sm leading-relaxed">
                     عند حصولك علي باقة المحترفين يمكنك استخدام جميع وسائل
-                    المساعدة بدون إعلانات حسب مدة تفعيل الباقة.
+                    المساعدة في لعبة فئات التخمين بدون إعلانات حسب مدة تفعيل الباقة.
+                    <div className="text-[8px] md:text-xs font-bold text-gray-600 flex items-center gap-1 mt-0.5">
+                      وايضا يمكنك الاستمتاع باللعبة
+                      بدون الفواصل الاعلانية
+                      <div className="relative inline-flex items-center justify-center">
+                        <span className="w-3 h-3 md:w-3 md:h-3 flex items-center text-center justify-center">📺</span>
+                        <Ban className="w-4 h-4 md:w-5 md:h-5 text-red-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                      </div>
+                    </div>
                   </p>
                 </div>
 
@@ -24831,13 +24853,6 @@ const renderBombPartyRewardBar = () => {
                       )}
                     </div>
 
-                    <div className="text-center">
-                      <p className="text-[8px] md:text-[10px] font-bold text-black-400 inline-block">
-                        الترتيب يعتمد فقط علي اللعب داخل مباريات البحث العشوائي
-                        📊
-                      </p>
-                    </div>
-
                     {/* Player Rank Info */}
                     {(() => {
                       const myRankIndex = topPlayers.findIndex(
@@ -25067,18 +25082,18 @@ const renderBombPartyRewardBar = () => {
                   )}
                 </div>
 
-                <div className="pt-3 md:pt-3 border-t-2 border-game space-y-3 md:space-y-4">
-                  <div className="flex items-center font-bold md:text-sm text-xs gap-1">
+                <div className="pt-1 md:pt-1 border-t-2 border-game space-y-3 md:space-y-4">
+                  <div className="flex items-center font-bold md:text-sm text-xs mb-1 gap-1">
                     <button
                       onClick={() => {
                         playSound("clickOpen");
                         setShowPlayerSearchModal(true);
                       }}
-                      className="bg-gray-300 py-1 px-4 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-200 flex items-center gap-1 hover:text-purple-600 transition-colors"
+                      className="bg-gray-300 py-0.5 px-2 border-2 border-black hover:bg-purple-200 flex items-center gap-1 hover:text-purple-600 transition-colors"
                     >
                       <Users className="w-4 h-4" />
                       إجمالي اللاعبين:{" "}
-                      <span className="text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">
+                      <span className="text-purple-600 bg-purple-100 px-2 py-0.2 rounded-full">
                         {totalPlayersCount}
                       </span>
                     </button>
@@ -25097,110 +25112,110 @@ const renderBombPartyRewardBar = () => {
                         {error}
                       </motion.div>
                     )}
-                    <label className="flex items-center justify-between text-base md:text-lg font-bold text-main mb-1 md:mb-2 px-1">
-                      <span>إنشاء / دخول بكود غرفة</span>
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={roomId}
-                        onChange={(e) => {
-                          // Normalize Arabic numbers to English
-                          const val = e.target.value.replace(/[٠-٩]/g, (d) =>
-                            "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString(),
-                          );
-                          setRoomId(val);
-                        }}
-                        placeholder="أكتب كود الغرفة..."
-                        className="input-game flex-1 py-2 md:py-4"
-                        maxLength={6}
-                      />
-                      <button
-                        onClick={handleJoin}
-                        disabled={!isReadyToPlay || isJoiningRoom}
-                        className={`btn-game btn-secondary px-4 md:px-6 py-2 md:py-3 text-base md:text-lg ${(!isReadyToPlay || isJoiningRoom) ? "opacity-50 cursor-not-allowed" : ""}`}
-                      >
-                        {!isReadyToPlay ? "جاري الاتصال..." : isJoiningRoom ? "جاري الدخول..." : "دخول"}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="relative py-1 md:py-2">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t-2 border-game dashed"></div>
-                    </div>
-                    <div className="relative flex justify-center text-[10px] md:text-xs uppercase">
-                      <span className="bg-[#FFFFFF] px-3 text-brown-light font-black">
-                        أو
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleRandomMatch}
-                      disabled={!isReadyToPlay}
-                      className={`flex-1 btn-game btn-primary py-4 md:py-4 text-sm md:text-xl gap-1 md:gap-3 cursor-pointer touch-manipulation ${!isReadyToPlay ? "opacity-50 cursor-not-allowed" : ""}`}
-                    >
-                      <div className="flex items-center gap-1.5" dir="ltr">
-                        <span className="large-emoji">🔍</span>
+                      <label className="flex items-center justify-between text-base md:text-lg font-bold text-main mb-1 md:mb-2 px-1">
+                        <span>إنشاء / دخول بكود غرفة</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={roomId}
+                          onChange={(e) => {
+                            // Normalize Arabic numbers to English
+                            const val = e.target.value.replace(/[٠-٩]/g, (d) =>
+                              "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString(),
+                            );
+                            setRoomId(val);
+                          }}
+                          placeholder="أكتب كود الغرفة..."
+                          className="input-game flex-1 py-2 md:py-4"
+                          maxLength={6}
+                        />
+                        <button
+                          onClick={handleJoin}
+                          disabled={!isReadyToPlay || isJoiningRoom}
+                          className={`btn-game btn-secondary px-4 md:px-6 py-2 md:py-3 text-base md:text-lg ${(!isReadyToPlay || isJoiningRoom) ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                          {!isReadyToPlay ? "جاري الاتصال..." : isJoiningRoom ? "جاري الدخول..." : "دخول"}
+                        </button>
                       </div>
-                      <span>
-                        {isReadyToPlay ? "بحث عشوائي" : "جاري الاتصال..."}
-                      </span>
-                    </button>
+                    </div>
 
-                    <div className="flex flex-col box-game p-2 h-16 relative overflow-hidden">
-                      {getLevel(xp) < 50 && (
-                        <div className="absolute inset-0 bg-gray-200/80 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center">
-                          <Lock className="w-4 h-4 text-gray-600 mb-0.5" />
-                          <span
-                            className="text-[11px] font-black text-gray-700"
-                            dir="ltr"
+                    <div className="relative py-1 md:py-2">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t-2 border-game dashed"></div>
+                      </div>
+                      <div className="relative flex justify-center text-[10px] md:text-xs uppercase">
+                        <span className="bg-[#FFFFFF] px-3 text-brown-light font-black">
+                          أو
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleRandomMatch}
+                        disabled={!isReadyToPlay}
+                        className={`flex-1 btn-game btn-primary py-4 md:py-4 text-sm md:text-xl gap-1 md:gap-3 cursor-pointer touch-manipulation ${!isReadyToPlay ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        <div className="flex items-center gap-1.5" dir="ltr">
+                          <span className="large-emoji">🔍</span>
+                        </div>
+                        <span>
+                          {isReadyToPlay ? "بحث عشوائي" : "جاري الاتصال..."}
+                        </span>
+                      </button>
+
+                      <div className="flex flex-col box-game p-2 h-16 relative overflow-hidden">
+                        {getLevel(xp) < 50 && (
+                          <div className="absolute inset-0 bg-gray-200/80 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center">
+                            <Lock className="w-4 h-4 text-gray-600 mb-0.5" />
+                            <span
+                              className="text-[11px] font-black text-gray-700"
+                              dir="ltr"
+                            >
+                              Lvl 50+
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-6 flex-1">
+                          <input
+                            type="checkbox"
+                            id="useToken"
+                            checked={useToken && getLevel(xp) >= 50}
+                            onChange={(e) =>
+                              getLevel(xp) >= 50 && setUseToken(e.target.checked)
+                            }
+                            disabled={tokens <= 0 || getLevel(xp) < 50}
+                            className="checkbox-game disabled:opacity-50"
+                          />
+                          <label
+                            htmlFor="useToken"
+                            className={`cursor-pointer select-none flex items-center gap-1 ${getLevel(xp) < 50 ? "pointer-events-none" : ""}`}
                           >
+                            <button
+                              onClick={toggleTokenInfo}
+                              className="font-black text-accent-purple hover:underline text-sm truncate"
+                            >
+                              تخمينة
+                            </button>
+                            <span className="font-black text-main text-sm">
+                              ({tokens})
+                            </span>
+                          </label>
+                        </div>
+                        <div className="border-t border-game mt-1 mb-0.5"></div>
+                        <div className="w-full flex text-left" dir="ltr">
+                          <span className="font-bold text-xs md:text-sm">
                             Lvl 50+
                           </span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-6 flex-1">
-                        <input
-                          type="checkbox"
-                          id="useToken"
-                          checked={useToken && getLevel(xp) >= 50}
-                          onChange={(e) =>
-                            getLevel(xp) >= 50 && setUseToken(e.target.checked)
-                          }
-                          disabled={tokens <= 0 || getLevel(xp) < 50}
-                          className="checkbox-game disabled:opacity-50"
-                        />
-                        <label
-                          htmlFor="useToken"
-                          className={`cursor-pointer select-none flex items-center gap-1 ${getLevel(xp) < 50 ? "pointer-events-none" : ""}`}
-                        >
-                          <button
-                            onClick={toggleTokenInfo}
-                            className="font-black text-accent-purple hover:underline text-sm truncate"
-                          >
-                            تخمينة
-                          </button>
-                          <span className="font-black text-main text-sm">
-                            ({tokens})
+                          <span className="flex text-xs md:text-sm text-gray-400 px-1">
+                            |
                           </span>
-                        </label>
+                          <span className="font-bold text-xs md:text-sm">
+                            1=500xp
+                          </span>
+                        </div>
                       </div>
-                      <div className="border-t border-game mt-1 mb-0.5"></div>
-                      <div className="w-full flex text-left" dir="ltr">
-                        <span className="font-bold text-xs md:text-sm">
-                          Lvl 50+
-                        </span>
-                        <span className="flex text-xs md:text-sm text-gray-400 px-1">
-                          |
-                        </span>
-                        <span className="font-bold text-xs md:text-sm">
-                          1=500xp
-                        </span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
