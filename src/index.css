@@ -123,6 +123,61 @@
     background-image: url('/hand-background.jpg');
 }
 
+.comic-text-strock {
+  position: relative;
+  z-index: 1;
+}
+
+/* إنشاء طبقة خلفية للاستروك والظل */
+.comic-text-strock::before {
+  content: attr(data-text); /* جلب نفس الكلمة */
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  
+  -webkit-text-stroke: 2px black; 
+  
+  text-shadow: 
+    0px 1px 0px black,
+    0px 2px 0px black,
+    0px 3px 0px black,
+    0px 4px 0px black,
+    0px 5px 0px black;
+}
+
+.play-bg {
+    height: 100%;
+    width: 100%;
+    background-repeat:no-repeat;
+    background-size:100% 100%;
+    background-image: url('/play-bg-8.jpg');
+}
+
+.or-bg-2 {
+    height: 60px;
+    width: 60px;
+    background-repeat:no-repeat;
+    background-size:100% 100%;
+    background-image: url('/or-bg-2.png');
+}
+
+.random-bg {
+    height: 100%;
+    width: 100%;
+    background-repeat:no-repeat;
+    background-size:100% 100%;
+    background-image: url('/green-comic-background-2.jpg');
+}
+
+.room-code-bg {
+    height: 100%;
+    width: 100%;
+    background-repeat:no-repeat;
+    background-size:100% 100%;
+    background-image: url('/blue-comic-background.jpg');
+}
+
 .rank-1-frame {
   background-image: url('public/blue-flame.gif');
   mix-blend-mode: screen;
@@ -671,4 +726,14 @@ body::after {
 
 .animate-battery-flash-fade {
   animation: batteryFlashFade 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, 10px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -10px); }
+}
+.animate-fadeInOut {
+  animation: fadeInOut 3s forwards;
 }

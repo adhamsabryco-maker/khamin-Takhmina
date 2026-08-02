@@ -8838,6 +8838,16 @@ if (data.connectFourWordsRewardLevel != null) {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(""); // أو الدالة التي تستخدمها لتفريغ قيمة الخطأ مثل setError(null)
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   const handleJoin = () => {
     playSound("clickOpen");
     if (!playerSerial) {
@@ -8845,15 +8855,18 @@ if (data.connectFourWordsRewardLevel != null) {
       return;
     }
     if (!playerName.trim() || !playerAge || playerAge < 0) {
-      setError("حقل مفقود! يرجى إدخال اسمك وعمرك أولاً");
+      playSound("wrong");
+      setError("يرجى إدخال اسمك وعمرك أولاً");
       return;
     }
     if (!roomId.trim()) {
+      playSound("wrong");
       setError("حقل مفقود! يرجى إدخال كود الغرفة");
       return;
     }
     if (playerAge <= 12) {
-      setError("عذراً، يجب أن يكون عمرك 13 عاماً أو أكثر للعب.");
+      playSound("wrong");
+      setError("يجب أن يكون عمرك 13 عاماً أو أكثر.");
       return;
     }
     setError("");
@@ -8886,11 +8899,13 @@ if (data.connectFourWordsRewardLevel != null) {
       return;
     }
     if (!playerName.trim() || !playerAge || playerAge < 0) {
-      setError("حقل مفقود! يرجى إدخال اسمك وعمرك أولاً");
+      playSound("wrong");
+      setError("يرجى إدخال اسمك وعمرك أولاً");
       return;
     }
     if (playerAge <= 12) {
-      setError("عذراً، يجب أن يكون عمرك 13 عاماً أو أكثر للعب.");
+      playSound("wrong");
+      setError("يجب أن يكون عمرك 13 عاماً أو أكثر.");
       return;
     }
     setError("");
@@ -8917,21 +8932,25 @@ if (data.connectFourWordsRewardLevel != null) {
     playSound("clickOpen");
     setRegisterError("");
     if (!playerName.trim() || !playerAge) {
+      playSound("wrong");
       setRegisterError("يرجى إدخال اسمك وعمرك أولاً");
       return;
     }
 
     if (!hasSelectedAvatar) {
+      playSound("wrong");
       setRegisterError("يرجى اختيار افاتار البداية الخاص بك");
       return;
     }
 
     if (!hasSelectedFrame) {
+      playSound("wrong");
       setRegisterError("يرجى اختيار إطار البداية الخاص بك");
       return;
     }
 
     if (!acceptedTerms || !acceptedPrivacy) {
+      playSound("wrong");
       setRegisterError(
         "يجب الموافقة على الشروط والأحكام وسياسة الخصوصية لإنشاء حساب",
       );
@@ -9012,6 +9031,7 @@ if (data.connectFourWordsRewardLevel != null) {
     playSound("clickOpen");
     setLoginError("");
     if (!loginSerial.trim()) {
+      playSound("wrong");
       setLoginError("يرجى إدخال رقم ID اللاعب");
       return;
     }
@@ -9082,6 +9102,7 @@ if (data.connectFourWordsRewardLevel != null) {
           playSound("clickClose");
           setError("");
         } else {
+          playSound("wrong");
           setLoginError("رقم ID غير صحيح أو الحساب غير موجود");
         }
       },
@@ -9092,6 +9113,7 @@ if (data.connectFourWordsRewardLevel != null) {
     playSound("clickOpen");
     setProfileLoginError("");
     if (!profileLoginSerial.trim()) {
+      playSound("wrong");
       setProfileLoginError("يرجى إدخال رقم ID اللاعب");
       return;
     }
@@ -9165,6 +9187,7 @@ if (data.connectFourWordsRewardLevel != null) {
           setError("");
           showAlert("تم تسجيل الدخول بنجاح!", "تسجيل الدخول");
         } else {
+          playSound("wrong");
           setProfileLoginError("رقم ID غير صحيح أو الحساب غير موجود");
         }
       },
@@ -24863,7 +24886,7 @@ const renderBombPartyRewardBar = () => {
                         return (
                           <button
                             onClick={handleOpenshowLeaderboardModal}
-                            className={`w-full group relative overflow-hidden ${isTop3 ? "bg-yellow-500" : "bg-orange-500"} rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all`}
+                            className={`w-full mt-1 group relative overflow-hidden ${isTop3 ? "bg-yellow-500" : "bg-orange-500"} rounded-none p-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black hover:-translate-y-1 transition-all`}
                           >
                             <div className="bg-white h-10 rounded-[14px] py-3 px-4 flex items-center justify-between">
                               <div className="flex items-center gap-2 text-black">
@@ -25082,7 +25105,7 @@ const renderBombPartyRewardBar = () => {
                   )}
                 </div>
 
-                <div className="pt-1 md:pt-1 border-t-2 border-game space-y-3 md:space-y-4">
+                <div className="pt-1 md:pt-1 space-y-3 md:space-y-4">
                   <div className="flex items-center font-bold md:text-sm text-xs mb-1 gap-1">
                     <button
                       onClick={() => {
@@ -25101,71 +25124,96 @@ const renderBombPartyRewardBar = () => {
                       متصل: {onlineCount > 1000 ? "1000+" : onlineCount}
                     </span>
                   </div>
-                  <div className="pt-2 md:pt-3 border-t-2 border-game">
+                    
+                  </div>
+                </div>
+
+                </div>
+
+              <div className="play-bg border-2 border-black shadow-lg mt-4 p-0.5 md:p-2">
+                <div className="p-1 flex flex-wrap relative items-center justify-center">
+
+                  <label className="flex flex-col items-center justify-center  h-[70px] md:h-[90px] font-bold mb-2 px-1">
+                      <h3 className="text-[25px] md:text-[30px] font-black">جاهز للعب؟</h3>
+                      <span className="bg-gray-200 border-2 border-black p-1 text-[10px] md:text-sm">اختار طريقة اللعب وابدأ التحدي!</span>
+                  </label>
+
+                  <div className="relative w-full flex flex-wrap grid grid-cols-2 gap-2 items-center justify-center" dir="ltr">
+                  <AnimatePresence>
                     {error && (
                       <motion.div
                         ref={errorRef}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="bg-red-100 border-2 border-red-200 p-2 md:p-4 mb-2 md:mb-4 text-red-600 text-xs md:text-sm font-black rounded-2xl text-center shadow-sm"
+                        exit={{ opacity: 0, x: 10 }}
+                        className="absolute top-1 w-full flex bg-red-100 border-2 border-red-500 p-1 md:p-2 mb-2 md:mb-2 text-red-600 text-xs md:text-sm font-bold items-center justify-center text-center z-[200]"
+                        dir="rtl"
                       >
                         {error}
                       </motion.div>
                     )}
-                      <label className="flex items-center justify-between text-base md:text-lg font-bold text-main mb-1 md:mb-2 px-1">
-                        <span>إنشاء / دخول بكود غرفة</span>
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={roomId}
-                          onChange={(e) => {
-                            // Normalize Arabic numbers to English
-                            const val = e.target.value.replace(/[٠-٩]/g, (d) =>
-                              "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString(),
-                            );
-                            setRoomId(val);
-                          }}
-                          placeholder="أكتب كود الغرفة..."
-                          className="input-game flex-1 py-2 md:py-4"
-                          maxLength={6}
-                        />
-                        <button
-                          onClick={handleJoin}
-                          disabled={!isReadyToPlay || isJoiningRoom}
-                          className={`btn-game btn-secondary px-4 md:px-6 py-2 md:py-3 text-base md:text-lg ${(!isReadyToPlay || isJoiningRoom) ? "opacity-50 cursor-not-allowed" : ""}`}
-                        >
-                          {!isReadyToPlay ? "جاري الاتصال..." : isJoiningRoom ? "جاري الدخول..." : "دخول"}
-                        </button>
-                      </div>
+                  </AnimatePresence>
+                    <div className="room-code-bg border-2 border-black p-1.5 md:p-2 flex flex-col items-center justify-center h-full w-full gap-1"
+                    style={{ clipPath: `polygon(0% 0%, 105% -20%, 100% 100%, 0% 100%)` }}
+                    >
+
+                        <label className="flex items-center justify-center text-white text-[14px] md:text-[16px] font-black mb-1 md:mb-2">
+                          <span className="comic-text-strock" data-text="إنشاء كود غرفة">إنشاء كود غرفة</span>
+                        </label>
+                        <div className="flex w-full flex-col gap-2">
+                          <input
+                            type="text"
+                            value={roomId}
+                            onChange={(e) => {
+                              // Normalize Arabic numbers to English
+                              const val = e.target.value.replace(/[٠-٩]/g, (d) =>
+                                "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString(),
+                              );
+                              setRoomId(val);
+                            }}
+                            placeholder="أكتب كود الغرفة هنا..."
+                            className="border-2 border-black bg-white shadow-sm font-black text-[10px] md:text-sm p-2 h-12 flex-1"
+                            maxLength={6}
+                            dir="rtl"
+                          />
+                          <button
+                            onClick={handleJoin}
+                            disabled={!isReadyToPlay || isJoiningRoom}
+                            className={`bg-[#00FFFF] border-2 border-black shadow-sm font-black h-14 md:h-16 px-4 md:px-6 py-2 md:py-3 text-base md:text-lg cursor-pointer touch-manipulation ${(!isReadyToPlay || isJoiningRoom) ? "text-xs md:text-sm h-14 md:h-16 opacity-50 cursor-not-allowed" : ""}`}
+                          >
+                            {!isReadyToPlay ? "جاري الاتصال..." : isJoiningRoom ? "جاري الدخول..." : "دخول"}
+                          </button>
+                        </div>
                     </div>
 
-                    <div className="relative py-1 md:py-2">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t-2 border-game dashed"></div>
-                      </div>
-                      <div className="relative flex justify-center text-[10px] md:text-xs uppercase">
-                        <span className="bg-[#FFFFFF] px-3 text-brown-light font-black">
+                    <div className="absolute inset-0 pointer-events-none flex w-full items-center justify-center text-center z-50">
+                      <div className="flex or-bg-2 items-center justify-center text-center text-[10px] md:text-xs uppercase">
+                        <span className="or-bg px-1 text-black font-black">
                           أو
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="random-bg border-2 border-black p-1.5 md:p-2 flex flex-col items-center justify-center h-full w-full gap-1"
+                    style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, -5% 120%)' }}
+                    >
+                      <label className="flex items-center justify-center text-[14px] md:text-[16px] text-white font-black mb-1 md:mb-2">
+                          <span className="comic-text-strock" data-text="لعب عشوائي">لعب عشوائي</span>
+                      </label>
                       <button
                         onClick={handleRandomMatch}
                         disabled={!isReadyToPlay}
-                        className={`flex-1 btn-game btn-primary py-4 md:py-4 text-sm md:text-xl gap-1 md:gap-3 cursor-pointer touch-manipulation ${!isReadyToPlay ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`flex bg-yellow-400 border-2 border-black shadow-sm font-black text-black p-0.5 md:p-1 gap-1 text-sm md:text-lg w-full h-12 md:h-14 items-center justify-center cursor-pointer touch-manipulation  ${!isReadyToPlay ? "text-xs md:text-sm h-12 md:h-14 opacity-50 cursor-not-allowed" : ""}`} dir="rtl"
                       >
                         <div className="flex items-center gap-1.5" dir="ltr">
                           <span className="large-emoji">🔍</span>
                         </div>
                         <span>
-                          {isReadyToPlay ? "بحث عشوائي" : "جاري الاتصال..."}
+                          {isReadyToPlay ? "ابدأ البحث" : "جاري الاتصال..."}
                         </span>
                       </button>
 
-                      <div className="flex flex-col box-game p-2 h-16 relative overflow-hidden">
+                      <div className="flex flex-col bg-white border-2 border-black shadow-sm p-0.5 md:p-2 h-15 md:h-16 w-full relative overflow-hidden">
                         {getLevel(xp) < 50 && (
                           <div className="absolute inset-0 bg-gray-200/80 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center">
                             <Lock className="w-4 h-4 text-gray-600 mb-0.5" />
@@ -25177,7 +25225,7 @@ const renderBombPartyRewardBar = () => {
                             </span>
                           </div>
                         )}
-                        <div className="flex items-center gap-6 flex-1">
+                        <div className="flex items-center justify-between gap-6 flex-1">
                           <input
                             type="checkbox"
                             id="useToken"
@@ -25204,7 +25252,7 @@ const renderBombPartyRewardBar = () => {
                           </label>
                         </div>
                         <div className="border-t border-game mt-1 mb-0.5"></div>
-                        <div className="w-full flex text-left" dir="ltr">
+                        <div className="w-full items-center justify-between flex text-left" dir="ltr">
                           <span className="font-bold text-xs md:text-sm">
                             Lvl 50+
                           </span>
@@ -25217,7 +25265,8 @@ const renderBombPartyRewardBar = () => {
                         </div>
                       </div>
                   </div>
-                </div>
+              </div>
+
               </div>
             </div>
           </motion.div>
@@ -30711,7 +30760,7 @@ const renderBombPartyRewardBar = () => {
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
-              className={`fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-[55%] flex items-center justify-center p-6 px-6 py-3 rounded-full font-black shadow-[0_8px_0_rgba(0,0,0,0.2)] z-[999999] flex items-center gap-4 border-4 ${error.includes("انضم") ? "bg-green-500 border-green-400 text-white" : "bg-red-500 border-red-400 text-white"}`}
+              className={`fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-md flex text-xs items-center justify-center p-6 px-6 py-3 rounded-full font-black shadow-[0_8px_0_rgba(0,0,0,0.2)] z-[999999] flex items-center gap-4 border-4 ${error.includes("انضم") ? "bg-green-500 border-green-400 text-white" : "bg-red-500 border-red-400 text-white"}`}
             >
               {error}
               <button
