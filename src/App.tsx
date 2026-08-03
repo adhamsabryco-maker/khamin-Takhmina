@@ -25134,7 +25134,7 @@ const renderBombPartyRewardBar = () => {
                 <div className="p-1 flex flex-wrap relative items-center justify-center">
 
                   <label className="flex flex-col items-center justify-center  h-[70px] md:h-[90px] font-bold mb-2 px-1">
-                      <h3 className="text-[25px] md:text-[30px] font-black">جاهز للعب؟</h3>
+                      <h3 className="comic-text-strock text-white text-[25px] md:text-[30px] mb-1 md:mb-2 font-black" data-text="جاهز للعب؟">جاهز للعب؟</h3>
                       <span className="bg-gray-200 border-2 border-black p-1 text-[10px] md:text-sm">اختار طريقة اللعب وابدأ التحدي!</span>
                   </label>
 
