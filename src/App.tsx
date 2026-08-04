@@ -25134,7 +25134,7 @@ const renderBombPartyRewardBar = () => {
                 <div className="p-1 flex flex-wrap relative items-center justify-center">
 
                   <label className="flex flex-col items-center justify-center  h-[70px] md:h-[90px] font-bold mb-2 px-1">
-                      <h3 className="text-white text-[25px] md:text-[30px] mb-1 md:mb-2 font-black">جاهز للعب؟</h3>
+                      <h3 className="text-white text-[25px] md:text-[30px] mb-1 md:mb-2 font-black home-title-stroke">جاهز للعب؟</h3>
                       <span className="bg-gray-200 border-2 border-black p-1 text-[10px] md:text-sm">اختار طريقة اللعب وابدأ التحدي!</span>
                   </label>
 
@@ -25158,7 +25158,7 @@ const renderBombPartyRewardBar = () => {
                     >
 
                         <label className="flex items-center justify-center text-white text-[14px] md:text-[16px] font-black mb-1 md:mb-2">
-                          <span>إنشاء كود غرفة</span>
+                          <span className="home-title-stroke-sm">إنشاء كود غرفة</span>
                         </label>
                         <div className="flex w-full flex-col gap-2">
                           <input
@@ -25198,7 +25198,7 @@ const renderBombPartyRewardBar = () => {
                     style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, -5% 120%)' }}
                     >
                       <label className="flex items-center justify-center text-[14px] md:text-[16px] text-white font-black mb-1 md:mb-2">
-                          <span>لعب عشوائي</span>
+                          <span className="home-title-stroke-sm">لعب عشوائي</span>
                       </label>
                       <button
                         onClick={handleRandomMatch}
@@ -28680,7 +28680,7 @@ const renderBombPartyRewardBar = () => {
                               <span
                                 className={`text-3xl md:text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
                               >
-                                😉
+                                🖼️
                               </span>
                               <span className="text-[13px] md:text-lg font-black text-accent-orange text-center leading-tight">
                                 فئات جاهزة
@@ -28711,7 +28711,7 @@ const renderBombPartyRewardBar = () => {
                                 <span
                                   className={`text-3xl md:text-4xl ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}
                                 >
-                                  😎
+                                  📸
                                 </span>
                                 <span className="text-[13px] md:text-lg font-black text-purple-600 text-center leading-tight">
                                   ارفع صورة

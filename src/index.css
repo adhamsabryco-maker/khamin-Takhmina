@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800;1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&family=Lalezar&family=Playpen+Sans+Arabic:wght@100..800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Bowlby+One+SC&family=Luckiest+Guy&family=Sigmar&display=swap');
 @import "tailwindcss";
 
@@ -113,9 +113,84 @@
   --report-bar-high: #FF0000;
 }
 
+.cairo-lalezar {
+  font-family: "Cairo", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 900;
+  font-style: normal;
+  font-variation-settings:
+    "slnt" 0;
+}
+
+.lalezar-regular {
+  font-family: "Lalezar", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.playpen-sans-arabic-comic {
+  font-family: "Playpen Sans Arabic", cursive;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+}
+
+.playpen-regular {
+  font-family: "Playpen Sans Arabic", cursive;
+  font-weight: 900;
+  font-style: normal;
+}
+
 /* 
   CASUAL GAME UI THEME - "COMIC BOOK"
 */
+
+.home-title-stroke {
+  color: white;
+  -webkit-text-stroke: 0 !important; /* Force remove any default stroke to avoid the 'ع' triangle */
+  text-shadow: 
+    -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 4px 4px 0 #000,
+    -4px 0px 0 #000, 4px 0px 0 #000, 0px -4px 0 #000, 0px 4px 0 #000,
+    -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000,
+    -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000,
+    -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000,
+    /* Simple downward shadow */
+    0px 5px 0px #000,
+    0px 6px 0px #000,
+    0px 7px 0px #000,
+    0px 8px 0px #000,
+
+    -4px 5px 0px #000,
+    -4px 6px 0px #000,
+    -4px 7px 0px #000,
+    -4px 8px 0px #000,
+
+    4px 5px 0px #000,
+    4px 6px 0px #000,
+    4px 7px 0px #000,
+    4px 8px 0px #000;
+}
+
+.home-title-stroke-sm {
+  color: white;
+  -webkit-text-stroke: 0 !important; /* Force remove any default stroke */
+  text-shadow: 
+    -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000,
+    -2px 0px 0 #000, 2px 0px 0 #000, 0px -2px 0 #000, 0px 2px 0 #000,
+    -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000,
+    /* Simple downward shadow */
+    0px 3px 0px #000,
+    0px 4px 0px #000,
+    0px 5px 0px #000,
+
+    2px 3px 0px #000,
+    2px 4px 0px #000,
+    2px 5px 0px #000,
+
+    -2px 3px 0px #000,
+    -2px 4px 0px #000,
+    -2px 5px 0px #000;
+}
 
 .hand-bg {
     height: 100%;
@@ -135,12 +210,22 @@
   left: 0;
   top: 0;
   z-index: -1;
-  -webkit-text-stroke: 2px black; 
+  -webkit-text-stroke: 5px black; 
 
-  paint-order: stroke fill markers;
-  stroke-linejoin: round; 
-  stroke-linecap: round;
+  paint-order: stroke fill;
+  text-shadow: 
+    0px 1px 0px black,
+    0px 2px 0px black,
+    0px 3px 0px black,
+    0px 4px 0px black,
+    0px 5px 0px black;
+}
 
+.comic-text-strock-2 {
+  content: attr(data-text); /* جلب نفس الكلمة */
+  -webkit-text-stroke: 5px black; 
+
+  paint-order: stroke fill;
   text-shadow: 
     0px 1px 0px black,
     0px 2px 0px black,
