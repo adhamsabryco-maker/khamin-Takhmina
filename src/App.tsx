@@ -9796,7 +9796,7 @@ if (data.connectFourWordsRewardLevel != null) {
     if (room && room.gameState !== previousGameStateRef.current) {
       if (room.gameState === "xo_finished" || room.gameState === "bus_complete_evaluating" || room.gameState === "finished" || room.gameState === "hand_finished" || room.gameState === "iq_finished" || room.gameState === "dots_finished" || room.gameState === "bus_complete_finished" || room.gameState === "speed_cups_finished" || room.gameState === "bomb_party_finished" || room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished" || room.gameState === "space_war_finished" || room.gameState === "puzzle_finished") {
         if (!hasProPackage) {
-          const increment = (room.gameState === "puzzle_finished" || room.gameState === "bus_complete_finished" || room.gameState === "space_war_finished") ? 3 : 1;
+          const increment = (room.gameState === "puzzle_finished" || room.gameState === "bus_complete_finished") ? 3 : 1;
           matchesPlayedRef.current += increment;
           if (matchesPlayedRef.current >= 3) {
             matchesPlayedRef.current = 0;
@@ -24641,7 +24641,7 @@ const renderBombPartyRewardBar = () => {
               </button>
 
               {/* Collection Icons - Moved outside player card */}
-              <div className="flex items-center justify-center gap-1 md:gap-1.5 flex-wrap">
+              <div className="flex flex-1 items-center justify-center gap-0.5 md:gap-1.5">
                 {COLLECTION_DATA.map((cat) => {
                   const hasAny = playerCollection.some((c) => {
                     const catImages = cat.stages.flatMap((s) =>
@@ -25134,7 +25134,7 @@ const renderBombPartyRewardBar = () => {
                 <div className="p-1 flex flex-wrap relative items-center justify-center">
 
                   <label className="flex flex-col items-center justify-center  h-[70px] md:h-[90px] font-bold mb-2 px-1">
-                      <h3 className="comic-text-strock text-white text-[25px] md:text-[30px] mb-1 md:mb-2 font-black" data-text="جاهز للعب؟">جاهز للعب؟</h3>
+                      <h3 className="text-white text-[25px] md:text-[30px] mb-1 md:mb-2 font-black">جاهز للعب؟</h3>
                       <span className="bg-gray-200 border-2 border-black p-1 text-[10px] md:text-sm">اختار طريقة اللعب وابدأ التحدي!</span>
                   </label>
 
@@ -25158,7 +25158,7 @@ const renderBombPartyRewardBar = () => {
                     >
 
                         <label className="flex items-center justify-center text-white text-[14px] md:text-[16px] font-black mb-1 md:mb-2">
-                          <span className="comic-text-strock" data-text="إنشاء كود غرفة">إنشاء كود غرفة</span>
+                          <span>إنشاء كود غرفة</span>
                         </label>
                         <div className="flex w-full flex-col gap-2">
                           <input
@@ -25198,7 +25198,7 @@ const renderBombPartyRewardBar = () => {
                     style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, -5% 120%)' }}
                     >
                       <label className="flex items-center justify-center text-[14px] md:text-[16px] text-white font-black mb-1 md:mb-2">
-                          <span className="comic-text-strock" data-text="لعب عشوائي">لعب عشوائي</span>
+                          <span>لعب عشوائي</span>
                       </label>
                       <button
                         onClick={handleRandomMatch}

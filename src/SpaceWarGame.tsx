@@ -1156,47 +1156,38 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       {/* SETUP / INSTRUCTIONS */}
       {room?.gameState === 'space_war_setup' && (
         <div className="absolute inset-0 bg-[#07071a]/95 z-40 flex flex-col items-center justify-between p-2 overflow-y-auto text-white text-right" dir="rtl">
-          
-          <div className="w-full text-center space-y-1">
-            <div className="inline-flex items-center gap-2 bg-indigo-900/60 border border-indigo-500/50 px-4 py-1.5 rounded-full shadow-lg">
-              <span className="font-black text-lg text-indigo-200">حرب الفضاء 🚀</span>
-            </div>
-          </div>
 
-          <div className="w-full space-y-3 my-1 max-w-md">
+          <div className="w-full max-w-md">
             
-            <div className="bg-indigo-950/80 border border-indigo-800/80 rounded-2xl p-1 mb-1 shadow-md space-y-1">
+            <div className="bg-indigo-950/80 p-0.5 space-y-1">
               <div className="flex items-center gap-2 text-yellow-400 font-black text-sm">
                 <Sparkles className="w-4 h-4" />
                 <span>طريقة اللعب وكيفية الفوز:</span>
               </div>
               <p className="text-xs text-slate-200 leading-relaxed font-semibold">
-                حروف كلمة المنافس تسقط في شاشتك! مهمتك التحكم بسفينتك وإطلاق النار لتدمير جميع الحروف قبل أن تصل إلى الأسفل. إذا مرت الحروف ووصلت للأسفل ستكتمل كلمة المنافس فوق وتخسر المباراة! دمر حروف كلمة المنافس واجعله يفشل لتفوز أنت بالمعركة!
+                حروف كلمة المنافس تسقط في شاشتك! مهمتك التحكم بسفينتك وإطلاق النار لتدمير جميع الحروف قبل أن تصل إلى الأسفل. إذا مرت الحروف ووصلت للأسفل ستكتمل كلمة المنافس فوق وتخسر المباراة!
               </p>
             </div>
 
-            <div className="bg-indigo-950/80 border border-indigo-800/80 rounded-2xl p-1 mb-1 shadow-md space-y-1">
+            <div className="bg-indigo-950/80 p-0.5 space-y-1">
               <div className="flex items-center gap-2 text-cyan-400 font-black text-sm">
                 <ShieldPlus className="w-4 h-4" />
                 <span>وسائل المساعدة والترقيات:</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-200 font-bold">
-                <div className="bg-indigo-900/50 p-2 rounded-xl border border-indigo-700/50 flex items-center gap-1.5">
-                  <Snowflake className="w-4 h-4 text-cyan-400 shrink-0" />
+              <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-200 font-bold">
+                <div className="bg-indigo-900/50 p-1 flex items-center gap-1.5">
                   <div>
                     <div className="text-cyan-300">تجميد الوقت ⏱️</div>
                     <div className="text-[10px] text-slate-300 font-normal">يبطئ سقوط الحروف لمدة 10 ثوانٍ!</div>
                   </div>
                 </div>
-                <div className="bg-indigo-900/50 p-2 rounded-xl border border-indigo-700/50 flex items-center gap-1.5">
-                  <Rocket className="w-4 h-4 text-green-400 shrink-0" />
+                <div className="bg-indigo-900/50 p-1 flex items-center gap-1.5">
                   <div>
                     <div className="text-green-300">ترقية الصاروخ 🚀</div>
                     <div className="text-[10px] text-slate-300 font-normal">تسقط من السماء لتطوير الصاروخ!</div>
                   </div>
                 </div>
-                <div className="bg-indigo-900/50 p-2 rounded-xl border border-indigo-700/50 flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-yellow-400 shrink-0" />
+                <div className="bg-indigo-900/50 p-1 flex items-center gap-1.5">
                   <div>
                     <div className="text-yellow-300">ليزر تلقائي ⚡</div>
                     <div className="text-[10px] text-slate-300 font-normal">تزودك بسرعة طلقات الليزر!</div>
@@ -1205,34 +1196,34 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
               </div>
             </div>
 
-            <div className="bg-indigo-950/80 border border-indigo-800/80 rounded-2xl p-1 mb-1 shadow-md space-y-1">
+            <div className="bg-indigo-950/80 p-0.5 space-y-1">
               <div className="flex items-center gap-2 text-emerald-400 font-black text-sm">
                 <Swords className="w-4 h-4" />
                 <span>قدرات التشويش والقنابل:</span>
               </div>
               <div className="grid grid-cols-3 md:grid-cols-3 gap-2 text-[11px] text-slate-200 font-semibold">
-                <div className="flex items-center gap-1.5 bg-indigo-900/40 p-1.5 rounded-xl">
+                <div className="flex items-center gap-1.5 bg-indigo-900/40 p-1">
                   <Bomb className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                  <span>القنابل تمسح الحروف</span>
+                  <span className="text-[10px]">القنابل تمسح الحروف</span>
                 </div>
-                <div className="flex items-center gap-1.5 bg-indigo-900/40 p-1.5 rounded-xl">
+                <div className="flex items-center gap-1.5 bg-indigo-900/40 p-1">
                   <WifiOff className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span>التشويش يزيد عدد الحروف</span>
+                  <span className="text-[10px]">التشويش يزيد عدد الحروف</span>
                 </div>
-                <div className="flex items-center gap-1.5 bg-indigo-900/40 p-1.5 rounded-xl">
+                <div className="flex items-center gap-1.5 bg-indigo-900/40 p-1">
                   <Box className="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="cyan" />
-                  <span>تجميد صاروخ المنافس</span>
+                  <span className="text-[10px]">تجميد صاروخ المنافس</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-indigo-950/80 border border-indigo-800/80 rounded-2xl p-1.5 mb-1 shadow-md space-y-1.5">
+            <div className="bg-indigo-950/80 p-0.5 space-y-1.5">
               <div className="flex items-center gap-2 text-pink-400 font-black text-xs md:text-sm">
                 <Gamepad2 className="w-4 h-4" />
                 <span>أدوات التحكم (موبايل و كمبيوتر):</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-slate-200 font-semibold">
-                <div className="bg-indigo-900/40 p-1.5 rounded-xl border border-indigo-700/40 space-y-0.5">
+                <div className="flex flex-wrap gap-1 bg-indigo-900/40 p-1.5 rounded-xl border border-indigo-700/40 space-y-0.5">
                   <div className="text-amber-300 font-bold">📱 الموبايل:</div>
                   <div>🕹️ <span className="text-indigo-300 font-bold">عصا التحكم</span> للتحريك</div>
                   <div>🎯 <span className="text-red-300 font-bold">زر الإطلاق</span> للإطلاق</div>
@@ -1260,7 +1251,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
           </div>
 
-          <div className="w-full max-w-md pb-1">
+          <div className="w-full max-w-md mb-1 md:mb-2 pb-1">
             <button
               onClick={() => {
                 if (playSound) playSound("clickOpen");
