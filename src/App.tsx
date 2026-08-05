@@ -4445,8 +4445,97 @@ export default function App() {
   const [liveMatchesPage, setLiveMatchesPage] = useState(1);
   const [liveNow, setLiveNow] = useState(Date.now());
   const liveMatchesSliderRef = useRef<HTMLDivElement>(null);
+  const liveMatchesModalContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(true);
+
+  const sliderDragRef = useRef({
+    isDown: false,
+    startX: 0,
+    scrollLeft: 0,
+    hasDragged: false,
+  });
+
+  const modalDragRef = useRef({
+    isDown: false,
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+    hasDragged: false,
+  });
+
+  const handleSliderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = liveMatchesSliderRef.current;
+    if (!el) return;
+    sliderDragRef.current = {
+      isDown: true,
+      startX: e.clientX,
+      scrollLeft: el.scrollLeft,
+      hasDragged: false,
+    };
+  };
+
+  const handleSliderMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!sliderDragRef.current.isDown) return;
+    const el = liveMatchesSliderRef.current;
+    if (!el) return;
+    const walk = e.clientX - sliderDragRef.current.startX;
+    if (Math.abs(walk) > 5) {
+      sliderDragRef.current.hasDragged = true;
+    }
+    el.scrollLeft = sliderDragRef.current.scrollLeft - walk;
+    checkSliderScroll();
+  };
+
+  const handleSliderMouseUpOrLeave = () => {
+    sliderDragRef.current.isDown = false;
+    setTimeout(() => {
+      sliderDragRef.current.hasDragged = false;
+    }, 120);
+  };
+
+  const handleModalMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = liveMatchesModalContainerRef.current;
+    if (!el) return;
+    modalDragRef.current = {
+      isDown: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      scrollLeft: el.scrollLeft,
+      scrollTop: el.scrollTop,
+      hasDragged: false,
+    };
+  };
+
+  const handleModalMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!modalDragRef.current.isDown) return;
+    const el = liveMatchesModalContainerRef.current;
+    if (!el) return;
+    const walkX = e.clientX - modalDragRef.current.startX;
+    const walkY = e.clientY - modalDragRef.current.startY;
+    if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
+      modalDragRef.current.hasDragged = true;
+    }
+    el.scrollLeft = modalDragRef.current.scrollLeft - walkX;
+    el.scrollTop = modalDragRef.current.scrollTop - walkY;
+  };
+
+  const handleModalMouseUpOrLeave = () => {
+    modalDragRef.current.isDown = false;
+    setTimeout(() => {
+      modalDragRef.current.hasDragged = false;
+    }, 120);
+  };
+
+  const getTextDirection = (text: string): "ltr" | "rtl" => {
+    if (!text) return "rtl";
+    const hasArabic = /[\u0600-\u06FF]/.test(text);
+    const hasEnglish = /[a-zA-Z]/.test(text);
+    if (hasEnglish && !hasArabic) return "ltr";
+    if (hasArabic) return "rtl";
+    return hasEnglish ? "ltr" : "rtl";
+  };
 
   useEffect(() => {
     if (liveMatches.length === 0) return;
@@ -11216,7 +11305,14 @@ if (data.connectFourWordsRewardLevel != null) {
               </div>
 
               {/* Modal Matches Content */}
-              <div className="p-2 md:p-3 overflow-y-auto flex-1 space-y-3">
+              <div
+                ref={liveMatchesModalContainerRef}
+                onMouseDown={handleModalMouseDown}
+                onMouseMove={handleModalMouseMove}
+                onMouseUp={handleModalMouseUpOrLeave}
+                onMouseLeave={handleModalMouseUpOrLeave}
+                className="p-2 md:p-3 overflow-y-auto flex-1 space-y-3 cursor-grab active:cursor-grabbing select-none"
+              >
                 {liveMatches.length === 0 ? (
                   <div className="text-center py-10 text-gray-300 font-bold text-sm md:text-base">
                     لا توجد مباريات جارية حالياً
@@ -11274,6 +11370,7 @@ if (data.connectFourWordsRewardLevel != null) {
                                   match.p1.serial ? "cursor-pointer hover:scale-105 active:scale-95 transition-transform" : ""
                                 }`}
                                 onClick={(e) => {
+                                  if (modalDragRef.current.hasDragged) return;
                                   if (match.p1.serial) {
                                     e.stopPropagation();
                                     openPlayerProfile(match.p1.serial);
@@ -11290,7 +11387,7 @@ if (data.connectFourWordsRewardLevel != null) {
                                     match.p1.serial,
                                   )}
                                 </div>
-                                <span className="text-xs font-black text-white truncate max-w-full mt-1" title={match.p1.name}>
+                                <span className="text-xs font-black text-white truncate max-w-full mt-1" title={match.p1.name} dir={getTextDirection(match.p1.name)}>
                                   {p1Name}
                                 </span>
                               </div>
@@ -11308,6 +11405,7 @@ if (data.connectFourWordsRewardLevel != null) {
                                   match.p2.serial ? "cursor-pointer hover:scale-105 active:scale-95 transition-transform" : ""
                                 }`}
                                 onClick={(e) => {
+                                  if (modalDragRef.current.hasDragged) return;
                                   if (match.p2.serial) {
                                     e.stopPropagation();
                                     openPlayerProfile(match.p2.serial);
@@ -11324,7 +11422,7 @@ if (data.connectFourWordsRewardLevel != null) {
                                     match.p2.serial,
                                   )}
                                 </div>
-                                <span className="text-xs font-black text-white truncate max-w-full mt-1" title={match.p2.name}>
+                                <span className="text-xs font-black text-white truncate max-w-full mt-1" title={match.p2.name} dir={getTextDirection(match.p2.name)}>
                                   {p2Name}
                                 </span>
                               </div>
@@ -14888,8 +14986,8 @@ if (data.connectFourWordsRewardLevel != null) {
                     </div>
                     {isIdVisible &&
                       localStorage.getItem("khamin_secret_token") && (
-                        <div className="flex items-center border border-gray-200 rounded-lg p-1 px-2 gap-2 mt-1 bg-white">
-                          <span className="text-[10px] text-gray-500 block w-20">
+                        <div className="flex w-full items-center justify-between border border-gray-200 rounded-lg p-1 px-2 gap-1 mt-1 bg-white">
+                          <span className="text-[10px] text-gray-500 font-bold block w-full">
                             كلمة المرور (Secret Token)
                           </span>
                           <span className="text-[10px] font-mono text-brown-dark rounded bg-gray-100 px-1 py-0.5">
@@ -25436,7 +25534,11 @@ const renderBombPartyRewardBar = () => {
                     <div
                       ref={liveMatchesSliderRef}
                       onScroll={checkSliderScroll}
-                      className="flex gap-2 overflow-x-hidden scrollbar-none scroll-smooth pb-1 pt-1 flex-1 min-w-0"
+                      onMouseDown={handleSliderMouseDown}
+                      onMouseMove={handleSliderMouseMove}
+                      onMouseUp={handleSliderMouseUpOrLeave}
+                      onMouseLeave={handleSliderMouseUpOrLeave}
+                      className="flex gap-2 overflow-x-auto scrollbar-none scroll-smooth pb-1 pt-1 flex-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
                       dir="rtl"
                     >
                       {liveMatches.slice(0, 10).map((match, idx) => {
@@ -25489,6 +25591,7 @@ const renderBombPartyRewardBar = () => {
                                   match.p1.serial ? "cursor-pointer hover:scale-105 active:scale-95 transition-transform" : ""
                                 }`}
                                 onClick={(e) => {
+                                  if (sliderDragRef.current.hasDragged) return;
                                   if (match.p1.serial) {
                                     e.stopPropagation();
                                     openPlayerProfile(match.p1.serial);
@@ -25505,7 +25608,7 @@ const renderBombPartyRewardBar = () => {
                                     match.p1.serial,
                                   )}
                                 </div>
-                                <span className="text-[11px] font-black text-white truncate max-w-full mt-0.5" title={match.p1.name}>
+                                <span className="text-[11px] font-black text-white truncate max-w-full mt-0.5" title={match.p1.name} dir={getTextDirection(match.p1.name)}>
                                   {p1Name}
                                 </span>
                               </div>
@@ -25523,6 +25626,7 @@ const renderBombPartyRewardBar = () => {
                                   match.p2.serial ? "cursor-pointer hover:scale-105 active:scale-95 transition-transform" : ""
                                 }`}
                                 onClick={(e) => {
+                                  if (sliderDragRef.current.hasDragged) return;
                                   if (match.p2.serial) {
                                     e.stopPropagation();
                                     openPlayerProfile(match.p2.serial);
@@ -25539,7 +25643,7 @@ const renderBombPartyRewardBar = () => {
                                     match.p2.serial,
                                   )}
                                 </div>
-                                <span className="text-[11px] font-black text-white truncate max-w-full mt-0.5" title={match.p2.name}>
+                                <span className="text-[11px] font-black text-white truncate max-w-full mt-0.5" title={match.p2.name} dir={getTextDirection(match.p2.name)}>
                                   {p2Name}
                                 </span>
                               </div>
