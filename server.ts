@@ -2073,6 +2073,155 @@ async function startServer() {
         io.emit("live_matches_update", getActiveLiveMatchesGlobal());
       }
     }, 2000); // Run every 2 seconds
+
+    function cleanupPlayerOldBotRooms(playerSerial: string, currentRoomId?: string) {
+      if (!playerSerial || !rooms) return;
+      for (const [rId, room] of rooms.entries()) {
+        if (rId === currentRoomId) continue;
+        if (!room || !room.players) continue;
+        const hasBot = room.players.some((p: any) => p.isBot);
+        if (hasBot) {
+          const isPlayerInRoom = room.players.some((p: any) => p.serial === playerSerial);
+          if (isPlayerInRoom) {
+            if (intervals.has(rId)) {
+              clearInterval(intervals.get(rId));
+              intervals.delete(rId);
+            }
+            if (botIntervals.has(rId)) {
+              clearInterval(botIntervals.get(rId));
+              botIntervals.delete(rId);
+            }
+            rooms.delete(rId);
+          }
+        }
+      }
+    }
+
+    // Master Room Cleanup Filter & Watchdog (Runs every 10 seconds)
+    setInterval(() => {
+      if (!rooms) return;
+      const now = Date.now();
+
+      for (const [roomId, room] of rooms.entries()) {
+        if (!room) continue;
+        const players = room.players || [];
+        const hasBot = players.some((p: any) => p.isBot);
+        const humanPlayers = players.filter((p: any) => !p.isBot);
+
+        // 1. If room has no human players at all (only bots or empty)
+        if (humanPlayers.length === 0) {
+          if (intervals.has(roomId)) {
+            clearInterval(intervals.get(roomId));
+            intervals.delete(roomId);
+          }
+          if (botIntervals.has(roomId)) {
+            clearInterval(botIntervals.get(roomId));
+            botIntervals.delete(roomId);
+          }
+          rooms.delete(roomId);
+          continue;
+        }
+
+        const roomFinished = isRoomFinished(room);
+
+        // 2. BOT MATCH CLEANUP
+        if (hasBot) {
+          // A) Finished bot match -> delete after 10 seconds
+          if (roomFinished) {
+            if (!room.finishedAt) room.finishedAt = now;
+            if (now - room.finishedAt > 10000) {
+              if (intervals.has(roomId)) {
+                clearInterval(intervals.get(roomId));
+                intervals.delete(roomId);
+              }
+              if (botIntervals.has(roomId)) {
+                clearInterval(botIntervals.get(roomId));
+                botIntervals.delete(roomId);
+              }
+              rooms.delete(roomId);
+              continue;
+            }
+          }
+
+          // B) Disconnected human player in bot match
+          const allHumansDisconnected = humanPlayers.every((hp: any) => {
+            const socketInRoom = io?.sockets?.sockets?.has(hp.id);
+            const activeSocketId = hp.serial ? playerSockets.get(hp.serial) : null;
+            return !socketInRoom || (activeSocketId && activeSocketId !== hp.id);
+          });
+
+          if (allHumansDisconnected) {
+            if (!room.humansDisconnectedSince) {
+              room.humansDisconnectedSince = now;
+            } else if (now - room.humansDisconnectedSince >= 30000) {
+              // Disconnected for >= 30s -> Delete bot room immediately
+              io.to(roomId).emit("game_stopped", { reason: "انقطع اتصال اللاعب" });
+              if (intervals.has(roomId)) {
+                clearInterval(intervals.get(roomId));
+                intervals.delete(roomId);
+              }
+              if (botIntervals.has(roomId)) {
+                clearInterval(botIntervals.get(roomId));
+                botIntervals.delete(roomId);
+              }
+              rooms.delete(roomId);
+              continue;
+            }
+          } else {
+            room.humansDisconnectedSince = null;
+          }
+
+          // C) Stale Bot Match (Active for > 10 mins without finishing)
+          const roomAge = now - (room.startedAt || room.gameStartTime || room.startTime || room.createdAt || now);
+          if (roomAge > 10 * 60 * 1000) {
+            if (intervals.has(roomId)) {
+              clearInterval(intervals.get(roomId));
+              intervals.delete(roomId);
+            }
+            if (botIntervals.has(roomId)) {
+              clearInterval(botIntervals.get(roomId));
+              botIntervals.delete(roomId);
+            }
+            rooms.delete(roomId);
+            continue;
+          }
+        } else {
+          // 3. HUMAN VS HUMAN MATCH CLEANUP
+          if (roomFinished) {
+            if (!room.finishedAt) room.finishedAt = now;
+            if (now - room.finishedAt > 3 * 60 * 1000) {
+              if (intervals.has(roomId)) {
+                clearInterval(intervals.get(roomId));
+                intervals.delete(roomId);
+              }
+              rooms.delete(roomId);
+              continue;
+            }
+          }
+
+          const allDisconnected = players.every((p: any) => {
+            const socketInRoom = io?.sockets?.sockets?.has(p.id);
+            const activeSocketId = p.serial ? playerSockets.get(p.serial) : null;
+            return !socketInRoom && (!activeSocketId || activeSocketId !== p.id);
+          });
+
+          if (allDisconnected) {
+            if (!room.allDisconnectedSince) {
+              room.allDisconnectedSince = now;
+            } else if (now - room.allDisconnectedSince > 60000) {
+              if (intervals.has(roomId)) {
+                clearInterval(intervals.get(roomId));
+                intervals.delete(roomId);
+              }
+              rooms.delete(roomId);
+              continue;
+            }
+          } else {
+            room.allDisconnectedSince = null;
+          }
+        }
+      }
+    }, 10000);
     const reportsList: any[] = [];
     const blocks = new Map<
       string,
@@ -2234,6 +2383,16 @@ async function startServer() {
       return used;
     };
 
+    function isRoomFinished(room: any): boolean {
+      if (!room || !room.gameState) return false;
+      const state = (room.gameState || "").toLowerCase();
+      return (
+        state === "finished" ||
+        state.endsWith("_finished") ||
+        state === "bus_complete_evaluating"
+      );
+    }
+
     function getGameInfoForRoom(room: any): { name: string; icon: string } {
       const mode = room.selectionMode || room.category || "";
       const state = (room.gameState || "").toLowerCase();
@@ -2284,26 +2443,33 @@ async function startServer() {
       for (const [id, room] of rooms.entries()) {
         if (!room) continue;
         const players = room.players || [];
+        if (players.length < 2) continue;
+
         const p1 = room.p1 || players[0];
         const p2 = room.p2 || players[1];
         if (!p1 || !p2) continue;
 
         const state = (room.gameState || "").toLowerCase();
         if (!state || state === "waiting") continue;
-        if (
-          state === "finished" ||
-          state === "xo_finished" ||
-          state === "iq_finished" ||
-          state === "hand_finished" ||
-          state === "dots_finished" ||
-          state === "speed_cups_finished" ||
-          state === "space_war_finished" ||
-          state === "bomb_party_finished" ||
-          state === "connect_four_words_finished" ||
-          state === "wordle_finished" ||
-          state === "puzzle_finished"
-        ) {
-          continue;
+        if (isRoomFinished(room)) continue;
+
+        // If it's a bot game, check if human player has disconnected/abandoned
+        const hasBot = players.some((p: any) => p.isBot);
+        if (hasBot) {
+          const human = players.find((p: any) => !p.isBot);
+          if (!human) continue;
+
+          const socketInRoom = io?.sockets?.sockets?.has(human.id);
+          const activeSocketId = human.serial ? playerSockets.get(human.serial) : null;
+
+          // If human player socket is disconnected and 30s timeout elapsed
+          if (!socketInRoom) {
+            if (!activeSocketId || activeSocketId !== human.id) {
+              if (room.humansDisconnectedSince && Date.now() - room.humansDisconnectedSince > 30000) {
+                continue;
+              }
+            }
+          }
         }
 
         const startTime = room.startedAt || room.gameStartTime || room.startTime || room.createdAt || (room.startedAt = Date.now());
@@ -5259,6 +5425,11 @@ async function startServer() {
         adCooldownTimer: 0,
         matchType: "random",
       };
+
+      cleanupPlayerOldBotRooms(match.p1.serial, roomId);
+      if (!match.p2.isBot) {
+        cleanupPlayerOldBotRooms(match.p2.serial, roomId);
+      }
 
       rooms.set(roomId, room);
       startWaitingInterval(roomId);
@@ -14686,15 +14857,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
           if (player) {
             const opponent = room.players.find((p: any) => p.id !== socket.id);
 
-            if (
-              room.gameState !== "finished" &&
-              room.gameState !== "xo_finished" &&
-              room.gameState !== "iq_finished" &&
-              room.gameState !== "bus_complete_evaluating" &&
-              room.gameState !== "hand_finished" &&
-              room.gameState !== "dots_finished" &&
-              room.gameState !== "waiting"
-            ) {
+            if (!isRoomFinished(room) && room.gameState !== "waiting") {
               // Player intentionally left during an active game
               const messageObj = {
                 senderId: "system",
@@ -14715,12 +14878,18 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                 room.gameState.startsWith("hand_") ||
                 room.gameState.startsWith("iq_") ||
                 room.gameState.startsWith("dots_") ||
-                room.gameState.startsWith("speed_cups_")
+                room.gameState.startsWith("speed_cups_") ||
+                room.gameState.startsWith("bomb_party_") ||
+                room.gameState.startsWith("connect_four_words") ||
+                room.gameState.startsWith("wordle") ||
+                room.gameState.startsWith("space_war") ||
+                room.gameState.startsWith("puzzle")
               ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
                 });
                 if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
                 rooms.delete(roomId);
               } else {
                 endGame(roomId, opponent ? opponent.name : "المنافس", true);
@@ -14732,27 +14901,22 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
             // Remove player from room
             room.players = room.players.filter((p: any) => p.id !== socket.id);
 
-            // Stop the game for everyone and delete room to ensure fresh start
+            // Stop the game for everyone and delete room if finished or bot match
             if (intervals.has(roomId)) {
               clearInterval(intervals.get(roomId));
               intervals.delete(roomId);
             }
+            if (botIntervals.has(roomId)) {
+              clearInterval(botIntervals.get(roomId));
+              botIntervals.delete(roomId);
+            }
 
-            if (
-              room.gameState !== "finished" &&
-              room.gameState !== "xo_finished" &&
-              room.gameState !== "iq_finished" &&
-              room.gameState !== "bus_complete_evaluating" &&
-              room.gameState !== "hand_finished"
-            ) {
+            if (!isRoomFinished(room) || room.players.length === 0 || room.players.every((p: any) => p.isBot)) {
               io.in(roomId).socketsLeave(roomId);
               rooms.delete(roomId);
             } else {
               // Emit room update so the remaining player knows the opponent left
               socket.to(roomId).emit("room_update", room);
-              if (room.players.every((p: any) => p.isBot)) {
-                rooms.delete(roomId);
-              }
             }
           }
         }
@@ -19218,6 +19382,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
           if (index !== -1) {
             const leavingPlayer = room.players[index];
             const opponent = room.players.find((p: any) => p.id !== socket.id);
+            const hasBot = room.players.some((p: any) => p.isBot);
 
             // Logic for Token deduction:
             // 1. Game must have started (gameState is not waiting or finished)
@@ -19226,38 +19391,37 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
               reason === "client namespace disconnect" ||
               leavingPlayer.intentionallyLeft;
 
-            const isFinishedState = 
-              room.gameState === "finished" ||
-              room.gameState === "xo_finished" ||
-              room.gameState === "iq_finished" ||
-              room.gameState === "bus_complete_evaluating" ||
-              room.gameState === "hand_finished" ||
-              room.gameState === "dots_finished" ||
-              room.gameState === "speed_cups_finished" ||
-              room.gameState === "bomb_party_finished" ||
-              room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished";
+            const isFinishedState = isRoomFinished(room);
 
-            if (!isIntentional && room.gameState !== "waiting") {
+            if (!isIntentional && room.gameState !== "waiting" && !isFinishedState) {
                 room.isWaitingForReconnect = true;
                 room.disconnectedPlayerSerial = leavingPlayer.serial;
+                room.humansDisconnectedSince = Date.now();
                 io.to(roomId).emit("player_disconnected_waiting", {
                   name: leavingPlayer.name,
                 });
                 
                 setTimeout(() => {
                   const r = rooms.get(roomId);
-                  if (r && r.isWaitingForReconnect && r.disconnectedPlayerSerial === leavingPlayer.serial) {
-                     const currentFinished = r.gameState === "finished" ||
-                                             r.gameState === "xo_finished" ||
-                                             r.gameState === "iq_finished" ||
-                                             r.gameState === "bus_complete_evaluating" ||
-                                             r.gameState === "hand_finished" ||
-                                             r.gameState === "dots_finished" ||
-                                             r.gameState === "speed_cups_finished" ||
-                                             r.gameState === "bomb_party_finished" ||
-                                             r.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished";
+                  if (r) {
+                     const currentFinished = isRoomFinished(r);
 
-                     if (!currentFinished) {
+                     if (hasBot) {
+                        // For BOT games: if 30s elapsed without reconnecting to room socket, delete room immediately!
+                        io.to(roomId).emit("game_stopped", { reason: "المنافس فقد الاتصال ولم يعد" });
+                        if (intervals.has(roomId)) {
+                          clearInterval(intervals.get(roomId));
+                          intervals.delete(roomId);
+                        }
+                        if (botIntervals.has(roomId)) {
+                          clearInterval(botIntervals.get(roomId));
+                          botIntervals.delete(roomId);
+                        }
+                        rooms.delete(roomId);
+                        return;
+                     }
+
+                     if (!currentFinished && r.isWaitingForReconnect && r.disconnectedPlayerSerial === leavingPlayer.serial) {
                         if (
                           r.gameState.startsWith("bus_complete") ||
                           r.gameState === "custom_image_upload" ||
@@ -19265,8 +19429,12 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                           r.gameState.startsWith("hand_") ||
                           r.gameState.startsWith("iq_") ||
                           r.gameState.startsWith("dots_") ||
-                           r.gameState.startsWith("speed_cups_") ||
-                           r.gameState.startsWith("bomb_party_")
+                          r.gameState.startsWith("speed_cups_") ||
+                          r.gameState.startsWith("bomb_party_") ||
+                          r.gameState.startsWith("connect_four_words") ||
+                          r.gameState.startsWith("wordle") ||
+                          r.gameState.startsWith("space_war") ||
+                          r.gameState.startsWith("puzzle")
                         ) {
                           io.to(roomId).emit("game_stopped", { reason: "المنافس فقد الاتصال ولم يعد" });
                           if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
@@ -19279,13 +19447,14 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                      
                      const rAfter = rooms.get(roomId);
                      if (rAfter) {
-                        const idx = rAfter.players.findIndex((p) => p.serial === leavingPlayer.serial);
+                        const idx = rAfter.players.findIndex((p) => p.serial === leavingPlayer.serial || p.id === leavingPlayer.id);
                         if (idx !== -1) {
                           rAfter.players.splice(idx, 1);
                           io.to(roomId).emit("player_left", { playerSerial: leavingPlayer.serial });
                           io.to(roomId).emit("room_update", rAfter);
                           if (rAfter.players.length === 0 || rAfter.players.every((p: any) => p.isBot)) {
                             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                            if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
                             rooms.delete(roomId);
                           }
                         }
@@ -19303,6 +19472,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                 }
 
                 if (
+                  hasBot ||
                   room.gameState === "custom_image_upload" ||
                   room.gameState.startsWith("bus_complete") ||
                   room.gameState.startsWith("xo_") ||
@@ -19310,10 +19480,15 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                   room.gameState.startsWith("iq_") ||
                   room.gameState.startsWith("dots_") ||
                   room.gameState.startsWith("speed_cups_") ||
-                  room.gameState.startsWith("bomb_party_")
+                  room.gameState.startsWith("bomb_party_") ||
+                  room.gameState.startsWith("connect_four_words") ||
+                  room.gameState.startsWith("wordle") ||
+                  room.gameState.startsWith("space_war") ||
+                  room.gameState.startsWith("puzzle")
                 ) {
                   io.to(roomId).emit("game_stopped", { reason: "المنافس غادر المباراة" });
                   if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                  if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
                   rooms.delete(roomId);
                 } else {
                   endGame(roomId, opponent ? opponent.name : "المنافس", true);
@@ -19327,20 +19502,20 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
               clearInterval(intervals.get(roomId));
               intervals.delete(roomId);
             }
+            if (botIntervals.has(roomId)) {
+              clearInterval(botIntervals.get(roomId));
+              botIntervals.delete(roomId);
+            }
 
             if (room.gameState === "waiting") {
               socket.to(roomId).emit("opponent_left_lobby");
             }
 
-            if (!isFinishedState) {
+            if (!isFinishedState || hasBot || room.players.length === 0 || room.players.every((p: any) => p.isBot)) {
               io.in(roomId).socketsLeave(roomId);
               rooms.delete(roomId);
             } else {
               socket.to(roomId).emit("room_update", room);
-              if (room.players.every((p: any) => p.isBot)) {
-                if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-                rooms.delete(roomId);
-              }
             }
           }
         });
