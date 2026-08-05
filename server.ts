@@ -263,12 +263,42 @@ try {
   console.log("Error loading botNames.json", e);
 }
 
-function getRandomBotName(gender: string): string {
-  const list = botNamesData[gender as "boy" | "girl"] || [];
-  if (list.length > 0) {
-    return list[Math.floor(Math.random() * list.length)];
+let getActiveUsedNamesGlobal: () => Set<string> = () => new Set();
+let getActiveLiveMatchesGlobal: () => any[] = () => [];
+
+function getRandomBotName(gender: string, extraExcluded?: string[]): string {
+  const used = getActiveUsedNamesGlobal ? getActiveUsedNamesGlobal() : new Set<string>();
+  if (extraExcluded && Array.isArray(extraExcluded)) {
+    extraExcluded.forEach((n) => {
+      if (n) used.add(n.trim().toLowerCase());
+    });
   }
-  return gender === "girl" ? "لؤلؤة" : "العقيد";
+
+  const list = botNamesData[gender as "boy" | "girl"] || [];
+  const available = list.filter((n) => !used.has(n.trim().toLowerCase()));
+
+  if (available.length > 0) {
+    return available[Math.floor(Math.random() * available.length)];
+  }
+
+  // Fallback: check opposite gender list for an unused name
+  const otherGender = gender === "girl" ? "boy" : "girl";
+  const otherList = botNamesData[otherGender as "boy" | "girl"] || [];
+  const availableOther = otherList.filter((n) => !used.has(n.trim().toLowerCase()));
+  if (availableOther.length > 0) {
+    return availableOther[Math.floor(Math.random() * availableOther.length)];
+  }
+
+  // Fallback: pick base name and add number suffix if all names taken
+  const fallbackList = list.length > 0 ? list : ["العقيد"];
+  const baseName = fallbackList[Math.floor(Math.random() * fallbackList.length)];
+  for (let i = 2; i <= 99; i++) {
+    const candidate = `${baseName} ${i}`;
+    if (!used.has(candidate.toLowerCase())) {
+      return candidate;
+    }
+  }
+  return baseName;
 }
 
 const BOT_PERSONAS = [
@@ -2039,6 +2069,9 @@ async function startServer() {
     const matchmakingQueue: any[] = [];
     const matchmakingInterval = setInterval(() => {
       processQueue();
+      if (io && getActiveLiveMatchesGlobal) {
+        io.emit("live_matches_update", getActiveLiveMatchesGlobal());
+      }
     }, 2000); // Run every 2 seconds
     const reportsList: any[] = [];
     const blocks = new Map<
@@ -2163,6 +2196,141 @@ async function startServer() {
         puzzleMatchPoints?: number;
       }
     >();
+
+    getActiveUsedNamesGlobal = () => {
+      const used = new Set<string>();
+      if (allPlayers) {
+        for (const player of allPlayers.values()) {
+          if (player && player.name) {
+            used.add(player.name.trim().toLowerCase());
+          }
+        }
+      }
+      if (rooms) {
+        for (const room of rooms.values()) {
+          if (!room) continue;
+          if (room.p1 && (room.p1.playerName || room.p1.name)) {
+            used.add((room.p1.playerName || room.p1.name).trim().toLowerCase());
+          }
+          if (room.p2 && (room.p2.playerName || room.p2.name)) {
+            used.add((room.p2.playerName || room.p2.name).trim().toLowerCase());
+          }
+          if (Array.isArray(room.players)) {
+            for (const pl of room.players) {
+              if (pl && (pl.playerName || pl.name)) {
+                used.add((pl.playerName || pl.name).trim().toLowerCase());
+              }
+            }
+          }
+        }
+      }
+      if (matchmakingQueue) {
+        for (const item of matchmakingQueue) {
+          if (item && (item.playerName || item.name)) {
+            used.add((item.playerName || item.name).trim().toLowerCase());
+          }
+        }
+      }
+      return used;
+    };
+
+    function getGameInfoForRoom(room: any): { name: string; icon: string } {
+      const mode = room.selectionMode || room.category || "";
+      const state = (room.gameState || "").toLowerCase();
+
+      if (room.isCustomImageMode || mode === "custom" || state === "custom_image_upload") {
+        return { name: "ارفع صورة", icon: "📸" };
+      }
+      if (mode === "bus_complete" || mode === "تخمينة كومبليت" || state.startsWith("bus_complete")) {
+        return { name: "تخمينة كومبليت", icon: "🚌" };
+      }
+      if (mode === "iq" || state.startsWith("iq_")) {
+        return { name: "تخمينة IQ", icon: "IQ" };
+      }
+      if (mode === "dots" || state.startsWith("dots_")) {
+        return { name: "نقطة وخط", icon: "/dots-and-boxes-logo.png" };
+      }
+      if (mode === "speed_cups" || state.startsWith("speed_cups_")) {
+        return { name: "أكواب السرعة", icon: "/speed-cups/speed-cups-logo.png" };
+      }
+      if (mode === "connect_four_words" || state.startsWith("connect_four_words")) {
+        return { name: "تخمينة 4 حروف", icon: "/connect-4-logo.png" };
+      }
+      if (mode === "space_war" || state.startsWith("space_war")) {
+        return { name: "حرب الفضاء", icon: "🚀" };
+      }
+      if (mode === "puzzle" || state.startsWith("puzzle")) {
+        return { name: "تخمينة Puzzle", icon: "🧩" };
+      }
+      if (mode === "wordle" || state.startsWith("wordle")) {
+        return { name: "تخمينة كلمة", icon: "/word-le-logo.png" };
+      }
+      if (mode === "bomb_party" || state.startsWith("bomb_party")) {
+        return { name: "قنبلة التخمين", icon: "💣" };
+      }
+      if (mode === "xo" || state.startsWith("xo_")) {
+        return { name: "تخمينة XO", icon: "XO" };
+      }
+      if (mode === "hand" || mode === "hand_khamin" || state.startsWith("hand_")) {
+        return { name: "تخمينة كف يد", icon: "🖐" };
+      }
+      return { name: "فئات جاهزة", icon: "🖼️" };
+    }
+
+    getActiveLiveMatchesGlobal = () => {
+      const list: any[] = [];
+      if (!rooms) return list;
+
+      for (const [id, room] of rooms.entries()) {
+        if (!room) continue;
+        const players = room.players || [];
+        const p1 = room.p1 || players[0];
+        const p2 = room.p2 || players[1];
+        if (!p1 || !p2) continue;
+
+        const state = (room.gameState || "").toLowerCase();
+        if (!state || state === "waiting") continue;
+        if (
+          state === "finished" ||
+          state === "xo_finished" ||
+          state === "iq_finished" ||
+          state === "hand_finished" ||
+          state === "dots_finished" ||
+          state === "speed_cups_finished" ||
+          state === "space_war_finished" ||
+          state === "bomb_party_finished" ||
+          state === "connect_four_words_finished" ||
+          state === "wordle_finished" ||
+          state === "puzzle_finished"
+        ) {
+          continue;
+        }
+
+        const startTime = room.startedAt || room.gameStartTime || room.startTime || room.createdAt || (room.startedAt = Date.now());
+        const gameInfo = getGameInfoForRoom(room);
+        list.push({
+          id,
+          p1: {
+            serial: p1.serial || p1.playerSerial || p1.playerId || p1.id || "",
+            name: (p1.playerName || p1.name || "لاعب 1").trim(),
+            avatar: p1.avatar || "avatar-lvl-boy-10.png",
+            selectedFrame: p1.selectedFrame || "",
+            level: p1.level || (p1.xp ? Math.floor(Math.sqrt((p1.xp || 0) / 50)) + 1 : 1),
+          },
+          p2: {
+            serial: p2.serial || p2.playerSerial || p2.playerId || p2.id || "",
+            name: (p2.playerName || p2.name || "لاعب 2").trim(),
+            avatar: p2.avatar || "avatar-lvl-boy-10.png",
+            selectedFrame: p2.selectedFrame || "",
+            level: p2.level || (p2.xp ? Math.floor(Math.sqrt((p2.xp || 0) / 50)) + 1 : 1),
+          },
+          gameName: gameInfo.name,
+          gameIcon: gameInfo.icon,
+          startTime,
+        });
+      }
+      return list;
+    };
 
     const playerSockets = new Map<string, string>();
 
@@ -4833,7 +5001,7 @@ async function startServer() {
           if (!p.isBot && Date.now() - p.joinedAt > 5000) {
             const botPersona =
               BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
-            const botName = getRandomBotName(botPersona.gender);
+            const botName = getRandomBotName(botPersona.gender, [p.playerName || p.name]);
             const bot = {
               id: "bot_" + Date.now() + Math.random().toString(36).substr(2, 5),
               playerId:
@@ -5148,7 +5316,7 @@ async function startServer() {
 
           // Use the avatar defined in the persona
           const botAvatar = botPersona.avatar;
-          const botName = getRandomBotName(botPersona.gender);
+          const botName = getRandomBotName(botPersona.gender, [p.playerName || p.name]);
 
           const botPlayer = {
             playerId: `bot_${Math.random().toString(36).substr(2, 9)}`,
@@ -9983,6 +10151,12 @@ async function startServer() {
     io.on("connection", (socket) => {
       console.log("User connected:", socket.id);
       broadcastOnlineCount();
+
+      socket.emit("live_matches_update", getActiveLiveMatchesGlobal());
+
+      socket.on("get_live_matches", () => {
+        socket.emit("live_matches_update", getActiveLiveMatchesGlobal());
+      });
 
       // Send current theme to new user
       socket.emit("theme_updated", themeConfig);
