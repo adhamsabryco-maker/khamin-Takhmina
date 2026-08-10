@@ -7211,11 +7211,11 @@ async function startServer() {
         // Update distance (interval is 1000ms = 1 sec, so add speed directly)
         progress.distance += speed;
 
-        if (progress.distance >= 300 && progress.stage === 1) {
-           progress.distance = 300;
+        if (progress.distance >= 333 && progress.stage === 1) {
+           progress.distance = 333;
            progress.isAtCheckpoint = true;
-        } else if (progress.distance >= 600 && progress.stage === 2) {
-           progress.distance = 600;
+        } else if (progress.distance >= 666 && progress.stage === 2) {
+           progress.distance = 666;
            progress.isAtCheckpoint = true;
         } else if (progress.distance >= 1000) {
            progress.distance = 1000;
@@ -12565,6 +12565,63 @@ async function startServer() {
         executeSelectionModeConfirmation(roomId);
       });
 
+      function startBeachRaceSetup(room: any, roomId: string) {
+        room.gameState = "beach_race_setup";
+        room.category = "beach_race";
+
+        if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+        if (intervals.has(roomId + "_beach_race_bot")) {
+          clearInterval(intervals.get(roomId + "_beach_race_bot"));
+          intervals.delete(roomId + "_beach_race_bot");
+        }
+
+        const startKey = roomId + "_beach_race_bot_start";
+        if (botTimeouts.has(startKey)) {
+          clearTimeout(botTimeouts.get(startKey));
+          botTimeouts.delete(startKey);
+        }
+
+        const rematchKey = roomId + "_beach_race_bot_rematch";
+        if (botTimeouts.has(rematchKey)) {
+          clearTimeout(botTimeouts.get(rematchKey));
+          botTimeouts.delete(rematchKey);
+        }
+
+        botFlags.delete(roomId + "_beach_race_checkpoint_wait");
+        botFlags.delete(roomId + "_beach_race_final_wait");
+
+        const readyPlayers: string[] = [];
+        const allWords = getAllWordsFromBotAnswers();
+        const chosenWordObj = allWords.length > 0 
+          ? allWords[Math.floor(Math.random() * allWords.length)]
+          : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
+
+        const p1 = room.players[0];
+        const p2 = room.players[1];
+
+        room.beachRace = {
+          targetWord: chosenWordObj.word,
+          questionIds: chosenWordObj.questionIds,
+          category: chosenWordObj.category,
+          subcategory: chosenWordObj.subcategory,
+          readyPlayers,
+          startTime: Date.now(),
+          winnerId: null,
+          gameOver: false,
+          rematchRequestedBy: [],
+          playersProgress: {
+            [p1 ? p1.id : "p1"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
+            [p2 ? p2.id : "p2"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
+          }
+        };
+
+        io.to(roomId).emit("room_update", room);
+        const bot = room.players.find((p: any) => p.isBot);
+        if (bot) {
+          handleBotEvent(roomId, "room_update", room);
+        }
+      }
+
       socket.on("select_private_mode", ({ roomId, mode }) => {
         const room = rooms.get(roomId);
         if (room) {
@@ -12673,38 +12730,7 @@ async function startServer() {
             if (bot) handleBotEvent(roomId, "room_update", room);
 
           } else if (mode === "beach_race") {
-            room.gameState = "beach_race_setup";
-            room.category = "beach_race";
-            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-
-            const readyPlayers: string[] = [];
-            const bot = room.players.find((p: any) => p.isBot);
-
-            const allWords = getAllWordsFromBotAnswers();
-            const chosenWordObj = allWords.length > 0 
-              ? allWords[Math.floor(Math.random() * allWords.length)]
-              : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
-
-            const p1 = room.players[0];
-            const p2 = room.players[1];
-
-            room.beachRace = {
-              targetWord: chosenWordObj.word,
-              questionIds: chosenWordObj.questionIds,
-              category: chosenWordObj.category,
-              subcategory: chosenWordObj.subcategory,
-              readyPlayers,
-              startTime: Date.now(),
-              winnerId: null,
-              gameOver: false,
-              rematchRequestedBy: [],
-              playersProgress: {
-                [p1.id]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
-                [p2 ? p2.id : "bot"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
-              }
-            };
-            io.to(roomId).emit("room_update", room);
-            if (bot) handleBotEvent(roomId, "room_update", room);
+            startBeachRaceSetup(room, roomId);
 
           } else if (mode === "puzzle") {
             room.gameState = "puzzle_setup";
@@ -12745,40 +12771,6 @@ async function startServer() {
             if (bot) {
               handleBotEvent(roomId, "room_update", room);
             }
-
-          } else if (mode === "beach_race") {
-            room.gameState = "beach_race_setup";
-            room.category = "beach_race";
-            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-
-            const readyPlayers: string[] = [];
-            const bot = room.players.find((p: any) => p.isBot);
-
-            const allWords = getAllWordsFromBotAnswers();
-            const chosenWordObj = allWords.length > 0 
-              ? allWords[Math.floor(Math.random() * allWords.length)]
-              : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
-
-            const p1 = room.players[0];
-            const p2 = room.players[1];
-
-            room.beachRace = {
-              targetWord: chosenWordObj.word,
-              questionIds: chosenWordObj.questionIds,
-              category: chosenWordObj.category,
-              subcategory: chosenWordObj.subcategory,
-              readyPlayers,
-              startTime: Date.now(),
-              winnerId: null,
-              gameOver: false,
-              rematchRequestedBy: [],
-              playersProgress: {
-                [p1.id]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
-                [p2 ? p2.id : "bot"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
-              }
-            };
-            io.to(roomId).emit("room_update", room);
-            if (bot) handleBotEvent(roomId, "room_update", room);
 
           } else if (mode === "bomb_party") {
             room.gameState = "bomb_party_setup";
@@ -12874,6 +12866,23 @@ async function startServer() {
               room.beachRace.readyPlayers = [];
             }
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            if (intervals.has(roomId + "_beach_race_bot")) {
+              clearInterval(intervals.get(roomId + "_beach_race_bot"));
+              intervals.delete(roomId + "_beach_race_bot");
+            }
+            const startKey = roomId + "_beach_race_bot_start";
+            if (botTimeouts.has(startKey)) {
+              clearTimeout(botTimeouts.get(startKey));
+              botTimeouts.delete(startKey);
+            }
+            const rematchKey = roomId + "_beach_race_bot_rematch";
+            if (botTimeouts.has(rematchKey)) {
+              clearTimeout(botTimeouts.get(rematchKey));
+              botTimeouts.delete(rematchKey);
+            }
+            botFlags.delete(roomId + "_beach_race_checkpoint_wait");
+            botFlags.delete(roomId + "_beach_race_final_wait");
+
             startWaitingInterval(roomId);
             const bot = room.players.find((p: any) => p.isBot);
             if (bot) {
@@ -16264,6 +16273,12 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         if (room) fs.appendFileSync("debug.log", "PLAYERS: " + JSON.stringify(room.players.map(p=>p.id)) + " READY: " + JSON.stringify(room.beachRace?.readyPlayers) + "\n");
         if (!room || room.gameState !== "beach_race_setup") return;
 
+        const startKey = roomId + "_beach_race_bot_start";
+        if (botTimeouts.has(startKey)) {
+          clearTimeout(botTimeouts.get(startKey));
+          botTimeouts.delete(startKey);
+        }
+
         if (!room.beachRace.readyPlayers) {
           room.beachRace.readyPlayers = [];
         }
@@ -16353,7 +16368,8 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             const dbP = allPlayers.get(winnerPlayer.serial);
             if (dbP) {
               dbP.beachRaceWins = winnerPlayer.beachRaceWins;
-              const bonusCarrotPoints = Math.max(0, parseInt(carrotsCount) || 0);
+              const rawCarrots = Math.max(0, parseInt(carrotsCount) || 0);
+              const bonusCarrotPoints = Math.floor(rawCarrots / 10);
               dbP.beachRaceMatchPoints = (dbP.beachRaceMatchPoints || 0) + 10 + bonusCarrotPoints;
               savePlayerData(winnerPlayer.serial);
               io.to(winnerPlayer.id).emit("player_data_update", dbP);
@@ -16380,73 +16396,46 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
 
       socket.on("request_beach_race_rematch", ({ roomId, playerId }) => {
         const room = rooms.get(roomId);
-        if (!room) return;
+        if (!room || room.gameState !== "beach_race_finished") return;
 
         if (!room.beachRace) {
-          const allWords = getAllWordsFromBotAnswers();
-          const chosenWordObj = allWords.length > 0
-            ? allWords[Math.floor(Math.random() * allWords.length)]
-            : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
-          room.beachRace = {
-            targetWord: chosenWordObj.word,
-            questionIds: chosenWordObj.questionIds,
-            category: chosenWordObj.category,
-            subcategory: chosenWordObj.subcategory,
-            readyPlayers: [],
-            startTime: Date.now(),
-            winnerId: null,
-            gameOver: false,
-            rematchRequestedBy: [],
-            playersProgress: {}
-          };
+          startBeachRaceSetup(room, roomId);
+          return;
         }
 
         if (!room.beachRace.rematchRequestedBy) {
           room.beachRace.rematchRequestedBy = [];
         }
         const player = room.players.find((p: any) => (playerId && p.id === playerId) || p.socketId === socket.id || p.id === socket.id);
-        if (player && !room.beachRace.rematchRequestedBy.includes(player.id)) {
-          room.beachRace.rematchRequestedBy.push(player.id);
+        const pId = player ? player.id : socket.id;
+        if (!room.beachRace.rematchRequestedBy.includes(pId)) {
+          room.beachRace.rematchRequestedBy.push(pId);
         }
 
         const botPlayer = room.players.find((p: any) => p.isBot);
         if (botPlayer && !room.beachRace.rematchRequestedBy.includes(botPlayer.id)) {
-          room.beachRace.rematchRequestedBy.push(botPlayer.id);
-        }
-
-        if (room.beachRace.rematchRequestedBy.length >= room.players.length) {
-          room.gameState = "beach_race_setup";
-          const readyPlayers = [];
-          const bot = room.players.find((p: any) => p.isBot);
-
-          const allWords = getAllWordsFromBotAnswers();
-          const chosenWordObj = allWords.length > 0
-            ? allWords[Math.floor(Math.random() * allWords.length)]
-            : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
-
-          const p1 = room.players[0];
-          const p2 = room.players[1];
-
-          room.beachRace = {
-            targetWord: chosenWordObj.word,
-            questionIds: chosenWordObj.questionIds,
-            category: chosenWordObj.category,
-            subcategory: chosenWordObj.subcategory,
-            readyPlayers,
-            startTime: Date.now(),
-            winnerId: null,
-            gameOver: false,
-            rematchRequestedBy: [],
-            playersProgress: {
-              [p1.id]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
-              [p2 ? p2.id : "bot"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
+          const rematchKey = roomId + "_beach_race_bot_rematch";
+          if (botTimeouts.has(rematchKey)) {
+            clearTimeout(botTimeouts.get(rematchKey));
+            botTimeouts.delete(rematchKey);
+          }
+          const timeout = setTimeout(() => {
+            botTimeouts.delete(rematchKey);
+            const r = rooms.get(roomId);
+            if (!r || r.gameState !== "beach_race_finished") return;
+            r.beachRace.rematchRequestedBy = r.beachRace.rematchRequestedBy || [];
+            if (!r.beachRace.rematchRequestedBy.includes(botPlayer.id)) {
+              r.beachRace.rematchRequestedBy.push(botPlayer.id);
             }
-          };
-          botFlags.delete(roomId + "_beach_race_checkpoint_wait");
-          botFlags.delete(roomId + "_beach_race_final_wait");
-          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-          io.to(roomId).emit("room_update", room);
-          handleBotEvent(roomId, "room_update", room);
+            if (r.beachRace.rematchRequestedBy.length >= r.players.length) {
+              startBeachRaceSetup(r, roomId);
+            } else {
+              io.to(roomId).emit("room_update", r);
+            }
+          }, 1000);
+          botTimeouts.set(rematchKey, timeout);
+        } else if (room.beachRace.rematchRequestedBy.length >= room.players.length) {
+          startBeachRaceSetup(room, roomId);
         } else {
           io.to(roomId).emit("room_update", room);
         }
