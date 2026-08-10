@@ -882,7 +882,7 @@ function normalizeEgyptian(text: string): string {
   if (!text) return "";
   return text
     .replace(/[\u064B-\u0652\u0670]/g, "")
-    .replace(/[أإآ]/g, "ا")
+    .replace(/[أإآء]/g, "ا")
     .replace(/ة/g, "ه")
     .replace(/ى/g, "ي")
     .replace(/ؤ/g, "و")
@@ -890,6 +890,7 @@ function normalizeEgyptian(text: string): string {
     .replace(/لآ/g, "لا")
     .replace(/[ـ]/g, "")
     .replace(/[؟?]/g, "")
+    .replace(/\s+/g, "")
     .trim();
 }
 
@@ -1164,6 +1165,26 @@ async function startServer() {
       } catch (e) {
         console.error("Error reading bot_answers:", e);
       }
+    }
+
+    function getAllWordsFromBotAnswers(): { word: string; questionIds: string[]; category: string; subcategory: string }[] {
+      const words: { word: string; questionIds: string[]; category: string; subcategory: string }[] = [];
+      if (!botAnswersCache) return words;
+      for (const catKey in botAnswersCache) {
+        const cat = botAnswersCache[catKey];
+        if (!cat || typeof cat !== "object") continue;
+        for (const subKey in cat) {
+          const sub = cat[subKey];
+          if (!sub || typeof sub !== "object") continue;
+          for (const word in sub) {
+            const qIds = sub[word];
+            if (Array.isArray(qIds) && qIds.length > 0 && word.trim().length >= 2) {
+              words.push({ word: word.trim(), questionIds: qIds, category: catKey, subcategory: subKey });
+            }
+          }
+        }
+      }
+      return words;
     }
 
     // Override with Firestore if enabled
@@ -2343,6 +2364,9 @@ async function startServer() {
         puzzleWins?: number;
         puzzleRewardLevel?: number;
         puzzleMatchPoints?: number;
+        beachRaceWins?: number;
+        beachRaceRewardLevel?: number;
+        beachRaceMatchPoints?: number;
       }
     >();
 
@@ -2417,6 +2441,9 @@ async function startServer() {
       }
       if (mode === "space_war" || state.startsWith("space_war")) {
         return { name: "حرب الفضاء", icon: "🚀" };
+      }
+      if (mode === "beach_race" || state.startsWith("beach_race_")) {
+        return { name: "سباق التخمين", icon: "🏃" };
       }
       if (mode === "puzzle" || state.startsWith("puzzle")) {
         return { name: "تخمينة Puzzle", icon: "🧩" };
@@ -2796,6 +2823,15 @@ async function startServer() {
     } catch (e) {}
     try {
       db.exec(`ALTER TABLE players ADD COLUMN puzzleMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN beachRaceWins INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN beachRaceRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {}
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN beachRaceMatchPoints INTEGER DEFAULT 0`);
     } catch (e) {}
 
 
@@ -3357,8 +3393,8 @@ async function startServer() {
     }
 
     const insertPlayer = db.prepare(`
-    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, disableGuessChat, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints, spaceWarWins, spaceWarRewardLevel, spaceWarMatchPoints, puzzleWins, puzzleRewardLevel, puzzleMatchPoints)
-    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @disableGuessChat, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints, @connectFourWordsWins, @connectFourWordsRewardLevel, @connectFourWordsMatchPoints, @spaceWarWins, @spaceWarRewardLevel, @spaceWarMatchPoints, @puzzleWins, @puzzleRewardLevel, @puzzleMatchPoints)
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, disableGuessChat, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints, spaceWarWins, spaceWarRewardLevel, spaceWarMatchPoints, puzzleWins, puzzleRewardLevel, puzzleMatchPoints, beachRaceWins, beachRaceRewardLevel, beachRaceMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @disableGuessChat, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints, @connectFourWordsWins, @connectFourWordsRewardLevel, @connectFourWordsMatchPoints, @spaceWarWins, @spaceWarRewardLevel, @spaceWarMatchPoints, @puzzleWins, @puzzleRewardLevel, @puzzleMatchPoints, @beachRaceWins, @beachRaceRewardLevel, @beachRaceMatchPoints)
   `);
 
     // Helper to check and perform daily reset for Rain Gift rewards
@@ -3683,6 +3719,9 @@ async function startServer() {
           puzzleWins: player.puzzleWins || 0,
           puzzleRewardLevel: player.puzzleRewardLevel || 1,
           puzzleMatchPoints: player.puzzleMatchPoints || 0,
+          beachRaceWins: player.beachRaceWins || 0,
+          beachRaceRewardLevel: player.beachRaceRewardLevel || 1,
+          beachRaceMatchPoints: player.beachRaceMatchPoints || 0,
         });
         invalidateTopPlayersCache();
       } catch (err) {
@@ -3784,6 +3823,9 @@ async function startServer() {
           puzzleWins: player.puzzleWins || 0,
           puzzleRewardLevel: player.puzzleRewardLevel || 1,
           puzzleMatchPoints: player.puzzleMatchPoints || 0,
+          beachRaceWins: player.beachRaceWins || 0,
+          beachRaceRewardLevel: player.beachRaceRewardLevel || 1,
+          beachRaceMatchPoints: player.beachRaceMatchPoints || 0,
         });
       }
     });
@@ -3910,6 +3952,9 @@ async function startServer() {
             puzzleWins: row.puzzleWins || 0,
             puzzleRewardLevel: row.puzzleRewardLevel || 1,
             puzzleMatchPoints: row.puzzleMatchPoints || 0,
+            beachRaceWins: row.beachRaceWins || 0,
+            beachRaceRewardLevel: row.beachRaceRewardLevel || 1,
+            beachRaceMatchPoints: row.beachRaceMatchPoints || 0,
           });
         });
         console.log(`Loaded ${allPlayers.size} players from SQLite.`);
@@ -4326,6 +4371,7 @@ async function startServer() {
             connectFourWordsWins: p.connectFourWordsWins || 0,
             spaceWarWins: p.spaceWarWins || 0,
             puzzleWins: p.puzzleWins || 0,
+            beachRaceWins: p.beachRaceWins || 0,
             isAdmin: p.isAdmin,
             serial: p.serial,
             isOnline: playerSockets.has(p.serial),
@@ -5331,6 +5377,9 @@ async function startServer() {
             puzzleWins: p1ServerPlayer
               ? p1ServerPlayer.puzzleWins || 0
               : match.p1.puzzleWins || 0,
+            beachRaceWins: p1ServerPlayer
+              ? p1ServerPlayer.beachRaceWins || 0
+              : match.p1.beachRaceWins || 0,
           },
           {
             id: match.p2.socket.id,
@@ -5414,6 +5463,9 @@ async function startServer() {
             puzzleWins: p2ServerPlayer
               ? p2ServerPlayer.puzzleWins || 0
               : match.p2.puzzleWins || 0,
+            beachRaceWins: p2ServerPlayer
+              ? p2ServerPlayer.beachRaceWins || 0
+              : match.p2.beachRaceWins || 0,
           },
         ],
         gameState: "waiting",
@@ -6445,9 +6497,6 @@ async function startServer() {
             
             const readyPlayers: string[] = [];
             const bot = room.players.find((p: any) => p.isBot);
-            if (bot) {
-              readyPlayers.push(bot.id);
-            }
             
             const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w: any) => 
               w.normalized.length >= 3 && 
@@ -6462,7 +6511,7 @@ async function startServer() {
               p1Revealed: [],
               p2Revealed: [],
               readyPlayers,
-              startTime: null,
+              startTime: Date.now(),
               winnerId: null,
               rematchRequestedBy: [],
               gameOver: false,
@@ -6525,20 +6574,51 @@ async function startServer() {
             
             const readyPlayers: string[] = [];
             const bot = room.players.find((p: any) => p.isBot);
-            if (bot) {
-              readyPlayers.push(bot.id);
-            }
             
             const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w: any) => w.normalized.length >= 3 && w.normalized.length <= 5 && !w.original.includes(" ") && !w.normalized.includes(" ") && !w.original.includes("-"));
             room.spaceWar = {
               p1Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
               p2Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
               readyPlayers,
-              startTime: null,
+              startTime: Date.now(),
               winnerId: null,
               rematchRequestedBy: [],
               gameOver: false,
               startRequestedBy: []
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) handleBotEvent(roomId, "room_update", room);
+
+          } else if (mode === "beach_race") {
+            room.gameState = "beach_race_setup";
+            room.category = "beach_race";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+            const readyPlayers: string[] = [];
+            const bot = room.players.find((p: any) => p.isBot);
+
+            const allWords = getAllWordsFromBotAnswers();
+            const chosenWordObj = allWords.length > 0 
+              ? allWords[Math.floor(Math.random() * allWords.length)]
+              : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
+
+            const p1 = room.players[0];
+            const p2 = room.players[1];
+
+            room.beachRace = {
+              targetWord: chosenWordObj.word,
+              questionIds: chosenWordObj.questionIds,
+              category: chosenWordObj.category,
+              subcategory: chosenWordObj.subcategory,
+              readyPlayers,
+              startTime: Date.now(),
+              winnerId: null,
+              gameOver: false,
+              rematchRequestedBy: [],
+              playersProgress: {
+                [p1.id]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
+                [p2 ? p2.id : "bot"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
+              }
             };
             io.to(roomId).emit("room_update", room);
             if (bot) handleBotEvent(roomId, "room_update", room);
@@ -6568,9 +6648,6 @@ async function startServer() {
 
             const readyPlayers = [];
             const bot = room.players.find((p: any) => p.isBot);
-            if (bot) {
-              readyPlayers.push(bot.id);
-            }
 
             room.wordle = {
               targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5).length)].original,
@@ -6585,6 +6662,40 @@ async function startServer() {
             if (bot) {
               handleBotEvent(roomId, "room_update", room);
             }
+          } else if (mode === "beach_race") {
+            room.gameState = "beach_race_setup";
+            room.category = "beach_race";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+            const readyPlayers: string[] = [];
+            const bot = room.players.find((p: any) => p.isBot);
+
+            const allWords = getAllWordsFromBotAnswers();
+            const chosenWordObj = allWords.length > 0 
+              ? allWords[Math.floor(Math.random() * allWords.length)]
+              : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
+
+            const p1 = room.players[0];
+            const p2 = room.players[1];
+
+            room.beachRace = {
+              targetWord: chosenWordObj.word,
+              questionIds: chosenWordObj.questionIds,
+              category: chosenWordObj.category,
+              subcategory: chosenWordObj.subcategory,
+              readyPlayers,
+              startTime: Date.now(),
+              winnerId: null,
+              gameOver: false,
+              rematchRequestedBy: [],
+              playersProgress: {
+                [p1.id]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
+                [p2 ? p2.id : "bot"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
+              }
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) handleBotEvent(roomId, "room_update", room);
+
           } else if (mode === "bomb_party") {
             room.gameState = "bomb_party_setup";
             room.category = "bomb_party";
@@ -7018,6 +7129,108 @@ async function startServer() {
       }
     }
 
+    function executeBotBeachRace(roomId: string) {
+      if (intervals.has(roomId + "_beach_race_bot")) return;
+
+      const interval = setInterval(() => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing" || room.beachRace.gameOver) {
+          clearInterval(intervals.get(roomId + "_beach_race_bot"));
+          intervals.delete(roomId + "_beach_race_bot");
+          return;
+        }
+
+        const bot = room.players.find((p: any) => p.isBot);
+        if (!bot) return;
+
+        if (!room.beachRace.playersProgress) {
+          room.beachRace.playersProgress = {};
+        }
+        if (!room.beachRace.playersProgress[bot.id]) {
+          room.beachRace.playersProgress[bot.id] = { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false };
+        }
+
+        const progress = room.beachRace.playersProgress[bot.id];
+
+        const currentStartTime = room.beachRace.startTime;
+
+        // Ensure we respect initial paused state during setup wait
+        if (progress.isAtCheckpoint) {
+           // Simulate waiting at checkpoint to answer question
+           if (!botFlags.has(roomId + "_beach_race_checkpoint_wait")) {
+             botFlags.set(roomId + "_beach_race_checkpoint_wait", true);
+             // Wait between 4 and 10 seconds at checkpoint
+             setTimeout(() => {
+               botFlags.delete(roomId + "_beach_race_checkpoint_wait");
+               const currentRoom = rooms.get(roomId);
+               if (currentRoom && currentRoom.gameState === "beach_race_playing" && currentRoom.beachRace.startTime === currentStartTime && currentRoom.beachRace.playersProgress?.[bot.id]) {
+                 currentRoom.beachRace.playersProgress[bot.id].isAtCheckpoint = false;
+                 // Proceed to next stage
+                 if (currentRoom.beachRace.playersProgress[bot.id].stage === 1 && currentRoom.beachRace.playersProgress[bot.id].distance >= 300) {
+                     currentRoom.beachRace.playersProgress[bot.id].stage = 2;
+                 } else if (currentRoom.beachRace.playersProgress[bot.id].stage === 2 && currentRoom.beachRace.playersProgress[bot.id].distance >= 600) {
+                     currentRoom.beachRace.playersProgress[bot.id].stage = 3;
+                 }
+                 io.to(roomId).emit("room_update", currentRoom);
+               }
+             }, 4000 + Math.random() * 6000);
+           }
+           return;
+        }
+        
+        // Wait at distance 1000 for final word guessing (wait up to 58 seconds)
+        if (progress.distance >= 1000) {
+           if (!botFlags.has(roomId + "_beach_race_final_wait")) {
+              botFlags.set(roomId + "_beach_race_final_wait", true);
+              const willWin = Math.random() < 0.35; // 35% win chance
+              
+              if (willWin) {
+                 // Wait 55 to 59 seconds to let human try first
+                 setTimeout(() => {
+                    botFlags.delete(roomId + "_beach_race_final_wait");
+                    const currentRoom = rooms.get(roomId);
+                    if (currentRoom && currentRoom.gameState === "beach_race_playing" && currentRoom.beachRace.startTime === currentStartTime && !currentRoom.beachRace.gameOver) {
+                       currentRoom.beachRace.gameOver = true;
+                       currentRoom.beachRace.winnerId = bot.id;
+                       currentRoom.gameState = "beach_race_finished";
+                       
+                       bot.beachRaceWins = (bot.beachRaceWins || 0) + 1;
+                       io.to(roomId).emit("beach_race_finished", { winnerId: bot.id, targetWord: currentRoom.beachRace.targetWord });
+                       io.to(roomId).emit("room_update", currentRoom);
+                    }
+                 }, 55000 + Math.random() * 4000);
+              }
+           }
+           return;
+        }
+
+        // Simulate obstacle hits (slows down occasionally)
+        const isHittingObstacle = Math.random() < 0.05; // 5% chance per tick to hit obstacle
+        const speed = isHittingObstacle ? 1.5 : (6.5 + Math.random() * 2); // Normal speed around 6.5 to 8.5
+        
+        // Update distance (interval is 1000ms = 1 sec, so add speed directly)
+        progress.distance += speed;
+
+        if (progress.distance >= 300 && progress.stage === 1) {
+           progress.distance = 300;
+           progress.isAtCheckpoint = true;
+        } else if (progress.distance >= 600 && progress.stage === 2) {
+           progress.distance = 600;
+           progress.isAtCheckpoint = true;
+        } else if (progress.distance >= 1000) {
+           progress.distance = 1000;
+        }
+
+        io.to(roomId).emit("beach_race_progress_updated", {
+          playerId: bot.id,
+          distance: progress.distance,
+          collectedLetters: []
+        });
+
+      }, 1000);
+      intervals.set(roomId + "_beach_race_bot", interval);
+    }
+
     function executeBotIQMove(roomId: string) {
       if (botFlags.has(roomId + "_iq_move_scheduled")) return;
       botFlags.set(roomId + "_iq_move_scheduled", true);
@@ -7317,6 +7530,37 @@ async function startServer() {
       }
 
       if (event === "room_update") {
+        if (room.gameState === "beach_race_setup") {
+          const startKey = roomId + "_beach_race_bot_start";
+          if (!botTimeouts.has(startKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(startKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "beach_race_setup") return;
+              
+              if (!r.beachRace.readyPlayers) {
+                r.beachRace.readyPlayers = [];
+              }
+              const bPlayer = r.players.find((p: any) => p.isBot);
+              if (bPlayer && !r.beachRace.readyPlayers.includes(bPlayer.id)) {
+                r.beachRace.readyPlayers.push(bPlayer.id);
+                if (r.beachRace.readyPlayers.length >= r.players.length) {
+                  r.gameState = "beach_race_playing";
+                  r.beachRace.startTime = Date.now();
+                  r.beachRace.gameOver = false;
+                }
+                io.to(roomId).emit("room_update", r);
+                handleBotEvent(roomId, "room_update", r);
+              }
+            }, 2500 + Math.random() * 2000);
+            botTimeouts.set(startKey, timeout);
+          }
+        }
+        
+        if (room.gameState === "beach_race_playing" && !room.beachRace.gameOver) {
+          executeBotBeachRace(roomId);
+        }
+
         // ... previous bot conversations ...
         if (!botConversations.has(roomId)) {
           botConversations.set(roomId, []);
@@ -12284,6 +12528,7 @@ async function startServer() {
               connectFourWordsWins: serverPlayer.connectFourWordsWins || 0,
               spaceWarWins: serverPlayer.spaceWarWins || 0,
               puzzleWins: serverPlayer.puzzleWins || 0,
+              beachRaceWins: serverPlayer.beachRaceWins || 0,
             };
             room.players.push(player);
 
@@ -12412,20 +12657,51 @@ async function startServer() {
             
             const readyPlayers: string[] = [];
             const bot = room.players.find((p: any) => p.isBot);
-            if (bot) {
-              readyPlayers.push(bot.id);
-            }
             
             const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w: any) => w.normalized.length >= 3 && w.normalized.length <= 5 && !w.original.includes(" ") && !w.normalized.includes(" ") && !w.original.includes("-"));
             room.spaceWar = {
               p1Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
               p2Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
               readyPlayers,
-              startTime: null,
+              startTime: Date.now(),
               winnerId: null,
               rematchRequestedBy: [],
               gameOver: false,
               startRequestedBy: []
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) handleBotEvent(roomId, "room_update", room);
+
+          } else if (mode === "beach_race") {
+            room.gameState = "beach_race_setup";
+            room.category = "beach_race";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+            const readyPlayers: string[] = [];
+            const bot = room.players.find((p: any) => p.isBot);
+
+            const allWords = getAllWordsFromBotAnswers();
+            const chosenWordObj = allWords.length > 0 
+              ? allWords[Math.floor(Math.random() * allWords.length)]
+              : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
+
+            const p1 = room.players[0];
+            const p2 = room.players[1];
+
+            room.beachRace = {
+              targetWord: chosenWordObj.word,
+              questionIds: chosenWordObj.questionIds,
+              category: chosenWordObj.category,
+              subcategory: chosenWordObj.subcategory,
+              readyPlayers,
+              startTime: Date.now(),
+              winnerId: null,
+              gameOver: false,
+              rematchRequestedBy: [],
+              playersProgress: {
+                [p1.id]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
+                [p2 ? p2.id : "bot"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
+              }
             };
             io.to(roomId).emit("room_update", room);
             if (bot) handleBotEvent(roomId, "room_update", room);
@@ -12455,9 +12731,6 @@ async function startServer() {
             
             const readyPlayers = [];
             const bot = room.players.find((p: any) => p.isBot);
-            if (bot) {
-              readyPlayers.push(bot.id);
-            }
 
             room.wordle = {
               targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5).length)].original,
@@ -12472,6 +12745,41 @@ async function startServer() {
             if (bot) {
               handleBotEvent(roomId, "room_update", room);
             }
+
+          } else if (mode === "beach_race") {
+            room.gameState = "beach_race_setup";
+            room.category = "beach_race";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+
+            const readyPlayers: string[] = [];
+            const bot = room.players.find((p: any) => p.isBot);
+
+            const allWords = getAllWordsFromBotAnswers();
+            const chosenWordObj = allWords.length > 0 
+              ? allWords[Math.floor(Math.random() * allWords.length)]
+              : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
+
+            const p1 = room.players[0];
+            const p2 = room.players[1];
+
+            room.beachRace = {
+              targetWord: chosenWordObj.word,
+              questionIds: chosenWordObj.questionIds,
+              category: chosenWordObj.category,
+              subcategory: chosenWordObj.subcategory,
+              readyPlayers,
+              startTime: Date.now(),
+              winnerId: null,
+              gameOver: false,
+              rematchRequestedBy: [],
+              playersProgress: {
+                [p1.id]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
+                [p2 ? p2.id : "bot"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
+              }
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) handleBotEvent(roomId, "room_update", room);
+
           } else if (mode === "bomb_party") {
             room.gameState = "bomb_party_setup";
             room.category = "bomb_party";
@@ -12561,8 +12869,16 @@ async function startServer() {
             room.busCompleteLetter = null;
             room.busCompleteSubmittedPlayers = [];
             room.busCompleteRematchRequestedBy = [];
+            if (room.beachRace) {
+              room.beachRace.rematchRequestedBy = [];
+              room.beachRace.readyPlayers = [];
+            }
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
             startWaitingInterval(roomId);
+            const bot = room.players.find((p: any) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
           }
           io.to(roomId).emit("room_update", room);
         }
@@ -15469,12 +15785,12 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
 
       
       // --- Puzzle Game Events ---
-      socket.on("start_puzzle", ({ roomId }) => {
+      socket.on("start_puzzle", ({ roomId, playerId }) => {
         const room = rooms.get(roomId);
         if (!room || room.gameState !== "puzzle_setup") return;
         
         room.puzzle.startRequestedBy = room.puzzle.startRequestedBy || [];
-        const player = room.players.find((p: any) => p.socketId === socket.id || p.id === socket.id);
+        const player = room.players.find((p: any) => (playerId && p.id === playerId) || p.socketId === socket.id || p.id === socket.id);
         const pId = player ? player.id : socket.id;
         
         if (!room.puzzle.startRequestedBy.includes(pId)) {
@@ -15489,32 +15805,10 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
 
         const botPlayer = room.players.find((p: any) => p.isBot);
         if (botPlayer && !room.puzzle.startRequestedBy.includes(botPlayer.id)) {
-          const startKey = roomId + "_puzzle_bot_start";
-          if (botTimeouts.has(startKey)) {
-             clearTimeout(botTimeouts.get(startKey));
-             botTimeouts.delete(startKey);
-          }
-          const timeout = setTimeout(() => {
-             botTimeouts.delete(startKey);
-             const r = rooms.get(roomId);
-             if (!r || r.gameState !== "puzzle_setup") return;
-             
-             r.puzzle.startRequestedBy = r.puzzle.startRequestedBy || [];
-             if (!r.puzzle.startRequestedBy.includes(botPlayer.id)) {
-                r.puzzle.startRequestedBy.push(botPlayer.id);
-             }
-             if (r.puzzle.startRequestedBy.length >= r.players.length) {
-                r.gameState = "puzzle_playing";
-                r.puzzle.roundStartTime = Date.now();
-                r.puzzle.lastChanceStartTime = null;
-                r.puzzle.playersProgress = {};
-                r.puzzle.botPieces = {};
-             }
-             io.to(roomId).emit("room_update", r);
-             if (botPlayer && r.gameState === "puzzle_playing") handleBotEvent(roomId, "room_update", r);
-          }, 1000);
-          botTimeouts.set(startKey, timeout);
-        } else if (room.puzzle.startRequestedBy.length >= room.players.length) {
+          room.puzzle.startRequestedBy.push(botPlayer.id);
+        }
+
+        if (room.puzzle.startRequestedBy.length >= room.players.length) {
            room.gameState = "puzzle_playing";
            room.puzzle.roundStartTime = Date.now();
            room.puzzle.lastChanceStartTime = null;
@@ -15609,7 +15903,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         }
       });
 
-      socket.on("request_puzzle_rematch", ({ roomId }) => {
+      socket.on("request_puzzle_rematch", ({ roomId, playerId }) => {
         const room = rooms.get(roomId);
         if (!room || room.gameState !== "puzzle_finished") return;
         if (!room.puzzle.rematchRequestedBy) {
@@ -15676,7 +15970,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
       });
       // ----------------------------
 
-      socket.on("start_wordle", ({ roomId }) => {
+      socket.on("start_wordle", ({ roomId, playerId }) => {
         const room = rooms.get(roomId);
         if (!room || room.gameState !== "wordle_setup") return;
         
@@ -15684,7 +15978,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
           room.wordle.readyPlayers = [];
         }
         
-        const player = room.players.find((p: any) => p.socketId === socket.id || p.id === socket.id);
+        const player = room.players.find((p: any) => (playerId && p.id === playerId) || p.socketId === socket.id || p.id === socket.id);
         if (player && !room.wordle.readyPlayers.includes(player.id)) {
           room.wordle.readyPlayers.push(player.id);
         }
@@ -15813,14 +16107,15 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
         handleBotEvent(roomId, "room_update", room);
       });
 
-      socket.on("request_wordle_rematch", ({ roomId }) => {
+      socket.on("request_wordle_rematch", ({ roomId, playerId }) => {
         const room = rooms.get(roomId);
         if (!room || room.gameState !== "wordle_finished") return;
         if (!room.wordle.rematchRequestedBy) {
           room.wordle.rematchRequestedBy = [];
         }
-        if (!room.wordle.rematchRequestedBy.includes(socket.id)) {
-          room.wordle.rematchRequestedBy.push(socket.id);
+        const player = room.players.find((p: any) => (playerId && p.id === playerId) || p.socketId === socket.id || p.id === socket.id);
+        if (player && !room.wordle.rematchRequestedBy.includes(player.id)) {
+          room.wordle.rematchRequestedBy.push(player.id);
         }
 
         const botPlayer = room.players.find((p: any) => p.isBot);
@@ -15871,9 +16166,6 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
           
           const readyPlayers = [];
           const bot = room.players.find((p: any) => p.isBot);
-          if (bot) {
-            readyPlayers.push(bot.id);
-          }
 
           room.wordle = {
             targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5).length)].original,
@@ -15925,6 +16217,240 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
               keys: keysReward,
               helpers: helpersReward
             });
+          }
+        }
+      });
+
+      socket.on("claim_beach_race_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.beachRaceRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          
+          if ((player.beachRaceMatchPoints || 0) >= targetPoints) {
+            player.beachRaceMatchPoints = (player.beachRaceMatchPoints || 0) - targetPoints;
+            player.beachRaceRewardLevel = currentLevel + 1;
+            
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            
+            player.xp = (player.xp || 0) + xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            for (const [helperId, amount] of Object.entries(helpersReward)) {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + amount;
+            }
+            
+            savePlayerData(serial);
+            socket.emit("player_data_update", player);
+            socket.emit("beach_race_reward_claimed", {
+              newLevel: currentLevel + 1,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+
+      // ----------------------------
+      // Beach Race (سباق التخمين) Socket Handlers
+      // ----------------------------
+      socket.on("start_beach_race", ({ roomId, playerId }) => {
+        fs.appendFileSync("debug.log", "START_BEACH_RACE " + roomId + " " + socket.id + " " + playerId + "\n");
+        const room = rooms.get(roomId);
+        if (room) fs.appendFileSync("debug.log", "PLAYERS: " + JSON.stringify(room.players.map(p=>p.id)) + " READY: " + JSON.stringify(room.beachRace?.readyPlayers) + "\n");
+        if (!room || room.gameState !== "beach_race_setup") return;
+
+        if (!room.beachRace.readyPlayers) {
+          room.beachRace.readyPlayers = [];
+        }
+
+        const player = room.players.find((p: any) => (playerId && p.id === playerId) || p.socketId === socket.id || p.id === socket.id);
+        if (player && !room.beachRace.readyPlayers.includes(player.id)) {
+          room.beachRace.readyPlayers.push(player.id);
+        }
+
+        const botPlayer = room.players.find((p: any) => p.isBot);
+        if (botPlayer && !room.beachRace.readyPlayers.includes(botPlayer.id)) {
+          room.beachRace.readyPlayers.push(botPlayer.id);
+        }
+
+        if (room.beachRace.readyPlayers.length >= room.players.length) {
+          room.gameState = "beach_race_playing";
+          room.beachRace.startTime = Date.now();
+          room.beachRace.gameOver = false;
+        }
+
+        io.to(roomId).emit("room_update", room);
+        handleBotEvent(roomId, "room_update", room);
+      });
+
+      socket.on("beach_race_update_progress", ({ roomId, distance, collectedLetters }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing") return;
+
+        const pId = socket.id;
+        if (!room.beachRace.playersProgress) {
+          room.beachRace.playersProgress = {};
+        }
+        if (!room.beachRace.playersProgress[pId]) {
+          room.beachRace.playersProgress[pId] = { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false };
+        }
+
+        room.beachRace.playersProgress[pId].distance = distance;
+        if (collectedLetters && Array.isArray(collectedLetters)) {
+          room.beachRace.playersProgress[pId].collectedLetters = collectedLetters;
+        }
+
+        socket.to(roomId).emit("beach_race_progress_updated", {
+          playerId: pId,
+          distance,
+          collectedLetters
+        });
+      });
+
+      socket.on("beach_race_reach_checkpoint", ({ roomId, stage }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing") return;
+
+        const pId = socket.id;
+        if (room.beachRace.playersProgress && room.beachRace.playersProgress[pId]) {
+          room.beachRace.playersProgress[pId].stage = stage;
+          room.beachRace.playersProgress[pId].isAtCheckpoint = true;
+        }
+        io.to(roomId).emit("room_update", room);
+      });
+
+      socket.on("beach_race_resume_runner", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing") return;
+
+        const pId = socket.id;
+        if (room.beachRace.playersProgress && room.beachRace.playersProgress[pId]) {
+          room.beachRace.playersProgress[pId].isAtCheckpoint = false;
+        }
+        io.to(roomId).emit("room_update", room);
+      });
+
+      socket.on("beach_race_submit_guess", ({ roomId, guessWord, carrotsCount }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing" || room.beachRace.gameOver) return;
+
+        const targetWord = normalizeEgyptian(room.beachRace.targetWord);
+        const playerGuess = normalizeEgyptian(guessWord);
+
+        if (playerGuess === targetWord) {
+          room.beachRace.gameOver = true;
+          room.beachRace.winnerId = socket.id;
+          room.gameState = "beach_race_finished";
+
+          const winnerPlayer = room.players.find((p: any) => p.id === socket.id);
+          if (winnerPlayer) {
+            winnerPlayer.beachRaceWins = (winnerPlayer.beachRaceWins || 0) + 1;
+            const dbP = allPlayers.get(winnerPlayer.serial);
+            if (dbP) {
+              dbP.beachRaceWins = winnerPlayer.beachRaceWins;
+              const bonusCarrotPoints = Math.max(0, parseInt(carrotsCount) || 0);
+              dbP.beachRaceMatchPoints = (dbP.beachRaceMatchPoints || 0) + 10 + bonusCarrotPoints;
+              savePlayerData(winnerPlayer.serial);
+              io.to(winnerPlayer.id).emit("player_data_update", dbP);
+            }
+          }
+
+          io.to(roomId).emit("beach_race_finished", { winnerId: socket.id, targetWord: room.beachRace.targetWord });
+          io.to(roomId).emit("room_update", room);
+        } else {
+          socket.emit("beach_race_wrong_guess", { message: "تخمين غير صحيح" });
+        }
+      });
+
+      socket.on("beach_race_time_up", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing" || room.beachRace.gameOver) return;
+
+        room.beachRace.gameOver = true;
+        room.beachRace.winnerId = null;
+        room.gameState = "beach_race_finished";
+        io.to(roomId).emit("beach_race_finished", { winnerId: null, targetWord: room.beachRace.targetWord });
+        io.to(roomId).emit("room_update", room);
+      });
+
+      socket.on("request_beach_race_rematch", ({ roomId, playerId }) => {
+        const room = rooms.get(roomId);
+        if (!room) return;
+
+        if (!room.beachRace) {
+          const allWords = getAllWordsFromBotAnswers();
+          const chosenWordObj = allWords.length > 0
+            ? allWords[Math.floor(Math.random() * allWords.length)]
+            : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
+          room.beachRace = {
+            targetWord: chosenWordObj.word,
+            questionIds: chosenWordObj.questionIds,
+            category: chosenWordObj.category,
+            subcategory: chosenWordObj.subcategory,
+            readyPlayers: [],
+            startTime: Date.now(),
+            winnerId: null,
+            gameOver: false,
+            rematchRequestedBy: [],
+            playersProgress: {}
+          };
+        }
+
+        if (!room.beachRace.rematchRequestedBy) {
+          room.beachRace.rematchRequestedBy = [];
+        }
+        const player = room.players.find((p: any) => (playerId && p.id === playerId) || p.socketId === socket.id || p.id === socket.id);
+        if (player && !room.beachRace.rematchRequestedBy.includes(player.id)) {
+          room.beachRace.rematchRequestedBy.push(player.id);
+        }
+
+        const botPlayer = room.players.find((p: any) => p.isBot);
+        if (botPlayer && !room.beachRace.rematchRequestedBy.includes(botPlayer.id)) {
+          room.beachRace.rematchRequestedBy.push(botPlayer.id);
+        }
+
+        if (room.beachRace.rematchRequestedBy.length >= room.players.length) {
+          room.gameState = "beach_race_setup";
+          const readyPlayers = [];
+          const bot = room.players.find((p: any) => p.isBot);
+
+          const allWords = getAllWordsFromBotAnswers();
+          const chosenWordObj = allWords.length > 0
+            ? allWords[Math.floor(Math.random() * allWords.length)]
+            : { word: "باندا", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
+
+          const p1 = room.players[0];
+          const p2 = room.players[1];
+
+          room.beachRace = {
+            targetWord: chosenWordObj.word,
+            questionIds: chosenWordObj.questionIds,
+            category: chosenWordObj.category,
+            subcategory: chosenWordObj.subcategory,
+            readyPlayers,
+            startTime: Date.now(),
+            winnerId: null,
+            gameOver: false,
+            rematchRequestedBy: [],
+            playersProgress: {
+              [p1.id]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
+              [p2 ? p2.id : "bot"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
+            }
+          };
+          botFlags.delete(roomId + "_beach_race_checkpoint_wait");
+          botFlags.delete(roomId + "_beach_race_final_wait");
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+          io.to(roomId).emit("room_update", room);
+          handleBotEvent(roomId, "room_update", room);
+        } else {
+          io.to(roomId).emit("room_update", room);
+        }
+      });
 
 socket.on("claim_connect_four_words_reward", ({ serial }) => {
         const player = allPlayers.get(serial);
@@ -15950,9 +16476,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             
             savePlayerData(serial);
             socket.emit("player_data_update", player);
-          }
-        }
-      });
           }
         }
       });
@@ -15995,7 +16518,8 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             room.gameState === "space_war_finished" ||
             room.gameState === "bomb_party_finished" ||
             room.gameState === "connect_four_words_finished" ||
-            room.gameState === "wordle_finished")
+            room.gameState === "wordle_finished" ||
+            room.gameState === "beach_race_finished")
         ) {
           // Reset room state
           room.gameState = "waiting";
@@ -18322,6 +18846,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             connectFourWordsWins: targetPlayer.connectFourWordsWins || 0,
             spaceWarWins: targetPlayer.spaceWarWins || 0,
             puzzleWins: targetPlayer.puzzleWins || 0,
+            beachRaceWins: targetPlayer.beachRaceWins || 0,
                 isAdmin: targetPlayer.isAdmin || 0,
                 hasLikedToday: !!hasLikedToday,
                 ownedHelpers: targetPlayer.ownedHelpers || {},
@@ -18510,6 +19035,17 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
         },
       );
 
+      const isUserAdmin = (s: string) => {
+        if (!s) return false;
+        const memPlayer = allPlayers.get(s);
+        if (memPlayer && memPlayer.isAdmin) return true;
+        try {
+          const row = db.prepare("SELECT isAdmin FROM players WHERE serial = ?").get(s) as any;
+          if (row && (row.isAdmin === 1 || row.isAdmin === true || row.isAdmin === "true")) return true;
+        } catch (e) {}
+        return false;
+      };
+
       const handleAddFriend = async (
         { serial, mySerial, targetSerial }: any,
         callback: any,
@@ -18527,25 +19063,29 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
 
         // Check friend limit
         try {
-          const friendsCountRow = db
-            .prepare(
-              "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?",
-            )
-            .get(actualMySerial, actualMySerial, "accepted") as any;
-          if (friendsCountRow && friendsCountRow.count >= 50) {
-            return callback({
-              error: "قائمة الأصدقاء ممتلئة, يجب حذف صديق لإضافة صديق جديد!",
-              limitReached: true,
-            });
+          if (!isUserAdmin(actualMySerial)) {
+            const friendsCountRow = db
+              .prepare(
+                "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?",
+              )
+              .get(actualMySerial, actualMySerial, "accepted") as any;
+            if (friendsCountRow && friendsCountRow.count >= 50) {
+              return callback({
+                error: "قائمة الأصدقاء ممتلئة, يجب حذف صديق لإضافة صديق جديد!",
+                limitReached: true,
+              });
+            }
           }
 
-          const targetFriendsCountRow = db
-            .prepare(
-              "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?",
-            )
-            .get(targetSerial, targetSerial, "accepted") as any;
-          if (targetFriendsCountRow && targetFriendsCountRow.count >= 50) {
-            return callback({ error: "قائمة أصدقاء هذا اللاعب ممتلئة!" });
+          if (!isUserAdmin(targetSerial)) {
+            const targetFriendsCountRow = db
+              .prepare(
+                "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?",
+              )
+              .get(targetSerial, targetSerial, "accepted") as any;
+            if (targetFriendsCountRow && targetFriendsCountRow.count >= 50) {
+              return callback({ error: "قائمة أصدقاء هذا اللاعب ممتلئة!" });
+            }
           }
         } catch (e) {
           console.error(e);
@@ -18617,19 +19157,21 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
           if (!actualMySerial) return;
 
           try {
-            const friendsCountRow = db
-              .prepare(
-                "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?",
-              )
-              .get(actualMySerial, actualMySerial, "accepted") as any;
-            if (friendsCountRow && friendsCountRow.count >= 50) {
-              if (callback)
-                return callback({
-                  error:
-                    "قائمة الأصدقاء ممتلئة, يجب حذف صديق لإضافة صديق جديد!",
-                  limitReached: true,
-                });
-              return;
+            if (!isUserAdmin(actualMySerial)) {
+              const friendsCountRow = db
+                .prepare(
+                  "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?",
+                )
+                .get(actualMySerial, actualMySerial, "accepted") as any;
+              if (friendsCountRow && friendsCountRow.count >= 50) {
+                if (callback)
+                  return callback({
+                    error:
+                      "قائمة الأصدقاء ممتلئة, يجب حذف صديق لإضافة صديق جديد!",
+                    limitReached: true,
+                  });
+                return;
+              }
             }
 
             let otherSerial = null;
@@ -18644,7 +19186,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
               otherSerial = targetSerial;
             }
 
-            if (otherSerial) {
+            if (otherSerial && !isUserAdmin(otherSerial)) {
               const otherFriendsCountRow = db
                 .prepare(
                   "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?",
@@ -19291,7 +19833,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
               p1Revealed: [],
               p2Revealed: [],
               readyPlayers,
-              startTime: null,
+              startTime: Date.now(),
               winnerId: null,
               rematchRequestedBy: [],
               gameOver: false,
