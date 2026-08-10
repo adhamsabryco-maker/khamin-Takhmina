@@ -615,6 +615,7 @@ interface Player {
   connectFourWordsWins?: number;
   spaceWarWins?: number;
   puzzleWins?: number;
+  beachRaceWins?: number;
   selectedSelectionMode?: string;
 }
 
@@ -874,6 +875,7 @@ import WordleGame from "./WordleGame";
 import ConnectFourWordsGame from "./ConnectFourWordsGame";
 import SpaceWarGame from "./SpaceWarGame";
 import PuzzleGame from "./PuzzleGame";
+import BeachRaceGame from "./BeachRaceGame";
 
 function normalizeEgyptian(text: string): string {
   if (!text) return "";
@@ -2398,6 +2400,8 @@ export default function App() {
       sorted.sort((a, b) => (b.spaceWarWins || 0) - (a.spaceWarWins || 0));
     } else if (leaderboardFilter === "puzzle") {
       sorted.sort((a, b) => (b.puzzleWins || 0) - (a.puzzleWins || 0));
+    } else if (leaderboardFilter === "beachRace") {
+      sorted.sort((a, b) => (b.beachRaceWins || 0) - (a.beachRaceWins || 0));
     } else if (leaderboardFilter === "wins") {
       sorted.sort((a, b) => (b.wins || 0) - (a.wins || 0));
     } else if (leaderboardFilter === "streak") {
@@ -6986,6 +6990,27 @@ export default function App() {
       }
     });
 
+    newSocket.on("beach_race_reward_claimed", (data: any) => {
+      playSound("prize");
+      if (data.newLevel != null) {
+        setBeachRaceRewardLevel(data.newLevel);
+        setBeachRaceMatchPoints(0);
+        localStorage.setItem("khamin_beach_race_reward_level", data.newLevel.toString());
+        localStorage.setItem("khamin_beach_race_match_points", "0");
+      }
+      setCustomConfirm({
+         show: true,
+         title: "تم استلام هدايا سباق التخمين بنجاح! 🎁",
+         message: "تم ترقية مستوى هدايا سباق التخمين إلى " + data.newLevel + "!\n\n" +
+                  "حصلت على:\n" +
+                  "⭐ " + data.xp + " خبرة\n" +
+                  "🔑 " + data.keys + " مفاتيح\n" +
+                  "🔧 " + (data.newLevel - 1) + " من كل وسيلة مساعدة (تلميح، عدد الكلمات، كاشف الحروف، تجميد الوقت، الجاسوس)",
+         confirmText: "رائع!",
+         onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+      });
+    });
+
     newSocket.on("wordle_reward_claimed", (data: any) => {
       playSound("prize");
       if (data.points != null) {
@@ -7666,6 +7691,14 @@ if (data.connectFourWordsRewardLevel != null) {
       if (data.puzzleMatchPoints != null) {
         setPuzzleMatchPoints(data.puzzleMatchPoints);
         localStorage.setItem("khamin_puzzle_match_points", data.puzzleMatchPoints.toString());
+      }
+      if (data.beachRaceRewardLevel != null) {
+        setBeachRaceRewardLevel(data.beachRaceRewardLevel);
+        localStorage.setItem("khamin_beach_race_reward_level", data.beachRaceRewardLevel.toString());
+      }
+      if (data.beachRaceMatchPoints != null) {
+        setBeachRaceMatchPoints(data.beachRaceMatchPoints);
+        localStorage.setItem("khamin_beach_race_match_points", data.beachRaceMatchPoints.toString());
       }
       if (data.likes != null) {
         setLikes(data.likes);
@@ -11279,7 +11312,7 @@ if (data.connectFourWordsRewardLevel != null) {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-gradient-to-b from-purple-900 to-indigo-950 border-4 border-yellow-500 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[85vh] flex flex-col"
+              className="bg-purple-950/90 border-4 border-yellow-500 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[85vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
@@ -13289,6 +13322,13 @@ if (data.connectFourWordsRewardLevel != null) {
                         <span className="text-gray-500 font-extrabold">تخمينة puzzle</span>
                       </span>
                       <span className="font-black text-brown-dark">{data.puzzleWins || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl border-b-1 border-gray-100/50">
+                      <span className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                        <span className="w-3.5 h-3.5 inline text-center">🐇</span>
+                        <span className="text-gray-500 font-extrabold">سباق التخمين</span>
+                      </span>
+                      <span className="font-black text-brown-dark">{data.beachRaceWins || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -22441,6 +22481,21 @@ if (data.connectFourWordsRewardLevel != null) {
     () => parseInt(localStorage.getItem("khamin_puzzle_match_points") || "0") || 0
   );
 
+  const [beachRaceRewardLevel, setBeachRaceRewardLevel] = useState(
+    () => parseInt(localStorage.getItem("khamin_beach_race_reward_level") || "1") || 1
+  );
+  const [beachRaceMatchPoints, setBeachRaceMatchPoints] = useState(
+    () => parseInt(localStorage.getItem("khamin_beach_race_match_points") || "0") || 0
+  );
+
+  useEffect(() => {
+    localStorage.setItem("khamin_beach_race_reward_level", beachRaceRewardLevel.toString());
+  }, [beachRaceRewardLevel]);
+
+  useEffect(() => {
+    localStorage.setItem("khamin_beach_race_match_points", beachRaceMatchPoints.toString());
+  }, [beachRaceMatchPoints]);
+
   useEffect(() => {
     localStorage.setItem("khamin_wordle_reward_level", wordleRewardLevel.toString());
   }, [wordleRewardLevel]);
@@ -22491,6 +22546,79 @@ if (data.connectFourWordsRewardLevel != null) {
       setBombPartyRewardLevel((prev) => prev + 1);
       localStorage.setItem("khamin_bomb_reward_level", (bombPartyRewardLevel + 1).toString());
     }
+  };
+
+  const renderBeachRaceRewardBar = () => {
+    if (!room || room.gameState !== "beach_race_finished") return null;
+    const currentLevel = beachRaceRewardLevel;
+    const currentPoints = beachRaceMatchPoints;
+    const targetPoints = currentLevel * 100;
+    const progress = Math.min((currentPoints / targetPoints) * 100, 100);
+    const isReady = currentPoints >= targetPoints;
+
+    return (
+      <div className="w-full mb-2 bg-gradient-to-r from-amber-950/90 to-orange-950/90 border-2 border-amber-500/80 rounded-xl p-2 relative overflow-hidden transition-all shadow-md text-white">
+         <div 
+           className="absolute top-0 left-0 bottom-0 bg-amber-500/30 transition-all duration-500 ease-out" 
+           style={{ width: `${progress}%` }}
+         />
+         <div className="relative flex items-center justify-between gap-1 z-10 w-full">
+            <div className="flex items-center gap-2 font-black text-xs sm:text-sm text-yellow-300">
+              <span>مستوى الجوائز {currentLevel}</span>
+              <span className="text-xs bg-black/60 px-1 py-0.5 rounded-md border border-amber-400 text-white" dir="ltr">
+                {currentPoints} / {targetPoints}
+              </span>
+            </div>
+            
+            <button
+              onClick={() => {
+                 if (isReady) {
+                   setCustomConfirm({
+                      show: true,
+                      title: "مبروك! 🎉 اكتملت نقاط المستوي " + currentLevel,
+                      message: "يمكنك استلام هدايا هذا المستوى الآن، هل تود مشاهدة الإعلان؟\n\n" +
+                               "🎁 " + (currentLevel === 1 ? 50 : 100 + 50 * (currentLevel - 1)) + " XP\n" +
+                               "🔑 " + currentLevel + " مفتاح\n" +
+                               "🔧 " + currentLevel + " من كل وسيلة مساعدة",
+                      confirmText: "نعم مشاهدة الاعلان",
+                      cancelText: "إلغاء",
+                      onConfirm: () => {
+                        setCustomConfirm((prev) => ({ ...prev, show: false }));
+                        socket?.emit("bus_complete_ad_start", { roomId: room.id });
+                        showBusCompleteAd(
+                          () => {
+                             socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: true });
+                             socket?.emit("claim_beach_race_reward", { serial: socket?.data?.serial || playerSerial });
+                          },
+                          () => {
+                             socket?.emit("bus_complete_ad_end", { roomId: room.id, completed: false });
+                             showAlert("تنبيه", "يجب مشاهدة الإعلان كاملاً لاستلام الجائزة");
+                          }
+                        );
+                      }
+                   });
+                 } else {
+                   setCustomConfirm({
+                      show: true,
+                      title: `المستوي ${currentLevel}`,
+                      message: `متبقي ${targetPoints - currentPoints} من ${targetPoints} نقطة لاستلام الهدايا!\n\n` +
+                               `🎁 ${currentLevel === 1 ? 50 : 100 + 50 * (currentLevel - 1)} XP\n` +
+                               `🔑 ${currentLevel} مفتاح\n` +
+                               `🔧 ${currentLevel} من كل وسيلة مساعدة`,
+                      confirmText: "حسناً",
+                      onConfirm: () => setCustomConfirm(prev => ({...prev, show: false}))
+                   });
+                 }
+              }}
+              className={`flex justify-center items-center gap-1 px-2 py-1 rounded-lg font-black text-xs transition-colors shadow-sm
+                ${isReady ? "bg-amber-400 text-slate-950 animate-pulse hover:bg-amber-300 border border-amber-200 cursor-pointer" : "bg-amber-900/80 text-yellow-300 border border-amber-600 hover:bg-amber-800 cursor-pointer"}`}
+            >
+              <span>🎁</span>
+              <span>استلم الهدايا</span>
+            </button>
+         </div>
+      </div>
+    );
   };
 
   const renderWordleRewardBar = () => {
@@ -25482,8 +25610,8 @@ const renderBombPartyRewardBar = () => {
                 </div>
 
               {/* Live Matches Slider (تحديات مباشرة الان) */}
-              {liveMatches && liveMatches.length > 0 && (
-                <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-900 border-2 border-black shadow-lg mt-4 p-1 md:p-2 rounded-lg text-white relative">
+              {isAdmin && liveMatches && liveMatches.length > 0 && (
+                <div className="bg-purple-950/90 border-2 border-black shadow-lg mt-4 p-1 md:p-2 rounded-lg text-white relative">
                   {/* Slider Header */}
                   <div className="flex items-center justify-between mb-1 pb-0.5 border-b border-purple-700/60" dir="rtl">
                     <div className="flex items-center gap-2">
@@ -25538,7 +25666,7 @@ const renderBombPartyRewardBar = () => {
                       onMouseMove={handleSliderMouseMove}
                       onMouseUp={handleSliderMouseUpOrLeave}
                       onMouseLeave={handleSliderMouseUpOrLeave}
-                      className="flex gap-2 overflow-x-auto scrollbar-none scroll-smooth pb-1 pt-1 flex-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
+                      className="flex gap-2 overflow-x-hidden scrollbar-none scroll-smooth pb-1 pt-1 flex-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
                       dir="rtl"
                     >
                       {liveMatches.slice(0, 10).map((match, idx) => {
@@ -25911,6 +26039,8 @@ const renderBombPartyRewardBar = () => {
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.spaceWarWins || 0)} 🚀</span>
                               <span>•</span>
                               <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.puzzleWins || 0)} 🧩</span>
+                              <span>•</span>
+                              <span>{limit99(sortedTopPlayers.find(p => p.serial === playerSerial)?.beachRaceWins || 0)} 🐇</span>
                             </div>
                           </div>
                         </div>
@@ -25958,6 +26088,7 @@ const renderBombPartyRewardBar = () => {
                           { id: "connectFourWords", icon: <img src="/connect-4-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "تخمينة 4 حروف" },
                           { id: "spaceWar", icon: "🚀", title: "حرب الفضاء" },
                           { id: "puzzle", icon: "🧩", title: "تخمينة puzzle" },
+                          { id: "beachRace", icon: "🐇", title: "سباق التخمين" },
                         ].map((filter) => (
                           <button
                             key={filter.id}
@@ -26103,6 +26234,9 @@ const renderBombPartyRewardBar = () => {
                                 </span>
                                 <span className="bg-amber-50 text-amber-600 md:px-1.5 rounded flex items-center gap-0.5" dir="rtl">
                                   {limit99(player.puzzleWins || 0)} 🧩
+                                </span>
+                                <span className="bg-amber-50 text-amber-600 md:px-1.5 rounded flex items-center gap-0.5" dir="rtl">
+                                  {limit99(player.beachRaceWins || 0)} 🐇
                                 </span>
                               </div>
                             </div>
@@ -26802,7 +26936,7 @@ const renderBombPartyRewardBar = () => {
 
         <main className={`flex-1 relative flex flex-col items-center py-2 px-2 mx-auto w-full overflow-hidden ${room?.category === "iq" ? "max-w-md" : "max-w-md"}`}>
           {/* Players Header (VS Mode) */}
-          {room?.gameState !== "space_war_playing" && !room?.gameState?.startsWith("puzzle") && (
+          {room?.gameState !== "space_war_playing" && !room?.gameState?.startsWith("puzzle") && !room?.gameState?.startsWith("beach_race_playing") && (
             <div className="w-full flex items-center justify-center gap-3 md:gap-6 py-2 px-4 bg-white/60 backdrop-blur-md rounded-[32px] border-4 border-white shadow-xl mb-4 relative z-50">
               {/* Player (Me) */}
             <div className="flex flex-col items-center relative">
@@ -29080,6 +29214,21 @@ const renderBombPartyRewardBar = () => {
               />
 
 
+            ) : room.gameState === "beach_race_setup" || room.gameState === "beach_race_playing" || room.gameState === "beach_race_finished" ? (
+              <BeachRaceGame
+                room={room}
+                socket={socket}
+                playerSerial={playerSerial}
+                isAdmin={isAdmin}
+                hasProPackage={hasProPackage}
+                CategoryPageAd={CategoryPageAd}
+                playSound={playSound}
+                handleLeaveGame={handleLeaveGame}
+                showAlert={showAlert}
+                showConfirm={showConfirm}
+                showAd={showAd}
+                renderRewardBar={renderBeachRaceRewardBar}
+              />
             ) : room.gameState === "puzzle_setup" || room.gameState === "puzzle_playing" || room.gameState === "puzzle_finished" ? (
               <PuzzleGame
                 room={room}
@@ -29272,6 +29421,35 @@ const renderBombPartyRewardBar = () => {
                           )}
 
                           
+                          {/* Beach Race Game */}
+                          <div className="relative">
+                            <button
+                              disabled={room.players.length < 2}
+                              onClick={() =>
+                                socket?.emit("propose_selection_mode", {
+                                  roomId: room.id,
+                                  mode: "beach_race",
+                                })
+                              }
+                              className={`h-full w-full bg-amber-100 hover:bg-amber-200 border-[3px] border-amber-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#f59e0b] active:shadow-none active:translate-y-1.5"}`}
+                            >
+                              <div className={`flex gap-1 items-center justify-center ${room.players.length >= 2 ? "group-hover:scale-110 transition-transform" : ""}`}>
+                                <span className="text-3xl md:text-4xl drop-shadow-md">🐇</span>
+                              </div>
+                              <span className="text-[13px] md:text-lg font-black text-amber-800 text-center leading-tight">
+                                سباق التخمين
+                              </span>
+                            </button>
+                            {(() => {
+                              const meMode = room.players.find(p => p.id === socket?.id)?.selectedSelectionMode;
+                              const oppMode = room.players.find(p => p.id !== socket?.id)?.selectedSelectionMode;
+                              if (meMode === "beach_race" && oppMode === "beach_race") return <span className="absolute -top-3 -right-3 z-10 bg-green-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md animate-bounce transform rotate-6">اتفقنا!</span>;
+                              if (meMode === "beach_race") return <span className="absolute -top-3 -right-3 z-10 bg-yellow-400 border-2 border-white text-brown-dark text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6">مقترح!</span>;
+                              if (oppMode === "beach_race") return <span className="absolute -top-3 -right-3 z-10 bg-red-500 border-2 border-white text-white text-[8px] md:text-xs font-bold px-1 md:px-2 py-1 md:py-1.5 rounded-full shadow-md transform rotate-6 animate-pulse">مقترح!</span>;
+                              return null;
+                            })()}
+                          </div>
+
                           {/* Puzzle Game */}
                           <div className="relative">
                             <button
