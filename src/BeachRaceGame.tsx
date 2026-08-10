@@ -49,6 +49,7 @@ export default function BeachRaceGame({
   const isPlaying = room?.gameState === "beach_race_playing";
 
   const [isLocalFinished, setIsLocalFinished] = useState<boolean>(false);
+  const [finishWinnerId, setFinishWinnerId] = useState<string | null>(null);
   const isFinished = room?.gameState === "beach_race_finished" || isLocalFinished;
   const isGameActive = isPlaying && !isFinished;
 
@@ -148,6 +149,7 @@ export default function BeachRaceGame({
   useEffect(() => {
     if (room?.gameState === "beach_race_setup" || room?.gameState === "beach_race_playing") {
       setIsLocalFinished(false);
+      setFinishWinnerId(null);
       setDistance(0);
       setLane(1);
       laneRef.current = 1;
@@ -1299,10 +1301,15 @@ export default function BeachRaceGame({
       setWrongGuessMsg("تخمين غير صحيح! حاول مرة أخرى أو استكمل السباق.");
       if (playSound) playSound("wrong");
     };
-    const handleFinished = () => {
+    const handleFinished = (data?: any) => {
       setShowModal(false);
       setIsPausedAtCheckpoint(false);
       setIsLocalFinished(true);
+      if (data && data.winnerId !== undefined) {
+        setFinishWinnerId(data.winnerId);
+      } else if (room?.beachRace?.winnerId !== undefined) {
+        setFinishWinnerId(room.beachRace.winnerId);
+      }
 
       if (!hasHandledFinishForCurrentMatchRef.current) {
         hasHandledFinishForCurrentMatchRef.current = true;
@@ -1354,14 +1361,23 @@ export default function BeachRaceGame({
     return questionCategoryMap[questionIds[0]] || "";
   }, [questionIds, questionCategoryMap]);
 
-  // Prepare formatted questions replacing (?) with (.)
+  // Helper to check if a keyboard letter is available directly or via normalized equivalent
+  const isLetterAvailable = (letter: string) => {
+    if (uniqueCollectedLetters.includes(letter)) return true;
+    const normLetter = normalizeArabic(letter);
+    if (!normLetter) return false;
+    return uniqueCollectedLetters.some((c) => normalizeArabic(c) === normLetter);
+  };
+
+  // Prepare formatted questions replacing (?) with (.) for all questionIds from the start
   const formattedQuestions = useMemo(() => {
     if (!questionIds || questionIds.length === 0) return ["لا توجد أسئلة متوفرة."];
-    return questionIds.map((id) => {
+    const questions = questionIds.map((id) => {
       const qText = questionTextMap[id];
       if (!qText) return "";
       return qText.replace(/؟/g, ".");
     }).filter(Boolean);
+    return questions.length > 0 ? questions : ["جاري تحميل التلميحات..."];
   }, [questionIds, questionTextMap]);
 
   return (
@@ -1476,11 +1492,36 @@ export default function BeachRaceGame({
           <div className="absolute inset-0 bg-black/90 backdrop-blur-xl z-40 flex flex-col items-center justify-center p-6 text-center text-white space-y-6">
             <Trophy className="w-20 h-20 text-yellow-400 animate-pulse" />
             <h2 className="text-xl md:text-2xl font-black text-amber-300">
-              {!room?.beachRace?.winnerId ? "⏰ انتهى الوقت!" : room?.beachRace?.winnerId === me?.id ? "🏆 مبروك! لقد فزت بالسباق!" : "💔 للاسف فاز المنافس!"}
+              {(() => {
+                const effectiveWinnerId = finishWinnerId !== null ? finishWinnerId : room?.beachRace?.winnerId;
+                return !effectiveWinnerId
+                  ? "⏰ انتهى الوقت!"
+                  : effectiveWinnerId === me?.id
+                  ? "🏆 مبروك! لقد فزت بالسباق!"
+                  : "💔 للاسف فاز المنافس!";
+              })()}
             </h2>
             <p className="text-lg text-amber-100">
               الكلمة الصحيحة كانت: <span className="font-black text-amber-300 text-2xl">{targetWord}</span>
             </p>
+
+            {(finishWinnerId !== null ? finishWinnerId : room?.beachRace?.winnerId) === me?.id && (
+              <div className="bg-amber-500/20 border border-amber-400/50 rounded-2xl p-3 max-w-sm w-full space-y-1 text-xs md:text-sm text-amber-200">
+                <div className="font-black text-amber-300 text-sm md:text-base">🎁 تم إضافة النقاط لشريط الهدايا:</div>
+                <div className="flex justify-between items-center px-2">
+                  <span>نقاط الفوز الأساسية:</span>
+                  <span className="font-bold text-green-400">+10 نقاط</span>
+                </div>
+                <div className="flex justify-between items-center px-2">
+                  <span>الجزر ({carrotsCollected} 🥕):</span>
+                  <span className="font-bold text-orange-400">+{Math.floor(carrotsCollected / 10)} نقاط</span>
+                </div>
+                <div className="border-t border-amber-500/30 pt-1 font-black text-amber-300 flex justify-between items-center px-2 text-sm">
+                  <span>المجموع الكلي:</span>
+                  <span className="text-amber-300 text-base">+{10 + Math.floor(carrotsCollected / 10)} نقطة</span>
+                </div>
+              </div>
+            )}
 
             {/* Match result buttons (تغيير اللعبة - لعب مرة أخرى - خروج للرئيسية) */}
             <div className="flex flex-col gap-2.5 w-full max-w-sm mt-4">
@@ -1491,6 +1532,7 @@ export default function BeachRaceGame({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (playSound) playSound("clickOpen");
+                    setIsLocalFinished(false);
                     socket?.emit("select_private_mode", { roomId: room?.id, mode: null });
                   }}
                   className="flex-1 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white shadow-[0_4px_0_0_#7c3aed] active:shadow-transparent py-3 px-2 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
@@ -1586,46 +1628,56 @@ export default function BeachRaceGame({
 
       {/* On-Screen Controls below the canvas */}
       {isGameActive && !isPausedAtCheckpoint && !showModal && (
-        <div className="w-full max-w-md mt-1 flex items-center justify-between px-2 py-2 bg-slate-800/90 backdrop-blur-md rounded-2xl border-2 border-amber-500/50 shadow-2xl" dir="ltr">
+        <div className="w-full max-w-md mt-1 flex items-center justify-between px-2 py-2 bg-slate-800/90 backdrop-blur-md rounded-2xl border-2 border-amber-500/50 shadow-2xl select-none touch-none" dir="ltr">
           {/* Direction Arrows */}
           <div className="flex gap-4" dir="ltr">
             <button
-              onClick={() => {
+              type="button"
+              onPointerDown={(e) => {
+                e.preventDefault();
                 if (isGameActive && !showModal && !isPausedAtCheckpoint) {
                   setLane((prev) => Math.max(0, prev - 1));
                 }
               }}
-              className="w-14 h-14 bg-amber-500 hover:bg-amber-400 active:scale-90 text-slate-950 font-black rounded-full border-2 border-amber-300 flex items-center justify-center shadow-lg transition-all cursor-pointer"
+              className="w-14 h-14 bg-amber-500 hover:bg-amber-400 active:scale-90 text-slate-950 font-black rounded-full border-2 border-amber-300 flex items-center justify-center shadow-lg transition-all cursor-pointer select-none touch-none"
               title="تحريك يسار"
             >
-              <ArrowLeft className="w-8 h-8" />
+              <ArrowLeft className="w-8 h-8 pointer-events-none" />
             </button>
             <button
-              onClick={() => {
+              type="button"
+              onPointerDown={(e) => {
+                e.preventDefault();
                 if (isGameActive && !showModal && !isPausedAtCheckpoint) {
                   setLane((prev) => Math.min(2, prev + 1));
                 }
               }}
-              className="w-14 h-14 bg-amber-500 hover:bg-amber-400 active:scale-90 text-slate-950 font-black rounded-full border-2 border-amber-300 flex items-center justify-center shadow-lg transition-all cursor-pointer"
+              className="w-14 h-14 bg-amber-500 hover:bg-amber-400 active:scale-90 text-slate-950 font-black rounded-full border-2 border-amber-300 flex items-center justify-center shadow-lg transition-all cursor-pointer select-none touch-none"
               title="تحريك يمين"
             >
-              <ArrowRight className="w-8 h-8" />
+              <ArrowRight className="w-8 h-8 pointer-events-none" />
             </button>
           </div>
 
           {/* Run Button */}
           <div>
             <button
-              onPointerDown={() => {
+              type="button"
+              onPointerDown={(e) => {
+                e.preventDefault();
                 if (isGameActive && !showModal && !isPausedAtCheckpoint) {
                   isRunningRef.current = true;
                 }
               }}
-              onPointerUp={() => { isRunningRef.current = false; }}
+              onPointerUp={(e) => {
+                e.preventDefault();
+                isRunningRef.current = false;
+              }}
               onPointerLeave={() => { isRunningRef.current = false; }}
+              onPointerCancel={() => { isRunningRef.current = false; }}
               className="w-16 h-16 bg-gradient-to-tr from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 active:scale-95 text-white font-black rounded-full border-2 border-green-300 flex items-center justify-center shadow-lg select-none touch-none cursor-pointer"
             >
-             <span className="flex text-[25px] items-center justify-center text-center">🐇</span>
+             <span className="flex text-[25px] items-center justify-center text-center pointer-events-none">🐇</span>
             </button>
           </div>
         </div>
@@ -1713,7 +1765,7 @@ export default function BeachRaceGame({
               <span className="text-[10px] font-black text-amber-300 block">الحروف التي جمعتها خلال السباق:</span>
               <div className="grid grid-cols-10 gap-0.5" dir="rtl">
                 {ALL_ARABIC_LETTERS.map((letter) => {
-                  const isAvailable = uniqueCollectedLetters.includes(letter);
+                  const isAvailable = isLetterAvailable(letter);
                   return (
                     <button
                       key={letter}
