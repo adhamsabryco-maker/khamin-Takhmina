@@ -645,7 +645,10 @@ interface Room {
     | "space_war_finished"
     | "puzzle_setup"
     | "puzzle_playing"
-    | "puzzle_finished";
+    | "puzzle_finished"
+    | "beach_race_setup"
+    | "beach_race_playing"
+    | "beach_race_finished";
   bombParty?: any;
   handGrid?: (string | null)[];
   handPickerId?: string | null;
@@ -6178,7 +6181,10 @@ export default function App() {
       room.gameState === "space_war_finished" ||
       room.gameState === "puzzle_setup" ||
       room.gameState === "puzzle_playing" ||
-      room.gameState === "puzzle_finished"
+      room.gameState === "puzzle_finished" ||
+      room.gameState === "beach_race_setup" ||
+      room.gameState === "beach_race_playing" ||
+      room.gameState === "beach_race_finished"
     );
 
     const activeMusic = isGameActive
@@ -11010,7 +11016,10 @@ if (data.connectFourWordsRewardLevel != null) {
       room?.gameState?.startsWith("space_war_") ||
       room?.gameState === "puzzle_setup" ||
       room?.gameState === "puzzle_playing" ||
-      room?.gameState === "puzzle_finished";
+      room?.gameState === "puzzle_finished"||
+      room?.gameState === "beach_race_setup" ||
+      room?.gameState === "beach_race_playing" ||
+      room?.gameState === "beach_race_finished";
 
     const me = room?.players.find((p) => p.id === socket?.id);
 

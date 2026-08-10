@@ -1395,7 +1395,7 @@ export default function BeachRaceGame({
             }`}
           >
             <span className="text-base md:text-lg font-black text-orange-300">
-              ({carrotsCollected} 🥕)
+              {carrotsCollected} 🥕
             </span>
           </div>
 
@@ -1593,7 +1593,7 @@ export default function BeachRaceGame({
                 <Compass className="w-5 h-5" /> طريقة اللعب:
               </h3>
               <ul className="text-sm md:text-base text-amber-700 space-y-2 list-disc list-inside pr-2 font-semibold">
-                <li>تسابق على الشاطئ لتجميع الحروف وتفادي العوائق.</li>
+                <li>تسابق لتجميع الحروف وتفادي العوائق.</li>
                 <li>السباق مقسم لـ 3 مراحل (نقاط توقف).</li>
                 <li>عند كل مرحلة، حاول تخمين الكلمة باستخدام الحروف المجمعة.</li>
                 <li>الأسرع في تخمين الكلمة هو الفائز!</li>
@@ -1616,7 +1616,7 @@ export default function BeachRaceGame({
                 {room?.beachRace?.readyPlayers?.includes(me?.id) ? (
                   <span className="animate-pulse">⏳ في انتظار الخصم...</span>
                 ) : room?.beachRace?.readyPlayers?.includes(opp?.id) ? (
-                  <span>🏖️ الخصم جاهز! ابدأ السباق</span>
+                  <span>🏃 الخصم جاهز! ابدأ السباق</span>
                 ) : (
                   <span>🏁 ابدأ سباق التخمين</span>
                 )}
