@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#22C55E"/>
+  <rect width="400" height="400" fill="url(#rGrad1)"/>
+  <defs>
+    <linearGradient id="rGrad1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4ADE80"/>
+      <stop offset="100%" stop-color="#16A34A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Red & Pink Flowers -->
+  <g transform="translate(120, 100)">
+    <circle cx="0" cy="0" r="12" fill="#EC4899"/>
+    <circle cx="-10" cy="0" r="8" fill="#F472B6"/>
+    <circle cx="10" cy="0" r="8" fill="#F472B6"/>
+    <circle cx="0" cy="-10" r="8" fill="#F472B6"/>
+    <circle cx="0" cy="10" r="8" fill="#F472B6"/>
+    <circle cx="0" cy="0" r="7" fill="#FEF08A"/>
+  </g>
+
+  <g transform="translate(280, 240)">
+    <circle cx="0" cy="0" r="10" fill="#FFFFFF"/>
+    <circle cx="-10" cy="0" r="7" fill="#FFFFFF"/>
+    <circle cx="10" cy="0" r="7" fill="#FFFFFF"/>
+    <circle cx="0" cy="-10" r="7" fill="#FFFFFF"/>
+    <circle cx="0" cy="10" r="7" fill="#FFFFFF"/>
+    <circle cx="0" cy="0" r="7" fill="#FACC15"/>
+  </g>
+
+  <!-- Grass Tufts -->
+  <path d="M 300 90 Q 290 60, 280 50 Q 300 65, 310 90 Z" fill="#86EFAC"/>
+  <path d="M 310 90 Q 320 55, 325 45 Q 320 65, 315 90 Z" fill="#15803D"/>
+  <path d="M 180 280 Q 170 250, 160 240 Q 180 255, 190 280 Z" fill="#86EFAC"/>
+</svg>

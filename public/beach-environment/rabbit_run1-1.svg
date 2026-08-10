@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -35 200 255" width="200" height="255">
+  <!-- Dynamic Shadow -->
+  <ellipse cx="95" cy="208" rx="42" ry="10" fill="rgba(0,0,0,0.2)"/>
+
+  <!-- Feet (Left foot forward landing, Right foot back pushing off) -->
+  <ellipse cx="60" cy="190" rx="16" ry="12" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="3"/>
+  <ellipse cx="140" cy="202" rx="14" ry="8" fill="#CBD5E1" stroke="#94A3B8" stroke-width="3"/>
+  <ellipse cx="60" cy="193" rx="8" ry="4" fill="#F472B6"/>
+
+  <!-- Main Body (Dynamic Tilt Right) -->
+  <g transform="rotate(4 100 130)">
+    <path d="M 50 135 C 40 180, 160 180, 150 135 C 145 100, 125 90, 100 90 C 75 90, 55 100, 50 135 Z" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+    <path d="M 55 140 C 50 170, 150 170, 145 140 C 140 115, 120 98, 100 98 C 80 98, 60 115, 55 140 Z" fill="#FFFFFF"/>
+
+    <!-- Cotton Tail Bouncing Left -->
+    <circle cx="92" cy="155" r="23" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3"/>
+    <circle cx="87" cy="150" r="16" fill="#FFF" opacity="0.9"/>
+  </g>
+
+  <!-- Head -->
+  <circle cx="98" cy="62" r="37" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+
+  <!-- Long Ears Swaying Left -->
+  <g transform="rotate(-15 75 55)">
+    <path d="M 68 60 C 50 20, 52 -15, 72 -20 C 88 -15, 85 20, 78 60 Z" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+    <path d="M 70 50 C 58 20, 60 -5, 72 -10 C 82 -5, 80 20, 75 50 Z" fill="#FBCFE8" opacity="0.85"/>
+  </g>
+  <g transform="rotate(2 115 55)">
+    <path d="M 115 60 C 105 20, 100 -15, 115 -20 C 135 -15, 140 20, 128 60 Z" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+    <path d="M 117 50 C 110 20, 107 -5, 115 -10 C 128 -5, 132 20, 125 50 Z" fill="#FBCFE8" opacity="0.85"/>
+  </g>
+</svg>

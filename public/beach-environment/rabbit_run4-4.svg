@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -35 200 255" width="200" height="255">
+  <!-- Ground Shadow -->
+  <ellipse cx="100" cy="206" rx="46" ry="11" fill="rgba(0,0,0,0.2)"/>
+
+  <!-- Feet (Both near ground in stride) -->
+  <ellipse cx="70" cy="192" rx="17" ry="11" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="3"/>
+  <ellipse cx="130" cy="192" rx="17" ry="11" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="3"/>
+  <ellipse cx="70" cy="195" rx="8" ry="4" fill="#F472B6"/>
+  <ellipse cx="130" cy="195" rx="8" ry="4" fill="#F472B6"/>
+
+  <!-- Main Body (Slight Squat / Power Stride) -->
+  <path d="M 48 138 C 38 183, 162 183, 152 138 C 147 103, 127 93, 100 93 C 73 93, 53 103, 48 138 Z" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+  <path d="M 53 143 C 48 173, 152 173, 147 143 C 142 118, 122 100, 100 100 C 78 100, 58 118, 53 143 Z" fill="#FFFFFF"/>
+
+  <!-- Cotton Tail Centered -->
+  <circle cx="100" cy="158" r="23" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3"/>
+  <circle cx="96" cy="153" r="16" fill="#FFF" opacity="0.9"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="65" r="37" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+
+  <!-- Long Ears Bobbing Forward slightly -->
+  <g transform="rotate(-4 80 60)">
+    <path d="M 70 65 C 55 25, 58 -10, 78 -15 C 93 -10, 90 25, 80 65 Z" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+    <path d="M 72 55 C 63 25, 65 0, 78 -5 C 86 0, 83 25, 76 55 Z" fill="#FBCFE8" opacity="0.85"/>
+  </g>
+  <g transform="rotate(4 120 60)">
+    <path d="M 120 65 C 110 25, 107 -10, 122 -15 C 142 -10, 145 25, 130 65 Z" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+    <path d="M 122 55 C 115 25, 113 0, 122 -5 C 135 0, 137 25, 128 55 Z" fill="#FBCFE8" opacity="0.85"/>
+  </g>
+</svg>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100" width="120" height="100">
+  <!-- Small Garden Bush -->
+  <path d="M 20 90 C 10 55, 60 50, 60 90 Z" fill="#15803D"/>
+  <path d="M 50 90 C 40 45, 100 45, 100 90 Z" fill="#16A34A"/>
+  <path d="M 25 90 C 18 60, 55 58, 55 90 Z" fill="#4ADE80" opacity="0.6"/>
+
+  <!-- Purple Wildflowers -->
+  <g transform="translate(45, 55)">
+    <circle cx="0" cy="0" r="8" fill="#A855F7"/>
+    <circle cx="-6" cy="0" r="6" fill="#C084FC"/>
+    <circle cx="6" cy="0" r="6" fill="#C084FC"/>
+    <circle cx="0" cy="-6" r="6" fill="#C084FC"/>
+    <circle cx="0" cy="6" r="6" fill="#C084FC"/>
+    <circle cx="0" cy="0" r="4" fill="#FEF08A"/>
+  </g>
+
+  <g transform="translate(80, 50)">
+    <circle cx="0" cy="0" r="8" fill="#A855F7"/>
+    <circle cx="-6" cy="0" r="6" fill="#C084FC"/>
+    <circle cx="6" cy="0" r="6" fill="#C084FC"/>
+    <circle cx="0" cy="-6" r="6" fill="#C084FC"/>
+    <circle cx="0" cy="6" r="6" fill="#C084FC"/>
+    <circle cx="0" cy="0" r="4" fill="#FEF08A"/>
+  </g>
+</svg>

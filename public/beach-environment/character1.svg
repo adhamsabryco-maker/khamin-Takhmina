@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" width="200" height="220">
+  <!-- Rabbit Shadow -->
+  <ellipse cx="100" cy="205" rx="50" ry="12" fill="rgba(0,0,0,0.18)"/>
+
+  <!-- Feet (Standing Idle) -->
+  <ellipse cx="72" cy="195" rx="18" ry="10" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="3"/>
+  <ellipse cx="128" cy="195" rx="18" ry="10" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="3"/>
+  <!-- Paw Pads underneath -->
+  <ellipse cx="72" cy="198" rx="8" ry="4" fill="#F472B6"/>
+  <ellipse cx="128" cy="198" rx="8" ry="4" fill="#F472B6"/>
+
+  <!-- Main Body (Back View) -->
+  <path d="M 50 140 C 40 185, 160 185, 150 140 C 145 105, 125 95, 100 95 C 75 95, 55 105, 50 140 Z" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+  
+  <!-- Back Shading / Gradient overlay -->
+  <path d="M 55 145 C 50 175, 150 175, 145 145 C 140 120, 120 102, 100 102 C 80 102, 60 120, 55 145 Z" fill="#FFFFFF"/>
+
+  <!-- Fluffy Round Cotton Tail (Center Back) -->
+  <circle cx="100" cy="160" r="22" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3"/>
+  <circle cx="96" cy="155" r="16" fill="#FFF" opacity="0.9"/>
+  <circle cx="104" cy="164" r="8" fill="#F1F5F9"/>
+
+  <!-- Back of Head -->
+  <circle cx="100" cy="65" r="38" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+  <!-- Head highlight -->
+  <circle cx="95" cy="55" r="28" fill="#FFFFFF"/>
+
+  <!-- Long Ears (Back View - Inner Pink visible slightly at tips) -->
+  <!-- Left Ear -->
+  <g transform="rotate(-8 80 60)">
+    <path d="M 70 65 C 55 25, 60 -10, 80 -15 C 95 -10, 90 25, 80 65 Z" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+    <path d="M 72 55 C 63 25, 67 0, 80 -5 C 88 0, 85 25, 78 55 Z" fill="#FBCFE8" opacity="0.85"/>
+  </g>
+
+  <!-- Right Ear -->
+  <g transform="rotate(8 120 60)">
+    <path d="M 120 65 C 110 25, 105 -10, 120 -15 C 140 -10, 145 25, 130 65 Z" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+    <path d="M 122 55 C 115 25, 112 0, 120 -5 C 133 0, 137 25, 128 55 Z" fill="#FBCFE8" opacity="0.85"/>
+  </g>
+</svg>

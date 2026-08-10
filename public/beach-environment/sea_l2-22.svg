@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#16A34A"/>
+  <rect width="400" height="400" fill="url(#grassGrad2)"/>
+  <defs>
+    <linearGradient id="grassGrad2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4ADE80"/>
+      <stop offset="100%" stop-color="#15803D"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Garden Soil Patch / Crop Row -->
+  <ellipse cx="200" cy="200" rx="140" ry="60" fill="#15803D" opacity="0.4"/>
+
+  <!-- Purple Wildflowers & White Daisies -->
+  <g transform="translate(150, 100)">
+    <circle cx="0" cy="0" r="10" fill="#C084FC"/>
+    <circle cx="-10" cy="-5" r="8" fill="#A855F7"/>
+    <circle cx="10" cy="-5" r="8" fill="#A855F7"/>
+    <circle cx="0" cy="8" r="8" fill="#A855F7"/>
+    <circle cx="0" cy="0" r="6" fill="#FDE047"/>
+  </g>
+
+  <g transform="translate(310, 160)">
+    <circle cx="0" cy="0" r="9" fill="#FFFFFF"/>
+    <circle cx="-10" cy="0" r="7" fill="#FFFFFF"/>
+    <circle cx="10" cy="0" r="7" fill="#FFFFFF"/>
+    <circle cx="0" cy="-10" r="7" fill="#FFFFFF"/>
+    <circle cx="0" cy="10" r="7" fill="#FFFFFF"/>
+    <circle cx="0" cy="0" r="7" fill="#FACC15"/>
+  </g>
+
+  <g transform="translate(90, 270)">
+    <circle cx="0" cy="0" r="12" fill="#F43F5E"/>
+    <circle cx="-10" cy="0" r="9" fill="#FB7185"/>
+    <circle cx="10" cy="0" r="9" fill="#FB7185"/>
+    <circle cx="0" cy="-10" r="9" fill="#FB7185"/>
+    <circle cx="0" cy="10" r="9" fill="#FB7185"/>
+    <circle cx="0" cy="0" r="7" fill="#FEF08A"/>
+  </g>
+
+  <!-- Grass Blade Clusters -->
+  <path d="M 50 180 Q 40 150, 30 140 Q 50 155, 60 180 Z" fill="#86EFAC"/>
+  <path d="M 220 310 Q 210 280, 200 270 Q 220 285, 230 310 Z" fill="#86EFAC"/>
+</svg>

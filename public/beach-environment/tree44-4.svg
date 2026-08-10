@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" width="200" height="280">
+  <!-- Wooden Trunk -->
+  <path d="M 85 280 C 88 190, 80 150, 98 100 C 108 150, 115 190, 115 280 Z" fill="#78350F" stroke="#451A03" stroke-width="3"/>
+
+  <!-- Leafy Canopy - Blossoming Farm Tree -->
+  <circle cx="100" cy="110" r="75" fill="#15803D"/>
+  <circle cx="50" cy="120" r="48" fill="#166534"/>
+  <circle cx="150" cy="120" r="48" fill="#166534"/>
+
+  <circle cx="100" cy="90" r="68" fill="#22C55E"/>
+  <circle cx="55" cy="95" r="45" fill="#16A34A"/>
+  <circle cx="145" cy="95" r="45" fill="#16A34A"/>
+  <circle cx="100" cy="55" r="50" fill="#4ADE80"/>
+
+  <!-- Yellow/White Flower Blossoms -->
+  <circle cx="70" cy="70" r="6" fill="#FEF08A"/>
+  <circle cx="125" cy="80" r="6" fill="#FEF08A"/>
+  <circle cx="95" cy="115" r="6" fill="#FEF08A"/>
+  <circle cx="140" cy="110" r="6" fill="#FEF08A"/>
+  <circle cx="50" cy="105" r="6" fill="#FEF08A"/>
+</svg>

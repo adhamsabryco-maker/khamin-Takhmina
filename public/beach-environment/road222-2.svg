@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400">
+  <rect width="600" height="400" fill="#B48356"/>
+  <rect width="600" height="400" fill="url(#dirtGrad2)"/>
+  <defs>
+    <linearGradient id="dirtGrad2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9C6B3F"/>
+      <stop offset="100%" stop-color="#C69567"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Side Grass Trims -->
+  <path d="M 0 0 C 15 150, 25 250, 0 400 Z" fill="#22C55E"/>
+  <path d="M 600 0 C 585 150, 575 250, 600 400 Z" fill="#22C55E"/>
+
+  <!-- Farm Track Wheel Grooves -->
+  <path d="M 200 0 L 200 400" stroke="#84542B" stroke-width="8" stroke-dasharray="25 25" opacity="0.6"/>
+  <path d="M 400 0 L 400 400" stroke="#84542B" stroke-width="8" stroke-dasharray="25 25" opacity="0.6"/>
+
+  <!-- Soil Granules & Pebbles -->
+  <circle cx="220" cy="50" r="5" fill="#72441E" opacity="0.5"/>
+  <circle cx="380" cy="180" r="6" fill="#84542B" opacity="0.5"/>
+  <circle cx="100" cy="310" r="4" fill="#D4A373" opacity="0.6"/>
+  <circle cx="500" cy="220" r="5" fill="#72441E" opacity="0.5"/>
+</svg>
