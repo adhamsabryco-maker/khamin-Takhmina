@@ -68,11 +68,26 @@ export default function BeachRaceGame({
   const [flyingCarrots, setFlyingCarrots] = useState<Array<{ id: number; startTime: number; duration: number; progress: number; hit: boolean }>>([]);
   const [carrotBoxPulse, setCarrotBoxPulse] = useState<boolean>(false);
 
-  // Custom audio player for new game sound effects
+  // Custom audio player using pooled instances for mobile browser stability
+  const customAudioCacheRef = useRef<{ [src: string]: HTMLAudioElement[] }>({});
+
   const playCustomAudio = (src: string, volume = 1.0) => {
     try {
-      const audio = new Audio(src);
+      if (!customAudioCacheRef.current[src]) {
+        customAudioCacheRef.current[src] = [];
+      }
+      const pool = customAudioCacheRef.current[src];
+      let audio = pool.find((a) => a.paused || a.ended);
+      if (!audio) {
+        if (pool.length < 5) {
+          audio = new Audio(src);
+          pool.push(audio);
+        } else {
+          audio = pool[0]; // reuse first if max pool size reached
+        }
+      }
       audio.volume = volume;
+      audio.currentTime = 0;
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch(() => {});
@@ -1533,9 +1548,13 @@ export default function BeachRaceGame({
                     e.stopPropagation();
                     if (playSound) playSound("clickOpen");
                     setIsLocalFinished(false);
-                    socket?.emit("select_private_mode", { roomId: room?.id, mode: null });
+                    socket?.emit("play_again", { roomId: room?.id });
                   }}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white shadow-[0_4px_0_0_#7c3aed] active:shadow-transparent py-3 px-2 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className={`flex-1 py-3 px-2 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                    ((room?.adPausedPlayersArray?.length || 0) > 0)
+                      ? "bg-gray-400 text-gray-200 shadow-none cursor-not-allowed opacity-60"
+                      : "bg-purple-600 hover:bg-purple-700 active:scale-95 text-white shadow-[0_4px_0_0_#7c3aed] active:shadow-transparent"
+                  }`}
                 >
                   🎮 تغيير اللعبة
                 </button>
@@ -1549,32 +1568,35 @@ export default function BeachRaceGame({
                     socket?.emit("request_beach_race_rematch", { roomId: room?.id, playerId: me?.id });
                   }}
                   className={`flex-1 py-3 px-2 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                    room?.beachRace?.rematchRequestedBy?.includes(me?.id) || ((room?.adPausedPlayersArray?.length || 0) > 0)
-                      ? "bg-slate-500 text-white shadow-none opacity-80 cursor-not-allowed"
+                    ((room?.adPausedPlayersArray?.length || 0) > 0)
+                      ? "bg-gray-400 text-gray-200 shadow-none cursor-not-allowed opacity-60"
+                      : room?.beachRace?.rematchRequestedBy?.includes(me?.id)
+                      ? "bg-emerald-700 text-white shadow-none opacity-80 cursor-not-allowed"
                       : room?.beachRace?.rematchRequestedBy?.includes(opp?.id)
                       ? "bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white shadow-[0_4px_0_0_#059669] animate-pulse"
                       : "bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white shadow-[0_4px_0_0_#059669] active:shadow-transparent"
                   }`}
                 >
-                  {room?.beachRace?.rematchRequestedBy?.includes(me?.id) ? (
+                  {((room?.adPausedPlayersArray?.length || 0) > 0) ? (
+                    <span>انتظر! المنافس يشاهد إعلان 📺</span>
+                  ) : room?.beachRace?.rematchRequestedBy?.includes(me?.id) ? (
                     <span className="animate-pulse">🔄 بانتظار الخصم...</span>
                   ) : room?.beachRace?.rematchRequestedBy?.includes(opp?.id) ? (
-                    <span>🤝 الخصم جاهز!</span>
+                    <span>🎮 المنافس جاهز للعب</span>
                   ) : (
                     <span>🔄 لعب مرة أخرى</span>
                   )}
                 </button>
               </div>
 
-              {/* خروج للرئيسية */}
+              {/* خروج للرئيسية - يعمل دائما بدون أي تعطيل */}
               <button
-                disabled={((room?.adPausedPlayersArray?.length || 0) > 0)}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (playSound) playSound("clickOpen");
                   if (handleLeaveGame) handleLeaveGame();
                 }}
-                className="w-full bg-red-500 hover:bg-red-600 active:scale-95 text-white shadow-[0_4px_0_0_#dc2626] active:shadow-transparent py-3 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-2 mt-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                className="w-full bg-red-500 hover:bg-red-600 active:scale-95 text-white shadow-[0_4px_0_0_#dc2626] active:shadow-transparent py-3 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-2 mt-1 transition-all cursor-pointer"
               >
                 🚪 خروج للرئيسية
               </button>
