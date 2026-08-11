@@ -7205,8 +7205,8 @@ async function startServer() {
         }
 
         // Simulate obstacle hits (slows down occasionally)
-        const isHittingObstacle = Math.random() < 0.05; // 5% chance per tick to hit obstacle
-        const speed = isHittingObstacle ? 1.5 : (6.5 + Math.random() * 2); // Normal speed around 6.5 to 8.5
+        const isHittingObstacle = Math.random() < 0.08; // 8% chance per tick to hit obstacle
+        const speed = isHittingObstacle ? 1.0 : (4.5 + Math.random() * 1.8); // Slightly reduced bot speed (4.5 to 6.3)
         
         // Update distance (interval is 1000ms = 1 sec, so add speed directly)
         progress.distance += speed;
