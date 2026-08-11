@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Play, RotateCcw, Award, Volume2, VolumeX, AlertCircle, ArrowLeft, ArrowRight, Zap, CheckCircle2, ShieldAlert, Trophy, Compass, Sparkles, Eraser } from "lucide-react";
+import { Play, RotateCcw, Award, Volume2, VolumeX, AlertCircle, Info, ArrowLeft, ArrowRight, Zap, CheckCircle2, ShieldAlert, Trophy, Compass, Sparkles, Eraser } from "lucide-react";
 
 interface BeachRaceGameProps {
   room: any;
@@ -1505,8 +1505,8 @@ export default function BeachRaceGame({
         {/* Finished Screen Overlay */}
         {isFinished && (
           <div className="absolute inset-0 bg-black/90 backdrop-blur-xl z-40 flex flex-col items-center justify-center p-6 text-center text-white space-y-6">
-            <Trophy className="w-20 h-20 text-yellow-400 animate-pulse" />
-            <h2 className="text-xl md:text-2xl font-black text-amber-300">
+            <img src="/beach-environment/rabbit-end-screen.png" className="w-20 h-20 md:w-25 md:h-25 mb-2 object-contain inline" />
+            <h2 className="text-xl md:text-2xl mb-2 font-black text-amber-300">
               {(() => {
                 const effectiveWinnerId = finishWinnerId !== null ? finishWinnerId : room?.beachRace?.winnerId;
                 return !effectiveWinnerId
@@ -1516,12 +1516,12 @@ export default function BeachRaceGame({
                   : "💔 للاسف فاز المنافس!";
               })()}
             </h2>
-            <p className="text-lg text-amber-100">
-              الكلمة الصحيحة كانت: <span className="font-black text-amber-300 text-2xl">{targetWord}</span>
+            <p className="flex flex-col text-sm gap-1 mb-2 text-amber-100">
+              الكلمة الصحيحة كانت: <span className="font-black text-amber-300 text-xl">{targetWord}</span>
             </p>
 
             {(finishWinnerId !== null ? finishWinnerId : room?.beachRace?.winnerId) === me?.id && (
-              <div className="bg-amber-500/20 border border-amber-400/50 rounded-2xl p-3 max-w-sm w-full space-y-1 text-xs md:text-sm text-amber-200">
+              <div className="bg-amber-500/20 border border-amber-400/50 rounded-2xl p-2 max-w-sm mb-2 w-full space-y-1 text-xs md:text-sm text-amber-200">
                 <div className="font-black text-amber-300 text-sm md:text-base">🎁 تم إضافة النقاط لشريط الهدايا:</div>
                 <div className="flex justify-between items-center px-2">
                   <span>نقاط الفوز الأساسية:</span>
@@ -1539,7 +1539,7 @@ export default function BeachRaceGame({
             )}
 
             {/* Match result buttons (تغيير اللعبة - لعب مرة أخرى - خروج للرئيسية) */}
-            <div className="flex flex-col gap-2.5 w-full max-w-sm mt-4">
+            <div className="flex flex-col gap-2.5 w-full max-w-sm mt-2">
               <div className="flex gap-2 w-full">
                 {/* تغيير اللعبة */}
                 <button
@@ -1606,13 +1606,13 @@ export default function BeachRaceGame({
 
         {/* Waiting / Lobby Screen */}
         {room?.gameState === "beach_race_setup" && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-4 bg-white/95 backdrop-blur-md shadow-sm w-full h-full text-center rounded-xl">
-            <Trophy className="w-16 h-16 md:w-20 md:h-20 text-amber-500 mb-2 drop-shadow-md" />
-            <h2 className="text-3xl md:text-4xl font-black text-amber-600 mb-2">سباق التخمين</h2>
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-4 bg-[#4A2C11] backdrop-blur-md shadow-sm w-full h-full text-center rounded-xl">
+            <img src="/beach-environment/rabbit-setup-screen.png" className="w-20 h-20 md:w-25 md:h-25 mb-2 object-contain inline" />
+            <h2 className="text-2xl md:text-3xl font-black text-amber-600 mb-2 md:mb-4 home-title-stroke-sm">سباق التخمين</h2>
             
-            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-6 w-full text-right shadow-sm max-w-sm">
+            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-2 w-full text-right shadow-sm max-w-sm">
               <h3 className="font-bold text-amber-800 mb-2 flex items-center gap-2 text-lg">
-                <Compass className="w-5 h-5" /> طريقة اللعب:
+                <Info className="w-5 h-5" /> طريقة اللعب:
               </h3>
               <ul className="text-sm md:text-base text-amber-700 space-y-2 list-disc list-inside pr-2 font-semibold">
                 <li>تسابق لتجميع الحروف وتفادي العوائق.</li>
@@ -1638,7 +1638,7 @@ export default function BeachRaceGame({
                 {room?.beachRace?.readyPlayers?.includes(me?.id) ? (
                   <span className="animate-pulse">⏳ في انتظار الخصم...</span>
                 ) : room?.beachRace?.readyPlayers?.includes(opp?.id) ? (
-                  <span>🏃 الخصم جاهز! ابدأ السباق</span>
+                  <span className="animate-pulse">🐇 الخصم جاهز! ابدأ السباق</span>
                 ) : (
                   <span>🏁 ابدأ سباق التخمين</span>
                 )}
@@ -1711,10 +1711,10 @@ export default function BeachRaceGame({
           <div className="bg-slate-800 border-2 border-amber-400/80 p-1 md:p-2 max-w-sm md:max-w-md w-full shadow-2xl space-y-3 text-white animate-in fade-in zoom-in-95 duration-200 overflow-y-auto max-h-[85vh]">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-amber-500/30 mb-1 pb-0.5">
-              <div className="flex items-center gap-2">
-                <Compass className="w-5 h-5 text-amber-400" />
+              <div className="flex items-center gap-1">
+                🚩
                 <h2 className="text-lg md:text-xl font-black text-amber-300">
-                  مرحلة {currentCheckpointStage} من 3 🏖️
+                  مرحلة {currentCheckpointStage} من 3
                 </h2>
               </div>
               <div className="flex items-center gap-1.5">
@@ -1730,7 +1730,7 @@ export default function BeachRaceGame({
                 ⚠️ المرحلة الثالثة والأخيرة: عند انتهاء الوقت ستنتهي المباراة بالخسارة!
               </p>
             ) : (
-              <p className="text-[11px] font-bold text-amber-200/90 text-center bg-amber-500/10 p-1.5 rounded mb-1 border border-amber-500/30">
+              <p className="text-[10px] md:text-[11px] font-bold text-amber-200/90 text-center bg-amber-500/10 p-1.5 rounded mb-1 border border-amber-500/30">
                 ℹ️ عند انتهاء الوقت المحدد (دقيقة واحدة) سيستكمل السباق تلقائياً.
               </p>
             )}
@@ -1740,7 +1740,7 @@ export default function BeachRaceGame({
               <span className="text-[10px] font-black text-amber-400 block">
                 تلميحات الكلمة المطلوبة {categoryName ? `(${categoryName})` : ""}:
               </span>
-              <ul className="space-y-1 max-h-24 overflow-y-auto pr-1">
+              <ul className="space-y-1 max-h-20 overflow-y-auto pr-1">
                 {formattedQuestions.map((q, idx) => (
                   <li key={idx} className="text-xs md:text-sm font-bold text-slate-200 flex items-center gap-1">
                     <span className="text-amber-400 text-[10px]">🔹</span> {q}

@@ -25205,7 +25205,7 @@ const renderBombPartyRewardBar = () => {
               </div>
             </div>
 
-            <div className="card-game p-2 md:p-3">
+            <div className="card-game px-2 md:px-3 pt-2 md:pt-3 pb-0.5">
               <div className="space-y-4 md:space-y-6">
                 {/* Top Players Section */}
                 <div className="flex flex-col mb-2 gap-2">
@@ -25893,7 +25893,7 @@ const renderBombPartyRewardBar = () => {
                         </span>
                       </button>
 
-                      <div className="flex flex-col bg-white border-2 border-black shadow-sm p-0.5 md:p-2 h-15 md:h-16 w-full relative overflow-hidden">
+                      <div className="flex flex-col bg-white border-2 border-black shadow-sm p-1 md:p-2 h-15 md:h-16 w-full relative overflow-hidden">
                         {getLevel(xp) < 50 && (
                           <div className="absolute inset-0 bg-gray-200/80 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center">
                             <Lock className="w-4 h-4 text-gray-600 mb-0.5" />
@@ -25905,7 +25905,7 @@ const renderBombPartyRewardBar = () => {
                             </span>
                           </div>
                         )}
-                        <div className="flex items-center justify-between gap-6 flex-1">
+                        <div className="flex items-center justify-between gap-3 flex-1">
                           <input
                             type="checkbox"
                             id="useToken"
