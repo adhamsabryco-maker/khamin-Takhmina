@@ -14282,7 +14282,7 @@ if (data.connectFourWordsRewardLevel != null) {
                           مقابل 100 مفتاح{" "}
                           <Key className="w-3 h-3 text-yellow-500" />
                         </div>
-                        <div className="text-[8px] md:text-xs font-bold text-gray-600 flex items-center gap-1 mt-0.5">
+                        <div className="text-[10px] md:text-xs font-bold text-gray-600 flex items-center gap-1 mt-0.5">
                           استمتع باللعبة بدون اعلانات
                           <div className="relative inline-flex items-center justify-center">
                             <span className="w-3 h-3 md:w-3 md:h-3 flex items-center text-center justify-center">📺</span>
@@ -26057,11 +26057,11 @@ const renderBombPartyRewardBar = () => {
                     )}
 
                     <div
-                      className="flex flex-col gap-1.5 py-2 px-2 bg-gray-200 border-b border-gray-300"
+                      className="flex flex-col gap-0.5 md:gap-1.5 py-1 px-0.5 md:py-2 md:px-2 bg-gray-200 border-b border-gray-300"
                       dir="rtl"
                     >
                       {/* Row 1: General Stats & Classic Categories */}
-                      <div className="flex items-center justify-center gap-1 sm:gap-1.5 flex-wrap">
+                      <div className="flex items-center justify-center gap-0.5 sm:gap-1.5 flex-wrap">
                         {[
                           { id: "all", icon: "👥", title: "الكل" },
                           { id: "wins", icon: "🏆", title: "إجمالي الفوز" },
@@ -26070,6 +26070,7 @@ const renderBombPartyRewardBar = () => {
                           { id: "busComplete", icon: "🚌", title: "حافلة الكلمات" },
                           { id: "xo", icon: <span><span className="text-red-500">X</span><span className="text-green-600">O</span></span>, title: "XO" },
                           { id: "hand", icon: "🖐", title: "يد واحدة" },
+                          { id: "iq", icon: <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>, title: "اختبار الذكاء" },
                         ].map((filter) => (
                           <button
                             key={filter.id}
@@ -26089,7 +26090,6 @@ const renderBombPartyRewardBar = () => {
                       {/* Row 2: Specialized Games */}
                       <div className="flex items-center justify-center gap-1 sm:gap-1.5 flex-wrap">
                         {[
-                          { id: "iq", icon: <span className="font-black"><span className="text-blue-500">I</span><span className="text-purple-600">Q</span></span>, title: "اختبار الذكاء" },
                           { id: "dots", icon: <img src="/dots-and-boxes-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "سياج الكلمات" },
                           { id: "speedCups", icon: <img src="/speed-cups/speed-cups-logo.png" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />, title: "أكواب السرعة" },
                           { id: "bombParty", icon: "💣", title: "قنبلة الحروف" },
@@ -26115,6 +26115,142 @@ const renderBombPartyRewardBar = () => {
                       </div>
                     </div>
                   </div>
+
+                    {/* Top Players Special Categories Banner (Not Top 3) */}
+                    {(() => {
+                      const topSerials = topPlayers
+                        .slice(0, 3)
+                        .map((p) => p.serial);
+                      const specialPlayers = new Map<
+                        string,
+                        {
+                          player: any;
+                          categories: {
+                            label: string;
+                            displayVal: string | number;
+                            icon: string;
+                          }[];
+                        }
+                      >();
+
+                      const addSpecialPlayer = (
+                        players: any[] | undefined,
+                        val: number,
+                        label: string,
+                        icon: string,
+                        valueFormatter: (v: number, p: any) => string | number,
+                      ) => {
+                        if (players && players.length > 0 && val > 0) {
+                          const p = players.find(
+                            (p) => !topSerials.includes(p.serial) && !p.isAdmin,
+                          );
+                          if (p) {
+                            if (!specialPlayers.has(p.serial)) {
+                              specialPlayers.set(p.serial, {
+                                player: p,
+                                categories: [],
+                              });
+                            }
+                            const pData = specialPlayers.get(p.serial)!;
+                            pData.categories.push({
+                              label,
+                              displayVal: valueFormatter(val, p),
+                              icon,
+                            });
+                          }
+                        }
+                      };
+
+                      addSpecialPlayer(
+                        highestLevelPlayers,
+                        highestLevelValue,
+                        "الأعلي مستوى",
+                        "⭐",
+                        (val, p) => limit99(getLevel(p.xp)),
+                      );
+                      addSpecialPlayer(
+                        highestStreakPlayers,
+                        highestStreakValue,
+                        "فوز متتالي",
+                        "🔥",
+                        (val, p) => limit99(p.streak || val),
+                      );
+                      addSpecialPlayer(
+                        highestLikesPlayers,
+                        highestLikesValue,
+                        "الأكثر قلوب",
+                        "❤️",
+                        (val, p) => limit99(p.likes || val),
+                      );
+
+                      const specialList = Array.from(specialPlayers.values());
+
+                      if (specialList.length === 0) return null;
+
+                      return (
+                        <div
+                          className={`mt-0.5 mb-2 grid gap-1.5 md:gap-2 ${specialList.length === 1 ? "grid-cols-1" : specialList.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}
+                        >
+                          {specialList.map(({ player, categories }, idx) => (
+                            <div
+                              key={player.serial || player.name || `special-${idx}`}
+                              className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl p-1.5 md:p-2 flex flex-col items-center gap-1.5 cursor-pointer hover:from-amber-500/20 hover:to-orange-500/20 transition-all border border-amber-500/20 box-game"
+                              onClick={() => openPlayerProfile(player.serial)}
+                            >
+                              <div
+                                className={`flex ${categories.length > 1 ? "gap-1 bg-black/5" : "gap-0.5 bg-black/5"} w-full items-center text-center flex-1`}
+                              >
+                                {categories.map((c, i) => (
+                                  <div
+                                    key={i}
+                                    className={`flex flex-col items-center w-full ${categories.length > 1 ? "bg-black/5 rounded-md py-0.5" : ""}`}
+                                  >
+                                    <span
+                                      className={`font-bold md:font-black text-orange-600/80 leading-tight ${specialList.length === 3 ? "text-[7px] md:text-[9px]" : "text-[8px] md:text-[9px]"}`}
+                                    >
+                                      {c.label}
+                                    </span>
+                                    <span
+                                      className={`font-black text-main flex items-center gap-0.5 justify-center mt-0.5 ${specialList.length === 3 ? "text-[10px] md:text-sm" : "text-xs md:text-sm"}`}
+                                    >
+                                      {c.displayVal}{" "}
+                                      <span
+                                        className={
+                                          specialList.length === 3
+                                            ? "text-[9px]"
+                                            : "text-xs md:text-sm"
+                                        }
+                                      >
+                                        {c.icon}
+                                      </span>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div
+                                className={`relative flex items-center justify-center shrink-0 ${specialList.length === 3 ? "w-8 h-8 md:w-11 md:h-11 mt-1" : "w-10 h-10 md:w-12 md:h-12 mt-1"}`}
+                              >
+                                {renderAvatarContent(
+                                  player.avatar,
+                                  getLevel(player.xp),
+                                  false,
+                                  player.isOnline,
+                                  player.selectedFrame,
+                                  player.serial,
+                                )}
+                              </div>
+
+                              <span
+                                className={`font-black text-main w-full text-center truncate px-0.5 shrink-0 ${specialList.length === 3 ? "text-[8px] md:text-xs" : "text-[10px] md:text-xs"}`} dir="ltr"
+                              >
+                                {truncateName(player.name)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
 
                   {/* List of Players */}
                   <div className="p-2 space-y-2">
