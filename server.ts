@@ -2443,7 +2443,7 @@ async function startServer() {
         return { name: "حرب الفضاء", icon: "🚀" };
       }
       if (mode === "beach_race" || state.startsWith("beach_race_")) {
-        return { name: "سباق التخمين", icon: "🏃" };
+        return { name: "سباق التخمين", icon: "🐇" };
       }
       if (mode === "puzzle" || state.startsWith("puzzle")) {
         return { name: "تخمينة Puzzle", icon: "🧩" };
