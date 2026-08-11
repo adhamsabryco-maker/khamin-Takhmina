@@ -25987,7 +25987,7 @@ const renderBombPartyRewardBar = () => {
                 </div>
 
                 <div
-                  className="overflow-y-auto flex-1 bg-gray-50"
+                  className="overflow-y-auto no-scrollbar flex-1 bg-gray-50"
                   dir="rtl"
                   onScroll={handleLeaderboardScroll}
                 >
@@ -26189,17 +26189,22 @@ const renderBombPartyRewardBar = () => {
 
                       return (
                         <div
-                          className={`mt-0.5 mb-2 grid gap-1.5 md:gap-2 ${specialList.length === 1 ? "grid-cols-1" : specialList.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}
+                          className={`mt-2 mb-2 px-2 grid gap-0.5 md:gap-1.5 ${specialList.length === 1 ? "grid-cols-1" : specialList.length === 2 ? "grid-cols-1" : "grid-cols-1"}`}
                         >
                           {specialList.map(({ player, categories }, idx) => (
                             <div
                               key={player.serial || player.name || `special-${idx}`}
-                              className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl p-1.5 md:p-2 flex flex-col items-center gap-1.5 cursor-pointer hover:from-amber-500/20 hover:to-orange-500/20 transition-all border border-amber-500/20 box-game"
+                              className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl p-1.5 md:p-2 flex flex-1 items-center gap-1.5 cursor-pointer hover:from-amber-500/20 hover:to-orange-500/20 transition-all border border-amber-500/20"
                               onClick={() => openPlayerProfile(player.serial)}
                             >
                               <div
                                 className={`flex ${categories.length > 1 ? "gap-1 bg-black/5" : "gap-0.5 bg-black/5"} w-full items-center text-center flex-1`}
                               >
+                              <span
+                                className={`font-black text-main w-full text-center truncate px-0.5 shrink-0 ${specialList.length === 3 ? "text-[8px] md:text-xs" : "text-[10px] md:text-xs"}`} dir="ltr"
+                              >
+                                {truncateName(player.name)}
+                              </span>
                                 {categories.map((c, i) => (
                                   <div
                                     key={i}
@@ -26241,11 +26246,6 @@ const renderBombPartyRewardBar = () => {
                                 )}
                               </div>
 
-                              <span
-                                className={`font-black text-main w-full text-center truncate px-0.5 shrink-0 ${specialList.length === 3 ? "text-[8px] md:text-xs" : "text-[10px] md:text-xs"}`} dir="ltr"
-                              >
-                                {truncateName(player.name)}
-                              </span>
                             </div>
                           ))}
                         </div>
