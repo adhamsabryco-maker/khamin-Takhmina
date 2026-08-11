@@ -141,6 +141,16 @@
   font-style: normal;
 }
 
+/* كلاس لإخفاء شريط التمرير */
+.no-scrollbar::-webkit-scrollbar {
+    display: none; /* للمتصفحات مثل جوجل كروم وسفاري وإيدج */
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;  /* لمتصفح إنترنت إكسبلورر القديم */
+    scrollbar-width: none;  /* لمتصفح فايرفوكس */
+}
+
 /* 
   CASUAL GAME UI THEME - "COMIC BOOK"
 */

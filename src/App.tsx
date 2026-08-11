@@ -26189,7 +26189,7 @@ const renderBombPartyRewardBar = () => {
 
                       return (
                         <div
-                          className={`mt-2 mb-2 px-2 grid gap-0.5 md:gap-1.5 ${specialList.length === 1 ? "grid-cols-1" : specialList.length === 2 ? "grid-cols-1" : "grid-cols-1"}`}
+                          className={`mt-2 mb-0.5 md:mb-2 px-2 grid gap-0.5 md:gap-1.5 ${specialList.length === 1 ? "grid-cols-1" : specialList.length === 2 ? "grid-cols-1" : "grid-cols-1"}`}
                         >
                           {specialList.map(({ player, categories }, idx) => (
                             <div
@@ -26200,16 +26200,16 @@ const renderBombPartyRewardBar = () => {
                               <div
                                 className={`flex ${categories.length > 1 ? "gap-1 bg-black/5" : "gap-0.5 bg-black/5"} w-full items-center text-center flex-1`}
                               >
-                              <span
-                                className={`font-black text-main w-full text-center truncate px-0.5 shrink-0 ${specialList.length === 3 ? "text-[8px] md:text-xs" : "text-[10px] md:text-xs"}`} dir="ltr"
-                              >
-                                {truncateName(player.name)}
-                              </span>
                                 {categories.map((c, i) => (
                                   <div
                                     key={i}
                                     className={`flex flex-col items-center w-full ${categories.length > 1 ? "bg-black/5 rounded-md py-0.5" : ""}`}
                                   >
+                                    <span
+                                      className={`font-black text-main w-full text-center truncate px-0.5 shrink-0 ${specialList.length === 3 ? "text-[8px] md:text-xs" : "text-[10px] md:text-xs"}`} dir="ltr"
+                                    >
+                                      {truncateName(player.name)}
+                                    </span>
                                     <span
                                       className={`font-bold md:font-black text-orange-600/80 leading-tight ${specialList.length === 3 ? "text-[7px] md:text-[9px]" : "text-[8px] md:text-[9px]"}`}
                                     >
