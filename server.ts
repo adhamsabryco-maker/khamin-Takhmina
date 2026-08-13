@@ -13,8 +13,10 @@ class Database {
   db: any;
   constructor(url: string, options?: any) {
     if (!url || !url.startsWith("sqlitecloud://")) {
-        url = process.env.DATABASE_URL || "sqlitecloud://cw7a1nr8vz.g2.sqlite.cloud:8860/players.db?apikey=niWqMJGn4tBT29arqGsBjlEmOBveVRk0ApeHHTmJG7k";
+      url = process.env.DATABASE_URL || "sqlitecloud://cw7a1nr8vz.g2.sqlite.cloud:8860/players.db?apikey=niWqMJGn4tBT29arqGsBjlEmOBveVRk0ApeHHTmJG7k";
     }
+    const maskedUrl = url.replace(/apikey=([^&]+)/, (m, key) => `apikey=${key.slice(0, 4)}...${key.slice(-4)}`);
+    console.log(`[DB] Connecting to SQLiteCloud database: ${maskedUrl}`);
     this.db = new SQLiteCloudDatabase(url);
   }
 
@@ -2687,38 +2689,9 @@ async function startServer() {
 
     const playerSockets = new Map<string, string>();
 
-    let dbPath = process.env.DB_PATH || path.join(process.cwd(), "players.db");
-    console.log(`[DB] Using database at: ${dbPath}`);
-    console.log(`[DB] Current working directory: ${process.cwd()}`);
-    console.log(`[DB] process.cwd(): ${process.cwd()}`);
-
-    const dbDir = path.dirname(dbPath);
-    try {
-      if (!fs.existsSync(dbDir)) {
-        console.log(`[DB] Creating database directory: ${dbDir}`);
-        fs.mkdirSync(dbDir, { recursive: true });
-      }
-      // Test writability
-      const testFile = path.join(dbDir, ".write-test");
-      fs.writeFileSync(testFile, "test");
-      fs.unlinkSync(testFile);
-      console.log(`[DB] Directory ${dbDir} is writable.`);
-    } catch (err) {
-      console.error(
-        `[DB] Failed to verify or create database directory ${dbDir}:`,
-        err,
-      );
-      // If we can't create the directory or it's not writable, fallback to local directory
-      const fallbackPath = path.join(process.cwd(), "players.db");
-      console.log(`[DB] Falling back to local database: ${fallbackPath}`);
-      dbPath = fallbackPath;
-    }
-
     let db: any;
     try {
-      db = new Database(dbPath, { timeout: 10000 });
-      db.pragma("journal_mode = WAL");
-      db.pragma("synchronous = NORMAL");
+      db = new Database(process.env.DATABASE_URL || "");
       console.log("[DB] Database connected successfully.");
 
       // Initialize shop items if needed
@@ -2838,368 +2811,127 @@ async function startServer() {
     )
   `);
 
-    // Add new columns for reporting system if they don't exist
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN gender TEXT DEFAULT 'boy'`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN fingerprint TEXT`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN ip TEXT`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN reports INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN banUntil INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN banCount INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN isPermanentBan INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN reportedBy TEXT DEFAULT '[]'`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN email TEXT`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN isAdmin INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN tokens INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN busCompleteWins INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN busCompleteUsedLetters TEXT DEFAULT '[]'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN busCompleteRewardLevel INTEGER DEFAULT 1`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN busCompleteMatchPoints INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN busCompleteExpiring TEXT DEFAULT '[]'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN xoWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN xoRewardLevel INTEGER DEFAULT 1`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN xoMatchPoints INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN handWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN handRewardLevel INTEGER DEFAULT 1`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN handMatchPoints INTEGER DEFAULT 0`);
-    } catch (e) {}
+    const existingColsMap: Record<string, Set<string>> = {};
 
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN iqWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN iqRewardLevel INTEGER DEFAULT 1`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN iqMatchPoints INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN dotsWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN dotsRewardLevel INTEGER DEFAULT 1`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN dotsMatchPoints INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN speedCupsWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN speedCupsRewardLevel INTEGER DEFAULT 1`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN speedCupsMatchPoints INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN bombPartyWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN wordleWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN wordleRewardLevel INTEGER DEFAULT 1`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN wordleMatchPoints INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN connectFourWordsWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN connectFourWordsRewardLevel INTEGER DEFAULT 1`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN connectFourWordsMatchPoints INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN spaceWarWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN spaceWarRewardLevel INTEGER DEFAULT 1`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN spaceWarMatchPoints INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN puzzleWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN puzzleRewardLevel INTEGER DEFAULT 1`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN puzzleMatchPoints INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN beachRaceWins INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN beachRaceRewardLevel INTEGER DEFAULT 1`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN beachRaceMatchPoints INTEGER DEFAULT 0`);
-    } catch (e) {}
+    function safeAddColumn(tableName: string, colName: string, alterSql: string) {
+      if (!existingColsMap[tableName]) {
+        try {
+          const rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
+          if (Array.isArray(rows)) {
+            existingColsMap[tableName] = new Set(rows.map((r: any) => r.name));
+          } else {
+            existingColsMap[tableName] = new Set();
+          }
+        } catch (e) {
+          existingColsMap[tableName] = new Set();
+        }
+      }
+      if (!existingColsMap[tableName].has(colName)) {
+        try {
+          db.exec(alterSql);
+          existingColsMap[tableName].add(colName);
+        } catch (e) {}
+      }
+    }
 
+    const playersColumnsToEnsure: Array<[string, string]> = [
+      ["gender", "ALTER TABLE players ADD COLUMN gender TEXT DEFAULT 'boy'"],
+      ["fingerprint", "ALTER TABLE players ADD COLUMN fingerprint TEXT"],
+      ["ip", "ALTER TABLE players ADD COLUMN ip TEXT"],
+      ["reports", "ALTER TABLE players ADD COLUMN reports INTEGER DEFAULT 0"],
+      ["banUntil", "ALTER TABLE players ADD COLUMN banUntil INTEGER DEFAULT 0"],
+      ["banCount", "ALTER TABLE players ADD COLUMN banCount INTEGER DEFAULT 0"],
+      ["isPermanentBan", "ALTER TABLE players ADD COLUMN isPermanentBan INTEGER DEFAULT 0"],
+      ["reportedBy", "ALTER TABLE players ADD COLUMN reportedBy TEXT DEFAULT '[]'"],
+      ["email", "ALTER TABLE players ADD COLUMN email TEXT"],
+      ["isAdmin", "ALTER TABLE players ADD COLUMN isAdmin INTEGER DEFAULT 0"],
+      ["tokens", "ALTER TABLE players ADD COLUMN tokens INTEGER DEFAULT 0"],
+      ["busCompleteWins", "ALTER TABLE players ADD COLUMN busCompleteWins INTEGER DEFAULT 0"],
+      ["busCompleteUsedLetters", "ALTER TABLE players ADD COLUMN busCompleteUsedLetters TEXT DEFAULT '[]'"],
+      ["busCompleteRewardLevel", "ALTER TABLE players ADD COLUMN busCompleteRewardLevel INTEGER DEFAULT 1"],
+      ["busCompleteMatchPoints", "ALTER TABLE players ADD COLUMN busCompleteMatchPoints INTEGER DEFAULT 0"],
+      ["busCompleteExpiring", "ALTER TABLE players ADD COLUMN busCompleteExpiring TEXT DEFAULT '[]'"],
+      ["xoWins", "ALTER TABLE players ADD COLUMN xoWins INTEGER DEFAULT 0"],
+      ["xoRewardLevel", "ALTER TABLE players ADD COLUMN xoRewardLevel INTEGER DEFAULT 1"],
+      ["xoMatchPoints", "ALTER TABLE players ADD COLUMN xoMatchPoints INTEGER DEFAULT 0"],
+      ["handWins", "ALTER TABLE players ADD COLUMN handWins INTEGER DEFAULT 0"],
+      ["handRewardLevel", "ALTER TABLE players ADD COLUMN handRewardLevel INTEGER DEFAULT 1"],
+      ["handMatchPoints", "ALTER TABLE players ADD COLUMN handMatchPoints INTEGER DEFAULT 0"],
+      ["iqWins", "ALTER TABLE players ADD COLUMN iqWins INTEGER DEFAULT 0"],
+      ["iqRewardLevel", "ALTER TABLE players ADD COLUMN iqRewardLevel INTEGER DEFAULT 1"],
+      ["iqMatchPoints", "ALTER TABLE players ADD COLUMN iqMatchPoints INTEGER DEFAULT 0"],
+      ["dotsWins", "ALTER TABLE players ADD COLUMN dotsWins INTEGER DEFAULT 0"],
+      ["dotsRewardLevel", "ALTER TABLE players ADD COLUMN dotsRewardLevel INTEGER DEFAULT 1"],
+      ["dotsMatchPoints", "ALTER TABLE players ADD COLUMN dotsMatchPoints INTEGER DEFAULT 0"],
+      ["speedCupsWins", "ALTER TABLE players ADD COLUMN speedCupsWins INTEGER DEFAULT 0"],
+      ["speedCupsRewardLevel", "ALTER TABLE players ADD COLUMN speedCupsRewardLevel INTEGER DEFAULT 1"],
+      ["speedCupsMatchPoints", "ALTER TABLE players ADD COLUMN speedCupsMatchPoints INTEGER DEFAULT 0"],
+      ["bombPartyWins", "ALTER TABLE players ADD COLUMN bombPartyWins INTEGER DEFAULT 0"],
+      ["wordleWins", "ALTER TABLE players ADD COLUMN wordleWins INTEGER DEFAULT 0"],
+      ["wordleRewardLevel", "ALTER TABLE players ADD COLUMN wordleRewardLevel INTEGER DEFAULT 1"],
+      ["wordleMatchPoints", "ALTER TABLE players ADD COLUMN wordleMatchPoints INTEGER DEFAULT 0"],
+      ["connectFourWordsWins", "ALTER TABLE players ADD COLUMN connectFourWordsWins INTEGER DEFAULT 0"],
+      ["connectFourWordsRewardLevel", "ALTER TABLE players ADD COLUMN connectFourWordsRewardLevel INTEGER DEFAULT 1"],
+      ["connectFourWordsMatchPoints", "ALTER TABLE players ADD COLUMN connectFourWordsMatchPoints INTEGER DEFAULT 0"],
+      ["spaceWarWins", "ALTER TABLE players ADD COLUMN spaceWarWins INTEGER DEFAULT 0"],
+      ["spaceWarRewardLevel", "ALTER TABLE players ADD COLUMN spaceWarRewardLevel INTEGER DEFAULT 1"],
+      ["spaceWarMatchPoints", "ALTER TABLE players ADD COLUMN spaceWarMatchPoints INTEGER DEFAULT 0"],
+      ["puzzleWins", "ALTER TABLE players ADD COLUMN puzzleWins INTEGER DEFAULT 0"],
+      ["puzzleRewardLevel", "ALTER TABLE players ADD COLUMN puzzleRewardLevel INTEGER DEFAULT 1"],
+      ["puzzleMatchPoints", "ALTER TABLE players ADD COLUMN puzzleMatchPoints INTEGER DEFAULT 0"],
+      ["beachRaceWins", "ALTER TABLE players ADD COLUMN beachRaceWins INTEGER DEFAULT 0"],
+      ["beachRaceRewardLevel", "ALTER TABLE players ADD COLUMN beachRaceRewardLevel INTEGER DEFAULT 1"],
+      ["beachRaceMatchPoints", "ALTER TABLE players ADD COLUMN beachRaceMatchPoints INTEGER DEFAULT 0"],
+      ["randomXp", "ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0"],
+      ["adsWatchedToday", "ALTER TABLE players ADD COLUMN adsWatchedToday INTEGER DEFAULT 0"],
+      ["lastAdWatchDate", "ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT"],
+      ["keyAdsWatchedToday", "ALTER TABLE players ADD COLUMN keyAdsWatchedToday INTEGER DEFAULT 0"],
+      ["lastKeyAdWatchDate", "ALTER TABLE players ADD COLUMN lastKeyAdWatchDate TEXT"],
+      ["ownedHelpers", "ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'"],
+      ["lastRainGiftResetDay", "ALTER TABLE players ADD COLUMN lastRainGiftResetDay TEXT"],
+      ["rainGiftTokens", "ALTER TABLE players ADD COLUMN rainGiftTokens INTEGER DEFAULT 0"],
+      ["rainGiftHelpers", "ALTER TABLE players ADD COLUMN rainGiftHelpers TEXT DEFAULT '{}'"],
+      ["dailyQuestStreak", "ALTER TABLE players ADD COLUMN dailyQuestStreak INTEGER DEFAULT 1"],
+      ["lastDailyClaim", "ALTER TABLE players ADD COLUMN lastDailyClaim INTEGER DEFAULT 0"],
+      ["weeklyTokensClaimed", "ALTER TABLE players ADD COLUMN weeklyTokensClaimed INTEGER DEFAULT 0"],
+      ["streak", "ALTER TABLE players ADD COLUMN streak INTEGER DEFAULT 0"],
+      ["rainGiftClaimedDay", "ALTER TABLE players ADD COLUMN rainGiftClaimedDay TEXT DEFAULT NULL"],
+      ["lastWeeklyTokenReset", "ALTER TABLE players ADD COLUMN lastWeeklyTokenReset INTEGER DEFAULT 0"],
+      ["proPackageExpiry", "ALTER TABLE players ADD COLUMN proPackageExpiry INTEGER DEFAULT 0"],
+      ["unlockedHelpersExpiry", "ALTER TABLE players ADD COLUMN unlockedHelpersExpiry INTEGER DEFAULT 0"],
+      ["claimedRewards", "ALTER TABLE players ADD COLUMN claimedRewards TEXT DEFAULT '[]'"],
+      ["reportedSerials", "ALTER TABLE players ADD COLUMN reportedSerials TEXT DEFAULT '[]'"],
+      ["lastRenameAt", "ALTER TABLE players ADD COLUMN lastRenameAt INTEGER DEFAULT 0"],
+      ["pendingAvatar", "ALTER TABLE players ADD COLUMN pendingAvatar TEXT"],
+      ["avatarStatus", "ALTER TABLE players ADD COLUMN avatarStatus TEXT DEFAULT 'approved'"],
+      ["lastComplaintAt", "ALTER TABLE players ADD COLUMN lastComplaintAt INTEGER DEFAULT 0"],
+      ["lastContactAt", "ALTER TABLE players ADD COLUMN lastContactAt INTEGER DEFAULT 0"],
+      ["blockedSerials", "ALTER TABLE players ADD COLUMN blockedSerials TEXT DEFAULT '[]'"],
+      ["lastActiveAt", "ALTER TABLE players ADD COLUMN lastActiveAt INTEGER DEFAULT 0"],
+      ["blockedFingerprints", "ALTER TABLE players ADD COLUMN blockedFingerprints TEXT DEFAULT '[]'"],
+      ["recentOpponents", "ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'"],
+      ["selectedFrame", "ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''"],
+      ["notificationsEnabled", "ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 0"],
+      ["hideMyInfo", "ALTER TABLE players ADD COLUMN hideMyInfo INTEGER DEFAULT 0"],
+      ["hideFriendRequests", "ALTER TABLE players ADD COLUMN hideFriendRequests INTEGER DEFAULT 0"],
+      ["disableGuessChat", "ALTER TABLE players ADD COLUMN disableGuessChat INTEGER DEFAULT 0"],
+      ["secretToken", "ALTER TABLE players ADD COLUMN secretToken TEXT"],
+      ["lastSpinDate", "ALTER TABLE players ADD COLUMN lastSpinDate TEXT"],
+      ["dailySpinCount", "ALTER TABLE players ADD COLUMN dailySpinCount INTEGER DEFAULT 0"],
+      ["freeSpinUsed", "ALTER TABLE players ADD COLUMN freeSpinUsed INTEGER DEFAULT 0"],
+      ["luckyWheelTokens", "ALTER TABLE players ADD COLUMN luckyWheelTokens INTEGER DEFAULT 0"],
+      ["luckyWheelHelpers", "ALTER TABLE players ADD COLUMN luckyWheelHelpers TEXT DEFAULT '{}'"],
+      ["lastLuckyWheelResetDay", "ALTER TABLE players ADD COLUMN lastLuckyWheelResetDay TEXT"],
+      ["luckyWheelDaysUsed", "ALTER TABLE players ADD COLUMN luckyWheelDaysUsed INTEGER DEFAULT 0"],
+      ["citySearchRewards", "ALTER TABLE players ADD COLUMN citySearchRewards TEXT DEFAULT '[]'"],
+      ["keys", "ALTER TABLE players ADD COLUMN keys INTEGER DEFAULT 0"],
+      ["likes", "ALTER TABLE players ADD COLUMN likes INTEGER DEFAULT 0"],
+      ["lastRenameUnlockMonth", "ALTER TABLE players ADD COLUMN lastRenameUnlockMonth TEXT DEFAULT NULL"]
+    ];
 
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0`);
-    } catch (e) {}
-    // Initialize randomXp with current xp for existing players so they don't lose leaderboard position
-    try {
-      db.exec(
-        `UPDATE players SET randomXp = xp WHERE randomXp = 0 OR randomXp IS NULL`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN adsWatchedToday INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN keyAdsWatchedToday INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN lastKeyAdWatchDate TEXT`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN lastRainGiftResetDay TEXT`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN rainGiftTokens INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN rainGiftHelpers TEXT DEFAULT '{}'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN dailyQuestStreak INTEGER DEFAULT 1`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN lastDailyClaim INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN weeklyTokensClaimed INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN streak INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN rainGiftClaimedDay TEXT DEFAULT NULL`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN lastWeeklyTokenReset INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN proPackageExpiry INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN unlockedHelpersExpiry INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN claimedRewards TEXT DEFAULT '[]'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN reportedSerials TEXT DEFAULT '[]'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN lastRenameAt INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN pendingAvatar TEXT`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN avatarStatus TEXT DEFAULT 'approved'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN lastComplaintAt INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN lastContactAt INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN blockedSerials TEXT DEFAULT '[]'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN lastActiveAt INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `UPDATE players SET lastActiveAt = ${Date.now()} WHERE lastActiveAt = 0 OR lastActiveAt IS NULL`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN blockedFingerprints TEXT DEFAULT '[]'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    
-    try {
-      // Migrate existing subscribed users to have notifications enabled
-      db.exec(`UPDATE players SET notificationsEnabled = 1 WHERE serial IN (SELECT serial FROM push_subscriptions WHERE serial IS NOT NULL)`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN hideMyInfo INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN hideFriendRequests INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN disableGuessChat INTEGER DEFAULT 0`
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN secretToken TEXT`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN lastSpinDate TEXT`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN dailySpinCount INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN freeSpinUsed INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN luckyWheelTokens INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN luckyWheelHelpers TEXT DEFAULT '{}'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN lastLuckyWheelResetDay TEXT`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN luckyWheelDaysUsed INTEGER DEFAULT 0`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN citySearchRewards TEXT DEFAULT '[]'`,
-      );
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN keys INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(`ALTER TABLE players ADD COLUMN likes INTEGER DEFAULT 0`);
-    } catch (e) {}
-    try {
-      db.exec(
-        `ALTER TABLE players ADD COLUMN lastRenameUnlockMonth TEXT DEFAULT NULL`,
-      );
-    } catch (e) {}
+    for (const [colName, alterSql] of playersColumnsToEnsure) {
+      safeAddColumn("players", colName, alterSql);
+    }
 
     db.exec(`
     CREATE TABLE IF NOT EXISTS player_likes_log (
@@ -3526,11 +3258,11 @@ async function startServer() {
     )
   `);
 
-    try {
-      db.exec(
-        "ALTER TABLE scheduled_push_notifications ADD COLUMN sendToBell INTEGER DEFAULT 0;",
-      );
-    } catch (e) {}
+    safeAddColumn(
+      "scheduled_push_notifications",
+      "sendToBell",
+      "ALTER TABLE scheduled_push_notifications ADD COLUMN sendToBell INTEGER DEFAULT 0;"
+    );
 
     db.exec(`
     CREATE TABLE IF NOT EXISTS collection_notifications (
@@ -3544,13 +3276,11 @@ async function startServer() {
       timestamp INTEGER
     )
   `);
-    try {
-      db.exec(
-        "ALTER TABLE scheduled_push_notifications ADD COLUMN groupId TEXT",
-      );
-    } catch (e) {
-      // Ignore if column already exists
-    }
+    safeAddColumn(
+      "scheduled_push_notifications",
+      "groupId",
+      "ALTER TABLE scheduled_push_notifications ADD COLUMN groupId TEXT"
+    );
 
     const insertPlayer = db.prepare(`
     INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, disableGuessChat, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints, spaceWarWins, spaceWarRewardLevel, spaceWarMatchPoints, puzzleWins, puzzleRewardLevel, puzzleMatchPoints, beachRaceWins, beachRaceRewardLevel, beachRaceMatchPoints)
