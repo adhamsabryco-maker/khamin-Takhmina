@@ -34,7 +34,7 @@ class Database {
       let res: any, err: any;
       const start = Date.now();
       this.db.sql(`PRAGMA ${str}`).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-      deasync.loopWhile(() => !done && (Date.now() - start < 5000));
+      deasync.loopWhile(() => !done && (Date.now() - start < 15000));
       return res;
     } catch (e) {
       return null;
@@ -46,7 +46,7 @@ class Database {
     let res: any, err: any;
     const start = Date.now();
     this.db.sql(query).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-    deasync.loopWhile(() => !done && (Date.now() - start < 10000));
+    deasync.loopWhile(() => !done && (Date.now() - start < 25000));
     if (!done) {
       console.warn(`[DB] exec timed out: ${query.slice(0, 60)}`);
       return null;
@@ -81,7 +81,7 @@ class Database {
         let res: any, err: any;
         const start = Date.now();
         _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done && (Date.now() - start < 10000));
+        deasync.loopWhile(() => !done && (Date.now() - start < 25000));
         if (!done) {
           console.warn(`[DB] prepare.run timed out: ${finalQuery.slice(0, 60)}`);
           return { changes: 0, lastInsertRowid: 0 };
@@ -107,7 +107,7 @@ class Database {
         let res: any, err: any;
         const start = Date.now();
         _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done && (Date.now() - start < 10000));
+        deasync.loopWhile(() => !done && (Date.now() - start < 25000));
         if (!done) {
           console.warn(`[DB] prepare.get timed out: ${finalQuery.slice(0, 60)}`);
           return undefined;
@@ -133,7 +133,7 @@ class Database {
         let res: any, err: any;
         const start = Date.now();
         _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done && (Date.now() - start < 10000));
+        deasync.loopWhile(() => !done && (Date.now() - start < 25000));
         if (!done) {
           console.warn(`[DB] prepare.all timed out: ${finalQuery.slice(0, 60)}`);
           return [];
@@ -1153,6 +1153,9 @@ async function startServer() {
     });
 
     const PORT = process.env.PORT || 3000;
+    httpServer.listen(PORT, "0.0.0.0", () => {
+      console.log(`[HTTP Server] Listening immediately on http://0.0.0.0:${PORT}`);
+    });
 
     // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
@@ -20915,10 +20918,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
         }
       });
     }
-
-    httpServer.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1); // Exit with a non-zero code to indicate failure
