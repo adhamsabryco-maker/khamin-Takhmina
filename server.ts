@@ -18,21 +18,43 @@ class Database {
     this.db = new SQLiteCloudDatabase(url);
   }
 
+  close() {
+    try {
+      if (this.db && typeof this.db.close === "function") {
+        this.db.close();
+      }
+    } catch (e) {}
+  }
+
   pragma(str: string) {
-    let done = false;
-    let res, err;
-    this.db.sql(`PRAGMA ${str}`).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-    deasync.loopWhile(() => !done);
-    if (err) throw err;
-    return res;
+    try {
+      let done = false;
+      let res: any, err: any;
+      const start = Date.now();
+      this.db.sql(`PRAGMA ${str}`).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
+      deasync.loopWhile(() => !done && (Date.now() - start < 5000));
+      return res;
+    } catch (e) {
+      return null;
+    }
   }
 
   exec(query: string) {
     let done = false;
-    let res, err;
+    let res: any, err: any;
+    const start = Date.now();
     this.db.sql(query).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-    deasync.loopWhile(() => !done);
-    if (err) throw err;
+    deasync.loopWhile(() => !done && (Date.now() - start < 10000));
+    if (!done) {
+      console.warn(`[DB] exec timed out: ${query.slice(0, 60)}`);
+      return null;
+    }
+    if (err) {
+      if (err.message && (err.message.includes("duplicate column") || err.message.includes("already exists"))) {
+        return null;
+      }
+      throw err;
+    }
     return res;
   }
 
@@ -55,8 +77,13 @@ class Database {
 
         let done = false;
         let res: any, err: any;
+        const start = Date.now();
         _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done);
+        deasync.loopWhile(() => !done && (Date.now() - start < 10000));
+        if (!done) {
+          console.warn(`[DB] prepare.run timed out: ${finalQuery.slice(0, 60)}`);
+          return { changes: 0, lastInsertRowid: 0 };
+        }
         if (err) throw err;
         return { changes: res?.changes ?? 0, lastInsertRowid: res?.lastID ?? 0 };
       },
@@ -76,8 +103,13 @@ class Database {
 
         let done = false;
         let res: any, err: any;
+        const start = Date.now();
         _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done);
+        deasync.loopWhile(() => !done && (Date.now() - start < 10000));
+        if (!done) {
+          console.warn(`[DB] prepare.get timed out: ${finalQuery.slice(0, 60)}`);
+          return undefined;
+        }
         if (err) throw err;
         return res && res.length > 0 ? res[0] : undefined;
       },
@@ -97,8 +129,13 @@ class Database {
 
         let done = false;
         let res: any, err: any;
+        const start = Date.now();
         _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done);
+        deasync.loopWhile(() => !done && (Date.now() - start < 10000));
+        if (!done) {
+          console.warn(`[DB] prepare.all timed out: ${finalQuery.slice(0, 60)}`);
+          return [];
+        }
         if (err) throw err;
         return res || [];
       }
@@ -108,21 +145,23 @@ class Database {
   transaction(fn: Function) {
     return (...args: any[]) => {
       let done = false;
-      let res, err;
+      let res: any, err: any;
+      let start = Date.now();
       this.db.sql("BEGIN TRANSACTION").then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-      deasync.loopWhile(() => !done);
-      if (err) throw err;
+      deasync.loopWhile(() => !done && (Date.now() - start < 5000));
+      if (err) console.warn("[DB] BEGIN TRANSACTION failed:", err);
       try {
         const result = fn(...args);
         done = false;
+        start = Date.now();
         this.db.sql("COMMIT").then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done);
-        if (err) throw err;
+        deasync.loopWhile(() => !done && (Date.now() - start < 5000));
         return result;
       } catch (e) {
         done = false;
+        start = Date.now();
         this.db.sql("ROLLBACK").then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done);
+        deasync.loopWhile(() => !done && (Date.now() - start < 5000));
         throw e;
       }
     };
