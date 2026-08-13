@@ -2804,134 +2804,103 @@ async function startServer() {
       serial TEXT PRIMARY KEY,
       name TEXT,
       avatar TEXT,
-      xp INTEGER,
-      wins INTEGER,
-      level INTEGER,
-      gender TEXT
+      xp INTEGER DEFAULT 0,
+      wins INTEGER DEFAULT 0,
+      level INTEGER DEFAULT 1,
+      gender TEXT DEFAULT 'boy',
+      fingerprint TEXT,
+      ip TEXT,
+      reports INTEGER DEFAULT 0,
+      banUntil INTEGER DEFAULT 0,
+      banCount INTEGER DEFAULT 0,
+      isPermanentBan INTEGER DEFAULT 0,
+      reportedBy TEXT DEFAULT '[]',
+      email TEXT,
+      isAdmin INTEGER DEFAULT 0,
+      tokens INTEGER DEFAULT 0,
+      busCompleteWins INTEGER DEFAULT 0,
+      busCompleteUsedLetters TEXT DEFAULT '[]',
+      busCompleteRewardLevel INTEGER DEFAULT 1,
+      busCompleteMatchPoints INTEGER DEFAULT 0,
+      busCompleteExpiring TEXT DEFAULT '[]',
+      xoWins INTEGER DEFAULT 0,
+      xoRewardLevel INTEGER DEFAULT 1,
+      xoMatchPoints INTEGER DEFAULT 0,
+      handWins INTEGER DEFAULT 0,
+      handRewardLevel INTEGER DEFAULT 1,
+      handMatchPoints INTEGER DEFAULT 0,
+      iqWins INTEGER DEFAULT 0,
+      iqRewardLevel INTEGER DEFAULT 1,
+      iqMatchPoints INTEGER DEFAULT 0,
+      dotsWins INTEGER DEFAULT 0,
+      dotsRewardLevel INTEGER DEFAULT 1,
+      dotsMatchPoints INTEGER DEFAULT 0,
+      speedCupsWins INTEGER DEFAULT 0,
+      speedCupsRewardLevel INTEGER DEFAULT 1,
+      speedCupsMatchPoints INTEGER DEFAULT 0,
+      bombPartyWins INTEGER DEFAULT 0,
+      wordleWins INTEGER DEFAULT 0,
+      wordleRewardLevel INTEGER DEFAULT 1,
+      wordleMatchPoints INTEGER DEFAULT 0,
+      connectFourWordsWins INTEGER DEFAULT 0,
+      connectFourWordsRewardLevel INTEGER DEFAULT 1,
+      connectFourWordsMatchPoints INTEGER DEFAULT 0,
+      spaceWarWins INTEGER DEFAULT 0,
+      spaceWarRewardLevel INTEGER DEFAULT 1,
+      spaceWarMatchPoints INTEGER DEFAULT 0,
+      puzzleWins INTEGER DEFAULT 0,
+      puzzleRewardLevel INTEGER DEFAULT 1,
+      puzzleMatchPoints INTEGER DEFAULT 0,
+      beachRaceWins INTEGER DEFAULT 0,
+      beachRaceRewardLevel INTEGER DEFAULT 1,
+      beachRaceMatchPoints INTEGER DEFAULT 0,
+      randomXp INTEGER DEFAULT 0,
+      adsWatchedToday INTEGER DEFAULT 0,
+      lastAdWatchDate TEXT,
+      keyAdsWatchedToday INTEGER DEFAULT 0,
+      lastKeyAdWatchDate TEXT,
+      ownedHelpers TEXT DEFAULT '{}',
+      lastRainGiftResetDay TEXT,
+      rainGiftTokens INTEGER DEFAULT 0,
+      rainGiftHelpers TEXT DEFAULT '{}',
+      dailyQuestStreak INTEGER DEFAULT 1,
+      lastDailyClaim INTEGER DEFAULT 0,
+      weeklyTokensClaimed INTEGER DEFAULT 0,
+      streak INTEGER DEFAULT 0,
+      rainGiftClaimedDay TEXT DEFAULT NULL,
+      lastWeeklyTokenReset INTEGER DEFAULT 0,
+      proPackageExpiry INTEGER DEFAULT 0,
+      unlockedHelpersExpiry INTEGER DEFAULT 0,
+      claimedRewards TEXT DEFAULT '[]',
+      reportedSerials TEXT DEFAULT '[]',
+      lastRenameAt INTEGER DEFAULT 0,
+      pendingAvatar TEXT,
+      avatarStatus TEXT DEFAULT 'approved',
+      lastComplaintAt INTEGER DEFAULT 0,
+      lastContactAt INTEGER DEFAULT 0,
+      blockedSerials TEXT DEFAULT '[]',
+      lastActiveAt INTEGER DEFAULT 0,
+      blockedFingerprints TEXT DEFAULT '[]',
+      recentOpponents TEXT DEFAULT '[]',
+      selectedFrame TEXT DEFAULT '',
+      notificationsEnabled INTEGER DEFAULT 0,
+      hideMyInfo INTEGER DEFAULT 0,
+      hideFriendRequests INTEGER DEFAULT 0,
+      disableGuessChat INTEGER DEFAULT 0,
+      secretToken TEXT,
+      lastSpinDate TEXT,
+      dailySpinCount INTEGER DEFAULT 0,
+      freeSpinUsed INTEGER DEFAULT 0,
+      luckyWheelTokens INTEGER DEFAULT 0,
+      luckyWheelHelpers TEXT DEFAULT '{}',
+      lastLuckyWheelResetDay TEXT,
+      luckyWheelDaysUsed INTEGER DEFAULT 0,
+      citySearchRewards TEXT DEFAULT '[]',
+      keys INTEGER DEFAULT 0,
+      likes INTEGER DEFAULT 0,
+      lastRenameUnlockMonth TEXT DEFAULT NULL
     )
   `);
-
-    const existingColsMap: Record<string, Set<string>> = {};
-
-    function safeAddColumn(tableName: string, colName: string, alterSql: string) {
-      if (!existingColsMap[tableName]) {
-        try {
-          const rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
-          if (Array.isArray(rows)) {
-            existingColsMap[tableName] = new Set(rows.map((r: any) => r.name));
-          } else {
-            existingColsMap[tableName] = new Set();
-          }
-        } catch (e) {
-          existingColsMap[tableName] = new Set();
-        }
-      }
-      if (!existingColsMap[tableName].has(colName)) {
-        try {
-          db.exec(alterSql);
-          existingColsMap[tableName].add(colName);
-        } catch (e) {}
-      }
-    }
-
-    const playersColumnsToEnsure: Array<[string, string]> = [
-      ["gender", "ALTER TABLE players ADD COLUMN gender TEXT DEFAULT 'boy'"],
-      ["fingerprint", "ALTER TABLE players ADD COLUMN fingerprint TEXT"],
-      ["ip", "ALTER TABLE players ADD COLUMN ip TEXT"],
-      ["reports", "ALTER TABLE players ADD COLUMN reports INTEGER DEFAULT 0"],
-      ["banUntil", "ALTER TABLE players ADD COLUMN banUntil INTEGER DEFAULT 0"],
-      ["banCount", "ALTER TABLE players ADD COLUMN banCount INTEGER DEFAULT 0"],
-      ["isPermanentBan", "ALTER TABLE players ADD COLUMN isPermanentBan INTEGER DEFAULT 0"],
-      ["reportedBy", "ALTER TABLE players ADD COLUMN reportedBy TEXT DEFAULT '[]'"],
-      ["email", "ALTER TABLE players ADD COLUMN email TEXT"],
-      ["isAdmin", "ALTER TABLE players ADD COLUMN isAdmin INTEGER DEFAULT 0"],
-      ["tokens", "ALTER TABLE players ADD COLUMN tokens INTEGER DEFAULT 0"],
-      ["busCompleteWins", "ALTER TABLE players ADD COLUMN busCompleteWins INTEGER DEFAULT 0"],
-      ["busCompleteUsedLetters", "ALTER TABLE players ADD COLUMN busCompleteUsedLetters TEXT DEFAULT '[]'"],
-      ["busCompleteRewardLevel", "ALTER TABLE players ADD COLUMN busCompleteRewardLevel INTEGER DEFAULT 1"],
-      ["busCompleteMatchPoints", "ALTER TABLE players ADD COLUMN busCompleteMatchPoints INTEGER DEFAULT 0"],
-      ["busCompleteExpiring", "ALTER TABLE players ADD COLUMN busCompleteExpiring TEXT DEFAULT '[]'"],
-      ["xoWins", "ALTER TABLE players ADD COLUMN xoWins INTEGER DEFAULT 0"],
-      ["xoRewardLevel", "ALTER TABLE players ADD COLUMN xoRewardLevel INTEGER DEFAULT 1"],
-      ["xoMatchPoints", "ALTER TABLE players ADD COLUMN xoMatchPoints INTEGER DEFAULT 0"],
-      ["handWins", "ALTER TABLE players ADD COLUMN handWins INTEGER DEFAULT 0"],
-      ["handRewardLevel", "ALTER TABLE players ADD COLUMN handRewardLevel INTEGER DEFAULT 1"],
-      ["handMatchPoints", "ALTER TABLE players ADD COLUMN handMatchPoints INTEGER DEFAULT 0"],
-      ["iqWins", "ALTER TABLE players ADD COLUMN iqWins INTEGER DEFAULT 0"],
-      ["iqRewardLevel", "ALTER TABLE players ADD COLUMN iqRewardLevel INTEGER DEFAULT 1"],
-      ["iqMatchPoints", "ALTER TABLE players ADD COLUMN iqMatchPoints INTEGER DEFAULT 0"],
-      ["dotsWins", "ALTER TABLE players ADD COLUMN dotsWins INTEGER DEFAULT 0"],
-      ["dotsRewardLevel", "ALTER TABLE players ADD COLUMN dotsRewardLevel INTEGER DEFAULT 1"],
-      ["dotsMatchPoints", "ALTER TABLE players ADD COLUMN dotsMatchPoints INTEGER DEFAULT 0"],
-      ["speedCupsWins", "ALTER TABLE players ADD COLUMN speedCupsWins INTEGER DEFAULT 0"],
-      ["speedCupsRewardLevel", "ALTER TABLE players ADD COLUMN speedCupsRewardLevel INTEGER DEFAULT 1"],
-      ["speedCupsMatchPoints", "ALTER TABLE players ADD COLUMN speedCupsMatchPoints INTEGER DEFAULT 0"],
-      ["bombPartyWins", "ALTER TABLE players ADD COLUMN bombPartyWins INTEGER DEFAULT 0"],
-      ["wordleWins", "ALTER TABLE players ADD COLUMN wordleWins INTEGER DEFAULT 0"],
-      ["wordleRewardLevel", "ALTER TABLE players ADD COLUMN wordleRewardLevel INTEGER DEFAULT 1"],
-      ["wordleMatchPoints", "ALTER TABLE players ADD COLUMN wordleMatchPoints INTEGER DEFAULT 0"],
-      ["connectFourWordsWins", "ALTER TABLE players ADD COLUMN connectFourWordsWins INTEGER DEFAULT 0"],
-      ["connectFourWordsRewardLevel", "ALTER TABLE players ADD COLUMN connectFourWordsRewardLevel INTEGER DEFAULT 1"],
-      ["connectFourWordsMatchPoints", "ALTER TABLE players ADD COLUMN connectFourWordsMatchPoints INTEGER DEFAULT 0"],
-      ["spaceWarWins", "ALTER TABLE players ADD COLUMN spaceWarWins INTEGER DEFAULT 0"],
-      ["spaceWarRewardLevel", "ALTER TABLE players ADD COLUMN spaceWarRewardLevel INTEGER DEFAULT 1"],
-      ["spaceWarMatchPoints", "ALTER TABLE players ADD COLUMN spaceWarMatchPoints INTEGER DEFAULT 0"],
-      ["puzzleWins", "ALTER TABLE players ADD COLUMN puzzleWins INTEGER DEFAULT 0"],
-      ["puzzleRewardLevel", "ALTER TABLE players ADD COLUMN puzzleRewardLevel INTEGER DEFAULT 1"],
-      ["puzzleMatchPoints", "ALTER TABLE players ADD COLUMN puzzleMatchPoints INTEGER DEFAULT 0"],
-      ["beachRaceWins", "ALTER TABLE players ADD COLUMN beachRaceWins INTEGER DEFAULT 0"],
-      ["beachRaceRewardLevel", "ALTER TABLE players ADD COLUMN beachRaceRewardLevel INTEGER DEFAULT 1"],
-      ["beachRaceMatchPoints", "ALTER TABLE players ADD COLUMN beachRaceMatchPoints INTEGER DEFAULT 0"],
-      ["randomXp", "ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0"],
-      ["adsWatchedToday", "ALTER TABLE players ADD COLUMN adsWatchedToday INTEGER DEFAULT 0"],
-      ["lastAdWatchDate", "ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT"],
-      ["keyAdsWatchedToday", "ALTER TABLE players ADD COLUMN keyAdsWatchedToday INTEGER DEFAULT 0"],
-      ["lastKeyAdWatchDate", "ALTER TABLE players ADD COLUMN lastKeyAdWatchDate TEXT"],
-      ["ownedHelpers", "ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'"],
-      ["lastRainGiftResetDay", "ALTER TABLE players ADD COLUMN lastRainGiftResetDay TEXT"],
-      ["rainGiftTokens", "ALTER TABLE players ADD COLUMN rainGiftTokens INTEGER DEFAULT 0"],
-      ["rainGiftHelpers", "ALTER TABLE players ADD COLUMN rainGiftHelpers TEXT DEFAULT '{}'"],
-      ["dailyQuestStreak", "ALTER TABLE players ADD COLUMN dailyQuestStreak INTEGER DEFAULT 1"],
-      ["lastDailyClaim", "ALTER TABLE players ADD COLUMN lastDailyClaim INTEGER DEFAULT 0"],
-      ["weeklyTokensClaimed", "ALTER TABLE players ADD COLUMN weeklyTokensClaimed INTEGER DEFAULT 0"],
-      ["streak", "ALTER TABLE players ADD COLUMN streak INTEGER DEFAULT 0"],
-      ["rainGiftClaimedDay", "ALTER TABLE players ADD COLUMN rainGiftClaimedDay TEXT DEFAULT NULL"],
-      ["lastWeeklyTokenReset", "ALTER TABLE players ADD COLUMN lastWeeklyTokenReset INTEGER DEFAULT 0"],
-      ["proPackageExpiry", "ALTER TABLE players ADD COLUMN proPackageExpiry INTEGER DEFAULT 0"],
-      ["unlockedHelpersExpiry", "ALTER TABLE players ADD COLUMN unlockedHelpersExpiry INTEGER DEFAULT 0"],
-      ["claimedRewards", "ALTER TABLE players ADD COLUMN claimedRewards TEXT DEFAULT '[]'"],
-      ["reportedSerials", "ALTER TABLE players ADD COLUMN reportedSerials TEXT DEFAULT '[]'"],
-      ["lastRenameAt", "ALTER TABLE players ADD COLUMN lastRenameAt INTEGER DEFAULT 0"],
-      ["pendingAvatar", "ALTER TABLE players ADD COLUMN pendingAvatar TEXT"],
-      ["avatarStatus", "ALTER TABLE players ADD COLUMN avatarStatus TEXT DEFAULT 'approved'"],
-      ["lastComplaintAt", "ALTER TABLE players ADD COLUMN lastComplaintAt INTEGER DEFAULT 0"],
-      ["lastContactAt", "ALTER TABLE players ADD COLUMN lastContactAt INTEGER DEFAULT 0"],
-      ["blockedSerials", "ALTER TABLE players ADD COLUMN blockedSerials TEXT DEFAULT '[]'"],
-      ["lastActiveAt", "ALTER TABLE players ADD COLUMN lastActiveAt INTEGER DEFAULT 0"],
-      ["blockedFingerprints", "ALTER TABLE players ADD COLUMN blockedFingerprints TEXT DEFAULT '[]'"],
-      ["recentOpponents", "ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'"],
-      ["selectedFrame", "ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''"],
-      ["notificationsEnabled", "ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 0"],
-      ["hideMyInfo", "ALTER TABLE players ADD COLUMN hideMyInfo INTEGER DEFAULT 0"],
-      ["hideFriendRequests", "ALTER TABLE players ADD COLUMN hideFriendRequests INTEGER DEFAULT 0"],
-      ["disableGuessChat", "ALTER TABLE players ADD COLUMN disableGuessChat INTEGER DEFAULT 0"],
-      ["secretToken", "ALTER TABLE players ADD COLUMN secretToken TEXT"],
-      ["lastSpinDate", "ALTER TABLE players ADD COLUMN lastSpinDate TEXT"],
-      ["dailySpinCount", "ALTER TABLE players ADD COLUMN dailySpinCount INTEGER DEFAULT 0"],
-      ["freeSpinUsed", "ALTER TABLE players ADD COLUMN freeSpinUsed INTEGER DEFAULT 0"],
-      ["luckyWheelTokens", "ALTER TABLE players ADD COLUMN luckyWheelTokens INTEGER DEFAULT 0"],
-      ["luckyWheelHelpers", "ALTER TABLE players ADD COLUMN luckyWheelHelpers TEXT DEFAULT '{}'"],
-      ["lastLuckyWheelResetDay", "ALTER TABLE players ADD COLUMN lastLuckyWheelResetDay TEXT"],
-      ["luckyWheelDaysUsed", "ALTER TABLE players ADD COLUMN luckyWheelDaysUsed INTEGER DEFAULT 0"],
-      ["citySearchRewards", "ALTER TABLE players ADD COLUMN citySearchRewards TEXT DEFAULT '[]'"],
-      ["keys", "ALTER TABLE players ADD COLUMN keys INTEGER DEFAULT 0"],
-      ["likes", "ALTER TABLE players ADD COLUMN likes INTEGER DEFAULT 0"],
-      ["lastRenameUnlockMonth", "ALTER TABLE players ADD COLUMN lastRenameUnlockMonth TEXT DEFAULT NULL"]
-    ];
-
-    for (const [colName, alterSql] of playersColumnsToEnsure) {
-      safeAddColumn("players", colName, alterSql);
-    }
 
     db.exec(`
     CREATE TABLE IF NOT EXISTS player_likes_log (
@@ -3258,12 +3227,6 @@ async function startServer() {
     )
   `);
 
-    safeAddColumn(
-      "scheduled_push_notifications",
-      "sendToBell",
-      "ALTER TABLE scheduled_push_notifications ADD COLUMN sendToBell INTEGER DEFAULT 0;"
-    );
-
     db.exec(`
     CREATE TABLE IF NOT EXISTS collection_notifications (
       id TEXT PRIMARY KEY,
@@ -3276,11 +3239,6 @@ async function startServer() {
       timestamp INTEGER
     )
   `);
-    safeAddColumn(
-      "scheduled_push_notifications",
-      "groupId",
-      "ALTER TABLE scheduled_push_notifications ADD COLUMN groupId TEXT"
-    );
 
     const insertPlayer = db.prepare(`
     INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, disableGuessChat, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints, spaceWarWins, spaceWarRewardLevel, spaceWarMatchPoints, puzzleWins, puzzleRewardLevel, puzzleMatchPoints, beachRaceWins, beachRaceRewardLevel, beachRaceMatchPoints)
