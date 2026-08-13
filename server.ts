@@ -1111,7 +1111,7 @@ async function startServer() {
       },
     });
 
-    const PORT = 3000;
+    const PORT = process.env.PORT || 3000;
 
     // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
