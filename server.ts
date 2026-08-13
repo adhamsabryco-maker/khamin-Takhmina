@@ -1153,9 +1153,6 @@ async function startServer() {
     });
 
     const PORT = process.env.PORT || 3000;
-    httpServer.listen(PORT, "0.0.0.0", () => {
-      console.log(`[HTTP Server] Listening immediately on http://0.0.0.0:${PORT}`);
-    });
 
     // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
@@ -2801,10 +2798,8 @@ async function startServer() {
         fingerprint TEXT,
         ip TEXT,
         timestamp INTEGER
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS players (
         serial TEXT PRIMARY KEY,
         name TEXT,
@@ -2904,19 +2899,15 @@ async function startServer() {
         keys INTEGER DEFAULT 0,
         likes INTEGER DEFAULT 0,
         lastRenameUnlockMonth TEXT DEFAULT NULL
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS player_likes_log (
         id TEXT PRIMARY KEY,
         giver_serial TEXT,
         receiver_serial TEXT,
         timestamp INTEGER
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS shop_items (
         id TEXT PRIMARY KEY,
         name TEXT,
@@ -2927,26 +2918,20 @@ async function startServer() {
         amount INTEGER,
         active INTEGER DEFAULT 1,
         timestamp INTEGER
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS push_subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         serial TEXT,
         subscription TEXT,
         timestamp INTEGER
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS friends (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         player1 TEXT NOT NULL,
@@ -2955,10 +2940,8 @@ async function startServer() {
         sender TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(player1, player2)
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS reward_history (
         id TEXT PRIMARY KEY,
         type TEXT,
@@ -2968,10 +2951,8 @@ async function startServer() {
         message TEXT,
         sentAt INTEGER,
         expiresAt INTEGER
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS custom_images (
         id TEXT PRIMARY KEY,
         category TEXT,
@@ -2980,28 +2961,22 @@ async function startServer() {
         addedBy TEXT,
         timestamp INTEGER,
         level TEXT
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS used_prizes (
         serial TEXT,
         prize_id TEXT,
         date TEXT,
         PRIMARY KEY (serial, prize_id, date)
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS categories (
         id TEXT PRIMARY KEY,
         name TEXT,
         icon TEXT,
         timestamp INTEGER
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS reports (
         id TEXT PRIMARY KEY,
         timestamp INTEGER,
@@ -3011,10 +2986,8 @@ async function startServer() {
         reportedName TEXT,
         reason TEXT,
         roomId TEXT
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS like_notifications (
         id TEXT PRIMARY KEY,
         receiverSerial TEXT NOT NULL,
@@ -3024,10 +2997,8 @@ async function startServer() {
         senderLevel INTEGER,
         timestamp INTEGER,
         read INTEGER DEFAULT 0
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS friend_accepted_notifications (
         id TEXT PRIMARY KEY,
         receiverSerial TEXT NOT NULL,
@@ -3037,20 +3008,16 @@ async function startServer() {
         senderLevel INTEGER,
         timestamp INTEGER,
         read INTEGER DEFAULT 0
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS admin_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         playerSerial TEXT NOT NULL,
         message TEXT NOT NULL,
         read INTEGER DEFAULT 0,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS gift_notifications (
         id TEXT PRIMARY KEY,
         senderSerial TEXT NOT NULL,
@@ -3060,10 +3027,8 @@ async function startServer() {
         gifts TEXT NOT NULL,
         timestamp INTEGER,
         read INTEGER DEFAULT 0
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS contacts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         playerSerial TEXT,
@@ -3071,28 +3036,22 @@ async function startServer() {
         subject TEXT,
         message TEXT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS player_collections (
         player_serial TEXT,
         image_name TEXT,
         count INTEGER DEFAULT 0,
         PRIMARY KEY (player_serial, image_name)
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS claimed_collection_rewards (
         player_serial TEXT,
         category_id TEXT,
         stage INTEGER,
         PRIMARY KEY (player_serial, category_id, stage)
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS scheduled_push_notifications (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
@@ -3103,10 +3062,8 @@ async function startServer() {
         status TEXT DEFAULT 'pending',
         groupId TEXT,
         sendToBell INTEGER DEFAULT 0
-      )
-    `);
+      );
 
-      db.exec(`
       CREATE TABLE IF NOT EXISTS collection_notifications (
         id TEXT PRIMARY KEY,
         sender_serial TEXT,
@@ -3116,7 +3073,7 @@ async function startServer() {
         type TEXT, 
         status TEXT, 
         timestamp INTEGER
-      )
+      );
     `);
     } catch (e) {
       console.warn("[DB Init] Table schema check warning (ignoring):", e);
@@ -20867,8 +20824,11 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
       }
     }
 
-    // Vite middleware for development
-    if (process.env.NODE_ENV !== "production") {
+    // Static files and SPA fallback
+    const distPath = path.join(process.cwd(), "dist");
+    const hasDist = fs.existsSync(path.join(distPath, "index.html"));
+
+    if (!hasDist && process.env.NODE_ENV !== "production") {
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",
@@ -20876,7 +20836,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
       app.use(vite.middlewares);
     } else {
       app.use(
-        express.static(path.join(process.cwd(), "dist"), {
+        express.static(distPath, {
           maxAge: "1y", // Aggressively cache dist assets (which have hashes)
           setHeaders: (res, path) => {
             if (
@@ -20904,13 +20864,14 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
       );
       app.get("*", (req, res) => {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-        const indexPath = path.join(process.cwd(), "dist", "index.html");
+        const indexPath = path.join(distPath, "index.html");
         if (fs.existsSync(indexPath)) {
           let content = fs.readFileSync(indexPath, "utf-8");
           const version = configCache.version || "1.1.1";
           const versionDash = version.replace(/\./g, "-");
           content = content.replace(/\{\{VERSION\}\}/g, version);
           content = content.replace(/\{\{VERSION_DASH\}\}/g, versionDash);
+          res.setHeader("Content-Type", "text/html");
           res.send(content);
         } else {
           // Fallback for development if dist doesn't exist yet
@@ -20918,6 +20879,10 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
         }
       });
     }
+
+    httpServer.listen(PORT, "0.0.0.0", () => {
+      console.log(`[HTTP Server] Listening on http://0.0.0.0:${PORT}`);
+    });
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1); // Exit with a non-zero code to indicate failure
