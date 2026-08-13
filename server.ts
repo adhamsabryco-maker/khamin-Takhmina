@@ -2790,189 +2790,359 @@ async function startServer() {
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
 
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS banned_identities (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      fingerprint TEXT,
-      ip TEXT,
-      timestamp INTEGER
-    )
-  `);
+    // Schema Initialization
+    try {
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS banned_identities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fingerprint TEXT,
+        ip TEXT,
+        timestamp INTEGER
+      )
+    `);
 
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS players (
-      serial TEXT PRIMARY KEY,
-      name TEXT,
-      avatar TEXT,
-      xp INTEGER DEFAULT 0,
-      wins INTEGER DEFAULT 0,
-      level INTEGER DEFAULT 1,
-      gender TEXT DEFAULT 'boy',
-      fingerprint TEXT,
-      ip TEXT,
-      reports INTEGER DEFAULT 0,
-      banUntil INTEGER DEFAULT 0,
-      banCount INTEGER DEFAULT 0,
-      isPermanentBan INTEGER DEFAULT 0,
-      reportedBy TEXT DEFAULT '[]',
-      email TEXT,
-      isAdmin INTEGER DEFAULT 0,
-      tokens INTEGER DEFAULT 0,
-      busCompleteWins INTEGER DEFAULT 0,
-      busCompleteUsedLetters TEXT DEFAULT '[]',
-      busCompleteRewardLevel INTEGER DEFAULT 1,
-      busCompleteMatchPoints INTEGER DEFAULT 0,
-      busCompleteExpiring TEXT DEFAULT '[]',
-      xoWins INTEGER DEFAULT 0,
-      xoRewardLevel INTEGER DEFAULT 1,
-      xoMatchPoints INTEGER DEFAULT 0,
-      handWins INTEGER DEFAULT 0,
-      handRewardLevel INTEGER DEFAULT 1,
-      handMatchPoints INTEGER DEFAULT 0,
-      iqWins INTEGER DEFAULT 0,
-      iqRewardLevel INTEGER DEFAULT 1,
-      iqMatchPoints INTEGER DEFAULT 0,
-      dotsWins INTEGER DEFAULT 0,
-      dotsRewardLevel INTEGER DEFAULT 1,
-      dotsMatchPoints INTEGER DEFAULT 0,
-      speedCupsWins INTEGER DEFAULT 0,
-      speedCupsRewardLevel INTEGER DEFAULT 1,
-      speedCupsMatchPoints INTEGER DEFAULT 0,
-      bombPartyWins INTEGER DEFAULT 0,
-      wordleWins INTEGER DEFAULT 0,
-      wordleRewardLevel INTEGER DEFAULT 1,
-      wordleMatchPoints INTEGER DEFAULT 0,
-      connectFourWordsWins INTEGER DEFAULT 0,
-      connectFourWordsRewardLevel INTEGER DEFAULT 1,
-      connectFourWordsMatchPoints INTEGER DEFAULT 0,
-      spaceWarWins INTEGER DEFAULT 0,
-      spaceWarRewardLevel INTEGER DEFAULT 1,
-      spaceWarMatchPoints INTEGER DEFAULT 0,
-      puzzleWins INTEGER DEFAULT 0,
-      puzzleRewardLevel INTEGER DEFAULT 1,
-      puzzleMatchPoints INTEGER DEFAULT 0,
-      beachRaceWins INTEGER DEFAULT 0,
-      beachRaceRewardLevel INTEGER DEFAULT 1,
-      beachRaceMatchPoints INTEGER DEFAULT 0,
-      randomXp INTEGER DEFAULT 0,
-      adsWatchedToday INTEGER DEFAULT 0,
-      lastAdWatchDate TEXT,
-      keyAdsWatchedToday INTEGER DEFAULT 0,
-      lastKeyAdWatchDate TEXT,
-      ownedHelpers TEXT DEFAULT '{}',
-      lastRainGiftResetDay TEXT,
-      rainGiftTokens INTEGER DEFAULT 0,
-      rainGiftHelpers TEXT DEFAULT '{}',
-      dailyQuestStreak INTEGER DEFAULT 1,
-      lastDailyClaim INTEGER DEFAULT 0,
-      weeklyTokensClaimed INTEGER DEFAULT 0,
-      streak INTEGER DEFAULT 0,
-      rainGiftClaimedDay TEXT DEFAULT NULL,
-      lastWeeklyTokenReset INTEGER DEFAULT 0,
-      proPackageExpiry INTEGER DEFAULT 0,
-      unlockedHelpersExpiry INTEGER DEFAULT 0,
-      claimedRewards TEXT DEFAULT '[]',
-      reportedSerials TEXT DEFAULT '[]',
-      lastRenameAt INTEGER DEFAULT 0,
-      pendingAvatar TEXT,
-      avatarStatus TEXT DEFAULT 'approved',
-      lastComplaintAt INTEGER DEFAULT 0,
-      lastContactAt INTEGER DEFAULT 0,
-      blockedSerials TEXT DEFAULT '[]',
-      lastActiveAt INTEGER DEFAULT 0,
-      blockedFingerprints TEXT DEFAULT '[]',
-      recentOpponents TEXT DEFAULT '[]',
-      selectedFrame TEXT DEFAULT '',
-      notificationsEnabled INTEGER DEFAULT 0,
-      hideMyInfo INTEGER DEFAULT 0,
-      hideFriendRequests INTEGER DEFAULT 0,
-      disableGuessChat INTEGER DEFAULT 0,
-      secretToken TEXT,
-      lastSpinDate TEXT,
-      dailySpinCount INTEGER DEFAULT 0,
-      freeSpinUsed INTEGER DEFAULT 0,
-      luckyWheelTokens INTEGER DEFAULT 0,
-      luckyWheelHelpers TEXT DEFAULT '{}',
-      lastLuckyWheelResetDay TEXT,
-      luckyWheelDaysUsed INTEGER DEFAULT 0,
-      citySearchRewards TEXT DEFAULT '[]',
-      keys INTEGER DEFAULT 0,
-      likes INTEGER DEFAULT 0,
-      lastRenameUnlockMonth TEXT DEFAULT NULL
-    )
-  `);
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS players (
+        serial TEXT PRIMARY KEY,
+        name TEXT,
+        avatar TEXT,
+        xp INTEGER DEFAULT 0,
+        wins INTEGER DEFAULT 0,
+        level INTEGER DEFAULT 1,
+        gender TEXT DEFAULT 'boy',
+        fingerprint TEXT,
+        ip TEXT,
+        reports INTEGER DEFAULT 0,
+        banUntil INTEGER DEFAULT 0,
+        banCount INTEGER DEFAULT 0,
+        isPermanentBan INTEGER DEFAULT 0,
+        reportedBy TEXT DEFAULT '[]',
+        email TEXT,
+        isAdmin INTEGER DEFAULT 0,
+        tokens INTEGER DEFAULT 0,
+        busCompleteWins INTEGER DEFAULT 0,
+        busCompleteUsedLetters TEXT DEFAULT '[]',
+        busCompleteRewardLevel INTEGER DEFAULT 1,
+        busCompleteMatchPoints INTEGER DEFAULT 0,
+        busCompleteExpiring TEXT DEFAULT '[]',
+        xoWins INTEGER DEFAULT 0,
+        xoRewardLevel INTEGER DEFAULT 1,
+        xoMatchPoints INTEGER DEFAULT 0,
+        handWins INTEGER DEFAULT 0,
+        handRewardLevel INTEGER DEFAULT 1,
+        handMatchPoints INTEGER DEFAULT 0,
+        iqWins INTEGER DEFAULT 0,
+        iqRewardLevel INTEGER DEFAULT 1,
+        iqMatchPoints INTEGER DEFAULT 0,
+        dotsWins INTEGER DEFAULT 0,
+        dotsRewardLevel INTEGER DEFAULT 1,
+        dotsMatchPoints INTEGER DEFAULT 0,
+        speedCupsWins INTEGER DEFAULT 0,
+        speedCupsRewardLevel INTEGER DEFAULT 1,
+        speedCupsMatchPoints INTEGER DEFAULT 0,
+        bombPartyWins INTEGER DEFAULT 0,
+        wordleWins INTEGER DEFAULT 0,
+        wordleRewardLevel INTEGER DEFAULT 1,
+        wordleMatchPoints INTEGER DEFAULT 0,
+        connectFourWordsWins INTEGER DEFAULT 0,
+        connectFourWordsRewardLevel INTEGER DEFAULT 1,
+        connectFourWordsMatchPoints INTEGER DEFAULT 0,
+        spaceWarWins INTEGER DEFAULT 0,
+        spaceWarRewardLevel INTEGER DEFAULT 1,
+        spaceWarMatchPoints INTEGER DEFAULT 0,
+        puzzleWins INTEGER DEFAULT 0,
+        puzzleRewardLevel INTEGER DEFAULT 1,
+        puzzleMatchPoints INTEGER DEFAULT 0,
+        beachRaceWins INTEGER DEFAULT 0,
+        beachRaceRewardLevel INTEGER DEFAULT 1,
+        beachRaceMatchPoints INTEGER DEFAULT 0,
+        randomXp INTEGER DEFAULT 0,
+        adsWatchedToday INTEGER DEFAULT 0,
+        lastAdWatchDate TEXT,
+        keyAdsWatchedToday INTEGER DEFAULT 0,
+        lastKeyAdWatchDate TEXT,
+        ownedHelpers TEXT DEFAULT '{}',
+        lastRainGiftResetDay TEXT,
+        rainGiftTokens INTEGER DEFAULT 0,
+        rainGiftHelpers TEXT DEFAULT '{}',
+        dailyQuestStreak INTEGER DEFAULT 1,
+        lastDailyClaim INTEGER DEFAULT 0,
+        weeklyTokensClaimed INTEGER DEFAULT 0,
+        streak INTEGER DEFAULT 0,
+        rainGiftClaimedDay TEXT DEFAULT NULL,
+        lastWeeklyTokenReset INTEGER DEFAULT 0,
+        proPackageExpiry INTEGER DEFAULT 0,
+        unlockedHelpersExpiry INTEGER DEFAULT 0,
+        claimedRewards TEXT DEFAULT '[]',
+        reportedSerials TEXT DEFAULT '[]',
+        lastRenameAt INTEGER DEFAULT 0,
+        pendingAvatar TEXT,
+        avatarStatus TEXT DEFAULT 'approved',
+        lastComplaintAt INTEGER DEFAULT 0,
+        lastContactAt INTEGER DEFAULT 0,
+        blockedSerials TEXT DEFAULT '[]',
+        lastActiveAt INTEGER DEFAULT 0,
+        blockedFingerprints TEXT DEFAULT '[]',
+        recentOpponents TEXT DEFAULT '[]',
+        selectedFrame TEXT DEFAULT '',
+        notificationsEnabled INTEGER DEFAULT 0,
+        hideMyInfo INTEGER DEFAULT 0,
+        hideFriendRequests INTEGER DEFAULT 0,
+        disableGuessChat INTEGER DEFAULT 0,
+        secretToken TEXT,
+        lastSpinDate TEXT,
+        dailySpinCount INTEGER DEFAULT 0,
+        freeSpinUsed INTEGER DEFAULT 0,
+        luckyWheelTokens INTEGER DEFAULT 0,
+        luckyWheelHelpers TEXT DEFAULT '{}',
+        lastLuckyWheelResetDay TEXT,
+        luckyWheelDaysUsed INTEGER DEFAULT 0,
+        citySearchRewards TEXT DEFAULT '[]',
+        keys INTEGER DEFAULT 0,
+        likes INTEGER DEFAULT 0,
+        lastRenameUnlockMonth TEXT DEFAULT NULL
+      )
+    `);
 
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS player_likes_log (
-      id TEXT PRIMARY KEY,
-      giver_serial TEXT,
-      receiver_serial TEXT,
-      timestamp INTEGER
-    )
-  `);
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS player_likes_log (
+        id TEXT PRIMARY KEY,
+        giver_serial TEXT,
+        receiver_serial TEXT,
+        timestamp INTEGER
+      )
+    `);
 
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS shop_items (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      description TEXT,
-      price REAL,
-      type TEXT,
-      image TEXT,
-      amount INTEGER,
-      active INTEGER DEFAULT 1,
-      timestamp INTEGER
-    )
-  `);
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS shop_items (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        description TEXT,
+        price REAL,
+        type TEXT,
+        image TEXT,
+        amount INTEGER,
+        active INTEGER DEFAULT 1,
+        timestamp INTEGER
+      )
+    `);
 
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT
-    )
-  `);
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )
+    `);
 
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS push_subscriptions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      serial TEXT,
-      subscription TEXT,
-      timestamp INTEGER
-    )
-  `);
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        serial TEXT,
+        subscription TEXT,
+        timestamp INTEGER
+      )
+    `);
 
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS friends (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      player1 TEXT NOT NULL,
-      player2 TEXT NOT NULL,
-      status TEXT NOT NULL,
-      sender TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(player1, player2)
-    )
-  `);
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS friends (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player1 TEXT NOT NULL,
+        player2 TEXT NOT NULL,
+        status TEXT NOT NULL,
+        sender TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(player1, player2)
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS reward_history (
+        id TEXT PRIMARY KEY,
+        type TEXT,
+        durationHours INTEGER,
+        tokenAmount INTEGER,
+        expiresInDays INTEGER,
+        message TEXT,
+        sentAt INTEGER,
+        expiresAt INTEGER
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS custom_images (
+        id TEXT PRIMARY KEY,
+        category TEXT,
+        name TEXT,
+        data TEXT,
+        addedBy TEXT,
+        timestamp INTEGER,
+        level TEXT
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS used_prizes (
+        serial TEXT,
+        prize_id TEXT,
+        date TEXT,
+        PRIMARY KEY (serial, prize_id, date)
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        icon TEXT,
+        timestamp INTEGER
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS reports (
+        id TEXT PRIMARY KEY,
+        timestamp INTEGER,
+        reporterSerial TEXT,
+        reporterName TEXT,
+        reportedSerial TEXT,
+        reportedName TEXT,
+        reason TEXT,
+        roomId TEXT
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS like_notifications (
+        id TEXT PRIMARY KEY,
+        receiverSerial TEXT NOT NULL,
+        senderSerial TEXT NOT NULL,
+        senderName TEXT,
+        senderAvatar TEXT,
+        senderLevel INTEGER,
+        timestamp INTEGER,
+        read INTEGER DEFAULT 0
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS friend_accepted_notifications (
+        id TEXT PRIMARY KEY,
+        receiverSerial TEXT NOT NULL,
+        senderSerial TEXT NOT NULL,
+        senderName TEXT,
+        senderAvatar TEXT,
+        senderLevel INTEGER,
+        timestamp INTEGER,
+        read INTEGER DEFAULT 0
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS admin_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        playerSerial TEXT NOT NULL,
+        message TEXT NOT NULL,
+        read INTEGER DEFAULT 0,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS gift_notifications (
+        id TEXT PRIMARY KEY,
+        senderSerial TEXT NOT NULL,
+        receiverSerial TEXT NOT NULL,
+        senderName TEXT,
+        senderAvatar TEXT,
+        gifts TEXT NOT NULL,
+        timestamp INTEGER,
+        read INTEGER DEFAULT 0
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS contacts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        playerSerial TEXT,
+        name TEXT,
+        subject TEXT,
+        message TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS player_collections (
+        player_serial TEXT,
+        image_name TEXT,
+        count INTEGER DEFAULT 0,
+        PRIMARY KEY (player_serial, image_name)
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS claimed_collection_rewards (
+        player_serial TEXT,
+        category_id TEXT,
+        stage INTEGER,
+        PRIMARY KEY (player_serial, category_id, stage)
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS scheduled_push_notifications (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        url TEXT,
+        scheduledAt INTEGER NOT NULL,
+        createdAt INTEGER NOT NULL,
+        status TEXT DEFAULT 'pending',
+        groupId TEXT,
+        sendToBell INTEGER DEFAULT 0
+      )
+    `);
+
+      db.exec(`
+      CREATE TABLE IF NOT EXISTS collection_notifications (
+        id TEXT PRIMARY KEY,
+        sender_serial TEXT,
+        receiver_serial TEXT,
+        image_name TEXT,
+        category_id TEXT,
+        type TEXT, 
+        status TEXT, 
+        timestamp INTEGER
+      )
+    `);
+    } catch (e) {
+      console.warn("[DB Init] Table schema check warning (ignoring):", e);
+    }
 
     // Setup VAPID keys for Push Notifications
     let vapidKeys = { publicKey: "", privateKey: "" };
-    const existingVapid = db
-      .prepare("SELECT value FROM settings WHERE key = ?")
-      .get("vapid_keys") as any;
-    if (existingVapid) {
-      vapidKeys = JSON.parse(existingVapid.value);
-    } else {
-      vapidKeys = webpush.generateVAPIDKeys();
-      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
-        "vapid_keys",
-        JSON.stringify(vapidKeys),
-      );
-    }
+    try {
+      const existingVapid = db
+        .prepare("SELECT value FROM settings WHERE key = ?")
+        .get("vapid_keys") as any;
+      if (existingVapid) {
+        vapidKeys = JSON.parse(existingVapid.value);
+      } else {
+        vapidKeys = webpush.generateVAPIDKeys();
+        db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+          "vapid_keys",
+          JSON.stringify(vapidKeys),
+        );
+      }
 
-    webpush.setVapidDetails(
-      "mailto:adhamsabry.co@gmail.com",
-      vapidKeys.publicKey,
-      vapidKeys.privateKey,
-    );
+      webpush.setVapidDetails(
+        "mailto:adhamsabry.co@gmail.com",
+        vapidKeys.publicKey,
+        vapidKeys.privateKey,
+      );
+    } catch (e) {
+      console.warn("[VAPID] Vapid setup warning:", e);
+    }
 
     // Load config from SQLite if exists
     try {
@@ -2993,133 +3163,89 @@ async function startServer() {
       console.error("[Config] Failed to load from SQLite:", e);
     }
 
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS reward_history (
-      id TEXT PRIMARY KEY,
-      type TEXT,
-      durationHours INTEGER,
-      tokenAmount INTEGER,
-      expiresInDays INTEGER,
-      message TEXT,
-      sentAt INTEGER,
-      expiresAt INTEGER
-    )
-  `);
-
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS custom_images (
-      id TEXT PRIMARY KEY,
-      category TEXT,
-      name TEXT,
-      data TEXT,
-      addedBy TEXT,
-      timestamp INTEGER,
-      level TEXT
-    )
-  `);
-
-    try {
-      db.exec(
-        `ALTER TABLE custom_images ADD COLUMN level TEXT DEFAULT 'مستوي مبتدئين التخمين'`,
-      );
-    } catch (e: any) {
-      // Column might already exist
-    }
-
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS used_prizes (
-      serial TEXT,
-      prize_id TEXT,
-      date TEXT,
-      PRIMARY KEY (serial, prize_id, date)
-    )
-  `);
-
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS categories (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      icon TEXT,
-      timestamp INTEGER
-    )
-  `);
-
     // Insert default categories if none exist
-    const catCount = db
-      .prepare("SELECT COUNT(*) as count FROM categories")
-      .get() as { count: number };
-    if (catCount.count === 0) {
-      const defaultCategories = [
-        { id: "people", name: "اشخاص", icon: "👥" },
-        { id: "food", name: "أكلات", icon: "🍕" },
-        { id: "animals", name: "حيوانات", icon: "🐘" },
-        { id: "objects", name: "جماد", icon: "📦" },
-        { id: "birds", name: "طيور", icon: "🦜" },
-        { id: "plants", name: "نبات", icon: "🌿" },
-        { id: "insects", name: "حشرات", icon: "🐞" },
-        { id: "football", name: "كرة القدم", icon: "⚽" },
-      ];
-      const insertCat = db.prepare(
-        "INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)",
-      );
-      const insertManyCats = db.transaction((cats) => {
-        for (const cat of cats) {
-          insertCat.run(cat.id, cat.name, cat.icon, Date.now());
+    try {
+      const catCount = db
+        .prepare("SELECT COUNT(*) as count FROM categories")
+        .get() as { count: number } | undefined;
+      if (catCount && catCount.count === 0) {
+        const defaultCategories = [
+          { id: "people", name: "اشخاص", icon: "👥" },
+          { id: "food", name: "أكلات", icon: "🍕" },
+          { id: "animals", name: "حيوانات", icon: "🐘" },
+          { id: "objects", name: "جماد", icon: "📦" },
+          { id: "birds", name: "طيور", icon: "🦜" },
+          { id: "plants", name: "نبات", icon: "🌿" },
+          { id: "insects", name: "حشرات", icon: "🐞" },
+          { id: "football", name: "كرة القدم", icon: "⚽" },
+        ];
+        const insertCat = db.prepare(
+          "INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)",
+        );
+        for (const cat of defaultCategories) {
+          try {
+            insertCat.run(cat.id, cat.name, cat.icon, Date.now());
+          } catch (e) {}
         }
-      });
-      insertManyCats(defaultCategories);
+      }
+    } catch (e) {
+      console.warn("[Categories] Default categories check skipped:", e);
     }
 
     // Migration: Ensure 'insects' and 'football' categories exist and have correct IDs
-    const categoriesToMigrate = [
-      { oldName: "حشرات", newId: "insects", newName: "حشرات", newIcon: "🐞" },
-      {
-        oldName: "كرة القدم",
-        newId: "football",
-        newName: "كرة القدم",
-        newIcon: "⚽",
-      },
-      { oldName: "جماد", newId: "objects", newName: "جماد", newIcon: "📦" },
-      { oldName: "نبات", newId: "plants", newName: "نبات", newIcon: "🌿" },
-      {
-        oldName: "حيوانات",
-        newId: "animals",
-        newName: "حيوانات",
-        newIcon: "🐘",
-      },
-      { oldName: "أكلات", newId: "food", newName: "أكلات", newIcon: "🍕" },
-      { oldName: "اشخاص", newId: "people", newName: "اشخاص", newIcon: "👥" },
-      { oldName: "طيور", newId: "birds", newName: "طيور", newIcon: "🦜" },
-    ];
+    try {
+      const categoriesToMigrate = [
+        { oldName: "حشرات", newId: "insects", newName: "حشرات", newIcon: "🐞" },
+        {
+          oldName: "كرة القدم",
+          newId: "football",
+          newName: "كرة القدم",
+          newIcon: "⚽",
+        },
+        { oldName: "جماد", newId: "objects", newName: "جماد", newIcon: "📦" },
+        { oldName: "نبات", newId: "plants", newName: "نبات", newIcon: "🌿" },
+        {
+          oldName: "حيوانات",
+          newId: "animals",
+          newName: "حيوانات",
+          newIcon: "🐘",
+        },
+        { oldName: "أكلات", newId: "food", newName: "أكلات", newIcon: "🍕" },
+        { oldName: "اشخاص", newId: "people", newName: "اشخاص", newIcon: "👥" },
+        { oldName: "طيور", newId: "birds", newName: "طيور", newIcon: "🦜" },
+      ];
 
-    for (const cat of categoriesToMigrate) {
-      // Check if category exists by name
-      const existingCat = db
-        .prepare("SELECT * FROM categories WHERE name = ?")
-        .get(cat.oldName) as { id: string } | undefined;
-      if (existingCat) {
-        if (existingCat.id !== cat.newId) {
-          // Update custom_images to point to new ID
-          db.prepare(
-            "UPDATE custom_images SET category = ? WHERE category = ?",
-          ).run(cat.newId, existingCat.id);
-          // Update category ID
-          db.prepare("UPDATE categories SET id = ? WHERE id = ?").run(
-            cat.newId,
-            existingCat.id,
-          );
-        }
-      } else {
-        // If not exists, insert it
-        const exists = db
-          .prepare("SELECT * FROM categories WHERE id = ?")
-          .get(cat.newId);
-        if (!exists) {
-          db.prepare(
-            "INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)",
-          ).run(cat.newId, cat.newName, cat.newIcon, Date.now());
+      for (const cat of categoriesToMigrate) {
+        // Check if category exists by name
+        const existingCat = db
+          .prepare("SELECT * FROM categories WHERE name = ?")
+          .get(cat.oldName) as { id: string } | undefined;
+        if (existingCat) {
+          if (existingCat.id !== cat.newId) {
+            // Update custom_images to point to new ID
+            db.prepare(
+              "UPDATE custom_images SET category = ? WHERE category = ?",
+            ).run(cat.newId, existingCat.id);
+            // Update category ID
+            db.prepare("UPDATE categories SET id = ? WHERE id = ?").run(
+              cat.newId,
+              existingCat.id,
+            );
+          }
+        } else {
+          // If not exists, insert it
+          const exists = db
+            .prepare("SELECT * FROM categories WHERE id = ?")
+            .get(cat.newId);
+          if (!exists) {
+            db.prepare(
+              "INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)",
+            ).run(cat.newId, cat.newName, cat.newIcon, Date.now());
+          }
         }
       }
+    } catch (e) {
+      console.warn("[Categories Migration] Skipped or warning:", e);
     }
 
     db.exec(`
