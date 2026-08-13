@@ -6,7 +6,128 @@ import { createServer as createViteServer } from "vite";
 import path, { dirname } from "path";
 import fs from "fs";
 import crypto from "crypto";
-import Database from "better-sqlite3";
+import deasync from "deasync";
+import { Database as SQLiteCloudDatabase } from "@sqlitecloud/drivers";
+
+class Database {
+  db: any;
+  constructor(url: string, options?: any) {
+    if (!url || !url.startsWith("sqlitecloud://")) {
+        url = process.env.DATABASE_URL || "sqlitecloud://cw7a1nr8vz.g2.sqlite.cloud:8860/players.db?apikey=niWqMJGn4tBT29arqGsBjlEmOBveVRk0ApeHHTmJG7k";
+    }
+    this.db = new SQLiteCloudDatabase(url);
+  }
+
+  pragma(str: string) {
+    let done = false;
+    let res, err;
+    this.db.sql(`PRAGMA ${str}`).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
+    deasync.loopWhile(() => !done);
+    if (err) throw err;
+    return res;
+  }
+
+  exec(query: string) {
+    let done = false;
+    let res, err;
+    this.db.sql(query).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
+    deasync.loopWhile(() => !done);
+    if (err) throw err;
+    return res;
+  }
+
+  prepare(query: string) {
+    const _db = this.db;
+    return {
+      run: (...args: any[]) => {
+        let finalQuery = query;
+        let finalArgs = args;
+        
+        if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
+           const obj = args[0];
+           const params: any[] = [];
+           finalQuery = query.replace(/@([a-zA-Z0-9_]+)/g, (match, p1) => {
+               params.push(obj[p1]);
+               return '?';
+           });
+           finalArgs = params;
+        }
+
+        let done = false;
+        let res: any, err: any;
+        _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
+        deasync.loopWhile(() => !done);
+        if (err) throw err;
+        return { changes: res?.changes ?? 0, lastInsertRowid: res?.lastID ?? 0 };
+      },
+      get: (...args: any[]) => {
+        let finalQuery = query;
+        let finalArgs = args;
+        
+        if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
+           const obj = args[0];
+           const params: any[] = [];
+           finalQuery = query.replace(/@([a-zA-Z0-9_]+)/g, (match, p1) => {
+               params.push(obj[p1]);
+               return '?';
+           });
+           finalArgs = params;
+        }
+
+        let done = false;
+        let res: any, err: any;
+        _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
+        deasync.loopWhile(() => !done);
+        if (err) throw err;
+        return res && res.length > 0 ? res[0] : undefined;
+      },
+      all: (...args: any[]) => {
+        let finalQuery = query;
+        let finalArgs = args;
+        
+        if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
+           const obj = args[0];
+           const params: any[] = [];
+           finalQuery = query.replace(/@([a-zA-Z0-9_]+)/g, (match, p1) => {
+               params.push(obj[p1]);
+               return '?';
+           });
+           finalArgs = params;
+        }
+
+        let done = false;
+        let res: any, err: any;
+        _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
+        deasync.loopWhile(() => !done);
+        if (err) throw err;
+        return res || [];
+      }
+    };
+  }
+
+  transaction(fn: Function) {
+    return (...args: any[]) => {
+      let done = false;
+      let res, err;
+      this.db.sql("BEGIN TRANSACTION").then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
+      deasync.loopWhile(() => !done);
+      if (err) throw err;
+      try {
+        const result = fn(...args);
+        done = false;
+        this.db.sql("COMMIT").then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
+        deasync.loopWhile(() => !done);
+        if (err) throw err;
+        return result;
+      } catch (e) {
+        done = false;
+        this.db.sql("ROLLBACK").then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
+        deasync.loopWhile(() => !done);
+        throw e;
+      }
+    };
+  }
+}
 import multer from "multer";
 import os from "os";
 import admin from "firebase-admin";
@@ -14653,10 +14774,15 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
         if (room) {
           if (!room.adPausedPlayers) room.adPausedPlayers = new Set();
 
-          // Only emit message if player was NOT already in adPausedPlayers
+          const sender = room.players.find((p: any) => p.id === socket.id || p.socketId === socket.id);
+          if (sender && sender.isBot) return; // Bots don't watch ads
+
           const alreadyInAd = room.adPausedPlayers.has(socket.id);
           room.adPausedPlayers.add(socket.id);
-          room.adPausedPlayersArray = Array.from(room.adPausedPlayers);
+          room.adPausedPlayersArray = Array.from(room.adPausedPlayers).filter((id: any) => {
+            const p = room.players.find((pl: any) => pl.id === id || pl.socketId === id);
+            return !p || !p.isBot;
+          });
 
           if (powerUpName) {
             if (!room.powerUpAdsInProgress)
@@ -14705,7 +14831,13 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
         const room = rooms.get(roomId);
         if (room && room.adPausedPlayers) {
           room.adPausedPlayers.delete(socket.id);
-          room.adPausedPlayersArray = Array.from(room.adPausedPlayers);
+          const player = room.players.find((p: any) => p.socketId === socket.id || p.id === socket.id);
+          if (player) room.adPausedPlayers.delete(player.id);
+
+          room.adPausedPlayersArray = Array.from(room.adPausedPlayers).filter((id: any) => {
+            const p = room.players.find((pl: any) => pl.id === id || pl.socketId === id);
+            return !p || !p.isBot;
+          });
 
           if (
             room.powerUpAdsInProgress &&
@@ -16494,25 +16626,15 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
 
       socket.on("play_again", ({ roomId }) => {
         const room = rooms.get(roomId);
-        if (
-          room &&
-          (room.gameState === "finished" ||
-            room.gameState === "xo_finished" ||
-            room.gameState === "hand_finished" ||
-            room.gameState === "bus_complete_evaluating" ||
-            room.gameState === "iq_playing" ||
-            room.gameState === "iq_finished" ||
-            room.gameState === "dots_finished" ||
-            room.gameState === "speed_cups_finished" ||
-            room.gameState === "space_war_finished" ||
-            room.gameState === "bomb_party_finished" ||
-            room.gameState === "connect_four_words_finished" ||
-            room.gameState === "wordle_finished" ||
-            room.gameState === "beach_race_finished")
-        ) {
+        if (room) {
           // Reset room state
           room.gameState = "waiting";
           room.spaceWar = null;
+          room.puzzle = null;
+          room.beachRace = null;
+          room.wordle = null;
+          room.connectFourWords = null;
+          room.bombParty = null;
           room.timer = 120; // Increased timer for selection
           room.winnerId = null;
           room.isPaused = false;
@@ -19559,11 +19681,14 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
           if (!room.spaceWar.readyPlayers.includes(socket.id)) {
             room.spaceWar.readyPlayers.push(socket.id);
           }
-          if (room.spaceWar.readyPlayers.length === 2) {
+          const bot = room.players.find((p) => p.isBot);
+          if (bot && !room.spaceWar.readyPlayers.includes(bot.id)) {
+            room.spaceWar.readyPlayers.push(bot.id);
+          }
+          const isBotRoom = room.players.some((p) => p.isBot);
+          if (room.spaceWar.readyPlayers.length >= room.players.length || isBotRoom) {
             room.gameState = "space_war_playing";
             room.spaceWar.startTime = Date.now();
-            // Assign bot word if bot
-            const bot = room.players.find((p) => p.isBot);
             if (bot) handleBotEvent(roomId, "room_update", room);
           }
           io.to(roomId).emit("room_update", room);
