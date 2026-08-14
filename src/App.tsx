@@ -1,3 +1,4 @@
+import { GameEndControls } from "./components/GameEndControls";
 import React, {
   useState,
   useEffect,
@@ -1905,6 +1906,14 @@ export default function App() {
   const [showTokenInfoModal, setShowTokenInfoModal] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [matchAdState, setMatchAdState] = useState<{ show: boolean; timer: number; adFailed: boolean; adStarted: boolean; }>({ show: false, timer: 0, adFailed: false, adStarted: false });
+  const isOpponentWatchingAdInRoom = (roomObj: any, currentSocketId?: string, currentUserId?: string) => {
+    if (!roomObj || !roomObj.adPausedPlayersArray || roomObj.adPausedPlayersArray.length === 0) return false;
+    return roomObj.adPausedPlayersArray.some((id: string) => {
+      if (id === currentSocketId || id === currentUserId) return false;
+      const p = roomObj.players?.find((pl: any) => pl.id === id || pl.socketId === id);
+      return p && !p.isBot;
+    });
+  };
   const matchesPlayedRef = useRef(0);
   const previousGameStateRef = useRef<string | null>(null);
   const [activePowerUp, setActivePowerUp] = useState<string | null>(null);
@@ -22209,7 +22218,7 @@ if (data.connectFourWordsRewardLevel != null) {
   
 
   const renderSpeedCupsRewardBar = () => {
-    if (!room || room.matchType !== "random" || (!room.gameState.startsWith("speed_cups_"))) return null;
+    if (!room || room.matchType !== "random" || room.gameState !== "speed_cups_finished") return null;
 
     const targetPoints = speedCupsRewardLevel * 100;
     const progress = Math.min((speedCupsMatchPoints / targetPoints) * 100, 100);
@@ -22631,7 +22640,7 @@ if (data.connectFourWordsRewardLevel != null) {
   };
 
   const renderWordleRewardBar = () => {
-    if (!room || room.matchType !== "random" || (room.gameState !== "wordle_playing" && room.gameState !== "wordle_finished")) return null;
+    if (!room || room.matchType !== "random" || (room.gameState !== "wordle_setup" && room.gameState !== "wordle_finished")) return null;
     const currentLevel = wordleRewardLevel;
     const currentPoints = wordleMatchPoints;
     const targetPoints = currentLevel * 100;
@@ -27081,7 +27090,7 @@ const renderBombPartyRewardBar = () => {
 
         <main className={`flex-1 relative flex flex-col items-center py-2 px-2 mx-auto w-full overflow-hidden ${room?.category === "iq" ? "max-w-md" : "max-w-md"}`}>
           {/* Players Header (VS Mode) */}
-          {room?.gameState !== "space_war_playing" && !room?.gameState?.startsWith("puzzle") && !room?.gameState?.startsWith("beach_race_playing") && (
+          {room?.gameState !== "space_war_playing" && !room?.gameState?.startsWith("puzzle") && !room?.gameState?.startsWith("beach_race_playing") && !room?.gameState?.startsWith("hand_playing") && !room?.gameState?.startsWith("wordle_playing") && !room?.gameState?.startsWith("connect_four_words_playing") && !room?.gameState?.startsWith("bus_complete_playing") && !room?.gameState?.startsWith("bus_complete_evaluating") && !room?.gameState?.startsWith("bus_complete_spin") && (
             <div className="w-full flex items-center justify-center gap-3 md:gap-6 py-2 px-4 bg-white/60 backdrop-blur-md rounded-[32px] border-4 border-white shadow-xl mb-4 relative z-50">
               {/* Player (Me) */}
             <div className="flex flex-col items-center relative">
@@ -28069,9 +28078,9 @@ const renderBombPartyRewardBar = () => {
                         country: "",
                       });
                     }}
-                    disabled={(room.adPausedPlayersArray?.length || 0) > 0 || room.busCompleteRematchRequestedBy?.includes(socket?.id || "")}
+                    disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) || room.busCompleteRematchRequestedBy?.includes(socket?.id || "")}
                     className={`w-full btn-game shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2 ${
-                      (room.adPausedPlayersArray?.length || 0) > 0
+                      isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)
                         ? "bg-gray-300 hover:bg-gray-400 text-gray-700 shadow-[0_6px_0_0_#9ca3af]"
                         : room.busCompleteRematchRequestedBy?.includes(room.players.find(p => p.id !== socket?.id)?.id || "")
                           ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_6px_0_0_#166534]"
@@ -28080,7 +28089,7 @@ const renderBombPartyRewardBar = () => {
                             : "bg-blue-500 hover:bg-blue-600 text-white"
                     }`}
                   >
-                    {(room.adPausedPlayersArray?.length || 0) > 0
+                    {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)
                       ? "انتظر! المنافس يشاهد إعلان 📺"
                       : room.busCompleteRematchRequestedBy?.includes(socket?.id || "")
                         ? "في انتظار المنافس..."
@@ -28192,16 +28201,16 @@ const renderBombPartyRewardBar = () => {
                               playSound("clickOpen");
                               socket?.emit("restart_dots", { roomId: room.id });
                             }}
-                            disabled={((room.adPausedPlayersArray?.length || 0) > 0) || (room.dotsLevel === 3 && room.dotsRematchRequestedBy?.includes(socket?.id || ""))}
+                            disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) || (room.dotsLevel === 3 && room.dotsRematchRequestedBy?.includes(socket?.id || ""))}
                             className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2
-                              ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
+                              ${isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
                                 room.dotsLevel === 3 && room.dotsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
                                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a] active:shadow-transparent"
                                  : room.dotsLevel === 3 && room.dotsRematchRequestedBy?.includes(socket?.id || "")
                                    ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a]"
                                    : "bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
                           >
-                            {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
+                            {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) ? "انتظر! المنافس يشاهد إعلان 📺"
                               : (room.dotsLevel || 1) < 3 ? `انتقل الي المستوي ${(room.dotsLevel || 1) + 1}`
                               : room.dotsRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
                               : room.dotsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
@@ -28470,10 +28479,10 @@ const renderBombPartyRewardBar = () => {
                                   playSound("clickOpen");
                                   socket?.emit("restart_dots", { roomId: room.id });
                                 }}
-                                disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                                disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)}
                                 className="flex-1 btn-game bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5"
                               >
-                                {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
+                                {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) ? "انتظر! المنافس يشاهد إعلان 📺"
                                   : `انتقل الي المستوي ${(room.dotsLevel || 1) + 1}`}
                               </button>
                             </div>
@@ -28572,16 +28581,16 @@ const renderBombPartyRewardBar = () => {
                             playSound("clickOpen");
                             socket?.emit("restart_iq", { roomId: room.id });
                           }}
-                          disabled={((room.adPausedPlayersArray?.length || 0) > 0) || room.iqRematchRequestedBy?.includes(socket?.id || "")}
+                          disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) || room.iqRematchRequestedBy?.includes(socket?.id || "")}
                           className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2
-                            ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
+                            ${isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
                               room.iqRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
                                ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a] active:shadow-transparent"
                                : room.iqRematchRequestedBy?.includes(socket?.id || "")
                                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a]"
                                  : "bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
                         >
-                          {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
+                          {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) ? "انتظر! المنافس يشاهد إعلان 📺"
                             : room.iqRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
                             : room.iqRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
                             : "لعب مرة أخري!"}
@@ -29098,10 +29107,10 @@ const renderBombPartyRewardBar = () => {
                     
                     <div className="flex flex-wrap gap-2 justify-center mt-auto w-full">
                       <button
-                        disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
+                        disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)}
                         onClick={() => socket?.emit("select_private_mode", { roomId: room.id, mode: null })}
                         className={`flex-1 min-w-[120px] max-w-md ${
-                          ((room.adPausedPlayersArray?.length || 0) > 0)
+                          isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)
                             ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
                             : "bg-purple-500 hover:bg-purple-600 text-white"
                         } font-black py-2.5 px-1 rounded-xl shadow-sm transition-all active:scale-95 text-xs md:text-sm`}
@@ -29111,17 +29120,17 @@ const renderBombPartyRewardBar = () => {
 
                       <div className="relative flex-1 min-w-[120px] max-w-md">
                         <button
-                          disabled={((room.adPausedPlayersArray?.length || 0) > 0) || room.bombParty?.rematchRequestedBy?.includes(socket?.id || "")}
+                          disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) || room.bombParty?.rematchRequestedBy?.includes(socket?.id || "")}
                           onClick={() => socket?.emit("request_bomb_party_rematch", { roomId: room.id })}
                           className={`w-full ${
-                            ((room.adPausedPlayersArray?.length || 0) > 0)
+                            isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)
                               ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
                               : room.bombParty?.rematchRequestedBy?.includes(socket?.id || "")
                                 ? "bg-green-500 hover:bg-green-600 text-white"
                                 : "bg-orange-500 hover:bg-orange-600 text-white"
                           } font-black py-2.5 px-1 rounded-xl shadow-sm transition-all active:scale-95 text-xs md:text-sm`}
                         >
-                          {((room.adPausedPlayersArray?.length || 0) > 0)
+                          {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)
                             ? "انتظر! المنافس يشاهد إعلان 📺"
                             : room.bombParty?.rematchRequestedBy?.includes(socket?.id || "")
                               ? "⏳ في الانتظار..."
@@ -29132,13 +29141,8 @@ const renderBombPartyRewardBar = () => {
                       </div>
 
                       <button
-                        disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
                         onClick={handleLeaveGame}
-                        className={`w-full max-w-md ${
-                          ((room.adPausedPlayersArray?.length || 0) > 0)
-                            ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
-                            : "bg-red-100 hover:bg-red-200 text-red-700"
-                        } font-black py-2.5 px-3 rounded-xl shadow-sm transition-all active:scale-95 text-sm md:text-base`}
+                        className="w-full max-w-md bg-red-100 hover:bg-red-200 text-red-700 font-black py-2.5 px-3 rounded-xl shadow-sm transition-all active:scale-95 text-sm md:text-base"
                       >
                         🚪 خروج للرئيسية
                       </button>

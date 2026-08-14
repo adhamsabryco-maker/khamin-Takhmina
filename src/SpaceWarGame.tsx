@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Zap, Bomb, Target, WifiOff, Rocket, Sparkles, Gamepad2, Snowflake, ShieldCheck, ShieldAlert, Clock, Box, Swords, ShieldPlus } from "lucide-react";
+import { GameEndControls } from "./components/GameEndControls";
 
 const GAME_WIDTH = 400;
 const GAME_HEIGHT = 450;
@@ -1100,37 +1101,24 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
                  </div>
               </div>
 
-              <div className="flex flex-col pt-1 gap-1.5 justify-center">
-                 <button
-                   onClick={() => {
-                      if (playSound) playSound("clickOpen");
-                      socket?.emit("bot_event", { roomId: room.id, type: "play_again", gameType: "space_war" });
-                      socket?.emit("request_space_war_rematch", { roomId: room.id });
-                   }}
-                   className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-95 text-white text-sm py-1.5 font-black rounded-2xl shadow-lg transition-transform flex items-center justify-center gap-2 border border-indigo-300"
-                 >
-                   <span>العب مرة أخرى</span> 🚀
-                 </button>
-                 <button
-                   onClick={() => {
-                      if (playSound) playSound("clickOpen");
-                      socket?.emit("play_again", { roomId: room.id });
-                   }}
-                   className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 active:scale-95 text-white py-1.5 px-2 text-sm font-black rounded-2xl shadow-lg transition-transform flex items-center justify-center gap-1 border border-amber-300"
-                 >
-                   <span>تغيير اللعبة</span> 🎮
-                 </button>
-                 <button
-                   onClick={() => {
-                      if (playSound) playSound("clickClose");
-                      if (handleLeaveGame) handleLeaveGame();
-                      else socket?.emit("leave_game", room.id);
-                   }}
-                   className="bg-rose-700 hover:bg-rose-600 active:scale-95 text-white px-6 py-1.5 font-black rounded-2xl shadow-lg transition-transform"
-                 >
-                   خروج
-                 </button>
-              </div>
+              <GameEndControls
+                 room={room}
+                 socket={socket}
+                 myId={myId}
+                 playerSerial={playerSerial}
+                 isRematchRequestedByMe={room.spaceWar?.rematchRequestedBy?.includes(myId)}
+                 isRematchRequestedByOpponent={room.spaceWar?.rematchRequestedBy?.includes(oppPlayerObj?.id)}
+                 onChangeGame={() => {
+                    socket?.emit("play_again", { roomId: room.id });
+                 }}
+                 onRematch={() => {
+                    socket?.emit("bot_event", { roomId: room.id, type: "play_again", gameType: "space_war" });
+                    socket?.emit("request_space_war_rematch", { roomId: room.id });
+                 }}
+                 onLeaveGame={handleLeaveGame}
+                 playSound={playSound}
+                 className="pt-2"
+              />
            </div>
         </div>
      );
@@ -1155,7 +1143,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       
       {/* SETUP / INSTRUCTIONS */}
       {room?.gameState === 'space_war_setup' && (
-        <div className="absolute inset-0 bg-[#07071a]/95 z-40 flex flex-col items-center justify-between p-2 overflow-y-auto text-white text-right" dir="rtl">
+        <div className="absolute inset-0 bg-[#07071a]/95 z-40 flex flex-col items-center justify-center p-2 overflow-y-auto text-white text-right" dir="rtl">
 
           <div className="w-full max-w-md">
             

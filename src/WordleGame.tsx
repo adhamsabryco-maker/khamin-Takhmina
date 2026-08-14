@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import bombPartyWords from './data/bomb-party-words.json';
+import { GameEndControls } from './components/GameEndControls';
 
 export default function WordleGame({
   room,
@@ -74,10 +75,13 @@ export default function WordleGame({
              if (nextHintIdx < guessChars.length) {
                guessChars[nextHintIdx] = room.wordle.targetWord[nextHintIdx];
                return guessChars.join('');
-             } else if (nextHintIdx === prevGuess.length) {
-                return prevGuess + room.wordle.targetWord[nextHintIdx];
+             } else {
+               while (guessChars.length < nextHintIdx) {
+                 guessChars.push(' ');
+               }
+               guessChars.push(room.wordle.targetWord[nextHintIdx]);
+               return guessChars.join('');
              }
-             return prevGuess;
           });
         }, () => {
           socket?.emit("wordle_pause", room.id);
@@ -416,7 +420,7 @@ export default function WordleGame({
                 <button
                   onClick={() => {
                     if (playSound) playSound("clickOpen");
-                    socket?.emit("start_wordle", { roomId: room.id });
+                    socket?.emit("start_wordle", { roomId: room.id, playerId: me?.id });
                   }}
                   className="btn-game w-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_4px_0_0_#047857] active:shadow-transparent py-3.5 px-2 text-x1 font-black rounded-2xl transition-all hover:scale-102 flex items-center justify-center gap-2"
                 >
@@ -492,7 +496,7 @@ export default function WordleGame({
                       <button
                         onClick={requestHint}
                         disabled={hintCooldown > 0}
-                        className={`absolute -bottom-2 right-2 sm:right-2 w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-transform z-10 ${
+                        className={`absolute -bottom-2 right-2 sm:right-3 w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-transform z-10 ${
                           hintCooldown > 0 
                             ? 'bg-gray-300 border-gray-400 cursor-not-allowed opacity-80' 
                             : 'bg-yellow-400 border-yellow-600 hover:scale-110 active:scale-95'
@@ -556,49 +560,22 @@ export default function WordleGame({
                   الكلمة المخفية هي: <span className="text-red-500 font-black">{room.wordle.targetWord}</span>
                 </p>
                 
-                {/* Match result buttons (تغيير اللعبة - لعب مرة أخرى - خروج للرئيسية) */}
-                <div className="flex flex-col gap-2 w-full">
-                  <div className="flex gap-2 w-full">
-                    {/* تغيير اللعبة (Now on the right/first inside DOM order) */}
-                    <button
-                      onClick={() => {
-                        if (playSound) playSound("clickOpen");
-                        socket?.emit("select_private_mode", { roomId: room.id, mode: null });
-                      }}
-                      className="flex-1 btn-game bg-purple-500 hover:bg-purple-600 text-white shadow-[0_4px_0_0_#7c3aed] active:shadow-transparent py-3 px-2 text-sm font-black rounded-2xl flex items-center justify-center gap-2"
-                    >
-                      🎮 تغيير اللعبة
-                    </button>
-
-                    {/* لعب مرة أخرى (Now on the left/second inside DOM order) */}
-                    <button
-                      onClick={() => {
-                        if (playSound) playSound("clickOpen");
-                        socket?.emit("request_wordle_rematch", { roomId: room.id });
-                      }}
-                      className="flex-1 btn-game bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_4px_0_0_#047857] active:shadow-transparent py-3 px-2 text-sm font-black rounded-2xl flex items-center justify-center gap-2"
-                    >
-                      {room.wordle.rematchRequestedBy?.includes(myId) ? (
-                        <span className="animate-pulse">🔄 بانتظار الخصم...</span>
-                      ) : room.wordle.rematchRequestedBy?.includes(oppId) ? (
-                        <span>🤝 الخصم جاهز!</span>
-                      ) : (
-                        <span>🔄 لعب مرة أخرى</span>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* خروج للرئيسية */}
-                  <button
-                    onClick={() => {
-                      if (playSound) playSound("clickOpen");
-                      if (handleLeaveGame) handleLeaveGame();
-                    }}
-                    className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-700 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-3 px-6 text-base font-black rounded-2xl flex items-center justify-center gap-2"
-                  >
-                    🚪 خروج للرئيسية
-                  </button>
-                </div>
+                <GameEndControls
+                  room={room}
+                  socket={socket}
+                  myId={myId}
+                  playerSerial={playerSerial}
+                  isRematchRequestedByMe={room.wordle?.rematchRequestedBy?.includes(myId)}
+                  isRematchRequestedByOpponent={room.wordle?.rematchRequestedBy?.includes(oppId)}
+                  onChangeGame={() => {
+                    socket?.emit("play_again", { roomId: room.id });
+                  }}
+                  onRematch={() => {
+                    socket?.emit("request_wordle_rematch", { roomId: room.id, playerId: myId });
+                  }}
+                  onLeaveGame={handleLeaveGame}
+                  playSound={playSound}
+                />
               </div>
             )}
           </div>
