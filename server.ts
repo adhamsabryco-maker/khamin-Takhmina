@@ -2589,6 +2589,14 @@ async function startServer() {
     // Sync to Supabase periodically every 2 minutes
     setInterval(syncDbToSupabase, 2 * 60 * 1000);
 
+    let syncTimeout: NodeJS.Timeout | null = null;
+    function triggerSyncToSupabase() {
+      if (syncTimeout) clearTimeout(syncTimeout);
+      syncTimeout = setTimeout(() => {
+        syncDbToSupabase();
+      }, 5000);
+    }
+
     console.log("[DB] Database initialized successfully with Supabase Storage sync.");
 
     // Initialize shop items if needed
@@ -3730,6 +3738,7 @@ async function startServer() {
           beachRaceMatchPoints: player.beachRaceMatchPoints || 0,
         });
         invalidateTopPlayersCache();
+        triggerSyncToSupabase();
       } catch (err) {
         console.error(`Failed to save player data for ${serial}:`, err);
       }
