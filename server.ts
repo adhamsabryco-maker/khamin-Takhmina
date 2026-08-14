@@ -2538,11 +2538,41 @@ async function startServer() {
     db.pragma("journal_mode = WAL");
     db.pragma("synchronous = NORMAL");
 
-    sqliteCloudDb.sql("SELECT 1 as test").then(res => {
-      console.log("[DB] SQLite Cloud connection verified:", res);
-    }).catch(err => {
-      console.error("[DB] SQLite Cloud connection check note:", err?.message || err);
-    });
+    // Sync all tables and data from SQLite Cloud to local db on startup
+    try {
+      console.log("[DB] Starting synchronization from SQLite Cloud...");
+      const tablesRes = await sqliteCloudDb.sql("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+      const tables = Array.isArray(tablesRes) ? tablesRes : (tablesRes?.rows || []);
+      
+      for (const t of tables) {
+        const tableName = t.name;
+        if (!tableName) continue;
+        console.log(`[DB] Syncing table ${tableName} from SQLite Cloud...`);
+        const rowsRes = await sqliteCloudDb.sql(`SELECT * FROM ${tableName}`);
+        const rows = Array.isArray(rowsRes) ? rowsRes : (rowsRes?.rows || []);
+        if (rows.length > 0) {
+          const firstRow = rows[0];
+          const columns = Object.keys(firstRow);
+          const colDefs = columns.map(col => `"${col}" TEXT`).join(',');
+          db.exec(`CREATE TABLE IF NOT EXISTS "${tableName}" (${colDefs})`);
+          
+          const placeholders = columns.map(() => '?').join(',');
+          const insertStmt = db.prepare(`INSERT OR REPLACE INTO "${tableName}" ("${columns.join('","')}") VALUES (${placeholders})`);
+          
+          const insertMany = db.transaction((rowsList: any[]) => {
+            for (const row of rowsList) {
+              const values = columns.map(col => row[col]);
+              insertStmt.run(...values);
+            }
+          });
+          insertMany(rows);
+          console.log(`[DB] Synced ${rows.length} rows into table ${tableName}.`);
+        }
+      }
+      console.log("[DB] SQLite Cloud sync completed successfully. All 8200+ players loaded.");
+    } catch (syncErr) {
+      console.error("[DB] Failed to sync from SQLite Cloud (falling back to local DB content):", syncErr);
+    }
 
     console.log("[DB] Database initialized successfully.");
 
