@@ -8,11 +8,19 @@ import fs from "fs";
 import crypto from "crypto";
 import BetterSqlite3 from "better-sqlite3";
 import { Database as SQLiteCloudDatabase } from "@sqlitecloud/drivers";
+import { createClient } from "@supabase/supabase-js";
 import multer from "multer";
 import os from "os";
 import admin from "firebase-admin";
 import archiver from "archiver";
 import webpush from "web-push";
+
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://genogaejxepnwaqmwoho.supabase.co";
+const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlbm9nYWVqeGVwbndhcW13b2hvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjY2MjMxNCwiZXhwIjoyMTAyMjM4MzE0fQ.FjLFq0agFqXP0TKdr4pQ7TbHUoWExYEt8J033Ckzkso";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
+  auth: { persistSession: false }
+});
 
 // Initialize Firebase Admin
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -2528,53 +2536,60 @@ async function startServer() {
 
     const playerSockets = new Map<string, string>();
 
-    const dbUrl = process.env.SQLITE_CLOUD_URL || "sqlitecloud://cw7a1nr8vz.g2.sqlite.cloud:8860/players.db?apikey=niWqMJGn4tBT29arqGsBjlEmOBveVRk0ApeHHTmJG7k";
-    console.log(`[DB] Connecting to SQLite Cloud: ${dbUrl}`);
-    const sqliteCloudDb = new SQLiteCloudDatabase(dbUrl);
-
     let dbPath = path.join(process.cwd(), "players.db");
     console.log(`[DB] Opening local players database at: ${dbPath}`);
+
+    // Sync from Supabase Storage on startup
+    try {
+      console.log("[DB] Downloading players.db from Supabase Storage bucket 'database'...");
+      const { data, error } = await supabase.storage.from("database").download("players.db");
+      if (!error && data) {
+        const buffer = Buffer.from(await data.arrayBuffer());
+        fs.writeFileSync(dbPath, buffer);
+        console.log("[DB] Successfully downloaded players.db from Supabase Storage.");
+      } else {
+        console.log("[DB] Remote players.db not found or error:", error?.message);
+      }
+    } catch (dlErr) {
+      console.error("[DB] Failed to download players.db from Supabase Storage:", dlErr);
+    }
+
     let db = new BetterSqlite3(dbPath, { timeout: 10000 });
     db.pragma("journal_mode = WAL");
     db.pragma("synchronous = NORMAL");
 
-    // Sync all tables and data from SQLite Cloud to local db on startup
-    try {
-      console.log("[DB] Starting synchronization from SQLite Cloud...");
-      const tablesRes = await sqliteCloudDb.sql("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
-      const tables = Array.isArray(tablesRes) ? tablesRes : (tablesRes?.rows || []);
-      
-      for (const t of tables) {
-        const tableName = t.name;
-        if (!tableName) continue;
-        console.log(`[DB] Syncing table ${tableName} from SQLite Cloud...`);
-        const rowsRes = await sqliteCloudDb.sql(`SELECT * FROM ${tableName}`);
-        const rows = Array.isArray(rowsRes) ? rowsRes : (rowsRes?.rows || []);
-        if (rows.length > 0) {
-          const firstRow = rows[0];
-          const columns = Object.keys(firstRow);
-          const colDefs = columns.map(col => `"${col}" TEXT`).join(',');
-          db.exec(`CREATE TABLE IF NOT EXISTS "${tableName}" (${colDefs})`);
-          
-          const placeholders = columns.map(() => '?').join(',');
-          const insertStmt = db.prepare(`INSERT OR REPLACE INTO "${tableName}" ("${columns.join('","')}") VALUES (${placeholders})`);
-          
-          const insertMany = db.transaction((rowsList: any[]) => {
-            for (const row of rowsList) {
-              const values = columns.map(col => row[col]);
-              insertStmt.run(...values);
-            }
+    let isUploadingDb = false;
+    async function syncDbToSupabase() {
+      if (isUploadingDb) return;
+      isUploadingDb = true;
+      try {
+        try {
+          db.pragma("wal_checkpoint(FULL)");
+        } catch (e) {}
+
+        if (fs.existsSync(dbPath)) {
+          const fileBuffer = fs.readFileSync(dbPath);
+          const { error } = await supabase.storage.from("database").upload("players.db", fileBuffer, {
+            upsert: true,
+            contentType: "application/octet-stream"
           });
-          insertMany(rows);
-          console.log(`[DB] Synced ${rows.length} rows into table ${tableName}.`);
+          if (error) {
+            console.error("[DB] Error uploading players.db to Supabase Storage:", error.message);
+          } else {
+            console.log("[DB] Successfully synced players.db to Supabase Storage.");
+          }
         }
+      } catch (err) {
+        console.error("[DB] Failed to upload players.db to Supabase Storage:", err);
+      } finally {
+        isUploadingDb = false;
       }
-      console.log("[DB] SQLite Cloud sync completed successfully. All 8200+ players loaded.");
-    } catch (syncErr) {
-      console.error("[DB] Failed to sync from SQLite Cloud (falling back to local DB content):", syncErr);
     }
 
-    console.log("[DB] Database initialized successfully.");
+    // Sync to Supabase periodically every 2 minutes
+    setInterval(syncDbToSupabase, 2 * 60 * 1000);
+
+    console.log("[DB] Database initialized successfully with Supabase Storage sync.");
 
     // Initialize shop items if needed
     try {
@@ -3715,24 +3730,6 @@ async function startServer() {
           beachRaceMatchPoints: player.beachRaceMatchPoints || 0,
         });
         invalidateTopPlayersCache();
-
-        // Asynchronously sync this player to SQLite Cloud
-        try {
-          const row = db.prepare("SELECT * FROM players WHERE serial = ?").get(serial) as any;
-          if (row && sqliteCloudDb) {
-            const columns = Object.keys(row);
-            const placeholders = columns.map(() => '?').join(',');
-            const values = columns.map(col => row[col]);
-            sqliteCloudDb.sql(
-              `INSERT OR REPLACE INTO "players" ("${columns.join('","')}") VALUES (${placeholders})`,
-              ...values
-            ).catch(cloudErr => {
-              console.error(`[DB] Failed to sync player ${serial} to SQLite Cloud:`, cloudErr);
-            });
-          }
-        } catch (syncCloudErr) {
-          // ignore background sync errors
-        }
       } catch (err) {
         console.error(`Failed to save player data for ${serial}:`, err);
       }
