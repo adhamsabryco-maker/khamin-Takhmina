@@ -18,9 +18,11 @@ import webpush from "web-push";
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://genogaejxepnwaqmwoho.supabase.co";
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlbm9nYWVqeGVwbndhcW13b2hvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjY2MjMxNCwiZXhwIjoyMTAyMjM4MzE0fQ.FjLFq0agFqXP0TKdr4pQ7TbHUoWExYEt8J033Ckzkso";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
+const isProduction = process.env.NODE_ENV === "production" || process.env.RENDER === "true";
+
+const supabase = isProduction ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
   auth: { persistSession: false }
-});
+}) : null;
 
 // Initialize Firebase Admin
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -2539,19 +2541,23 @@ async function startServer() {
     let dbPath = path.join(process.cwd(), "players.db");
     console.log(`[DB] Opening local players database at: ${dbPath}`);
 
-    // Sync from Supabase Storage on startup
-    try {
-      console.log("[DB] Downloading players.db from Supabase Storage bucket 'database'...");
-      const { data, error } = await supabase.storage.from("database").download("players.db");
-      if (!error && data) {
-        const buffer = Buffer.from(await data.arrayBuffer());
-        fs.writeFileSync(dbPath, buffer);
-        console.log("[DB] Successfully downloaded players.db from Supabase Storage.");
-      } else {
-        console.log("[DB] Remote players.db not found or error:", error?.message);
+    // Sync from Supabase Storage on startup (Only in production/Render)
+    if (isProduction && supabase) {
+      try {
+        console.log("[DB] Downloading players.db from Supabase Storage bucket 'database'...");
+        const { data, error } = await supabase.storage.from("database").download("players.db");
+        if (!error && data) {
+          const buffer = Buffer.from(await data.arrayBuffer());
+          fs.writeFileSync(dbPath, buffer);
+          console.log("[DB] Successfully downloaded players.db from Supabase Storage.");
+        } else {
+          console.log("[DB] Remote players.db not found or error:", error?.message);
+        }
+      } catch (dlErr) {
+        console.error("[DB] Failed to download players.db from Supabase Storage:", dlErr);
       }
-    } catch (dlErr) {
-      console.error("[DB] Failed to download players.db from Supabase Storage:", dlErr);
+    } else {
+      console.log("[DB] Running in AI Studio local dev mode. Skipping Supabase sync to keep database isolated.");
     }
 
     let db = new BetterSqlite3(dbPath, { timeout: 10000 });
@@ -2560,6 +2566,7 @@ async function startServer() {
 
     let isUploadingDb = false;
     async function syncDbToSupabase() {
+      if (!isProduction || !supabase) return;
       if (isUploadingDb) return;
       isUploadingDb = true;
       try {
@@ -2586,18 +2593,21 @@ async function startServer() {
       }
     }
 
-    // Sync to Supabase periodically every 2 minutes
-    setInterval(syncDbToSupabase, 2 * 60 * 1000);
+    // Sync to Supabase periodically every 2 minutes (Only in production)
+    if (isProduction) {
+      setInterval(syncDbToSupabase, 2 * 60 * 1000);
+    }
 
     let syncTimeout: NodeJS.Timeout | null = null;
     function triggerSyncToSupabase() {
+      if (!isProduction) return;
       if (syncTimeout) clearTimeout(syncTimeout);
       syncTimeout = setTimeout(() => {
         syncDbToSupabase();
       }, 5000);
     }
 
-    console.log("[DB] Database initialized successfully with Supabase Storage sync.");
+    console.log(`[DB] Database initialized successfully ${isProduction ? 'with Supabase Storage sync' : 'in local isolated mode'}.`);
 
     // Initialize shop items if needed
     try {
