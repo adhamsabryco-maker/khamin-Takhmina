@@ -6,128 +6,7 @@ import { createServer as createViteServer } from "vite";
 import path, { dirname } from "path";
 import fs from "fs";
 import crypto from "crypto";
-import deasync from "deasync";
-import { Database as SQLiteCloudDatabase } from "@sqlitecloud/drivers";
-
-class Database {
-  db: any;
-  constructor(url: string, options?: any) {
-    if (!url || !url.startsWith("sqlitecloud://")) {
-        url = process.env.DATABASE_URL || "sqlitecloud://cw7a1nr8vz.g2.sqlite.cloud:8860/players.db?apikey=niWqMJGn4tBT29arqGsBjlEmOBveVRk0ApeHHTmJG7k";
-    }
-    this.db = new SQLiteCloudDatabase(url);
-  }
-
-  pragma(str: string) {
-    let done = false;
-    let res, err;
-    this.db.sql(`PRAGMA ${str}`).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-    deasync.loopWhile(() => !done);
-    if (err) throw err;
-    return res;
-  }
-
-  exec(query: string) {
-    let done = false;
-    let res, err;
-    this.db.sql(query).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-    deasync.loopWhile(() => !done);
-    if (err) throw err;
-    return res;
-  }
-
-  prepare(query: string) {
-    const _db = this.db;
-    return {
-      run: (...args: any[]) => {
-        let finalQuery = query;
-        let finalArgs = args;
-        
-        if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
-           const obj = args[0];
-           const params: any[] = [];
-           finalQuery = query.replace(/@([a-zA-Z0-9_]+)/g, (match, p1) => {
-               params.push(obj[p1]);
-               return '?';
-           });
-           finalArgs = params;
-        }
-
-        let done = false;
-        let res: any, err: any;
-        _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done);
-        if (err) throw err;
-        return { changes: res?.changes ?? 0, lastInsertRowid: res?.lastID ?? 0 };
-      },
-      get: (...args: any[]) => {
-        let finalQuery = query;
-        let finalArgs = args;
-        
-        if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
-           const obj = args[0];
-           const params: any[] = [];
-           finalQuery = query.replace(/@([a-zA-Z0-9_]+)/g, (match, p1) => {
-               params.push(obj[p1]);
-               return '?';
-           });
-           finalArgs = params;
-        }
-
-        let done = false;
-        let res: any, err: any;
-        _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done);
-        if (err) throw err;
-        return res && res.length > 0 ? res[0] : undefined;
-      },
-      all: (...args: any[]) => {
-        let finalQuery = query;
-        let finalArgs = args;
-        
-        if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
-           const obj = args[0];
-           const params: any[] = [];
-           finalQuery = query.replace(/@([a-zA-Z0-9_]+)/g, (match, p1) => {
-               params.push(obj[p1]);
-               return '?';
-           });
-           finalArgs = params;
-        }
-
-        let done = false;
-        let res: any, err: any;
-        _db.sql(finalQuery, ...finalArgs).then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done);
-        if (err) throw err;
-        return res || [];
-      }
-    };
-  }
-
-  transaction(fn: Function) {
-    return (...args: any[]) => {
-      let done = false;
-      let res, err;
-      this.db.sql("BEGIN TRANSACTION").then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-      deasync.loopWhile(() => !done);
-      if (err) throw err;
-      try {
-        const result = fn(...args);
-        done = false;
-        this.db.sql("COMMIT").then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done);
-        if (err) throw err;
-        return result;
-      } catch (e) {
-        done = false;
-        this.db.sql("ROLLBACK").then((r: any) => { res = r; done = true; }).catch((e: any) => { err = e; done = true; });
-        deasync.loopWhile(() => !done);
-        throw e;
-      }
-    };
-  }
-}
+import Database from "better-sqlite3";
 import multer from "multer";
 import os from "os";
 import admin from "firebase-admin";
@@ -1111,7 +990,7 @@ async function startServer() {
       },
     });
 
-    const PORT = process.env.PORT || 3000;
+    const PORT = 3000;
 
     // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
