@@ -6,7 +6,8 @@ import { createServer as createViteServer } from "vite";
 import path, { dirname } from "path";
 import fs from "fs";
 import crypto from "crypto";
-import Database from "better-sqlite3";
+import BetterSqlite3 from "better-sqlite3";
+import { Database as SQLiteCloudDatabase } from "@sqlitecloud/drivers";
 import multer from "multer";
 import os from "os";
 import admin from "firebase-admin";
@@ -2527,43 +2528,27 @@ async function startServer() {
 
     const playerSockets = new Map<string, string>();
 
-    let dbPath = process.env.DB_PATH || path.join(process.cwd(), "players.db");
-    console.log(`[DB] Using database at: ${dbPath}`);
-    console.log(`[DB] Current working directory: ${process.cwd()}`);
-    console.log(`[DB] process.cwd(): ${process.cwd()}`);
+    const dbUrl = process.env.SQLITE_CLOUD_URL || "sqlitecloud://cw7a1nr8vz.g2.sqlite.cloud:8860/players.db?apikey=niWqMJGn4tBT29arqGsBjlEmOBveVRk0ApeHHTmJG7k";
+    console.log(`[DB] Connecting to SQLite Cloud: ${dbUrl}`);
+    const sqliteCloudDb = new SQLiteCloudDatabase(dbUrl);
 
-    const dbDir = path.dirname(dbPath);
+    let dbPath = path.join(process.cwd(), "players.db");
+    console.log(`[DB] Opening local players database at: ${dbPath}`);
+    let db = new BetterSqlite3(dbPath, { timeout: 10000 });
+    db.pragma("journal_mode = WAL");
+    db.pragma("synchronous = NORMAL");
+
+    sqliteCloudDb.sql("SELECT 1 as test").then(res => {
+      console.log("[DB] SQLite Cloud connection verified:", res);
+    }).catch(err => {
+      console.error("[DB] SQLite Cloud connection check note:", err?.message || err);
+    });
+
+    console.log("[DB] Database initialized successfully.");
+
+    // Initialize shop items if needed
     try {
-      if (!fs.existsSync(dbDir)) {
-        console.log(`[DB] Creating database directory: ${dbDir}`);
-        fs.mkdirSync(dbDir, { recursive: true });
-      }
-      // Test writability
-      const testFile = path.join(dbDir, ".write-test");
-      fs.writeFileSync(testFile, "test");
-      fs.unlinkSync(testFile);
-      console.log(`[DB] Directory ${dbDir} is writable.`);
-    } catch (err) {
-      console.error(
-        `[DB] Failed to verify or create database directory ${dbDir}:`,
-        err,
-      );
-      // If we can't create the directory or it's not writable, fallback to local directory
-      const fallbackPath = path.join(process.cwd(), "players.db");
-      console.log(`[DB] Falling back to local database: ${fallbackPath}`);
-      dbPath = fallbackPath;
-    }
-
-    let db: any;
-    try {
-      db = new Database(dbPath, { timeout: 10000 });
-      db.pragma("journal_mode = WAL");
-      db.pragma("synchronous = NORMAL");
-      console.log("[DB] Database connected successfully.");
-
-      // Initialize shop items if needed
-      try {
-        db.exec(`
+      await db.exec(`
         CREATE TABLE IF NOT EXISTS shop_items (
           id TEXT PRIMARY KEY,
           name TEXT,
@@ -2576,76 +2561,52 @@ async function startServer() {
           timestamp INTEGER
         )
       `);
+    } catch (err) {
+      console.error("[DB] Failed to create shop items table:", err);
+    }
 
-        const count = db
-          .prepare("SELECT COUNT(*) as count FROM shop_items")
-          .get() as void;
-        // Re-seeding removed to allow admins to manage shop items dynamically.
-      } catch (err) {
-        console.error("[DB] Failed to seed shop items:", err);
-      }
-
-      db.exec(`
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS admin_tokens (
         token TEXT PRIMARY KEY,
         expiresAt INTEGER
       );
     `);
 
-      adminTokens = {
-        add: (
-          token: string,
-          expiresInMs: number = 1000 * 60 * 60 * 24 * 365 * 100,
-        ) => {
-          const expiresAt = Date.now() + expiresInMs;
-          db.prepare(
-            "INSERT INTO admin_tokens (token, expiresAt) VALUES (?, ?)",
-          ).run(token, expiresAt);
-        },
-        has: (token: string) => {
-          if (!token) return false;
-          const row = db
-            .prepare("SELECT expiresAt FROM admin_tokens WHERE token = ?")
-            .get(token) as any;
-          if (!row) return false;
-          if (Date.now() > row.expiresAt) {
-            db.prepare("DELETE FROM admin_tokens WHERE token = ?").run(token);
-            return false;
-          }
-          return true;
-        },
-        delete: (token: string) => {
-          db.prepare("DELETE FROM admin_tokens WHERE token = ?").run(token);
-        },
-        cleanup: () => {
-          db.prepare("DELETE FROM admin_tokens WHERE expiresAt < ?").run(
-            Date.now(),
-          );
-        },
-      };
+    adminTokens = {
+      add: async (
+        token: string,
+        expiresInMs: number = 1000 * 60 * 60 * 24 * 365 * 100,
+      ) => {
+        const expiresAt = Date.now() + expiresInMs;
+        await db.prepare(
+          "INSERT INTO admin_tokens (token, expiresAt) VALUES (?, ?)",
+        ).run(token, expiresAt);
+      },
+      has: async (token: string) => {
+        if (!token) return false;
+        const row = await db
+          .prepare("SELECT expiresAt FROM admin_tokens WHERE token = ?")
+          .get(token) as any;
+        if (!row) return false;
+        if (Date.now() > row.expiresAt) {
+          await db.prepare("DELETE FROM admin_tokens WHERE token = ?").run(token);
+          return false;
+        }
+        return true;
+      },
+      delete: async (token: string) => {
+        await db.prepare("DELETE FROM admin_tokens WHERE token = ?").run(token);
+      },
+      cleanup: async () => {
+        await db.prepare("DELETE FROM admin_tokens WHERE expiresAt < ?").run(
+          Date.now(),
+        );
+      },
+    };
 
-      // Cleanup expired tokens on startup
-      adminTokens.cleanup();
-    } catch (err) {
-      console.error(`[DB] Failed to open database at ${dbPath}:`, err);
-      // Final fallback to a guaranteed writable location
-      try {
-        const finalFallback = path.join(process.cwd(), "players.db");
-        console.log(`[DB] Final fallback to: ${finalFallback}`);
-        db = new Database(finalFallback);
-        db.pragma("journal_mode = WAL");
-      } catch (finalErr) {
-        console.error(
-          "[DB] CRITICAL: All database fallbacks failed.",
-          finalErr,
-        );
-        // If we can't even open a local DB, we might have to use in-memory or crash
-        db = new Database(":memory:");
-        console.log(
-          "[DB] Using IN-MEMORY database as last resort. DATA WILL NOT PERSIST.",
-        );
-      }
-    }
+    // Cleanup expired tokens on startup
+    await adminTokens.cleanup();
+
 
     // Graceful shutdown
     const shutdown = () => {
