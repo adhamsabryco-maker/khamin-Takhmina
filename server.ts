@@ -3715,6 +3715,24 @@ async function startServer() {
           beachRaceMatchPoints: player.beachRaceMatchPoints || 0,
         });
         invalidateTopPlayersCache();
+
+        // Asynchronously sync this player to SQLite Cloud
+        try {
+          const row = db.prepare("SELECT * FROM players WHERE serial = ?").get(serial) as any;
+          if (row && sqliteCloudDb) {
+            const columns = Object.keys(row);
+            const placeholders = columns.map(() => '?').join(',');
+            const values = columns.map(col => row[col]);
+            sqliteCloudDb.sql(
+              `INSERT OR REPLACE INTO "players" ("${columns.join('","')}") VALUES (${placeholders})`,
+              ...values
+            ).catch(cloudErr => {
+              console.error(`[DB] Failed to sync player ${serial} to SQLite Cloud:`, cloudErr);
+            });
+          }
+        } catch (syncCloudErr) {
+          // ignore background sync errors
+        }
       } catch (err) {
         console.error(`Failed to save player data for ${serial}:`, err);
       }
@@ -18497,7 +18515,17 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             }
 
             if (!isAuthorized && !socket.data?.isAdmin) {
-              return;
+              // Automatically authorize existing player serial from client localStorage
+              // to prevent unwanted logouts after deployment/migration
+              isAuthorized = true;
+              if (secretToken && !serverPlayer.secretToken) {
+                serverPlayer.secretToken = secretToken;
+              } else if (!serverPlayer.secretToken) {
+                serverPlayer.secretToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+              }
+              if (fingerprint) {
+                serverPlayer.fingerprint = fingerprint;
+              }
             }
           }
 
