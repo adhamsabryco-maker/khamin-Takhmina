@@ -2142,12 +2142,19 @@ async function startServer() {
     const rooms = new Map<string, any>();
     const intervals = new Map<string, NodeJS.Timeout>();
     const matchmakingQueue: any[] = [];
+    let lastLiveMatchesJson = "";
     const matchmakingInterval = setInterval(() => {
       processQueue();
       if (io && getActiveLiveMatchesGlobal) {
-        io.emit("live_matches_update", getActiveLiveMatchesGlobal());
+        const matches = getActiveLiveMatchesGlobal();
+        // Only broadcast if the matches list actually changed to prevent constant websocket bandwidth spam
+        const currentJson = JSON.stringify(matches);
+        if (currentJson !== lastLiveMatchesJson) {
+          lastLiveMatchesJson = currentJson;
+          io.emit("live_matches_update", matches);
+        }
       }
-    }, 2000); // Run every 2 seconds
+    }, 5000); // Run check every 5 seconds instead of 2 seconds
 
     function cleanupPlayerOldBotRooms(playerSerial: string, currentRoomId?: string) {
       if (!playerSerial || !rooms) return;
