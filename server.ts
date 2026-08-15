@@ -4064,7 +4064,7 @@ async function startServer() {
             citySearchRewards: JSON.parse(row.citySearchRewards || "[]"),
             keys: row.keys || 0,
             likes: row.likes || 0,
-            lastActiveAt: row.lastActiveAt || 0,
+            lastActiveAt: row.lastActiveAt ? row.lastActiveAt : Date.now(),
             busCompleteWins: row.busCompleteWins || 0,
             busCompleteUsedLetters: JSON.parse(
               row.busCompleteUsedLetters || "[]",
