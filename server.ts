@@ -14,11 +14,19 @@ import os from "os";
 import admin from "firebase-admin";
 import archiver from "archiver";
 import webpush from "web-push";
+import zlib from "zlib";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://genogaejxepnwaqmwoho.supabase.co";
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlbm9nYWVqeGVwbndhcW13b2hvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjY2MjMxNCwiZXhwIjoyMTAyMjM4MzE0fQ.FjLFq0agFqXP0TKdr4pQ7TbHUoWExYEt8J033Ckzkso";
 
-const isProduction = process.env.NODE_ENV === "production" || process.env.RENDER === "true";
+const isAiStudio = Boolean(
+  process.env.APPLET_ID ||
+  process.env.K_SERVICE?.includes("ais-") ||
+  (process.env.APP_URL && process.env.APP_URL.includes("ais-")) ||
+  (process.env.NODE_ENV === "development" && !process.env.RENDER)
+);
+
+const isProduction = !isAiStudio;
 
 const supabase = isProduction ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
   auth: { persistSession: false }
@@ -2541,23 +2549,47 @@ async function startServer() {
     let dbPath = path.join(process.cwd(), "players.db");
     console.log(`[DB] Opening local players database at: ${dbPath}`);
 
-    // Sync from Supabase Storage on startup (Only in production/Render)
+    // Sync from Supabase Storage on startup (Only outside AI Studio / in Production)
     if (isProduction && supabase) {
       try {
-        console.log("[DB] Downloading players.db from Supabase Storage bucket 'database'...");
-        const { data, error } = await supabase.storage.from("database").download("players.db");
-        if (!error && data) {
-          const buffer = Buffer.from(await data.arrayBuffer());
-          fs.writeFileSync(dbPath, buffer);
-          console.log("[DB] Successfully downloaded players.db from Supabase Storage.");
-        } else {
-          console.log("[DB] Remote players.db not found or error:", error?.message);
+        console.log("[DB] Checking Supabase Storage bucket 'database' for remote players.db backup...");
+        let downloaded = false;
+
+        // 1. Try downloading compressed backup first
+        try {
+          const { data: gzData, error: gzErr } = await supabase.storage.from("database").download("players.db.gz");
+          if (!gzErr && gzData) {
+            const gzBuffer = Buffer.from(await gzData.arrayBuffer());
+            if (gzBuffer.length > 0) {
+              const decompressed = zlib.gunzipSync(gzBuffer);
+              fs.writeFileSync(dbPath, decompressed);
+              console.log(`[DB] Successfully downloaded and decompressed players.db.gz (${(gzBuffer.length / 1024 / 1024).toFixed(2)} MB -> ${(decompressed.length / 1024 / 1024).toFixed(2)} MB) from Supabase.`);
+              downloaded = true;
+            }
+          }
+        } catch (gzErr) {
+          console.log("[DB] players.db.gz not available or failed to gunzip:", gzErr);
+        }
+
+        // 2. Fallback to uncompressed players.db
+        if (!downloaded) {
+          const { data, error } = await supabase.storage.from("database").download("players.db");
+          if (!error && data) {
+            const buffer = Buffer.from(await data.arrayBuffer());
+            if (buffer.length > 0) {
+              fs.writeFileSync(dbPath, buffer);
+              console.log(`[DB] Successfully downloaded raw players.db (${(buffer.length / 1024 / 1024).toFixed(2)} MB) from Supabase Storage.`);
+              downloaded = true;
+            }
+          } else {
+            console.log("[DB] Remote players.db not found or error:", error?.message);
+          }
         }
       } catch (dlErr) {
         console.error("[DB] Failed to download players.db from Supabase Storage:", dlErr);
       }
     } else {
-      console.log("[DB] Running in AI Studio local dev mode. Skipping Supabase sync to keep database isolated.");
+      console.log("[DB] Running in AI Studio local dev mode. Skipping Supabase download to keep database isolated.");
     }
 
     let db = new BetterSqlite3(dbPath, { timeout: 10000 });
@@ -2565,49 +2597,78 @@ async function startServer() {
     db.pragma("synchronous = NORMAL");
 
     let isUploadingDb = false;
-    async function syncDbToSupabase() {
+    let dbIsDirty = false;
+
+    async function syncDbToSupabase(force = false) {
       if (!isProduction || !supabase) return;
+      if (!force && !dbIsDirty) return;
       if (isUploadingDb) return;
       isUploadingDb = true;
-      try {
-        try {
-          db.pragma("wal_checkpoint(FULL)");
-        } catch (e) {}
 
-        if (fs.existsSync(dbPath)) {
-          const fileBuffer = fs.readFileSync(dbPath);
-          const { error } = await supabase.storage.from("database").upload("players.db", fileBuffer, {
+      const tempBackupPath = path.join(os.tmpdir(), `players_backup_${Date.now()}.db`);
+      try {
+        // Native SQLite backup merges all memory and WAL changes into a single consolidated file
+        await db.backup(tempBackupPath);
+
+        if (fs.existsSync(tempBackupPath)) {
+          const rawBuffer = fs.readFileSync(tempBackupPath);
+          const gzBuffer = zlib.gzipSync(rawBuffer);
+
+          console.log(`[DB] Uploading database backup to Supabase (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB raw, ${(gzBuffer.length / 1024 / 1024).toFixed(2)} MB compressed)...`);
+
+          // 1. Upload compressed backup (primary)
+          const { error: gzError } = await supabase.storage.from("database").upload("players.db.gz", gzBuffer, {
+            upsert: true,
+            contentType: "application/gzip"
+          });
+          if (gzError) {
+            console.error("[DB] Error uploading players.db.gz to Supabase Storage:", gzError.message);
+          }
+
+          // 2. Upload raw backup
+          const { error: rawError } = await supabase.storage.from("database").upload("players.db", rawBuffer, {
             upsert: true,
             contentType: "application/octet-stream"
           });
-          if (error) {
-            console.error("[DB] Error uploading players.db to Supabase Storage:", error.message);
-          } else {
-            console.log("[DB] Successfully synced players.db to Supabase Storage.");
+          if (rawError) {
+            console.error("[DB] Error uploading raw players.db to Supabase Storage:", rawError.message);
+          }
+
+          if (!gzError || !rawError) {
+            dbIsDirty = false;
+            console.log("[DB] Successfully synced database backup to Supabase Storage at", new Date().toISOString());
           }
         }
       } catch (err) {
-        console.error("[DB] Failed to upload players.db to Supabase Storage:", err);
+        console.error("[DB] Failed to backup & upload database to Supabase Storage:", err);
       } finally {
+        try {
+          if (fs.existsSync(tempBackupPath)) {
+            fs.unlinkSync(tempBackupPath);
+          }
+        } catch (e) {}
         isUploadingDb = false;
       }
     }
 
-    // Sync to Supabase periodically every 2 minutes (Only in production)
+    // Sync to Supabase periodically every 30 seconds if changes occurred
     if (isProduction) {
-      setInterval(syncDbToSupabase, 2 * 60 * 1000);
+      setInterval(() => {
+        syncDbToSupabase(false);
+      }, 30 * 1000);
     }
 
     let syncTimeout: NodeJS.Timeout | null = null;
     function triggerSyncToSupabase() {
       if (!isProduction) return;
+      dbIsDirty = true;
       if (syncTimeout) clearTimeout(syncTimeout);
       syncTimeout = setTimeout(() => {
-        syncDbToSupabase();
-      }, 5000);
+        syncDbToSupabase(false);
+      }, 10000);
     }
 
-    console.log(`[DB] Database initialized successfully ${isProduction ? 'with Supabase Storage sync' : 'in local isolated mode'}.`);
+    console.log(`[DB] Database initialized successfully ${isProduction ? 'with Supabase Storage backup' : 'in local isolated mode'}.`);
 
     // Initialize shop items if needed
     try {
@@ -2670,16 +2731,28 @@ async function startServer() {
     // Cleanup expired tokens on startup
     await adminTokens.cleanup();
 
-
-    // Graceful shutdown
-    const shutdown = () => {
-      console.log("[DB] Closing database...");
-      if (db) db.close();
+    // Graceful shutdown with database sync
+    let isShuttingDown = false;
+    const shutdown = async (signal: string) => {
+      if (isShuttingDown) return;
+      isShuttingDown = true;
+      console.log(`[DB] Received ${signal}. Syncing latest database backup to Supabase before exiting...`);
+      try {
+        if (isProduction && supabase) {
+          await syncDbToSupabase(true);
+        }
+      } catch (err) {
+        console.error("[DB] Error during shutdown sync:", err);
+      }
+      console.log("[DB] Closing database connection...");
+      try {
+        if (db) db.close();
+      } catch (e) {}
       process.exit(0);
     };
 
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
 
     db.exec(`
     CREATE TABLE IF NOT EXISTS banned_identities (
@@ -3867,6 +3940,7 @@ async function startServer() {
         }
         insertMany(players);
         invalidateTopPlayersCache();
+        triggerSyncToSupabase();
       } catch (err) {
         console.error("Failed to save all players data:", err);
       }
