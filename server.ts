@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import compression from "compression";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
@@ -1007,9 +1008,26 @@ async function startServer() {
       cors: {
         origin: "*",
       },
+      perMessageDeflate: {
+        threshold: 1024,
+      },
+      httpCompression: true,
     });
 
     const PORT = 3000;
+
+    // Enable response compression (gzip/deflate) to drastically save bandwidth
+    app.use(
+      compression({
+        threshold: 1024, // Compress responses above 1KB
+        filter: (req, res) => {
+          if (req.headers["x-no-compression"]) {
+            return false;
+          }
+          return compression.filter(req, res);
+        },
+      }),
+    );
 
     // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
@@ -1031,14 +1049,31 @@ async function startServer() {
     app.use(
       "/uploads",
       express.static(path.join(process.cwd(), "public/uploads"), {
-        maxAge: "1y", // Cache uploads for 1 year
+        maxAge: "1y",
         etag: true,
+        immutable: true,
+        setHeaders: (res) => {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        },
       }),
     );
     app.use(
       express.static(path.join(process.cwd(), "public"), {
-        maxAge: "1y", // Cache public directory stuff for 1 year
+        maxAge: "1y",
         etag: true,
+        setHeaders: (res, filePath) => {
+          if (
+            filePath.endsWith(".html") ||
+            filePath.endsWith("sw.js") ||
+            filePath.endsWith("manifest.json") ||
+            filePath.endsWith("manifest.webmanifest") ||
+            filePath.endsWith("version.json")
+          ) {
+            res.setHeader("Cache-Control", "no-cache, must-revalidate");
+          } else {
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          }
+        },
       }),
     );
 
@@ -2590,46 +2625,62 @@ async function startServer() {
 
     if (isProduction && supabase) {
       try {
-        console.log("[DB] Checking Supabase Storage bucket 'database' for 'players.db'...");
+        console.log("[DB] Checking Supabase Storage bucket 'database' for 'players.db.gz' or 'players.db'...");
         const tempCandidatePath = path.join(os.tmpdir(), `candidate_${Date.now()}.db`);
 
-        // Check remote file metadata
+        // Check remote file metadata (check .gz first, then .db)
+        let remoteFileName = "players.db.gz";
         try {
           const { data: fileList } = await supabase.storage.from("database").list("", { search: "players.db" });
-          const fileInfo = fileList?.find(f => f.name === "players.db");
-          if (fileInfo && fileInfo.metadata?.size) {
-            remoteFileSizeAtStart = fileInfo.metadata.size;
-            console.log(`[DB] Found remote players.db on Supabase with size: ${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB`);
+          const gzInfo = fileList?.find(f => f.name === "players.db.gz");
+          const dbInfo = fileList?.find(f => f.name === "players.db");
+          if (gzInfo && gzInfo.metadata?.size) {
+            remoteFileName = "players.db.gz";
+            remoteFileSizeAtStart = gzInfo.metadata.size;
+            console.log(`[DB] Found compressed remote players.db.gz on Supabase (${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB)`);
+          } else if (dbInfo && dbInfo.metadata?.size) {
+            remoteFileName = "players.db";
+            remoteFileSizeAtStart = dbInfo.metadata.size;
+            console.log(`[DB] Found uncompressed remote players.db on Supabase (${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB)`);
           }
         } catch (e) {}
 
-        // Download players.db directly
+        // Download database
         try {
-          const { data, error } = await supabase.storage.from("database").download("players.db");
+          const { data, error } = await supabase.storage.from("database").download(remoteFileName);
           if (!error && data) {
-            const buffer = Buffer.from(await data.arrayBuffer());
-            if (buffer.length > 0) {
-              fs.writeFileSync(tempCandidatePath, buffer);
+            const rawBuffer = Buffer.from(await data.arrayBuffer());
+            if (rawBuffer.length > 0) {
+              let finalDbBuffer: Buffer;
+              // Check if buffer is gzip compressed (magic bytes 0x1f, 0x8b)
+              if (rawBuffer[0] === 0x1f && rawBuffer[1] === 0x8b) {
+                console.log(`[DB] Decompressing players.db.gz (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB compressed)...`);
+                finalDbBuffer = zlib.gunzipSync(rawBuffer);
+              } else {
+                finalDbBuffer = rawBuffer;
+              }
+
+              fs.writeFileSync(tempCandidatePath, finalDbBuffer);
               if (isValidSqliteDatabase(tempCandidatePath)) {
                 fs.copyFileSync(tempCandidatePath, dbPath);
                 initialDownloadSucceeded = true;
-                console.log(`[DB] Successfully downloaded and verified players.db (${(buffer.length / 1024 / 1024).toFixed(2)} MB) from Supabase Storage.`);
+                console.log(`[DB] Successfully restored and verified players.db (${(finalDbBuffer.length / 1024 / 1024).toFixed(2)} MB) from Supabase Storage.`);
               } else {
-                console.warn("[DB] Remote players.db downloaded but failed integrity check. Preserving local data.");
+                console.warn("[DB] Remote database downloaded but failed integrity check. Preserving local data.");
               }
             }
           } else {
-            console.log("[DB] Remote players.db not found or error:", error?.message);
+            console.log("[DB] Remote database not found or error:", error?.message);
           }
         } catch (rawErr) {
-          console.warn("[DB] Failed downloading players.db:", rawErr);
+          console.warn("[DB] Failed downloading database:", rawErr);
         }
 
         try {
           if (fs.existsSync(tempCandidatePath)) fs.unlinkSync(tempCandidatePath);
         } catch (e) {}
       } catch (dlErr) {
-        console.error("[DB] Failed to download players.db from Supabase Storage:", dlErr);
+        console.error("[DB] Failed to download database from Supabase Storage:", dlErr);
       }
     } else {
       console.log("[DB] Running in AI Studio local dev mode. Skipping Supabase download to keep database isolated.");
@@ -2666,26 +2717,27 @@ async function startServer() {
         if (fs.existsSync(tempBackupPath)) {
           const rawBuffer = fs.readFileSync(tempBackupPath);
 
-          // Safety guard: Don't overwrite a large remote database (e.g. 43MB) with an empty tiny local database (< 1MB)
-          // unless initial download succeeded or remote didn't have a large file
-          if (!initialDownloadSucceeded && remoteFileSizeAtStart > 5 * 1024 * 1024 && rawBuffer.length < 1024 * 1024) {
+          // Safety guard: Don't overwrite a large remote database with an empty tiny local database
+          if (!initialDownloadSucceeded && remoteFileSizeAtStart > 3 * 1024 * 1024 && rawBuffer.length < 500 * 1024) {
             console.warn(`[DB] Safety blocked upload: local backup is only ${(rawBuffer.length / 1024).toFixed(1)} KB while remote is ${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB. Avoiding accidental overwrite.`);
             return;
           }
 
-          console.log(`[DB] Uploading database backup to Supabase (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB)...`);
+          // Compress the database with gzip level 9 for maximum bandwidth & storage savings
+          const compressedBuffer = zlib.gzipSync(rawBuffer, { level: 9 });
+          console.log(`[DB] Uploading compressed database backup to Supabase (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB -> ${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB)...`);
 
-          const { error: rawError } = await supabase.storage.from("database").upload("players.db", rawBuffer, {
+          const { error: gzError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
             upsert: true,
-            contentType: "application/octet-stream"
+            contentType: "application/gzip"
           });
 
-          if (rawError) {
-            console.error("[DB] Error uploading players.db to Supabase Storage:", rawError.message);
+          if (gzError) {
+            console.error("[DB] Error uploading players.db.gz to Supabase Storage:", gzError.message);
           } else {
             dbIsDirty = false;
             initialDownloadSucceeded = true;
-            console.log(`[DB] Successfully synced players.db (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB) to Supabase Storage.`);
+            console.log(`[DB] Successfully synced compressed players.db.gz (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB) to Supabase Storage.`);
           }
         }
       } catch (err) {
