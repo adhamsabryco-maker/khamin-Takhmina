@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Play, RotateCcw, Award, Volume2, VolumeX, AlertCircle, Info, ArrowLeft, ArrowRight, Zap, CheckCircle2, ShieldAlert, Trophy, Compass, Sparkles, Eraser } from "lucide-react";
+import { GameEndControls } from "./components/GameEndControls";
 
 interface BeachRaceGameProps {
   room: any;
@@ -52,6 +53,15 @@ export default function BeachRaceGame({
   const [finishWinnerId, setFinishWinnerId] = useState<string | null>(null);
   const isFinished = room?.gameState === "beach_race_finished" || isLocalFinished;
   const isGameActive = isPlaying && !isFinished;
+
+  const isOpponentInAd = React.useMemo(() => {
+    if (!room?.adPausedPlayersArray || room.adPausedPlayersArray.length === 0) return false;
+    return room.adPausedPlayersArray.some((id: string) => {
+      if (id === socket?.id || id === me?.id) return false;
+      const p = room.players?.find((pl: any) => pl.id === id || pl.socketId === id);
+      return p && !p.isBot;
+    });
+  }, [room?.adPausedPlayersArray, room?.players, socket?.id, me?.id]);
 
   // Local Runner State & UI controls
   const [distance, setDistance] = useState<number>(0);
@@ -1538,69 +1548,25 @@ export default function BeachRaceGame({
               </div>
             )}
 
-            {/* Match result buttons (تغيير اللعبة - لعب مرة أخرى - خروج للرئيسية) */}
-            <div className="flex flex-col gap-2.5 w-full max-w-sm mt-2">
-              <div className="flex gap-2 w-full">
-                {/* تغيير اللعبة */}
-                <button
-                  disabled={((room?.adPausedPlayersArray?.length || 0) > 0)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (playSound) playSound("clickOpen");
-                    setIsLocalFinished(false);
-                    socket?.emit("play_again", { roomId: room?.id });
-                  }}
-                  className={`flex-1 py-3 px-2 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                    ((room?.adPausedPlayersArray?.length || 0) > 0)
-                      ? "bg-gray-400 text-gray-200 shadow-none cursor-not-allowed opacity-60"
-                      : "bg-purple-600 hover:bg-purple-700 active:scale-95 text-white shadow-[0_4px_0_0_#7c3aed] active:shadow-transparent"
-                  }`}
-                >
-                  🎮 تغيير اللعبة
-                </button>
-
-                {/* لعب مرة أخرى */}
-                <button
-                  disabled={room?.beachRace?.rematchRequestedBy?.includes(me?.id) || ((room?.adPausedPlayersArray?.length || 0) > 0)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (playSound) playSound("clickOpen");
-                    socket?.emit("request_beach_race_rematch", { roomId: room?.id, playerId: me?.id });
-                  }}
-                  className={`flex-1 py-3 px-2 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                    ((room?.adPausedPlayersArray?.length || 0) > 0)
-                      ? "bg-gray-400 text-gray-200 shadow-none cursor-not-allowed opacity-60"
-                      : room?.beachRace?.rematchRequestedBy?.includes(me?.id)
-                      ? "bg-emerald-700 text-white shadow-none opacity-80 cursor-not-allowed"
-                      : room?.beachRace?.rematchRequestedBy?.includes(opp?.id)
-                      ? "bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white shadow-[0_4px_0_0_#059669] animate-pulse"
-                      : "bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white shadow-[0_4px_0_0_#059669] active:shadow-transparent"
-                  }`}
-                >
-                  {((room?.adPausedPlayersArray?.length || 0) > 0) ? (
-                    <span>انتظر! المنافس يشاهد إعلان 📺</span>
-                  ) : room?.beachRace?.rematchRequestedBy?.includes(me?.id) ? (
-                    <span className="animate-pulse">🔄 بانتظار الخصم...</span>
-                  ) : room?.beachRace?.rematchRequestedBy?.includes(opp?.id) ? (
-                    <span>🎮 المنافس جاهز للعب</span>
-                  ) : (
-                    <span>🔄 لعب مرة أخرى</span>
-                  )}
-                </button>
-              </div>
-
-              {/* خروج للرئيسية - يعمل دائما بدون أي تعطيل */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (playSound) playSound("clickOpen");
-                  if (handleLeaveGame) handleLeaveGame();
-                }}
-                className="w-full bg-red-500 hover:bg-red-600 active:scale-95 text-white shadow-[0_4px_0_0_#dc2626] active:shadow-transparent py-3 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-2 mt-1 transition-all cursor-pointer"
-              >
-                🚪 خروج للرئيسية
-              </button>
-            </div>
+            {/* Unified Game End Controls */}
+            <GameEndControls
+              room={room}
+              socket={socket}
+              myId={me?.id}
+              playerSerial={playerSerial}
+              isRematchRequestedByMe={room?.beachRace?.rematchRequestedBy?.includes(me?.id)}
+              isRematchRequestedByOpponent={room?.beachRace?.rematchRequestedBy?.includes(opp?.id)}
+              onChangeGame={() => {
+                setIsLocalFinished(false);
+                socket?.emit("play_again", { roomId: room?.id });
+              }}
+              onRematch={() => {
+                socket?.emit("request_beach_race_rematch", { roomId: room?.id, playerId: me?.id });
+              }}
+              onLeaveGame={handleLeaveGame}
+              playSound={playSound}
+              className="mt-2"
+            />
           </div>
         )}
 
@@ -1650,7 +1616,7 @@ export default function BeachRaceGame({
 
       {/* On-Screen Controls below the canvas */}
       {isGameActive && !isPausedAtCheckpoint && !showModal && (
-        <div className="w-full max-w-md mt-1 flex items-center justify-between px-2 py-2 bg-slate-800/90 backdrop-blur-md rounded-2xl border-2 border-amber-500/50 shadow-2xl select-none touch-none" dir="ltr">
+        <div className="w-full max-w-md mt-1 flex items-center justify-between px-4 py-2 bg-slate-800/90 backdrop-blur-md rounded-2xl border-2 border-amber-500/50 shadow-2xl select-none touch-none" dir="ltr">
           {/* Direction Arrows */}
           <div className="flex gap-4" dir="ltr">
             <button
