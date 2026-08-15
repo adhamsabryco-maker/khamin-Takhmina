@@ -1009,7 +1009,11 @@ async function startServer() {
       },
     });
 
-    export default app;
+    export default {
+      fetch(request: Request) {
+        return new Response('Hello from Vercel!');
+      },
+    };
 
     // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
