@@ -1,6 +1,5 @@
 import "dotenv/config";
 import express from "express";
-import compression from "compression";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
@@ -1008,26 +1007,9 @@ async function startServer() {
       cors: {
         origin: "*",
       },
-      perMessageDeflate: {
-        threshold: 1024,
-      },
-      httpCompression: true,
     });
 
     const PORT = 3000;
-
-    // Enable response compression (gzip/deflate) to drastically save bandwidth
-    app.use(
-      compression({
-        threshold: 1024, // Compress responses above 1KB
-        filter: (req, res) => {
-          if (req.headers["x-no-compression"]) {
-            return false;
-          }
-          return compression.filter(req, res);
-        },
-      }),
-    );
 
     // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
@@ -1049,31 +1031,14 @@ async function startServer() {
     app.use(
       "/uploads",
       express.static(path.join(process.cwd(), "public/uploads"), {
-        maxAge: "1y",
+        maxAge: "1y", // Cache uploads for 1 year
         etag: true,
-        immutable: true,
-        setHeaders: (res) => {
-          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-        },
       }),
     );
     app.use(
       express.static(path.join(process.cwd(), "public"), {
-        maxAge: "1y",
+        maxAge: "1y", // Cache public directory stuff for 1 year
         etag: true,
-        setHeaders: (res, filePath) => {
-          if (
-            filePath.endsWith(".html") ||
-            filePath.endsWith("sw.js") ||
-            filePath.endsWith("manifest.json") ||
-            filePath.endsWith("manifest.webmanifest") ||
-            filePath.endsWith("version.json")
-          ) {
-            res.setHeader("Cache-Control", "no-cache, must-revalidate");
-          } else {
-            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-          }
-        },
       }),
     );
 
