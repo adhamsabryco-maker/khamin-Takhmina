@@ -2752,21 +2752,19 @@ async function startServer() {
       }
     }
 
-    // Sync to Supabase periodically every 30 seconds if changes occurred
+    // Sync to Supabase periodically once every 24 hours (86,400,000 ms) and on graceful shutdown
+    // All player actions, new players, and updates are saved locally into SQLite immediately.
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
     if (isProduction) {
       setInterval(() => {
-        syncDbToSupabase(false);
-      }, 30 * 1000);
+        console.log("[DB] 24-hour scheduled sync triggered. Uploading database backup to Supabase...");
+        syncDbToSupabase(true);
+      }, TWENTY_FOUR_HOURS);
     }
 
-    let syncTimeout: NodeJS.Timeout | null = null;
     function triggerSyncToSupabase() {
-      if (!isProduction) return;
+      // Mark as dirty for the 24-hour sync cycle or graceful shutdown
       dbIsDirty = true;
-      if (syncTimeout) clearTimeout(syncTimeout);
-      syncTimeout = setTimeout(() => {
-        syncDbToSupabase(false);
-      }, 10000);
     }
 
     console.log(`[DB] Database initialized successfully ${isProduction ? 'with Supabase Storage backup' : 'in local isolated mode'}.`);
