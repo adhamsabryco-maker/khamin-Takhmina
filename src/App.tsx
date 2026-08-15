@@ -1581,8 +1581,8 @@ export default function App() {
 
     if (initialVersion) {
       checkVersion();
-      // Periodically check version every 5 minutes
-      const interval = setInterval(checkVersion, 5 * 60 * 1000);
+      // Periodically check version every 15 minutes (or rely on socket reload triggers)
+      const interval = setInterval(checkVersion, 15 * 60 * 1000);
       return () => clearInterval(interval);
     }
   }, [initialVersion, setNeedRefresh]);
@@ -3597,7 +3597,7 @@ export default function App() {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && showAdminDashboard) {
       const fetchPushStats = async () => {
         try {
           const token = localStorage.getItem("khamin_admin_token");
@@ -3630,10 +3630,10 @@ export default function App() {
         }
       };
       fetchPushStats();
-      const interval = setInterval(fetchPushStats, 30000); // Update every 30s
+      const interval = setInterval(fetchPushStats, 60000); // Update every 60s when dashboard is open
       return () => clearInterval(interval);
     }
-  }, [isAdmin, showAdminDashboard, adminTab]);
+  }, [isAdmin, showAdminDashboard]);
 
   const [showPushPrompt, setShowPushPrompt] = useState(false);
   const [pushTitle, setPushTitle] = useState("");
@@ -6711,8 +6711,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchAdminImages();
-  }, [fetchAdminImages]);
+    if (isAdmin && showAdminDashboard) {
+      fetchAdminImages();
+    }
+  }, [isAdmin, showAdminDashboard, fetchAdminImages]);
 
   useEffect(() => {
     console.log(
