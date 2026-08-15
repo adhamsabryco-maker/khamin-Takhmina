@@ -1009,7 +1009,7 @@ async function startServer() {
       },
     });
 
-    const PORT = 3000;
+    export default app;
 
     // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
