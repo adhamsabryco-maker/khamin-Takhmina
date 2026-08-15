@@ -432,6 +432,14 @@ body::after {
   box-shadow: 6px 6px 0px 0px rgba(0,0,0,1) !important;
 }
 
+.round-corner-1 {
+  border-radius: 15px;
+}
+
+.keyboard-rounded {
+  border-radius: 9px;
+}
+
 /* Comic style borders */
 .border-2, .border {
   border-width: 4px !important;

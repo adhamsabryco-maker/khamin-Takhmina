@@ -422,6 +422,7 @@ const SOUNDS = {
   bombFuse: "/sounds/bomb-fuse.mp3",
   bombExplosion: "/sounds/bomb-explosion.mp3",
   boomingExplosion: "/sounds/booming-explosion.mp3",
+  beachRaceBackground: "/sounds/beach-race-palying-music.mp3",
 };
 
 interface ThemeConfig {
@@ -6118,6 +6119,7 @@ export default function App() {
   const audioRef = useRef<{ [key: string]: Howl }>({});
   const lobbyMusicRef = useRef<Howl | null>(null);
   const gameMusicRef = useRef<Howl | null>(null);
+  const beachRaceMusicRef = useRef<Howl | null>(null);
 
   useEffect(() => {
     // Initialize sounds
@@ -6138,6 +6140,14 @@ export default function App() {
           volume: musicVolume,
           html5: true,
         });
+      } else if (key === "beachRaceBackground") {
+        beachRaceMusicRef.current = new Howl({
+          src: [url],
+          loop: true,
+          preload: true,
+          volume: musicVolume,
+          html5: true,
+        });
       } else if (key === "bombFuse") {
         audioRef.current[key] = new Howl({
           src: [url],
@@ -6152,13 +6162,15 @@ export default function App() {
     return () => {
       if (lobbyMusicRef.current) lobbyMusicRef.current.unload();
       if (gameMusicRef.current) gameMusicRef.current.unload();
+      if (beachRaceMusicRef.current) beachRaceMusicRef.current.unload();
       Object.values(audioRef.current).forEach((howl: any) => howl.unload());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-        const isGameActive = !!room && (
+    const isBeachRacePlaying = !!room && room.gameState === "beach_race_playing";
+    const isGameActive = !!room && (
       room.gameState === "playing" ||
       room.gameState === "finished" ||
       room.gameState === "bomb_party_playing" ||
@@ -6196,16 +6208,23 @@ export default function App() {
       room.gameState === "beach_race_finished"
     );
 
-    const activeMusic = isGameActive
+    const activeMusic = isBeachRacePlaying
+      ? beachRaceMusicRef.current
+      : isGameActive
       ? gameMusicRef.current
       : lobbyMusicRef.current;
-    const inactiveMusic = isGameActive
-      ? lobbyMusicRef.current
-      : gameMusicRef.current;
 
-    if (inactiveMusic && inactiveMusic.playing()) {
-      inactiveMusic.pause();
-    }
+    const allMusics = [
+      lobbyMusicRef.current,
+      gameMusicRef.current,
+      beachRaceMusicRef.current,
+    ];
+
+    allMusics.forEach((music) => {
+      if (music && music !== activeMusic && music.playing()) {
+        music.pause();
+      }
+    });
 
     if (activeMusic) {
       // Set volume
