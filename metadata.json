@@ -1,6 +1,6 @@
 {
   "name": "Khamin Takhmina! Online",
-  "description": "لعبة تخمين جماعية أونلاين لشخصين مع مؤثرات تفاعلية وكروت مساعدة.",
+  "description": "منصة خمن تخمينة للألعاب الجماعية أونلاين! تضم أكثر من 13 لعبة ممتعة مثل تخمين الصور، سباق التخمين، بازل، ووردل، وأتوبيس كومبليت. العب وتحدّ أصدقائك الآن مع ألعاب جديدة باستمرار.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
