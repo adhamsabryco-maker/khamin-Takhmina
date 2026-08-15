@@ -25977,6 +25977,42 @@ const renderBombPartyRewardBar = () => {
 
               </div>
             </div>
+
+        {!playerSerial && (
+            <div
+              id="seo-platform-description"
+              className="mt-4 bg-white/90 border-2 border-black p-4 text-right rounded-2xl shadow-md text-gray-800 space-y-2.5 leading-relaxed font-cairo"
+              dir="rtl"
+            >
+              {/* تم تحويلها إلى h2 لترتيب أفضل للـ SEO */}
+              <h2 className="text-base md:text-lg font-black text-main">
+                مرحباً بك في منصة خمن تخمينة - وجهتك الأولى للألعاب الجماعية والتنافسية أونلاين لشخصين أو أكثر!
+              </h2>
+              <p className="text-xs md:text-sm font-bold text-gray-700">
+                تحولت خمن تخمينة من لعبة واحدة إلى منصة متكاملة تضم أكثر من 13 لعبة ذكاء وسرعة، مع تحديثات مستمرة وإضافة ألعاب جديدة دورياً.
+              </p>
+              <p className="text-xs md:text-sm font-bold text-gray-700">
+                استمتع بتشكيلة واسعة من التحديات التفاعلية التي تناسب جميع الأذواق:
+              </p>
+              <ul className="text-xs md:text-sm font-bold text-gray-700 space-y-1.5 list-disc list-inside pr-1">
+                <li>
+                  <strong className="font-black text-black">ألعاب الذكاء والكلمات أونلاين:</strong> تخمينة كلمة لي (Wordle)، تخمينة بازل (Puzzle)، وتخمينة إي كيو (IQ).
+                </li>
+                <li>
+                  <strong className="font-black text-black">ألعاب التخمين والصور الجماعية:</strong> تخمين الصور (مع ميزة رفع صورك الخاصة)، وسباق التخمين السريع.
+                </li>
+                <li>
+                  <strong className="font-black text-black">ألعاب التنافس الكلاسيكية والسرعة:</strong> أتوبيس كومبليت، تخمينة أربع حروف (Connect Four)، نقطة وخط (Dots and Boxes)، تخمينة إكس أو (XO)، وأكواب السرعة.
+                </li>
+                <li>
+                  <strong className="font-black text-black">ألعاب الحماس والإثارة أونلاين:</strong> حرب الفضاء، قنبلة التخمين، وتخمينة كف يد.
+                </li>
+              </ul>
+              <p className="text-xs md:text-sm font-black text-accent-blue pt-1">
+                العب الآن مع أصدقائك واستخدم الكروت المساعدة والمؤثرات التفاعلية لتجربة ألعاب جماعية لا تُنسى!
+              </p>
+            </div>
+            )}
           </motion.div>
         </div>
 
