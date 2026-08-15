@@ -14462,7 +14462,7 @@ if (data.connectFourWordsRewardLevel != null) {
                 </p>
 
                 {/* Leaderboard rankings */}
-                <div className="box-game p-3">
+                <div className="box-game p-2">
                   <h3 className="text-lg font-black text-red-600 mb-2 flex items-center gap-2">
                     <div className="text-xl relative top-0.5">📊</div>
                     ترتيب أبطال التخمين
@@ -14475,7 +14475,7 @@ if (data.connectFourWordsRewardLevel != null) {
                 </div>
 
                 {/* Takhmina Coins */}
-                <div className="box-game p-3">
+                <div className="box-game p-2">
                   <h3 className="text-lg font-black text-yellow-600 mb-2 flex items-center gap-2">
                     <img
                       src="/Takhmina_coin_02.png"
@@ -14492,7 +14492,7 @@ if (data.connectFourWordsRewardLevel != null) {
                 </div>
 
                 {/* Keys */}
-                <div className="box-game p-3">
+                <div className="box-game p-2">
                   <h3 className="text-lg font-black text-yellow-500 mb-2 flex items-center gap-2">
                     <Key className="w-5 h-5" />
                     مفاتيح التخمين
@@ -14505,7 +14505,7 @@ if (data.connectFourWordsRewardLevel != null) {
                 </div>
 
                 {/* Pro Package */}
-                <div className="box-game p-3">
+                <div className="box-game p-2">
                   <h3 className="text-lg font-black text-accent-orange mb-2 flex items-center gap-2">
                     <div className="text-xl relative top-0.5">👑</div>
                     باقة المحترفين
@@ -14513,7 +14513,7 @@ if (data.connectFourWordsRewardLevel != null) {
                   <p className="text-sm leading-relaxed">
                     عند حصولك علي باقة المحترفين يمكنك استخدام جميع وسائل
                     المساعدة في لعبة فئات التخمين بدون إعلانات حسب مدة تفعيل الباقة.
-                    <div className="text-[8px] md:text-xs font-bold text-gray-600 flex items-center gap-1 mt-0.5">
+                    <div className="text-[10px] md:text-xs font-bold text-gray-600 flex items-center gap-1 mt-0.5">
                       وايضا يمكنك الاستمتاع باللعبة
                       بدون الفواصل الاعلانية
                       <div className="relative inline-flex items-center justify-center">
@@ -14524,7 +14524,7 @@ if (data.connectFourWordsRewardLevel != null) {
                   </p>
                 </div>
 
-                <div className="box-game p-3 space-y-4">
+                <div className="box-game p-2 space-y-4">
                   <h3 className="text-sm md:text-lg font-black text-accent-orange mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Zap className="w-5 h-5" />
@@ -14563,7 +14563,7 @@ if (data.connectFourWordsRewardLevel != null) {
                 </div>
 
                 {/* Hint */}
-                <div className="box-game p-3">
+                <div className="box-game p-2">
                   <h3 className="text-sm md:text-lg font-black text-accent-blue mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 relative">
                       <HelpCircle className="w-5 h-5" />
@@ -14583,7 +14583,7 @@ if (data.connectFourWordsRewardLevel != null) {
                 </div>
 
                 {/* Letter Revealer */}
-                <div className="box-game p-3">
+                <div className="box-game p-2">
                   <h3 className="text-sm md:text-lg font-black text-accent-green mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 relative">
                       <Type className="w-5 h-5" />
@@ -14603,7 +14603,7 @@ if (data.connectFourWordsRewardLevel != null) {
                 </div>
 
                 {/* Time Freeze */}
-                <div className="box-game p-3">
+                <div className="box-game p-2">
                   <h3 className="text-sm md:text-lg font-black text-cyan-600 mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 relative">
                       <Snowflake className="w-5 h-5" />
@@ -14623,7 +14623,7 @@ if (data.connectFourWordsRewardLevel != null) {
                 </div>
 
                 {/* Word Count */}
-                <div className="box-game p-3">
+                <div className="box-game p-2">
                   <h3 className="text-sm md:text-lg font-black text-indigo-600 mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 relative">
                       <Hash className="w-5 h-5" />
@@ -14643,7 +14643,7 @@ if (data.connectFourWordsRewardLevel != null) {
                 </div>
 
                 {/* Spy */}
-                <div className="box-game p-3">
+                <div className="box-game p-2">
                   <h3 className="text-sm md:text-lg font-black text-accent-purple mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 relative">
                       <Eye className="w-5 h-5" />
@@ -14662,7 +14662,7 @@ if (data.connectFourWordsRewardLevel != null) {
                   </p>
                 </div>
 
-                <div className="box-game p-3">
+                <div className="box-game p-2">
                   <h3 className="text-lg font-black text-indigo-600 mb-2 flex items-center gap-2">
                     <Trophy className="w-5 h-5" />
                     جوائز المستويات

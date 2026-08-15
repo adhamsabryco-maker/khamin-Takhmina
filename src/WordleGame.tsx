@@ -251,7 +251,7 @@ export default function WordleGame({
         );
       }
       rows.push(
-        <div key="active-row" className={`flex gap-1 justify-center relative ${shakeRow ? 'animate-shake' : 'animate-pulse'}`} dir="rtl">
+        <div key="active-row" className={`flex w-full gap-1 justify-center relative ${shakeRow ? 'animate-shake' : 'animate-pulse'}`} dir="rtl">
           {showNotWordMsg && (
              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap z-50 animate-fadeInOut">
                ليست كلمة
@@ -284,7 +284,7 @@ export default function WordleGame({
     return (
       <div 
         ref={guessesContainerRef} 
-        className="flex flex-col gap-1.5 overflow-y-auto max-h-[350px] p-2 w-full scroll-smooth"
+        className="flex flex-col w-full gap-0.5 overflow-x-hidden overflow-y-auto max-h-[350px] max-w-full scroll-smooth"
       >
         {rows}
       </div>
@@ -319,7 +319,7 @@ export default function WordleGame({
 
   const getKeyClass = (char: string) => {
     const status = letterStatuses[char];
-    const base = "flex-1 min-w-0 h-11 sm:h-13 font-black text-sm sm:text-lg rounded-lg sm:rounded-xl transition-all active:scale-95 flex items-center justify-center p-0 border-b-2 ";
+    const base = "flex-1 min-w-0 h-10 sm:h-11 font-black text-sm sm:text-lg keyboard-rounded transition-all active:scale-95 flex items-center justify-center p-0 border-b-2 ";
     if (status === 'correct') return base + "bg-green-500 text-white border-green-600 shadow-sm";
     if (status === 'present') return base + "bg-yellow-400 text-brown-dark border-yellow-500 shadow-sm";
     if (status === 'absent') return base + "bg-gray-300 text-gray-500 border-gray-400 opacity-60 line-through";
@@ -375,7 +375,7 @@ export default function WordleGame({
 
   return (
     <React.Fragment>
-      <div className="w-full card-game p-0.5 sm:p-3 md:p-4 text-center space-y-3 md:space-y-4 relative overflow-hidden flex flex-col min-h-[auto] bg-gradient-to-b from-gray-50 to-emerald-50/20 border-emerald-500 rounded-3xl shadow-xl">
+      <div className="w-full card-game p-1 sm:p-2 md:p-3 text-center space-y-3 md:space-y-4 relative overflow-hidden flex flex-col min-h-[auto] bg-gradient-to-b from-gray-50 to-emerald-50/20 border-emerald-500 rounded-3xl shadow-xl">
         {renderWordleRewardBar && renderWordleRewardBar()}
         
         {/* Waiting / Lobby Screen */}
@@ -496,7 +496,7 @@ export default function WordleGame({
                       <button
                         onClick={requestHint}
                         disabled={hintCooldown > 0}
-                        className={`absolute -bottom-2 right-2 sm:right-3 w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-transform z-10 ${
+                        className={`absolute -bottom-1 right-2 sm:right-3 w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center text-xl sm:text-2xl shadow-sm transition-transform z-10 ${
                           hintCooldown > 0 
                             ? 'bg-gray-300 border-gray-400 cursor-not-allowed opacity-80' 
                             : 'bg-yellow-400 border-yellow-600 hover:scale-110 active:scale-95'
@@ -512,7 +512,7 @@ export default function WordleGame({
                     )}
                   </div>
                   
-                  <div className="bg-gray-100/90 dark:bg-black/40 mt-1 w-full p-1.5 sm:p-2.5 rounded-2xl flex flex-col gap-2">
+                  <div className="bg-gray-100/90 dark:bg-black/40 w-full rounded-2xl flex flex-col gap-2">
 
                     {/* Custom Keyboard */}
                     <div className="bg-gray-200/90 p-1.5 sm:p-2 rounded-2xl w-full flex flex-col gap-1.5 sm:gap-2 overflow-hidden shadow-inner" dir="rtl">
@@ -534,7 +534,7 @@ export default function WordleGame({
                           onClick={handleBackspace}
                           className="flex-1 bg-red-100 text-red-700 border-b-4 border-red-300 hover:bg-red-200 h-10 md:h-12 rounded-xl font-bold text-sm md:text-base active:scale-95 transition-all flex items-center justify-center gap-1"
                         >
-                          🔙 مسح
+                          ⌦ مسح
                         </button>
                         <button
                           onClick={() => handleGuessSubmit()}
