@@ -2549,11 +2549,47 @@ async function startServer() {
     let dbPath = path.join(process.cwd(), "players.db");
     console.log(`[DB] Opening local players database at: ${dbPath}`);
 
+    function isValidSqliteDatabase(filePath: string): boolean {
+      if (!fs.existsSync(filePath)) return false;
+      try {
+        const stat = fs.statSync(filePath);
+        if (stat.size < 100) return false;
+
+        const fd = fs.openSync(filePath, 'r');
+        const header = Buffer.alloc(16);
+        fs.readSync(fd, header, 0, 16, 0);
+        fs.closeSync(fd);
+        if (header.toString('utf8', 0, 16) !== "SQLite format 3\0") {
+          return false;
+        }
+
+        let testDb: any = null;
+        try {
+          testDb = new BetterSqlite3(filePath, { readonly: true, timeout: 5000 });
+          const quickCheck = testDb.pragma("quick_check") as any[];
+          if (!quickCheck || quickCheck.length === 0 || quickCheck[0].quick_check !== "ok") {
+            return false;
+          }
+          testDb.prepare("SELECT count(*) FROM sqlite_master").get();
+          return true;
+        } catch (e) {
+          return false;
+        } finally {
+          if (testDb) {
+            try { testDb.close(); } catch (e) {}
+          }
+        }
+      } catch (e) {
+        return false;
+      }
+    }
+
     // Sync from Supabase Storage on startup (Only outside AI Studio / in Production)
     if (isProduction && supabase) {
       try {
         console.log("[DB] Checking Supabase Storage bucket 'database' for remote players.db backup...");
         let downloaded = false;
+        const tempCandidatePath = path.join(os.tmpdir(), `candidate_${Date.now()}.db`);
 
         // 1. Try downloading compressed backup first
         try {
@@ -2562,9 +2598,14 @@ async function startServer() {
             const gzBuffer = Buffer.from(await gzData.arrayBuffer());
             if (gzBuffer.length > 0) {
               const decompressed = zlib.gunzipSync(gzBuffer);
-              fs.writeFileSync(dbPath, decompressed);
-              console.log(`[DB] Successfully downloaded and decompressed players.db.gz (${(gzBuffer.length / 1024 / 1024).toFixed(2)} MB -> ${(decompressed.length / 1024 / 1024).toFixed(2)} MB) from Supabase.`);
-              downloaded = true;
+              fs.writeFileSync(tempCandidatePath, decompressed);
+              if (isValidSqliteDatabase(tempCandidatePath)) {
+                fs.copyFileSync(tempCandidatePath, dbPath);
+                console.log(`[DB] Successfully downloaded, verified, and extracted players.db.gz (${(gzBuffer.length / 1024 / 1024).toFixed(2)} MB -> ${(decompressed.length / 1024 / 1024).toFixed(2)} MB) from Supabase.`);
+                downloaded = true;
+              } else {
+                console.warn("[DB] Remote players.db.gz downloaded but failed integrity check. Discarding.");
+              }
             }
           }
         } catch (gzErr) {
@@ -2573,23 +2614,46 @@ async function startServer() {
 
         // 2. Fallback to uncompressed players.db
         if (!downloaded) {
-          const { data, error } = await supabase.storage.from("database").download("players.db");
-          if (!error && data) {
-            const buffer = Buffer.from(await data.arrayBuffer());
-            if (buffer.length > 0) {
-              fs.writeFileSync(dbPath, buffer);
-              console.log(`[DB] Successfully downloaded raw players.db (${(buffer.length / 1024 / 1024).toFixed(2)} MB) from Supabase Storage.`);
-              downloaded = true;
+          try {
+            const { data, error } = await supabase.storage.from("database").download("players.db");
+            if (!error && data) {
+              const buffer = Buffer.from(await data.arrayBuffer());
+              if (buffer.length > 0) {
+                fs.writeFileSync(tempCandidatePath, buffer);
+                if (isValidSqliteDatabase(tempCandidatePath)) {
+                  fs.copyFileSync(tempCandidatePath, dbPath);
+                  console.log(`[DB] Successfully downloaded and verified raw players.db (${(buffer.length / 1024 / 1024).toFixed(2)} MB) from Supabase Storage.`);
+                  downloaded = true;
+                } else {
+                  console.warn("[DB] Remote raw players.db downloaded but failed integrity check (corrupted or partial). Discarding to protect data.");
+                }
+              }
+            } else {
+              console.log("[DB] Remote players.db not found or error:", error?.message);
             }
-          } else {
-            console.log("[DB] Remote players.db not found or error:", error?.message);
+          } catch (rawErr) {
+            console.warn("[DB] Failed downloading raw players.db:", rawErr);
           }
         }
+
+        try {
+          if (fs.existsSync(tempCandidatePath)) fs.unlinkSync(tempCandidatePath);
+        } catch (e) {}
       } catch (dlErr) {
         console.error("[DB] Failed to download players.db from Supabase Storage:", dlErr);
       }
     } else {
       console.log("[DB] Running in AI Studio local dev mode. Skipping Supabase download to keep database isolated.");
+    }
+
+    // Verify existing local database before opening
+    if (fs.existsSync(dbPath) && !isValidSqliteDatabase(dbPath)) {
+      console.error("[DB] Warning: Local players.db is malformed! Cleaning up corrupt file to prevent crash.");
+      try {
+        fs.unlinkSync(dbPath);
+        if (fs.existsSync(dbPath + "-wal")) fs.unlinkSync(dbPath + "-wal");
+        if (fs.existsSync(dbPath + "-shm")) fs.unlinkSync(dbPath + "-shm");
+      } catch (e) {}
     }
 
     let db = new BetterSqlite3(dbPath, { timeout: 10000 });
