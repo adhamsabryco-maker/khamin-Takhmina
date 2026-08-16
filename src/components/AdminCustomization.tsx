@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Image as ImageIcon, Trash2, Gift, CloudRain, Disc } from 'lucide-react';
 import { useAvatarConfig } from '../contexts/AvatarContext';
 import { Socket } from 'socket.io-client';
+import { apiUrl } from '../apiConfig';
 
 export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePolicies, luckyWheelEnabled, setLuckyWheelEnabled }: { showAlert: (msg: string, title?: string) => void, socket: Socket | null, gamePolicies: any, setGamePolicies: any, luckyWheelEnabled: boolean, setLuckyWheelEnabled: (val: boolean) => void }) => {
   const [uploading, setUploading] = useState(false);
@@ -39,7 +40,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
         formData.append('database', file);
 
         try {
-          const response = await fetch(`/api/admin/upload-db?token=${res.token}`, {
+          const response = await fetch(apiUrl(`/api/admin/upload-db?token=${res.token}`), {
             method: 'POST',
             body: formData,
           });
@@ -76,7 +77,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
     formData.append('image', file);
 
     try {
-      const response = await fetch('/api/upload', {
+      const response = await fetch(apiUrl('/api/upload'), {
         method: 'POST',
         body: formData,
       });
@@ -94,7 +95,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
       // Ensure aiBotEnabled is preserved if it exists
       const finalConfig = { ...newConfig, aiBotEnabled: config.aiBotEnabled ?? false };
       
-      await fetch('/api/config', {
+      await fetch(apiUrl('/api/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(finalConfig),
@@ -114,14 +115,14 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
     if (!filename) return;
 
     try {
-      await fetch(`/api/upload/${filename}`, { method: 'DELETE' });
+      await fetch(apiUrl(`/api/upload/${filename}`), { method: 'DELETE' });
       const newConfig = { ...config };
       delete (newConfig as any)[type + 's'][level];
       
       // Ensure aiBotEnabled is preserved if it exists
       const finalConfig = { ...newConfig, aiBotEnabled: config.aiBotEnabled ?? false };
       
-      await fetch('/api/config', {
+      await fetch(apiUrl('/api/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(finalConfig),
@@ -156,7 +157,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
                 
                 socket.emit('admin_request_db_download', (res: any) => {
                   if (res.success && res.token) {
-                    window.open(`/api/admin/download-db?token=${res.token}`, '_blank');
+                    window.open(apiUrl(`/api/admin/download-db?token=${res.token}`), '_blank');
                   } else {
                     showAlert('عذراً، لا تملك صلاحية لتحميل قاعدة البيانات.', 'خطأ');
                   }
@@ -182,7 +183,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
                 
                 socket.emit('admin_request_uploads_download', (res: any) => {
                   if (res.success && res.token) {
-                    window.open(`/api/admin/download-uploads?token=${res.token}`, '_blank');
+                    window.open(apiUrl(`/api/admin/download-uploads?token=${res.token}`), '_blank');
                   } else {
                     showAlert('عذراً، لا تملك صلاحية لتحميل الملفات.', 'خطأ');
                   }
@@ -300,7 +301,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
               onClick={async () => {
                 const newConfig = { ...config, aiBotEnabled: !config.aiBotEnabled };
                 try {
-                  await fetch('/api/config', {
+                  await fetch(apiUrl('/api/config'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(newConfig),
@@ -391,7 +392,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
                 onClick={async () => {
                   const newConfig = { ...config, version: versionInput };
                   try {
-                    await fetch('/api/config', {
+                    await fetch(apiUrl('/api/config'), {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(newConfig),
@@ -440,7 +441,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
                 
                 const newConfig = { ...config, socialLinks };
                 try {
-                  await fetch('/api/config', {
+                  await fetch(apiUrl('/api/config'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(newConfig),
@@ -473,7 +474,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
                         const newConfig = { ...config };
                         delete (newConfig as any).mockAdImage;
                         delete (newConfig as any).mockAdLink;
-                        await fetch('/api/config', {
+                        await fetch(apiUrl('/api/config'), {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify(newConfig),
@@ -501,7 +502,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
                       if (!linkInput) return;
                       const newConfig = { ...config, mockAdLink: linkInput.value };
                       try {
-                        await fetch('/api/config', {
+                        await fetch(apiUrl('/api/config'), {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify(newConfig),
@@ -533,7 +534,7 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
                       try {
                         const base64String = event.target?.result as string;
                         const newConfig = { ...config, mockAdImage: base64String };
-                        await fetch('/api/config', {
+                        await fetch(apiUrl('/api/config'), {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify(newConfig),

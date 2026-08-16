@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { Plus, Trash2, ChevronDown, ChevronLeft, Copy, GripVertical, Edit2 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult, DragUpdate } from '@hello-pangea/dnd';
+import { apiUrl } from '../apiConfig';
 
 interface QuickChatNode {
   id: string;
@@ -34,7 +35,7 @@ export const QuickChatManager = ({ config, refreshConfig, showAlert }: { config:
   const saveTree = async (newTree: QuickChatNode[]) => {
     const newConfig = { ...config, quickChat: newTree };
     try {
-      await fetch('/api/config', {
+      await fetch(apiUrl('/api/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig),
