@@ -2786,6 +2786,7 @@ export default function App() {
     const saved = localStorage.getItem("khamin_lucky_wheel_enabled");
     return saved !== null ? saved === "true" : true;
   });
+  const [isSyncingDb, setIsSyncingDb] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("khamin_game_policies", JSON.stringify(gamePolicies));
@@ -16972,6 +16973,48 @@ if (data.connectFourWordsRewardLevel != null) {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
+                    <button
+                      disabled={isSyncingDb}
+                      onClick={() => {
+                        setIsSyncingDb(true);
+                        playSound("clickOpen");
+                        if (socket) {
+                          socket.emit("admin_sync_database", (res: any) => {
+                            setIsSyncingDb(false);
+                            if (res?.success) {
+                              showAlert("تم تحديث ورفع نسخة قاعدة البيانات إلى السحابة بنجاح!", "نجاح");
+                            } else {
+                              showAlert(res?.error || "فشل رفع قاعدة البيانات", "خطأ");
+                            }
+                          });
+                        } else {
+                          const token = localStorage.getItem("khamin_admin_token");
+                          fetch(`/api/admin/sync-database?token=${token}`, { method: "POST" })
+                            .then((r) => r.json())
+                            .then((data) => {
+                              setIsSyncingDb(false);
+                              if (data?.success) {
+                                showAlert("تم تحديث ورفع نسخة قاعدة البيانات إلى السحابة بنجاح!", "نجاح");
+                              } else {
+                                showAlert(data?.error || "فشل رفع قاعدة البيانات", "خطأ");
+                              }
+                            })
+                            .catch(() => {
+                              setIsSyncingDb(false);
+                              showAlert("فشل الاتصال بالسيرفر", "خطأ");
+                            });
+                        }
+                      }}
+                      title="تحديث ورفع قاعدة البيانات إلى السحابة الآن قبل النشر"
+                      className="flex items-center gap-2 px-4 py-3 bg-purple-100 text-purple-700 rounded-xl border-2 border-purple-200 font-black text-sm hover:bg-purple-200 disabled:opacity-50 transition-all cursor-pointer"
+                    >
+                      {isSyncingDb ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Upload className="w-5 h-5" />
+                      )}
+                      <span className="hidden sm:inline">حفظ السحابة (DB)</span>
+                    </button>
                     <button
                       onClick={() => {
                         // Always fetch data for badges and general stats
