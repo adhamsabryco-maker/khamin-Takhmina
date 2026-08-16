@@ -1007,6 +1007,9 @@ async function startServer() {
     const io = new Server(httpServer, {
       cors: {
         origin: "*",
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "x-no-compression"],
+        credentials: true,
       },
       perMessageDeflate: {
         threshold: 1024,
@@ -1015,6 +1018,17 @@ async function startServer() {
     });
 
     const PORT = 3000;
+
+    // Standard CORS middleware for REST endpoints
+    app.use((req, res, next) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-no-compression");
+      if (req.method === "OPTIONS") {
+        return res.sendStatus(200);
+      }
+      next();
+    });
 
     // Enable response compression (gzip/deflate) to drastically save bandwidth
     app.use(
