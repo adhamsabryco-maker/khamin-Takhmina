@@ -4603,7 +4603,6 @@ async function startServer() {
 
     function invalidateTopPlayersCache() {
       topPlayersCacheTime = 0;
-      io.emit("top_players_update", getTopPlayers(true));
     }
 
     let currentFakeBots = 50;
