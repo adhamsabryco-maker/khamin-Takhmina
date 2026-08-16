@@ -90,6 +90,7 @@ import {
 
 import easyGuessData from "./data/easyGuess.json";
 import busCompleteData from "./data/busCompleteData.json";
+import { getApiBaseUrl, apiUrl } from "./apiConfig";
 
 const limit99 = (val: number | string | undefined | null): string | number => {
   if (val === undefined || val === null) return 0;
@@ -1567,7 +1568,7 @@ export default function App() {
   useEffect(() => {
     const checkVersion = async () => {
       try {
-        const response = await fetch("/api/version?t=" + Date.now());
+        const response = await fetch(apiUrl("/api/version?t=" + Date.now()));
         const data = await response.json();
         if (data.version && initialVersion && data.version !== initialVersion) {
           console.log("New version detected from API:", data.version);
@@ -3607,7 +3608,7 @@ export default function App() {
             return;
           }
           console.log("Fetching push stats with token...");
-          const response = await fetch(`/api/admin/push-stats?token=${token}`);
+          const response = await fetch(apiUrl(`/api/admin/push-stats?token=${token}`));
           if (!response.ok) {
             console.error("Push stats API failed:", response.status);
             setPushStatsError(`خطأ في جلب البيانات (${response.status})`);
@@ -3657,7 +3658,7 @@ export default function App() {
     if (!adminToken) return;
     try {
       const res = await fetch(
-        `/api/push/scheduled?adminToken=${adminToken}&t=${Date.now()}`,
+        apiUrl(`/api/push/scheduled?adminToken=${adminToken}&t=${Date.now()}`),
         {
           headers: {
             "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -3728,7 +3729,7 @@ export default function App() {
       const registration = await navigator.serviceWorker.ready;
 
       // Get public key from server
-      const response = await fetch("/api/push/public-key");
+      const response = await fetch(apiUrl("/api/push/public-key"));
       const { publicKey } = await response.json();
 
       const subscription = await registration.pushManager.subscribe({
@@ -3743,7 +3744,7 @@ export default function App() {
       const currentSerial = playerSerial || localStorage.getItem("khamin_player_serial");
 
       // Send subscription to server
-      await fetch("/api/push/subscribe", {
+      await fetch(apiUrl("/api/push/subscribe"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3801,7 +3802,7 @@ export default function App() {
         const currentSerial = playerSerial || localStorage.getItem("khamin_player_serial");
         
         // Notify server to remove subscription
-        await fetch("/api/push/unsubscribe", {
+        await fetch(apiUrl("/api/push/unsubscribe"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -5550,7 +5551,7 @@ export default function App() {
     setIsInitiatingPayment(true);
 
     try {
-      const response = await fetch("/api/paymob/initiate", {
+      const response = await fetch(apiUrl("/api/paymob/initiate"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -5666,7 +5667,7 @@ export default function App() {
 
   useEffect(() => {
     const fetchCats = () => {
-      fetch("/api/categories")
+      fetch(apiUrl("/api/categories"))
         .then((res) => res.json())
         .then((data) => setCategories(data))
         .catch((err) => console.error("Failed to fetch categories:", err));
@@ -6702,7 +6703,7 @@ export default function App() {
   const fetchAdminImages = useCallback(async () => {
     try {
       console.log("Fetching admin images...");
-      const res = await fetch("/api/admin/images");
+      const res = await fetch(apiUrl("/api/admin/images"));
       const data = await res.json();
       console.log("Admin images fetched:", data);
       if (Array.isArray(data)) setAdminImages(data);
@@ -6726,7 +6727,7 @@ export default function App() {
 
   const fetchCollection = useCallback(async (serial: string) => {
     try {
-      const res = await fetch(`/api/collection/${serial}`);
+      const res = await fetch(apiUrl(`/api/collection/${serial}`));
       const data = await res.json();
       if (data.collection) setPlayerCollection(data.collection);
       if (data.claimed) setClaimedCollectionRewards(data.claimed);
@@ -6804,7 +6805,7 @@ export default function App() {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch("/api/categories");
+      const res = await fetch(apiUrl("/api/categories"));
       const data = await res.json();
       setCategories(data);
     } catch (error) {
@@ -6817,7 +6818,7 @@ export default function App() {
     setIsAddingCategory(true);
     try {
       const id = newCategory.name.toLowerCase().replace(/\s+/g, "_");
-      const response = await fetch("/api/admin/categories", {
+      const response = await fetch(apiUrl("/api/admin/categories"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -6846,7 +6847,7 @@ export default function App() {
       "هل أنت متأكد من حذف هذه الفئة وجميع الصور المرتبطة بها؟",
       async () => {
         try {
-          const response = await fetch(`/api/admin/categories/${id}`, {
+          const response = await fetch(apiUrl(`/api/admin/categories/${id}`), {
             method: "DELETE",
           });
           if (response.ok) {
@@ -6869,7 +6870,7 @@ export default function App() {
     setIsUploading(true);
     try {
       const targetLevel = expandedUploadLevel || "مستوي مبتدئين التخمين";
-      const response = await fetch("/api/admin/images", {
+      const response = await fetch(apiUrl("/api/admin/images"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -6903,7 +6904,7 @@ export default function App() {
       "هل أنت متأكد من حذف هذه الصورة؟",
       async () => {
         try {
-          const response = await fetch(`/api/admin/images/${id}`, {
+          const response = await fetch(apiUrl(`/api/admin/images/${id}`), {
             method: "DELETE",
           });
           if (response.ok) {
@@ -6934,8 +6935,9 @@ export default function App() {
     setIsConnected(false);
     setConnectionError(null);
 
-    console.log("Initializing socket connection to:", window.location.origin);
-    const newSocket = io(window.location.origin, {
+    const serverUrl = getApiBaseUrl();
+    console.log("Initializing socket connection to:", serverUrl);
+    const newSocket = io(serverUrl, {
       transports: ["websocket", "polling"],
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
@@ -8795,7 +8797,7 @@ if (data.connectFourWordsRewardLevel != null) {
         setLoadingProgress(10);
 
         // Fetch real config from server with cache busting
-        const response = await fetch("/api/config?t=" + Date.now());
+        const response = await fetch(apiUrl("/api/config?t=" + Date.now()));
         if (!response.ok) throw new Error("Failed to fetch config");
         const config = await response.json();
 
@@ -8810,7 +8812,7 @@ if (data.connectFourWordsRewardLevel != null) {
         // Check maintenance mode with cache busting
         try {
           const maintenanceResponse = await fetch(
-            "/api/maintenance?t=" + Date.now(),
+            apiUrl("/api/maintenance?t=" + Date.now()),
           );
           if (maintenanceResponse.ok) {
             const maintenanceData = await maintenanceResponse.json();
@@ -11860,7 +11862,7 @@ if (data.connectFourWordsRewardLevel != null) {
     }
     setIsSendingContact(true);
     try {
-      const response = await fetch("/api/contact", {
+      const response = await fetch(apiUrl("/api/contact"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -16441,7 +16443,7 @@ if (data.connectFourWordsRewardLevel != null) {
                   {!googleRegistrationData && (
                     <button
                       onClick={() => {
-                        fetch("/api/auth/google/url")
+                        fetch(apiUrl("/api/auth/google/url"))
                           .then((res) => res.json())
                           .then((data) => {
                             window.open(
@@ -16480,7 +16482,7 @@ if (data.connectFourWordsRewardLevel != null) {
                     {!googleRegistrationData && (
                       <button
                         onClick={() => {
-                          fetch("/api/auth/google/url")
+                          fetch(apiUrl("/api/auth/google/url"))
                             .then((res) => res.json())
                             .then((data) => {
                               window.open(
@@ -16826,7 +16828,7 @@ if (data.connectFourWordsRewardLevel != null) {
             >
               <AdminLogin
                 onLogin={() => {
-                  fetch("/api/auth/google/url")
+                  fetch(apiUrl("/api/auth/google/url"))
                     .then((res) => res.json())
                     .then((data) => {
                       window.open(
@@ -16989,7 +16991,7 @@ if (data.connectFourWordsRewardLevel != null) {
                           });
                         } else {
                           const token = localStorage.getItem("khamin_admin_token");
-                          fetch(`/api/admin/sync-database?token=${token}`, { method: "POST" })
+                          fetch(apiUrl(`/api/admin/sync-database?token=${token}`), { method: "POST" })
                             .then((r) => r.json())
                             .then((data) => {
                               setIsSyncingDb(false);
