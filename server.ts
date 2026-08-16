@@ -5235,6 +5235,21 @@ async function startServer() {
       }
     });
 
+    app.post("/api/admin/sync-database", async (req, res) => {
+      try {
+        const token = (req.query.token as string) || req.headers.authorization?.replace("Bearer ", "");
+        if (!token || !(await adminTokens.has(token))) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+        console.log("[DB] Manual backup sync triggered by admin via API...");
+        await syncDbToSupabase(true);
+        res.json({ success: true, message: "Database backup successfully synced to Supabase" });
+      } catch (err: any) {
+        console.error("[DB] Manual sync failed:", err);
+        res.status(500).json({ error: err.message || "Failed to sync database" });
+      }
+    });
+
     app.delete("/api/admin/images/:id", (req, res) => {
       try {
         const { id } = req.params;
@@ -17019,6 +17034,24 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
         if (admin?.isAdmin || socket.data?.isAdmin) {
           io.emit("force_refresh");
           callback({ success: true });
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+
+      socket.on("admin_sync_database", async (callback) => {
+        const admin = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial,
+        );
+        if (admin?.isAdmin || socket.data?.isAdmin) {
+          try {
+            console.log("[DB] Manual backup sync triggered by admin via Socket...");
+            await syncDbToSupabase(true);
+            callback({ success: true, message: "تم تحديث ورفع نسخة قاعدة البيانات إلى السحابة بنجاح!" });
+          } catch (err: any) {
+            console.error("[DB] Socket sync error:", err);
+            callback({ error: err.message || "فشل رفع قاعدة البيانات" });
+          }
         } else {
           callback({ error: "Unauthorized" });
         }
