@@ -1481,6 +1481,7 @@ async function startServer() {
     );
 
     app.get("/api/config", (req, res) => {
+      res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
       res.json(configCache);
     });
 
@@ -1506,15 +1507,18 @@ async function startServer() {
     });
 
     app.get("/api/version", (req, res) => {
+      res.setHeader("Cache-Control", "public, max-age=30");
       res.json({ version: configCache.version || "1.1.1" });
     });
 
     app.get("/api/maintenance", (req, res) => {
+      res.setHeader("Cache-Control", "public, max-age=15");
       res.json({ maintenance: process.env.MAINTENANCE_MODE === "true" });
     });
 
     // Push Notification Endpoints
     app.get("/api/push/public-key", (req, res) => {
+      res.setHeader("Cache-Control", "public, max-age=3600");
       res.json({ publicKey: vapidKeys.publicKey });
     });
 
@@ -4539,7 +4543,7 @@ async function startServer() {
       });
     }
 
-    function getTopPlayers(force = false) {
+    function getTopPlayers(force = false, limit = 100) {
       const now = Date.now();
       if (force || now - topPlayersCacheTime > 60000) {
         // Cache for 1 minute unless forced
@@ -4548,7 +4552,7 @@ async function startServer() {
         updateHighestLevelGlobal();
 
         cachedTopPlayers = Array.from(allPlayers.values())
-          .filter((p) => isPlayerActiveForLeaderboard(p, now)) // Exclude admins, banned, and inactive players
+          .filter((p) => isPlayerActiveForLeaderboard(p, now)) // Exclude admins, banned, and inactive players (Active within 24h)
           .sort((a, b) => {
             const aXp = a.randomXp !== undefined ? a.randomXp : a.xp || 0;
             const bXp = b.randomXp !== undefined ? b.randomXp : b.xp || 0;
@@ -4598,14 +4602,18 @@ async function startServer() {
           }));
         topPlayersCacheTime = now;
       }
-      return cachedTopPlayers;
+      return limit ? cachedTopPlayers.slice(0, limit) : cachedTopPlayers;
     }
 
-    // Optimized: Update leaderboard for all clients every 5 minutes
-    setInterval(() => {
-      const topPlayers = getTopPlayers(true);
-      io.emit("top_players_update", topPlayers);
+    function getPlayerRank(serial: string): number {
+      if (!serial) return -1;
+      const topList = getTopPlayers(false, 100);
+      const index = topList.findIndex((p: any) => p.serial === serial);
+      return index >= 0 ? index + 1 : -1;
+    }
 
+    // Optimized: Clean up expired cooldowns periodically (without wasteful leaderboard broadcasts)
+    setInterval(() => {
       // Clean up expired friend challenge cooldowns
       const now = Date.now();
       for (const [key, expiresAt] of friendChallengeCooldowns.entries()) {
@@ -5136,6 +5144,7 @@ async function startServer() {
 
     app.get("/api/categories", (req, res) => {
       try {
+        res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
         const categories = db
           .prepare(
             `
@@ -5157,6 +5166,7 @@ async function startServer() {
     app.get("/api/collection/:serial", (req, res) => {
       try {
         const { serial } = req.params;
+        res.setHeader("Cache-Control", "private, max-age=10");
         const collection = db
           .prepare("SELECT * FROM player_collections WHERE player_serial = ?")
           .all(serial);
@@ -10808,7 +10818,7 @@ async function startServer() {
 
       // Send current theme to new user
       socket.emit("theme_updated", themeConfig);
-      socket.emit("top_players_update", getTopPlayers());
+      socket.emit("top_3_update", getTopPlayers(false, 3));
       socket.emit("policies_update", gamePolicies);
       const highestLikesPlayersDataForNewUser = highestLikesSerials
         .map((serial) => {
@@ -11946,7 +11956,15 @@ async function startServer() {
       });
 
       socket.on("get_top_players", (callback) => {
-        callback(getTopPlayers());
+        if (typeof callback === "function") {
+          callback(getTopPlayers(false, 100));
+        }
+      });
+
+      socket.on("get_player_rank", (serial, callback) => {
+        if (typeof callback === "function") {
+          callback(getPlayerRank(serial));
+        }
       });
 
       socket.on("get_highest_likes_serial", (callback) => {
