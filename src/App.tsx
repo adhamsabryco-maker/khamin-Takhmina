@@ -1568,7 +1568,7 @@ export default function App() {
   useEffect(() => {
     const checkVersion = async () => {
       try {
-        const response = await fetch(apiUrl("/api/version?t=" + Date.now()));
+        const response = await fetch(apiUrl("/api/version"));
         const data = await response.json();
         if (data.version && initialVersion && data.version !== initialVersion) {
           console.log("New version detected from API:", data.version);
@@ -2369,6 +2369,14 @@ export default function App() {
   }, [socket, setNeedRefresh]);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [myLeaderboardRank, setMyLeaderboardRank] = useState<number | null>(() => {
+    try {
+      const cached = localStorage.getItem("khamin_my_rank");
+      return cached !== null ? JSON.parse(cached) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [topPlayers, setTopPlayers] = useState<any[]>(() => {
     try {
       const cached = localStorage.getItem("khamin_top_players");
@@ -3725,6 +3733,11 @@ export default function App() {
       return;
     }
 
+    const currentSerial = playerSerial || localStorage.getItem("khamin_player_serial");
+    if (!force && localStorage.getItem("khamin_push_synced") === currentSerial) {
+      return; // Already registered and synced
+    }
+
     try {
       const registration = await navigator.serviceWorker.ready;
 
@@ -3740,8 +3753,9 @@ export default function App() {
       // If we got here, subscription was successful (user clicked "Allow" in browser prompt)
       setNotificationsEnabled(true);
       localStorage.setItem("khamin_notifications_enabled", "true");
-
-      const currentSerial = playerSerial || localStorage.getItem("khamin_player_serial");
+      if (currentSerial) {
+        localStorage.setItem("khamin_push_synced", currentSerial);
+      }
 
       // Send subscription to server
       await fetch(apiUrl("/api/push/subscribe"), {
@@ -3798,6 +3812,7 @@ export default function App() {
 
       if (subscription) {
         await subscription.unsubscribe();
+        localStorage.removeItem("khamin_push_synced");
         
         const currentSerial = playerSerial || localStorage.getItem("khamin_player_serial");
         
@@ -4294,7 +4309,14 @@ export default function App() {
     }
   }, [room?.id, room?.players.length, socket, playerSerial]);
 
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem("khamin_categories_cache");
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [selectedCategoryLevel, setSelectedCategoryLevel] = useState<string>(
     "مستوي مبتدئين التخمين",
   );
@@ -5425,6 +5447,16 @@ export default function App() {
       playSound("clickOpen");
       closeAllModals();
       setShowLeaderboardModal(true);
+      if (socket) {
+        socket.emit("get_top_players", (players: any[]) => {
+          if (Array.isArray(players)) {
+            setTopPlayers(sortPlayers(players));
+            try {
+              localStorage.setItem("khamin_top_players", JSON.stringify(players));
+            } catch (e) {}
+          }
+        });
+      }
     }
   };
 
@@ -5669,7 +5701,14 @@ export default function App() {
     const fetchCats = () => {
       fetch(apiUrl("/api/categories"))
         .then((res) => res.json())
-        .then((data) => setCategories(data))
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setCategories(data);
+            try {
+              localStorage.setItem("khamin_categories_cache", JSON.stringify(data));
+            } catch (e) {}
+          }
+        })
         .catch((err) => console.error("Failed to fetch categories:", err));
     };
 
@@ -6725,7 +6764,18 @@ export default function App() {
     );
   }, [adminImages]);
 
-  const fetchCollection = useCallback(async (serial: string) => {
+  const lastFetchedCollectionTimeRef = useRef<{ [serial: string]: number }>({});
+  const fetchCollection = useCallback(async (serial: string, force = false) => {
+    if (!serial) return;
+    const now = Date.now();
+    if (
+      !force &&
+      lastFetchedCollectionTimeRef.current[serial] &&
+      now - lastFetchedCollectionTimeRef.current[serial] < 10000
+    ) {
+      return;
+    }
+    lastFetchedCollectionTimeRef.current[serial] = now;
     try {
       const res = await fetch(apiUrl(`/api/collection/${serial}`));
       const data = await res.json();
@@ -7403,9 +7453,13 @@ export default function App() {
         setPendingWelcomeModal(true);
       }
 
-      newSocket.emit("get_top_players", (players: any[]) => {
-        setTopPlayers(sortPlayers(players));
-        localStorage.setItem("khamin_top_players", JSON.stringify(players));
+      newSocket.emit("get_player_rank", playerSerial, (rank: number) => {
+        if (typeof rank === "number") {
+          setMyLeaderboardRank(rank);
+          try {
+            localStorage.setItem("khamin_my_rank", JSON.stringify(rank));
+          } catch (e) {}
+        }
       });
 
       newSocket.emit("get_highest_likes_serial", (data: any) => {
@@ -7810,6 +7864,21 @@ if (data.connectFourWordsRewardLevel != null) {
     newSocket.on("daily_quest_error", (msg: string) => {
       setError(msg);
       setIsChestOpening(false);
+    });
+
+    newSocket.on("top_3_update", (top3: any[]) => {
+      if (Array.isArray(top3)) {
+        setTopPlayers((prev) => {
+          if (prev.length > 3) {
+            const updated = [...prev];
+            for (let i = 0; i < top3.length; i++) {
+              updated[i] = top3[i];
+            }
+            return updated;
+          }
+          return top3;
+        });
+      }
     });
 
     newSocket.on("top_players_update", (players: any[]) => {
@@ -8796,10 +8865,13 @@ if (data.connectFourWordsRewardLevel != null) {
         setLoadingStatus("جاري الاتصال بالسيرفر...");
         setLoadingProgress(10);
 
-        // Fetch real config from server with cache busting
-        const response = await fetch(apiUrl("/api/config?t=" + Date.now()));
+        // Fetch config from server
+        const response = await fetch(apiUrl("/api/config"));
         if (!response.ok) throw new Error("Failed to fetch config");
         const config = await response.json();
+        try {
+          localStorage.setItem("khamin_config_cache", JSON.stringify(config));
+        } catch (e) {}
 
         // Try to subscribe to push notifications
         // We do it after a short delay to not block loading
@@ -8809,10 +8881,10 @@ if (data.connectFourWordsRewardLevel != null) {
         setGameVersion(serverVersion);
         setLoadingProgress(50);
 
-        // Check maintenance mode with cache busting
+        // Check maintenance mode
         try {
           const maintenanceResponse = await fetch(
-            apiUrl("/api/maintenance?t=" + Date.now()),
+            apiUrl("/api/maintenance"),
           );
           if (maintenanceResponse.ok) {
             const maintenanceData = await maintenanceResponse.json();
@@ -25441,11 +25513,17 @@ const renderBombPartyRewardBar = () => {
 
                     {/* Player Rank Info */}
                     {(() => {
-                      const myRankIndex = topPlayers.findIndex(
-                        (p) => p.serial === playerSerial,
-                      );
-                      if (myRankIndex >= 0) {
-                        const isTop3 = myRankIndex <= 2;
+                      let myRank = myLeaderboardRank;
+                      if (myRank === null) {
+                        const idx = topPlayers.findIndex(
+                          (p) => p.serial === playerSerial,
+                        );
+                        if (idx >= 0) myRank = idx + 1;
+                        else if (topPlayers.length >= 100) myRank = -1;
+                      }
+
+                      if (myRank !== null && myRank > 0) {
+                        const isTop3 = myRank <= 3;
                         return (
                           <button
                             onClick={handleOpenshowLeaderboardModal}
@@ -25461,7 +25539,7 @@ const renderBombPartyRewardBar = () => {
                                 <span
                                   className={`font-black text-lg md:text-xl ${isTop3 ? "bg-yellow-100 text-yellow-600" : "bg-orange-100 text-orange-600"} px-2 rounded-lg`}
                                 >
-                                  #{myRankIndex + 1}
+                                  #{myRank}
                                 </span>
                                 <span className="text-lg">
                                   {isTop3 ? "👑" : "💪"}
@@ -25480,7 +25558,7 @@ const renderBombPartyRewardBar = () => {
                             </div>
                           </button>
                         );
-                      } else if (myRankIndex === -1 && topPlayers.length > 0) {
+                      } else if (myRank === -1 || (myRank === null && topPlayers.length > 0)) {
                         return (
                           <button
                             onClick={handleOpenshowLeaderboardModal}
