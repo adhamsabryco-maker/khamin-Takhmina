@@ -27,7 +27,7 @@ const isAiStudio = Boolean(
   (process.env.NODE_ENV === "development" && !process.env.RENDER)
 );
 
-const isProduction = !isAiStudio;
+const isProduction = process.env.NODE_ENV === "production" || process.env.RENDER === "true" || !!process.env.RENDER;
 
 const supabase = isProduction ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
   auth: { persistSession: false }
@@ -2729,9 +2729,19 @@ async function startServer() {
     let dbIsDirty = false;
 
     async function syncDbToSupabase(force = false) {
-      if (!isProduction || !supabase) return;
-      if (!force && !dbIsDirty) return;
-      if (isUploadingDb) return;
+      console.log(`[DB] syncDbToSupabase triggered (force=${force}, isProduction=${isProduction}, supabase=${!!supabase}, dbIsDirty=${dbIsDirty}, isUploadingDb=${isUploadingDb})`);
+      if (!isProduction || !supabase) {
+        console.log("[DB] Sync aborted: Not in production or no supabase client");
+        return;
+      }
+      if (!force && !dbIsDirty) {
+        console.log("[DB] Sync aborted: Not forced and DB is not dirty");
+        return;
+      }
+      if (isUploadingDb) {
+        console.log("[DB] Sync aborted: Upload already in progress");
+        return;
+      }
       isUploadingDb = true;
 
       const tempBackupPath = path.join(os.tmpdir(), `players_backup_${Date.now()}.db`);
@@ -2743,7 +2753,7 @@ async function startServer() {
           const rawBuffer = fs.readFileSync(tempBackupPath);
 
           // Safety guard: Don't overwrite a large remote database with an empty tiny local database
-          if (!initialDownloadSucceeded && remoteFileSizeAtStart > 3 * 1024 * 1024 && rawBuffer.length < 500 * 1024) {
+          if (!force && !initialDownloadSucceeded && remoteFileSizeAtStart > 3 * 1024 * 1024 && rawBuffer.length < 500 * 1024) {
             console.warn(`[DB] Safety blocked upload: local backup is only ${(rawBuffer.length / 1024).toFixed(1)} KB while remote is ${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB. Avoiding accidental overwrite.`);
             return;
           }
@@ -2864,6 +2874,7 @@ async function startServer() {
       try {
         if (isProduction && supabase) {
           await syncDbToSupabase(true);
+          console.log("[DB] Shutdown sync complete.");
         }
       } catch (err) {
         console.error("[DB] Error during shutdown sync:", err);
@@ -2872,7 +2883,11 @@ async function startServer() {
       try {
         if (db) db.close();
       } catch (e) {}
-      process.exit(0);
+      
+      // Delay exit slightly to ensure all async tasks and logs flush properly
+      setTimeout(() => {
+        process.exit(0);
+      }, 500);
     };
 
     process.on("SIGINT", () => shutdown("SIGINT"));
