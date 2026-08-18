@@ -1481,7 +1481,7 @@ async function startServer() {
     );
 
     app.get("/api/config", (req, res) => {
-      res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
+      res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
       res.json(configCache);
     });
 
@@ -1512,7 +1512,7 @@ async function startServer() {
     });
 
     app.get("/api/maintenance", (req, res) => {
-      res.setHeader("Cache-Control", "public, max-age=15");
+      res.setHeader("Cache-Control", "public, max-age=60");
       res.json({ maintenance: process.env.MAINTENANCE_MODE === "true" });
     });
 
@@ -5144,7 +5144,7 @@ async function startServer() {
 
     app.get("/api/categories", (req, res) => {
       try {
-        res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+        res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
         const categories = db
           .prepare(
             `
@@ -5160,6 +5160,42 @@ async function startServer() {
       } catch (error) {
         console.error("Error fetching categories:", error);
         res.status(500).json({ error: "Failed to fetch categories" });
+      }
+    });
+
+    app.get("/api/image/:category/:name", (req, res) => {
+      try {
+        const { category, name } = req.params;
+        const image = db
+          .prepare(
+            "SELECT data FROM custom_images WHERE category = ? AND name = ?",
+          )
+          .get(category, name) as { data: string } | undefined;
+
+        if (image && image.data) {
+          // Send cache headers for 24 hours
+          res.setHeader("Cache-Control", "public, max-age=86400");
+          
+          let base64Data = image.data;
+          let mimeType = "image/png";
+
+          if (base64Data.startsWith("data:")) {
+            const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (matches && matches.length === 3) {
+              mimeType = matches[1];
+              base64Data = matches[2];
+            }
+          }
+
+          const imgBuffer = Buffer.from(base64Data, "base64");
+          res.setHeader("Content-Type", mimeType);
+          res.send(imgBuffer);
+        } else {
+          res.status(404).send("Not found");
+        }
+      } catch (error) {
+        console.error("Error fetching image:", error);
+        res.status(500).send("Error");
       }
     });
 
@@ -10645,12 +10681,12 @@ async function startServer() {
               // Time's up, evaluate
               evaluateSpeedCupsRound(roomId);
             } else {
-              sendRoomUpdate(roomId, currentR);
+              io.to(roomId).emit("speed_cups_timer_update", roundTimer);
             }
           }, 1000);
           intervals.set(roomId, roundInterval);
         } else {
-          sendRoomUpdate(roomId, r);
+          io.to(roomId).emit("speed_cups_timer_update", countdown);
         }
       }, 1000);
       intervals.set(roomId, interval);
@@ -20384,7 +20420,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
       try {
         const customImages = db
           .prepare(
-            "SELECT name, data as image, timestamp FROM custom_images WHERE category = ? AND (level = ? OR level IS NULL)",
+            "SELECT id, name, timestamp FROM custom_images WHERE category = ? AND (level = ? OR level IS NULL)",
           )
           .all(category, level);
         return customImages;
@@ -20501,6 +20537,16 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
           }
         }
         room.players[1].targetImage = shuffled[secondIdx];
+
+        // Fetch the base64 data for only the two selected images to save bandwidth and memory
+        if (room.players[0].targetImage?.id) {
+          const imgData = db.prepare("SELECT data FROM custom_images WHERE id = ?").get(room.players[0].targetImage.id) as any;
+          if (imgData) room.players[0].targetImage.image = imgData.data;
+        }
+        if (room.players[1].targetImage?.id) {
+          const imgData = db.prepare("SELECT data FROM custom_images WHERE id = ?").get(room.players[1].targetImage.id) as any;
+          if (imgData) room.players[1].targetImage.image = imgData.data;
+        }
       }
 
       room.players.forEach((p: any, idx: number) => {
