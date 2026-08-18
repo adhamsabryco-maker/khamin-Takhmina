@@ -3825,11 +3825,11 @@ async function startServer() {
 
     function getRandomPuzzleImages() {
       try {
-        const imagesResult = db.prepare("SELECT name, data as image FROM custom_images ORDER BY RANDOM() LIMIT 3").all() as any[];
+        const imagesResult = db.prepare("SELECT name, category FROM custom_images ORDER BY RANDOM() LIMIT 3").all() as any[];
         if (imagesResult && imagesResult.length > 0) {
           const imgs = imagesResult.map((r: any, idx: number) => ({
             name: r.name || ("صورة الجولة " + (idx + 1)),
-            image: r.image
+            category: r.category
           }));
           while (imgs.length < 3) {
             imgs.push(imgs[0]);
@@ -5258,7 +5258,7 @@ async function startServer() {
         } catch (e) {}
 
         const images = db
-          .prepare("SELECT * FROM custom_images ORDER BY timestamp DESC")
+          .prepare("SELECT id, name, category, level, timestamp FROM custom_images ORDER BY timestamp DESC")
           .all();
         console.log(`[API] Fetching images, found: ${images.length}`);
         res.json(images);
