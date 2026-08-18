@@ -4244,7 +4244,7 @@ export default function App() {
       // Fetch immediately on mount / dependency changes to avoid any delay!
       fetchFriends();
 
-      const pollRate = showFriendsModal ? 5000 : 12000;
+      const pollRate = showFriendsModal ? 10000 : 60000;
       const interval = setInterval(fetchFriends, pollRate);
       return () => clearInterval(interval);
     }
@@ -6771,7 +6771,7 @@ export default function App() {
     if (
       !force &&
       lastFetchedCollectionTimeRef.current[serial] &&
-      now - lastFetchedCollectionTimeRef.current[serial] < 10000
+      now - lastFetchedCollectionTimeRef.current[serial] < 24 * 60 * 60 * 1000 // 24 hours
     ) {
       return;
     }
@@ -8080,6 +8080,9 @@ if (data.connectFourWordsRewardLevel != null) {
     });
     newSocket.on("dots_timer_update", (timer: number) => {
       setRoom((prev) => (prev ? { ...prev, dotsTurnTimer: timer } : null));
+    });
+    newSocket.on("speed_cups_timer_update", (timer: number) => {
+      setRoom((prev) => (prev ? { ...prev, speedCupsTimer: timer } : null));
     });
 
     newSocket.on("player_disconnected_waiting", ({ name }) => {
@@ -12843,19 +12846,7 @@ if (data.connectFourWordsRewardLevel != null) {
                       </div>
 
                       {collectionNotifications.map((notification) => {
-                        const found = adminImages.find(
-                          (img) =>
-                            img.category === notification.category_id &&
-                            normalizeEgyptian(img.name).toLowerCase() ===
-                              normalizeEgyptian(
-                                notification.image_name,
-                              ).toLowerCase(),
-                        );
-                        const imageSrc = found?.data
-                          ? found.data.startsWith("data:")
-                            ? found.data
-                            : `data:image/png;base64,${found.data}`
-                          : `/icon-3.png`;
+                        const imageSrc = apiUrl(`/api/image/${notification.category_id}/${notification.image_name}`);
                         const normName = normalizeEgyptian(
                           notification.image_name,
                         ).toLowerCase();
@@ -22223,34 +22214,14 @@ if (data.connectFourWordsRewardLevel != null) {
                             >
                               {isRevealed ? (
                                 <div className="relative w-full h-full">
-                                  {(() => {
-                                    const found = adminImages.find((img) => {
-                                      const catMatch =
-                                        img.category === category.id;
-                                      const nameMatch =
-                                        normalizeEgyptian(
-                                          img.name,
-                                        ).toLowerCase() ===
-                                        normalizeEgyptian(
-                                          imgName,
-                                        ).toLowerCase();
-                                      return catMatch && nameMatch;
-                                    });
-                                    return (
-                                      <img
-                                        src={
-                                          found?.data
-                                            ? found.data.startsWith("data:")
-                                              ? found.data
-                                              : `data:image/png;base64,${found.data}`
-                                            : `/icon-3.png`
-                                        }
-                                        alt={imgName}
-                                        className="w-full h-full object-cover"
-                                        referrerPolicy="no-referrer"
-                                      />
-                                    );
-                                  })()}
+                                  <img
+                                    src={apiUrl(
+                                      `/api/image/${category.id}/${imgName}`,
+                                    )}
+                                    alt={imgName}
+                                    className="w-full h-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                  />
                                   <span className="absolute bottom-1 left-1 text-[8px] font-black text-white bg-black/50 px-1 rounded">
                                     {imgName}
                                   </span>
@@ -25321,6 +25292,9 @@ const renderBombPartyRewardBar = () => {
                       onClick={() => {
                         playSound("clickOpen");
                         setShowCollectionModal(cat.id);
+                        if (playerSerial) {
+                          fetchCollection(playerSerial, true);
+                        }
                         if (hasNewImage) {
                           const newCounts = {
                             ...seenCategoryCounts,
