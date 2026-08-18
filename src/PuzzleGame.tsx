@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import puzzlePiecesData from './puzzlePiecesData.json';
+import { GameEndControls } from './components/GameEndControls';
+import { apiUrl } from './apiConfig';
 
 export default function PuzzleGame({
   room,
@@ -20,8 +22,9 @@ export default function PuzzleGame({
 
   const round = room.puzzle?.currentRound || 1;
   const rawImage = room.puzzle?.images?.[round - 1];
-  const image = typeof rawImage === 'object' && rawImage ? rawImage.image : rawImage;
+  const imageCategory = typeof rawImage === 'object' && rawImage ? rawImage.category : null;
   const imageName = typeof rawImage === 'object' && rawImage ? rawImage.name : null;
+  const image = imageCategory && imageName ? apiUrl(`/api/image/${encodeURIComponent(imageCategory)}/${encodeURIComponent(imageName)}`) : (rawImage?.image || rawImage);
   const roundStartTime = room.puzzle?.roundStartTime;
   const lastChanceStartTime = room.puzzle?.lastChanceStartTime;
   const playersProgress = room.puzzle?.playersProgress || {};
@@ -327,56 +330,24 @@ export default function PuzzleGame({
           </div>
         )}
         
-        {/* Match result buttons (تغيير اللعبة - لعب مرة أخرى - خروج للرئيسية) */}
-        <div className="flex flex-col gap-2.5 w-full max-w-sm mt-1">
-          <div className="flex gap-2 w-full">
-            {/* تغيير اللعبة */}
-            <button
-              onClick={() => {
-                if (playSound) playSound("clickOpen");
-                socket?.emit("select_private_mode", { roomId: room.id, mode: null });
-              }}
-              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white shadow-[0_3px_0_0_#6b21a8] active:shadow-transparent py-3 px-2 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer"
-            >
-              🎮 تغيير اللعبة
-            </button>
-
-            {/* لعب مرة أخرى */}
-            <button
-              disabled={myRequestedRematch}
-              onClick={() => {
-                if (playSound) playSound("clickOpen");
-                socket?.emit("request_puzzle_rematch", { roomId: room.id });
-              }}
-              className={`flex-1 text-white py-3 px-2 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                myRequestedRematch
-                  ? "bg-gray-600 shadow-none opacity-80 cursor-not-allowed"
-                  : oppRequestedRematch
-                  ? "bg-emerald-500 hover:bg-emerald-600 shadow-[0_3px_0_0_#047857] animate-pulse"
-                  : "bg-emerald-500 hover:bg-emerald-600 shadow-[0_3px_0_0_#047857]"
-              }`}
-            >
-              {myRequestedRematch ? (
-                <span className="animate-pulse">⏳ بانتظار الخصم...</span>
-              ) : oppRequestedRematch ? (
-                <span className="animate-pulse">🎮 قبول ولعب مرة أخرى</span>
-              ) : (
-                <span>🔄 لعب مرة أخرى</span>
-              )}
-            </button>
-          </div>
-
-          {/* خروج للرئيسية */}
-          <button
-            onClick={() => {
-              if (playSound) playSound("clickOpen");
-              if (handleLeaveGame) handleLeaveGame();
-            }}
-            className="w-full bg-red-500 hover:bg-red-600 text-white shadow-[0_3px_0_0_#991b1b] active:shadow-transparent py-3 px-4 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            🚪 خروج للرئيسية
-          </button>
-        </div>
+        {/* Unified Game End Controls */}
+        <GameEndControls
+          room={room}
+          socket={socket}
+          myId={me?.id}
+          playerSerial={playerSerial}
+          isRematchRequestedByMe={myRequestedRematch}
+          isRematchRequestedByOpponent={oppRequestedRematch}
+          onChangeGame={() => {
+            socket?.emit("play_again", { roomId: room.id });
+          }}
+          onRematch={() => {
+            socket?.emit("request_puzzle_rematch", { roomId: room.id, playerId: me?.id });
+          }}
+          onLeaveGame={handleLeaveGame}
+          playSound={playSound}
+          className="mt-1"
+        />
       </div>
     );
   }

@@ -12846,7 +12846,7 @@ if (data.connectFourWordsRewardLevel != null) {
                       </div>
 
                       {collectionNotifications.map((notification) => {
-                        const imageSrc = apiUrl(`/api/image/${notification.category_id}/${notification.image_name}`);
+                        const imageSrc = apiUrl(`/api/image/${encodeURIComponent(notification.category_id)}/${encodeURIComponent(notification.image_name)}`);
                         const normName = normalizeEgyptian(
                           notification.image_name,
                         ).toLowerCase();
@@ -21412,8 +21412,7 @@ if (data.connectFourWordsRewardLevel != null) {
                                                   >
                                                     <img
                                                       src={
-                                                        img.data ||
-                                                        `/icon-3.png`
+                                                        apiUrl(`/api/image/${encodeURIComponent(img.category)}/${encodeURIComponent(img.name)}`)
                                                       }
                                                       alt={img.name}
                                                       className="w-full aspect-square object-cover"
@@ -22216,7 +22215,7 @@ if (data.connectFourWordsRewardLevel != null) {
                                 <div className="relative w-full h-full">
                                   <img
                                     src={apiUrl(
-                                      `/api/image/${category.id}/${imgName}`,
+                                      `/api/image/${encodeURIComponent(category.id)}/${encodeURIComponent(imgName)}`,
                                     )}
                                     alt={imgName}
                                     className="w-full h-full object-cover"
