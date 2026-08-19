@@ -1050,6 +1050,8 @@ async function startServer() {
       const isStaticOrNoisy =
         req.url.startsWith("/assets/") ||
         req.url.startsWith("/uploads/") ||
+        req.url.startsWith("/game_images/") ||
+        req.url.startsWith("/api/image/") ||
         req.url.startsWith("/socket.io/") ||
         req.url.match(
           /\.(js|css|png|jpg|jpeg|gif|ico|svg|json|wav|mp3|mp4|woff|woff2|ttf|eot)$/i,
@@ -3533,6 +3535,108 @@ async function startServer() {
       fs.mkdirSync(gameImagesDir, { recursive: true });
     }
 
+    function normalizeArabicText(str: string): string {
+      if (!str) return "";
+      return str
+        .normalize("NFC")
+        .trim()
+        .toLowerCase()
+        .replace(/[أإآ]/g, "ا")
+        .replace(/ة/g, "ه")
+        .replace(/ى/g, "ي")
+        .replace(/[\u064B-\u065F]/g, ""); // remove harakat/tashkeel
+    }
+
+    let diskImagesMap = new Map<string, string>();
+
+    function indexGameImages() {
+      const newMap = new Map<string, string>();
+      if (!fs.existsSync(gameImagesDir)) return;
+
+      const arabicCategoryToEnglish: Record<string, string> = {
+        "حشرات": "insects",
+        "حيوانات": "animals",
+        "طيور": "birds",
+        "أكلات": "food",
+        "اكلات": "food",
+        "طعام": "food",
+        "كرة القدم": "football",
+        "كورة": "football",
+        "جماد": "objects",
+        "اشياء": "objects",
+        "أشياء": "objects",
+        "نبات": "plants",
+        "نباتات": "plants",
+        "اشخاص": "people",
+        "أشخاص": "people",
+      };
+
+      const englishCategoryToArabic: Record<string, string> = {
+        "insects": "حشرات",
+        "animals": "حيوانات",
+        "birds": "طيور",
+        "food": "أكلات",
+        "football": "كرة القدم",
+        "objects": "جماد",
+        "plants": "نبات",
+        "people": "اشخاص",
+      };
+
+      function scanDir(currentDir: string, relCat: string) {
+        try {
+          const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+          for (const entry of entries) {
+            const fullPath = path.join(currentDir, entry.name);
+            if (entry.isDirectory()) {
+              scanDir(fullPath, entry.name);
+            } else if (entry.isFile()) {
+              const parsed = path.parse(entry.name);
+              const ext = parsed.ext.toLowerCase();
+              if ([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"].includes(ext)) {
+                const rawName = parsed.name;
+                const normName = normalizeArabicText(rawName);
+                const normCat = normalizeArabicText(relCat);
+
+                // Index by raw & normalized combinations
+                if (relCat) {
+                  newMap.set(`${relCat.toLowerCase()}/${rawName.toLowerCase()}`, fullPath);
+                  newMap.set(`${normCat}/${normName}`, fullPath);
+                  
+                  // Index with mapped category (Arabic <-> English)
+                  const mappedEng = arabicCategoryToEnglish[normCat] || arabicCategoryToEnglish[relCat.toLowerCase()];
+                  if (mappedEng) {
+                    newMap.set(`${mappedEng}/${normName}`, fullPath);
+                    newMap.set(`${mappedEng}/${rawName.toLowerCase()}`, fullPath);
+                  }
+                  const mappedAr = englishCategoryToArabic[normCat] || englishCategoryToArabic[relCat.toLowerCase()];
+                  if (mappedAr) {
+                    newMap.set(`${normalizeArabicText(mappedAr)}/${normName}`, fullPath);
+                  }
+                }
+
+                // Index by name alone across any folder
+                if (!newMap.has(normName)) {
+                  newMap.set(normName, fullPath);
+                }
+                if (!newMap.has(rawName.toLowerCase())) {
+                  newMap.set(rawName.toLowerCase(), fullPath);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error indexing game images:", e);
+        }
+      }
+
+      scanDir(gameImagesDir, "");
+      diskImagesMap = newMap;
+      console.log(`[Game Images] Indexed ${newMap.size} image lookup entries from disk`);
+    }
+
+    // Index disk images on startup
+    indexGameImages();
+
     function getSafeImageFileName(category: string, name: string): string {
       const safeCat = encodeURIComponent(category).replace(/%/g, "_");
       const safeName = encodeURIComponent(name).replace(/%/g, "_");
@@ -3541,50 +3645,51 @@ async function startServer() {
 
     function findImageOnDisk(category: string, name: string): string | null {
       if (!name) return null;
-      const cleanCat = (category || "").trim();
-      const cleanName = (name || "").trim();
-      const extensions = [".jpg", ".jpeg", ".png", ".webp", ".JPG", ".JPEG", ".PNG", ".WEBP"];
 
-      // Category folder variants (e.g. 'animals', 'Animals', 'Insects', 'insects')
-      const catVariants = [
-        cleanCat,
-        cleanCat.toLowerCase(),
-        cleanCat.toUpperCase(),
-        cleanCat.charAt(0).toUpperCase() + cleanCat.slice(1).toLowerCase(),
-      ];
+      let decodedName = name;
+      try {
+        decodedName = decodeURIComponent(name);
+      } catch (e) {}
 
-      // 1. Check inside category subfolders: public/game_images/<category>/<name>.<ext>
-      for (const catVar of catVariants) {
-        if (!catVar) continue;
-        for (const ext of extensions) {
-          const folderPath = path.join(gameImagesDir, catVar, `${cleanName}${ext}`);
-          if (fs.existsSync(folderPath)) {
-            return folderPath;
-          }
-          const safeName = encodeURIComponent(cleanName).replace(/%/g, "_");
-          const safeFolderPath = path.join(gameImagesDir, catVar, `${safeName}${ext}`);
-          if (fs.existsSync(safeFolderPath)) {
-            return safeFolderPath;
-          }
-        }
+      let decodedCat = category || "";
+      try {
+        decodedCat = decodeURIComponent(category || "");
+      } catch (e) {}
+
+      // Strip file extension if passed in name
+      const extMatch = decodedName.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i);
+      if (extMatch) {
+        decodedName = decodedName.replace(/\.(jpg|jpeg|png|webp|gif|svg)$/i, "");
       }
 
-      // 2. Check flat file: public/game_images/<safeCat>_<safeName>.<ext>
-      const baseName = getSafeImageFileName(cleanCat, cleanName);
-      for (const ext of extensions) {
-        const flatPath = path.join(gameImagesDir, `${baseName}${ext}`);
-        if (fs.existsSync(flatPath)) {
-          return flatPath;
-        }
+      const normCat = normalizeArabicText(decodedCat);
+      const normName = normalizeArabicText(decodedName);
+
+      if (diskImagesMap.size === 0) {
+        indexGameImages();
       }
 
-      // 3. Check directly by name: public/game_images/<name>.<ext>
-      for (const ext of extensions) {
-        const directPath = path.join(gameImagesDir, `${cleanName}${ext}`);
-        if (fs.existsSync(directPath)) {
-          return directPath;
-        }
+      // 1. Direct category + name lookup
+      const catKey = `${normCat}/${normName}`;
+      if (diskImagesMap.has(catKey)) {
+        return diskImagesMap.get(catKey)!;
       }
+      if (diskImagesMap.has(`${decodedCat.toLowerCase()}/${decodedName.toLowerCase()}`)) {
+        return diskImagesMap.get(`${decodedCat.toLowerCase()}/${decodedName.toLowerCase()}`)!;
+      }
+
+      // 2. Global name lookup (in case category was different)
+      if (diskImagesMap.has(normName)) {
+        return diskImagesMap.get(normName)!;
+      }
+      if (diskImagesMap.has(decodedName.toLowerCase())) {
+        return diskImagesMap.get(decodedName.toLowerCase())!;
+      }
+
+      // 3. Fallback: Re-index once and retry
+      indexGameImages();
+      if (diskImagesMap.has(catKey)) return diskImagesMap.get(catKey)!;
+      if (diskImagesMap.has(normName)) return diskImagesMap.get(normName)!;
 
       return null;
     }
@@ -5339,19 +5444,22 @@ async function startServer() {
       try {
         const { category, name } = req.params;
         
-        // 1. Check disk file (Permanent fast static serving)
+        // 1. Check disk file
         const diskFile = findImageOnDisk(category, name);
-        if (diskFile) {
+        if (diskFile && fs.existsSync(diskFile)) {
           res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
           return res.sendFile(diskFile);
         }
 
-        // 2. Fallback: check SQLite database
+        // 2. Fallback: check SQLite database by category & name or name alone
+        let decodedName = name;
+        try { decodedName = decodeURIComponent(name); } catch (e) {}
+
         const image = db
           .prepare(
-            "SELECT data FROM custom_images WHERE category = ? AND name = ?",
+            "SELECT data FROM custom_images WHERE (category = ? AND name = ?) OR name = ? LIMIT 1",
           )
-          .get(category, name) as { data: string } | undefined;
+          .get(category, decodedName, decodedName) as { data: string } | undefined;
 
         if (image && image.data && image.data.length > 20) {
           res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
@@ -5371,10 +5479,45 @@ async function startServer() {
           res.setHeader("Content-Type", mimeType);
           return res.send(imgBuffer);
         } else {
+          console.warn(`[Image 404] Not found on disk or DB: Category='${category}', Name='${name}' (Decoded: '${decodedName}')`);
           return res.status(404).send("Not found");
         }
       } catch (error) {
         console.error("Error fetching image:", error);
+        res.status(500).send("Error");
+      }
+    });
+
+    app.get("/api/image/:name", (req, res) => {
+      try {
+        const { name } = req.params;
+        const diskFile = findImageOnDisk("", name);
+        if (diskFile && fs.existsSync(diskFile)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return res.sendFile(diskFile);
+        }
+        let decodedName = name;
+        try { decodedName = decodeURIComponent(name); } catch (e) {}
+        const image = db
+          .prepare("SELECT data FROM custom_images WHERE name = ? LIMIT 1")
+          .get(decodedName) as { data: string } | undefined;
+        if (image && image.data && image.data.length > 20) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          let base64Data = image.data;
+          let mimeType = "image/jpeg";
+          if (base64Data.startsWith("data:")) {
+            const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (matches && matches.length === 3) {
+              mimeType = matches[1];
+              base64Data = matches[2];
+            }
+          }
+          res.setHeader("Content-Type", mimeType);
+          return res.send(Buffer.from(base64Data, "base64"));
+        }
+        return res.status(404).send("Not found");
+      } catch (error) {
+        console.error("Error fetching image by name:", error);
         res.status(500).send("Error");
       }
     });
