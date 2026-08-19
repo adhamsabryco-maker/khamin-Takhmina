@@ -567,9 +567,7 @@ export default function WordleGame({
                   playerSerial={playerSerial}
                   isRematchRequestedByMe={room.wordle?.rematchRequestedBy?.includes(myId)}
                   isRematchRequestedByOpponent={room.wordle?.rematchRequestedBy?.includes(oppId)}
-                  onChangeGame={() => {
-                    socket?.emit("play_again", { roomId: room.id });
-                  }}
+                  onChangeGame={() => {}}
                   onRematch={() => {
                     socket?.emit("request_wordle_rematch", { roomId: room.id, playerId: myId });
                   }}

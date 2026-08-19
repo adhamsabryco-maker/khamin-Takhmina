@@ -1108,9 +1108,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
                  playerSerial={playerSerial}
                  isRematchRequestedByMe={room.spaceWar?.rematchRequestedBy?.includes(myId)}
                  isRematchRequestedByOpponent={room.spaceWar?.rematchRequestedBy?.includes(oppPlayerObj?.id)}
-                 onChangeGame={() => {
-                    socket?.emit("play_again", { roomId: room.id });
-                 }}
+                 onChangeGame={() => {}}
                  onRematch={() => {
                     socket?.emit("bot_event", { roomId: room.id, type: "play_again", gameType: "space_war" });
                     socket?.emit("request_space_war_rematch", { roomId: room.id });

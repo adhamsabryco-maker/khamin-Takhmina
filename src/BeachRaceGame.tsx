@@ -1558,7 +1558,6 @@ export default function BeachRaceGame({
               isRematchRequestedByOpponent={room?.beachRace?.rematchRequestedBy?.includes(opp?.id)}
               onChangeGame={() => {
                 setIsLocalFinished(false);
-                socket?.emit("play_again", { roomId: room?.id });
               }}
               onRematch={() => {
                 socket?.emit("request_beach_race_rematch", { roomId: room?.id, playerId: me?.id });

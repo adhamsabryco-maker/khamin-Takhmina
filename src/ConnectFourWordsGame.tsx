@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
+import { GameEndControls } from './components/GameEndControls';
 
 export default function ConnectFourWordsGame({
   room,
@@ -49,6 +50,15 @@ export default function ConnectFourWordsGame({
 
   const isMyTurn = room.connectFourWords?.turn === myId;
   const isMeReady = room.connectFourWords?.readyPlayers?.includes(myId);
+
+  const isOpponentInAd = React.useMemo(() => {
+    if (!room?.adPausedPlayersArray || room.adPausedPlayersArray.length === 0) return false;
+    return room.adPausedPlayersArray.some((id: string) => {
+      if (id === socket?.id || id === myId) return false;
+      const p = room.players?.find((pl: any) => pl.id === id || pl.socketId === id);
+      return p && !p.isBot;
+    });
+  }, [room?.adPausedPlayersArray, room?.players, socket?.id, myId]);
 
   const [flashIndex, setFlashIndex] = useState<number | null>(null);
 
@@ -112,7 +122,7 @@ export default function ConnectFourWordsGame({
   }, [room.gameState, room.connectFourWords?.winnerId, myId, oppId, playSound]);
 
   const handleCellClick = (colIndex: number) => {
-        if (((room.adPausedPlayersArray?.length || 0) > 0)) return;
+        if (isOpponentInAd) return;
         if (!isMyTurn || !selectedLetter || room.gameState !== "connect_four_words_playing") {
             if (isMyTurn && !selectedLetter && room.gameState === "connect_four_words_playing") {
                 if (playSound) playSound("pop");
@@ -210,10 +220,10 @@ export default function ConnectFourWordsGame({
                     if (playSound) playSound("clickOpen");
                     socket?.emit("start_connect_four_words", { roomId: room.id });
                   }}
-                  disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
-                  className={`btn-game w-full ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1d4ed8] active:shadow-transparent hover:scale-102"} py-3.5 px-2 text-xl font-black rounded-2xl transition-all flex items-center justify-center gap-2`}
+                  disabled={isOpponentInAd}
+                  className={`btn-game w-full ${isOpponentInAd ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1d4ed8] active:shadow-transparent hover:scale-102"} py-3.5 px-2 text-xl font-black rounded-2xl transition-all flex items-center justify-center gap-2`}
                 >
-                  {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺" : "👍 موافقة وبدء اللعب"}
+                  {isOpponentInAd ? "انتظر! المنافس يشاهد إعلان 📺" : "👍 موافقة وبدء اللعب"}
                 </button>
               ) : (
                 <div className="text-center bg-blue-50 border border-blue-100 p-4 rounded-xl w-full">
@@ -269,7 +279,7 @@ export default function ConnectFourWordsGame({
             {((room.gameState === "connect_four_words_playing") || (room.gameState === "connect_four_words_finished")) && (
             <>
             
-           {((room.adPausedPlayersArray?.length || 0) > 0) && !room.adPausedPlayersArray?.includes(socket?.id) && (
+           {isOpponentInAd && (
               <div className="w-full bg-blue-100 text-blue-800 font-bold text-center py-2 px-4 rounded-xl shadow-sm text-sm md:text-base animate-pulse">
                 انتظر قليلا! اللاعب ({room.players?.find((p: any) => room.adPausedPlayersArray?.includes(p.id))?.name || "الآخر"}) يشاهد إعلان قصير 📺
               </div>
@@ -382,7 +392,7 @@ export default function ConnectFourWordsGame({
                                         if (playSound) playSound("connect4PickPiece");
                                     }
                                 }}
-                                disabled={!isMyTurn || ((room.adPausedPlayersArray?.length || 0) > 0)}
+                                disabled={!isMyTurn || isOpponentInAd}
                                 className={`w-12 h-12 md:w-14 md:h-14 border-2 border-black/20 shadow-md rounded-full flex items-center justify-center font-black text-xl md:text-2xl transition-all ${
                                     !isMyTurn ? "bg-gray-300 text-gray-500 border-2 border-black/20 shadow-md opacity-50 cursor-not-allowed" :
                                     selectedLetter === char ? selectedColorClass :
@@ -403,46 +413,20 @@ export default function ConnectFourWordsGame({
                   {room.connectFourWords.winnerId === myId ? "🎉 لقد فزت بالمواجهة!" : room.connectFourWords.winnerId === oppId ? "😞 حظ أوفر، لقد فاز الخصم!" : "🤝 تعادل رائع!"}
                 </h3>
                 
-                <div className="flex flex-col gap-2 w-full">
-                  <div className="flex gap-2 w-full">
-                    <button
-                      onClick={() => {
-                        if (playSound) playSound("clickOpen");
-                        socket?.emit("select_private_mode", { roomId: room.id, mode: null });
-                      }}
-                      className="flex-1 btn-game bg-purple-500 hover:bg-purple-600 text-white shadow-[0_4px_0_0_#7c3aed] active:shadow-transparent py-3 px-2 text-sm font-black rounded-2xl flex items-center justify-center gap-2"
-                    >
-                      🎮 تغيير اللعبة
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        if (playSound) playSound("clickOpen");
-                        socket?.emit("request_connect_four_words_rematch", { roomId: room.id });
-                      }}
-                      disabled={((room.adPausedPlayersArray?.length || 0) > 0) || room.connectFourWords?.rematchRequestedBy?.includes(socket?.id || "")}
-                      className={`flex-1 btn-game ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1d4ed8] active:shadow-transparent"} py-3 px-2 text-sm font-black rounded-2xl flex items-center justify-center gap-2`}
-                    >
-                      {room.connectFourWords.rematchRequestedBy?.includes(myId) ? (
-                        <span className="animate-pulse">🔄 بانتظار الخصم...</span>
-                      ) : room.connectFourWords.rematchRequestedBy?.includes(oppId) ? (
-                        <span>🤝 الخصم جاهز!</span>
-                      ) : (
-                        <span>{((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! 📺" : "🔄 لعب مرة أخرى"}</span>
-                      )}
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      if (playSound) playSound("clickOpen");
-                      if (handleLeaveGame) handleLeaveGame();
-                    }}
-                    className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-700 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-3 px-6 text-base font-black rounded-2xl flex items-center justify-center gap-2"
-                  >
-                    🚪 خروج للرئيسية
-                  </button>
-                </div>
+                <GameEndControls
+                  room={room}
+                  socket={socket}
+                  myId={myId}
+                  playerSerial={playerSerial}
+                  isRematchRequestedByMe={room.connectFourWords?.rematchRequestedBy?.includes(myId)}
+                  isRematchRequestedByOpponent={room.connectFourWords?.rematchRequestedBy?.includes(oppId)}
+                  onChangeGame={() => {}}
+                  onRematch={() => {
+                    socket?.emit("request_connect_four_words_rematch", { roomId: room.id });
+                  }}
+                  onLeaveGame={handleLeaveGame}
+                  playSound={playSound}
+                />
               </div>
             )}
           </div>

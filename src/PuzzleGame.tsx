@@ -338,9 +338,7 @@ export default function PuzzleGame({
           playerSerial={playerSerial}
           isRematchRequestedByMe={myRequestedRematch}
           isRematchRequestedByOpponent={oppRequestedRematch}
-          onChangeGame={() => {
-            socket?.emit("play_again", { roomId: room.id });
-          }}
+          onChangeGame={() => {}}
           onRematch={() => {
             socket?.emit("request_puzzle_rematch", { roomId: room.id, playerId: me?.id });
           }}
