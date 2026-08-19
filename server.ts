@@ -2655,20 +2655,29 @@ async function startServer() {
         const tempCandidatePath = path.join(os.tmpdir(), `candidate_${Date.now()}.db`);
 
         // Check remote file metadata (check .gz first, then .db)
-        let remoteFileName = "players.db.gz";
+        let remoteFileName = "players.db";
         try {
           const { data: fileList } = await supabase.storage.from("database").list("", { search: "players.db" });
           const gzInfo = fileList?.find(f => f.name === "players.db.gz");
           const dbInfo = fileList?.find(f => f.name === "players.db");
-          if (gzInfo && gzInfo.metadata?.size) {
+          if (gzInfo && dbInfo) {
+            const gzTime = new Date(gzInfo.updated_at || gzInfo.created_at || 0).getTime();
+            const dbTime = new Date(dbInfo.updated_at || dbInfo.created_at || 0).getTime();
+            if (gzTime > dbTime) {
+              remoteFileName = "players.db.gz";
+              remoteFileSizeAtStart = gzInfo.metadata?.size || 0;
+            } else {
+              remoteFileName = "players.db";
+              remoteFileSizeAtStart = dbInfo.metadata?.size || 0;
+            }
+          } else if (gzInfo && gzInfo.metadata?.size) {
             remoteFileName = "players.db.gz";
             remoteFileSizeAtStart = gzInfo.metadata.size;
-            console.log(`[DB] Found compressed remote players.db.gz on Supabase (${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB)`);
           } else if (dbInfo && dbInfo.metadata?.size) {
             remoteFileName = "players.db";
             remoteFileSizeAtStart = dbInfo.metadata.size;
-            console.log(`[DB] Found uncompressed remote players.db on Supabase (${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB)`);
           }
+          console.log(`[DB] Selected remote backup: ${remoteFileName} (${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB)`);
         } catch (e) {}
 
         // Download database
@@ -2745,63 +2754,58 @@ async function startServer() {
       }
       isUploadingDb = true;
 
-      const tempBackupPath = path.join(os.tmpdir(), `players_backup_${Date.now()}.db`);
       const tempGzPath = path.join(os.tmpdir(), `players_backup_${Date.now()}.db.gz`);
       try {
-        console.log(`[DB] Step 1: Preparing database file with db.backup()...`);
-        // Native SQLite backup merges all memory and WAL changes into a single consolidated file
-        await db.backup(tempBackupPath);
-        console.log("[DB] Step 1c: Backup complete.");
-
-        console.log(`[DB] Step 2: Checking if backup file exists...`);
-        if (fs.existsSync(tempBackupPath)) {
-          const rawFileSize = fs.statSync(tempBackupPath).size;
-          console.log(`[DB] Step 3: Backup file size is ${(rawFileSize / 1024 / 1024).toFixed(2)} MB.`);
-
-          // Safety guard: Don't overwrite a large remote database with an empty tiny local database
-          if (!force && !initialDownloadSucceeded && remoteFileSizeAtStart > 3 * 1024 * 1024 && rawFileSize < 500 * 1024) {
-            console.warn(`[DB] Safety blocked upload: local backup is only ${(rawFileSize / 1024).toFixed(1)} KB while remote is ${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB. Avoiding accidental overwrite.`);
-            return;
+        console.log(`[DB] Step 1: Flushing WAL synchronously...`);
+        try {
+          if (db) {
+            db.pragma("wal_checkpoint(TRUNCATE)");
           }
+        } catch (e) {
+          console.warn("[DB] WAL checkpoint warning:", e);
+        }
 
-          console.log(`[DB] Step 4: Compressing database file via stream pipeline directly to disk...`);
-          const compressStartTime = Date.now();
-          await pipeline(
-            fs.createReadStream(tempBackupPath),
-            zlib.createGzip({ level: 1 }),
-            fs.createWriteStream(tempGzPath)
-          );
-          const gzFileSize = fs.statSync(tempGzPath).size;
-          console.log(`[DB] Step 4b: Streaming compression finished in ${Date.now() - compressStartTime}ms! Compressed size: ${(gzFileSize / 1024 / 1024).toFixed(2)} MB.`);
+        const rawFileSize = fs.statSync(dbPath).size;
+        console.log(`[DB] Step 2: Source database size is ${(rawFileSize / 1024 / 1024).toFixed(2)} MB.`);
 
-          console.log(`[DB] Step 5: Reading compressed file (${(gzFileSize / 1024 / 1024).toFixed(2)} MB) and uploading to Supabase...`);
-          const compressedBuffer = fs.readFileSync(tempGzPath);
+        // Safety guard: Don't overwrite a large remote database with an empty tiny local database
+        if (!force && !initialDownloadSucceeded && remoteFileSizeAtStart > 3 * 1024 * 1024 && rawFileSize < 500 * 1024) {
+          console.warn(`[DB] Safety blocked upload: local backup is only ${(rawFileSize / 1024).toFixed(1)} KB while remote is ${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB. Avoiding accidental overwrite.`);
+          return;
+        }
 
-          const { error: gzError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
-            upsert: true,
-            contentType: "application/gzip"
-          });
+        console.log(`[DB] Step 3: Fast stream compression to disk (Level 1)...`);
+        const compressStartTime = Date.now();
+        await pipeline(
+          fs.createReadStream(dbPath),
+          zlib.createGzip({ level: 1 }),
+          fs.createWriteStream(tempGzPath)
+        );
+        const gzFileSize = fs.statSync(tempGzPath).size;
+        console.log(`[DB] Step 3b: Compressed to ${(gzFileSize / 1024 / 1024).toFixed(2)} MB in ${Date.now() - compressStartTime}ms.`);
 
-          console.log(`[DB] Step 6: Supabase upload finished. Error status: ${gzError ? gzError.message : 'Success'}`);
-          if (gzError) {
-            console.error("[DB] Error uploading players.db.gz to Supabase Storage:", gzError.message);
-          } else {
-            dbIsDirty = false;
-            initialDownloadSucceeded = true;
-            console.log(`[DB] Successfully synced compressed players.db.gz to Supabase Storage.`);
-          }
+        console.log(`[DB] Step 4: Reading compressed backup (${(gzFileSize / 1024 / 1024).toFixed(2)} MB)...`);
+        const compressedBuffer = fs.readFileSync(tempGzPath);
+
+        console.log(`[DB] Step 5: Uploading compressed backup to Supabase Storage...`);
+        const uploadStartTime = Date.now();
+        const { error: gzError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
+          upsert: true,
+          contentType: "application/gzip"
+        });
+
+        console.log(`[DB] Step 6: Supabase upload finished in ${Date.now() - uploadStartTime}ms. Error status: ${gzError ? gzError.message : 'Success'}`);
+        if (gzError) {
+          console.error("[DB] Error uploading players.db.gz to Supabase Storage:", gzError.message);
         } else {
-          console.error("[DB] Backup file not found at " + tempBackupPath);
+          dbIsDirty = false;
+          initialDownloadSucceeded = true;
+          console.log(`[DB] Successfully synced compressed players.db.gz to Supabase Storage.`);
         }
       } catch (err) {
         console.error("[DB] CRITICAL ERROR in syncDbToSupabase try-catch:", err);
       } finally {
-        console.log(`[DB] Step 7: Cleaning up temporary files...`);
-        try {
-          if (fs.existsSync(tempBackupPath)) {
-            fs.unlinkSync(tempBackupPath);
-          }
-        } catch (e) {}
+        console.log(`[DB] Step 7: Cleaning up temporary file...`);
         try {
           if (fs.existsSync(tempGzPath)) {
             fs.unlinkSync(tempGzPath);
