@@ -2746,22 +2746,14 @@ async function startServer() {
 
       const tempBackupPath = path.join(os.tmpdir(), `players_backup_${Date.now()}.db`);
       try {
-        if (isShutdown) {
-          console.log("[DB] isShutdown flag is true. Closing database connection to flush WAL synchronously before uploading...");
-          try {
-            if (db) db.close();
-            db = null; // Prevent subsequent operations
-          } catch (e) {
-            console.error("[DB] Error closing DB during shutdown sync:", e);
-          }
-          // The database file is now clean and all WAL data is merged.
-          fs.copyFileSync(dbPath, tempBackupPath);
-        } else {
-          // Native SQLite backup merges all memory and WAL changes into a single consolidated file
-          await db.backup(tempBackupPath);
-        }
+        console.log(`[DB] Step 1: Preparing database file with db.backup()...`);
+        // Native SQLite backup merges all memory and WAL changes into a single consolidated file
+        await db.backup(tempBackupPath);
+        console.log("[DB] Step 1c: Backup complete.");
 
+        console.log(`[DB] Step 2: Checking if backup file exists...`);
         if (fs.existsSync(tempBackupPath)) {
+          console.log(`[DB] Step 3: Reading backup file into memory...`);
           const rawBuffer = fs.readFileSync(tempBackupPath);
 
           // Safety guard: Don't overwrite a large remote database with an empty tiny local database
@@ -2770,26 +2762,31 @@ async function startServer() {
             return;
           }
 
-          // Compress the database with gzip level 9 for maximum bandwidth & storage savings
-          const compressedBuffer = zlib.gzipSync(rawBuffer, { level: 9 });
-          console.log(`[DB] Uploading compressed database backup to Supabase (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB -> ${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB)...`);
+          console.log(`[DB] Step 4: Compressing database file (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB)...`);
+          // Use level 6 instead of 9 to save CPU and RAM during critical shutdown windows
+          const compressedBuffer = zlib.gzipSync(rawBuffer, { level: 6 });
+          console.log(`[DB] Step 5: Uploading compressed backup (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB) to Supabase...`);
 
           const { error: gzError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
             upsert: true,
             contentType: "application/gzip"
           });
 
+          console.log(`[DB] Step 6: Supabase upload finished. Error status: ${gzError ? gzError.message : 'Success'}`);
           if (gzError) {
             console.error("[DB] Error uploading players.db.gz to Supabase Storage:", gzError.message);
           } else {
             dbIsDirty = false;
             initialDownloadSucceeded = true;
-            console.log(`[DB] Successfully synced compressed players.db.gz (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB) to Supabase Storage.`);
+            console.log(`[DB] Successfully synced compressed players.db.gz to Supabase Storage.`);
           }
+        } else {
+          console.error("[DB] Backup file not found at " + tempBackupPath);
         }
       } catch (err) {
-        console.error("[DB] Failed to backup & upload database to Supabase Storage:", err);
+        console.error("[DB] CRITICAL ERROR in syncDbToSupabase try-catch:", err);
       } finally {
+        console.log(`[DB] Step 7: Cleaning up temporary files...`);
         try {
           if (fs.existsSync(tempBackupPath)) {
             fs.unlinkSync(tempBackupPath);
@@ -2877,12 +2874,27 @@ async function startServer() {
     // Cleanup expired tokens on startup
     await adminTokens.cleanup();
 
+    process.on('uncaughtException', (err) => {
+      console.error('[DB FATAL] Ignored uncaught exception to prevent crash during shutdown:', err);
+    });
+    process.on('unhandledRejection', (err) => {
+      console.error('[DB FATAL] Ignored unhandled rejection to prevent crash during shutdown:', err);
+    });
+
     // Graceful shutdown with database sync
     let isShuttingDown = false;
     const shutdown = async (signal: string) => {
       if (isShuttingDown) return;
       isShuttingDown = true;
-      console.log(`[DB] Received ${signal}. Syncing latest database backup to Supabase before exiting...`);
+      console.log(`[DB] Received ${signal}. Stopping server traffic and syncing database...`);
+      
+      // Stop accepting new connections to prevent unhandled exceptions while DB is closed
+      try {
+        if (io) io.close();
+        if (httpServer) httpServer.close();
+        console.log("[DB] Web and Socket server closed.");
+      } catch (e) {}
+
       try {
         if (isProduction && supabase) {
           await syncDbToSupabase(true, true);
@@ -2893,16 +2905,17 @@ async function startServer() {
       }
       
       if (db) {
-        console.log("[DB] Closing database connection...");
+        console.log("[DB] Closing database connection fallback...");
         try {
           db.close();
         } catch (e) {}
       }
       
-      // Delay exit slightly to ensure all async tasks and logs flush properly
+      // Wait longer to ensure Supabase finishes the upload promise
       setTimeout(() => {
+        console.log("[DB] Exiting process now.");
         process.exit(0);
-      }, 500);
+      }, 5000);
     };
 
     process.on("SIGINT", () => shutdown("SIGINT"));
