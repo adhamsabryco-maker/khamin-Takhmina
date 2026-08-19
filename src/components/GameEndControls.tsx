@@ -93,8 +93,8 @@ export const GameEndControls: React.FC<GameEndControlsProps> = ({
     if (playSound) playSound("clickOpen");
     if (onChangeGame) {
       onChangeGame();
-    } else if (socket && room?.id) {
-      // Default fallback: emit play_again to reset room state for both players
+    }
+    if (socket && room?.id) {
       socket.emit("play_again", { roomId: room.id });
     }
   };
