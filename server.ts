@@ -2754,7 +2754,6 @@ async function startServer() {
       }
       isUploadingDb = true;
 
-      const tempGzPath = path.join(os.tmpdir(), `players_backup_${Date.now()}.db.gz`);
       try {
         console.log(`[DB] Step 1: Flushing WAL synchronously...`);
         try {
@@ -2774,43 +2773,27 @@ async function startServer() {
           return;
         }
 
-        console.log(`[DB] Step 3: Fast stream compression to disk (Level 1)...`);
-        const compressStartTime = Date.now();
-        await pipeline(
-          fs.createReadStream(dbPath),
-          zlib.createGzip({ level: 1 }),
-          fs.createWriteStream(tempGzPath)
-        );
-        const gzFileSize = fs.statSync(tempGzPath).size;
-        console.log(`[DB] Step 3b: Compressed to ${(gzFileSize / 1024 / 1024).toFixed(2)} MB in ${Date.now() - compressStartTime}ms.`);
+        console.log(`[DB] Step 3: Reading database file directly (Zero CPU)...`);
+        const rawBuffer = fs.readFileSync(dbPath);
 
-        console.log(`[DB] Step 4: Reading compressed backup (${(gzFileSize / 1024 / 1024).toFixed(2)} MB)...`);
-        const compressedBuffer = fs.readFileSync(tempGzPath);
-
-        console.log(`[DB] Step 5: Uploading compressed backup to Supabase Storage...`);
+        console.log(`[DB] Step 4: Uploading database (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB) directly to Supabase Storage...`);
         const uploadStartTime = Date.now();
-        const { error: gzError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
+        const { error: uploadError } = await supabase.storage.from("database").upload("players.db", rawBuffer, {
           upsert: true,
-          contentType: "application/gzip"
+          contentType: "application/x-sqlite3"
         });
 
-        console.log(`[DB] Step 6: Supabase upload finished in ${Date.now() - uploadStartTime}ms. Error status: ${gzError ? gzError.message : 'Success'}`);
-        if (gzError) {
-          console.error("[DB] Error uploading players.db.gz to Supabase Storage:", gzError.message);
+        console.log(`[DB] Step 5: Supabase upload finished in ${Date.now() - uploadStartTime}ms. Error status: ${uploadError ? uploadError.message : 'Success'}`);
+        if (uploadError) {
+          console.error("[DB] Error uploading players.db to Supabase Storage:", uploadError.message);
         } else {
           dbIsDirty = false;
           initialDownloadSucceeded = true;
-          console.log(`[DB] Successfully synced compressed players.db.gz to Supabase Storage.`);
+          console.log(`[DB] Successfully synced players.db to Supabase Storage.`);
         }
       } catch (err) {
         console.error("[DB] CRITICAL ERROR in syncDbToSupabase try-catch:", err);
       } finally {
-        console.log(`[DB] Step 7: Cleaning up temporary file...`);
-        try {
-          if (fs.existsSync(tempGzPath)) {
-            fs.unlinkSync(tempGzPath);
-          }
-        } catch (e) {}
         isUploadingDb = false;
       }
     }
@@ -3543,6 +3526,133 @@ async function startServer() {
         }
       }
     }
+
+    // --- Static Game Images Directory & Disk Storage ---
+    const gameImagesDir = path.join(process.cwd(), "public", "game_images");
+    if (!fs.existsSync(gameImagesDir)) {
+      fs.mkdirSync(gameImagesDir, { recursive: true });
+    }
+
+    function getSafeImageFileName(category: string, name: string): string {
+      const safeCat = encodeURIComponent(category).replace(/%/g, "_");
+      const safeName = encodeURIComponent(name).replace(/%/g, "_");
+      return `${safeCat}_${safeName}`;
+    }
+
+    function findImageOnDisk(category: string, name: string): string | null {
+      if (!name) return null;
+      const cleanCat = (category || "").trim();
+      const cleanName = (name || "").trim();
+      const extensions = [".jpg", ".jpeg", ".png", ".webp", ".JPG", ".JPEG", ".PNG", ".WEBP"];
+
+      // Category folder variants (e.g. 'animals', 'Animals', 'Insects', 'insects')
+      const catVariants = [
+        cleanCat,
+        cleanCat.toLowerCase(),
+        cleanCat.toUpperCase(),
+        cleanCat.charAt(0).toUpperCase() + cleanCat.slice(1).toLowerCase(),
+      ];
+
+      // 1. Check inside category subfolders: public/game_images/<category>/<name>.<ext>
+      for (const catVar of catVariants) {
+        if (!catVar) continue;
+        for (const ext of extensions) {
+          const folderPath = path.join(gameImagesDir, catVar, `${cleanName}${ext}`);
+          if (fs.existsSync(folderPath)) {
+            return folderPath;
+          }
+          const safeName = encodeURIComponent(cleanName).replace(/%/g, "_");
+          const safeFolderPath = path.join(gameImagesDir, catVar, `${safeName}${ext}`);
+          if (fs.existsSync(safeFolderPath)) {
+            return safeFolderPath;
+          }
+        }
+      }
+
+      // 2. Check flat file: public/game_images/<safeCat>_<safeName>.<ext>
+      const baseName = getSafeImageFileName(cleanCat, cleanName);
+      for (const ext of extensions) {
+        const flatPath = path.join(gameImagesDir, `${baseName}${ext}`);
+        if (fs.existsSync(flatPath)) {
+          return flatPath;
+        }
+      }
+
+      // 3. Check directly by name: public/game_images/<name>.<ext>
+      for (const ext of extensions) {
+        const directPath = path.join(gameImagesDir, `${cleanName}${ext}`);
+        if (fs.existsSync(directPath)) {
+          return directPath;
+        }
+      }
+
+      return null;
+    }
+
+    function migrateExistingImagesToDisk() {
+      try {
+        const rows = db
+          .prepare("SELECT id, category, name, data FROM custom_images WHERE data IS NOT NULL AND length(data) > 100")
+          .all() as any[];
+
+        if (rows.length > 0) {
+          console.log(`[Image Migration] Found ${rows.length} Base64 images in database. Starting disk migration...`);
+          let migratedCount = 0;
+
+          for (const row of rows) {
+            if (!row.category || !row.name || !row.data) continue;
+            
+            let base64Data = row.data;
+            let ext = ".jpg";
+            if (base64Data.startsWith("data:")) {
+              if (base64Data.startsWith("data:image/png")) ext = ".png";
+              else if (base64Data.startsWith("data:image/webp")) ext = ".webp";
+              const commaIdx = base64Data.indexOf(",");
+              if (commaIdx !== -1) {
+                base64Data = base64Data.substring(commaIdx + 1);
+              }
+            }
+
+            const baseName = getSafeImageFileName(row.category, row.name);
+            const filePath = path.join(gameImagesDir, `${baseName}${ext}`);
+            try {
+              fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+              migratedCount++;
+            } catch (writeErr) {
+              console.error(`[Image Migration] Failed to write image ${row.name}:`, writeErr);
+            }
+          }
+
+          console.log(`[Image Migration] Successfully saved ${migratedCount} images to public/game_images/`);
+          
+          // Clear large Base64 blobs from custom_images table
+          db.exec("UPDATE custom_images SET data = '' WHERE length(data) > 100");
+          console.log("[Image Migration] Cleared Base64 data from database. Running VACUUM...");
+          
+          // Reclaim disk space
+          try {
+            db.exec("VACUUM");
+          } catch (vErr) {
+            console.warn("[Image Migration] VACUUM note:", vErr);
+          }
+
+          const newSize = fs.statSync(dbPath).size;
+          console.log(`[Image Migration] Database size shrunk to ${(newSize / 1024 / 1024).toFixed(2)} MB!`);
+
+          // Trigger sync of newly shrunk DB
+          if (isProduction && supabase) {
+            syncDbToSupabase(true);
+          }
+        } else {
+          console.log("[Image Migration] All images are already stored on disk.");
+        }
+      } catch (err) {
+        console.error("[Image Migration] Error during image migration:", err);
+      }
+    }
+
+    // Run migration safely
+    migrateExistingImagesToDisk();
 
     db.exec(`
     CREATE TABLE IF NOT EXISTS reports (
@@ -5228,18 +5338,26 @@ async function startServer() {
     app.get("/api/image/:category/:name", (req, res) => {
       try {
         const { category, name } = req.params;
+        
+        // 1. Check disk file (Permanent fast static serving)
+        const diskFile = findImageOnDisk(category, name);
+        if (diskFile) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return res.sendFile(diskFile);
+        }
+
+        // 2. Fallback: check SQLite database
         const image = db
           .prepare(
             "SELECT data FROM custom_images WHERE category = ? AND name = ?",
           )
           .get(category, name) as { data: string } | undefined;
 
-        if (image && image.data) {
-          // Send cache headers for 24 hours
-          res.setHeader("Cache-Control", "public, max-age=86400");
+        if (image && image.data && image.data.length > 20) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
           
           let base64Data = image.data;
-          let mimeType = "image/png";
+          let mimeType = "image/jpeg";
 
           if (base64Data.startsWith("data:")) {
             const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
@@ -5251,9 +5369,9 @@ async function startServer() {
 
           const imgBuffer = Buffer.from(base64Data, "base64");
           res.setHeader("Content-Type", mimeType);
-          res.send(imgBuffer);
+          return res.send(imgBuffer);
         } else {
-          res.status(404).send("Not found");
+          return res.status(404).send("Not found");
         }
       } catch (error) {
         console.error("Error fetching image:", error);
@@ -5336,6 +5454,30 @@ async function startServer() {
         if (!category || !name || !data) {
           return res.status(400).json({ error: "Missing fields" });
         }
+
+        // Save image to disk as static file
+        let base64Data = data;
+        let ext = ".jpg";
+        if (base64Data.startsWith("data:")) {
+          if (base64Data.startsWith("data:image/png")) ext = ".png";
+          else if (base64Data.startsWith("data:image/webp")) ext = ".webp";
+          const commaIdx = base64Data.indexOf(",");
+          if (commaIdx !== -1) {
+            base64Data = base64Data.substring(commaIdx + 1);
+          }
+        }
+
+        const catDir = path.join(gameImagesDir, category);
+        if (!fs.existsSync(catDir)) {
+          fs.mkdirSync(catDir, { recursive: true });
+        }
+        const filePath = path.join(catDir, `${name}${ext}`);
+        try {
+          fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+        } catch (e) {
+          console.error("Error saving image file to disk:", e);
+        }
+
         const id = Math.random().toString(36).substring(2, 15);
         const imgLevel = level || "مستوي مبتدئين التخمين";
         db.prepare(
@@ -5344,11 +5486,12 @@ async function startServer() {
           id,
           category,
           name,
-          data,
+          "", // Store empty string to keep SQLite DB small (<1MB) and lightning fast!
           addedBy || "admin",
           Date.now(),
           imgLevel,
         );
+        dbIsDirty = true;
         io.emit("categories_updated");
         res.json({ success: true, id });
       } catch (error) {
@@ -5375,7 +5518,15 @@ async function startServer() {
     app.delete("/api/admin/images/:id", (req, res) => {
       try {
         const { id } = req.params;
+        const img = db.prepare("SELECT category, name FROM custom_images WHERE id = ?").get(id) as any;
+        if (img && img.category && img.name) {
+          const diskFile = findImageOnDisk(img.category, img.name);
+          if (diskFile && fs.existsSync(diskFile)) {
+            try { fs.unlinkSync(diskFile); } catch (e) {}
+          }
+        }
         db.prepare("DELETE FROM custom_images WHERE id = ?").run(id);
+        dbIsDirty = true;
         io.emit("categories_updated");
         res.json({ success: true });
       } catch (error) {
@@ -10779,7 +10930,7 @@ async function startServer() {
       
       let allImages = [];
       try {
-        allImages = db.prepare("SELECT data as image FROM custom_images WHERE category = ?").all(selectedCategory) as any[];
+        allImages = db.prepare("SELECT name, category FROM custom_images WHERE category = ?").all(selectedCategory) as any[];
       } catch (e) {
         console.error("Error loading images for category:", selectedCategory, e);
       }
@@ -10792,7 +10943,7 @@ async function startServer() {
           
           if (activeCategories.length > 0) {
             const fallbackCategory = activeCategories[Math.floor(Math.random() * activeCategories.length)];
-            allImages = db.prepare("SELECT data as image FROM custom_images WHERE category = ?").all(fallbackCategory) as any[];
+            allImages = db.prepare("SELECT name, category FROM custom_images WHERE category = ?").all(fallbackCategory) as any[];
             selectedCategory = fallbackCategory;
           }
         } catch (e) {
@@ -10824,7 +10975,8 @@ async function startServer() {
         }
         // Take needed amount (repeating if necessary)
         for (let i = 0; i < neededPairs; i++) {
-          selectedImages.push(allImages[i % allImages.length].image);
+          const imgItem = allImages[i % allImages.length];
+          selectedImages.push(`/api/image/${encodeURIComponent(imgItem.category || selectedCategory)}/${encodeURIComponent(imgItem.name)}`);
         }
       } else {
         // Fallback
@@ -20587,8 +20739,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             room.customImages[room.players[0].id].image,
         };
       } else {
-        room.players[0].targetImage = shuffled[0];
-        // Ensure different image if possible
         let secondIdx = 1 % shuffled.length;
         if (shuffled.length > 1) {
           while (
@@ -20598,17 +20748,26 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             secondIdx++;
           }
         }
-        room.players[1].targetImage = shuffled[secondIdx];
 
-        // Fetch the base64 data for only the two selected images to save bandwidth and memory
-        if (room.players[0].targetImage?.id) {
-          const imgData = db.prepare("SELECT data FROM custom_images WHERE id = ?").get(room.players[0].targetImage.id) as any;
-          if (imgData) room.players[0].targetImage.image = imgData.data;
-        }
-        if (room.players[1].targetImage?.id) {
-          const imgData = db.prepare("SELECT data FROM custom_images WHERE id = ?").get(room.players[1].targetImage.id) as any;
-          if (imgData) room.players[1].targetImage.image = imgData.data;
-        }
+        const p0 = shuffled[0];
+        const p1 = shuffled[secondIdx];
+        const p0Url = `/api/image/${encodeURIComponent(room.category)}/${encodeURIComponent(p0.name)}`;
+        const p1Url = `/api/image/${encodeURIComponent(room.category)}/${encodeURIComponent(p1.name)}`;
+
+        room.players[0].targetImage = {
+          id: p0.id,
+          name: p0.name,
+          category: room.category,
+          url: p0Url,
+          image: p0Url,
+        };
+        room.players[1].targetImage = {
+          id: p1.id,
+          name: p1.name,
+          category: room.category,
+          url: p1Url,
+          image: p1Url,
+        };
       }
 
       room.players.forEach((p: any, idx: number) => {
