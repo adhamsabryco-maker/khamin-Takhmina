@@ -900,6 +900,19 @@ function normalizeEgyptian(text: string): string {
   return normalized;
 }
 
+function resolveGameImageUrl(urlOrPath: string | null | undefined): string {
+  if (!urlOrPath) return "";
+  if (
+    urlOrPath.startsWith("data:") ||
+    urlOrPath.startsWith("http://") ||
+    urlOrPath.startsWith("https://") ||
+    urlOrPath.startsWith("blob:")
+  ) {
+    return urlOrPath;
+  }
+  return apiUrl(urlOrPath);
+}
+
 // Helper to convert VAPID key
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -21415,6 +21428,8 @@ if (data.connectFourWordsRewardLevel != null) {
                                                         apiUrl(`/api/image/${encodeURIComponent(img.category)}/${encodeURIComponent(img.name)}`)
                                                       }
                                                       alt={img.name}
+                                                      loading="lazy"
+                                                      decoding="async"
                                                       className="w-full aspect-square object-cover"
                                                     />
                                                     <div className="p-3 flex items-center justify-between gap-2 bg-white border-t border-game">
@@ -22218,6 +22233,8 @@ if (data.connectFourWordsRewardLevel != null) {
                                       `/api/image/${encodeURIComponent(category.id)}/${encodeURIComponent(imgName)}`,
                                     )}
                                     alt={imgName}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="w-full h-full object-cover"
                                     referrerPolicy="no-referrer"
                                   />
@@ -23919,7 +23936,9 @@ const renderBombPartyRewardBar = () => {
                         <div className="relative w-full max-w-[200px] aspect-square rounded-xl overflow-hidden shadow-xl border-2 border-white/10 bg-black/20">
                           {p.targetImage ? (
                             <img
-                              src={p.targetImage.image}
+                              src={resolveGameImageUrl(
+                                p.targetImage.image || p.targetImage.url,
+                              )}
                               alt={`Target for ${p.name}`}
                               className="w-full h-full object-cover"
                               referrerPolicy="no-referrer"
@@ -30731,12 +30750,12 @@ const renderBombPartyRewardBar = () => {
                       {/* Target Image on the right (User's Left) */}
                       <div className="relative w-full max-w-[9rem] md:max-w-[12rem] aspect-square bg-white p-1.5 rounded-[24px] shadow-[0_8px_20px_rgba(0,0,0,0.15)] overflow-hidden border-2 border-white flex items-center justify-center">
                         <img
-                          src={
+                          src={resolveGameImageUrl(
                             opponent?.targetImage?.url ||
-                            opponent?.targetImage?.image ||
-                            me?.targetImage?.url ||
-                            me?.targetImage?.image
-                          }
+                              opponent?.targetImage?.image ||
+                              me?.targetImage?.url ||
+                              me?.targetImage?.image,
+                          )}
                           className={`w-full h-full object-cover rounded-xl ${funnyFilter === opponent?.id ? "invert sepia hue-rotate-90 scale-110" : ""}`}
                           alt="Target"
                         />
@@ -31454,7 +31473,7 @@ const renderBombPartyRewardBar = () => {
             >
               <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-[32px] overflow-hidden border-4 border-purple-500 shadow-[0_0_50px_rgba(168,85,247,0.5)]">
                 <img
-                  src={spyLensImage}
+                  src={resolveGameImageUrl(spyLensImage)}
                   className="w-full h-full object-cover blur-md scale-110" // Reduced blur
                   alt="Spy View"
                 />
@@ -31938,7 +31957,9 @@ const renderBombPartyRewardBar = () => {
                 >
                   <div className="w-21 h-21 rounded-2xl overflow-hidden shadow-lg">
                     <img
-                      src={me?.targetImage?.url || me?.targetImage?.image}
+                      src={resolveGameImageUrl(
+                        me?.targetImage?.url || me?.targetImage?.image,
+                      )}
                       className="w-full h-full object-cover"
                       alt={me?.targetImage?.name}
                     />
