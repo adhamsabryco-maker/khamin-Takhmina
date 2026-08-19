@@ -21,22 +21,14 @@ import { pipeline } from "stream/promises";
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://genogaejxepnwaqmwoho.supabase.co";
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlbm9nYWVqeGVwbndhcW13b2hvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjY2MjMxNCwiZXhwIjoyMTAyMjM4MzE0fQ.FjLFq0agFqXP0TKdr4pQ7TbHUoWExYEt8J033Ckzkso";
 
+// Detect Google AI Studio container environment specifically via APPLET_ID or Cloud Run ais- service
 const isAiStudio = Boolean(
   process.env.APPLET_ID ||
-  process.env.K_SERVICE?.includes("ais-") ||
-  (process.env.APP_URL && process.env.APP_URL.includes("ais-")) ||
-  process.env.GEMINI_API_KEY !== undefined ||
-  (process.env.NODE_ENV === "development" && !process.env.RENDER && !process.env.RAILWAY_ENVIRONMENT)
+  (process.env.K_SERVICE && process.env.K_SERVICE.includes("ais-"))
 );
 
-// Production is strictly when running outside AI Studio (on Railway or Render)
-const isProduction = !isAiStudio && (
-  process.env.NODE_ENV === "production" ||
-  process.env.RENDER === "true" ||
-  !!process.env.RENDER ||
-  !!process.env.RAILWAY_ENVIRONMENT ||
-  !!process.env.RAILWAY_PROJECT_ID
-);
+// Supabase is enabled anywhere outside AI Studio (Railway, Render, Production VPS, etc.)
+const isProduction = !isAiStudio;
 
 const supabase = isProduction ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
   auth: { persistSession: false }
