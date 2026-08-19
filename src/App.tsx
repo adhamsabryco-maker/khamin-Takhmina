@@ -1307,45 +1307,15 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
              )}
            </div>
 
-           <div className="flex flex-col gap-3 w-full mt-2">
-             <div className="flex gap-2 w-full">
-               <button
-                 onClick={() => {
-                   playSound("clickOpen");
-                   socket?.emit("play_again", { roomId: room.id });
-                 }}
-                 disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
-                 className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2 border border-gray-200
-                   ${((room.adPausedPlayersArray?.length || 0) > 0)
-                     ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed"
-                     : "bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-[0_4px_0_0_#d1d5db] active:shadow-transparent"}`}
-               >
-                 تغيير اللعبة
-               </button>
-               <button
-                 onClick={() => {
-                   playSound("clickOpen");
-                   socket?.emit("speed_cups_propose_rematch", { roomId: room.id });
-                 }}
-                 disabled={room.speedCupsRematchRequestedBy?.includes(myId) || ((room.adPausedPlayersArray?.length || 0) > 0)}
-                 className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2
-                   ${room.speedCupsRematchRequestedBy?.includes(myId) || ((room.adPausedPlayersArray?.length || 0) > 0)
-                     ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed border border-gray-200"
-                     : (!room.speedCupsRematchRequestedBy?.includes(myId) && room.speedCupsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== myId)?.id || "")) ? "bg-pink-200 hover:bg-pink-300 text-pink-800 shadow-[0_4px_0_0_#fbcfe8] active:shadow-transparent border-2 border-pink-400 animate-pulse" : "bg-pink-100 hover:bg-pink-200 text-pink-700 shadow-[0_4px_0_0_#fbcfe8] active:shadow-transparent border border-pink-200"}`}
-               >
-                 {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺"
-                  : room.speedCupsRematchRequestedBy?.includes(myId) ? "في انتظار الخصم..."
-                  : room.speedCupsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== myId)?.id || "") ? "🎮 المنافس جاهز للعب"
-                  : "لعب مرة أخرى!"}
-               </button>
-             </div>
-             <button
-               onClick={onLeave}
-               className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2 border border-red-200"
-             >
-               🚪 خروج للرئيسية
-             </button>
-           </div>
+           <GameEndControls
+             room={room}
+             socket={socket}
+             myId={myId}
+             playerSerial={localStorage.getItem("khamin_player_serial") || ""}
+             onRematch={() => socket?.emit("speed_cups_propose_rematch", { roomId: room.id })}
+             onLeaveGame={onLeave}
+             playSound={playSound}
+           />
          </div>
        </div>
     );
@@ -26799,46 +26769,15 @@ const renderBombPartyRewardBar = () => {
              room.handWinner === socket?.id ? "🏆 لقد فزت!" : 
              "😢 خسرت!"}
           </div>
-          <div className="flex flex-col gap-2 w-full">
-            <div className="flex gap-2 w-full">
-              <button
-                onClick={() => {
-                  playSound("clickOpen");
-                  socket?.emit("play_again", { roomId: room.id });
-                }}
-                disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
-                className={`flex-1 btn-game py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5
-                  ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-blue-100 hover:bg-blue-200 text-blue-600 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
-              >
-                تغيير اللعبة
-              </button>
-              <button
-                onClick={() => {
-                  playSound("clickOpen");
-                  socket?.emit("request_hand_rematch", { roomId: room.id });
-                }}
-                disabled={((room.adPausedPlayersArray?.length || 0) > 0) || (room.handRematchRequestedBy?.includes(socket?.id || ""))}
-                className={`flex-1 btn-game py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5
-                  ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
-                    room.handRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
-                      ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_4px_0_0_#166534] active:shadow-transparent"
-                      : room.handRematchRequestedBy?.includes(socket?.id || "")
-                        ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_4px_0_0_#166534]"
-                        : "bg-green-100 hover:bg-green-200 text-green-700 shadow-[0_4px_0_0_#86efac] active:shadow-transparent"}`}
-              >
-                {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺" 
-                 : room.handRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
-                 : room.handRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
-                 : "لعب مرة أخرى!"}
-              </button>
-            </div>
-            <button
-              onClick={handleLeaveGame}
-              className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5 mt-1"
-            >
-              🚪 خروج للرئيسية
-            </button>
-          </div>
+          <GameEndControls
+            room={room}
+            socket={socket}
+            myId={socket?.id}
+            playerSerial={playerSerial}
+            onRematch={() => socket?.emit("request_hand_rematch", { roomId: room.id })}
+            onLeaveGame={handleLeaveGame}
+            playSound={playSound}
+          />
         </div>
       );
     }
@@ -28234,10 +28173,14 @@ const renderBombPartyRewardBar = () => {
                   })}
                 </div>
 
-                <div className="flex flex-col gap-3 mt-1">
-                  <button
-                    onClick={() => {
-                      if ((room.adPausedPlayersArray?.length || 0) > 0) return;
+                <div className="mt-2 w-full">
+                  <GameEndControls
+                    room={room}
+                    socket={socket}
+                    myId={socket?.id}
+                    playerSerial={playerSerial}
+                    rematchLabel="🔄 اللعب مرة أخرى كومبليت"
+                    onRematch={() => {
                       socket?.emit("request_bus_complete_rematch", {
                         roomId,
                       });
@@ -28250,31 +28193,7 @@ const renderBombPartyRewardBar = () => {
                         country: "",
                       });
                     }}
-                    disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) || room.busCompleteRematchRequestedBy?.includes(socket?.id || "")}
-                    className={`w-full btn-game shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-3 md:py-4 text-lg md:text-xl font-black rounded-2xl flex items-center justify-center gap-2 ${
-                      isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)
-                        ? "bg-gray-300 hover:bg-gray-400 text-gray-700 shadow-[0_6px_0_0_#9ca3af]"
-                        : room.busCompleteRematchRequestedBy?.includes(room.players.find(p => p.id !== socket?.id)?.id || "")
-                          ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_6px_0_0_#166534]"
-                          : room.busCompleteRematchRequestedBy?.includes(socket?.id || "")
-                            ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_6px_0_0_#166534]"
-                            : "bg-blue-500 hover:bg-blue-600 text-white"
-                    }`}
-                  >
-                    {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)
-                      ? "انتظر! المنافس يشاهد إعلان 📺"
-                      : room.busCompleteRematchRequestedBy?.includes(socket?.id || "")
-                        ? "في انتظار المنافس..."
-                        : room.busCompleteRematchRequestedBy?.includes(room.players.find(p => p.id !== socket?.id)?.id || "")
-                          ? "🎮 المنافس جاهز للعب"
-                          : "🔄 اللعب مرة أخرى كومبليت"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      socket?.emit("select_private_mode", {
-                        roomId,
-                        mode: null,
-                      });
+                    onChangeGame={() => {
                       setBusAnswers({
                         boy: "",
                         girl: "",
@@ -28284,16 +28203,9 @@ const renderBombPartyRewardBar = () => {
                         country: "",
                       });
                     }}
-                    className="w-full btn-game bg-gray-200 hover:bg-gray-300 text-gray-700 shadow-[0_6px_0_0_#d1d5db] active:shadow-transparent py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
-                  >
-                    الرجوع لخيارات اللعب
-                  </button>
-                  <button
-                    onClick={handleLeaveGame}
-                    className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_6px_0_0_#fca5a5] active:shadow-transparent py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
-                  >
-                    🚪 خروج للرئيسية
-                  </button>
+                    onLeaveGame={handleLeaveGame}
+                    playSound={playSound}
+                  />
                 </div>
               </div>
               <CategoryPageAd isAdmin={isAdmin} isPro={hasProPackage} />
@@ -28357,44 +28269,17 @@ const renderBombPartyRewardBar = () => {
                         })()}
                       </div>
 
-                      <div className="flex flex-col gap-2.5 w-full max-w-sm mt-1">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              playSound("clickOpen");
-                              socket?.emit("play_again", { roomId: room.id });
-                            }}
-                            className="flex-1 btn-game bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-[0_4px_0_0_#d1d5db] active:shadow-transparent py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2"
-                          >
-                            تغيير اللعبة
-                          </button>
-                          <button
-                            onClick={() => {
-                              playSound("clickOpen");
-                              socket?.emit("restart_dots", { roomId: room.id });
-                            }}
-                            disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) || (room.dotsLevel === 3 && room.dotsRematchRequestedBy?.includes(socket?.id || ""))}
-                            className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2
-                              ${isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
-                                room.dotsLevel === 3 && room.dotsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
-                                 ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a] active:shadow-transparent"
-                                 : room.dotsLevel === 3 && room.dotsRematchRequestedBy?.includes(socket?.id || "")
-                                   ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a]"
-                                   : "bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
-                          >
-                            {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) ? "انتظر! المنافس يشاهد إعلان 📺"
-                              : (room.dotsLevel || 1) < 3 ? `انتقل الي المستوي ${(room.dotsLevel || 1) + 1}`
-                              : room.dotsRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
-                              : room.dotsRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
-                              : "لعب مرة أخري!"}
-                          </button>
-                        </div>
-                        <button
-                          onClick={handleLeaveGame}
-                          className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2"
-                        >
-                          🚪 خروج للرئيسية
-                        </button>
+                      <div className="w-full max-w-sm mt-1">
+                        <GameEndControls
+                          room={room}
+                          socket={socket}
+                          myId={socket?.id}
+                          playerSerial={playerSerial}
+                          rematchLabel="لعب مرة أخري!"
+                          onRematch={() => socket?.emit("restart_dots", { roomId: room.id })}
+                          onLeaveGame={handleLeaveGame}
+                          playSound={playSound}
+                        />
                       </div>
                     </div>
                   </div>
@@ -28737,44 +28622,17 @@ const renderBombPartyRewardBar = () => {
                       })()}
                     </div>
 
-                    <div className="flex flex-col gap-2.5 w-full max-w-sm">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            playSound("clickOpen");
-                            socket?.emit("play_again", { roomId: room.id });
-                          }}
-                          className="flex-1 btn-game bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-[0_4px_0_0_#d1d5db] active:shadow-transparent py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2"
-                        >
-                          تغيير اللعبة
-                        </button>
-                        <button
-                          onClick={() => {
-                            playSound("clickOpen");
-                            socket?.emit("restart_iq", { roomId: room.id });
-                          }}
-                          disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) || room.iqRematchRequestedBy?.includes(socket?.id || "")}
-                          className={`flex-1 btn-game py-3 text-sm font-black rounded-2xl flex items-center justify-center gap-2
-                            ${isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
-                              room.iqRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
-                               ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a] active:shadow-transparent"
-                               : room.iqRematchRequestedBy?.includes(socket?.id || "")
-                                 ? "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1e3a8a]"
-                                 : "bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
-                        >
-                          {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) ? "انتظر! المنافس يشاهد إعلان 📺"
-                            : room.iqRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
-                            : room.iqRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
-                            : "لعب مرة أخري!"}
-                        </button>
-                      </div>
-                      
-                      <button
-                        onClick={handleLeaveGame}
-                        className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-3 text-base font-black rounded-2xl flex items-center justify-center gap-2"
-                      >
-                        🚪 خروج للرئيسية
-                      </button>
+                    <div className="w-full max-w-sm">
+                      <GameEndControls
+                        room={room}
+                        socket={socket}
+                        myId={socket?.id}
+                        playerSerial={playerSerial}
+                        rematchLabel="لعب مرة أخري!"
+                        onRematch={() => socket?.emit("restart_iq", { roomId: room.id })}
+                        onLeaveGame={handleLeaveGame}
+                        playSound={playSound}
+                      />
                     </div>
                   </div>
                 ) : (
@@ -28832,7 +28690,7 @@ const renderBombPartyRewardBar = () => {
                           const myTurn = room.iqTurn === socket?.id && room.gameState === "iq_playing";
                           
                           const cellImgSrc = cellImg
-                            ? cellImg.startsWith("data:")
+                            ? (cellImg.startsWith("/") || cellImg.startsWith("http") || cellImg.startsWith("blob:") || cellImg.startsWith("data:"))
                               ? cellImg
                               : `data:image/png;base64,${cellImg}`
                             : "";
@@ -29277,47 +29135,17 @@ const renderBombPartyRewardBar = () => {
                       </div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-2 justify-center mt-auto w-full">
-                      <button
-                        disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)}
-                        onClick={() => socket?.emit("select_private_mode", { roomId: room.id, mode: null })}
-                        className={`flex-1 min-w-[120px] max-w-md ${
-                          isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)
-                            ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
-                            : "bg-purple-500 hover:bg-purple-600 text-white"
-                        } font-black py-2.5 px-1 rounded-xl shadow-sm transition-all active:scale-95 text-xs md:text-sm`}
-                      >
-                        🎮 تغيير اللعبة
-                      </button>
-
-                      <div className="relative flex-1 min-w-[120px] max-w-md">
-                        <button
-                          disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) || room.bombParty?.rematchRequestedBy?.includes(socket?.id || "")}
-                          onClick={() => socket?.emit("request_bomb_party_rematch", { roomId: room.id })}
-                          className={`w-full ${
-                            isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)
-                              ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
-                              : room.bombParty?.rematchRequestedBy?.includes(socket?.id || "")
-                                ? "bg-green-500 hover:bg-green-600 text-white"
-                                : "bg-orange-500 hover:bg-orange-600 text-white"
-                          } font-black py-2.5 px-1 rounded-xl shadow-sm transition-all active:scale-95 text-xs md:text-sm`}
-                        >
-                          {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)
-                            ? "انتظر! المنافس يشاهد إعلان 📺"
-                            : room.bombParty?.rematchRequestedBy?.includes(socket?.id || "")
-                              ? "⏳ في الانتظار..."
-                              : room.bombParty?.rematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
-                                ? "🎮 المنافس جاهز للعب"
-                                : "🔄 لعب مرة أخري"}
-                        </button>
-                      </div>
-
-                      <button
-                        onClick={handleLeaveGame}
-                        className="w-full max-w-md bg-red-100 hover:bg-red-200 text-red-700 font-black py-2.5 px-3 rounded-xl shadow-sm transition-all active:scale-95 text-sm md:text-base"
-                      >
-                        🚪 خروج للرئيسية
-                      </button>
+                    <div className="w-full mt-auto">
+                      <GameEndControls
+                        room={room}
+                        socket={socket}
+                        myId={socket?.id}
+                        playerSerial={playerSerial}
+                        rematchLabel="🔄 لعب مرة أخري"
+                        onRematch={() => socket?.emit("request_bomb_party_rematch", { roomId: room.id })}
+                        onLeaveGame={handleLeaveGame}
+                        playSound={playSound}
+                      />
                     </div>
                   </div>
                 )}
@@ -29469,45 +29297,18 @@ const renderBombPartyRewardBar = () => {
                         )}
                      </div>
                      )}
-                     <div className="flex gap-2 w-full justify-center mt-1 px-2 pb-2">
-                       <button
-                         onClick={() => {
-                            playSound("clickOpen");
-                            socket?.emit("play_again", { roomId: room.id });
-                         }}
-                         disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
-                         className={`flex-1 btn-game py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5
-                           ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-blue-100 hover:bg-blue-200 text-blue-600 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent"}`}
-                       >
-                         تغيير اللعبة
-                       </button>
-                       <button
-                         onClick={() => {
-                            playSound("clickOpen");
-                            socket?.emit("restart_xo", { roomId: room.id });
-                         }}
-                         disabled={((room.adPausedPlayersArray?.length || 0) > 0) || (room.xoLevel === 8 && room.xoRematchRequestedBy?.includes(socket?.id || ""))}
-                         className={`flex-1 btn-game py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5
-                           ${((room.adPausedPlayersArray?.length || 0) > 0) ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : 
-                             room.xoLevel === 8 && room.xoRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "")
-                               ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_4px_0_0_#166534] active:shadow-transparent"
-                               : room.xoLevel === 8 && room.xoRematchRequestedBy?.includes(socket?.id || "")
-                                 ? "bg-green-500 hover:bg-green-600 text-white shadow-[0_4px_0_0_#166534]"
-                                 : "bg-green-100 hover:bg-green-200 text-green-700 shadow-[0_4px_0_0_#86efac] active:shadow-transparent"}`}
-                       >
-                         {((room.adPausedPlayersArray?.length || 0) > 0) ? "انتظر! المنافس يشاهد إعلان 📺" 
-                          : (room.xoLevel || 1) < 8 ? `انتقل الي المستوي ${(room.xoLevel || 1) + 1}` 
-                          : room.xoRematchRequestedBy?.includes(socket?.id || "") ? "في انتظار المنافس..."
-                          : room.xoRematchRequestedBy?.includes(room.players.find((p: any) => p.id !== socket?.id)?.id || "") ? "🎮 المنافس جاهز للعب"
-                          : "لعب مرة أخري!"}
-                       </button>
+                     <div className="w-full px-2 pb-2">
+                       <GameEndControls
+                         room={room}
+                         socket={socket}
+                         myId={socket?.id}
+                         playerSerial={playerSerial}
+                         rematchLabel={(room.xoLevel || 1) < 8 ? `انتقل الي المستوي ${(room.xoLevel || 1) + 1}` : "لعب مرة أخري!"}
+                         onRematch={() => socket?.emit("restart_xo", { roomId: room.id })}
+                         onLeaveGame={handleLeaveGame}
+                         playSound={playSound}
+                       />
                      </div>
-                     <button
-                         onClick={handleLeaveGame}
-                         className="w-auto mx-4 btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-2.5 text-sm md:text-base font-black rounded-2xl flex items-center justify-center gap-1.5"
-                       >
-                         🚪 خروج للرئيسية
-                       </button>
                    </div>
                 )}
                 </div>
