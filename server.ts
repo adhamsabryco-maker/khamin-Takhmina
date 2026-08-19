@@ -13824,7 +13824,12 @@ async function startServer() {
             room.busCompleteRematchRequestedBy.push(socket.id);
           }
 
-          if (room.busCompleteRematchRequestedBy.length >= 2) {
+          const botPlayer = room.players.find((p: any) => p.isBot);
+          if (botPlayer && !room.busCompleteRematchRequestedBy.includes(botPlayer.id)) {
+            room.busCompleteRematchRequestedBy.push(botPlayer.id);
+          }
+
+          if (room.busCompleteRematchRequestedBy.length >= room.players.length) {
             // Both players want to play again
             room.gameState = "bus_complete_setup";
             room.category = "تخمينة كومبليت";
@@ -13839,8 +13844,7 @@ async function startServer() {
             if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
 
             // Trigger bot logic for the new game
-            const opponent = room.players.find((p: any) => p.id !== socket.id);
-            if (opponent && opponent.isBot) {
+            if (botPlayer) {
               handleBotEvent(roomId, "room_update", room);
             }
           }
@@ -14603,6 +14607,7 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
 
             if (room.speedCupsRematchRequestedBy.length === room.players.length) {
               initializeSpeedCupsGame(room);
+              startSpeedCupsCountdown(roomId);
               const bot = room.players.find((p: any) => p.isBot);
               if (bot) {
                 handleBotEvent(roomId, "room_update", room);
@@ -16129,18 +16134,21 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
               io.to(roomId).emit("chat_bubble", messageObj);
 
               if (
-                room.gameState.startsWith("bus_complete") ||
-                room.gameState === "custom_image_upload" ||
-                room.gameState.startsWith("xo_") ||
-                room.gameState.startsWith("hand_") ||
-                room.gameState.startsWith("iq_") ||
-                room.gameState.startsWith("dots_") ||
-                room.gameState.startsWith("speed_cups_") ||
-                room.gameState.startsWith("bomb_party_") ||
-                room.gameState.startsWith("connect_four_words") ||
-                room.gameState.startsWith("wordle") ||
-                room.gameState.startsWith("space_war") ||
-                room.gameState.startsWith("puzzle")
+                !isRoomFinished(room) &&
+                (
+                  room.gameState.startsWith("bus_complete") ||
+                  room.gameState === "custom_image_upload" ||
+                  room.gameState.startsWith("xo_") ||
+                  room.gameState.startsWith("hand_") ||
+                  room.gameState.startsWith("iq_") ||
+                  room.gameState.startsWith("dots_") ||
+                  room.gameState.startsWith("speed_cups_") ||
+                  room.gameState.startsWith("bomb_party_") ||
+                  room.gameState.startsWith("connect_four_words") ||
+                  room.gameState.startsWith("wordle") ||
+                  room.gameState.startsWith("space_war") ||
+                  room.gameState.startsWith("puzzle")
+                )
               ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
@@ -16225,7 +16233,11 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
             if (!room.xoRematchRequestedBy.includes(socket.id)) {
               room.xoRematchRequestedBy.push(socket.id);
             }
-            if (room.xoRematchRequestedBy.length < 2) {
+            const botPlayer = room.players.find((p: any) => p.isBot);
+            if (botPlayer && !room.xoRematchRequestedBy.includes(botPlayer.id)) {
+              room.xoRematchRequestedBy.push(botPlayer.id);
+            }
+            if (room.xoRematchRequestedBy.length < room.players.length) {
               io.to(roomId).emit("room_update", room);
               return;
             }
@@ -16298,7 +16310,11 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
             if (!room.iqRematchRequestedBy.includes(socket.id)) {
               room.iqRematchRequestedBy.push(socket.id);
             }
-            if (room.iqRematchRequestedBy.length < 2) {
+            const botPlayer = room.players.find((p: any) => p.isBot);
+            if (botPlayer && !room.iqRematchRequestedBy.includes(botPlayer.id)) {
+              room.iqRematchRequestedBy.push(botPlayer.id);
+            }
+            if (room.iqRematchRequestedBy.length < room.players.length) {
               sendRoomUpdate(roomId, room);
               return;
             }
@@ -16328,7 +16344,11 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
             if (!room.dotsRematchRequestedBy.includes(socket.id)) {
               room.dotsRematchRequestedBy.push(socket.id);
             }
-            if (room.dotsRematchRequestedBy.length < 2) {
+            const botPlayer = room.players.find((p: any) => p.isBot);
+            if (botPlayer && !room.dotsRematchRequestedBy.includes(botPlayer.id)) {
+              room.dotsRematchRequestedBy.push(botPlayer.id);
+            }
+            if (room.dotsRematchRequestedBy.length < room.players.length) {
               sendRoomUpdate(roomId, room);
               return;
             }
@@ -16460,7 +16480,12 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
           room.bombParty.rematchRequestedBy.push(socket.id);
         }
 
-        if (room.bombParty.rematchRequestedBy.length === 2) {
+        const botPlayer = room.players.find((p: any) => p.isBot);
+        if (botPlayer && !room.bombParty.rematchRequestedBy.includes(botPlayer.id)) {
+          room.bombParty.rematchRequestedBy.push(botPlayer.id);
+        }
+
+        if (room.bombParty.rematchRequestedBy.length >= room.players.length) {
           // Restart match starting with setup screen
           room.gameState = "bomb_party_setup";
           const startingPlayerIndex = Math.floor(Math.random() * room.players.length);
@@ -16473,7 +16498,7 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             currentSubstring: getBombPartySubstring([]),
             explodedPlayerId: null,
             gameOver: false,
-              startRequestedBy: [],
+            startRequestedBy: [],
             winThreshold: 3,
             rematchRequestedBy: [],
             stats: {}
@@ -16481,7 +16506,9 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
           io.to(roomId).emit("room_update", room);
           io.to(roomId).emit("bomb_party_rematch_started");
           
-          handleBotEvent(roomId, "room_update", room);
+          if (botPlayer) {
+            handleBotEvent(roomId, "room_update", room);
+          }
         } else {
           io.to(roomId).emit("room_update", room);
         }
@@ -16858,39 +16885,10 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
 
         const botPlayer = room.players.find((p: any) => p.isBot);
         if (botPlayer && !room.puzzle.rematchRequestedBy.includes(botPlayer.id)) {
-          const rematchKey = roomId + "_puzzle_bot_rematch";
-          if (botTimeouts.has(rematchKey)) {
-            clearTimeout(botTimeouts.get(rematchKey));
-            botTimeouts.delete(rematchKey);
-          }
-          const timeout = setTimeout(() => {
-            botTimeouts.delete(rematchKey);
-            const r = rooms.get(roomId);
-            if (!r || r.gameState !== "puzzle_finished") return;
-            r.puzzle.rematchRequestedBy = r.puzzle.rematchRequestedBy || [];
-            if (!r.puzzle.rematchRequestedBy.includes(botPlayer.id)) {
-              r.puzzle.rematchRequestedBy.push(botPlayer.id);
-            }
-            if (r.puzzle.rematchRequestedBy.length >= r.players.length) {
-              r.gameState = "puzzle_setup";
-              r.puzzle = {
-                currentRound: 1,
-                roundStartTime: null,
-                lastChanceStartTime: null,
-                playersProgress: {},
-                totalScores: {},
-                images: getRandomPuzzleImages(),
-                botPieces: {},
-                rematchRequestedBy: [],
-                gameOver: false,
-                startRequestedBy: []
-              };
-            }
-            io.to(roomId).emit("room_update", r);
-            if (botPlayer) handleBotEvent(roomId, "room_update", r);
-          }, 1000);
-          botTimeouts.set(rematchKey, timeout);
-        } else if (room.puzzle.rematchRequestedBy.length >= room.players.length) {
+          room.puzzle.rematchRequestedBy.push(botPlayer.id);
+        }
+
+        if (room.puzzle.rematchRequestedBy.length >= room.players.length) {
           room.gameState = "puzzle_setup";
           room.puzzle = {
             currentRound: 1,
@@ -17061,52 +17059,17 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
 
         const botPlayer = room.players.find((p: any) => p.isBot);
         if (botPlayer && !room.wordle.rematchRequestedBy.includes(botPlayer.id)) {
-          const rematchKey = roomId + "_wordle_bot_rematch";
-          if (botTimeouts.has(rematchKey)) {
-            clearTimeout(botTimeouts.get(rematchKey));
-            botTimeouts.delete(rematchKey);
-          }
-          const timeout = setTimeout(() => {
-            botTimeouts.delete(rematchKey);
-            const r = rooms.get(roomId);
-            if (!r || r.gameState !== "wordle_finished") return;
-            r.wordle.rematchRequestedBy = r.wordle.rematchRequestedBy || [];
-            if (!r.wordle.rematchRequestedBy.includes(botPlayer.id)) {
-              r.wordle.rematchRequestedBy.push(botPlayer.id);
-            }
-            if (r.wordle.rematchRequestedBy.length === r.players.length) {
-              r.gameState = "wordle_setup";
-              const readyPlayers = [];
-              const bot = r.players.find((p: any) => p.isBot);
-              if (bot) {
-                readyPlayers.push(bot.id);
-              }
-              r.wordle = {
-                targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5).length)].original,
-                guesses: {},
-                winnerId: null,
-                startTime: Date.now(),
-                rematchRequestedBy: [],
-                gameOver: false,
-              startRequestedBy: [],
-                readyPlayers: readyPlayers
-              };
-              if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-              io.to(roomId).emit("room_update", r);
-              io.to(roomId).emit("wordle_rematch_started");
-              handleBotEvent(roomId, "room_update", r);
-            } else {
-              io.to(roomId).emit("room_update", r);
-            }
-          }, 1000 + Math.random() * 500);
-          botTimeouts.set(rematchKey, timeout);
+          room.wordle.rematchRequestedBy.push(botPlayer.id);
         }
 
-        if (room.wordle.rematchRequestedBy.length === 2) {
+        if (room.wordle.rematchRequestedBy.length >= room.players.length) {
           room.gameState = "wordle_setup";
           
           const readyPlayers = [];
           const bot = room.players.find((p: any) => p.isBot);
+          if (bot) {
+            readyPlayers.push(bot.id);
+          }
 
           room.wordle = {
             targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter(w => w.normalized.length === 5).length)].original,
@@ -17115,14 +17078,16 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
             startTime: Date.now(),
             rematchRequestedBy: [],
             gameOver: false,
-              startRequestedBy: [],
+            startRequestedBy: [],
             readyPlayers: readyPlayers
           };
           if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
 
           io.to(roomId).emit("room_update", room);
           io.to(roomId).emit("wordle_rematch_started");
-          handleBotEvent(roomId, "room_update", room);
+          if (bot) {
+            handleBotEvent(roomId, "room_update", room);
+          }
         } else {
           io.to(roomId).emit("room_update", room);
         }
@@ -17346,27 +17311,10 @@ bombPartyNextTurn = function(room: any, io: any, roomId: string) {
 
         const botPlayer = room.players.find((p: any) => p.isBot);
         if (botPlayer && !room.beachRace.rematchRequestedBy.includes(botPlayer.id)) {
-          const rematchKey = roomId + "_beach_race_bot_rematch";
-          if (botTimeouts.has(rematchKey)) {
-            clearTimeout(botTimeouts.get(rematchKey));
-            botTimeouts.delete(rematchKey);
-          }
-          const timeout = setTimeout(() => {
-            botTimeouts.delete(rematchKey);
-            const r = rooms.get(roomId);
-            if (!r || r.gameState !== "beach_race_finished") return;
-            r.beachRace.rematchRequestedBy = r.beachRace.rematchRequestedBy || [];
-            if (!r.beachRace.rematchRequestedBy.includes(botPlayer.id)) {
-              r.beachRace.rematchRequestedBy.push(botPlayer.id);
-            }
-            if (r.beachRace.rematchRequestedBy.length >= r.players.length) {
-              startBeachRaceSetup(r, roomId);
-            } else {
-              io.to(roomId).emit("room_update", r);
-            }
-          }, 1000);
-          botTimeouts.set(rematchKey, timeout);
-        } else if (room.beachRace.rematchRequestedBy.length >= room.players.length) {
+          room.beachRace.rematchRequestedBy.push(botPlayer.id);
+        }
+
+        if (room.beachRace.rematchRequestedBy.length >= room.players.length) {
           startBeachRaceSetup(room, roomId);
         } else {
           io.to(roomId).emit("room_update", room);
@@ -17427,6 +17375,20 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
       socket.on("play_again", ({ roomId }) => {
         const room = rooms.get(roomId);
         if (room) {
+          // Clear any bot timeouts for this room
+          for (const key of Array.from(botTimeouts.keys())) {
+            if (key.startsWith(roomId)) {
+              clearTimeout(botTimeouts.get(key));
+              botTimeouts.delete(key);
+            }
+          }
+          // Clear bot flags for this room
+          for (const key of Object.keys(botFlags)) {
+            if (key.startsWith(roomId)) {
+              delete botFlags[key];
+            }
+          }
+
           // Reset room state
           room.gameState = "waiting";
           room.spaceWar = null;
@@ -17501,6 +17463,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
           room.busCompleteChangeLetterRequestBy = null;
           room.busCompleteSubmittedPlayers = [];
           room.busCompleteViewersCount = 0;
+          room.busCompleteRematchRequestedBy = [];
 
           // Reset speed cups parameters
           room.speedCupsLevel = 1;
@@ -17542,6 +17505,11 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
 
           startWaitingInterval(roomId);
           io.to(roomId).emit("room_update", room);
+
+          const bot = room.players.find((p: any) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, "room_update", room);
+          }
         } else if (!room) {
           socket.emit("opponent_left_lobby");
         }
@@ -20758,7 +20726,11 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
           if (!room.spaceWar.rematchRequestedBy.includes(socket.id)) {
             room.spaceWar.rematchRequestedBy.push(socket.id);
           }
-          if (room.spaceWar.rematchRequestedBy.length === 2) {
+          const botPlayer = room.players.find((p: any) => p.isBot);
+          if (botPlayer && !room.spaceWar.rematchRequestedBy.includes(botPlayer.id)) {
+            room.spaceWar.rematchRequestedBy.push(botPlayer.id);
+          }
+          if (room.spaceWar.rematchRequestedBy.length >= room.players.length) {
             room.gameState = "space_war_setup";
             const bot = room.players.find((p) => p.isBot);
             const readyPlayers = bot ? [bot.id] : [];
