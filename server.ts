@@ -2783,26 +2783,19 @@ async function startServer() {
         console.log(`[DB] Step 4: Uploading compressed database (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB vs ${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB raw) to Supabase Storage...`);
         const uploadStartTime = Date.now();
 
-        // 1. Upload compressed .gz backup (Super fast)
-        const { error: gzUploadError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
+        // Upload compressed .gz backup exclusively (Fast, reliable, finishes in <1s)
+        const { error: uploadError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
           upsert: true,
           contentType: "application/gzip"
         });
 
-        // 2. Also update raw players.db
-        const { error: rawUploadError } = await supabase.storage.from("database").upload("players.db", rawBuffer, {
-          upsert: true,
-          contentType: "application/x-sqlite3"
-        });
-
-        const uploadError = gzUploadError || rawUploadError;
         console.log(`[DB] Step 5: Supabase upload finished in ${Date.now() - uploadStartTime}ms. Error status: ${uploadError ? uploadError.message : 'Success'}`);
         if (uploadError) {
-          console.error("[DB] Error uploading players.db to Supabase Storage:", uploadError.message);
+          console.error("[DB] Error uploading players.db.gz to Supabase Storage:", uploadError.message);
         } else {
           dbIsDirty = false;
           initialDownloadSucceeded = true;
-          console.log(`[DB] Successfully synced players.db to Supabase Storage.`);
+          console.log(`[DB] Successfully synced players.db.gz (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB) to Supabase Storage.`);
         }
       } catch (err) {
         console.error("[DB] CRITICAL ERROR in syncDbToSupabase try-catch:", err);
@@ -3894,12 +3887,17 @@ async function startServer() {
           console.log("[Image Migration] All images are already stored on disk.");
         }
 
+        // Unconditionally purge any leftover Base64 blobs from custom_images table
+        try {
+          db.exec("UPDATE custom_images SET data = '' WHERE data IS NOT NULL AND data != ''");
+        } catch (e) {}
+
         // Automatic DB optimization: Check if database has free pages and run VACUUM to reclaim space
         try {
           const freelistCount = db.pragma("freelist_count", { simple: true }) as number;
           const currentDbSize = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0;
-          if (freelistCount > 10 || currentDbSize > 3 * 1024 * 1024) {
-            console.log(`[DB Optimization] Database has ${freelistCount} free pages (${(currentDbSize / 1024 / 1024).toFixed(2)} MB). Running VACUUM to permanently reclaim disk space...`);
+          if (freelistCount > 5 || currentDbSize > 2 * 1024 * 1024) {
+            console.log(`[DB Optimization] Database size is ${(currentDbSize / 1024 / 1024).toFixed(2)} MB (${freelistCount} free pages). Running VACUUM to reclaim disk space...`);
             db.exec("VACUUM");
             const shrunkSize = fs.statSync(dbPath).size;
             console.log(`[DB Optimization] VACUUM completed! Database size permanently shrunk from ${(currentDbSize / 1024 / 1024).toFixed(2)} MB to ${(shrunkSize / 1024 / 1024).toFixed(2)} MB.`);
