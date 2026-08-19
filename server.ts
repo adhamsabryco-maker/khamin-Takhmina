@@ -3530,9 +3530,38 @@ async function startServer() {
     }
 
     // --- Static Game Images Directory & Disk Storage ---
-    const gameImagesDir = path.join(process.cwd(), "public", "game_images");
-    if (!fs.existsSync(gameImagesDir)) {
-      fs.mkdirSync(gameImagesDir, { recursive: true });
+    function getGameImageDirs(): string[] {
+      const baseDir = process.cwd();
+      const candidates = [
+        path.join(baseDir, "public", "game_images"),
+        path.join(baseDir, "dist", "game_images"),
+        path.join(baseDir, "game_images"),
+        path.join(baseDir, "dist", "public", "game_images"),
+      ];
+      try {
+        return Array.from(
+          new Set(
+            candidates.filter((d) => {
+              try {
+                return fs.existsSync(d);
+              } catch (e) {
+                return false;
+              }
+            }),
+          ),
+        );
+      } catch (e) {
+        return [path.join(baseDir, "public", "game_images")];
+      }
+    }
+
+    const primaryGameImagesDir = path.join(process.cwd(), "public", "game_images");
+    try {
+      if (!fs.existsSync(primaryGameImagesDir)) {
+        fs.mkdirSync(primaryGameImagesDir, { recursive: true });
+      }
+    } catch (e) {
+      console.warn("[Game Images] Note: Could not create primaryGameImagesDir:", e);
     }
 
     function normalizeArabicText(str: string): string {
@@ -3541,101 +3570,114 @@ async function startServer() {
         .normalize("NFC")
         .trim()
         .toLowerCase()
-        .replace(/[أإآ]/g, "ا")
+        .replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u00A0\u0640]/g, "") // remove zero-width chars, RTL marks, tatweel
+        .replace(/[أإآء]/g, "ا")
         .replace(/ة/g, "ه")
         .replace(/ى/g, "ي")
-        .replace(/[\u064B-\u065F]/g, ""); // remove harakat/tashkeel
+        .replace(/[\u064B-\u065F]/g, "") // remove tashkeel/diacritics
+        .replace(/[-_()]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
     }
 
     let diskImagesMap = new Map<string, string>();
 
     function indexGameImages() {
-      const newMap = new Map<string, string>();
-      if (!fs.existsSync(gameImagesDir)) return;
+      try {
+        const newMap = new Map<string, string>();
+        const searchDirs = getGameImageDirs();
+        if (searchDirs.length === 0) searchDirs.push(primaryGameImagesDir);
 
-      const arabicCategoryToEnglish: Record<string, string> = {
-        "حشرات": "insects",
-        "حيوانات": "animals",
-        "طيور": "birds",
-        "أكلات": "food",
-        "اكلات": "food",
-        "طعام": "food",
-        "كرة القدم": "football",
-        "كورة": "football",
-        "جماد": "objects",
-        "اشياء": "objects",
-        "أشياء": "objects",
-        "نبات": "plants",
-        "نباتات": "plants",
-        "اشخاص": "people",
-        "أشخاص": "people",
-      };
+        const arabicCategoryToEnglish: Record<string, string> = {
+          "حشرات": "insects",
+          "حيوانات": "animals",
+          "طيور": "birds",
+          "أكلات": "food",
+          "اكلات": "food",
+          "طعام": "food",
+          "كرة القدم": "football",
+          "كورة": "football",
+          "جماد": "objects",
+          "اشياء": "objects",
+          "أشياء": "objects",
+          "نبات": "plants",
+          "نباتات": "plants",
+          "اشخاص": "people",
+          "أشخاص": "people",
+        };
 
-      const englishCategoryToArabic: Record<string, string> = {
-        "insects": "حشرات",
-        "animals": "حيوانات",
-        "birds": "طيور",
-        "food": "أكلات",
-        "football": "كرة القدم",
-        "objects": "جماد",
-        "plants": "نبات",
-        "people": "اشخاص",
-      };
+        const englishCategoryToArabic: Record<string, string> = {
+          "insects": "حشرات",
+          "animals": "حيوانات",
+          "birds": "طيور",
+          "food": "أكلات",
+          "football": "كرة القدم",
+          "objects": "جماد",
+          "plants": "نبات",
+          "people": "اشخاص",
+        };
 
-      function scanDir(currentDir: string, relCat: string) {
-        try {
-          const entries = fs.readdirSync(currentDir, { withFileTypes: true });
-          for (const entry of entries) {
-            const fullPath = path.join(currentDir, entry.name);
-            if (entry.isDirectory()) {
-              scanDir(fullPath, entry.name);
-            } else if (entry.isFile()) {
-              const parsed = path.parse(entry.name);
-              const ext = parsed.ext.toLowerCase();
-              if ([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"].includes(ext)) {
-                const rawName = parsed.name;
-                const normName = normalizeArabicText(rawName);
-                const normCat = normalizeArabicText(relCat);
+        function scanDir(currentDir: string, relCat: string) {
+          try {
+            if (!fs.existsSync(currentDir)) return;
+            const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+            for (const entry of entries) {
+              const fullPath = path.join(currentDir, entry.name);
+              if (entry.isDirectory()) {
+                scanDir(fullPath, entry.name);
+              } else if (entry.isFile()) {
+                const parsed = path.parse(entry.name);
+                const ext = parsed.ext.toLowerCase();
+                if ([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"].includes(ext)) {
+                  const rawName = parsed.name;
+                  const normName = normalizeArabicText(rawName);
+                  const normCat = normalizeArabicText(relCat);
 
-                // Index by raw & normalized combinations
-                if (relCat) {
-                  newMap.set(`${relCat.toLowerCase()}/${rawName.toLowerCase()}`, fullPath);
-                  newMap.set(`${normCat}/${normName}`, fullPath);
-                  
-                  // Index with mapped category (Arabic <-> English)
-                  const mappedEng = arabicCategoryToEnglish[normCat] || arabicCategoryToEnglish[relCat.toLowerCase()];
-                  if (mappedEng) {
-                    newMap.set(`${mappedEng}/${normName}`, fullPath);
-                    newMap.set(`${mappedEng}/${rawName.toLowerCase()}`, fullPath);
+                  if (relCat) {
+                    newMap.set(`${relCat.toLowerCase()}/${rawName.toLowerCase()}`, fullPath);
+                    newMap.set(`${normCat}/${normName}`, fullPath);
+                    
+                    const mappedEng = arabicCategoryToEnglish[normCat] || arabicCategoryToEnglish[relCat.toLowerCase()];
+                    if (mappedEng) {
+                      newMap.set(`${mappedEng}/${normName}`, fullPath);
+                      newMap.set(`${mappedEng}/${rawName.toLowerCase()}`, fullPath);
+                    }
+                    const mappedAr = englishCategoryToArabic[normCat] || englishCategoryToArabic[relCat.toLowerCase()];
+                    if (mappedAr) {
+                      newMap.set(`${normalizeArabicText(mappedAr)}/${normName}`, fullPath);
+                    }
                   }
-                  const mappedAr = englishCategoryToArabic[normCat] || englishCategoryToArabic[relCat.toLowerCase()];
-                  if (mappedAr) {
-                    newMap.set(`${normalizeArabicText(mappedAr)}/${normName}`, fullPath);
-                  }
-                }
 
-                // Index by name alone across any folder
-                if (!newMap.has(normName)) {
-                  newMap.set(normName, fullPath);
-                }
-                if (!newMap.has(rawName.toLowerCase())) {
-                  newMap.set(rawName.toLowerCase(), fullPath);
+                  if (!newMap.has(normName)) {
+                    newMap.set(normName, fullPath);
+                  }
+                  if (!newMap.has(rawName.toLowerCase())) {
+                    newMap.set(rawName.toLowerCase(), fullPath);
+                  }
                 }
               }
             }
+          } catch (e) {
+            console.error("Error indexing directory:", currentDir, e);
           }
-        } catch (e) {
-          console.error("Error indexing game images:", e);
         }
-      }
 
-      scanDir(gameImagesDir, "");
-      diskImagesMap = newMap;
-      console.log(`[Game Images] Indexed ${newMap.size} image lookup entries from disk`);
+        for (const d of searchDirs) {
+          scanDir(d, "");
+        }
+        diskImagesMap = newMap;
+        console.log(`[Game Images] Scanned ${searchDirs.length} directories, indexed ${newMap.size} image lookup entries.`);
+      } catch (err) {
+        console.error("[Game Images] Error in indexGameImages:", err);
+      }
     }
 
-    // Index disk images on startup
-    indexGameImages();
+    // Index disk images safely on startup
+    try {
+      indexGameImages();
+    } catch (e) {
+      console.error("[Game Images] Startup index failed gracefully:", e);
+    }
 
     function getSafeImageFileName(category: string, name: string): string {
       const safeCat = encodeURIComponent(category).replace(/%/g, "_");
@@ -3644,54 +3686,63 @@ async function startServer() {
     }
 
     function findImageOnDisk(category: string, name: string): string | null {
-      if (!name) return null;
-
-      let decodedName = name;
       try {
-        decodedName = decodeURIComponent(name);
-      } catch (e) {}
+        if (!name) return null;
 
-      let decodedCat = category || "";
-      try {
-        decodedCat = decodeURIComponent(category || "");
-      } catch (e) {}
+        let decodedName = name;
+        try {
+          decodedName = decodeURIComponent(name);
+        } catch (e) {}
 
-      // Strip file extension if passed in name
-      const extMatch = decodedName.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i);
-      if (extMatch) {
-        decodedName = decodedName.replace(/\.(jpg|jpeg|png|webp|gif|svg)$/i, "");
+        let decodedCat = category || "";
+        try {
+          decodedCat = decodeURIComponent(category || "");
+        } catch (e) {}
+
+        // Strip file extension if passed in name
+        const extMatch = decodedName.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i);
+        if (extMatch) {
+          decodedName = decodedName.replace(/\.(jpg|jpeg|png|webp|gif|svg)$/i, "");
+        }
+
+        const normCat = normalizeArabicText(decodedCat);
+        const normName = normalizeArabicText(decodedName);
+
+        if (diskImagesMap.size === 0) {
+          indexGameImages();
+        }
+
+        // 1. Direct category + name lookup
+        const catKey = `${normCat}/${normName}`;
+        if (diskImagesMap.has(catKey)) {
+          return diskImagesMap.get(catKey)!;
+        }
+        if (diskImagesMap.has(`${decodedCat.toLowerCase()}/${decodedName.toLowerCase()}`)) {
+          return diskImagesMap.get(`${decodedCat.toLowerCase()}/${decodedName.toLowerCase()}`)!;
+        }
+
+        // 2. Global exact name lookup
+        if (diskImagesMap.has(normName)) {
+          return diskImagesMap.get(normName)!;
+        }
+        if (diskImagesMap.has(decodedName.toLowerCase())) {
+          return diskImagesMap.get(decodedName.toLowerCase())!;
+        }
+
+        // 3. Fuzzy match across keys (contains substring)
+        for (const [key, filePath] of diskImagesMap.entries()) {
+          if (!key.includes("/")) {
+            if (key.includes(normName) || normName.includes(key)) {
+              return filePath;
+            }
+          }
+        }
+
+        return null;
+      } catch (e) {
+        console.error("Error in findImageOnDisk:", e);
+        return null;
       }
-
-      const normCat = normalizeArabicText(decodedCat);
-      const normName = normalizeArabicText(decodedName);
-
-      if (diskImagesMap.size === 0) {
-        indexGameImages();
-      }
-
-      // 1. Direct category + name lookup
-      const catKey = `${normCat}/${normName}`;
-      if (diskImagesMap.has(catKey)) {
-        return diskImagesMap.get(catKey)!;
-      }
-      if (diskImagesMap.has(`${decodedCat.toLowerCase()}/${decodedName.toLowerCase()}`)) {
-        return diskImagesMap.get(`${decodedCat.toLowerCase()}/${decodedName.toLowerCase()}`)!;
-      }
-
-      // 2. Global name lookup (in case category was different)
-      if (diskImagesMap.has(normName)) {
-        return diskImagesMap.get(normName)!;
-      }
-      if (diskImagesMap.has(decodedName.toLowerCase())) {
-        return diskImagesMap.get(decodedName.toLowerCase())!;
-      }
-
-      // 3. Fallback: Re-index once and retry
-      indexGameImages();
-      if (diskImagesMap.has(catKey)) return diskImagesMap.get(catKey)!;
-      if (diskImagesMap.has(normName)) return diskImagesMap.get(normName)!;
-
-      return null;
     }
 
     function migrateExistingImagesToDisk() {
@@ -3719,7 +3770,7 @@ async function startServer() {
             }
 
             const baseName = getSafeImageFileName(row.category, row.name);
-            const filePath = path.join(gameImagesDir, `${baseName}${ext}`);
+            const filePath = path.join(primaryGameImagesDir, `${baseName}${ext}`);
             try {
               fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
               migratedCount++;
@@ -3729,6 +3780,7 @@ async function startServer() {
           }
 
           console.log(`[Image Migration] Successfully saved ${migratedCount} images to public/game_images/`);
+          indexGameImages();
           
           // Clear large Base64 blobs from custom_images table
           db.exec("UPDATE custom_images SET data = '' WHERE length(data) > 100");
@@ -5610,13 +5662,14 @@ async function startServer() {
           }
         }
 
-        const catDir = path.join(gameImagesDir, category);
+        const catDir = path.join(primaryGameImagesDir, category);
         if (!fs.existsSync(catDir)) {
           fs.mkdirSync(catDir, { recursive: true });
         }
         const filePath = path.join(catDir, `${name}${ext}`);
         try {
           fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+          indexGameImages();
         } catch (e) {
           console.error("Error saving image file to disk:", e);
         }
