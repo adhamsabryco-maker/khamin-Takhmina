@@ -11340,7 +11340,8 @@ async function startServer() {
       
       let allImages = [];
       try {
-        allImages = db.prepare("SELECT name, category FROM custom_images WHERE category = ?").all(selectedCategory) as any[];
+        const normCat = normalizeArabicText(selectedCategory);
+        allImages = db.prepare("SELECT name, category FROM custom_images WHERE category = ? OR lower(category) = ? OR category = ?").all(selectedCategory, selectedCategory.toLowerCase(), normCat) as any[];
       } catch (e) {
         console.error("Error loading images for category:", selectedCategory, e);
       }
@@ -11348,21 +11349,37 @@ async function startServer() {
       // Fallback in case a selected category has no images (e.g. in development/testing environment)
       if (allImages.length === 0) {
         try {
-          const activeCategoriesResult = db.prepare("SELECT DISTINCT category FROM custom_images").all() as { category: string }[];
-          const activeCategories = activeCategoriesResult.map(c => c.category).filter(c => c);
-          
-          if (activeCategories.length > 0) {
-            const fallbackCategory = activeCategories[Math.floor(Math.random() * activeCategories.length)];
-            allImages = db.prepare("SELECT name, category FROM custom_images WHERE category = ?").all(fallbackCategory) as any[];
-            selectedCategory = fallbackCategory;
+          const diskMatches: any[] = [];
+          const normCat = normalizeArabicText(selectedCategory);
+          for (const [key, filePath] of diskImagesMap.entries()) {
+            if (key.includes("/")) {
+              const parts = key.split("/");
+              const cat = parts[0];
+              const name = path.parse(filePath).name;
+              if (cat === selectedCategory || cat.toLowerCase() === selectedCategory.toLowerCase() || cat === normCat) {
+                diskMatches.push({ name, category: cat });
+              }
+            }
+          }
+          if (diskMatches.length > 0) {
+            allImages = diskMatches;
           } else {
-            // Fallback directly from diskImagesMap
-            for (const [key, filePath] of diskImagesMap.entries()) {
-              if (key.includes("/")) {
-                const parts = key.split("/");
-                const cat = parts[0];
-                const name = path.parse(filePath).name;
-                allImages.push({ name, category: cat });
+            const activeCategoriesResult = db.prepare("SELECT DISTINCT category FROM custom_images").all() as { category: string }[];
+            const activeCategories = activeCategoriesResult.map(c => c.category).filter(c => c);
+            
+            if (activeCategories.length > 0) {
+              const fallbackCategory = activeCategories[Math.floor(Math.random() * activeCategories.length)];
+              allImages = db.prepare("SELECT name, category FROM custom_images WHERE category = ?").all(fallbackCategory) as any[];
+              selectedCategory = fallbackCategory;
+            } else {
+              // Fallback directly from diskImagesMap
+              for (const [key, filePath] of diskImagesMap.entries()) {
+                if (key.includes("/")) {
+                  const parts = key.split("/");
+                  const cat = parts[0];
+                  const name = path.parse(filePath).name;
+                  allImages.push({ name, category: cat });
+                }
               }
             }
           }
@@ -16134,22 +16151,31 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
               io.to(roomId).emit("chat_bubble", messageObj);
 
               if (
-                room.gameState.startsWith("bus_complete") ||
-                room.gameState === "custom_image_upload" ||
-                room.gameState.startsWith("xo_") ||
-                room.gameState.startsWith("hand_") ||
-                room.gameState.startsWith("iq_") ||
-                room.gameState.startsWith("dots_") ||
-                room.gameState.startsWith("speed_cups_") ||
-                room.gameState.startsWith("bomb_party_") ||
-                room.gameState.startsWith("connect_four_words") ||
-                room.gameState.startsWith("wordle") ||
-                room.gameState.startsWith("space_war") ||
-                room.gameState.startsWith("puzzle")
+                !isRoomFinished(room) &&
+                (
+                  room.gameState.startsWith("bus_complete") ||
+                  room.gameState === "custom_image_upload" ||
+                  room.gameState.startsWith("xo_") ||
+                  room.gameState.startsWith("hand_") ||
+                  room.gameState.startsWith("iq_") ||
+                  room.gameState.startsWith("dots_") ||
+                  room.gameState.startsWith("speed_cups_") ||
+                  room.gameState.startsWith("bomb_party_") ||
+                  room.gameState.startsWith("connect_four_words") ||
+                  room.gameState.startsWith("wordle") ||
+                  room.gameState.startsWith("space_war") ||
+                  room.gameState.startsWith("puzzle")
+                )
               ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
                 });
+                if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+                rooms.delete(roomId);
+              } else if (isRoomFinished(room)) {
+                // If game is finished and opponent leaves, notify remaining player to return to lobby gracefully
+                socket.to(roomId).emit("opponent_left_lobby");
                 if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
                 if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
                 rooms.delete(roomId);
@@ -20925,7 +20951,8 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                 }
 
                 if (
-                  hasBot ||
+                  !isFinishedState && 
+                  (hasBot ||
                   room.gameState === "custom_image_upload" ||
                   room.gameState.startsWith("bus_complete") ||
                   room.gameState.startsWith("xo_") ||
@@ -20937,9 +20964,15 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                   room.gameState.startsWith("connect_four_words") ||
                   room.gameState.startsWith("wordle") ||
                   room.gameState.startsWith("space_war") ||
-                  room.gameState.startsWith("puzzle")
+                  room.gameState.startsWith("puzzle"))
                 ) {
                   io.to(roomId).emit("game_stopped", { reason: "المنافس غادر المباراة" });
+                  if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                  if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+                  rooms.delete(roomId);
+                } else if (isFinishedState) {
+                  // If game is finished and opponent disconnects, notify remaining player to return to lobby gracefully
+                  socket.to(roomId).emit("opponent_left_lobby");
                   if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
                   if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
                   rooms.delete(roomId);
