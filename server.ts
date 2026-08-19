@@ -2737,6 +2737,24 @@ async function startServer() {
     db.pragma("journal_mode = WAL");
     db.pragma("synchronous = NORMAL");
 
+    // Database optimization & vacuum on boot to ensure minimal file size
+    try {
+      db.exec("CREATE TABLE IF NOT EXISTS custom_images (id TEXT PRIMARY KEY, category TEXT, name TEXT, data TEXT, timestamp INTEGER)");
+      db.exec("UPDATE custom_images SET data = '' WHERE data IS NOT NULL AND data != ''");
+      
+      const freelistCount = db.pragma("freelist_count", { simple: true }) as number;
+      const currentDbSize = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0;
+      if (freelistCount > 5 || currentDbSize > 2 * 1024 * 1024) {
+        console.log(`[DB Optimization] Startup check: database is ${(currentDbSize / 1024 / 1024).toFixed(2)} MB (${freelistCount} free pages). Running VACUUM...`);
+        db.pragma("wal_checkpoint(TRUNCATE)");
+        db.exec("VACUUM");
+        const shrunkSize = fs.statSync(dbPath).size;
+        console.log(`[DB Optimization] VACUUM completed! Database size permanently shrunk from ${(currentDbSize / 1024 / 1024).toFixed(2)} MB to ${(shrunkSize / 1024 / 1024).toFixed(2)} MB.`);
+      }
+    } catch (e) {
+      console.warn("[DB Optimization] Startup VACUUM check note:", e);
+    }
+
     let isUploadingDb = false;
     let dbIsDirty = false;
 
@@ -2783,15 +2801,33 @@ async function startServer() {
         console.log(`[DB] Step 4: Uploading compressed database (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB vs ${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB raw) to Supabase Storage...`);
         const uploadStartTime = Date.now();
 
-        // Upload compressed .gz backup exclusively (Fast, reliable, finishes in <1s)
-        const { error: uploadError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
-          upsert: true,
-          contentType: "application/gzip"
-        });
+        let uploadErrorMsg: string | null = null;
+        try {
+          // Direct fetch to Supabase Storage REST API with hard 10s timeout (impossible to hang forever)
+          const res = await fetch(`${SUPABASE_URL}/storage/v1/object/database/players.db.gz`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE}`,
+              "apikey": SUPABASE_SERVICE_ROLE,
+              "x-upsert": "true",
+              "Content-Type": "application/gzip",
+            },
+            body: compressedBuffer,
+            signal: AbortSignal.timeout(10000),
+            // @ts-ignore
+            duplex: "half"
+          });
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            uploadErrorMsg = `HTTP ${res.status}: ${errText}`;
+          }
+        } catch (fetchErr: any) {
+          uploadErrorMsg = fetchErr?.message || String(fetchErr);
+        }
 
-        console.log(`[DB] Step 5: Supabase upload finished in ${Date.now() - uploadStartTime}ms. Error status: ${uploadError ? uploadError.message : 'Success'}`);
-        if (uploadError) {
-          console.error("[DB] Error uploading players.db.gz to Supabase Storage:", uploadError.message);
+        console.log(`[DB] Step 5: Supabase upload finished in ${Date.now() - uploadStartTime}ms. Error status: ${uploadErrorMsg ? uploadErrorMsg : 'Success'}`);
+        if (uploadErrorMsg) {
+          console.error("[DB] Error uploading players.db.gz to Supabase Storage:", uploadErrorMsg);
         } else {
           dbIsDirty = false;
           initialDownloadSucceeded = true;
@@ -2896,6 +2932,13 @@ async function startServer() {
       isShuttingDown = true;
       console.log(`[DB] Received ${signal}. Stopping server traffic and syncing database...`);
       
+      // Safety guard: Hard exit after 15 seconds max so Render / Railway never hangs
+      const safetyExitTimer = setTimeout(() => {
+        console.log("[DB] Shutdown safety timer elapsed (15s). Forcing clean exit now.");
+        process.exit(0);
+      }, 15000);
+      safetyExitTimer.unref();
+
       // Stop accepting new connections to prevent unhandled exceptions while DB is closed
       try {
         if (io) io.close();
@@ -2913,17 +2956,14 @@ async function startServer() {
       }
       
       if (db) {
-        console.log("[DB] Closing database connection fallback...");
+        console.log("[DB] Closing database connection...");
         try {
           db.close();
         } catch (e) {}
       }
       
-      // Wait longer to ensure Supabase finishes the upload promise
-      setTimeout(() => {
-        console.log("[DB] Exiting process now.");
-        process.exit(0);
-      }, 5000);
+      console.log("[DB] Exiting process cleanly now.");
+      process.exit(0);
     };
 
     process.on("SIGINT", () => shutdown("SIGINT"));
