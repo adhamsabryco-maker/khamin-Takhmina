@@ -16,6 +16,7 @@ import admin from "firebase-admin";
 import archiver from "archiver";
 import webpush from "web-push";
 import zlib from "zlib";
+import { pipeline } from "stream/promises";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://genogaejxepnwaqmwoho.supabase.co";
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlbm9nYWVqeGVwbndhcW13b2hvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjY2MjMxNCwiZXhwIjoyMTAyMjM4MzE0fQ.FjLFq0agFqXP0TKdr4pQ7TbHUoWExYEt8J033Ckzkso";
@@ -2745,6 +2746,7 @@ async function startServer() {
       isUploadingDb = true;
 
       const tempBackupPath = path.join(os.tmpdir(), `players_backup_${Date.now()}.db`);
+      const tempGzPath = path.join(os.tmpdir(), `players_backup_${Date.now()}.db.gz`);
       try {
         console.log(`[DB] Step 1: Preparing database file with db.backup()...`);
         // Native SQLite backup merges all memory and WAL changes into a single consolidated file
@@ -2753,24 +2755,27 @@ async function startServer() {
 
         console.log(`[DB] Step 2: Checking if backup file exists...`);
         if (fs.existsSync(tempBackupPath)) {
-          console.log(`[DB] Step 3: Reading backup file into memory...`);
-          const rawBuffer = fs.readFileSync(tempBackupPath);
+          const rawFileSize = fs.statSync(tempBackupPath).size;
+          console.log(`[DB] Step 3: Backup file size is ${(rawFileSize / 1024 / 1024).toFixed(2)} MB.`);
 
           // Safety guard: Don't overwrite a large remote database with an empty tiny local database
-          if (!force && !initialDownloadSucceeded && remoteFileSizeAtStart > 3 * 1024 * 1024 && rawBuffer.length < 500 * 1024) {
-            console.warn(`[DB] Safety blocked upload: local backup is only ${(rawBuffer.length / 1024).toFixed(1)} KB while remote is ${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB. Avoiding accidental overwrite.`);
+          if (!force && !initialDownloadSucceeded && remoteFileSizeAtStart > 3 * 1024 * 1024 && rawFileSize < 500 * 1024) {
+            console.warn(`[DB] Safety blocked upload: local backup is only ${(rawFileSize / 1024).toFixed(1)} KB while remote is ${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB. Avoiding accidental overwrite.`);
             return;
           }
 
-          console.log(`[DB] Step 4: Compressing database file (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB)...`);
-          // Use async gzip with level 1 (fastest) to prevent blocking the event loop and reduce memory usage during shutdown
-          const compressedBuffer = await new Promise<Buffer>((resolve, reject) => {
-            zlib.gzip(rawBuffer, { level: 1 }, (err, result) => {
-              if (err) reject(err);
-              else resolve(result);
-            });
-          });
-          console.log(`[DB] Step 5: Uploading compressed backup (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB) to Supabase...`);
+          console.log(`[DB] Step 4: Compressing database file via stream pipeline directly to disk...`);
+          const compressStartTime = Date.now();
+          await pipeline(
+            fs.createReadStream(tempBackupPath),
+            zlib.createGzip({ level: 1 }),
+            fs.createWriteStream(tempGzPath)
+          );
+          const gzFileSize = fs.statSync(tempGzPath).size;
+          console.log(`[DB] Step 4b: Streaming compression finished in ${Date.now() - compressStartTime}ms! Compressed size: ${(gzFileSize / 1024 / 1024).toFixed(2)} MB.`);
+
+          console.log(`[DB] Step 5: Reading compressed file (${(gzFileSize / 1024 / 1024).toFixed(2)} MB) and uploading to Supabase...`);
+          const compressedBuffer = fs.readFileSync(tempGzPath);
 
           const { error: gzError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
             upsert: true,
@@ -2795,6 +2800,11 @@ async function startServer() {
         try {
           if (fs.existsSync(tempBackupPath)) {
             fs.unlinkSync(tempBackupPath);
+          }
+        } catch (e) {}
+        try {
+          if (fs.existsSync(tempGzPath)) {
+            fs.unlinkSync(tempGzPath);
           }
         } catch (e) {}
         isUploadingDb = false;
