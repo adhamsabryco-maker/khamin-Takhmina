@@ -28690,9 +28690,11 @@ const renderBombPartyRewardBar = () => {
                           const myTurn = room.iqTurn === socket?.id && room.gameState === "iq_playing";
                           
                           const cellImgSrc = cellImg
-                            ? (cellImg.startsWith("/") || cellImg.startsWith("http") || cellImg.startsWith("blob:") || cellImg.startsWith("data:"))
+                            ? (cellImg.startsWith("http") || cellImg.startsWith("blob:") || cellImg.startsWith("data:"))
                               ? cellImg
-                              : `data:image/png;base64,${cellImg}`
+                              : cellImg.startsWith("/")
+                                ? apiUrl(cellImg)
+                                : `data:image/png;base64,${cellImg}`
                             : "";
 
                           return (
