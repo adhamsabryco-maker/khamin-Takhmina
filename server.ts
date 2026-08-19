@@ -3617,6 +3617,8 @@ async function startServer() {
           "people": "اشخاص",
         };
 
+        const diskEntriesToSync: { category: string; name: string; fullPath: string }[] = [];
+
         function scanDir(currentDir: string, relCat: string) {
           try {
             if (!fs.existsSync(currentDir)) return;
@@ -3632,6 +3634,16 @@ async function startServer() {
                   const rawName = parsed.name;
                   const normName = normalizeArabicText(rawName);
                   const normCat = normalizeArabicText(relCat);
+
+                  // Determine standard category ID
+                  let stdCat = relCat.toLowerCase();
+                  if (arabicCategoryToEnglish[normCat]) {
+                    stdCat = arabicCategoryToEnglish[normCat];
+                  } else if (arabicCategoryToEnglish[relCat.toLowerCase()]) {
+                    stdCat = arabicCategoryToEnglish[relCat.toLowerCase()];
+                  }
+
+                  diskEntriesToSync.push({ category: stdCat, name: rawName, fullPath });
 
                   if (relCat) {
                     newMap.set(`${relCat.toLowerCase()}/${rawName.toLowerCase()}`, fullPath);
@@ -3667,6 +3679,37 @@ async function startServer() {
         }
         diskImagesMap = newMap;
         console.log(`[Game Images] Scanned ${searchDirs.length} directories, indexed ${newMap.size} image lookup entries.`);
+
+        // Synchronize found disk images into custom_images database table
+        if (diskEntriesToSync.length > 0) {
+          try {
+            const checkStmt = db.prepare("SELECT id FROM custom_images WHERE (category = ? OR lower(category) = ?) AND name = ? LIMIT 1");
+            const insertStmt = db.prepare(`
+              INSERT INTO custom_images (id, category, name, data, addedBy, timestamp, level)
+              VALUES (?, ?, ?, '', 'system', ?, 'مستوي مبتدئين التخمين')
+            `);
+
+            let syncedCount = 0;
+            const syncTransaction = db.transaction((entries: typeof diskEntriesToSync) => {
+              for (const item of entries) {
+                if (!item.category || !item.name) continue;
+                const existing = checkStmt.get(item.category, item.category.toLowerCase(), item.name);
+                if (!existing) {
+                  const id = `disk_${item.category}_${Math.random().toString(36).substring(2, 9)}`;
+                  insertStmt.run(id, item.category, item.name, Date.now());
+                  syncedCount++;
+                }
+              }
+            });
+
+            syncTransaction(diskEntriesToSync);
+            if (syncedCount > 0) {
+              console.log(`[Game Images] Successfully auto-registered ${syncedCount} new images from disk into custom_images database.`);
+            }
+          } catch (dbSyncErr) {
+            console.error("[Game Images] Error syncing disk images to DB:", dbSyncErr);
+          }
+        }
       } catch (err) {
         console.error("[Game Images] Error in indexGameImages:", err);
       }
@@ -4164,6 +4207,25 @@ async function startServer() {
             imgs.push(imgs[0]);
           }
           return imgs;
+        }
+
+        // Fallback to disk images map
+        const allDiskEntries: { name: string; category: string }[] = [];
+        for (const [key, filePath] of diskImagesMap.entries()) {
+          if (key.includes("/")) {
+            const parts = key.split("/");
+            const cat = parts[0];
+            const name = path.parse(filePath).name;
+            allDiskEntries.push({ name, category: cat });
+          }
+        }
+        if (allDiskEntries.length > 0) {
+          const shuffled = [...allDiskEntries].sort(() => 0.5 - Math.random());
+          const selected = shuffled.slice(0, 3);
+          while (selected.length < 3) {
+            selected.push(selected[0]);
+          }
+          return selected;
         }
       } catch (e) {
         console.error("Error fetching puzzle images:", e);
@@ -5722,6 +5784,7 @@ async function startServer() {
           }
         }
         db.prepare("DELETE FROM custom_images WHERE id = ?").run(id);
+        indexGameImages();
         dbIsDirty = true;
         io.emit("categories_updated");
         res.json({ success: true });
@@ -11141,6 +11204,16 @@ async function startServer() {
             const fallbackCategory = activeCategories[Math.floor(Math.random() * activeCategories.length)];
             allImages = db.prepare("SELECT name, category FROM custom_images WHERE category = ?").all(fallbackCategory) as any[];
             selectedCategory = fallbackCategory;
+          } else {
+            // Fallback directly from diskImagesMap
+            for (const [key, filePath] of diskImagesMap.entries()) {
+              if (key.includes("/")) {
+                const parts = key.split("/");
+                const cat = parts[0];
+                const name = path.parse(filePath).name;
+                allImages.push({ name, category: cat });
+              }
+            }
           }
         } catch (e) {
           console.error("Error fetching fallback categories:", e);
@@ -20828,12 +20901,49 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
       level: string = "مستوي مبتدئين التخمين",
     ) {
       try {
-        const customImages = db
+        const cleanCat = (category || "").trim();
+        const normCat = normalizeArabicText(cleanCat);
+
+        // 1. Try DB with category and level
+        let customImages = db
           .prepare(
-            "SELECT id, name, timestamp FROM custom_images WHERE category = ? AND (level = ? OR level IS NULL)",
+            "SELECT id, name, timestamp FROM custom_images WHERE (category = ? OR lower(category) = ? OR category = ?) AND (level = ? OR level IS NULL OR level = '')",
           )
-          .all(category, level);
-        return customImages;
+          .all(cleanCat, cleanCat.toLowerCase(), normCat, level) as any[];
+
+        // 2. Try DB without level filter if specific level had 0 images
+        if (!customImages || customImages.length === 0) {
+          customImages = db
+            .prepare(
+              "SELECT id, name, timestamp FROM custom_images WHERE category = ? OR lower(category) = ? OR category = ?",
+            )
+            .all(cleanCat, cleanCat.toLowerCase(), normCat) as any[];
+        }
+
+        // 3. Fallback to in-memory disk entries if DB has not yet populated
+        if (!customImages || customImages.length === 0) {
+          const diskList: any[] = [];
+          const seen = new Set<string>();
+          for (const [key, filePath] of diskImagesMap.entries()) {
+            if (
+              key.startsWith(`${cleanCat.toLowerCase()}/`) ||
+              key.startsWith(`${normCat}/`)
+            ) {
+              const namePart = path.parse(filePath).name;
+              if (!seen.has(namePart)) {
+                seen.add(namePart);
+                diskList.push({
+                  id: `disk_${namePart}`,
+                  name: namePart,
+                  timestamp: Date.now(),
+                });
+              }
+            }
+          }
+          if (diskList.length > 0) return diskList;
+        }
+
+        return customImages || [];
       } catch (err) {
         console.error("Error fetching custom images:", err);
         return [];
