@@ -2778,13 +2778,24 @@ async function startServer() {
         console.log(`[DB] Step 3: Reading database file directly (Zero CPU)...`);
         const rawBuffer = fs.readFileSync(dbPath);
 
-        console.log(`[DB] Step 4: Uploading database (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB) directly to Supabase Storage...`);
+        // Compress database with gzip for ultra-fast upload within shutdown grace period
+        const compressedBuffer = zlib.gzipSync(rawBuffer);
+        console.log(`[DB] Step 4: Uploading compressed database (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB vs ${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB raw) to Supabase Storage...`);
         const uploadStartTime = Date.now();
-        const { error: uploadError } = await supabase.storage.from("database").upload("players.db", rawBuffer, {
+
+        // 1. Upload compressed .gz backup (Super fast)
+        const { error: gzUploadError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
+          upsert: true,
+          contentType: "application/gzip"
+        });
+
+        // 2. Also update raw players.db
+        const { error: rawUploadError } = await supabase.storage.from("database").upload("players.db", rawBuffer, {
           upsert: true,
           contentType: "application/x-sqlite3"
         });
 
+        const uploadError = gzUploadError || rawUploadError;
         console.log(`[DB] Step 5: Supabase upload finished in ${Date.now() - uploadStartTime}ms. Error status: ${uploadError ? uploadError.message : 'Success'}`);
         if (uploadError) {
           console.error("[DB] Error uploading players.db to Supabase Storage:", uploadError.message);
@@ -3877,25 +3888,27 @@ async function startServer() {
           indexGameImages();
           
           // Clear large Base64 blobs from custom_images table
-          db.exec("UPDATE custom_images SET data = '' WHERE length(data) > 100");
-          console.log("[Image Migration] Cleared Base64 data from database. Running VACUUM...");
-          
-          // Reclaim disk space
-          try {
-            db.exec("VACUUM");
-          } catch (vErr) {
-            console.warn("[Image Migration] VACUUM note:", vErr);
-          }
-
-          const newSize = fs.statSync(dbPath).size;
-          console.log(`[Image Migration] Database size shrunk to ${(newSize / 1024 / 1024).toFixed(2)} MB!`);
-
-          // Trigger sync of newly shrunk DB
-          if (isProduction && supabase) {
-            syncDbToSupabase(true);
-          }
+          db.exec("UPDATE custom_images SET data = '' WHERE length(data) > 0");
+          console.log("[Image Migration] Cleared Base64 data from database.");
         } else {
           console.log("[Image Migration] All images are already stored on disk.");
+        }
+
+        // Automatic DB optimization: Check if database has free pages and run VACUUM to reclaim space
+        try {
+          const freelistCount = db.pragma("freelist_count", { simple: true }) as number;
+          const currentDbSize = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0;
+          if (freelistCount > 10 || currentDbSize > 3 * 1024 * 1024) {
+            console.log(`[DB Optimization] Database has ${freelistCount} free pages (${(currentDbSize / 1024 / 1024).toFixed(2)} MB). Running VACUUM to permanently reclaim disk space...`);
+            db.exec("VACUUM");
+            const shrunkSize = fs.statSync(dbPath).size;
+            console.log(`[DB Optimization] VACUUM completed! Database size permanently shrunk from ${(currentDbSize / 1024 / 1024).toFixed(2)} MB to ${(shrunkSize / 1024 / 1024).toFixed(2)} MB.`);
+            if (isProduction && supabase) {
+              syncDbToSupabase(true);
+            }
+          }
+        } catch (vacErr) {
+          console.warn("[DB Optimization] VACUUM check note:", vacErr);
         }
       } catch (err) {
         console.error("[Image Migration] Error during image migration:", err);
