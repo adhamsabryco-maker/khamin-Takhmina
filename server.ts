@@ -2653,41 +2653,16 @@ async function startServer() {
 
     if (isProduction && supabase) {
       try {
-        console.log("[DB] Checking Supabase Storage bucket 'database' for 'players.db.gz' or 'players.db'...");
+        console.log("[DB] Downloading latest database 'players.db.gz' from Supabase Storage...");
         const tempCandidatePath = path.join(os.tmpdir(), `candidate_${Date.now()}.db`);
 
-        // Check remote file metadata (check .gz first, then .db)
-        let remoteFileName = "players.db";
+        // Download players.db.gz exclusively
         try {
-          const { data: fileList } = await supabase.storage.from("database").list("", { search: "players.db" });
-          const gzInfo = fileList?.find(f => f.name === "players.db.gz");
-          const dbInfo = fileList?.find(f => f.name === "players.db");
-          if (gzInfo && dbInfo) {
-            const gzTime = new Date(gzInfo.updated_at || gzInfo.created_at || 0).getTime();
-            const dbTime = new Date(dbInfo.updated_at || dbInfo.created_at || 0).getTime();
-            if (gzTime > dbTime) {
-              remoteFileName = "players.db.gz";
-              remoteFileSizeAtStart = gzInfo.metadata?.size || 0;
-            } else {
-              remoteFileName = "players.db";
-              remoteFileSizeAtStart = dbInfo.metadata?.size || 0;
-            }
-          } else if (gzInfo && gzInfo.metadata?.size) {
-            remoteFileName = "players.db.gz";
-            remoteFileSizeAtStart = gzInfo.metadata.size;
-          } else if (dbInfo && dbInfo.metadata?.size) {
-            remoteFileName = "players.db";
-            remoteFileSizeAtStart = dbInfo.metadata.size;
-          }
-          console.log(`[DB] Selected remote backup: ${remoteFileName} (${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB)`);
-        } catch (e) {}
-
-        // Download database
-        try {
-          const { data, error } = await supabase.storage.from("database").download(remoteFileName);
+          const { data, error } = await supabase.storage.from("database").download("players.db.gz");
           if (!error && data) {
             const rawBuffer = Buffer.from(await data.arrayBuffer());
             if (rawBuffer.length > 0) {
+              remoteFileSizeAtStart = rawBuffer.length;
               let finalDbBuffer: Buffer;
               // Check if buffer is gzip compressed (magic bytes 0x1f, 0x8b)
               if (rawBuffer[0] === 0x1f && rawBuffer[1] === 0x8b) {
@@ -2707,7 +2682,7 @@ async function startServer() {
               }
             }
           } else {
-            console.log("[DB] Remote database not found or error:", error?.message);
+            console.log("[DB] Remote players.db.gz not found or error:", error?.message);
           }
         } catch (rawErr) {
           console.warn("[DB] Failed downloading database:", rawErr);
@@ -2737,14 +2712,61 @@ async function startServer() {
     db.pragma("journal_mode = WAL");
     db.pragma("synchronous = NORMAL");
 
+    // Function to purge obsolete notifications, old broadcast copies, and logs
+    function cleanupOldNotificationsAndLogs() {
+      try {
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+
+        let totalDeleted = 0;
+        try {
+          const res1 = db.prepare("DELETE FROM admin_messages WHERE timestamp < ?").run(thirtyDaysAgo);
+          totalDeleted += res1.changes;
+        } catch (e) {}
+
+        try {
+          const res2 = db.prepare("DELETE FROM like_notifications WHERE timestamp < ?").run(fourteenDaysAgo);
+          totalDeleted += res2.changes;
+        } catch (e) {}
+
+        try {
+          const res3 = db.prepare("DELETE FROM gift_notifications WHERE timestamp < ?").run(fourteenDaysAgo);
+          totalDeleted += res3.changes;
+        } catch (e) {}
+
+        try {
+          const res4 = db.prepare("DELETE FROM collection_notifications WHERE timestamp < ?").run(fourteenDaysAgo);
+          totalDeleted += res4.changes;
+        } catch (e) {}
+
+        try {
+          const res5 = db.prepare("DELETE FROM friend_accepted_notifications WHERE timestamp < ?").run(fourteenDaysAgo);
+          totalDeleted += res5.changes;
+        } catch (e) {}
+
+        try {
+          const res6 = db.prepare("DELETE FROM player_likes_log WHERE timestamp < ?").run(fourteenDaysAgo);
+          totalDeleted += res6.changes;
+        } catch (e) {}
+
+        if (totalDeleted > 0) {
+          console.log(`[DB Cleanup] Purged ${totalDeleted} obsolete notifications and old messages.`);
+        }
+      } catch (err) {
+        console.warn("[DB Cleanup] Warning during notifications cleanup:", err);
+      }
+    }
+
     // Database optimization & vacuum on boot to ensure minimal file size
     try {
       db.exec("CREATE TABLE IF NOT EXISTS custom_images (id TEXT PRIMARY KEY, category TEXT, name TEXT, data TEXT, timestamp INTEGER)");
       db.exec("UPDATE custom_images SET data = '' WHERE data IS NOT NULL AND data != ''");
       
+      cleanupOldNotificationsAndLogs();
+
       const freelistCount = db.pragma("freelist_count", { simple: true }) as number;
       const currentDbSize = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0;
-      if (freelistCount > 5 || currentDbSize > 2 * 1024 * 1024) {
+      if (freelistCount > 5 || currentDbSize > 5 * 1024 * 1024) {
         console.log(`[DB Optimization] Startup check: database is ${(currentDbSize / 1024 / 1024).toFixed(2)} MB (${freelistCount} free pages). Running VACUUM...`);
         db.pragma("wal_checkpoint(TRUNCATE)");
         db.exec("VACUUM");
@@ -2803,35 +2825,34 @@ async function startServer() {
 
         let uploadErrorMsg: string | null = null;
         try {
-          // Direct fetch to Supabase Storage REST API with hard 10s timeout (impossible to hang forever)
-          const res = await fetch(`${SUPABASE_URL}/storage/v1/object/database/players.db.gz`, {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE}`,
-              "apikey": SUPABASE_SERVICE_ROLE,
-              "x-upsert": "true",
-              "Content-Type": "application/gzip",
-            },
-            body: compressedBuffer,
-            signal: AbortSignal.timeout(10000),
-            // @ts-ignore
-            duplex: "half"
+          // Upload using Supabase JS client with hard timeout
+          const uploadPromise = supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
+            upsert: true,
+            contentType: "application/gzip"
           });
-          if (!res.ok) {
-            const errText = await res.text().catch(() => "");
-            uploadErrorMsg = `HTTP ${res.status}: ${errText}`;
+          
+          const timeoutPromise = new Promise<{ data: any; error: any }>((_, reject) => 
+            setTimeout(() => reject(new Error("Supabase upload timed out after 10s")), 10000)
+          );
+
+          const { error } = await Promise.race([uploadPromise, timeoutPromise]) as any;
+          if (error) {
+            uploadErrorMsg = error.message || String(error);
           }
         } catch (fetchErr: any) {
           uploadErrorMsg = fetchErr?.message || String(fetchErr);
         }
 
-        console.log(`[DB] Step 5: Supabase upload finished in ${Date.now() - uploadStartTime}ms. Error status: ${uploadErrorMsg ? uploadErrorMsg : 'Success'}`);
+        const step5Msg = `[DB] Step 5: Supabase upload finished in ${Date.now() - uploadStartTime}ms. Error status: ${uploadErrorMsg ? uploadErrorMsg : 'Success'}\n`;
+        try { fs.writeSync(1, step5Msg); } catch (e) { console.log(step5Msg); }
+
         if (uploadErrorMsg) {
           console.error("[DB] Error uploading players.db.gz to Supabase Storage:", uploadErrorMsg);
         } else {
           dbIsDirty = false;
           initialDownloadSucceeded = true;
-          console.log(`[DB] Successfully synced players.db.gz (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB) to Supabase Storage.`);
+          const successMsg = `[DB] Successfully synced players.db.gz (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB) to Supabase Storage.\n`;
+          try { fs.writeSync(1, successMsg); } catch (e) { console.log(successMsg); }
         }
       } catch (err) {
         console.error("[DB] CRITICAL ERROR in syncDbToSupabase try-catch:", err);
@@ -2845,7 +2866,8 @@ async function startServer() {
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
     if (isProduction) {
       setInterval(() => {
-        console.log("[DB] 24-hour scheduled sync triggered. Uploading database backup to Supabase...");
+        console.log("[DB] 24-hour scheduled maintenance triggered. Cleaning old notifications and syncing database...");
+        cleanupOldNotificationsAndLogs();
         syncDbToSupabase(true);
       }, TWENTY_FOUR_HOURS);
     }
@@ -2962,8 +2984,12 @@ async function startServer() {
         } catch (e) {}
       }
       
-      console.log("[DB] Exiting process cleanly now.");
-      process.exit(0);
+      const exitMsg = "[DB] Shutdown complete. Exiting process cleanly now.\n";
+      try { fs.writeSync(1, exitMsg); } catch (e) { console.log(exitMsg); }
+      
+      setTimeout(() => {
+        process.exit(0);
+      }, 300);
     };
 
     process.on("SIGINT", () => shutdown("SIGINT"));
