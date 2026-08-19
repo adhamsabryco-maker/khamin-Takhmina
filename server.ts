@@ -2728,8 +2728,8 @@ async function startServer() {
     let isUploadingDb = false;
     let dbIsDirty = false;
 
-    async function syncDbToSupabase(force = false) {
-      console.log(`[DB] syncDbToSupabase triggered (force=${force}, isProduction=${isProduction}, supabase=${!!supabase}, dbIsDirty=${dbIsDirty}, isUploadingDb=${isUploadingDb})`);
+    async function syncDbToSupabase(force = false, isShutdown = false) {
+      console.log(`[DB] syncDbToSupabase triggered (force=${force}, isShutdown=${isShutdown}, isProduction=${isProduction}, supabase=${!!supabase}, dbIsDirty=${dbIsDirty}, isUploadingDb=${isUploadingDb})`);
       if (!isProduction || !supabase) {
         console.log("[DB] Sync aborted: Not in production or no supabase client");
         return;
@@ -2746,8 +2746,20 @@ async function startServer() {
 
       const tempBackupPath = path.join(os.tmpdir(), `players_backup_${Date.now()}.db`);
       try {
-        // Native SQLite backup merges all memory and WAL changes into a single consolidated file
-        await db.backup(tempBackupPath);
+        if (isShutdown) {
+          console.log("[DB] isShutdown flag is true. Closing database connection to flush WAL synchronously before uploading...");
+          try {
+            if (db) db.close();
+            db = null; // Prevent subsequent operations
+          } catch (e) {
+            console.error("[DB] Error closing DB during shutdown sync:", e);
+          }
+          // The database file is now clean and all WAL data is merged.
+          fs.copyFileSync(dbPath, tempBackupPath);
+        } else {
+          // Native SQLite backup merges all memory and WAL changes into a single consolidated file
+          await db.backup(tempBackupPath);
+        }
 
         if (fs.existsSync(tempBackupPath)) {
           const rawBuffer = fs.readFileSync(tempBackupPath);
@@ -2873,16 +2885,19 @@ async function startServer() {
       console.log(`[DB] Received ${signal}. Syncing latest database backup to Supabase before exiting...`);
       try {
         if (isProduction && supabase) {
-          await syncDbToSupabase(true);
+          await syncDbToSupabase(true, true);
           console.log("[DB] Shutdown sync complete.");
         }
       } catch (err) {
         console.error("[DB] Error during shutdown sync:", err);
       }
-      console.log("[DB] Closing database connection...");
-      try {
-        if (db) db.close();
-      } catch (e) {}
+      
+      if (db) {
+        console.log("[DB] Closing database connection...");
+        try {
+          db.close();
+        } catch (e) {}
+      }
       
       // Delay exit slightly to ensure all async tasks and logs flush properly
       setTimeout(() => {
