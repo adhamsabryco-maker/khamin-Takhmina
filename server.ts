@@ -25,10 +25,18 @@ const isAiStudio = Boolean(
   process.env.APPLET_ID ||
   process.env.K_SERVICE?.includes("ais-") ||
   (process.env.APP_URL && process.env.APP_URL.includes("ais-")) ||
-  (process.env.NODE_ENV === "development" && !process.env.RENDER)
+  process.env.GEMINI_API_KEY !== undefined ||
+  (process.env.NODE_ENV === "development" && !process.env.RENDER && !process.env.RAILWAY_ENVIRONMENT)
 );
 
-const isProduction = process.env.NODE_ENV === "production" || process.env.RENDER === "true" || !!process.env.RENDER;
+// Production is strictly when running outside AI Studio (on Railway or Render)
+const isProduction = !isAiStudio && (
+  process.env.NODE_ENV === "production" ||
+  process.env.RENDER === "true" ||
+  !!process.env.RENDER ||
+  !!process.env.RAILWAY_ENVIRONMENT ||
+  !!process.env.RAILWAY_PROJECT_ID
+);
 
 const supabase = isProduction ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
   auth: { persistSession: false }
@@ -3710,6 +3718,32 @@ async function startServer() {
             console.error("[Game Images] Error syncing disk images to DB:", dbSyncErr);
           }
         }
+
+        // Ensure standard categories exist and stay in sync with game_images folders
+        try {
+          const standardCategories: { id: string; name: string; icon: string }[] = [
+            { id: "animals", name: "حيوانات", icon: "🐘" },
+            { id: "birds", name: "طيور", icon: "🦜" },
+            { id: "food", name: "أكلات", icon: "🍕" },
+            { id: "football", name: "كرة القدم", icon: "⚽" },
+            { id: "insects", name: "حشرات", icon: "🐞" },
+            { id: "objects", name: "جماد", icon: "📦" },
+            { id: "plants", name: "نبات", icon: "🌿" },
+            { id: "people", name: "اشخاص", icon: "👥" },
+          ];
+
+          const upsertCat = db.prepare(`
+            INSERT INTO categories (id, name, icon, timestamp)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET name=excluded.name, icon=excluded.icon
+          `);
+
+          for (const c of standardCategories) {
+            upsertCat.run(c.id, c.name, c.icon, Date.now());
+          }
+        } catch (catSyncErr) {
+          console.error("[Game Images] Error syncing categories table:", catSyncErr);
+        }
       } catch (err) {
         console.error("[Game Images] Error in indexGameImages:", err);
       }
@@ -5561,6 +5595,29 @@ async function startServer() {
     app.get("/api/categories", (req, res) => {
       try {
         res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
+
+        const standardCategories: { id: string; name: string; icon: string }[] = [
+          { id: "animals", name: "حيوانات", icon: "🐘" },
+          { id: "birds", name: "طيور", icon: "🦜" },
+          { id: "food", name: "أكلات", icon: "🍕" },
+          { id: "football", name: "كرة القدم", icon: "⚽" },
+          { id: "insects", name: "حشرات", icon: "🐞" },
+          { id: "objects", name: "جماد", icon: "📦" },
+          { id: "plants", name: "نبات", icon: "🌿" },
+          { id: "people", name: "اشخاص", icon: "👥" },
+        ];
+
+        try {
+          const upsertCat = db.prepare(`
+            INSERT INTO categories (id, name, icon, timestamp)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET name=excluded.name, icon=excluded.icon
+          `);
+          for (const c of standardCategories) {
+            upsertCat.run(c.id, c.name, c.icon, Date.now());
+          }
+        } catch (e) {}
+
         const categories = db
           .prepare(
             `
