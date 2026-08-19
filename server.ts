@@ -16134,21 +16134,18 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
               io.to(roomId).emit("chat_bubble", messageObj);
 
               if (
-                !isRoomFinished(room) &&
-                (
-                  room.gameState.startsWith("bus_complete") ||
-                  room.gameState === "custom_image_upload" ||
-                  room.gameState.startsWith("xo_") ||
-                  room.gameState.startsWith("hand_") ||
-                  room.gameState.startsWith("iq_") ||
-                  room.gameState.startsWith("dots_") ||
-                  room.gameState.startsWith("speed_cups_") ||
-                  room.gameState.startsWith("bomb_party_") ||
-                  room.gameState.startsWith("connect_four_words") ||
-                  room.gameState.startsWith("wordle") ||
-                  room.gameState.startsWith("space_war") ||
-                  room.gameState.startsWith("puzzle")
-                )
+                room.gameState.startsWith("bus_complete") ||
+                room.gameState === "custom_image_upload" ||
+                room.gameState.startsWith("xo_") ||
+                room.gameState.startsWith("hand_") ||
+                room.gameState.startsWith("iq_") ||
+                room.gameState.startsWith("dots_") ||
+                room.gameState.startsWith("speed_cups_") ||
+                room.gameState.startsWith("bomb_party_") ||
+                room.gameState.startsWith("connect_four_words") ||
+                room.gameState.startsWith("wordle") ||
+                room.gameState.startsWith("space_war") ||
+                room.gameState.startsWith("puzzle")
               ) {
                 io.to(roomId).emit("game_stopped", {
                   reason: "المنافس غادر المباراة",
