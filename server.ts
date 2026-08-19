@@ -2763,8 +2763,13 @@ async function startServer() {
           }
 
           console.log(`[DB] Step 4: Compressing database file (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB)...`);
-          // Use level 6 instead of 9 to save CPU and RAM during critical shutdown windows
-          const compressedBuffer = zlib.gzipSync(rawBuffer, { level: 6 });
+          // Use async gzip with level 1 (fastest) to prevent blocking the event loop and reduce memory usage during shutdown
+          const compressedBuffer = await new Promise<Buffer>((resolve, reject) => {
+            zlib.gzip(rawBuffer, { level: 1 }, (err, result) => {
+              if (err) reject(err);
+              else resolve(result);
+            });
+          });
           console.log(`[DB] Step 5: Uploading compressed backup (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB) to Supabase...`);
 
           const { error: gzError } = await supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
