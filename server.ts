@@ -3755,29 +3755,54 @@ async function startServer() {
           indexGameImages();
         }
 
-        // 1. Direct category + name lookup
-        const catKey = `${normCat}/${normName}`;
-        if (diskImagesMap.has(catKey)) {
-          return diskImagesMap.get(catKey)!;
-        }
-        if (diskImagesMap.has(`${decodedCat.toLowerCase()}/${decodedName.toLowerCase()}`)) {
-          return diskImagesMap.get(`${decodedCat.toLowerCase()}/${decodedName.toLowerCase()}`)!;
+        // 1. Direct candidate keys in diskImagesMap
+        const candidateKeys = [
+          `${decodedCat.toLowerCase()}/${decodedName.toLowerCase()}`,
+          `${normCat}/${normName}`,
+          `${decodedCat.toLowerCase()}/${normName}`,
+          `${normCat}/${decodedName.toLowerCase()}`,
+          decodedName.toLowerCase(),
+          normName,
+        ];
+
+        for (const k of candidateKeys) {
+          if (diskImagesMap.has(k)) {
+            const p = diskImagesMap.get(k)!;
+            if (fs.existsSync(p)) return p;
+          }
         }
 
-        // 2. Global exact name lookup
-        if (diskImagesMap.has(normName)) {
-          return diskImagesMap.get(normName)!;
-        }
-        if (diskImagesMap.has(decodedName.toLowerCase())) {
-          return diskImagesMap.get(decodedName.toLowerCase())!;
-        }
+        // 2. Direct filesystem candidate probing
+        const extensions = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".JPG", ".PNG", ".JPEG", ".WEBP"];
+        const searchDirs = getGameImageDirs();
+        const catNamesToTry = [
+          decodedCat,
+          decodedCat.toLowerCase(),
+          normCat,
+          ...(decodedCat ? [decodedCat.charAt(0).toUpperCase() + decodedCat.slice(1)] : []),
+          "",
+        ];
 
-        // 3. Fuzzy match across keys (contains substring)
-        for (const [key, filePath] of diskImagesMap.entries()) {
-          if (!key.includes("/")) {
-            if (key.includes(normName) || normName.includes(key)) {
-              return filePath;
+        for (const baseDir of searchDirs) {
+          for (const c of catNamesToTry) {
+            const dirToCheck = c ? path.join(baseDir, c) : baseDir;
+            if (fs.existsSync(dirToCheck)) {
+              for (const ext of extensions) {
+                const tryPath1 = path.join(dirToCheck, `${decodedName}${ext}`);
+                if (fs.existsSync(tryPath1)) return tryPath1;
+                const tryPath2 = path.join(dirToCheck, `${normName}${ext}`);
+                if (fs.existsSync(tryPath2)) return tryPath2;
+              }
             }
+          }
+        }
+
+        // 3. Substring / Fuzzy match across all mapped disk images
+        for (const [key, filePath] of diskImagesMap.entries()) {
+          const parsed = path.parse(filePath);
+          const fNameNorm = normalizeArabicText(parsed.name);
+          if (fNameNorm === normName || fNameNorm.includes(normName) || normName.includes(fNameNorm)) {
+            if (fs.existsSync(filePath)) return filePath;
           }
         }
 
