@@ -2658,7 +2658,6 @@ export default function App() {
     | "policies"
     | "avatar_review"
     | "contacts"
-    | "live_matches"
     | "quick_chat"
   >("players");
   const [rewardHistory, setRewardHistory] = useState<any[]>([]);
@@ -4479,93 +4478,6 @@ export default function App() {
   ]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [totalPlayersCount, setTotalPlayersCount] = useState(0);
-  const [liveMatches, setLiveMatches] = useState<any[]>([]);
-  const [showLiveMatchesModal, setShowLiveMatchesModal] = useState(false);
-  const [liveMatchesPage, setLiveMatchesPage] = useState(1);
-  const [liveNow, setLiveNow] = useState(Date.now());
-  const liveMatchesSliderRef = useRef<HTMLDivElement>(null);
-  const liveMatchesModalContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const [canScrollLeft, setCanScrollLeft] = useState(true);
-
-  const sliderDragRef = useRef({
-    isDown: false,
-    startX: 0,
-    scrollLeft: 0,
-    hasDragged: false,
-  });
-
-  const modalDragRef = useRef({
-    isDown: false,
-    startX: 0,
-    startY: 0,
-    scrollLeft: 0,
-    scrollTop: 0,
-    hasDragged: false,
-  });
-
-  const handleSliderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = liveMatchesSliderRef.current;
-    if (!el) return;
-    sliderDragRef.current = {
-      isDown: true,
-      startX: e.clientX,
-      scrollLeft: el.scrollLeft,
-      hasDragged: false,
-    };
-  };
-
-  const handleSliderMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!sliderDragRef.current.isDown) return;
-    const el = liveMatchesSliderRef.current;
-    if (!el) return;
-    const walk = e.clientX - sliderDragRef.current.startX;
-    if (Math.abs(walk) > 5) {
-      sliderDragRef.current.hasDragged = true;
-    }
-    el.scrollLeft = sliderDragRef.current.scrollLeft - walk;
-    checkSliderScroll();
-  };
-
-  const handleSliderMouseUpOrLeave = () => {
-    sliderDragRef.current.isDown = false;
-    setTimeout(() => {
-      sliderDragRef.current.hasDragged = false;
-    }, 120);
-  };
-
-  const handleModalMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = liveMatchesModalContainerRef.current;
-    if (!el) return;
-    modalDragRef.current = {
-      isDown: true,
-      startX: e.clientX,
-      startY: e.clientY,
-      scrollLeft: el.scrollLeft,
-      scrollTop: el.scrollTop,
-      hasDragged: false,
-    };
-  };
-
-  const handleModalMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!modalDragRef.current.isDown) return;
-    const el = liveMatchesModalContainerRef.current;
-    if (!el) return;
-    const walkX = e.clientX - modalDragRef.current.startX;
-    const walkY = e.clientY - modalDragRef.current.startY;
-    if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
-      modalDragRef.current.hasDragged = true;
-    }
-    el.scrollLeft = modalDragRef.current.scrollLeft - walkX;
-    el.scrollTop = modalDragRef.current.scrollTop - walkY;
-  };
-
-  const handleModalMouseUpOrLeave = () => {
-    modalDragRef.current.isDown = false;
-    setTimeout(() => {
-      modalDragRef.current.hasDragged = false;
-    }, 120);
-  };
 
   const getTextDirection = (text: string): "ltr" | "rtl" => {
     if (!text) return "rtl";
@@ -4574,50 +4486,6 @@ export default function App() {
     if (hasEnglish && !hasArabic) return "ltr";
     if (hasArabic) return "rtl";
     return hasEnglish ? "ltr" : "rtl";
-  };
-
-  useEffect(() => {
-    if (liveMatches.length === 0) return;
-    const timer = setInterval(() => {
-      setLiveNow(Date.now());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [liveMatches.length]);
-
-  const checkSliderScroll = () => {
-    const el = liveMatchesSliderRef.current;
-    if (!el) return;
-    const maxScroll = el.scrollWidth - el.clientWidth;
-    if (maxScroll <= 5) {
-      setCanScrollRight(false);
-      setCanScrollLeft(false);
-      return;
-    }
-    const s = el.scrollLeft;
-    if (s < 0) {
-      setCanScrollRight(s < -5);
-      setCanScrollLeft(Math.abs(s) < maxScroll - 5);
-    } else if (s > 0) {
-      setCanScrollRight(s < maxScroll - 5);
-      setCanScrollLeft(s > 5);
-    } else {
-      setCanScrollRight(false);
-      setCanScrollLeft(true);
-    }
-  };
-
-  useEffect(() => {
-    if (liveMatches.length > 0) {
-      setTimeout(checkSliderScroll, 100);
-    }
-  }, [liveMatches]);
-
-  const formatMatchTime = (startTime?: number) => {
-    if (!startTime) return "00:00";
-    const elapsedSeconds = Math.max(0, Math.floor((liveNow - startTime) / 1000));
-    const mins = Math.floor(elapsedSeconds / 60);
-    const secs = elapsedSeconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
   const [proposedMatch, setProposedMatch] = useState<{
     matchId: string;
@@ -7025,7 +6893,8 @@ export default function App() {
     const serverUrl = getApiBaseUrl();
     console.log("Initializing socket connection to:", serverUrl);
     const newSocket = io(serverUrl, {
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
+      upgrade: false,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 20000,
@@ -7662,7 +7531,6 @@ export default function App() {
             setGiftNotifications(res.notifications);
         });
       }
-      newSocket.emit("get_live_matches");
     });
 
     newSocket.on("new_gift_notification", (notif: any) => {
@@ -7703,12 +7571,6 @@ export default function App() {
       } else if (data && typeof data === "object") {
         setOnlineCount(data.online);
         setTotalPlayersCount(data.total);
-      }
-    });
-
-    newSocket.on("live_matches_update", (data: any) => {
-      if (Array.isArray(data)) {
-        setLiveMatches(data);
       }
     });
 
@@ -11443,209 +11305,6 @@ if (data.connectFourWordsRewardLevel != null) {
     );
   };
 
-  const renderLiveMatchesModal = () => {
-    return (
-      <AnimatePresence>
-        {showLiveMatchesModal && (
-          <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[5000] flex items-center justify-center p-3 animate-fadeIn"
-            dir="rtl"
-            onClick={() => setShowLiveMatchesModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-purple-950/90 border-4 border-yellow-500 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[85vh] flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="p-1 md:p-2 bg-purple-950/90 border-b-2 border-yellow-500/50 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-3.5 w-3.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500"></span>
-                  </span>
-                  <h2 className="text-yellow-400 font-black text-base md:text-xl flex items-center gap-1.5">
-                    التحديات المباشرة الان ({liveMatches.length})
-                  </h2>
-                </div>
-                <button
-                  onClick={() => {
-                    playSound("clickClose");
-                    setShowLiveMatchesModal(false);
-                  }}
-                  className="bg-red-600 hover:bg-red-500 text-white font-bold p-1 md:p-1.5 rounded-xl border-2 border-black transition-transform active:scale-95 shadow"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal Matches Content */}
-              <div
-                ref={liveMatchesModalContainerRef}
-                onMouseDown={handleModalMouseDown}
-                onMouseMove={handleModalMouseMove}
-                onMouseUp={handleModalMouseUpOrLeave}
-                onMouseLeave={handleModalMouseUpOrLeave}
-                className="p-2 md:p-3 overflow-y-auto flex-1 space-y-3 cursor-grab active:cursor-grabbing select-none"
-              >
-                {liveMatches.length === 0 ? (
-                  <div className="text-center py-10 text-gray-300 font-bold text-sm md:text-base">
-                    لا توجد مباريات جارية حالياً
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {liveMatches
-                      .slice((liveMatchesPage - 1) * 10, liveMatchesPage * 10)
-                      .map((match, idx) => {
-                        const p1Name = match.p1.name.length > 7 ? match.p1.name.slice(0, 7) + ".." : match.p1.name;
-                        const p2Name = match.p2.name.length > 7 ? match.p2.name.slice(0, 7) + ".." : match.p2.name;
-
-                        return (
-                          <div
-                            key={match.id || idx}
-                            className="bg-purple-950/90 Battery-border-2 border-yellow-500/70 rounded-xl p-1 flex flex-col items-center justify-between shadow-lg hover:border-yellow-400 transition-colors"
-                          >
-                          {/* Game Category Badge & Time Counter */}
-                          <div className="bg-indigo-950/90 Battery-border-2 border-yellow-400/50 rounded-full px-1.5 py-0.5 text-[10px] md:text-xs font-bold text-yellow-300 flex items-center gap-1 mb-0.5 shadow-sm">
-                            
-                            {/* رندرة الأيقونة بناءً على نوعها */}
-                            {match.gameIcon?.startsWith("/") ? (
-                              <img 
-                                src={match.gameIcon} 
-                                className="w-3.5 h-3.5 object-contain inline-block" 
-                                alt={match.gameName} 
-                              />
-                            ) : match.gameIcon === "XO" ? (
-                              <span className="flex items-center" dir="ltr">
-                                <span className="text-red-500 font-black">X</span>
-                                <span className="text-green-600 font-black">O</span>
-                              </span>
-                            ) : match.gameIcon === "IQ" ? (
-                              <span className="font-black">
-                                <span className="text-blue-500">I</span>
-                                <span className="text-purple-600">Q</span>
-                              </span>
-                            ) : (
-                              <span>{match.gameIcon}</span>
-                            )}
-
-                            <span>{match.gameName}</span>
-                            <span className="text-yellow-400/60 font-normal">|</span>
-                            <span className="text-emerald-300 font-mono flex items-center gap-0.5">
-                              <Timer className="w-3 h-3 inline" />
-                              {formatMatchTime(match.startTime)}
-                            </span>
-                          </div>
-
-                            {/* Players Matchup */}
-                            <div className="flex items-center justify-between w-full px-2 py-2 bg-black/40 rounded-lg border border-purple-800">
-                              {/* Player 1 */}
-                              <div
-                                className={`flex flex-col items-center text-center max-w-[100px] flex-1 min-w-0 ${
-                                  match.p1.serial ? "cursor-pointer hover:scale-105 active:scale-95 transition-transform" : ""
-                                }`}
-                                onClick={(e) => {
-                                  if (modalDragRef.current.hasDragged) return;
-                                  if (match.p1.serial) {
-                                    e.stopPropagation();
-                                    openPlayerProfile(match.p1.serial);
-                                  }
-                                }}
-                              >
-                                <div className="w-11 h-11 md:w-12 md:h-12 relative shrink-0">
-                                  {renderAvatarContent(
-                                    match.p1.avatar,
-                                    match.p1.level || 1,
-                                    false,
-                                    false,
-                                    match.p1.selectedFrame,
-                                    match.p1.serial,
-                                  )}
-                                </div>
-                                <span className="text-xs font-black text-white truncate max-w-full mt-1" title={match.p1.name} dir={getTextDirection(match.p1.name)}>
-                                  {p1Name}
-                                </span>
-                              </div>
-
-                              {/* VS Divider */}
-                              <div className="px-2 flex flex-col items-center shrink-0">
-                                <span className="bg-red-600 text-white font-black text-xs px-2 py-0.5 rounded-full border border-red-400 transform -rotate-3 shadow">
-                                  VS
-                                </span>
-                              </div>
-
-                              {/* Player 2 */}
-                              <div
-                                className={`flex flex-col items-center text-center max-w-[100px] flex-1 min-w-0 ${
-                                  match.p2.serial ? "cursor-pointer hover:scale-105 active:scale-95 transition-transform" : ""
-                                }`}
-                                onClick={(e) => {
-                                  if (modalDragRef.current.hasDragged) return;
-                                  if (match.p2.serial) {
-                                    e.stopPropagation();
-                                    openPlayerProfile(match.p2.serial);
-                                  }
-                                }}
-                              >
-                                <div className="w-11 h-11 md:w-12 md:h-12 relative shrink-0">
-                                  {renderAvatarContent(
-                                    match.p2.avatar,
-                                    match.p2.level || 1,
-                                    false,
-                                    false,
-                                    match.p2.selectedFrame,
-                                    match.p2.serial,
-                                  )}
-                                </div>
-                                <span className="text-xs font-black text-white truncate max-w-full mt-1" title={match.p2.name} dir={getTextDirection(match.p2.name)}>
-                                  {p2Name}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-              </div>
-
-              {/* Pagination Footer */}
-              {liveMatches.length > 10 && (
-                <div className="p-3 bg-purple-950 border-t border-purple-800 flex items-center justify-between text-white text-xs font-bold shrink-0">
-                  <button
-                    disabled={liveMatchesPage <= 1}
-                    onClick={() => {
-                      playSound("clickOpen");
-                      setLiveMatchesPage((prev) => Math.max(1, prev - 1));
-                    }}
-                    className="bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 text-black border border-black px-3 py-1 rounded-lg font-black transition-transform active:scale-95"
-                  >
-                    الصفحة السابقة
-                  </button>
-                  <span className="text-yellow-300 font-black">
-                    صفحة {liveMatchesPage} من {Math.ceil(liveMatches.length / 10)}
-                  </span>
-                  <button
-                    disabled={liveMatchesPage >= Math.ceil(liveMatches.length / 10)}
-                    onClick={() => {
-                      playSound("clickOpen");
-                      setLiveMatchesPage((prev) => Math.min(Math.ceil(liveMatches.length / 10), prev + 1));
-                    }}
-                    className="bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 text-black border border-black px-3 py-1 rounded-lg font-black transition-transform active:scale-95"
-                  >
-                    الصفحة التالية
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    );
-  };
-
   const renderDailyQuestModal = () => {
     let effectiveStreak = dailyQuestStreak;
     const now = Date.now();
@@ -13592,7 +13251,6 @@ if (data.connectFourWordsRewardLevel != null) {
       {renderPlayerProfileModal()}
       {renderFriendsModal()}
       {renderPlayerSearchModal()}
-      {renderLiveMatchesModal()}
       {renderFriendRequestsModal()}
       {renderAskFriendModal()}
       {renderGiftModal()}
@@ -17042,20 +16700,6 @@ if (data.connectFourWordsRewardLevel != null) {
                           )}
                         </button>
                         <button
-                          onClick={() => {
-                            setAdminTab("live_matches");
-                            socket?.emit(
-                              "admin_get_active_rooms",
-                              (rooms: any) => {
-                                if (Array.isArray(rooms)) setActiveRooms(rooms);
-                              },
-                            );
-                          }}
-                          className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === "live_matches" ? "bg-red-600 text-white" : "bg-red-100 text-red-600 hover:bg-red-200"}`}
-                        >
-                          المباريات المباشرة
-                        </button>
-                        <button
                           onClick={() => setAdminTab("quick_chat")}
                           className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${adminTab === "quick_chat" ? "bg-green-600 text-white" : "bg-green-100 text-green-600 hover:bg-green-200"}`}
                         >
@@ -20117,128 +19761,6 @@ if (data.connectFourWordsRewardLevel != null) {
                       luckyWheelEnabled={luckyWheelEnabled}
                       setLuckyWheelEnabled={setLuckyWheelEnabled}
                     />
-                  ) : adminTab === "live_matches" ? (
-                    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50/50 p-6">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-black text-brown-dark flex items-center gap-2">
-                          <Activity className="w-6 h-6 text-red-500" />
-                          المباريات المباشرة الجارية الآن
-                        </h3>
-                        <button
-                          onClick={() => {
-                            socket?.emit(
-                              "admin_get_active_rooms",
-                              (rooms: any) => {
-                                if (Array.isArray(rooms)) setActiveRooms(rooms);
-                              },
-                            );
-                          }}
-                          className="px-4 py-2 bg-white border-2 border-gray-100 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all flex items-center gap-2"
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                          تحديث القائمة
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto pr-2">
-                        {activeRooms.length === 0 ? (
-                          <div className="col-span-full flex flex-col items-center justify-center py-20 text-brown-light">
-                            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                              <Activity className="w-10 h-10 opacity-20" />
-                            </div>
-                            <p className="font-black text-lg">
-                              لا توجد مباريات نشطة حالياً
-                            </p>
-                            <p className="text-sm font-bold opacity-60">
-                              سيظهر هنا أي تحدي يبدأ بين لاعبين
-                            </p>
-                          </div>
-                        ) : (
-                          activeRooms.map((room) => (
-                            <motion.div
-                              key={room.id}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="bg-white rounded-3xl p-6 shadow-sm border-2 border-gray-100 hover:border-red-200 transition-all group"
-                            >
-                              <div className="flex items-center justify-between mb-4">
-                                <div className="px-3 py-1 bg-red-100 text-red-600 rounded-full text-[10px] font-black flex items-center gap-1">
-                                  <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse" />
-                                  مباشر
-                                </div>
-                                <span className="text-[10px] font-bold text-gray-400">
-                                  ID: {room.id}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center justify-center gap-4 mb-6">
-                                <div className="flex flex-col items-center gap-2 flex-1">
-                                  <div className="w-12 h-12">
-                                    {renderAvatarContent(
-                                      room.players[0]?.avatar,
-                                      getLevel(room.players[0]?.xp || 0),
-                                      false,
-                                      true,
-                                      room.players[0]?.selectedFrame,
-                                      room.players[0]?.serial,
-                                    )}
-                                  </div>
-                                  <span className="text-xs font-black text-brown-dark truncate w-full text-center">
-                                    {room.players[0]?.name}
-                                  </span>
-                                </div>
-
-                                <div className="text-xl font-black text-gray-300 italic">
-                                  VS
-                                </div>
-
-                                <div className="flex flex-col items-center gap-2 flex-1">
-                                  <div className="w-12 h-12">
-                                    {renderAvatarContent(
-                                      room.players[1]?.avatar,
-                                      getLevel(room.players[1]?.xp || 0),
-                                      false,
-                                      true,
-                                      room.players[1]?.selectedFrame,
-                                      room.players[1]?.serial,
-                                    )}
-                                  </div>
-                                  <span className="text-xs font-black text-brown-dark truncate w-full text-center">
-                                    {room.players[1]?.name || "..."}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={() => {
-                                  // Set spectating ID first to avoid race condition with room_update
-                                  updateSpectatingRoomId(room.id);
-                                  socket?.emit(
-                                    "admin_join_spectator",
-                                    room.id,
-                                    (res: any) => {
-                                      if (res.success) {
-                                        setShowAdminDashboard(false);
-                                      } else {
-                                        updateSpectatingRoomId(null);
-                                        showAlert(
-                                          res.error || "فشل الانضمام للمشاهدة",
-                                          "خطأ",
-                                        );
-                                      }
-                                    },
-                                  );
-                                }}
-                                className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black text-sm shadow-[0_4px_0_0_#b91c1c] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2"
-                              >
-                                <Eye className="w-4 h-4" />
-                                دخول لمشاهدة المباراة
-                              </button>
-                            </motion.div>
-                          ))
-                        )}
-                      </div>
-                    </div>
                   ) : adminTab === "quick_chat" ? (
                     <QuickChatManager
                       config={customConfig}
@@ -25776,198 +25298,6 @@ const renderBombPartyRewardBar = () => {
                 </div>
 
                 </div>
-
-              {/* Live Matches Slider (تحديات مباشرة الان) */}
-              {isAdmin && liveMatches && liveMatches.length > 0 && (
-                <div className="bg-purple-950/90 border-2 border-black shadow-lg mt-4 p-1 md:p-2 rounded-lg text-white relative">
-                  {/* Slider Header */}
-                  <div className="flex items-center justify-between mb-1 pb-0.5 border-b border-purple-700/60" dir="rtl">
-                    <div className="flex items-center gap-2">
-                      <span className="relative flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                      </span>
-                      <h3 className="font-black text-sm md:text-base text-yellow-300 drop-shadow-sm flex items-center gap-1">
-                        تحديات مباشرة الان
-                      </h3>
-                      <span className="bg-red-600/80 text-white font-bold text-[10px] md:text-xs px-2 py-0.5 rounded-full border border-red-400">
-                        {liveMatches.length}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        playSound("clickOpen");
-                        setShowLiveMatchesModal(true);
-                        setLiveMatchesPage(1);
-                      }}
-                      className="bg-yellow-400 hover:bg-yellow-300 text-black border border-black font-black text-[11px] md:text-xs px-2.5 py-1 rounded shadow transition-transform active:scale-95 flex items-center gap-1"
-                    >
-                      عرض المزيد
-                    </button>
-                  </div>
-
-                  {/* Slider Row with Right & Left Navigation Arrows */}
-                  <div className="flex items-center gap-1 md:gap-2 w-full relative" dir="rtl">
-                    {/* Right Arrow (Scroll right / towards start in RTL) */}
-                    <button
-                      disabled={!canScrollRight}
-                      onClick={() => {
-                        playSound("clickOpen");
-                        const el = liveMatchesSliderRef.current;
-                        if (el) {
-                          el.scrollBy({ left: 240, behavior: "smooth" });
-                          setTimeout(checkSliderScroll, 300);
-                        }
-                      }}
-                      className="h-25 w-7 flex flex-col items-center justify-center bg-purple-800 hover:bg-purple-700 disabled:opacity-30 disabled:cursor-not-allowed text-white border-2 border-yellow-500/70 p-1.5 md:p-2 rounded-lg shadow shrink-0 transition-all active:scale-95 disabled:scale-100"
-                      title="السابق (يمين)"
-                    >
-                      <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
-                    </button>
-
-                    {/* Slider Items Container */}
-                    <div
-                      ref={liveMatchesSliderRef}
-                      onScroll={checkSliderScroll}
-                      onMouseDown={handleSliderMouseDown}
-                      onMouseMove={handleSliderMouseMove}
-                      onMouseUp={handleSliderMouseUpOrLeave}
-                      onMouseLeave={handleSliderMouseUpOrLeave}
-                      className="flex gap-2 overflow-x-hidden scrollbar-none scroll-smooth pb-1 pt-1 flex-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
-                      dir="rtl"
-                    >
-                      {liveMatches.slice(0, 10).map((match, idx) => {
-                        const p1Name = match.p1.name.length > 7 ? match.p1.name.slice(0, 7) + ".." : match.p1.name;
-                        const p2Name = match.p2.name.length > 7 ? match.p2.name.slice(0, 7) + ".." : match.p2.name;
-
-                        return (
-                          <div
-                            key={match.id || idx}
-                            className="min-w-[185px] md:min-w-[200px] bg-purple-950/80 border-2 border-yellow-500/60 rounded-lg p-0.5 flex flex-col items-center justify-between shadow-md hover:border-yellow-400 transition-colors shrink-0"
-                          >
-                          {/* Game Category Badge & Time Counter */}
-                          <div className="bg-indigo-950/90 Battery-border-2 border-yellow-400/50 rounded-full px-1.5 py-0.5 text-[10px] md:text-xs font-bold text-yellow-300 flex items-center gap-1 mb-0.5 shadow-sm">
-                            
-                            {/* رندرة الأيقونة بناءً على نوعها */}
-                            {match.gameIcon?.startsWith("/") ? (
-                              <img 
-                                src={match.gameIcon} 
-                                className="w-3.5 h-3.5 object-contain inline-block" 
-                                alt={match.gameName} 
-                              />
-                            ) : match.gameIcon === "XO" ? (
-                              <span className="flex items-center" dir="ltr">
-                                <span className="text-red-500 font-black">X</span>
-                                <span className="text-green-600 font-black">O</span>
-                              </span>
-                            ) : match.gameIcon === "IQ" ? (
-                              <span className="font-black">
-                                <span className="text-blue-500">I</span>
-                                <span className="text-purple-600">Q</span>
-                              </span>
-                            ) : (
-                              <span>{match.gameIcon}</span>
-                            )}
-
-                            <span>{match.gameName}</span>
-                            <span className="text-yellow-400/60 font-normal">|</span>
-                            <span className="text-emerald-300 font-mono flex items-center gap-0.5">
-                              <Timer className="w-3 h-3 inline" />
-                              {formatMatchTime(match.startTime)}
-                            </span>
-                          </div>
-
-
-                            {/* Players VS section */}
-                            <div className="flex items-center justify-between w-full px-1 py-1 bg-black/30 rounded border border-purple-800/50">
-                              {/* Player 1 */}
-                              <div
-                                className={`flex flex-col items-center min-w-0 max-w-[80px] ${
-                                  match.p1.serial ? "cursor-pointer hover:scale-105 active:scale-95 transition-transform" : ""
-                                }`}
-                                onClick={(e) => {
-                                  if (sliderDragRef.current.hasDragged) return;
-                                  if (match.p1.serial) {
-                                    e.stopPropagation();
-                                    openPlayerProfile(match.p1.serial);
-                                  }
-                                }}
-                              >
-                                <div className="w-9 h-9 md:w-10 md:h-10 relative shrink-0">
-                                  {renderAvatarContent(
-                                    match.p1.avatar,
-                                    match.p1.level || 1,
-                                    false,
-                                    false,
-                                    match.p1.selectedFrame,
-                                    match.p1.serial,
-                                  )}
-                                </div>
-                                <span className="text-[11px] font-black text-white truncate max-w-full mt-0.5" title={match.p1.name} dir={getTextDirection(match.p1.name)}>
-                                  {p1Name}
-                                </span>
-                              </div>
-
-                              {/* VS indicator */}
-                              <div className="flex flex-col items-center justify-center px-1">
-                                <span className="bg-red-600 text-white font-black text-[10px] md:text-xs px-1.5 py-0.5 rounded shadow border border-red-400 transform -rotate-3">
-                                  VS
-                                </span>
-                              </div>
-
-                              {/* Player 2 */}
-                              <div
-                                className={`flex flex-col items-center min-w-0 max-w-[80px] ${
-                                  match.p2.serial ? "cursor-pointer hover:scale-105 active:scale-95 transition-transform" : ""
-                                }`}
-                                onClick={(e) => {
-                                  if (sliderDragRef.current.hasDragged) return;
-                                  if (match.p2.serial) {
-                                    e.stopPropagation();
-                                    openPlayerProfile(match.p2.serial);
-                                  }
-                                }}
-                              >
-                                <div className="w-9 h-9 md:w-10 md:h-10 relative shrink-0">
-                                  {renderAvatarContent(
-                                    match.p2.avatar,
-                                    match.p2.level || 1,
-                                    false,
-                                    false,
-                                    match.p2.selectedFrame,
-                                    match.p2.serial,
-                                  )}
-                                </div>
-                                <span className="text-[11px] font-black text-white truncate max-w-full mt-0.5" title={match.p2.name} dir={getTextDirection(match.p2.name)}>
-                                  {p2Name}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Left Arrow (Scroll left / towards end in RTL) */}
-                    <button
-                      disabled={!canScrollLeft}
-                      onClick={() => {
-                        playSound("clickOpen");
-                        const el = liveMatchesSliderRef.current;
-                        if (el) {
-                          el.scrollBy({ left: -240, behavior: "smooth" });
-                          setTimeout(checkSliderScroll, 300);
-                        }
-                      }}
-                      className="h-25 w-7 flex flex-col items-center justify-center bg-purple-800 hover:bg-purple-700 disabled:opacity-30 disabled:cursor-not-allowed text-white border-2 border-yellow-500/70 p-1.5 md:p-2 rounded-lg shadow shrink-0 transition-all active:scale-95 disabled:scale-100"
-                      title="التالي (يسار)"
-                    >
-                      <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
-                    </button>
-                  </div>
-                </div>
-              )}
 
               <div className="play-bg border-2 border-black shadow-lg mt-4 p-0.5 md:p-2">
                 <div className="p-1 flex flex-wrap relative items-center justify-center">
