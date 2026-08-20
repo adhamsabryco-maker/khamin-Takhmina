@@ -1485,7 +1485,10 @@ async function startServer() {
 
     app.get("/api/config", (req, res) => {
       res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
-      res.json(configCache);
+      res.json({
+        ...configCache,
+        maintenance: process.env.MAINTENANCE_MODE === "true",
+      });
     });
 
     app.get("/api/admin/bot-answers", (req, res) => {
@@ -2830,6 +2833,7 @@ async function startServer() {
 
     let isUploadingDb = false;
     let dbIsDirty = false;
+    let flushAllPendingPlayerWrites: () => void = () => {};
 
     async function syncDbToSupabase(force = false, isShutdown = false) {
       console.log(`[DB] syncDbToSupabase triggered (force=${force}, isShutdown=${isShutdown}, isProduction=${isProduction}, supabase=${!!supabase}, dbIsDirty=${dbIsDirty}, isUploadingDb=${isUploadingDb})`);
@@ -2848,6 +2852,9 @@ async function startServer() {
       isUploadingDb = true;
 
       try {
+        if (typeof flushAllPendingPlayerWrites === "function") {
+          flushAllPendingPlayerWrites();
+        }
         console.log(`[DB] Step 1: Flushing WAL synchronously...`);
         try {
           if (db) {
@@ -4412,110 +4419,249 @@ async function startServer() {
       return [];
     }
 
-    function savePlayerData(serial: string) {
+    const pendingWrites = new Map<string, NodeJS.Timeout>();
+
+    flushAllPendingPlayerWrites = () => {
+      if (pendingWrites.size === 0) return;
+      console.log(`[DB] Flushing ${pendingWrites.size} pending player writes immediately...`);
+      for (const [serial, timeout] of pendingWrites.entries()) {
+        clearTimeout(timeout);
+        try {
+          const player = allPlayers.get(serial);
+          if (player) {
+            insertPlayer.run({
+              ...player,
+              gender: player.gender || "boy",
+              fingerprint: player.fingerprint || null,
+              ip: player.ip || null,
+              reportedBy: JSON.stringify(player.reportedBy || []),
+              email: player.email || null,
+              isAdmin: player.isAdmin ? 1 : 0,
+              tokens: player.tokens || 0,
+              randomXp:
+                player.randomXp !== undefined ? player.randomXp : player.xp || 0,
+              adsWatchedToday: player.adsWatchedToday || 0,
+              lastAdWatchDate: player.lastAdWatchDate || null,
+              keyAdsWatchedToday: player.keyAdsWatchedToday || 0,
+              lastKeyAdWatchDate: player.lastKeyAdWatchDate || null,
+              ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
+              dailyQuestStreak: player.dailyQuestStreak || 1,
+              streak: player.streak || 0,
+              lastDailyClaim: player.lastDailyClaim || 0,
+              weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
+              lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0,
+              proPackageExpiry: player.proPackageExpiry || 0,
+              unlockedHelpersExpiry: player.unlockedHelpersExpiry || 0,
+              claimedRewards: JSON.stringify(player.claimedRewards || []),
+              lastRenameAt: player.lastRenameAt || 0,
+              lastRenameUnlockMonth: player.lastRenameUnlockMonth || null,
+              pendingAvatar: player.pendingAvatar || null,
+              avatarStatus: player.avatarStatus || "approved",
+              lastComplaintAt: player.lastComplaintAt || 0,
+              lastContactAt: player.lastContactAt || 0,
+              blockedSerials: JSON.stringify(player.blockedSerials || []),
+              blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
+              recentOpponents: JSON.stringify(player.recentOpponents || []),
+              reportedSerials: JSON.stringify(player.reportedSerials || []),
+              selectedFrame: player.selectedFrame || "",
+              lastRainGiftResetDay: player.lastRainGiftResetDay || null,
+              rainGiftTokens: player.rainGiftTokens || 0,
+              rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
+              rainGiftClaimedDay: player.rainGiftClaimedDay || null,
+              notificationsEnabled:
+                player.notificationsEnabled !== undefined
+                  ? player.notificationsEnabled
+                  : 0,
+              hideMyInfo: player.hideMyInfo !== undefined ? player.hideMyInfo : 0,
+              hideFriendRequests: player.hideFriendRequests !== undefined ? player.hideFriendRequests : 0,
+              disableGuessChat: player.disableGuessChat !== undefined ? player.disableGuessChat : 0,
+              secretToken: player.secretToken || null,
+              lastSpinDate: player.lastSpinDate || null,
+              dailySpinCount: player.dailySpinCount || 0,
+              freeSpinUsed: player.freeSpinUsed || 0,
+              luckyWheelTokens: player.luckyWheelTokens || 0,
+              luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
+              lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
+              luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
+              citySearchRewards: JSON.stringify(player.citySearchRewards || []),
+              keys: player.keys || 0,
+              likes: player.likes || 0,
+              lastActiveAt: player.lastActiveAt || 0,
+              busCompleteWins: player.busCompleteWins || 0,
+              busCompleteUsedLetters: JSON.stringify(
+                player.busCompleteUsedLetters || [],
+              ),
+              busCompleteRewardLevel: player.busCompleteRewardLevel || 1,
+              busCompleteMatchPoints: player.busCompleteMatchPoints || 0,
+              busCompleteExpiring: JSON.stringify(player.busCompleteExpiring || []),
+              xoWins: player.xoWins || 0,
+              xoRewardLevel: player.xoRewardLevel || 1,
+              xoMatchPoints: player.xoMatchPoints || 0,
+              handWins: player.handWins || 0,
+              handRewardLevel: player.handRewardLevel || 1,
+              handMatchPoints: player.handMatchPoints || 0,
+              iqWins: player.iqWins || 0,
+              iqRewardLevel: player.iqRewardLevel || 1,
+              iqMatchPoints: player.iqMatchPoints || 0,
+              dotsWins: player.dotsWins || 0,
+              dotsRewardLevel: player.dotsRewardLevel || 1,
+              dotsMatchPoints: player.dotsMatchPoints || 0,
+              speedCupsWins: player.speedCupsWins || 0,
+              speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
+              speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
+              bombPartyWins: player.bombPartyWins || 0,
+              wordleWins: player.wordleWins || 0,
+              wordleRewardLevel: player.wordleRewardLevel || 1,
+              wordleMatchPoints: player.wordleMatchPoints || 0,
+              connectFourWordsWins: player.connectFourWordsWins || 0,
+              connectFourWordsRewardLevel: player.connectFourWordsRewardLevel || 1,
+              connectFourWordsMatchPoints: player.connectFourWordsMatchPoints || 0,
+              spaceWarWins: player.spaceWarWins || 0,
+              spaceWarRewardLevel: player.spaceWarRewardLevel || 1,
+              spaceWarMatchPoints: player.spaceWarMatchPoints || 0,
+              puzzleWins: player.puzzleWins || 0,
+              puzzleRewardLevel: player.puzzleRewardLevel || 1,
+              puzzleMatchPoints: player.puzzleMatchPoints || 0,
+              beachRaceWins: player.beachRaceWins || 0,
+              beachRaceRewardLevel: player.beachRaceRewardLevel || 1,
+              beachRaceMatchPoints: player.beachRaceMatchPoints || 0,
+            });
+          }
+        } catch (e) {
+          console.error(`[DB] Error flushing pending write for ${serial}:`, e);
+        }
+      }
+      pendingWrites.clear();
+      invalidateTopPlayersCache();
+    };
+
+    function savePlayerData(serial: string, immediate = false) {
       try {
         const player = allPlayers.get(serial);
         if (!player) return;
 
-        insertPlayer.run({
-          ...player,
-          gender: player.gender || "boy",
-          fingerprint: player.fingerprint || null,
-          ip: player.ip || null,
-          reportedBy: JSON.stringify(player.reportedBy || []),
-          email: player.email || null,
-          isAdmin: player.isAdmin ? 1 : 0,
-          tokens: player.tokens || 0,
-          randomXp:
-            player.randomXp !== undefined ? player.randomXp : player.xp || 0,
-          adsWatchedToday: player.adsWatchedToday || 0,
-          lastAdWatchDate: player.lastAdWatchDate || null,
-          keyAdsWatchedToday: player.keyAdsWatchedToday || 0,
-          lastKeyAdWatchDate: player.lastKeyAdWatchDate || null,
-          ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
-          dailyQuestStreak: player.dailyQuestStreak || 1,
-          streak: player.streak || 0,
-          lastDailyClaim: player.lastDailyClaim || 0,
-          weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
-          lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0,
-          proPackageExpiry: player.proPackageExpiry || 0,
-          unlockedHelpersExpiry: player.unlockedHelpersExpiry || 0,
-          claimedRewards: JSON.stringify(player.claimedRewards || []),
-          lastRenameAt: player.lastRenameAt || 0,
-          lastRenameUnlockMonth: player.lastRenameUnlockMonth || null,
-          pendingAvatar: player.pendingAvatar || null,
-          avatarStatus: player.avatarStatus || "approved",
-          lastComplaintAt: player.lastComplaintAt || 0,
-          lastContactAt: player.lastContactAt || 0,
-          blockedSerials: JSON.stringify(player.blockedSerials || []),
-          blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
-          recentOpponents: JSON.stringify(player.recentOpponents || []),
-          reportedSerials: JSON.stringify(player.reportedSerials || []),
-          selectedFrame: player.selectedFrame || "",
-          lastRainGiftResetDay: player.lastRainGiftResetDay || null,
-          rainGiftTokens: player.rainGiftTokens || 0,
-          rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
-          rainGiftClaimedDay: player.rainGiftClaimedDay || null,
-          notificationsEnabled:
-            player.notificationsEnabled !== undefined
-              ? player.notificationsEnabled
-              : 0,
-          hideMyInfo: player.hideMyInfo !== undefined ? player.hideMyInfo : 0,
-          hideFriendRequests: player.hideFriendRequests !== undefined ? player.hideFriendRequests : 0,
-          disableGuessChat: player.disableGuessChat !== undefined ? player.disableGuessChat : 0,
-          secretToken: player.secretToken || null,
-          lastSpinDate: player.lastSpinDate || null,
-          dailySpinCount: player.dailySpinCount || 0,
-          freeSpinUsed: player.freeSpinUsed || 0,
-          luckyWheelTokens: player.luckyWheelTokens || 0,
-          luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
-          lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
-          luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
-          citySearchRewards: JSON.stringify(player.citySearchRewards || []),
-          keys: player.keys || 0,
-          likes: player.likes || 0,
-          lastActiveAt: player.lastActiveAt || 0,
-          busCompleteWins: player.busCompleteWins || 0,
-          busCompleteUsedLetters: JSON.stringify(
-            player.busCompleteUsedLetters || [],
-          ),
-          busCompleteRewardLevel: player.busCompleteRewardLevel || 1,
-          busCompleteMatchPoints: player.busCompleteMatchPoints || 0,
-          busCompleteExpiring: JSON.stringify(player.busCompleteExpiring || []),
-          xoWins: player.xoWins || 0,
-          xoRewardLevel: player.xoRewardLevel || 1,
-          xoMatchPoints: player.xoMatchPoints || 0,
-          handWins: player.handWins || 0,
-          handRewardLevel: player.handRewardLevel || 1,
-          handMatchPoints: player.handMatchPoints || 0,
-          iqWins: player.iqWins || 0,
-          iqRewardLevel: player.iqRewardLevel || 1,
-          iqMatchPoints: player.iqMatchPoints || 0,
-          dotsWins: player.dotsWins || 0,
-          dotsRewardLevel: player.dotsRewardLevel || 1,
-          dotsMatchPoints: player.dotsMatchPoints || 0,
-          speedCupsWins: player.speedCupsWins || 0,
-          speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
-          speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
-          bombPartyWins: player.bombPartyWins || 0,
-          wordleWins: player.wordleWins || 0,
-          wordleRewardLevel: player.wordleRewardLevel || 1,
-          wordleMatchPoints: player.wordleMatchPoints || 0,
-          connectFourWordsWins: player.connectFourWordsWins || 0,
-          connectFourWordsRewardLevel: player.connectFourWordsRewardLevel || 1,
-          connectFourWordsMatchPoints: player.connectFourWordsMatchPoints || 0,
-          spaceWarWins: player.spaceWarWins || 0,
-          spaceWarRewardLevel: player.spaceWarRewardLevel || 1,
-          spaceWarMatchPoints: player.spaceWarMatchPoints || 0,
-          puzzleWins: player.puzzleWins || 0,
-          puzzleRewardLevel: player.puzzleRewardLevel || 1,
-          puzzleMatchPoints: player.puzzleMatchPoints || 0,
-          beachRaceWins: player.beachRaceWins || 0,
-          beachRaceRewardLevel: player.beachRaceRewardLevel || 1,
-          beachRaceMatchPoints: player.beachRaceMatchPoints || 0,
-        });
-        invalidateTopPlayersCache();
-        triggerSyncToSupabase();
+        const performWrite = () => {
+          pendingWrites.delete(serial);
+          try {
+            insertPlayer.run({
+              ...player,
+              gender: player.gender || "boy",
+              fingerprint: player.fingerprint || null,
+              ip: player.ip || null,
+              reportedBy: JSON.stringify(player.reportedBy || []),
+              email: player.email || null,
+              isAdmin: player.isAdmin ? 1 : 0,
+              tokens: player.tokens || 0,
+              randomXp:
+                player.randomXp !== undefined ? player.randomXp : player.xp || 0,
+              adsWatchedToday: player.adsWatchedToday || 0,
+              lastAdWatchDate: player.lastAdWatchDate || null,
+              keyAdsWatchedToday: player.keyAdsWatchedToday || 0,
+              lastKeyAdWatchDate: player.lastKeyAdWatchDate || null,
+              ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
+              dailyQuestStreak: player.dailyQuestStreak || 1,
+              streak: player.streak || 0,
+              lastDailyClaim: player.lastDailyClaim || 0,
+              weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
+              lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0,
+              proPackageExpiry: player.proPackageExpiry || 0,
+              unlockedHelpersExpiry: player.unlockedHelpersExpiry || 0,
+              claimedRewards: JSON.stringify(player.claimedRewards || []),
+              lastRenameAt: player.lastRenameAt || 0,
+              lastRenameUnlockMonth: player.lastRenameUnlockMonth || null,
+              pendingAvatar: player.pendingAvatar || null,
+              avatarStatus: player.avatarStatus || "approved",
+              lastComplaintAt: player.lastComplaintAt || 0,
+              lastContactAt: player.lastContactAt || 0,
+              blockedSerials: JSON.stringify(player.blockedSerials || []),
+              blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
+              recentOpponents: JSON.stringify(player.recentOpponents || []),
+              reportedSerials: JSON.stringify(player.reportedSerials || []),
+              selectedFrame: player.selectedFrame || "",
+              lastRainGiftResetDay: player.lastRainGiftResetDay || null,
+              rainGiftTokens: player.rainGiftTokens || 0,
+              rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
+              rainGiftClaimedDay: player.rainGiftClaimedDay || null,
+              notificationsEnabled:
+                player.notificationsEnabled !== undefined
+                  ? player.notificationsEnabled
+                  : 0,
+              hideMyInfo: player.hideMyInfo !== undefined ? player.hideMyInfo : 0,
+              hideFriendRequests: player.hideFriendRequests !== undefined ? player.hideFriendRequests : 0,
+              disableGuessChat: player.disableGuessChat !== undefined ? player.disableGuessChat : 0,
+              secretToken: player.secretToken || null,
+              lastSpinDate: player.lastSpinDate || null,
+              dailySpinCount: player.dailySpinCount || 0,
+              freeSpinUsed: player.freeSpinUsed || 0,
+              luckyWheelTokens: player.luckyWheelTokens || 0,
+              luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
+              lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
+              luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
+              citySearchRewards: JSON.stringify(player.citySearchRewards || []),
+              keys: player.keys || 0,
+              likes: player.likes || 0,
+              lastActiveAt: player.lastActiveAt || 0,
+              busCompleteWins: player.busCompleteWins || 0,
+              busCompleteUsedLetters: JSON.stringify(
+                player.busCompleteUsedLetters || [],
+              ),
+              busCompleteRewardLevel: player.busCompleteRewardLevel || 1,
+              busCompleteMatchPoints: player.busCompleteMatchPoints || 0,
+              busCompleteExpiring: JSON.stringify(player.busCompleteExpiring || []),
+              xoWins: player.xoWins || 0,
+              xoRewardLevel: player.xoRewardLevel || 1,
+              xoMatchPoints: player.xoMatchPoints || 0,
+              handWins: player.handWins || 0,
+              handRewardLevel: player.handRewardLevel || 1,
+              handMatchPoints: player.handMatchPoints || 0,
+              iqWins: player.iqWins || 0,
+              iqRewardLevel: player.iqRewardLevel || 1,
+              iqMatchPoints: player.iqMatchPoints || 0,
+              dotsWins: player.dotsWins || 0,
+              dotsRewardLevel: player.dotsRewardLevel || 1,
+              dotsMatchPoints: player.dotsMatchPoints || 0,
+              speedCupsWins: player.speedCupsWins || 0,
+              speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
+              speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
+              bombPartyWins: player.bombPartyWins || 0,
+              wordleWins: player.wordleWins || 0,
+              wordleRewardLevel: player.wordleRewardLevel || 1,
+              wordleMatchPoints: player.wordleMatchPoints || 0,
+              connectFourWordsWins: player.connectFourWordsWins || 0,
+              connectFourWordsRewardLevel: player.connectFourWordsRewardLevel || 1,
+              connectFourWordsMatchPoints: player.connectFourWordsMatchPoints || 0,
+              spaceWarWins: player.spaceWarWins || 0,
+              spaceWarRewardLevel: player.spaceWarRewardLevel || 1,
+              spaceWarMatchPoints: player.spaceWarMatchPoints || 0,
+              puzzleWins: player.puzzleWins || 0,
+              puzzleRewardLevel: player.puzzleRewardLevel || 1,
+              puzzleMatchPoints: player.puzzleMatchPoints || 0,
+              beachRaceWins: player.beachRaceWins || 0,
+              beachRaceRewardLevel: player.beachRaceRewardLevel || 1,
+              beachRaceMatchPoints: player.beachRaceMatchPoints || 0,
+            });
+            invalidateTopPlayersCache();
+            triggerSyncToSupabase();
+          } catch (err) {
+            console.error(`Deferred write failed for ${serial}:`, err);
+          }
+        };
+
+        if (immediate) {
+          const pending = pendingWrites.get(serial);
+          if (pending) {
+            clearTimeout(pending);
+            pendingWrites.delete(serial);
+          }
+          performWrite();
+        } else {
+          const pending = pendingWrites.get(serial);
+          if (pending) {
+            clearTimeout(pending);
+          }
+          const timeout = setTimeout(performWrite, 3000); // 3 seconds debounce
+          pendingWrites.set(serial, timeout);
+        }
       } catch (err) {
         console.error(`Failed to save player data for ${serial}:`, err);
       }
@@ -11546,6 +11692,21 @@ async function startServer() {
 
     io.on("connection", (socket) => {
       console.log("User connected:", socket.id);
+
+      // Strip heavy/unneeded player data from player_data_update emissions to save bandwidth
+      const originalEmit = socket.emit;
+      socket.emit = function (event, ...args) {
+        if (event === "player_data_update" && args[0] && typeof args[0] === "object") {
+          const stripped = { ...args[0] };
+          delete stripped.friends;
+          delete stripped.matches;
+          delete stripped.achievements;
+          delete stripped.recentOpponents;
+          args[0] = stripped;
+        }
+        return originalEmit.apply(this, [event, ...args]);
+      };
+
       broadcastOnlineCount();
 
       socket.emit("live_matches_update", getActiveLiveMatchesGlobal());
