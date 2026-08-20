@@ -1564,8 +1564,7 @@ export default function App() {
     };
 
     if (initialVersion) {
-      checkVersion();
-      // Periodically check version every 15 minutes (or rely on socket reload triggers)
+      // Periodically check version every 15 minutes (we skip immediate boot check to save bandwidth since we just fetched config)
       const interval = setInterval(checkVersion, 15 * 60 * 1000);
       return () => clearInterval(interval);
     }
@@ -3882,10 +3881,26 @@ export default function App() {
     }
   };
 
-  const [playerCollection, setPlayerCollection] = useState<any[]>([]);
-  const [claimedCollectionRewards, setClaimedCollectionRewards] = useState<
-    any[]
-  >([]);
+  const [playerCollection, setPlayerCollection] = useState<any[]>(() => {
+    try {
+      const serial = localStorage.getItem("khamin_player_serial");
+      if (serial) {
+        const cached = localStorage.getItem(`khamin_collection_cache_${serial}`);
+        return cached ? JSON.parse(cached) : [];
+      }
+    } catch (e) {}
+    return [];
+  });
+  const [claimedCollectionRewards, setClaimedCollectionRewards] = useState<any[]>(() => {
+    try {
+      const serial = localStorage.getItem("khamin_player_serial");
+      if (serial) {
+        const cached = localStorage.getItem(`khamin_claimed_cache_${serial}`);
+        return cached ? JSON.parse(cached) : [];
+      }
+    } catch (e) {}
+    return [];
+  });
   const [seenCategoryCounts, setSeenCategoryCounts] = useState<
     Record<string, number>
   >(() => {
@@ -5681,7 +5696,18 @@ export default function App() {
   }, [room?.gameState, roomId, socket]);
 
   useEffect(() => {
-    const fetchCats = () => {
+    const fetchCats = (force = false) => {
+      if (!force) {
+        const cached = localStorage.getItem("khamin_categories_cache");
+        const cachedTime = localStorage.getItem("khamin_categories_cache_time");
+        if (cached && cachedTime) {
+          const age = Date.now() - parseInt(cachedTime, 10);
+          if (age < 30 * 60 * 1000) {
+            // Cache is young enough, skip API call
+            return;
+          }
+        }
+      }
       fetch(apiUrl("/api/categories"))
         .then((res) => res.json())
         .then((data) => {
@@ -5689,18 +5715,20 @@ export default function App() {
             setCategories(data);
             try {
               localStorage.setItem("khamin_categories_cache", JSON.stringify(data));
+              localStorage.setItem("khamin_categories_cache_time", Date.now().toString());
             } catch (e) {}
           }
         })
         .catch((err) => console.error("Failed to fetch categories:", err));
     };
 
-    fetchCats();
+    fetchCats(false);
 
     if (socket) {
-      socket.on("categories_updated", fetchCats);
+      const handleCatsUpdated = () => fetchCats(true);
+      socket.on("categories_updated", handleCatsUpdated);
       return () => {
-        socket.off("categories_updated", fetchCats);
+        socket.off("categories_updated", handleCatsUpdated);
       };
     }
   }, [socket]);
@@ -6754,16 +6782,42 @@ export default function App() {
     if (
       !force &&
       lastFetchedCollectionTimeRef.current[serial] &&
-      now - lastFetchedCollectionTimeRef.current[serial] < 24 * 60 * 60 * 1000 // 24 hours
+      now - lastFetchedCollectionTimeRef.current[serial] < 10 * 60 * 1000 // 10 minutes cache
     ) {
       return;
     }
+
+    // Check localStorage cache if not forced
+    if (!force) {
+      const cachedTime = localStorage.getItem(`khamin_collection_cache_time_${serial}`);
+      if (cachedTime) {
+        const age = now - parseInt(cachedTime, 10);
+        if (age < 10 * 60 * 1000) {
+          lastFetchedCollectionTimeRef.current[serial] = parseInt(cachedTime, 10);
+          return;
+        }
+      }
+    }
+
     lastFetchedCollectionTimeRef.current[serial] = now;
     try {
       const res = await fetch(apiUrl(`/api/collection/${serial}`));
       const data = await res.json();
-      if (data.collection) setPlayerCollection(data.collection);
-      if (data.claimed) setClaimedCollectionRewards(data.claimed);
+      if (data.collection) {
+        setPlayerCollection(data.collection);
+        try {
+          localStorage.setItem(`khamin_collection_cache_${serial}`, JSON.stringify(data.collection));
+        } catch (e) {}
+      }
+      if (data.claimed) {
+        setClaimedCollectionRewards(data.claimed);
+        try {
+          localStorage.setItem(`khamin_claimed_cache_${serial}`, JSON.stringify(data.claimed));
+        } catch (e) {}
+      }
+      try {
+        localStorage.setItem(`khamin_collection_cache_time_${serial}`, now.toString());
+      } catch (e) {}
     } catch (error) {
       console.error("Fetch collection failed", error);
     }
@@ -8851,13 +8905,9 @@ if (data.connectFourWordsRewardLevel != null) {
         setLoadingStatus("جاري الاتصال بالسيرفر...");
         setLoadingProgress(10);
 
-        // Fetch config from server
-        const response = await fetch(apiUrl("/api/config"));
-        if (!response.ok) throw new Error("Failed to fetch config");
-        const config = await response.json();
-        try {
-          localStorage.setItem("khamin_config_cache", JSON.stringify(config));
-        } catch (e) {}
+        // Fetch config from server (reusing refreshConfig from AvatarContext)
+        const config = await refreshConfig();
+        if (!config) throw new Error("Failed to fetch config");
 
         // Try to subscribe to push notifications
         // We do it after a short delay to not block loading
@@ -8867,26 +8917,20 @@ if (data.connectFourWordsRewardLevel != null) {
         setGameVersion(serverVersion);
         setLoadingProgress(50);
 
-        // Check maintenance mode
+        // Check maintenance mode using config.maintenance instead of making a separate request
         try {
-          const maintenanceResponse = await fetch(
-            apiUrl("/api/maintenance"),
-          );
-          if (maintenanceResponse.ok) {
-            const maintenanceData = await maintenanceResponse.json();
-            const params = new URLSearchParams(window.location.search);
-            const isAdminInUrl = params.get("isAdmin") === "true";
+          const params = new URLSearchParams(window.location.search);
+          const isAdminInUrl = params.get("isAdmin") === "true";
 
-            if (maintenanceData.maintenance) {
-              if (!isAdmin && !isAdminInUrl) {
-                setIsMaintenanceMode(true);
-                setIsAppLoading(false);
-                return;
-              }
+          if (config.maintenance) {
+            if (!isAdmin && !isAdminInUrl) {
+              setIsMaintenanceMode(true);
+              setIsAppLoading(false);
+              return;
             }
           }
         } catch (err) {
-          console.error("Failed to check maintenance mode:", err);
+          console.error("Failed to check maintenance mode from config:", err);
         }
 
         // Check if we need to force update (reload)
