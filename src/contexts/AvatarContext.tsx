@@ -13,26 +13,37 @@ export const AvatarProvider = ({ children }: { children: React.ReactNode }) => {
     }
   });
 
-  const refreshConfig = () => {
-    fetch(apiUrl('/api/config'))
-      .then(res => res.json())
-      .then(data => {
-        if (data && typeof data === 'object') {
-          setCustomConfig(data);
-          try {
-            localStorage.setItem("khamin_config_cache", JSON.stringify(data));
-          } catch (e) {}
-        }
-      })
-      .catch(err => console.error("Failed to load config:", err));
+  const updateConfig = (newConfig: any) => {
+    if (newConfig && typeof newConfig === 'object') {
+      setCustomConfig(newConfig);
+      try {
+        localStorage.setItem("khamin_config_cache", JSON.stringify(newConfig));
+      } catch (e) {}
+    }
+  };
+
+  const refreshConfig = async () => {
+    try {
+      const res = await fetch(apiUrl('/api/config'));
+      const data = await res.json();
+      updateConfig(data);
+      return data;
+    } catch (err) {
+      console.error("Failed to load config:", err);
+      return customConfig;
+    }
   };
 
   useEffect(() => {
-    refreshConfig();
+    // Only auto-fetch if we have no cached config
+    const cached = localStorage.getItem("khamin_config_cache");
+    if (!cached) {
+      refreshConfig();
+    }
   }, []);
 
   return (
-    <AvatarContext.Provider value={{ customConfig, refreshConfig, setCustomConfig }}>
+    <AvatarContext.Provider value={{ customConfig, refreshConfig, setCustomConfig, updateConfig }}>
       {children}
     </AvatarContext.Provider>
   );
