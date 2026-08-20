@@ -1894,8 +1894,8 @@ export default function App() {
   const isOpponentWatchingAdInRoom = (roomObj: any, currentSocketId?: string, currentUserId?: string) => {
     if (!roomObj || !roomObj.adPausedPlayersArray || roomObj.adPausedPlayersArray.length === 0) return false;
     return roomObj.adPausedPlayersArray.some((id: string) => {
-      if (id === currentSocketId || id === currentUserId) return false;
-      const p = roomObj.players?.find((pl: any) => pl.id === id || pl.socketId === id);
+      if (id && (id === currentSocketId || id === currentUserId)) return false;
+      const p = roomObj.players?.find((pl: any) => pl.id === id || pl.socketId === id || pl.serial === id);
       return p && !p.isBot;
     });
   };
@@ -28520,35 +28520,17 @@ const renderBombPartyRewardBar = () => {
                           })()}
                         </div>
                         {room.dotsLevel < 3 && (
-                          <div className="flex flex-col gap-2.5 w-full max-w-sm mt-4 mx-auto">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  playSound("clickOpen");
-                                  socket?.emit("play_again", { roomId: room.id });
-                                }}
-                                className="flex-1 btn-game bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-[0_4px_0_0_#d1d5db] active:shadow-transparent py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5"
-                              >
-                                تغيير اللعبة
-                              </button>
-                              <button
-                                onClick={() => {
-                                  playSound("clickOpen");
-                                  socket?.emit("restart_dots", { roomId: room.id });
-                                }}
-                                disabled={isOpponentWatchingAdInRoom(room, socket?.id, playerSerial)}
-                                className="flex-1 btn-game bg-blue-100 hover:bg-blue-200 text-blue-700 shadow-[0_4px_0_0_#93c5fd] active:shadow-transparent py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5"
-                              >
-                                {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) ? "انتظر! المنافس يشاهد إعلان 📺"
-                                  : `انتقل الي المستوي ${(room.dotsLevel || 1) + 1}`}
-                              </button>
-                            </div>
-                            <button
-                              onClick={handleLeaveGame}
-                              className="w-full btn-game bg-red-100 hover:bg-red-200 text-red-600 shadow-[0_4px_0_0_#fca5a5] active:shadow-transparent py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5"
-                            >
-                              🚪 خروج للرئيسية
-                            </button>
+                          <div className="w-full max-w-sm mt-4 mx-auto px-2">
+                            <GameEndControls
+                              room={room}
+                              socket={socket}
+                              myId={socket?.id}
+                              playerSerial={playerSerial}
+                              rematchLabel={`انتقل الي المستوي ${(room.dotsLevel || 1) + 1}`}
+                              onRematch={() => socket?.emit("restart_dots", { roomId: room.id })}
+                              onLeaveGame={handleLeaveGame}
+                              playSound={playSound}
+                            />
                           </div>
                         )}
                       </React.Fragment>
@@ -29429,7 +29411,7 @@ const renderBombPartyRewardBar = () => {
                     </div>
                   </div>
 
-                  {((room.adPausedPlayersArray?.length || 0) > 0) && !room.adPausedPlayersArray?.includes(socket?.id) && (
+                  {isOpponentWatchingAdInRoom(room, socket?.id, playerSerial) && (
                     <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-bold p-2 rounded-xl mb-3 flex items-center justify-center gap-1 animate-pulse">
                       انتظر قليلا! اللاعب ({room.players?.find((p: any) => room.adPausedPlayersArray?.includes(p.id))?.name || "الآخر"}) يشاهد إعلان قصير 📺
                     </div>
