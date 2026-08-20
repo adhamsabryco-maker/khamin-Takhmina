@@ -7,11 +7,13 @@ export const isOpponentWatchingAdInRoom = (
 ): boolean => {
   if (!roomObj || !roomObj.adPausedPlayersArray || roomObj.adPausedPlayersArray.length === 0) return false;
   return roomObj.adPausedPlayersArray.some((id: string) => {
-    if (id === currentSocketId || id === currentUserId) return false;
+    if (id && (id === currentSocketId || id === currentUserId)) return false;
     const p = roomObj.players?.find((pl: any) => pl.id === id || pl.socketId === id || pl.serial === id);
     return p && !p.isBot;
   });
 };
+
+export const isAnyPlayerWatchingAdInRoom = isOpponentWatchingAdInRoom;
 
 export interface GameEndControlsProps {
   room: any;
@@ -90,6 +92,9 @@ export const GameEndControls: React.FC<GameEndControlsProps> = ({
 
   const handleChangeGame = (e?: React.MouseEvent) => {
     e?.stopPropagation();
+    try {
+      localStorage.removeItem("khamin_pending_match_ad");
+    } catch (err) {}
     if (playSound) playSound("clickOpen");
     if (onChangeGame) {
       onChangeGame();
@@ -182,3 +187,4 @@ export const GameEndControls: React.FC<GameEndControlsProps> = ({
     </div>
   );
 };
+
