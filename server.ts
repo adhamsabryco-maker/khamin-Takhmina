@@ -285,7 +285,6 @@ try {
 }
 
 let getActiveUsedNamesGlobal: () => Set<string> = () => new Set();
-let getActiveLiveMatchesGlobal: () => any[] = () => [];
 
 function getRandomBotName(gender: string, extraExcluded?: string[]): string {
   const used = getActiveUsedNamesGlobal ? getActiveUsedNamesGlobal() : new Set<string>();
@@ -781,7 +780,6 @@ function findQuestionId(text: string, quickChat: any[]): string | null {
   for (const item of quickChat) {
     const normalizedItemText = normalizeEgyptian(item.text);
     if (normalizedItemText === normalizedInput) {
-      console.log(`[findQuestionId] Match found: "${text}" -> "${item.id}"`);
       return item.id;
     }
     if (item.children && item.children.length > 0) {
@@ -801,10 +799,6 @@ function getBotAnswer(
   const actualImageName =
     imageName && typeof imageName === "object" ? imageName.name : imageName;
   const normImage = normalizeEgyptian(actualImageName);
-
-  console.log(
-    `[getBotAnswer] Search: Cat="${category}", Image="${actualImageName}", QID="${questionId}"`,
-  );
 
   // Find category data
   let categoryData = botAnswers[category];
@@ -838,7 +832,6 @@ function getBotAnswer(
   }
 
   if (!categoryData) {
-    console.log(`[BotAnswer] Category "${category}" not found in JSON.`);
     return null;
   }
 
@@ -851,9 +844,6 @@ function getBotAnswer(
     const branchData = categoryData[questionId];
     const imageInThisBranch = !!Object.keys(branchData).find(
       (k) => normalizeEgyptian(k) === normImage,
-    );
-    console.log(
-      `[BotAnswer] Branch ID match: ${questionId}. Image in branch: ${imageInThisBranch}`,
     );
     return imageInThisBranch ? "آه" : "لأ";
   }
@@ -869,24 +859,17 @@ function getBotAnswer(
       if (imageKey) {
         const ids = value[imageKey];
         const found = Array.isArray(ids) && ids.includes(questionId);
-        console.log(
-          `[BotAnswer] Image found in branch "${key}". Question ID "${questionId}" match: ${found}`,
-        );
         return found ? "آه" : "لأ";
       }
     } else if (Array.isArray(value)) {
       // Search in root
       if (normalizeEgyptian(key) === normImage) {
         const found = value.includes(questionId);
-        console.log(
-          `[BotAnswer] Image found in root. Question ID "${questionId}" match: ${found}`,
-        );
         return found ? "آه" : "لأ";
       }
     }
   }
 
-  console.log(`[BotAnswer] Image "${actualImageName}" not found in JSON.`);
   return null;
 }
 
@@ -1012,10 +995,13 @@ async function startServer() {
         allowedHeaders: ["Content-Type", "Authorization", "x-no-compression"],
         credentials: true,
       },
+      transports: ["websocket"],
       perMessageDeflate: {
         threshold: 1024,
       },
       httpCompression: true,
+      pingInterval: 30000,
+      pingTimeout: 20000,
     });
 
     const PORT = 3000;
@@ -2166,19 +2152,9 @@ async function startServer() {
     const rooms = new Map<string, any>();
     const intervals = new Map<string, NodeJS.Timeout>();
     const matchmakingQueue: any[] = [];
-    let lastLiveMatchesJson = "";
     const matchmakingInterval = setInterval(() => {
       processQueue();
-      if (io && getActiveLiveMatchesGlobal) {
-        const matches = getActiveLiveMatchesGlobal();
-        // Only broadcast if the matches list actually changed to prevent constant websocket bandwidth spam
-        const currentJson = JSON.stringify(matches);
-        if (currentJson !== lastLiveMatchesJson) {
-          lastLiveMatchesJson = currentJson;
-          io.emit("live_matches_update", matches);
-        }
-      }
-    }, 5000); // Run check every 5 seconds instead of 2 seconds
+    }, 5000);
 
     function cleanupPlayerOldBotRooms(playerSerial: string, currentRoomId?: string) {
       if (!playerSerial || !rooms) return;
@@ -2547,68 +2523,6 @@ async function startServer() {
       }
       return { name: "فئات جاهزة", icon: "🖼️" };
     }
-
-    getActiveLiveMatchesGlobal = () => {
-      const list: any[] = [];
-      if (!rooms) return list;
-
-      for (const [id, room] of rooms.entries()) {
-        if (!room) continue;
-        const players = room.players || [];
-        if (players.length < 2) continue;
-
-        const p1 = room.p1 || players[0];
-        const p2 = room.p2 || players[1];
-        if (!p1 || !p2) continue;
-
-        const state = (room.gameState || "").toLowerCase();
-        if (!state || state === "waiting") continue;
-        if (isRoomFinished(room)) continue;
-
-        // If it's a bot game, check if human player has disconnected/abandoned
-        const hasBot = players.some((p: any) => p.isBot);
-        if (hasBot) {
-          const human = players.find((p: any) => !p.isBot);
-          if (!human) continue;
-
-          const socketInRoom = io?.sockets?.sockets?.has(human.id);
-          const activeSocketId = human.serial ? playerSockets.get(human.serial) : null;
-
-          // If human player socket is disconnected and 30s timeout elapsed
-          if (!socketInRoom) {
-            if (!activeSocketId || activeSocketId !== human.id) {
-              if (room.humansDisconnectedSince && Date.now() - room.humansDisconnectedSince > 30000) {
-                continue;
-              }
-            }
-          }
-        }
-
-        const startTime = room.startedAt || room.gameStartTime || room.startTime || room.createdAt || (room.startedAt = Date.now());
-        const gameInfo = getGameInfoForRoom(room);
-        list.push({
-          id,
-          p1: {
-            serial: p1.serial || p1.playerSerial || p1.playerId || p1.id || "",
-            name: (p1.playerName || p1.name || "لاعب 1").trim(),
-            avatar: p1.avatar || "avatar-lvl-boy-10.png",
-            selectedFrame: p1.selectedFrame || "",
-            level: p1.level || (p1.xp ? Math.floor(Math.sqrt((p1.xp || 0) / 50)) + 1 : 1),
-          },
-          p2: {
-            serial: p2.serial || p2.playerSerial || p2.playerId || p2.id || "",
-            name: (p2.playerName || p2.name || "لاعب 2").trim(),
-            avatar: p2.avatar || "avatar-lvl-boy-10.png",
-            selectedFrame: p2.selectedFrame || "",
-            level: p2.level || (p2.xp ? Math.floor(Math.sqrt((p2.xp || 0) / 50)) + 1 : 1),
-          },
-          gameName: gameInfo.name,
-          gameIcon: gameInfo.icon,
-          startTime,
-        });
-      }
-      return list;
-    };
 
     const playerSockets = new Map<string, string>();
 
@@ -6335,12 +6249,7 @@ async function startServer() {
               socket: {
                 id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
                 connected: true,
-                emit: (event: string, data: any) => {
-                  console.log(
-                    `[Bot ${botPersona.name} as ${botName}] Received event ${event}:`,
-                    data,
-                  );
-                },
+                emit: (event: string, data: any) => {},
               },
             };
             matchmakingQueue.push(bot);
@@ -6360,27 +6269,18 @@ async function startServer() {
       const match = pendingMatches.get(matchId);
       if (!match) return;
       if (match.p1Response !== "accept" || match.p2Response !== "accept") {
-        console.log(
-          `[Matchmaking] Cannot finalize match ${matchId}. p1Response: ${match.p1Response}, p2Response: ${match.p2Response}`,
-        );
         return;
       }
-
-      console.log(
-        `[Matchmaking] Both players accepted match ${matchId}. Finalizing...`,
-      );
       clearTimeout(match.timeoutId);
       pendingMatches.delete(matchId);
 
       const roomId = `random_${Math.random().toString(36).substr(2, 9)}`;
-      console.log(`[Matchmaking] Room created: ${roomId} for match ${matchId}`);
 
       match.p1.socket.join(roomId);
       if (match.p1.socket.data) match.p1.socket.data.isSearching = false;
 
       // Update bot socket to use roomId instead of matchId
       if (match.p2.isBot) {
-        console.log(`[Matchmaking] Setting up bot for room ${roomId}`);
         match.p2.socket.emit = (event: string, data: any) => {
           handleBotEvent(roomId, event, data);
         };
@@ -6703,10 +6603,6 @@ async function startServer() {
             opponentAccepted: false,
           });
 
-          console.log(
-            `[Bot Matchmaking] Proposed match ${matchId} between human ${p.playerName} and bot ${botPlayer.playerName}`,
-          );
-
           break;
         }
       }
@@ -6971,30 +6867,14 @@ async function startServer() {
                   (qc.id === `qc_football` &&
                     currentRoom.category === "كرة القدم"),
               );
-              console.log(
-                `[BotQuestion] Room: ${roomId}, Category: ${currentRoom.category}, NodeFound: ${!!categoryNode}`,
-              );
 
               if (categoryNode && categoryNode.children) {
-                console.log(
-                  `[BotQuestion] Room: ${roomId}, ChildrenCount: ${categoryNode.children.length}`,
-                );
-                if (categoryNode.children.length > 0) {
-                  console.log(
-                    `[BotQuestion] FirstChild: ${JSON.stringify(categoryNode.children[0].text)}, HasChildren: ${!!categoryNode.children[0].children}`,
-                  );
-                }
-
                 // Identify branches (nodes with children) and leaves (nodes without children)
                 const branches = categoryNode.children.filter(
                   (c: any) => c.children && c.children.length > 0,
                 );
                 const topLevelLeaves = categoryNode.children.filter(
                   (c: any) => !c.children || c.children.length === 0,
-                );
-
-                console.log(
-                  `[BotQuestion] Room: ${roomId}, Branches: ${branches.length}, TopLevelLeaves: ${topLevelLeaves.length}`,
                 );
 
                 const chatHistory = currentRoom.chatHistory || [];
@@ -7042,9 +6922,6 @@ async function startServer() {
                             );
                             if (otherBranch) {
                               confirmedBranch = otherBranch;
-                              console.log(
-                                `[BotQuestion] Inferred Branch: ${confirmedBranch.text} because ${branch.text} was rejected.`,
-                              );
                             }
                           }
                         }
@@ -7054,9 +6931,6 @@ async function startServer() {
                 }
 
                 if (confirmedBranch) {
-                  console.log(
-                    `[BotQuestion] Room: ${roomId}, ConfirmedBranch: ${confirmedBranch.text}`,
-                  );
                   // We have a confirmed branch, ask questions from it
                   confirmedBranch.children.forEach((q: any) => {
                     if (!askedQuestionTexts.has(normalize(q.text))) {
@@ -7077,10 +6951,6 @@ async function startServer() {
                     (b: any) =>
                       !askedQuestionTexts.has(normalize(b.text)) &&
                       !rejectedBranchTexts.has(normalize(b.text)),
-                  );
-
-                  console.log(
-                    `[BotQuestion] Room: ${roomId}, UnaskedBranches: ${unaskedBranches.length}`,
                   );
 
                   if (unaskedBranches.length > 0) {
@@ -7110,10 +6980,6 @@ async function startServer() {
                     });
                   }
                 }
-
-                console.log(
-                  `[BotQuestion] Room: ${roomId}, FinalQuestionsCount: ${questions.length}`,
-                );
               }
             }
           } catch (e) {
@@ -7138,10 +7004,6 @@ async function startServer() {
           io.to(roomId).emit("room_update", currentRoom);
           return;
         }
-
-        console.log(
-          `[BotQuestion] Room: ${roomId}, BotSelected (Deterministic): ${botReply}`,
-        );
 
         const chatHistory = botConversations.get(roomId) || [];
         chatHistory.push({ role: "model", parts: [{ text: botReply }] });
@@ -8562,13 +8424,6 @@ async function startServer() {
       const humanPlayer = room.players.find((p: any) => !p.isBot);
 
       if (!botPlayer || !humanPlayer) {
-        console.log(
-          `[handleBotEvent] Missing bot or human player in room ${roomId}. Players:`,
-          room.players.map((p: any) => ({
-            name: p.playerName,
-            isBot: p.isBot,
-          })),
-        );
         return;
       }
 
@@ -8738,7 +8593,6 @@ async function startServer() {
         // Handle Bomb Party active playing turn for the bot
         if (room.gameState === "bomb_party_playing" && room.bombParty && room.bombParty.turnPlayerId === botPlayer.id && !room.bombParty.explodedPlayerId && !room.bombParty.gameOver) {
           const botKey = roomId + "_bomb_party_bot_timeout";
-          console.log("[BOT] Timeout not active, setting timeout...");
           if (!botTimeouts.has(botKey)) {
             // Determine success or fail: 40% chance of success (so bot plays smart but loses more than it wins!)
             const willSucceed = Math.random() < 0.40;
@@ -8785,7 +8639,6 @@ async function startServer() {
               }
             } else {
               // Bot decides to fail this round (does nothing, letting the bomb explode!)
-              console.log(`[Bomb Party Bot] Bot chose to fail this round to let player win!`);
             }
           }
         }
@@ -8851,7 +8704,6 @@ async function startServer() {
         
         // Handle Connect Four Words playing action
         if (room.gameState === "connect_four_words_playing" && room.connectFourWords && room.connectFourWords.turn === botPlayer.id) {
-          console.log("[BOT] Connect four words bot turn triggered!");
           const botKey = roomId + "_connect_four_words_bot_drop";
           if (!botTimeouts.has(botKey)) {
             const startTime = room.connectFourWords.startTime || Date.now();
@@ -8865,9 +8717,7 @@ async function startServer() {
             const timeout = setTimeout(() => {
               botTimeouts.delete(botKey);
               const r = rooms.get(roomId);
-              console.log("[BOT] Timeout fired!");
               if (!r || r.gameState !== "connect_four_words_playing" || r.connectFourWords.turn !== botPlayer.id) {
-                  console.log("[BOT] Validation failed in timeout:", {exists: !!r, state: r?.gameState, turn: r?.connectFourWords?.turn, botId: botPlayer.id});
                   return;
               }
 
@@ -9065,7 +8915,6 @@ async function startServer() {
                   // High chance to take winning move (85%)
                   if (Math.random() < 0.85) {
                     finalMove = winningMoves[Math.floor(Math.random() * winningMoves.length)];
-                    console.log("[BOT] Choosing winning move:", finalMove);
                   }
                 } else if (hasOpponentThreats) {
                   // 75% chance to block, 25% chance to miss or pursue own goal
@@ -9082,13 +8931,8 @@ async function startServer() {
                       }
                     }
                     finalMove = { col: colToBlock, letter: bestLetterForBlock };
-                    console.log("[BOT] Blocking opponent win in column:", colToBlock, "with letter:", bestLetterForBlock);
-                  } else {
-                    console.log("[BOT] Bot overlooked opponent threat to focus on building its word.");
                   }
                 }
-              } else {
-                console.log("[BOT] Mistake triggered! Bot overlooked immediate win/block.");
               }
 
               // Heuristic/Strategic play if no critical move decided
@@ -10914,10 +10758,6 @@ async function startServer() {
             (p) => p.name === (botPlayer.personaName || botPlayer.name),
           );
 
-          console.log(
-            `[BotAnswer] Room: ${roomId}, BotHas: ${botPlayer.targetImage?.name || botPlayer.targetImage}, UserAsked: ${text}`,
-          );
-
           let botReply = "";
 
           if (isUserEmoji) {
@@ -10976,18 +10816,7 @@ async function startServer() {
                 ? playerImage.name
                 : playerImage;
 
-            console.log(`[BotAnswer] Room: ${roomId}`);
-            console.log(
-              `[BotAnswer] Bot Player: "${botPlayer.name}" (ID: ${botPlayer.id})`,
-            );
-            console.log(`[BotAnswer] Bot Target Image: "${botImageName}"`);
-            console.log(
-              `[BotAnswer] Human Player Target Image: "${playerImageName}"`,
-            );
-            console.log(`[BotAnswer] User Asked: "${text}"`);
-
             const questionId = findQuestionId(text, config.quickChat || []);
-            console.log(`[BotAnswer] Found Question ID: "${questionId}"`);
 
             let deterministicAnswer = null;
 
@@ -10998,7 +10827,6 @@ async function startServer() {
                 questionId === `qc_${room.category}`
               ) {
                 deterministicAnswer = "آه";
-                console.log(`[BotAnswer] Matched category ID: ${questionId}`);
               } else {
                 // CRITICAL: The human is trying to guess their OWN hidden image.
                 // Therefore, the bot must answer based on the HUMAN'S image, not the bot's image.
@@ -11013,10 +10841,8 @@ async function startServer() {
 
             if (deterministicAnswer) {
               botReply = deterministicAnswer;
-              console.log(`[BotAnswer] Deterministic answer: ${botReply}`);
             } else {
               botReply = "لأ";
-              console.log(`[BotAnswer] Defaulting to "لأ"`);
             }
 
             botReply = botReply.trim();
@@ -11691,8 +11517,6 @@ async function startServer() {
     }
 
     io.on("connection", (socket) => {
-      console.log("User connected:", socket.id);
-
       // Strip heavy/unneeded player data from player_data_update emissions to save bandwidth
       const originalEmit = socket.emit;
       socket.emit = function (event, ...args) {
@@ -11708,12 +11532,6 @@ async function startServer() {
       };
 
       broadcastOnlineCount();
-
-      socket.emit("live_matches_update", getActiveLiveMatchesGlobal());
-
-      socket.on("get_live_matches", () => {
-        socket.emit("live_matches_update", getActiveLiveMatchesGlobal());
-      });
 
       // Send current theme to new user
       socket.emit("theme_updated", themeConfig);
@@ -15191,22 +15009,14 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
       });
 
       socket.on("force_start_game", ({ roomId }) => {
-        console.log(
-          `[MatchIntro] Force start game requested for room: ${roomId}`,
-        );
         const room = rooms.get(roomId);
         if (
           room &&
           room.players.length === 2 &&
           room.gameState === "starting"
         ) {
-          console.log(`[MatchIntro] Starting game for room: ${roomId}`);
           room.gameState = "waiting"; // Ensure it's in a state that can start
           startGame(roomId);
-        } else {
-          console.log(
-            `[MatchIntro] Failed to start game for room: ${roomId}. Room exists: ${!!room}, Players: ${room?.players?.length}, State: ${room?.gameState}`,
-          );
         }
       });
 
@@ -15274,9 +15084,6 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
       });
 
       socket.on("send_chat", ({ roomId, text, passTurn }) => {
-        console.log(
-          `Chat request from ${socket.id} for room ${roomId}: ${text}`,
-        );
         const room = rooms.get(roomId);
         if (room) {
           const sender = room.players.find((p: any) => p.id === socket.id);
@@ -15284,8 +15091,6 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
 
           const messageToSend = filterProfanity(text);
           const originalText = text;
-
-          console.log(`Broadcasting chat to room ${roomId}`);
 
           // Turn logic for Quick Chat (Updates state but doesn't block for speed)
           if (room.gameState === "discussion") {
@@ -15371,8 +15176,6 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
               text: messageToSend,
             });
           }
-        } else {
-          console.log(`Room ${roomId} not found for chat`);
         }
       });
 
@@ -16140,7 +15943,6 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                     });
                 }
               } else if (!serverReportedPlayer && reportedPlayer.isBot) {
-                console.log(`Bot reported by ${serverReporter?.name}, simulating success.`);
                 if (callback) {
                   callback({
                     success: true,
@@ -16148,9 +15950,6 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
                   });
                 }
               } else {
-                console.log(
-                  `Report failed: serverReportedPlayer=${!!serverReportedPlayer}, serverReporter=${!!serverReporter}`,
-                );
                 if (callback)
                   callback({
                     success: false,
@@ -18626,77 +18425,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
           }
         } else {
           callback({ error: "Unauthorized" });
-        }
-      });
-
-      socket.on("admin_get_active_rooms", (callback) => {
-        const admin = Array.from(allPlayers.values()).find(
-          (p) => p.serial === socket.data?.serial,
-        );
-        console.log(
-          `[Admin Get Active Rooms] socket.data.serial: ${socket.data?.serial}, admin.isAdmin: ${admin?.isAdmin}, socket.data.isAdmin: ${socket.data?.isAdmin}`,
-        );
-        if (admin?.isAdmin || socket.data?.isAdmin) {
-          const activeRooms = Array.from(rooms.entries())
-            .filter(([id, room]) => {
-              if (!room || !room.gameState) return false;
-              const state = room.gameState.toLowerCase();
-              // Exclude finished or waiting states across all game modes
-              if (
-                state === "waiting" ||
-                state === "finished" ||
-                state.includes("finished") ||
-                state.includes("waiting")
-              ) {
-                return false;
-              }
-              // Only return rooms that have active players
-              if (!room.players || room.players.length === 0) {
-                return false;
-              }
-              return true;
-            })
-            .map(([id, room]) => ({
-              id,
-              players: (room.players || []).filter(Boolean).map((p) => ({
-                name: p.name,
-                serial: p.serial,
-                avatar: p.avatar,
-                xp: p.xp || 0,
-                selectedFrame: p.selectedFrame || "",
-              })),
-              gameState: room.gameState,
-              startTime: room.startTime,
-            }));
-          callback(activeRooms);
-        } else {
-          callback({ error: "Unauthorized" });
-        }
-      });
-
-      socket.on("admin_join_spectator", (roomId, callback) => {
-        const admin = Array.from(allPlayers.values()).find(
-          (p) => p.serial === socket.data?.serial,
-        );
-        if (admin?.isAdmin || socket.data?.isAdmin) {
-          const room = rooms.get(roomId);
-          if (room) {
-            socket.join(roomId);
-            // Send initial room state to admin
-            socket.emit("room_update", room);
-            if (typeof callback === "function") callback({ success: true });
-          } else {
-            if (typeof callback === "function") callback({ error: "Room not found" });
-          }
-        } else {
-          if (typeof callback === "function") callback({ error: "Unauthorized" });
-        }
-      });
-
-      socket.on("admin_leave_spectator", (roomId, callback) => {
-        socket.leave(roomId);
-        if (typeof callback === "function") {
-          callback({ success: true });
         }
       });
 
@@ -21331,7 +21059,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
         (room.gameState !== "waiting" &&
           room.gameState !== "custom_image_upload")
       ) {
-        console.log(`[startGame] Rejected: room state is ${room?.gameState}`);
         return;
       }
 
@@ -21365,10 +21092,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
         );
       }
 
-      console.log(
-        `[StartGame] Room ${roomId} category: ${room.category}, Level: ${room.level}, Found images: ${categoryImages.length}`,
-      );
-
       // Priority logic: images from last 3 days get 3x probability
       const pool: any[] = [];
       if (!room.isCustomImageMode) {
@@ -21394,10 +21117,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
         rooms.delete(roomId);
         return;
       }
-
-      console.log(
-        `[startGame] Starting game in room ${roomId}. Category: ${room.category}`,
-      );
 
       if (room.isCustomImageMode) {
         // Cleanup base64 data to save memory after game starts
@@ -21449,12 +21168,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
           image: p1Url,
         };
       }
-
-      room.players.forEach((p: any, idx: number) => {
-        console.log(
-          `[startGame] Player ${idx}: "${p.playerName}" (isBot: ${p.isBot}), Target Image: "${p.targetImage?.name}"`,
-        );
-      });
 
       room.players[0].hintCount = 0;
       room.players[1].hintCount = 0;
