@@ -2229,10 +2229,10 @@ async function startServer() {
 
         // 2. BOT MATCH CLEANUP
         if (hasBot) {
-          // A) Finished bot match -> delete after 10 seconds
+          // A) Finished bot match -> delete after 15 minutes of idle time (instead of 10 seconds)
           if (roomFinished) {
             if (!room.finishedAt) room.finishedAt = now;
-            if (now - room.finishedAt > 10000) {
+            if (now - room.finishedAt > 15 * 60 * 1000) {
               if (intervals.has(roomId)) {
                 clearInterval(intervals.get(roomId));
                 intervals.delete(roomId);
@@ -2712,45 +2712,88 @@ async function startServer() {
     db.pragma("journal_mode = WAL");
     db.pragma("synchronous = NORMAL");
 
-    // Function to purge obsolete notifications, old broadcast copies, and logs
+    // Function to purge obsolete notifications, old broadcast copies, pending requests, and logs (7 days retention)
     function cleanupOldNotificationsAndLogs() {
       try {
-        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-        const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const sevenDaysAgoISO = new Date(sevenDaysAgo).toISOString();
 
         let totalDeleted = 0;
+
+        // 1. Admin messages: Delete read messages OR messages older than 7 days
         try {
-          const res1 = db.prepare("DELETE FROM admin_messages WHERE timestamp < ?").run(thirtyDaysAgo);
+          const res1 = db.prepare(`
+            DELETE FROM admin_messages 
+            WHERE read = 1 OR timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
           totalDeleted += res1.changes;
         } catch (e) {}
 
+        // 2. Pending Friend Requests older than 7 days
         try {
-          const res2 = db.prepare("DELETE FROM like_notifications WHERE timestamp < ?").run(fourteenDaysAgo);
+          const resFriends = db.prepare(`
+            DELETE FROM friends 
+            WHERE status = 'pending' AND (created_at < datetime('now', '-7 days') OR created_at < ? OR created_at IS NULL)
+          `).run(sevenDaysAgoISO);
+          totalDeleted += resFriends.changes;
+        } catch (e) {}
+
+        // 3. Like notifications: Delete read notifications OR older than 7 days
+        try {
+          const res2 = db.prepare(`
+            DELETE FROM like_notifications 
+            WHERE read = 1 OR timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
           totalDeleted += res2.changes;
         } catch (e) {}
 
+        // 4. Gift notifications: Delete read notifications OR older than 7 days
         try {
-          const res3 = db.prepare("DELETE FROM gift_notifications WHERE timestamp < ?").run(fourteenDaysAgo);
+          const res3 = db.prepare(`
+            DELETE FROM gift_notifications 
+            WHERE read = 1 OR timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
           totalDeleted += res3.changes;
         } catch (e) {}
 
+        // 5. Collection notifications: Delete non-pending OR older than 7 days
         try {
-          const res4 = db.prepare("DELETE FROM collection_notifications WHERE timestamp < ?").run(fourteenDaysAgo);
+          const res4 = db.prepare(`
+            DELETE FROM collection_notifications 
+            WHERE status != 'pending' OR timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
           totalDeleted += res4.changes;
         } catch (e) {}
 
+        // 6. Friend accepted notifications: Delete read notifications OR older than 7 days
         try {
-          const res5 = db.prepare("DELETE FROM friend_accepted_notifications WHERE timestamp < ?").run(fourteenDaysAgo);
+          const res5 = db.prepare(`
+            DELETE FROM friend_accepted_notifications 
+            WHERE read = 1 OR timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
           totalDeleted += res5.changes;
         } catch (e) {}
 
+        // 7. Player likes log: Delete logs older than 7 days
         try {
-          const res6 = db.prepare("DELETE FROM player_likes_log WHERE timestamp < ?").run(fourteenDaysAgo);
+          const res6 = db.prepare(`
+            DELETE FROM player_likes_log 
+            WHERE timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
           totalDeleted += res6.changes;
         } catch (e) {}
 
+        // 8. Scheduled push notifications: Delete sent notifications older than 7 days
+        try {
+          const res7 = db.prepare(`
+            DELETE FROM scheduled_push_notifications 
+            WHERE status = 'sent' AND scheduledAt < ?
+          `).run(sevenDaysAgo);
+          totalDeleted += res7.changes;
+        } catch (e) {}
+
         if (totalDeleted > 0) {
-          console.log(`[DB Cleanup] Purged ${totalDeleted} obsolete notifications and old messages.`);
+          console.log(`[DB Cleanup] Purged ${totalDeleted} obsolete notifications, pending friend requests, and old messages.`);
         }
       } catch (err) {
         console.warn("[DB Cleanup] Warning during notifications cleanup:", err);
@@ -2762,11 +2805,19 @@ async function startServer() {
       db.exec("CREATE TABLE IF NOT EXISTS custom_images (id TEXT PRIMARY KEY, category TEXT, name TEXT, data TEXT, timestamp INTEGER)");
       db.exec("UPDATE custom_images SET data = '' WHERE data IS NOT NULL AND data != ''");
       
+      // Fresh start: Purge all accumulated old admin broadcast messages
+      try {
+        const purgeAdmin = db.prepare("DELETE FROM admin_messages").run();
+        if (purgeAdmin.changes > 0) {
+          console.log(`[DB Cleanup] Fresh start: Purged ${purgeAdmin.changes} accumulated admin messages.`);
+        }
+      } catch (e) {}
+
       cleanupOldNotificationsAndLogs();
 
       const freelistCount = db.pragma("freelist_count", { simple: true }) as number;
       const currentDbSize = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0;
-      if (freelistCount > 5 || currentDbSize > 5 * 1024 * 1024) {
+      if (freelistCount > 0 || currentDbSize > 1 * 1024 * 1024) {
         console.log(`[DB Optimization] Startup check: database is ${(currentDbSize / 1024 / 1024).toFixed(2)} MB (${freelistCount} free pages). Running VACUUM...`);
         db.pragma("wal_checkpoint(TRUNCATE)");
         db.exec("VACUUM");
@@ -13022,15 +13073,7 @@ async function startServer() {
           let activeRoomId = null;
           for (const [roomId, room] of rooms.entries()) {
             const p = room.players.find((pl: any) => pl.serial === serial);
-            if (
-              p &&
-              room.gameState !== "finished" &&
-              room.gameState !== "xo_finished" &&
-              room.gameState !== "iq_finished" &&
-              room.gameState !== "bus_complete_evaluating" &&
-              room.gameState !== "hand_finished" &&
-              room.gameState !== "dots_finished"
-            ) {
+            if (p) {
               activeRoomId = roomId;
               break;
             }
@@ -13049,14 +13092,7 @@ async function startServer() {
           // Reconnect logic
           for (const [roomId, room] of rooms.entries()) {
             const p = room.players.find((pl: any) => pl.serial === serial);
-            if (
-              p &&
-              room.gameState !== "finished" &&
-              room.gameState !== "xo_finished" &&
-              room.gameState !== "iq_finished" &&
-              room.gameState !== "hand_finished" &&
-              room.gameState !== "dots_finished"
-            ) {
+            if (p) {
               const oldSocketId = p.id;
               const opponent = room.players.find((pl: any) => pl.serial !== serial);
               const isOpponentOnline = opponent && playerSockets.has(opponent.serial);
@@ -17414,6 +17450,10 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
 
           // Reset room state
           room.gameState = "waiting";
+          room.finishedAt = null;
+          room.adPausedPlayers = new Set();
+          room.adPausedPlayersArray = [];
+          if (room.powerUpAdsInProgress) room.powerUpAdsInProgress.clear();
           room.spaceWar = null;
           room.puzzle = null;
           room.beachRace = null;
@@ -20860,33 +20900,44 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
           const index = room.players.findIndex((p: any) => p.id === socket.id);
           if (index !== -1) {
             const leavingPlayer = room.players[index];
+            const activeSocketId = leavingPlayer.serial ? playerSockets.get(leavingPlayer.serial) : null;
+            if (activeSocketId && activeSocketId !== socket.id) {
+              // Player has already reconnected on another socket. Ignore old socket disconnect.
+              return;
+            }
+
             const opponent = room.players.find((p: any) => p.id !== socket.id);
             const hasBot = room.players.some((p: any) => p.isBot);
 
             // Logic for Token deduction:
             // 1. Game must have started (gameState is not waiting or finished)
-            // 2. Disconnect is intentional (client namespace disconnect OR intentionallyLeft flag)
-            const isIntentional =
-              reason === "client namespace disconnect" ||
-              leavingPlayer.intentionallyLeft;
+            // 2. Disconnect is intentional (intentionallyLeft flag)
+            const isIntentional = leavingPlayer.intentionallyLeft === true;
 
             const isFinishedState = isRoomFinished(room);
 
-            if (!isIntentional && room.gameState !== "waiting" && !isFinishedState) {
+            if (!isIntentional) {
                 room.isWaitingForReconnect = true;
                 room.disconnectedPlayerSerial = leavingPlayer.serial;
                 room.humansDisconnectedSince = Date.now();
-                io.to(roomId).emit("player_disconnected_waiting", {
-                  name: leavingPlayer.name,
-                });
+                if (room.gameState !== "waiting" && !isFinishedState) {
+                  io.to(roomId).emit("player_disconnected_waiting", {
+                    name: leavingPlayer.name,
+                  });
+                }
                 
                 setTimeout(() => {
                   const r = rooms.get(roomId);
                   if (r) {
-                     const currentFinished = isRoomFinished(r);
+                     const activeSock = leavingPlayer.serial ? playerSockets.get(leavingPlayer.serial) : null;
+                     const isReconnected = activeSock && r.players.some((p: any) => p.serial === leavingPlayer.serial || p.id === activeSock);
+
+                     if (isReconnected) {
+                       // Player has successfully reconnected to this room!
+                       return;
+                     }
 
                      if (hasBot) {
-                        // For BOT games: if 30s elapsed without reconnecting to room socket, delete room immediately!
                         io.to(roomId).emit("game_stopped", { reason: "المنافس فقد الاتصال ولم يعد" });
                         if (intervals.has(roomId)) {
                           clearInterval(intervals.get(roomId));
@@ -20900,8 +20951,16 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                         return;
                      }
 
-                     if (!currentFinished && r.isWaitingForReconnect && r.disconnectedPlayerSerial === leavingPlayer.serial) {
-                        if (
+                     const currentFinished = isRoomFinished(r);
+
+                     if (r.isWaitingForReconnect && r.disconnectedPlayerSerial === leavingPlayer.serial) {
+                        if (currentFinished || r.gameState === "waiting") {
+                          socket.to(roomId).emit("opponent_left_lobby");
+                          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                          if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+                          rooms.delete(roomId);
+                          return;
+                        } else if (
                           r.gameState.startsWith("bus_complete") ||
                           r.gameState === "custom_image_upload" ||
                           r.gameState.startsWith("xo_") ||
@@ -20926,7 +20985,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                      
                      const rAfter = rooms.get(roomId);
                      if (rAfter) {
-                        const idx = rAfter.players.findIndex((p) => p.serial === leavingPlayer.serial || p.id === leavingPlayer.id);
+                        const idx = rAfter.players.findIndex((p: any) => p.serial === leavingPlayer.serial || p.id === leavingPlayer.id);
                         if (idx !== -1) {
                           rAfter.players.splice(idx, 1);
                           io.to(roomId).emit("player_left", { playerSerial: leavingPlayer.serial });
@@ -20940,7 +20999,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                      }
                   }
                 }, 30000);
-                return; // Do NOT remove player from room yet
+                return; // Do NOT remove player immediately on unintentional disconnect!
             }
 
             if (!isFinishedState && room.gameState !== "waiting") {
@@ -20971,11 +21030,12 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                   if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
                   rooms.delete(roomId);
                 } else if (isFinishedState) {
-                  // If game is finished and opponent disconnects, notify remaining player to return to lobby gracefully
-                  socket.to(roomId).emit("opponent_left_lobby");
-                  if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
-                  if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
-                  rooms.delete(roomId);
+                  if (!hasBot) {
+                    socket.to(roomId).emit("opponent_left_lobby");
+                    if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                    if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+                    rooms.delete(roomId);
+                  }
                 } else {
                   endGame(roomId, opponent ? opponent.name : "المنافس", true);
                 }
@@ -20997,7 +21057,7 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
               socket.to(roomId).emit("opponent_left_lobby");
             }
 
-            if (!isFinishedState || hasBot || room.players.length === 0 || room.players.every((p: any) => p.isBot)) {
+            if (room.players.length === 0 || (!hasBot && room.players.every((p: any) => p.isBot))) {
               io.in(roomId).socketsLeave(roomId);
               rooms.delete(roomId);
             } else {
