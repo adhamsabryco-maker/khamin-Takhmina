@@ -7951,6 +7951,7 @@ async function startServer() {
       if (room.category === "iq" && room.iqBoard) {
         const sanitizedRoom = {
           ...room,
+          iqPreloadImages: room.iqPreloadImages || [],
           iqBoard: room.iqBoard.map((img: string, idx: number) => {
             const isRevealed = room.iqFlipped?.includes(idx) || room.iqMatched?.includes(idx);
             return isRevealed ? img : "";
@@ -11325,6 +11326,7 @@ async function startServer() {
       }
       
       room.iqBoard = board;
+      room.iqPreloadImages = Array.from(new Set(selectedImages.filter(Boolean)));
       room.iqFlipped = []; 
       room.iqMatched = [];
       room.iqSeen = [];
