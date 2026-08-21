@@ -4205,7 +4205,6 @@ async function startServer() {
           player.rainGiftHelpers = {};
         }
 
-        console.log(`[Rain Gift] Daily reset for ${serial} on ${currentDay}`);
         needsSave = true;
       }
 
@@ -4240,9 +4239,6 @@ async function startServer() {
           player.luckyWheelHelpers = {};
         }
 
-        console.log(
-          `[Lucky Wheel] Daily reset for ${serial} on ${currentLuckyWheelDay}`,
-        );
         needsSave = true;
       }
 
@@ -4276,9 +4272,6 @@ async function startServer() {
         );
 
         if (player.citySearchRewards.length !== initialCount) {
-          console.log(
-            `[City Search] Expired ${initialCount - player.citySearchRewards.length} rewards for ${serial}`,
-          );
           needsSave = true;
         }
       }
