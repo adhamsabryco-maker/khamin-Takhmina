@@ -3937,12 +3937,20 @@ export default function App() {
   }, []);
 
   // Poll friends list for online status
+  const friendsListLengthRef = useRef(friendsList.length);
+  useEffect(() => {
+    friendsListLengthRef.current = friendsList.length;
+  }, [friendsList.length]);
+
   useEffect(() => {
     if (socket && playerSerial) {
       const fetchFriends = () => {
+        const fetchLimit = showFriendsModal
+          ? Math.max(10, friendsListLengthRef.current)
+          : 10;
         socket.emit(
           "get_friends",
-          { serial: playerSerial, limit: Math.max(10, friendsList.length) },
+          { serial: playerSerial, limit: fetchLimit },
           (res: any) => {
             if (res.success) {
               setFriendsList(res.friends || []);
@@ -3957,11 +3965,11 @@ export default function App() {
       // Fetch immediately on mount / dependency changes to avoid any delay!
       fetchFriends();
 
-      const pollRate = showFriendsModal ? 10000 : 60000;
+      const pollRate = showFriendsModal ? 15000 : 60000;
       const interval = setInterval(fetchFriends, pollRate);
       return () => clearInterval(interval);
     }
-  }, [socket, playerSerial, friendsList.length, showFriendsModal]);
+  }, [socket, playerSerial, showFriendsModal]);
 
   // Load Friends Effect
   useEffect(() => {
