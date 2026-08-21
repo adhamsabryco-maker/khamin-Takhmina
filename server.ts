@@ -1173,6 +1173,8 @@ async function startServer() {
       }
     }
 
+    let isShuttingDown = false;
+
     configCache = {
       avatars: {},
       frames: {},
@@ -1688,6 +1690,7 @@ async function startServer() {
     // Weekly Top Player Reward Worker
     setInterval(
       () => {
+        if (isShuttingDown || !db || !db.open) return;
         try {
           const today = new Intl.DateTimeFormat("en-CA", {
             timeZone: "Africa/Cairo",
@@ -1831,6 +1834,7 @@ async function startServer() {
     ); // Check every hour
     // Background worker for scheduled push notifications
     setInterval(async () => {
+      if (isShuttingDown || !db || !db.open) return;
       const now = Date.now();
       const pendingNotifications = db
         .prepare(
@@ -2773,6 +2777,7 @@ async function startServer() {
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
     if (isProduction) {
       setInterval(() => {
+        if (isShuttingDown || !db || !db.open) return;
         console.log("[DB] 24-hour scheduled maintenance triggered. Cleaning old notifications and syncing database...");
         cleanupOldNotificationsAndLogs();
         syncDbToSupabase(true);
@@ -2855,7 +2860,6 @@ async function startServer() {
     });
 
     // Graceful shutdown with database sync
-    let isShuttingDown = false;
     const shutdown = async (signal: string) => {
       if (isShuttingDown) return;
       isShuttingDown = true;
@@ -2875,6 +2879,13 @@ async function startServer() {
         console.log("[DB] Web and Socket server closed.");
       } catch (e) {}
 
+      // Flush any pending deferred writes before syncing or closing DB
+      try {
+        if (typeof flushAllPendingPlayerWrites === "function") {
+          flushAllPendingPlayerWrites();
+        }
+      } catch (e) {}
+
       try {
         if (isProduction && supabase) {
           await syncDbToSupabase(true, true);
@@ -2884,7 +2895,7 @@ async function startServer() {
         console.error("[DB] Error during shutdown sync:", err);
       }
       
-      if (db) {
+      if (db && db.open) {
         console.log("[DB] Closing database connection...");
         try {
           db.close();
@@ -4248,6 +4259,13 @@ async function startServer() {
 
     flushAllPendingPlayerWrites = () => {
       if (pendingWrites.size === 0) return;
+      if (!db || !db.open) {
+        for (const timeout of pendingWrites.values()) {
+          clearTimeout(timeout);
+        }
+        pendingWrites.clear();
+        return;
+      }
       console.log(`[DB] Flushing ${pendingWrites.size} pending player writes immediately...`);
       for (const [serial, timeout] of pendingWrites.entries()) {
         clearTimeout(timeout);
@@ -4361,11 +4379,13 @@ async function startServer() {
     };
 
     function savePlayerData(serial: string, immediate = false) {
+      if (isShuttingDown || !db || !db.open) return;
       try {
         const player = allPlayers.get(serial);
         if (!player) return;
 
         const performWrite = () => {
+          if (isShuttingDown || !db || !db.open) return;
           pendingWrites.delete(serial);
           try {
             insertPlayer.run({
