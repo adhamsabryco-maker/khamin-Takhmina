@@ -5239,14 +5239,37 @@ async function startServer() {
       const nextDelay = 30000 + Math.random() * 60000; // 30-90 seconds
       setTimeout(updateFakeBotsGradually, nextDelay);
     }
-    updateFakeBotsGradually();
+    let pendingOnlineCountTimeout: NodeJS.Timeout | null = null;
+    let lastOnlineCountBroadcastTime = 0;
 
-    function broadcastOnlineCount() {
-      io.emit("online_count", {
-        online: playerSockets.size + currentFakeBots,
-        total: allPlayers.size + 50,
-      });
+    function broadcastOnlineCount(immediate = false) {
+      const now = Date.now();
+      const minInterval = 5000;
+
+      if (immediate || now - lastOnlineCountBroadcastTime >= minInterval) {
+        if (pendingOnlineCountTimeout) {
+          clearTimeout(pendingOnlineCountTimeout);
+          pendingOnlineCountTimeout = null;
+        }
+        lastOnlineCountBroadcastTime = now;
+        io.emit("online_count", {
+          online: playerSockets.size + currentFakeBots,
+          total: allPlayers.size + 50,
+        });
+      } else if (!pendingOnlineCountTimeout) {
+        const remaining = minInterval - (now - lastOnlineCountBroadcastTime);
+        pendingOnlineCountTimeout = setTimeout(() => {
+          pendingOnlineCountTimeout = null;
+          lastOnlineCountBroadcastTime = Date.now();
+          io.emit("online_count", {
+            online: playerSockets.size + currentFakeBots,
+            total: allPlayers.size + 50,
+          });
+        }, remaining);
+      }
     }
+
+    updateFakeBotsGradually();
 
     app.get("/api/reports", (req, res) => {
       res.json(reportsList);
@@ -12454,7 +12477,6 @@ async function startServer() {
             savePlayerData(playerSerial);
             if (callback)
               callback({
-                topPlayers: getTopPlayers(),
                 name: player.name,
                 lastRenameAt: player.lastRenameAt,
               });
