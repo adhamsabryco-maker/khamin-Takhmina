@@ -92,6 +92,21 @@ import easyGuessData from "./data/easyGuess.json";
 import busCompleteData from "./data/busCompleteData.json";
 import { getApiBaseUrl, apiUrl } from "./apiConfig";
 
+const globalImageCache = new Set<string>();
+export function preloadIQImages(urls: string[]) {
+  if (!urls || !Array.isArray(urls)) return;
+  urls.forEach((url) => {
+    if (!url || typeof url !== "string" || globalImageCache.has(url)) return;
+    globalImageCache.add(url);
+    const fullUrl = url.startsWith("http") || url.startsWith("data:") || url.startsWith("blob:") ? url : apiUrl(url);
+    const img = new Image();
+    img.src = fullUrl;
+    if (typeof img.decode === "function") {
+      img.decode().catch(() => {});
+    }
+  });
+}
+
 const limit99 = (val: number | string | undefined | null): string | number => {
   if (val === undefined || val === null) return 0;
   const num = typeof val === "number" ? val : parseInt(val.toString(), 10);
@@ -6109,6 +6124,12 @@ export default function App() {
     }
   }, [room?.gameState, room?.busCompleteDraftAnswers, socket?.id]);
 
+  useEffect(() => {
+    if ((room as any)?.iqPreloadImages && Array.isArray((room as any).iqPreloadImages)) {
+      preloadIQImages((room as any).iqPreloadImages);
+    }
+  }, [room?.iqPreloadImages, (room as any)?.iqLevel]);
+
   const clearPlayerData = () => {
     // Clear all localStorage items related to the game
     const keysToRemove = [];
@@ -7550,6 +7571,10 @@ if (data.connectFourWordsRewardLevel != null) {
     });
 
     newSocket.on("room_update", (updatedRoom: Room) => {
+      if ((updatedRoom as any)?.iqPreloadImages && Array.isArray((updatedRoom as any).iqPreloadImages)) {
+        preloadIQImages((updatedRoom as any).iqPreloadImages);
+      }
+
       if (spectatingRoomIdRef.current === updatedRoom.id) {
         setSpectatorRoomData(updatedRoom);
         return;
@@ -8482,7 +8507,7 @@ if (data.connectFourWordsRewardLevel != null) {
     // Real update check and loading process
     const startLoading = async () => {
       try {
-        setLoadingStatus("جاري الاتصال بالسيرفر...");
+        setLoadingStatus("جاري التحميل أنتظر...");
         setLoadingProgress(10);
 
         // Fetch config from server (reusing refreshConfig from AvatarContext)
@@ -26513,13 +26538,13 @@ const renderBombPartyRewardBar = () => {
 
                     <div className="flex-1 flex flex-col items-center justify-center relative z-10 py-1 mb-0.5 w-full">
                       <div 
-                        className={`bg-gray-100 p-1 rounded-2xl w-full mx-auto shadow-inner Battery-border-2 border-gray-300 ${
+                        className={`bg-gray-100 p-1.5 rounded-2xl w-full mx-auto shadow-inner Battery-border-2 border-gray-300 ${
                           room.iqBoardSize === 4 ? "max-w-[420px]" : room.iqBoardSize === 6 ? "max-w-[560px]" : "max-w-[680px]"
                         }`}
                         style={{
                           display: 'grid',
                           gridTemplateColumns: `repeat(${room.iqBoardSize || 4}, minmax(0, 1fr))`,
-                          gap: (room.iqBoardSize || 4) > 6 ? '3px' : (room.iqBoardSize || 4) === 6 ? '6px' : '8px'
+                          gap: (room.iqBoardSize || 4) > 6 ? '3px' : (room.iqBoardSize || 4) === 6 ? '5px' : '7px'
                         }}
                       >
                         {room.iqBoard?.map((cellImg: any, idx: number) => {
@@ -26536,32 +26561,58 @@ const renderBombPartyRewardBar = () => {
                             : "";
 
                           return (
-                            <button
+                            <div
                               key={idx}
-                              disabled={!myTurn || isFlipped}
-                              onClick={() => {
-                                 socket?.emit("submit_iq_move", { roomId: room.id, index: idx });
-                                 playSound("handXFill");
-                              }}
-                              className={`aspect-square relative transition-all duration-100 transform hover:scale-105 flex items-center justify-center overflow-hidden shadow-sm
-                                ${room.iqBoardSize === 8 ? "rounded-md border-b-1" : room.iqBoardSize === 6 ? "rounded-lg border-b-[3px]" : "rounded-xl border-b-4"}
-                                ${isFlipped 
-                                  ? (isMatched ? "bg-gray-100 border-gray-300" : `bg-white ${room.iqTurn === room.iqPlayer1 ? "border-red-500" : "border-green-500"}`) 
-                                  : (room.iqTurn === room.iqPlayer1 ? "bg-red-500 border-red-700" : "bg-green-500 border-green-700")
-                                }
-                              `}
+                              className="aspect-square w-full [perspective:600px] touch-manipulation select-none"
                             >
-                               {isFlipped ? (
-                                 <div className={`absolute inset-0 flex items-center justify-center overflow-hidden ${isMatched ? "opacity-50 grayscale" : ""}`}>
-                                   <img src={cellImgSrc} alt="card" className="w-[85%] h-[85%] object-contain" />
-                                 </div>
-                               ) : (
-                                 <div className="w-1/2 h-1/2 opacity-20 bg-white rounded-full flex items-center justify-center">
-                                   <span className={`text-white font-black ${room.iqBoardSize === 8 ? "text-xs md:text-sm" : room.iqBoardSize === 6 ? "text-sm md:text-lg" : "text-base md:text-xl"}`}>?</span>
-                                 </div>
-                                )}
-                            </button>
-                          )
+                              <button
+                                type="button"
+                                disabled={!myTurn || isFlipped}
+                                onClick={() => {
+                                   socket?.emit("submit_iq_move", { roomId: room.id, index: idx });
+                                   playSound("handXFill");
+                                }}
+                                className={`w-full h-full relative transition-transform duration-300 ease-out [transform-style:preserve-3d] transform-gpu active:scale-95 disabled:active:scale-100 focus:outline-none
+                                  ${isFlipped ? "[transform:rotateY(180deg)]" : "[transform:rotateY(0deg)]"}
+                                `}
+                              >
+                                {/* Front Face (Card Back with '?') */}
+                                <div
+                                  className={`absolute inset-0 w-full h-full flex items-center justify-center shadow-sm [backface-visibility:hidden] [webkit-backface-visibility:hidden] overflow-hidden
+                                    ${room.iqBoardSize === 8 ? "rounded-md border-b-2" : room.iqBoardSize === 6 ? "rounded-lg border-b-[3px]" : "rounded-xl border-b-4"}
+                                    ${room.iqTurn === room.iqPlayer1 ? "bg-red-500 border-red-700 hover:bg-red-600" : "bg-green-500 border-green-700 hover:bg-green-600"}
+                                  `}
+                                >
+                                  <div className="w-1/2 h-1/2 opacity-25 bg-white rounded-full flex items-center justify-center pointer-events-none">
+                                    <span className={`text-white font-black ${room.iqBoardSize === 8 ? "text-xs md:text-sm" : room.iqBoardSize === 6 ? "text-sm md:text-lg" : "text-base md:text-xl"}`}>?</span>
+                                  </div>
+                                </div>
+
+                                {/* Back Face (Card Front with Image) */}
+                                <div
+                                  className={`absolute inset-0 w-full h-full flex items-center justify-center bg-white shadow-sm [backface-visibility:hidden] [webkit-backface-visibility:hidden] [transform:rotateY(180deg)] overflow-hidden
+                                    ${room.iqBoardSize === 8 ? "rounded-md border-b-2" : room.iqBoardSize === 6 ? "rounded-lg border-b-[3px]" : "rounded-xl border-b-4"}
+                                    ${isMatched 
+                                      ? "bg-gray-100 border-gray-300" 
+                                      : (room.iqTurn === room.iqPlayer1 ? "border-red-500" : "border-green-500")
+                                    }
+                                  `}
+                                >
+                                  {cellImgSrc ? (
+                                    <div className={`w-full h-full flex items-center justify-center p-0.5 md:p-1 overflow-hidden ${isMatched ? "opacity-50 grayscale" : ""}`}>
+                                      <img 
+                                        src={cellImgSrc} 
+                                        alt="card" 
+                                        loading="eager"
+                                        decoding="async"
+                                        className="w-[85%] h-[85%] object-contain pointer-events-none select-none" 
+                                      />
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </button>
+                            </div>
+                          );
                         })}
                       </div>
                     </div>
