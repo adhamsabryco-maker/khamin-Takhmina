@@ -1032,13 +1032,16 @@ async function startServer() {
 
     // DEBUG: Log all non-static requests
     app.use((req, res, next) => {
-      // Ignore static assets, uploads and socket.io logs to reduce Railway costs
+      // Ignore static assets, uploads, socket.io and frequent polling logs to reduce Railway costs
       const isStaticOrNoisy =
         req.url.startsWith("/assets/") ||
         req.url.startsWith("/uploads/") ||
         req.url.startsWith("/game_images/") ||
         req.url.startsWith("/api/image/") ||
         req.url.startsWith("/socket.io/") ||
+        req.url.startsWith("/api/admin/push-stats") ||
+        req.url.startsWith("/api/admin/images") ||
+        req.url.startsWith("/api/push/scheduled") ||
         req.url.match(
           /\.(js|css|png|jpg|jpeg|gif|ico|svg|json|wav|mp3|mp4|woff|woff2|ttf|eot)$/i,
         );
@@ -4920,87 +4923,6 @@ async function startServer() {
       console.error("Streak reset migration failed:", e);
     }
 
-    // Load Theme Config
-    let themeConfig = {
-      bgBodyStart: "#FFD700",
-      bgBodyEnd: "#FF8C00",
-      textMain: "#000000",
-      textLight: "#FFFFFF",
-      borderGame: "#000000",
-      bgBox: "#FFFFFF",
-      bgCard: "#FFFFFF",
-      btnPrimaryBgStart: "#FF3366",
-      btnPrimaryBgEnd: "#FF0033",
-      btnPrimaryBorder: "#000000",
-      btnPrimaryHover: "#FF3366",
-      btnSecondaryBgStart: "#00FFFF",
-      btnSecondaryBgEnd: "#00CCCC",
-      btnSecondaryBorder: "#000000",
-      btnSecondaryHover: "#00FFFF",
-      btnSuccessBgStart: "#00FF00",
-      btnSuccessBgEnd: "#00CC00",
-      btnSuccessBorder: "#000000",
-      btnSuccessHover: "#00FF00",
-      btnDangerBgStart: "#FFFF00",
-      btnDangerBgEnd: "#CCCC00",
-      btnDangerBorder: "#000000",
-      btnDangerHover: "#FFFF00",
-      accentOrange: "#FF3300",
-      accentPurple: "#9900FF",
-      accentBlue: "#0066FF",
-      accentGreen: "#00AA00",
-      shopHeaderStart: "#9900FF",
-      shopHeaderEnd: "#6600CC",
-      shopTokenText: "#000000",
-      shopInfoTitle: "#000000",
-      shopWarningTitle: "#FF0000",
-      shopModalBg: "#FFFFFF",
-      textMuted: "#333333",
-      textLightAccent: "#666666",
-      textSoft: "#999999",
-      rank1BgStart: "#FFD700",
-      rank1BgEnd: "#FFD700",
-      rank1Border: "#000000",
-      rank2BgStart: "#C0C0C0",
-      rank2BgEnd: "#C0C0C0",
-      rank2Border: "#000000",
-      rank3BgStart: "#CD7F32",
-      rank3BgEnd: "#CD7F32",
-      rank3Border: "#000000",
-      modalBg: "#FFFFFF",
-      levelBarBg: "#FFFFFF",
-      levelBarFill: "#0066FF",
-      xpBarBg: "#FFFFFF",
-      xpBarFill: "#FF6600",
-      xpBarText: "#000000",
-      xpBarTextActive: "#FFFFFF",
-      reportBarBg: "#FFFFFF",
-      reportBarLow: "#00FF00",
-      reportBarMedium: "#FF6600",
-      reportBarHigh: "#FF0000",
-    };
-
-    try {
-      const savedTheme = db
-        .prepare("SELECT value FROM settings WHERE key = ?")
-        .get("theme_config");
-      if (savedTheme) {
-        const parsedTheme = JSON.parse(savedTheme.value);
-        // If the saved theme is the old default theme, ignore it and use the new comic theme
-        if (parsedTheme.bgBodyStart === "#fbf4e1") {
-          console.log(
-            "[Theme] Old default theme detected in database. Ignoring it to use the new comic theme.",
-          );
-          db.prepare("DELETE FROM settings WHERE key = ?").run("theme_config");
-        } else {
-          themeConfig = { ...themeConfig, ...parsedTheme };
-          console.log("[Theme] Loaded saved theme config.");
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load theme config:", e);
-    }
-
     let cachedTopPlayers: any[] = [];
     let topPlayersCacheTime = 0;
     let highestLikesSerials: string[] = [];
@@ -5952,7 +5874,6 @@ async function startServer() {
         const images = db
           .prepare("SELECT id, name, category, level, timestamp FROM custom_images ORDER BY timestamp DESC")
           .all();
-        console.log(`[API] Fetching images, found: ${images.length}`);
         res.json(images);
       } catch (error) {
         console.error("Error fetching images:", error);
@@ -11526,8 +11447,6 @@ async function startServer() {
 
       broadcastOnlineCount();
 
-      // Send current theme to new user
-      socket.emit("theme_updated", themeConfig);
       socket.emit("top_3_update", getTopPlayers(false, 3));
       socket.emit("policies_update", gamePolicies);
       const highestLikesPlayersDataForNewUser = highestLikesSerials
@@ -11609,19 +11528,6 @@ async function startServer() {
       } catch (e) {
         console.error("Failed to fetch app settings:", e);
       }
-
-      socket.on("admin_save_theme", (newTheme) => {
-        console.log("[Theme] Admin updated theme");
-        themeConfig = { ...themeConfig, ...newTheme };
-        try {
-          db.prepare(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-          ).run("theme_config", JSON.stringify(themeConfig));
-          io.emit("theme_updated", themeConfig); // Broadcast to all
-        } catch (e) {
-          console.error("Failed to save theme:", e);
-        }
-      });
 
       socket.on("request_match_intro", ({ roomId }) => {
         const room = rooms.get(roomId);
@@ -17535,9 +17441,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
         const player = socket.data?.serial
           ? allPlayers.get(socket.data.serial)
           : undefined;
-        console.log(
-          `[Admin Get Players] socket.data.serial: ${socket.data?.serial}, player.isAdmin: ${player?.isAdmin}, socket.data.isAdmin: ${socket.data?.isAdmin}`,
-        );
         if (player?.isAdmin || socket.data?.isAdmin) {
           const playersWithOnlineStatus = Array.from(allPlayers.values()).map(
             (p) => ({
@@ -17547,9 +17450,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
           );
           callback(playersWithOnlineStatus);
         } else {
-          console.log(
-            `[Admin Get Players] Unauthorized for socket ${socket.id}`,
-          );
           callback({ error: "Unauthorized" });
         }
       });
@@ -19797,38 +19697,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
                 senderLevel: giverPlayer.level || 1,
                 timestamp: Date.now(),
               });
-            } else {
-              // Player is offline, send push notification
-              try {
-                const subscriptions = db
-                  .prepare("SELECT subscription FROM push_subscriptions WHERE serial = ?")
-                  .all(targetSerial) as any[];
-
-                if (subscriptions.length > 0) {
-                  const payload = JSON.stringify({
-                    title: "إعجاب جديد! ❤️",
-                    body: `${giverPlayer.name} أعجب ببروفايلك وينتظر منك رد الإعجاب 😍`,
-                    url: "/",
-                  });
-
-                  for (const sub of subscriptions) {
-                    try {
-                      const subscription = JSON.parse(sub.subscription);
-                      await webpush.sendNotification(subscription, payload);
-                    } catch (err: any) {
-                      if (err.statusCode === 410 || err.statusCode === 404) {
-                        db.prepare(
-                          "DELETE FROM push_subscriptions WHERE subscription = ?",
-                        ).run(sub.subscription);
-                      } else {
-                        console.error("Push Like Error:", err.statusCode, err.body || err.message);
-                      }
-                    }
-                  }
-                }
-              } catch (e) {
-                console.error("Error sending like push notification:", e);
-              }
             }
 
             // Check for reward (every 20 likes = 1 key)
@@ -19956,42 +19824,6 @@ socket.on("claim_connect_four_words_reward", ({ serial }) => {
             io.to(targetSocketId).emit("friend_request_received", {
               senderSerial: actualMySerial,
             });
-          }
-          try {
-            const senderPlayer = db
-              .prepare("SELECT name FROM players WHERE serial = ?")
-              .get(actualMySerial) as any;
-            const subscriptions = db
-              .prepare("SELECT subscription FROM push_subscriptions WHERE serial = ?")
-              .all(targetSerial) as any[];
-
-            if (subscriptions.length > 0 && senderPlayer) {
-              const payload = JSON.stringify({
-                title: "طلب صداقة جديد 👥",
-                body: `${senderPlayer.name} أرسل لك طلب صداقة وينتظر الرد.`,
-                url: "/",
-              });
-
-              for (const sub of subscriptions) {
-                try {
-                  const subscription = JSON.parse(sub.subscription);
-                  await webpush.sendNotification(subscription, payload);
-                } catch (err: any) {
-                  if (err.statusCode === 410 || err.statusCode === 404) {
-                    db.prepare(
-                      "DELETE FROM push_subscriptions WHERE subscription = ?",
-                    ).run(sub.subscription);
-                  } else {
-                    console.error("Push Friend Error:", err.statusCode, err.body || err.message);
-                  }
-                }
-              }
-            }
-          } catch (e) {
-            console.error(
-              "Error sending friend request push notification:",
-              e,
-            );
           }
           callback({ success: true });
         } catch (e) {
