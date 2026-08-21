@@ -37,7 +37,7 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
   const staticFrame = !customFrame && STATIC_ASSETS.frames[milestoneLevel as keyof typeof STATIC_ASSETS.frames];
   const staticStar = !customStar && STATIC_ASSETS.stars[milestoneLevel as keyof typeof STATIC_ASSETS.stars];
 
-  const isFilename = typeof avatar === 'string' && avatar.includes('.png');
+  const isFilename = typeof avatar === 'string' && (avatar.includes('.png') || avatar.includes('.webp') || avatar.includes('.jpg') || avatar.includes('.jpeg'));
   const isDataUrl = typeof avatar === 'string' && avatar.startsWith('data:image');
   
   const appVersion = customConfig?.version || "1.0";
@@ -52,7 +52,7 @@ export const AvatarDisplay = React.memo(({ avatar, level, customConfig, classNam
                      (customAvatar ? `/uploads/${customAvatar}` :
                      (staticAvatar ? `/assets/${Array.isArray(staticAvatar) ? staticAvatar[0] : staticAvatar}` : 
                      avatar))));
-  const displayAvatar = typeof baseAvatar === 'string' && !baseAvatar.startsWith('data:') && (baseAvatar.includes('/') || baseAvatar.includes('.png')) ? appendV(baseAvatar) as string : baseAvatar;
+  const displayAvatar = typeof baseAvatar === 'string' && !baseAvatar.startsWith('data:') && (baseAvatar.includes('/') || baseAvatar.includes('.png') || baseAvatar.includes('.webp') || baseAvatar.includes('.jpg') || baseAvatar.includes('.jpeg')) ? appendV(baseAvatar) as string : baseAvatar;
 
   let displayFrame = !hideExtras && (customFrame ? `/uploads/${customFrame}` : (staticFrame ? `/assets/${staticFrame}` : null));
   if (selectedFrame && !hideExtras) {
