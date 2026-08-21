@@ -8701,6 +8701,12 @@ if (data.connectFourWordsRewardLevel != null) {
     }
 
     // Speed cups countdown
+    if (!room) {
+      stopSound("countdownBeep");
+      lastTickTimeRef.current.speedCupsCountdown = -1;
+      return;
+    }
+
     if (room.gameState === "speed_cups_countdown" && room.speedCupsTimer === 3) {
       if (lastTickTimeRef.current.speedCupsCountdown !== 3) {
         playSound("countdownBeep", 0.6);
@@ -8712,6 +8718,7 @@ if (data.connectFourWordsRewardLevel != null) {
         lastTickTimeRef.current.speedCupsCountdown = -2;
       }
     } else if (room.gameState !== "speed_cups_countdown") {
+      stopSound("countdownBeep");
       lastTickTimeRef.current.speedCupsCountdown = -1;
     }
   }, [room?.timer, room?.speedCupsTimer, room?.gameState, playSound, stopSound]);
@@ -10597,6 +10604,11 @@ if (data.connectFourWordsRewardLevel != null) {
   }, []);
 
   const resetToHome = () => {
+    stopSound("countdownBeep");
+    stopSound("tick");
+    stopSound("clockTicking");
+    stopSound("bombFuse");
+    stopSound("deskBell");
     setJoined(false);
     setRoom(null);
     setRoomId("");
@@ -26561,57 +26573,40 @@ const renderBombPartyRewardBar = () => {
                             : "";
 
                           return (
-                            <div
+                            <button
                               key={idx}
-                              className="aspect-square w-full [perspective:600px] touch-manipulation select-none"
+                              type="button"
+                              disabled={!myTurn || isFlipped}
+                              onClick={() => {
+                                 socket?.emit("submit_iq_move", { roomId: room.id, index: idx });
+                                 playSound("handXFill");
+                              }}
+                              className={`aspect-square w-full relative transition-all duration-150 transform active:scale-95 flex items-center justify-center overflow-hidden shadow-sm touch-manipulation select-none
+                                ${room.iqBoardSize === 8 ? "rounded-md border-b-2" : room.iqBoardSize === 6 ? "rounded-lg border-b-[3px]" : "rounded-xl border-b-4"}
+                                ${isFlipped 
+                                  ? (isMatched ? "bg-gray-100 border-gray-300" : `bg-white ${room.iqTurn === room.iqPlayer1 ? "border-red-500" : "border-green-500"}`) 
+                                  : (room.iqTurn === room.iqPlayer1 ? "bg-red-500 border-red-700 hover:bg-red-600" : "bg-green-500 border-green-700 hover:bg-green-600")
+                                }
+                              `}
                             >
-                              <button
-                                type="button"
-                                disabled={!myTurn || isFlipped}
-                                onClick={() => {
-                                   socket?.emit("submit_iq_move", { roomId: room.id, index: idx });
-                                   playSound("handXFill");
-                                }}
-                                className={`w-full h-full relative transition-transform duration-300 ease-out [transform-style:preserve-3d] transform-gpu active:scale-95 disabled:active:scale-100 focus:outline-none
-                                  ${isFlipped ? "[transform:rotateY(180deg)]" : "[transform:rotateY(0deg)]"}
-                                `}
-                              >
-                                {/* Front Face (Card Back with '?') */}
-                                <div
-                                  className={`absolute inset-0 w-full h-full flex items-center justify-center shadow-sm [backface-visibility:hidden] [webkit-backface-visibility:hidden] overflow-hidden
-                                    ${room.iqBoardSize === 8 ? "rounded-md border-b-2" : room.iqBoardSize === 6 ? "rounded-lg border-b-[3px]" : "rounded-xl border-b-4"}
-                                    ${room.iqTurn === room.iqPlayer1 ? "bg-red-500 border-red-700 hover:bg-red-600" : "bg-green-500 border-green-700 hover:bg-green-600"}
-                                  `}
-                                >
-                                  <div className="w-1/2 h-1/2 opacity-25 bg-white rounded-full flex items-center justify-center pointer-events-none">
-                                    <span className={`text-white font-black ${room.iqBoardSize === 8 ? "text-xs md:text-sm" : room.iqBoardSize === 6 ? "text-sm md:text-lg" : "text-base md:text-xl"}`}>?</span>
-                                  </div>
-                                </div>
-
-                                {/* Back Face (Card Front with Image) */}
-                                <div
-                                  className={`absolute inset-0 w-full h-full flex items-center justify-center bg-white shadow-sm [backface-visibility:hidden] [webkit-backface-visibility:hidden] [transform:rotateY(180deg)] overflow-hidden
-                                    ${room.iqBoardSize === 8 ? "rounded-md border-b-2" : room.iqBoardSize === 6 ? "rounded-lg border-b-[3px]" : "rounded-xl border-b-4"}
-                                    ${isMatched 
-                                      ? "bg-gray-100 border-gray-300" 
-                                      : (room.iqTurn === room.iqPlayer1 ? "border-red-500" : "border-green-500")
-                                    }
-                                  `}
-                                >
+                              {isFlipped ? (
+                                <div className={`w-full h-full flex items-center justify-center p-0.5 md:p-1 overflow-hidden ${isMatched ? "opacity-50 grayscale" : ""}`}>
                                   {cellImgSrc ? (
-                                    <div className={`w-full h-full flex items-center justify-center p-0.5 md:p-1 overflow-hidden ${isMatched ? "opacity-50 grayscale" : ""}`}>
-                                      <img 
-                                        src={cellImgSrc} 
-                                        alt="card" 
-                                        loading="eager"
-                                        decoding="async"
-                                        className="w-[85%] h-[85%] object-contain pointer-events-none select-none" 
-                                      />
-                                    </div>
+                                    <img 
+                                      src={cellImgSrc} 
+                                      alt="card" 
+                                      loading="eager"
+                                      decoding="async"
+                                      className="w-[85%] h-[85%] object-contain pointer-events-none select-none" 
+                                    />
                                   ) : null}
                                 </div>
-                              </button>
-                            </div>
+                              ) : (
+                                <div className="w-1/2 h-1/2 opacity-25 bg-white rounded-full flex items-center justify-center pointer-events-none">
+                                  <span className={`text-white font-black ${room.iqBoardSize === 8 ? "text-xs md:text-sm" : room.iqBoardSize === 6 ? "text-sm md:text-lg" : "text-base md:text-xl"}`}>?</span>
+                                </div>
+                              )}
+                            </button>
                           );
                         })}
                       </div>
