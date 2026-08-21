@@ -1173,9 +1173,6 @@ async function startServer() {
       }
     }
 
-    const USE_FIRESTORE_CONFIG = process.env.USE_FIRESTORE_CONFIG === "true";
-    const firestore = admin.apps.length > 0 ? admin.firestore() : null;
-
     configCache = {
       avatars: {},
       frames: {},
@@ -1245,45 +1242,6 @@ async function startServer() {
         }
       }
       return words;
-    }
-
-    // Override with Firestore if enabled
-    if (USE_FIRESTORE_CONFIG && firestore) {
-      try {
-        const doc = await firestore
-          .collection("settings")
-          .doc("gameConfig")
-          .get();
-        if (doc.exists) {
-          const remoteConfig = doc.data() as any;
-          configCache = { ...configCache, ...remoteConfig };
-
-          // Prioritize version from version.json (currentVersion) if it exists
-          if (currentVersion) {
-            configCache.version = currentVersion;
-            // Sync back to Firestore if different
-            if (remoteConfig.version !== currentVersion) {
-              await firestore
-                .collection("settings")
-                .doc("gameConfig")
-                .update({ version: currentVersion });
-              console.log(
-                `[Config] Synced version ${currentVersion} to Firestore`,
-              );
-            }
-          }
-
-          console.log("[Config] Loaded from Firestore successfully.");
-        } else {
-          await firestore
-            .collection("settings")
-            .doc("gameConfig")
-            .set(configCache);
-          console.log("[Config] Initialized Firestore with local config.");
-        }
-      } catch (e) {
-        console.error("[Config] Failed to load from Firestore:", e);
-      }
     }
 
     // Dynamic manifest.json to support versioning
@@ -1381,18 +1339,6 @@ async function startServer() {
         console.error("[Config DB] Failed to save config to DB:", dbErr);
       }
 
-      if (USE_FIRESTORE_CONFIG && firestore) {
-        try {
-          await firestore
-            .collection("settings")
-            .doc("gameConfig")
-            .set(req.body);
-          console.log("[Config] Saved to Firestore.");
-        } catch (e) {
-          console.error("[Config] Failed to save to Firestore:", e);
-        }
-      }
-
       // Also update version.json if version is provided
       if (req.body.version) {
         try {
@@ -1445,21 +1391,6 @@ async function startServer() {
               "[Config DB] Failed to save mock ad to DB from upload:",
               dbErr,
             );
-          }
-
-          if (USE_FIRESTORE_CONFIG && firestore) {
-            try {
-              await firestore
-                .collection("settings")
-                .doc("gameConfig")
-                .set(newConfig);
-              console.log("[Config] Uploaded config saved to Firestore.");
-            } catch (e) {
-              console.error(
-                "[Config] Failed to save uploaded config to Firestore:",
-                e,
-              );
-            }
           }
 
           fs.unlinkSync(req.file.path); // remove temp file
