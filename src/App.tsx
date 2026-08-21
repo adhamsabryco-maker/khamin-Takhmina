@@ -26550,13 +26550,13 @@ const renderBombPartyRewardBar = () => {
 
                     <div className="flex-1 flex flex-col items-center justify-center relative z-10 py-1 mb-0.5 w-full">
                       <div 
-                        className={`bg-gray-100 p-1.5 rounded-2xl w-full mx-auto shadow-inner Battery-border-2 border-gray-300 ${
+                        className={`bg-gray-100 p-1 rounded-xl w-full mx-auto shadow-inner Battery-border-2 border-gray-300 ${
                           room.iqBoardSize === 4 ? "max-w-[420px]" : room.iqBoardSize === 6 ? "max-w-[560px]" : "max-w-[680px]"
                         }`}
                         style={{
                           display: 'grid',
                           gridTemplateColumns: `repeat(${room.iqBoardSize || 4}, minmax(0, 1fr))`,
-                          gap: (room.iqBoardSize || 4) > 6 ? '3px' : (room.iqBoardSize || 4) === 6 ? '5px' : '7px'
+                          gap: (room.iqBoardSize || 4) > 6 ? '2px' : (room.iqBoardSize || 4) === 6 ? '3px' : '5px'
                         }}
                       >
                         {room.iqBoard?.map((cellImg: any, idx: number) => {
@@ -26581,29 +26581,29 @@ const renderBombPartyRewardBar = () => {
                                  socket?.emit("submit_iq_move", { roomId: room.id, index: idx });
                                  playSound("handXFill");
                               }}
-                              className={`aspect-square w-full relative transition-all duration-150 transform active:scale-95 flex items-center justify-center overflow-hidden shadow-sm touch-manipulation select-none
-                                ${room.iqBoardSize === 8 ? "rounded-md border-b-2" : room.iqBoardSize === 6 ? "rounded-lg border-b-[3px]" : "rounded-xl border-b-4"}
+                              className={`aspect-square w-full relative p-0 m-0 border-0 flex items-center justify-center overflow-hidden touch-manipulation select-none
+                                ${room.iqBoardSize === 8 ? "rounded-none" : room.iqBoardSize === 6 ? "rounded-sm" : "rounded-md"}
                                 ${isFlipped 
-                                  ? (isMatched ? "bg-gray-100 border-gray-300" : `bg-white ${room.iqTurn === room.iqPlayer1 ? "border-red-500" : "border-green-500"}`) 
-                                  : (room.iqTurn === room.iqPlayer1 ? "bg-red-500 border-red-700 hover:bg-red-600" : "bg-green-500 border-green-700 hover:bg-green-600")
+                                  ? (isMatched ? "bg-gray-100 opacity-60" : "bg-white") 
+                                  : (room.iqTurn === room.iqPlayer1 ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")
                                 }
                               `}
                             >
                               {isFlipped ? (
-                                <div className={`w-full h-full flex items-center justify-center p-0.5 md:p-1 overflow-hidden ${isMatched ? "opacity-50 grayscale" : ""}`}>
+                                <div className={`w-full h-full p-0 m-0 flex items-center justify-center overflow-hidden ${isMatched ? "grayscale" : ""}`}>
                                   {cellImgSrc ? (
                                     <img 
                                       src={cellImgSrc} 
                                       alt="card" 
                                       loading="eager"
-                                      decoding="async"
-                                      className="w-[85%] h-[85%] object-contain pointer-events-none select-none" 
+                                      decoding="sync"
+                                      className="w-full h-full object-cover pointer-events-none select-none" 
                                     />
                                   ) : null}
                                 </div>
                               ) : (
-                                <div className="w-1/2 h-1/2 opacity-25 bg-white rounded-full flex items-center justify-center pointer-events-none">
-                                  <span className={`text-white font-black ${room.iqBoardSize === 8 ? "text-xs md:text-sm" : room.iqBoardSize === 6 ? "text-sm md:text-lg" : "text-base md:text-xl"}`}>?</span>
+                                <div className="w-full h-full flex items-center justify-center pointer-events-none">
+                                  <span className={`text-white font-black opacity-40 ${room.iqBoardSize === 8 ? "text-xs md:text-sm" : room.iqBoardSize === 6 ? "text-sm md:text-lg" : "text-base md:text-xl"}`}>?</span>
                                 </div>
                               )}
                             </button>
