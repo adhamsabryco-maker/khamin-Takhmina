@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Image as ImageIcon, Trash2, Gift, CloudRain, Disc } from 'lucide-react';
+import { Upload, Image as ImageIcon, Trash2, Gift, CloudRain, Disc, Loader2 } from 'lucide-react';
 import { useAvatarConfig } from '../contexts/AvatarContext';
 import { Socket } from 'socket.io-client';
 import { apiUrl } from '../apiConfig';
 
 export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePolicies, luckyWheelEnabled, setLuckyWheelEnabled }: { showAlert: (msg: string, title?: string) => void, socket: Socket | null, gamePolicies: any, setGamePolicies: any, luckyWheelEnabled: boolean, setLuckyWheelEnabled: (val: boolean) => void }) => {
   const [uploading, setUploading] = useState(false);
+  const [isSyncingDb, setIsSyncingDb] = useState(false);
   const { customConfig: config, refreshConfig } = useAvatarConfig();
   const [versionInput, setVersionInput] = useState(config.version || '1.0.0');
 
@@ -16,6 +17,36 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
   }, [config.version]);
 
   const dbFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSyncCloudDb = () => {
+    setIsSyncingDb(true);
+    if (socket) {
+      socket.emit("admin_sync_database", (res: any) => {
+        setIsSyncingDb(false);
+        if (res?.success) {
+          showAlert("تم تحديث ورفع نسخة قاعدة البيانات إلى السحابة بنجاح!", "نجاح");
+        } else {
+          showAlert(res?.error || "فشل رفع قاعدة البيانات", "خطأ");
+        }
+      });
+    } else {
+      const token = localStorage.getItem("khamin_admin_token");
+      fetch(apiUrl(`/api/admin/sync-database?token=${token}`), { method: "POST" })
+        .then((r) => r.json())
+        .then((data) => {
+          setIsSyncingDb(false);
+          if (data?.success) {
+            showAlert("تم تحديث ورفع نسخة قاعدة البيانات إلى السحابة بنجاح!", "نجاح");
+          } else {
+            showAlert(data?.error || "فشل رفع قاعدة البيانات", "خطأ");
+          }
+        })
+        .catch(() => {
+          setIsSyncingDb(false);
+          showAlert("فشل الاتصال بالسيرفر", "خطأ");
+        });
+    }
+  };
 
   const handleDbUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -143,6 +174,30 @@ export const AdminCustomization = ({ showAlert, socket, gamePolicies, setGamePol
       <div className="box-game p-6 shadow-sm border-2 border-blue-100 bg-blue-50/30">
         <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-blue-900">💾 نسخة احتياطية لقاعدة البيانات</h3>
         <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-purple-100 shadow-sm">
+            <div>
+              <p className="font-bold text-purple-900">حفظ السحابة (DB)</p>
+              <p className="text-xs text-purple-700 mt-1">تحديث ورفع نسخة قاعدة البيانات الحالية إلى السحابة قبل النشر.</p>
+            </div>
+            <button
+              disabled={isSyncingDb}
+              onClick={handleSyncCloudDb}
+              className={`btn-game bg-purple-600 hover:bg-purple-700 text-white py-2 px-6 shadow-[0_4px_0_0_#7e22ce] active:shadow-none active:translate-y-1 flex items-center gap-2 ${isSyncingDb ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {isSyncingDb ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>جاري الحفظ...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  <span>حفظ السحابة (DB)</span>
+                </>
+              )}
+            </button>
+          </div>
+
           <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-blue-100 shadow-sm">
             <div>
               <p className="font-bold text-blue-900">تحميل ملف players.db</p>
