@@ -2737,7 +2737,8 @@ async function startServer() {
 
       const freelistCount = db.pragma("freelist_count", { simple: true }) as number;
       const currentDbSize = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0;
-      if (freelistCount > 0 || currentDbSize > 1 * 1024 * 1024) {
+      // Only run VACUUM if there are significant free pages to reclaim (> 100 free pages)
+      if (freelistCount > 100) {
         console.log(`[DB Optimization] Startup check: database is ${(currentDbSize / 1024 / 1024).toFixed(2)} MB (${freelistCount} free pages). Running VACUUM...`);
         db.pragma("wal_checkpoint(TRUNCATE)");
         db.exec("VACUUM");
@@ -3932,23 +3933,6 @@ async function startServer() {
         try {
           db.exec("UPDATE custom_images SET data = '' WHERE data IS NOT NULL AND data != ''");
         } catch (e) {}
-
-        // Automatic DB optimization: Check if database has free pages and run VACUUM to reclaim space
-        try {
-          const freelistCount = db.pragma("freelist_count", { simple: true }) as number;
-          const currentDbSize = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0;
-          if (freelistCount > 5 || currentDbSize > 2 * 1024 * 1024) {
-            console.log(`[DB Optimization] Database size is ${(currentDbSize / 1024 / 1024).toFixed(2)} MB (${freelistCount} free pages). Running VACUUM to reclaim disk space...`);
-            db.exec("VACUUM");
-            const shrunkSize = fs.statSync(dbPath).size;
-            console.log(`[DB Optimization] VACUUM completed! Database size permanently shrunk from ${(currentDbSize / 1024 / 1024).toFixed(2)} MB to ${(shrunkSize / 1024 / 1024).toFixed(2)} MB.`);
-            if (isProduction && supabase) {
-              syncDbToSupabase(true);
-            }
-          }
-        } catch (vacErr) {
-          console.warn("[DB Optimization] VACUUM check note:", vacErr);
-        }
       } catch (err) {
         console.error("[Image Migration] Error during image migration:", err);
       }
