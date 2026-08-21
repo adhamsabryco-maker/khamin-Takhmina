@@ -2092,7 +2092,7 @@ async function startServer() {
     const matchmakingQueue: any[] = [];
     const matchmakingInterval = setInterval(() => {
       processQueue();
-    }, 5000);
+    }, 1000);
 
     function cleanupPlayerOldBotRooms(playerSerial: string, currentRoomId?: string) {
       if (!playerSerial || !rooms) return;
@@ -6095,7 +6095,10 @@ async function startServer() {
           if (matchedIndices.has(i)) continue;
           const p = availablePlayers[i];
 
-          if (!p.isBot && Date.now() - p.joinedAt > 5000) {
+          if (!p.isBot && p.status === "searching" && Date.now() - p.joinedAt >= 5000) {
+            matchedIndices.add(i);
+            p.status = "proposing";
+
             const botPersona =
               BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
             const botName = getRandomBotName(botPersona.gender, [p.playerName || p.name]);
@@ -6110,11 +6113,21 @@ async function startServer() {
               age: botPersona.age,
               xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
               streak: 0,
-              wins: 0,
+              wins: Math.floor(botPersona.level * (Math.random() * 5 + 2)),
+              busCompleteWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              xoWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              handWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              iqWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              dotsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              speedCupsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              bombPartyWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              wordleWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              connectFourWordsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              spaceWarWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
               serial:
                 "bot_" + Date.now() + Math.random().toString(36).substr(2, 5),
               joinedAt: Date.now(),
-              status: "searching",
+              status: "proposing",
               isBot: true,
               disableGuessChat: 1,
               persona: botPersona.personality,
@@ -6124,7 +6137,43 @@ async function startServer() {
                 emit: (event: string, data: any) => {},
               },
             };
-            matchmakingQueue.push(bot);
+
+            const matchId = `match_${Math.random().toString(36).substr(2, 9)}`;
+            const timeoutId = setTimeout(() => {
+              const match = pendingMatches.get(matchId);
+              if (match) {
+                pendingMatches.delete(matchId);
+                match.p1.status = "searching";
+                match.p1.socket.emit("match_rejected", { reason: "timeout" });
+                if (!match.p1.skipped) match.p1.skipped = new Map();
+                match.p1.skipped.set(bot.playerId, Date.now() + 10000);
+                matchmakingQueue.push(match.p1);
+                processQueue();
+              }
+            }, 12000);
+
+            pendingMatches.set(matchId, {
+              id: matchId,
+              p1: p,
+              p2: bot,
+              p1Response: null,
+              p2Response: null,
+              timeoutId,
+              createdAt: now,
+            });
+
+            p.socket.emit("match_proposed", {
+              matchId,
+              opponent: {
+                name: bot.playerName,
+                avatar: bot.avatar,
+                gender: bot.gender,
+                selectedFrame: "",
+                age: bot.age,
+                level: getLevel(bot.xp || 0),
+                proPackageExpiry: null,
+              },
+            });
           }
         }
       }
@@ -8622,10 +8671,10 @@ async function startServer() {
               const elapsedSeconds = (Date.now() - startTime) / 1000;
               const isAdvancedStage = (filledCount >= 14 || elapsedSeconds >= 300);
 
-              // Mistake/forgetfulness probability gives human players a realistic, fun chance to win
-              let mistakeRate = 0.18; // 18% base chance of an oversight or suboptimal play
+              // Mistake/forgetfulness probability gives human players a realistic, fun, and human-like opponent
+              let mistakeRate = 0.35; // 35% base chance of oversight / focusing on own word
               if (isAdvancedStage) {
-                mistakeRate = Math.min(0.35, 0.20 + (filledCount - 10) * 0.02 + (elapsedSeconds / 600) * 0.10);
+                mistakeRate = Math.min(0.48, 0.35 + (filledCount - 10) * 0.015 + (elapsedSeconds / 600) * 0.08);
               }
 
               // Helper to check if a virtual move results in immediate win
@@ -8785,13 +8834,13 @@ async function startServer() {
 
               if (!isConfused) {
                 if (winningMoves.length > 0) {
-                  // High chance to take winning move (85%)
-                  if (Math.random() < 0.85) {
+                  // Moderate chance to take immediate win (60%), giving human a chance if bot overlooks it
+                  if (Math.random() < 0.60) {
                     finalMove = winningMoves[Math.floor(Math.random() * winningMoves.length)];
                   }
                 } else if (hasOpponentThreats) {
-                  // 75% chance to block, 25% chance to miss or pursue own goal
-                  if (Math.random() < 0.75) {
+                  // Balanced chance to block (50%), 50% chance bot is focused on its own word / misses the block
+                  if (Math.random() < 0.50) {
                     const threatenedCols = Object.keys(opponentWinningMovesInColumns).map(Number);
                     const colToBlock = threatenedCols[Math.floor(Math.random() * threatenedCols.length)];
                     let bestLetterForBlock = letters[0];
@@ -8814,13 +8863,16 @@ async function startServer() {
                   score: number;
                 }
                 const scoredMoves: ScoredMove[] = [];
-                const defenseWeight = isAdvancedStage ? 1.0 : 1.3;
+                // Humans focus primarily on their own word and only partially on blocking (0.5 weight)
+                const defenseWeight = isAdvancedStage ? 0.45 : 0.60;
 
                 for (const move of allPossibleMoves) {
                   const offenseScore = evaluateMoveHeuristic(move.col, move.letter, botPlayer.id);
                   const defenseScore = evaluateMoveHeuristic(move.col, move.letter, humanId);
 
-                  let moveScore = offenseScore + defenseWeight * defenseScore;
+                  // Add small natural human randomness (-5 to +5) so moves aren't mechanically identical every game
+                  const humanJitter = (Math.random() * 10) - 5;
+                  let moveScore = offenseScore + (defenseWeight * defenseScore) + humanJitter;
 
                   // Safety check: avoid setting up an immediate win on top of our move
                   let targetR = -1;
@@ -8875,9 +8927,9 @@ async function startServer() {
                     }
 
                     if (setsUpOpponentWin) {
-                      // 60% chance to penalize setup move, 40% chance bot misses the trap
-                      if (Math.random() < 0.60) {
-                        moveScore -= 250;
+                      // 45% chance to notice and avoid setup move, 55% chance bot misses the trap like a human
+                      if (Math.random() < 0.45) {
+                        moveScore -= 150;
                       }
                     }
                   }
@@ -8887,7 +8939,8 @@ async function startServer() {
 
                 scoredMoves.sort((a, b) => b.score - a.score);
                 const bestScore = scoredMoves[0].score;
-                const threshold = Math.max(bestScore - 20, bestScore * 0.65);
+                // Wider pool of valid candidate moves (50% threshold) so the bot plays diverse, natural moves
+                const threshold = Math.max(bestScore - 30, bestScore * 0.50);
                 const bestMoves = scoredMoves.filter(m => m.score >= threshold);
                 finalMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
               }
