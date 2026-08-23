@@ -8908,60 +8908,109 @@ if (data.connectFourWordsRewardLevel != null) {
           name: playerName,
           avatar: avatar,
           level: getLevel(xp),
+          gender: gender,
+          age: playerAge,
+          xp: xp,
+          serial: playerSerial,
         },
         "general",
         (statusMsg: string) => {
-          // Status message callback
+          // Status update
         },
-        8
+        3
       ).then((matchResult) => {
         if (matchResult) {
-          setIsSearching(false);
-          setJoined(true);
-          setRoomId(matchResult.roomId);
-          const initialRoom: any = {
-            id: matchResult.roomId,
-            players: [
-              {
-                id: playerId,
-                name: playerName,
-                avatar: avatar,
-                age: playerAge,
-                gender: gender,
-                xp: xp,
-                level: getLevel(xp),
-                serial: playerSerial,
-                selectedFrame: selectedFrame,
-              } as any,
-              {
-                id: matchResult.opponent.id,
-                name: matchResult.opponent.name,
-                avatar: matchResult.opponent.avatar,
-                age: 20,
-                gender: "boy",
-                xp: matchResult.opponent.level * 100,
-                level: matchResult.opponent.level,
-                serial: matchResult.opponent.id,
-                isBot: (matchResult.opponent as any).isBot,
-              } as any,
-            ],
-            gameState: "waiting",
-            timer: 60,
-            category: "random",
-            isPaused: false,
-            pausingPlayerId: null,
-            quickGuessTimer: 15,
-            selectionMode: null,
+          const matchId = `match_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+          setProposedMatch({
+            matchId,
+            roomId: matchResult.roomId,
+            opponent: matchResult.opponent,
+            opponentAccepted: true,
             isP2P: matchResult.isP2P,
             p2pManager: matchResult.p2pManager,
-          };
-          setRoom(initialRoom);
-          GameEngineService.initRoom(initialRoom);
+          } as any);
+          setHasResponded(false);
+          setOpponentAccepted(true);
+          setMatchResponseTimeLeft(10);
+          try {
+            playSound("matchFound");
+          } catch (e) {}
         }
       }).catch((err) => {
         console.warn("Serverless matchmaking error:", err);
       });
     }
+  };
+
+  const handleServerlessMatchAccept = (currentProposedMatch: any) => {
+    if (!currentProposedMatch) return;
+    const opp = currentProposedMatch.opponent;
+    const initialRoom: any = {
+      id: currentProposedMatch.roomId || `room_${Date.now()}`,
+      players: [
+        {
+          id: playerId,
+          name: playerName,
+          playerName: playerName,
+          avatar: avatar,
+          age: playerAge,
+          gender: gender,
+          xp: xp,
+          level: getLevel(xp),
+          serial: playerSerial,
+          selectedFrame: selectedFrame,
+          isBot: false,
+        } as any,
+        {
+          id: opp.id,
+          name: opp.name,
+          playerName: opp.name,
+          avatar: opp.avatar,
+          age: opp.age || 25,
+          gender: opp.gender || "boy",
+          xp: opp.xp || (opp.level * 100),
+          level: opp.level || 1,
+          serial: opp.serial || opp.id,
+          isBot: opp.isBot !== false,
+          disableGuessChat: 1,
+          persona: opp.persona || "",
+          selectedFrame: opp.selectedFrame || "",
+          proPackageExpiry: opp.proPackageExpiry || null,
+          wins: opp.wins || 10,
+          busCompleteWins: opp.busCompleteWins || 5,
+          xoWins: opp.xoWins || 5,
+          handWins: opp.handWins || 5,
+          iqWins: opp.iqWins || 5,
+          dotsWins: opp.dotsWins || 5,
+          speedCupsWins: opp.speedCupsWins || 5,
+          bombPartyWins: opp.bombPartyWins || 5,
+          wordleWins: opp.wordleWins || 5,
+          connectFourWordsWins: opp.connectFourWordsWins || 5,
+          spaceWarWins: opp.spaceWarWins || 5,
+        } as any,
+      ],
+      gameState: "waiting",
+      timer: 60,
+      category: "random",
+      isPaused: false,
+      pausingPlayerId: null,
+      quickGuessTimer: 15,
+      selectionMode: null,
+      isP2P: currentProposedMatch.isP2P,
+      p2pManager: currentProposedMatch.p2pManager,
+      isBot: opp.isBot !== false,
+    };
+    setRoomId(initialRoom.id);
+    setIsPrivate(false);
+    setIsSearching(false);
+    setJoined(true);
+    setProposedMatch(null);
+    setHasResponded(false);
+    setOpponentAccepted(false);
+    setMatchResponseTimeLeft(null);
+    setSearchTimeLeft(null);
+    setRoom(initialRoom);
+    GameEngineService.initRoom(initialRoom);
   };
 
   const handleRegister = () => {
@@ -22537,10 +22586,14 @@ const renderBombPartyRewardBar = () => {
                         onClick={() => {
                           playSound("clickOpen");
                           setHasResponded(true);
-                          socket?.emit("respond_to_match", {
-                            matchId: proposedMatch.matchId,
-                            response: "accept",
-                          });
+                          if (socket && isConnected) {
+                            socket.emit("respond_to_match", {
+                              matchId: proposedMatch.matchId,
+                              response: "accept",
+                            });
+                          } else {
+                            handleServerlessMatchAccept(proposedMatch);
+                          }
                         }}
                         className="flex-1 btn-game btn-success py-3 md:py-4 text-x1 md:text-xl animate-pulse"
                       >
@@ -22550,11 +22603,14 @@ const renderBombPartyRewardBar = () => {
                         onClick={() => {
                           playSound("clickOpen");
                           setHasResponded(true);
-                          socket?.emit("respond_to_match", {
-                            matchId: proposedMatch.matchId,
-                            response: "reject",
-                          });
+                          if (socket && isConnected) {
+                            socket.emit("respond_to_match", {
+                              matchId: proposedMatch.matchId,
+                              response: "reject",
+                            });
+                          }
                           setProposedMatch(null);
+                          setMatchResponseTimeLeft(null);
                         }}
                         className="flex-1 btn-game btn-danger py-3 md:py-4 text-lg md:text-xl"
                       >
