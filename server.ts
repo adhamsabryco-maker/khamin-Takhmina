@@ -6090,94 +6090,6 @@ async function startServer() {
         }
       }
 
-      if (configCache.aiBotEnabled) {
-        for (let i = 0; i < availablePlayers.length; i++) {
-          if (matchedIndices.has(i)) continue;
-          const p = availablePlayers[i];
-
-          if (!p.isBot && p.status === "searching" && Date.now() - p.joinedAt >= 5000) {
-            matchedIndices.add(i);
-            p.status = "proposing";
-
-            const botPersona =
-              BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
-            const botName = getRandomBotName(botPersona.gender, [p.playerName || p.name]);
-            const bot = {
-              id: "bot_" + Date.now() + Math.random().toString(36).substr(2, 5),
-              playerId:
-                "bot_" + Date.now() + Math.random().toString(36).substr(2, 5),
-              playerName: botName,
-              personaName: botPersona.name,
-              avatar: botPersona.avatar,
-              gender: botPersona.gender,
-              age: botPersona.age,
-              xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
-              streak: 0,
-              wins: Math.floor(botPersona.level * (Math.random() * 5 + 2)),
-              busCompleteWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
-              xoWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
-              handWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
-              iqWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
-              dotsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
-              speedCupsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
-              bombPartyWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
-              wordleWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
-              connectFourWordsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
-              spaceWarWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
-              serial:
-                "bot_" + Date.now() + Math.random().toString(36).substr(2, 5),
-              joinedAt: Date.now(),
-              status: "proposing",
-              isBot: true,
-              disableGuessChat: 1,
-              persona: botPersona.personality,
-              socket: {
-                id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
-                connected: true,
-                emit: (event: string, data: any) => {},
-              },
-            };
-
-            const matchId = `match_${Math.random().toString(36).substr(2, 9)}`;
-            const timeoutId = setTimeout(() => {
-              const match = pendingMatches.get(matchId);
-              if (match) {
-                pendingMatches.delete(matchId);
-                match.p1.status = "searching";
-                match.p1.socket.emit("match_rejected", { reason: "timeout" });
-                if (!match.p1.skipped) match.p1.skipped = new Map();
-                match.p1.skipped.set(bot.playerId, Date.now() + 10000);
-                matchmakingQueue.push(match.p1);
-                processQueue();
-              }
-            }, 12000);
-
-            pendingMatches.set(matchId, {
-              id: matchId,
-              p1: p,
-              p2: bot,
-              p1Response: null,
-              p2Response: null,
-              timeoutId,
-              createdAt: now,
-            });
-
-            p.socket.emit("match_proposed", {
-              matchId,
-              opponent: {
-                name: bot.playerName,
-                avatar: bot.avatar,
-                gender: bot.gender,
-                selectedFrame: "",
-                age: bot.age,
-                level: getLevel(bot.xp || 0),
-                proPackageExpiry: null,
-              },
-            });
-          }
-        }
-      }
-
       // Remove matched players from the main queue
       for (let i = matchmakingQueue.length - 1; i >= 0; i--) {
         if (matchmakingQueue[i].status === "proposing") {
@@ -6426,11 +6338,13 @@ async function startServer() {
 
     function checkBotMatchmaking() {
       const configPath = path.join(process.cwd(), "public/uploads/config.json");
-      let aiBotEnabled = false;
+      let aiBotEnabled = !!configCache?.aiBotEnabled;
       if (fs.existsSync(configPath)) {
         try {
           const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-          aiBotEnabled = !!config.aiBotEnabled;
+          if (config.aiBotEnabled !== undefined) {
+            aiBotEnabled = !!config.aiBotEnabled;
+          }
         } catch (e) {}
       }
 
