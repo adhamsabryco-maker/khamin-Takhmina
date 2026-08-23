@@ -8886,6 +8886,9 @@ if (data.connectFourWordsRewardLevel != null) {
     setIsPrivate(false);
     setIsOpponentBlocked(false);
 
+    setIsSearching(true);
+    setSearchTimeLeft(60);
+
     if (socket && isConnected) {
       socket.emit("find_random_match", {
         playerId,
@@ -8900,8 +8903,6 @@ if (data.connectFourWordsRewardLevel != null) {
         useToken: getLevel(xp) >= 50 && useToken,
       });
     } else {
-      setIsSearching(true);
-      setSearchTimeLeft(60);
       MatchmakingService.findRandomMatch(
         {
           id: playerSerial || playerId,
