@@ -14715,10 +14715,6 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
         const isP1 = match.p1.socket.id === socket.id;
         const isP2 = match.p2.socket.id === socket.id;
 
-        console.log(
-          `[Matchmaking] Response ${response} from socket ${socket.id} for match ${matchId}. isP1: ${isP1}, isP2: ${isP2}. Match P1 Socket: ${match.p1.socket.id}, Match P2 Socket: ${match.p2.socket.id}`,
-        );
-
         if (!isP1 && !isP2) {
           console.log(
             `[Matchmaking] Socket ${socket.id} is neither P1 nor P2 for match ${matchId}`,
@@ -14731,16 +14727,10 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
 
         // If human accepts and opponent is bot, bot accepts after a delay
         if (isP1 && response === "accept" && match.p2.isBot) {
-          console.log(
-            `[Bot Matchmaking] Human ${match.p1.playerName} accepted match ${matchId}. Bot ${match.p2.playerName} will accept shortly.`,
-          );
           setTimeout(
             () => {
               const currentMatch = pendingMatches.get(matchId);
               if (currentMatch && currentMatch.p1Response === "accept") {
-                console.log(
-                  `[Bot Matchmaking] Bot ${currentMatch.p2.playerName} automatically accepting match ${matchId}`,
-                );
                 currentMatch.p2Response = "accept";
                 currentMatch.p1.socket.emit("opponent_accepted");
 
