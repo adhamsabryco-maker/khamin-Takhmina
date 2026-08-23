@@ -1477,8 +1477,17 @@ export default function App() {
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
 
   useEffect(() => {
-    if (isConnected) {
-      const timer = setTimeout(() => setIsReadyToPlay(true), 2000);
+    const isServerlessMode = typeof window !== 'undefined' && 
+      (window.location.hostname.includes("github.io") || 
+       !import.meta.env.VITE_SERVER_URL);
+
+    if (isConnected || isServerlessMode) {
+      const timer = setTimeout(() => {
+        setIsReadyToPlay(true);
+        if (isServerlessMode) {
+          setIsConnecting(false);
+        }
+      }, 2000);
       return () => clearTimeout(timer);
     } else {
       setIsReadyToPlay(false);
@@ -1486,6 +1495,15 @@ export default function App() {
   }, [isConnected]);
 
   useEffect(() => {
+    const isServerlessMode = typeof window !== 'undefined' && 
+      (window.location.hostname.includes("github.io") || 
+       !import.meta.env.VITE_SERVER_URL);
+
+    if (isServerlessMode) {
+      setShowNetworkErrorModal(false);
+      return;
+    }
+
     let timeoutId: any = null;
     const isCurrentlyDisconnected = !isConnected || isConnecting || !!connectionError;
 
