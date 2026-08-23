@@ -6673,7 +6673,48 @@ export default function App() {
       timeout: 20000,
     });
 
+    
+    const originalEmit = newSocket.emit;
+    newSocket.emit = function(event: string, ...args: any[]) {
+      const room = GameEngineService.getCurrentRoom();
+      const isBotOrOffline = room?.players?.[1]?.isBot || !this.connected;
+      
+      // Events that must ALWAYS go to real server (if possible) or be ignored
+      const serverEvents = [
+        "check_ad_status", "check_key_ad_status", "update_player_notifications", 
+        "set_player_serial_for_socket", "update_player_privacy", "update_avatar",
+        "update_selected_frame", "find_random_match", "leave_matchmaking", "respond_to_match",
+        "admin_get_active_rooms", "admin_get_reward_history", "admin_get_pending_avatars",
+        "admin_get_contacts"
+      ];
+
+      if (isBotOrOffline && !serverEvents.includes(event)) {
+         console.log("[Serverless Intercept] Routing to GameEngineService:", event, args[0]);
+         GameEngineService.handleAction(event, args[0]);
+         return this as any;
+      }
+      
+      return originalEmit.apply(this, [event, ...args] as any);
+    };
+    
+    
+    const originalOn = newSocket.on;
+    newSocket.on = function(event: string, fn: any) {
+      GameEngineService.on(event, fn);
+      return originalOn.apply(this, [event, fn] as any);
+    };
+
+    const originalOff = newSocket.off;
+    newSocket.off = function(event: string, fn?: any) {
+      if (fn) {
+        GameEngineService.off(event, fn);
+      }
+      return originalOff.apply(this, [event, fn] as any);
+    };
+    
     socketRef.current = newSocket;
+
+
     setSocket(newSocket);
 
     newSocket.on("config_updated", () => {
@@ -8939,6 +8980,23 @@ if (data.connectFourWordsRewardLevel != null) {
         }
       }).catch((err) => {
         console.warn("Serverless matchmaking error:", err);
+      });
+    }
+  };
+
+
+  const handleProposeMode = (mode: string) => {
+    const isOfflineOrBot = room?.players?.[1]?.isBot || !socket?.connected;
+    if (isOfflineOrBot) {
+      GameEngineService.handleAction("propose_selection_mode", {
+        roomId: room?.id,
+        mode: mode,
+        playerId: socket?.id || playerId,
+      });
+    } else {
+      socket?.emit("propose_selection_mode", {
+        roomId: room?.id,
+        mode: mode,
       });
     }
   };
@@ -27596,10 +27654,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "ready",
-                                })
+                                handleProposeMode("ready")
                               }
                               className={`h-full w-full bg-orange-100 hover:bg-orange-200 border-[3px] border-accent-orange p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#ea580c] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27627,10 +27682,7 @@ const renderBombPartyRewardBar = () => {
                               <button
                                 disabled={room.players.length < 2}
                                 onClick={() =>
-                                  socket?.emit("propose_selection_mode", {
-                                    roomId: room.id,
-                                    mode: "custom",
-                                  })
+                                  handleProposeMode("custom")
                                 }
                                 className={`h-full w-full bg-purple-100 hover:bg-purple-200 border-[3px] border-purple-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#7e22ce] active:shadow-none active:translate-y-1.5"}`}
                               >
@@ -27660,10 +27712,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "beach_race",
-                                })
+                                handleProposeMode("beach_race")
                               }
                               className={`h-full w-full bg-amber-100 hover:bg-amber-200 border-[3px] border-amber-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#f59e0b] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27689,10 +27738,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "puzzle",
-                                })
+                                handleProposeMode("puzzle")
                               }
                               className={`h-full w-full bg-indigo-100 hover:bg-indigo-200 border-[3px] border-indigo-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#6366f1] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27718,10 +27764,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "wordle",
-                                })
+                                handleProposeMode("wordle")
                               }
                               className={`h-full w-full bg-emerald-100 hover:bg-emerald-200 border-[3px] border-emerald-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#10b981] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27747,10 +27790,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "connect_four_words",
-                                })
+                                handleProposeMode("connect_four_words")
                               }
                               className={`h-full w-full bg-blue-100 hover:bg-blue-200 border-[3px] border-blue-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#3b82f6] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27775,10 +27815,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "space_war",
-                                })
+                                handleProposeMode("space_war")
                               }
                               className={`h-full w-full bg-slate-800 hover:bg-slate-900 border-[3px] border-slate-600 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#475569] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27804,10 +27841,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "bus_complete",
-                                })
+                                handleProposeMode("bus_complete")
                               }
                               className={`h-full w-full bg-blue-100 hover:bg-blue-200 border-[3px] border-blue-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#3b82f6] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27834,10 +27868,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "xo",
-                                })
+                                handleProposeMode("xo")
                               }
                               className={`h-full w-full bg-green-100 hover:bg-green-200 border-[3px] border-green-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#22c55e] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27863,10 +27894,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "dots",
-                                })
+                                handleProposeMode("dots")
                               }
                               className={`h-full w-full bg-purple-100 hover:bg-purple-200 border-[3px] border-purple-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#a855f7] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27891,10 +27919,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "speed_cups",
-                                })
+                                handleProposeMode("speed_cups")
                               }
                               className={`h-full w-full bg-pink-100 hover:bg-pink-200 border-[3px] border-pink-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#ec4899] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27919,10 +27944,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "iq",
-                                })
+                                handleProposeMode("iq")
                               }
                               className={`h-full w-full bg-blue-100 hover:bg-blue-200 border-[3px] border-blue-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#3b82f6] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27948,10 +27970,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "hand_khamin",
-                                })
+                                handleProposeMode("hand_khamin")
                               }
                               className={`h-full w-full bg-pink-100 hover:bg-pink-200 border-[3px] border-pink-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#ec4899] active:shadow-none active:translate-y-1.5"}`}
                             >
@@ -27976,10 +27995,7 @@ const renderBombPartyRewardBar = () => {
                             <button
                               disabled={room.players.length < 2}
                               onClick={() =>
-                                socket?.emit("propose_selection_mode", {
-                                  roomId: room.id,
-                                  mode: "bomb_party",
-                                })
+                                handleProposeMode("bomb_party")
                               }
                               className={`h-full w-full bg-red-100 hover:bg-red-200 border-[3px] border-red-500 p-2 md:p-3 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 group ${room.players.length < 2 ? "opacity-60 cursor-not-allowed shadow-none" : "shadow-[0_6px_0_0_#ef4444] active:shadow-none active:translate-y-1.5"}`}
                             >
