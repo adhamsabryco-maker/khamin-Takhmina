@@ -6447,8 +6447,8 @@ async function startServer() {
         const p = matchmakingQueue[i];
         if (p.isBot || p.status !== "searching") continue;
 
-        // If player has been waiting for more than 10 seconds
-        if (p.joinedAt && now - p.joinedAt > 10000 && !p.useToken) {
+        // If player has been waiting for more than 4 seconds
+        if (p.joinedAt && now - p.joinedAt > 4000 && !p.useToken) {
           // Create a bot match
           p.status = "proposing";
           matchmakingQueue.splice(i, 1);
@@ -6529,7 +6529,7 @@ async function startServer() {
       }
     }
 
-    // setInterval(checkBotMatchmaking, 5000);
+    setInterval(checkBotMatchmaking, 3000);
 
     const botConversations = new Map<string, any[]>();
     const botFlags = new Map<string, any>();
