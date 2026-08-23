@@ -8946,11 +8946,13 @@ if (data.connectFourWordsRewardLevel != null) {
   const handleServerlessMatchAccept = (currentProposedMatch: any) => {
     if (!currentProposedMatch) return;
     const opp = currentProposedMatch.opponent;
+    const myId = socket?.id || playerId;
+    const oppId = opp.id || `bot_${Math.random().toString(36).substr(2, 6)}`;
     const initialRoom: any = {
       id: currentProposedMatch.roomId || `room_${Date.now()}`,
       players: [
         {
-          id: playerId,
+          id: myId,
           name: playerName,
           playerName: playerName,
           avatar: avatar,
@@ -8963,7 +8965,7 @@ if (data.connectFourWordsRewardLevel != null) {
           isBot: false,
         } as any,
         {
-          id: opp.id,
+          id: oppId,
           name: opp.name,
           playerName: opp.name,
           avatar: opp.avatar,
@@ -8971,7 +8973,7 @@ if (data.connectFourWordsRewardLevel != null) {
           gender: opp.gender || "boy",
           xp: opp.xp || (opp.level * 100),
           level: opp.level || 1,
-          serial: opp.serial || opp.id,
+          serial: opp.serial || oppId,
           isBot: opp.isBot !== false,
           disableGuessChat: 1,
           persona: opp.persona || "",
