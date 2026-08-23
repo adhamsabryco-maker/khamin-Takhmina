@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Play, RotateCcw, Award, Volume2, VolumeX, AlertCircle, Info, ArrowLeft, ArrowRight, Zap, CheckCircle2, ShieldAlert, Trophy, Compass, Sparkles, Eraser } from "lucide-react";
 import { GameEndControls } from "./components/GameEndControls";
+import { GameEngineService } from "./services/gameEngineService";
 
 interface BeachRaceGameProps {
   room: any;
@@ -218,6 +219,7 @@ export default function BeachRaceGame({
         if (prev <= 1) {
           clearInterval(timer);
           socket?.emit("beach_race_time_up", { roomId: room.id });
+          GameEngineService.handleAction("beach_race_time_up", { roomId: room.id, playerId: me?.id });
           setIsLocalFinished(true);
           return 0;
         }
@@ -244,10 +246,12 @@ export default function BeachRaceGame({
             setShowModal(false);
             setIsPausedAtCheckpoint(false);
             socket?.emit("beach_race_resume_runner", { roomId: room?.id });
+            GameEngineService.handleAction("beach_race_resume_runner", { roomId: room?.id, playerId: me?.id });
           } else {
             // Stage 3: Game ends in loss
             setShowModal(false);
             socket?.emit("beach_race_time_up", { roomId: room.id });
+            GameEngineService.handleAction("beach_race_time_up", { roomId: room.id, playerId: me?.id });
             setIsLocalFinished(true);
           }
           return 0;
@@ -506,6 +510,7 @@ export default function BeachRaceGame({
       setShowModal(true);
       if (playSound) playSound("bell");
       socket?.emit("beach_race_reach_checkpoint", { roomId: room.id, stage: 1 });
+      GameEngineService.handleAction("beach_race_reach_checkpoint", { roomId: room.id, stage: 1, playerId: me?.id });
     } else if (distance >= 666 && !passedCheckpoints[2]) {
       isRunningRef.current = false;
       setPassedCheckpoints((prev) => ({ ...prev, 2: true }));
@@ -514,6 +519,7 @@ export default function BeachRaceGame({
       setShowModal(true);
       if (playSound) playSound("bell");
       socket?.emit("beach_race_reach_checkpoint", { roomId: room.id, stage: 2 });
+      GameEngineService.handleAction("beach_race_reach_checkpoint", { roomId: room.id, stage: 2, playerId: me?.id });
     } else if (distance >= 1000 && !passedCheckpoints[3]) {
       isRunningRef.current = false;
       setPassedCheckpoints((prev) => ({ ...prev, 3: true }));
@@ -522,6 +528,7 @@ export default function BeachRaceGame({
       setShowModal(true);
       if (playSound) playSound("bell");
       socket?.emit("beach_race_reach_checkpoint", { roomId: room.id, stage: 3 });
+      GameEngineService.handleAction("beach_race_reach_checkpoint", { roomId: room.id, stage: 3, playerId: me?.id });
     }
   }, [distance, isGameActive, showModal, passedCheckpoints, room.id, socket, playSound]);
 
@@ -806,8 +813,13 @@ export default function BeachRaceGame({
         const speed = 8 * speedMultiplier; // meters per sec (+40% speed boost when active)
         setDistance((prev) => {
           const nextDist = prev + speed * delta;
-          // Emit progress to server
+          // Emit progress to server & GameEngineService
           socket?.emit("beach_race_update_progress", {
+            roomId: room.id,
+            distance: Math.min(1000, nextDist),
+            collectedLetters,
+          });
+          GameEngineService.handleAction("beach_race_update_progress", {
             roomId: room.id,
             distance: Math.min(1000, nextDist),
             collectedLetters,
@@ -1240,12 +1252,14 @@ export default function BeachRaceGame({
   // Actions
   const handleStartGame = () => {
     socket?.emit("start_beach_race", { roomId: room.id, playerId: me?.id });
+    GameEngineService.handleAction("start_beach_race", { roomId: room.id, playerId: me?.id });
   };
 
   const handleResumeRunner = () => {
     setShowModal(false);
     setIsPausedAtCheckpoint(false);
     socket?.emit("beach_race_resume_runner", { roomId: room.id });
+    GameEngineService.handleAction("beach_race_resume_runner", { roomId: room.id });
   };
 
   const normalizeArabic = (text: string) => {
@@ -1292,6 +1306,11 @@ export default function BeachRaceGame({
       guessWord: guessInput.trim(),
       carrotsCount: carrotsCollected,
     });
+    GameEngineService.handleAction("beach_race_submit_guess", {
+      roomId: room.id,
+      guessWord: guessInput.trim(),
+      carrotsCount: carrotsCollected,
+    });
   };
 
   // Close modal automatically if game finishes
@@ -1321,7 +1340,6 @@ export default function BeachRaceGame({
 
   // Socket listener for wrong guess result & game finish & progress
   useEffect(() => {
-    if (!socket) return;
     const handleWrongGuess = (data: any) => {
       setWrongGuessMsg("تخمين غير صحيح! حاول مرة أخرى أو استكمل السباق.");
       if (playSound) playSound("wrong");
@@ -1352,13 +1370,24 @@ export default function BeachRaceGame({
       }
     };
 
-    socket.on("beach_race_wrong_guess", handleWrongGuess);
-    socket.on("beach_race_finished", handleFinished);
-    socket.on("beach_race_progress_updated", handleProgressUpdate);
+    if (socket) {
+      socket.on("beach_race_wrong_guess", handleWrongGuess);
+      socket.on("beach_race_finished", handleFinished);
+      socket.on("beach_race_progress_updated", handleProgressUpdate);
+    }
+    GameEngineService.on("beach_race_wrong_guess", handleWrongGuess);
+    GameEngineService.on("beach_race_finished", handleFinished);
+    GameEngineService.on("beach_race_progress_updated", handleProgressUpdate);
+
     return () => {
-      socket.off("beach_race_wrong_guess", handleWrongGuess);
-      socket.off("beach_race_finished", handleFinished);
-      socket.off("beach_race_progress_updated", handleProgressUpdate);
+      if (socket) {
+        socket.off("beach_race_wrong_guess", handleWrongGuess);
+        socket.off("beach_race_finished", handleFinished);
+        socket.off("beach_race_progress_updated", handleProgressUpdate);
+      }
+      GameEngineService.off("beach_race_wrong_guess", handleWrongGuess);
+      GameEngineService.off("beach_race_finished", handleFinished);
+      GameEngineService.off("beach_race_progress_updated", handleProgressUpdate);
     };
   }, [socket, playSound, opp, room?.id, me?.id, showAd]);
 
@@ -1561,6 +1590,7 @@ export default function BeachRaceGame({
               }}
               onRematch={() => {
                 socket?.emit("request_beach_race_rematch", { roomId: room?.id, playerId: me?.id });
+                GameEngineService.handleAction("request_beach_race_rematch", { roomId: room?.id, playerId: me?.id });
               }}
               onLeaveGame={handleLeaveGame}
               playSound={playSound}
@@ -1592,6 +1622,7 @@ export default function BeachRaceGame({
                 onClick={() => {
                   if (playSound) playSound("clickOpen");
                   socket?.emit("start_beach_race", { roomId: room.id, playerId: me?.id });
+                  GameEngineService.handleAction("start_beach_race", { roomId: room.id, playerId: me?.id });
                 }}
                 disabled={room?.beachRace?.readyPlayers?.includes(me?.id)}
                 className={`w-full py-4 rounded-2xl font-black text-xl text-white shadow-[0_6px_0_0_rgba(0,0,0,0.2)] active:shadow-transparent transition-all flex items-center justify-center gap-3 ${

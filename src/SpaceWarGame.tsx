@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Zap, Bomb, Target, WifiOff, Rocket, Sparkles, Gamepad2, Snowflake, ShieldCheck, ShieldAlert, Clock, Box, Swords, ShieldPlus } from "lucide-react";
 import { GameEndControls } from "./components/GameEndControls";
+import { GameEngineService } from "./services/gameEngineService";
 
 const GAME_WIDTH = 400;
 const GAME_HEIGHT = 450;
@@ -143,6 +144,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
 
       if (remaining <= 0 && !room?.spaceWar?.gameOver) {
         socket?.emit("space_war_timeup", { roomId: room.id });
+        GameEngineService.handleAction("space_war_timeup", { roomId: room.id, playerId: myId });
       }
     }, 1000);
 
@@ -311,12 +313,16 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
       }
     };
 
-    socket.on("space_war_powerup_received", handlePowerup);
-    socket.on("space_war_powerup", handlePowerup);
+    socket?.on("space_war_powerup_received", handlePowerup);
+    socket?.on("space_war_powerup", handlePowerup);
+    GameEngineService.on("space_war_powerup_received", handlePowerup);
+    GameEngineService.on("space_war_powerup", handlePowerup);
 
     return () => { 
-      socket.off("space_war_powerup_received", handlePowerup);
-      socket.off("space_war_powerup", handlePowerup);
+      socket?.off("space_war_powerup_received", handlePowerup);
+      socket?.off("space_war_powerup", handlePowerup);
+      GameEngineService.off("space_war_powerup_received", handlePowerup);
+      GameEngineService.off("space_war_powerup", handlePowerup);
     };
   }, [socket, myId, playGameSound]);
 
@@ -348,6 +354,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
     }
 
     socket?.emit("space_war_powerup", { roomId: room.id, type, from: myId });
+    GameEngineService.handleAction("space_war_powerup", { roomId: room.id, type, from: myId });
   };
 
   useEffect(() => {
@@ -665,6 +672,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
           if (currentMyRevealed.length > 0) {
             const unrevealIdx = currentMyRevealed[currentMyRevealed.length - 1];
             socket?.emit("space_war_unreveal_index", { roomId: room.id, index: unrevealIdx });
+            GameEngineService.handleAction("space_war_unreveal_index", { roomId: room.id, index: unrevealIdx, playerId: myId });
           }
 
           for (let i = 0; i < 20; i++) {
@@ -802,6 +810,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
             if (matchIndices.length > 0) {
               const revealIdx = matchIndices[0];
               socket?.emit("space_war_reveal_index", { roomId: room.id, index: revealIdx });
+              GameEngineService.handleAction("space_war_reveal_index", { roomId: room.id, index: revealIdx, playerId: myId });
               playGameSound("pop");
             }
           }
@@ -1112,6 +1121,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
                  onRematch={() => {
                     socket?.emit("bot_event", { roomId: room.id, type: "play_again", gameType: "space_war" });
                     socket?.emit("request_space_war_rematch", { roomId: room.id });
+                    GameEngineService.handleAction("request_space_war_rematch", { roomId: room.id, playerId: myId });
                  }}
                  onLeaveGame={handleLeaveGame}
                  playSound={playSound}
@@ -1242,6 +1252,7 @@ export default function SpaceWarGame({ room, socket, playerSerial, isAdmin, play
               onClick={() => {
                 if (playSound) playSound("clickOpen");
                 socket?.emit("space_war_ready", { roomId: room.id });
+                GameEngineService.handleAction("space_war_ready", { roomId: room.id, playerId: myId });
               }}
               disabled={isReady}
               className={`w-full py-3.5 px-6 font-black rounded-2xl shadow-xl transition-all duration-200 text-base flex items-center justify-center gap-2 ${

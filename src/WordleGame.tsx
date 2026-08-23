@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import bombPartyWords from './data/bomb-party-words.json';
 import { GameEndControls } from './components/GameEndControls';
+import { GameEngineService } from './services/gameEngineService';
 
 export default function WordleGame({
   room,
@@ -85,8 +86,10 @@ export default function WordleGame({
           });
         }, () => {
           socket?.emit("wordle_pause", room.id);
+          GameEngineService.handleAction("wordle_pause", { roomId: room.id, playerId: myId });
         }, () => {
           socket?.emit("wordle_resume", room.id);
+          GameEngineService.handleAction("wordle_resume", { roomId: room.id, playerId: myId });
         });
       },
       "وسيلة مساعدة"
@@ -183,6 +186,7 @@ export default function WordleGame({
 
     if (playSound) playSound("clickOpen");
     socket?.emit("wordle_guess", { roomId: room.id, word: guess });
+    GameEngineService.handleAction("wordle_guess", { roomId: room.id, word: guess, playerId: myId });
     setGuess('');
   };
 
@@ -421,6 +425,7 @@ export default function WordleGame({
                   onClick={() => {
                     if (playSound) playSound("clickOpen");
                     socket?.emit("start_wordle", { roomId: room.id, playerId: me?.id });
+                    GameEngineService.handleAction("start_wordle", { roomId: room.id, playerId: me?.id });
                   }}
                   className="btn-game w-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_4px_0_0_#047857] active:shadow-transparent py-3.5 px-2 text-x1 font-black rounded-2xl transition-all hover:scale-102 flex items-center justify-center gap-2"
                 >
@@ -570,6 +575,7 @@ export default function WordleGame({
                   onChangeGame={() => {}}
                   onRematch={() => {
                     socket?.emit("request_wordle_rematch", { roomId: room.id, playerId: myId });
+                    GameEngineService.handleAction("request_wordle_rematch", { roomId: room.id, playerId: myId });
                   }}
                   onLeaveGame={handleLeaveGame}
                   playSound={playSound}

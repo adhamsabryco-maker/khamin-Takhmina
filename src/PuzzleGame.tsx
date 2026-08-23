@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import puzzlePiecesData from './puzzlePiecesData.json';
 import { GameEndControls } from './components/GameEndControls';
 import { apiUrl } from './apiConfig';
+import { GameEngineService } from './services/gameEngineService';
 
 export default function PuzzleGame({
   room,
@@ -134,15 +135,17 @@ export default function PuzzleGame({
       if (lastChanceStartTime) {
         remaining = Math.max(0, 20 * 1000 - (Date.now() - lastChanceStartTime));
         if (remaining === 0) {
-           if (me?.id === room.players[0].id) {
+           if (me?.id === room.players[0]?.id) {
               socket?.emit("puzzle_round_end", { roomId: room.id });
+              GameEngineService.handleAction("puzzle_round_end", { roomId: room.id, playerId: me?.id });
            }
         }
       } else if (roundStartTime) {
         remaining = Math.max(0, limit - (Date.now() - roundStartTime));
         if (remaining === 0) {
-           if (me?.id === room.players[0].id) {
+           if (me?.id === room.players[0]?.id) {
               socket?.emit("puzzle_round_end", { roomId: room.id });
+              GameEngineService.handleAction("puzzle_round_end", { roomId: room.id, playerId: me?.id });
            }
         }
       }
@@ -168,6 +171,7 @@ export default function PuzzleGame({
       
       const newProgress = Math.floor((nextPlaced.length / 49) * 100);
       socket?.emit("puzzle_progress", { roomId: room.id, progress: newProgress });
+      GameEngineService.handleAction("puzzle_progress", { roomId: room.id, progress: newProgress, playerId: me?.id });
 
       const newAvailable = availablePieces.filter(p => p !== cellIdx);
       setAvailablePieces(newAvailable);
@@ -199,6 +203,7 @@ export default function PuzzleGame({
     if (placedPieces.length < 49) return;
     if (playSound) playSound("bell");
     socket?.emit("puzzle_done", { roomId: room.id });
+    GameEngineService.handleAction("puzzle_done", { roomId: room.id, playerId: me?.id });
   };
 
   const formatTime = (s: number) => {
@@ -231,6 +236,7 @@ export default function PuzzleGame({
             onClick={() => {
               if (playSound) playSound("clickOpen");
               socket?.emit("start_puzzle", { roomId: room.id });
+              GameEngineService.handleAction("start_puzzle", { roomId: room.id, playerId: me?.id });
             }}
             className="bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_4px_0_0_#4338ca] active:shadow-transparent py-4 px-8 text-xl font-black rounded-2xl transition-all w-full mb-2"
           >
@@ -341,6 +347,7 @@ export default function PuzzleGame({
           onChangeGame={() => {}}
           onRematch={() => {
             socket?.emit("request_puzzle_rematch", { roomId: room.id, playerId: me?.id });
+            GameEngineService.handleAction("request_puzzle_rematch", { roomId: room.id, playerId: me?.id });
           }}
           onLeaveGame={handleLeaveGame}
           playSound={playSound}

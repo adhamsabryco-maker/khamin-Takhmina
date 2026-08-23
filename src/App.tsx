@@ -91,6 +91,8 @@ import {
 import easyGuessData from "./data/easyGuess.json";
 import busCompleteData from "./data/busCompleteData.json";
 import { getApiBaseUrl, apiUrl } from "./apiConfig";
+import { MatchmakingService } from "./services/matchmakingService";
+import { GameEngineService } from "./services/gameEngineService";
 
 const globalImageCache = new Set<string>();
 export function preloadIQImages(urls: string[]) {
@@ -1099,6 +1101,7 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
       setLocalStack([]);
       localStackRef.current = [];
       socket?.emit("speed_cups_clear_cups", { roomId: room.id });
+      GameEngineService.handleAction("speed_cups_clear_cups", { roomId: room.id, playerId: socket?.id });
     }
   };
 
@@ -1180,7 +1183,10 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
              socket={socket}
              myId={myId}
              playerSerial={localStorage.getItem("khamin_player_serial") || ""}
-             onRematch={() => socket?.emit("speed_cups_propose_rematch", { roomId: room.id })}
+             onRematch={() => {
+               socket?.emit("speed_cups_propose_rematch", { roomId: room.id });
+               GameEngineService.handleAction("speed_cups_propose_rematch", { roomId: room.id });
+             }}
              onLeaveGame={onLeave}
              playSound={playSound}
            />
@@ -1226,7 +1232,10 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
                   <img src="/speed-cups/cards-back.png" className="w-30 md:w-40 h-auto animate-pulse" />
                   <div className="absolute inset-0 bg-black/45 rounded-xl flex items-center justify-center">
                     <motion.button 
-                      onClick={() => socket?.emit("speed_cups_start", { roomId: room.id })}
+                      onClick={() => {
+                        socket?.emit("speed_cups_start", { roomId: room.id });
+                        GameEngineService.handleAction("speed_cups_start", { roomId: room.id });
+                      }}
                       disabled={((room.adPausedPlayersArray?.length || 0) > 0)}
                       animate={((room.adPausedPlayersArray?.length || 0) > 0) ? {} : { scale: [1, 1.05, 1] }}
                       transition={((room.adPausedPlayersArray?.length || 0) > 0) ? {} : { repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
@@ -1276,6 +1285,7 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
                 if (room.gameState === "speed_cups_playing" && !myDone && localStack.length === 5 && !((room.adPausedPlayersArray?.length || 0) > 0)) {
                   playSound("deskBell");
                   socket?.emit("speed_cups_ring_bell", { roomId: room.id });
+                  GameEngineService.handleAction("speed_cups_ring_bell", { roomId: room.id, playerId: socket?.id });
                 }
               }}
             />
@@ -1302,6 +1312,7 @@ const SpeedCupsBoard = ({ room, socket, me, myId, onLeave, playSound }: { room: 
                    localStackRef.current = newStack;
                    setLocalStack(newStack);
                    socket?.emit("speed_cups_click_cup", { roomId: room.id, color });
+                   GameEngineService.handleAction("speed_cups_click_cup", { roomId: room.id, color, playerId: socket?.id });
                  }
                }}
                className={`transition-all ${isUsed || room.gameState !== "speed_cups_playing" || ((room.adPausedPlayersArray?.length || 0) > 0) ? 'opacity-30 grayscale cursor-not-allowed' : 'active:scale-90 hover:-translate-y-1 cursor-pointer'}`}
@@ -7560,15 +7571,20 @@ if (data.connectFourWordsRewardLevel != null) {
       setAdCooldownTimer(timeLeft);
     });
 
-    newSocket.on("hand_bell_rung", () => {
+    const handleHandBell = () => {
       playSound("deskBell");
-    });
-
-    newSocket.on("hand_wrong_guess", () => {
+    };
+    const handleHandWrong = () => {
       playSound("wrong");
       setShakeBell(true);
       setTimeout(() => setShakeBell(false), 500);
-    });
+    };
+
+    newSocket.on("hand_bell_rung", handleHandBell);
+    newSocket.on("hand_wrong_guess", handleHandWrong);
+
+    GameEngineService.on("hand_bell_rung", handleHandBell);
+    GameEngineService.on("hand_wrong_guess", handleHandWrong);
 
     newSocket.on("room_update", (updatedRoom: Room) => {
       if ((updatedRoom as any)?.iqPreloadImages && Array.isArray((updatedRoom as any).iqPreloadImages)) {
@@ -8650,6 +8666,10 @@ if (data.connectFourWordsRewardLevel != null) {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
 
+    GameEngineService.setOnRoomUpdate((updatedRoom) => {
+      setRoom(updatedRoom as any);
+    });
+
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       socketRef.current?.disconnect();
@@ -8846,19 +8866,84 @@ if (data.connectFourWordsRewardLevel != null) {
     localStorage.setItem("khamin_player_name", playerName);
     localStorage.setItem("khamin_player_age", playerAge.toString());
     setIsPrivate(false);
-    socket?.emit("find_random_match", {
-      playerId,
-      playerName,
-      avatar,
-      age: playerAge,
-      gender,
-      xp,
-      streak,
-      wins,
-      serial: playerSerial,
-      useToken: getLevel(xp) >= 50 && useToken,
-    });
     setIsOpponentBlocked(false);
+
+    if (socket && isConnected) {
+      socket.emit("find_random_match", {
+        playerId,
+        playerName,
+        avatar,
+        age: playerAge,
+        gender,
+        xp,
+        streak,
+        wins,
+        serial: playerSerial,
+        useToken: getLevel(xp) >= 50 && useToken,
+      });
+    } else {
+      setIsSearching(true);
+      setSearchTimeLeft(60);
+      MatchmakingService.findRandomMatch(
+        {
+          id: playerSerial || playerId,
+          name: playerName,
+          avatar: avatar,
+          level: getLevel(xp),
+        },
+        "general",
+        (statusMsg: string) => {
+          // Status message callback
+        },
+        8
+      ).then((matchResult) => {
+        if (matchResult) {
+          setIsSearching(false);
+          setJoined(true);
+          setRoomId(matchResult.roomId);
+          const initialRoom: any = {
+            id: matchResult.roomId,
+            players: [
+              {
+                id: playerId,
+                name: playerName,
+                avatar: avatar,
+                age: playerAge,
+                gender: gender,
+                xp: xp,
+                level: getLevel(xp),
+                serial: playerSerial,
+                selectedFrame: selectedFrame,
+              } as any,
+              {
+                id: matchResult.opponent.id,
+                name: matchResult.opponent.name,
+                avatar: matchResult.opponent.avatar,
+                age: 20,
+                gender: "boy",
+                xp: matchResult.opponent.level * 100,
+                level: matchResult.opponent.level,
+                serial: matchResult.opponent.id,
+                isBot: (matchResult.opponent as any).isBot,
+              } as any,
+            ],
+            gameState: "waiting",
+            timer: 60,
+            category: "random",
+            isPaused: false,
+            pausingPlayerId: null,
+            quickGuessTimer: 15,
+            selectionMode: null,
+            isP2P: matchResult.isP2P,
+            p2pManager: matchResult.p2pManager,
+          };
+          setRoom(initialRoom);
+          GameEngineService.initRoom(initialRoom);
+        }
+      }).catch((err) => {
+        console.warn("Serverless matchmaking error:", err);
+      });
+    }
   };
 
   const handleRegister = () => {
@@ -9151,6 +9236,7 @@ if (data.connectFourWordsRewardLevel != null) {
       setIsWaitingForJudgment(true);
     } else {
       socket?.emit("submit_guess", { roomId, guess });
+      GameEngineService.handleAction("submit_guess", { roomId, guess, playerId: socket?.id });
     }
     setGuess("");
   };
@@ -9211,10 +9297,16 @@ if (data.connectFourWordsRewardLevel != null) {
       return;
     }
     setIsCustomSubmitted(true);
-    socket.emit("submit_custom_image", {
+    socket?.emit("submit_custom_image", {
       roomId,
       imageBase64: customImageBase64,
       answer: customImageAnswer.trim(),
+    });
+    GameEngineService.handleAction("submit_custom_image", {
+      roomId,
+      imageBase64: customImageBase64,
+      answer: customImageAnswer.trim(),
+      playerId: socket?.id,
     });
   };
 
@@ -10593,10 +10685,12 @@ if (data.connectFourWordsRewardLevel != null) {
   const handleStartGame = () => {
     playSound("clickOpen");
     socket?.emit("request_match_intro", { roomId });
+    GameEngineService.handleAction("request_match_intro", { roomId });
   };
 
   const handleMatchIntroStart = useCallback(() => {
     socket?.emit("force_start_game", { roomId });
+    GameEngineService.handleAction("force_start_game", { roomId });
   }, [roomId, socket]);
 
   const handleMatchIntroComplete = useCallback(() => {
@@ -22225,6 +22319,7 @@ const renderBombPartyRewardBar = () => {
               {/* Home Button (Cancels Search) */}
               <button
                 onClick={() => {
+                  MatchmakingService.cancelActiveSearch();
                   socket?.emit("leave_matchmaking");
                   resetToHome();
                 }}
@@ -22511,6 +22606,7 @@ const renderBombPartyRewardBar = () => {
                     onClick={() => {
                       setIsSearching(false);
                       setJoined(false);
+                      MatchmakingService.cancelActiveSearch();
                       socket?.emit("leave_matchmaking");
                       setRoomId((prev) =>
                         prev.startsWith("random_") || prev === "waiting_friend" ? "" : prev,
@@ -24667,7 +24763,10 @@ const renderBombPartyRewardBar = () => {
             socket={socket}
             myId={socket?.id}
             playerSerial={playerSerial}
-            onRematch={() => socket?.emit("request_hand_rematch", { roomId: room.id })}
+            onRematch={() => {
+              socket?.emit("request_hand_rematch", { roomId: room.id });
+              GameEngineService.handleAction("request_hand_rematch", { roomId: room.id, playerId: socket?.id });
+            }}
             onLeaveGame={handleLeaveGame}
             playSound={playSound}
           />
@@ -24675,8 +24774,9 @@ const renderBombPartyRewardBar = () => {
       );
     }
 
-    const isPicker = socket?.id === room.handPickerId;
-    const isSearcher = socket?.id === room.handSearcherId;
+    const myId = room.players[0]?.id || socket?.id;
+    const isPicker = room.handPickerId === socket?.id || room.handPickerId === myId;
+    const isSearcher = room.handSearcherId === socket?.id || room.handSearcherId === myId;
     
     // Hand view
     if (room.handPhase === "picking" || (isSearcher && room.handPhase === "searching")) {
@@ -24748,6 +24848,7 @@ const renderBombPartyRewardBar = () => {
                       setHandPickerLocalSelected(n.val);
                     } else if (room.handPhase === "searching") {
                       socket?.emit("hand_select_number", { roomId: room.id, number: n.val });
+                      GameEngineService.handleAction("hand_select_number", { roomId: room.id, number: n.val, playerId: socket?.id });
                     }
                   }}
                 >
@@ -24764,6 +24865,7 @@ const renderBombPartyRewardBar = () => {
                   if (handPickerLocalSelected !== null) {
                     playSound("clickClose");
                     socket?.emit("hand_pick_number", { roomId: room.id, number: handPickerLocalSelected });
+                    GameEngineService.handleAction("hand_pick_number", { roomId: room.id, number: handPickerLocalSelected, playerId: socket?.id });
                   }
                 }}
                 className={`px-6 py-3 rounded-2xl font-black text-lg md:text-xl shadow-[0_4px_0_0_rgba(0,0,0,0.1)] transition-all flex flex-col items-center leading-tight
@@ -24782,7 +24884,10 @@ const renderBombPartyRewardBar = () => {
           )}
           {isSearcher && room.handPhase === "searching" && (
              <button
-               onClick={() => socket?.emit("hand_ring_bell", { roomId: room.id })}
+               onClick={() => {
+                 socket?.emit("hand_ring_bell", { roomId: room.id });
+                 GameEngineService.handleAction("hand_ring_bell", { roomId: room.id, playerId: socket?.id });
+               }}
                className={`w-20 h-20 md:w-24 md:h-24 rounded-full border-[6px] shadow-[0_8px_0_0_#991b1b] active:shadow-none active:translate-y-[8px] flex items-center justify-center text-white transition-all ${shakeBell ? "animate-shake" : ""} ${room.handSearcherSelected ? (shakeBell ? 'bg-red-500 border-red-700' : 'bg-red-500 border-red-700 animate-bounce') : 'bg-gray-400 border-gray-600'}`}
              >
                <BellRing className="w-8 h-8 md:w-10 md:h-10" />
@@ -24859,6 +24964,7 @@ const renderBombPartyRewardBar = () => {
                             }
                           }
                           socket?.emit("hand_click_cell", { roomId: room.id });
+                          GameEngineService.handleAction("hand_click_cell", { roomId: room.id, playerId: socket?.id });
                         }
                       }}
                       className={`aspect-square rounded-md flex items-center justify-center font-black text-lg md:text-xl border-2 transition-colors duration-100 ${isEmpty ? (isNext ? 'bg-yellow-100 border-yellow-400 scale-105 shadow-sm active:scale-95 cursor-pointer animate-pulse' : 'bg-white border-gray-100 opacity-60 cursor-default') : 'bg-gray-100 border-gray-300'}`}
@@ -25371,6 +25477,9 @@ const renderBombPartyRewardBar = () => {
                           socket?.emit("start_game_custom", {
                             roomId: room.id,
                           });
+                          GameEngineService.handleAction("start_game_custom", {
+                            roomId: room.id,
+                          });
                         }}
                         className="bg-green-500 hover:bg-green-600 text-white rounded-2xl shadow-[0_6px_0_0_#15803d] active:shadow-none active:translate-y-1 transition-all py-5 px-12 text-2xl font-black w-full"
                       >
@@ -25708,6 +25817,7 @@ const renderBombPartyRewardBar = () => {
                       onClick={() => {
                         playSound("clickOpen");
                         socket?.emit("search_bus_complete_letter", { roomId, hideResults: hideBusResults });
+                        GameEngineService.handleAction("search_bus_complete_letter", { roomId, hideResults: hideBusResults, playerId: socket?.id });
                       }}
                       className="w-full btn-game bg-blue-500 hover:bg-blue-600 text-white shadow-[0_6px_0_0_#1e3a8a] active:shadow-transparent py-2.5 md:py-3 text-lg font-black rounded-2xl flex items-center justify-center gap-2"
                     >
@@ -25772,6 +25882,7 @@ const renderBombPartyRewardBar = () => {
                                 setBusAnswers((prev) => {
                                   const newAns = { ...prev, [item.key]: e.target.value };
                                   socket?.emit("update_bus_answers_draft", { roomId: room.id, answers: newAns });
+                                  GameEngineService.handleAction("update_bus_answers_draft", { roomId: room.id, answers: newAns, playerId: socket?.id });
                                   return newAns;
                                 })
                               }
@@ -25940,6 +26051,11 @@ const renderBombPartyRewardBar = () => {
                                 roomId,
                                 answers: busAnswers,
                               });
+                              GameEngineService.handleAction("submit_bus_complete", {
+                                roomId,
+                                answers: busAnswers,
+                                playerId: socket?.id,
+                              });
                             }}
                             disabled={
                               room.gameState !== "bus_complete_playing" ||
@@ -25961,6 +26077,7 @@ const renderBombPartyRewardBar = () => {
                               onClick={() => {
                                 playSound("clickOpen");
                                 socket?.emit("undo_bus_complete", { roomId });
+                                GameEngineService.handleAction("undo_bus_complete", { roomId, playerId: socket?.id });
                               }}
                               className="w-full py-2 rounded-2xl font-bold text-base transition-all border-2 border-red-500 text-red-500 hover:bg-red-50"
                             >
@@ -26077,6 +26194,10 @@ const renderBombPartyRewardBar = () => {
                       socket?.emit("request_bus_complete_rematch", {
                         roomId,
                       });
+                      GameEngineService.handleAction("request_bus_complete_rematch", {
+                        roomId,
+                        playerId: socket?.id,
+                      });
                       setBusAnswers({
                         boy: "",
                         girl: "",
@@ -26169,7 +26290,11 @@ const renderBombPartyRewardBar = () => {
                           myId={socket?.id}
                           playerSerial={playerSerial}
                           rematchLabel="لعب مرة أخري!"
-                          onRematch={() => socket?.emit("restart_dots", { roomId: room.id })}
+                          onRematch={() => {
+                            const myId = room.players[0]?.id || socket?.id;
+                            socket?.emit("restart_dots", { roomId: room.id });
+                            GameEngineService.handleAction("restart_dots", { roomId: room.id, playerId: myId });
+                          }}
                           onLeaveGame={handleLeaveGame}
                           playSound={playSound}
                         />
@@ -26287,7 +26412,8 @@ const renderBombPartyRewardBar = () => {
                                  {/* Lines */}
                                  {(() => {
                                    const lines = [];
-                                   const myTurn = room.dotsTurn === socket?.id && room.gameState === "dots_playing";
+                                   const myId = room.players[0]?.id || socket?.id;
+                                   const myTurn = (room.dotsTurn === socket?.id || room.dotsTurn === myId) && room.gameState === "dots_playing";
                                    const activeLineColor = room.dotsTurn === room.dotsPlayer1 ? 'bg-red-400' : 'bg-blue-400';
                                    const hoverColor = room.dotsTurn === room.dotsPlayer1 ? 'hover:bg-red-200' : 'hover:bg-blue-200';
                                    
@@ -26317,6 +26443,7 @@ const renderBombPartyRewardBar = () => {
                                                    };
                                                  });
                                                  socket?.emit("submit_dots_move", { roomId: room.id, r1: r, c1: c, r2: r, c2: c+1 });
+                                                 GameEngineService.handleAction("submit_dots_move", { roomId: room.id, r1: r, c1: c, r2: r, c2: c+1, playerId: myId });
                                                }
                                             }}
                                             className={`absolute cursor-pointer ${owner ? (isP1 ? `bg-red-500 z-10 ${isLastMove ? 'animate-pulse' : 'transition-none'}` : `bg-blue-500 z-10 ${isLastMove ? 'animate-pulse' : 'transition-none'}`) : `bg-transparent z-20 ${myTurn ? `transition-colors duration-75 ${hoverColor}` : ''}`}`} 
@@ -26358,6 +26485,7 @@ const renderBombPartyRewardBar = () => {
                                                    };
                                                  });
                                                  socket?.emit("submit_dots_move", { roomId: room.id, r1: r, c1: c, r2: r+1, c2: c });
+                                                 GameEngineService.handleAction("submit_dots_move", { roomId: room.id, r1: r, c1: c, r2: r+1, c2: c, playerId: myId });
                                                }
                                             }}
                                             className={`absolute cursor-pointer ${owner ? (isP1 ? `bg-red-500 z-10 ${isLastMove ? 'animate-pulse' : 'transition-none'}` : `bg-blue-500 z-10 ${isLastMove ? 'animate-pulse' : 'transition-none'}`) : `bg-transparent z-20 ${myTurn ? `transition-colors duration-75 ${hoverColor}` : ''}`}`} 
@@ -26391,14 +26519,14 @@ const renderBombPartyRewardBar = () => {
                     
                     {room.gameState === "dots_playing" && (
                        <div className="text-center my-1 font-bold text-base md:text-lg mb-2 flex flex-col items-center gap-1">
-                          {room.dotsTurn === socket?.id ? (
+                          {(room.dotsTurn === socket?.id || room.dotsTurn === (room.players[0]?.id || socket?.id)) ? (
                              <span key="dots-turn-mine" className="text-purple-600 bg-purple-50 px-4 py-1 rounded-full border border-purple-200">دورك الآن للعب!</span>
                           ) : (
                              <span key="dots-turn-opponent" className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب...</span>
                           )}
                           <div className="flex gap-4 text-xs mt-1 justify-center">
-                            <span className="text-red-500 font-black px-2 bg-red-50 rounded border border-red-200">مربعاتك: {room.dotsPlayer1 === socket?.id ? room.dotsP1Score : room.dotsP2Score} 🟥</span>
-                            <span className="text-blue-500 font-black px-2 bg-blue-50 rounded border border-blue-200">مربعات الخصم: {room.dotsPlayer1 !== socket?.id ? room.dotsP1Score : room.dotsP2Score} 🟦</span>
+                            <span className="text-red-500 font-black px-2 bg-red-50 rounded border border-red-200">مربعاتك: {(room.dotsPlayer1 === socket?.id || room.dotsPlayer1 === (room.players[0]?.id || socket?.id)) ? room.dotsP1Score : room.dotsP2Score} 🟥</span>
+                            <span className="text-blue-500 font-black px-2 bg-blue-50 rounded border border-blue-200">مربعات الخصم: {(room.dotsPlayer1 !== socket?.id && room.dotsPlayer1 !== (room.players[0]?.id || socket?.id)) ? room.dotsP1Score : room.dotsP2Score} 🟦</span>
                           </div>
                        </div>
                     )}
@@ -26407,8 +26535,9 @@ const renderBombPartyRewardBar = () => {
                       <React.Fragment>
                         <div className="text-center my-1 font-bold text-lg md:text-xl text-green-600 bg-green-50 py-2 rounded-xl border border-green-200 mb-2">
                           {(() => {
+                            const myId = room.players[0]?.id || socket?.id;
                             if (room.dotsWinner === "draw") return "تعادل في هذا المستوى! 🤝";
-                            if (room.dotsWinner === socket?.id) return "مبروك كسبت المستوى ده! 🎉";
+                            if (room.dotsWinner === socket?.id || room.dotsWinner === myId) return "مبروك كسبت المستوى ده! 🎉";
                             return "حظ أوفر! خصمك كسب المستوى ده 😢";
                           })()}
                         </div>
@@ -26420,7 +26549,11 @@ const renderBombPartyRewardBar = () => {
                               myId={socket?.id}
                               playerSerial={playerSerial}
                               rematchLabel={`انتقل الي المستوي ${(room.dotsLevel || 1) + 1}`}
-                              onRematch={() => socket?.emit("restart_dots", { roomId: room.id })}
+                              onRematch={() => {
+                                const myId = room.players[0]?.id || socket?.id;
+                                socket?.emit("restart_dots", { roomId: room.id });
+                                GameEngineService.handleAction("restart_dots", { roomId: room.id, playerId: myId });
+                              }}
                               onLeaveGame={handleLeaveGame}
                               playSound={playSound}
                             />
@@ -26504,7 +26637,11 @@ const renderBombPartyRewardBar = () => {
                         myId={socket?.id}
                         playerSerial={playerSerial}
                         rematchLabel="لعب مرة أخري!"
-                        onRematch={() => socket?.emit("restart_iq", { roomId: room.id })}
+                        onRematch={() => {
+                          const myId = room.players[0]?.id || socket?.id;
+                          socket?.emit("restart_iq", { roomId: room.id });
+                          GameEngineService.handleAction("restart_iq", { roomId: room.id, playerId: myId });
+                        }}
                         onLeaveGame={handleLeaveGame}
                         playSound={playSound}
                       />
@@ -26562,7 +26699,8 @@ const renderBombPartyRewardBar = () => {
                         {room.iqBoard?.map((cellImg: any, idx: number) => {
                           const isFlipped = room.iqFlipped?.includes(idx) || room.iqMatched?.includes(idx);
                           const isMatched = room.iqMatched?.includes(idx);
-                          const myTurn = room.iqTurn === socket?.id && room.gameState === "iq_playing";
+                          const myId = room.players[0]?.id || socket?.id;
+                          const myTurn = (room.iqTurn === socket?.id || room.iqTurn === myId) && room.gameState === "iq_playing";
                           
                           const cellImgSrc = cellImg
                             ? (cellImg.startsWith("http") || cellImg.startsWith("blob:") || cellImg.startsWith("data:"))
@@ -26579,6 +26717,7 @@ const renderBombPartyRewardBar = () => {
                               disabled={!myTurn || isFlipped}
                               onClick={() => {
                                  socket?.emit("submit_iq_move", { roomId: room.id, index: idx });
+                                 GameEngineService.handleAction("submit_iq_move", { roomId: room.id, index: idx, playerId: myId });
                                  playSound("handXFill");
                               }}
                               className={`aspect-square w-full relative p-0 m-0 border-0 flex items-center justify-center overflow-hidden touch-manipulation select-none
@@ -26614,15 +26753,15 @@ const renderBombPartyRewardBar = () => {
                     
                     {room.gameState === "iq_playing" && (
                        <div className="text-center my-1 font-bold text-base md:text-lg mb-2 flex flex-col items-center gap-1">
-                          {room.iqTurn === socket?.id ? (
+                          {(room.iqTurn === socket?.id || room.iqTurn === (room.players[0]?.id || socket?.id)) ? (
                              <span key="iq-turn-mine" className="text-blue-600 animate-pulse bg-blue-50 px-4 py-1 rounded-full border border-blue-200">دورك الآن للعب! ⏳ {room.iqTurnTimer}</span>
                           ) : (
                              <span key="iq-turn-opponent" className="text-gray-500 bg-gray-50 px-4 py-1 rounded-full border border-gray-200">في انتظار الخصم أن يلعب... ⏳ {room.iqTurnTimer}</span>
                           )}
                           
                           <div className="flex gap-4 text-sm mt-1">
-                            <span className="text-red-500 font-black px-2 bg-red-50 rounded border border-red-200">نقاطك: {room.iqPlayer1 === socket?.id ? room.iqP1Score : room.iqP2Score}</span>
-                            <span className="text-gray-500 font-black px-2 bg-gray-50 rounded border border-gray-200">نقاط الخصم: {room.iqPlayer1 !== socket?.id ? room.iqP1Score : room.iqP2Score}</span>
+                            <span className="text-red-500 font-black px-2 bg-red-50 rounded border border-red-200">نقاطك: {(room.iqPlayer1 === socket?.id || room.iqPlayer1 === room.players[0]?.id) ? room.iqP1Score : room.iqP2Score}</span>
+                            <span className="text-gray-500 font-black px-2 bg-gray-50 rounded border border-gray-200">نقاط الخصم: {(room.iqPlayer1 === socket?.id || room.iqPlayer1 === room.players[0]?.id) ? room.iqP2Score : room.iqP1Score}</span>
                           </div>
                        </div>
                     )}
@@ -26634,7 +26773,7 @@ const renderBombPartyRewardBar = () => {
                               <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-black text-lg shadow-sm border border-gray-200">
                                 تعادل! 🤝
                               </div>
-                           ) : room.iqWinner === socket?.id ? (
+                           ) : (room.iqWinner === socket?.id || room.iqWinner === room.players[0]?.id) ? (
                               <div className="bg-green-100 text-green-700 px-4 py-2 rounded-xl font-black text-lg shadow-sm border border-green-200 animate-pulse">
                                 أنت الفائز بالجولة! 🎉
                               </div>
@@ -26658,7 +26797,9 @@ const renderBombPartyRewardBar = () => {
                            <button
                              onClick={() => {
                                 playSound("clickOpen");
+                                const myId = room.players[0]?.id || socket?.id;
                                 socket?.emit("restart_iq", { roomId: room.id });
+                                GameEngineService.handleAction("restart_iq", { roomId: room.id, playerId: myId });
                              }}
                              disabled={((room.adPausedPlayersArray?.length || 0) > 0) || (room.iqLevel === 3 && room.iqRematchRequestedBy?.includes(socket?.id || ""))}
                              className={`flex-1 btn-game py-2.5 text-xs md:text-sm font-black rounded-2xl flex items-center justify-center gap-1.5
@@ -26875,6 +27016,7 @@ const renderBombPartyRewardBar = () => {
                       onClick={() => {
                         playSound("clickOpen");
                         socket?.emit("start_bomb_party", { roomId: room.id });
+                        GameEngineService.handleAction("start_bomb_party", { roomId: room.id, playerId: socket?.id });
                       }}
                       className={`w-full max-w-xs ${
                         ((room.adPausedPlayersArray?.length || 0) > 0)
@@ -27028,7 +27170,10 @@ const renderBombPartyRewardBar = () => {
                         myId={socket?.id}
                         playerSerial={playerSerial}
                         rematchLabel="🔄 لعب مرة أخري"
-                        onRematch={() => socket?.emit("request_bomb_party_rematch", { roomId: room.id })}
+                        onRematch={() => {
+                          socket?.emit("request_bomb_party_rematch", { roomId: room.id });
+                          GameEngineService.handleAction("request_bomb_party_rematch", { roomId: room.id, playerId: socket?.id });
+                        }}
                         onLeaveGame={handleLeaveGame}
                         playSound={playSound}
                       />
@@ -27100,6 +27245,7 @@ const renderBombPartyRewardBar = () => {
                           disabled={!myTurn || cell !== null}
                           onClick={() => {
                              socket?.emit("submit_xo_move", { roomId: room.id, index: idx });
+                             GameEngineService.handleAction("submit_xo_move", { roomId: room.id, index: idx, playerId: socket?.id });
                              playSound("clickOpen");
                              setRoom(prev => {
                                if (!prev || !prev.xoBoard) return prev;
@@ -27190,7 +27336,10 @@ const renderBombPartyRewardBar = () => {
                          myId={socket?.id}
                          playerSerial={playerSerial}
                          rematchLabel={(room.xoLevel || 1) < 8 ? `انتقل الي المستوي ${(room.xoLevel || 1) + 1}` : "لعب مرة أخري!"}
-                         onRematch={() => socket?.emit("restart_xo", { roomId: room.id })}
+                         onRematch={() => {
+                           socket?.emit("restart_xo", { roomId: room.id });
+                           GameEngineService.handleAction("restart_xo", { roomId: room.id, playerId: socket?.id });
+                         }}
                          onLeaveGame={handleLeaveGame}
                          playSound={playSound}
                        />
@@ -27857,6 +28006,12 @@ const renderBombPartyRewardBar = () => {
                                     category: null,
                                     level: "مستوي مبتدئين التخمين",
                                   });
+                                  GameEngineService.handleAction("select_category", {
+                                    roomId,
+                                    category: null,
+                                    level: "مستوي مبتدئين التخمين",
+                                    playerId: socket?.id,
+                                  });
                                 }
                               }}
                               className={`relative flex-1 py-2 px-1 rounded-xl font-black text-xs md:text-sm border-2 transition-all ${
@@ -27975,13 +28130,19 @@ const renderBombPartyRewardBar = () => {
                                   return (
                                     <button
                                       key={cat.id}
-                                      onClick={() =>
+                                      onClick={() => {
                                         socket?.emit("select_category", {
                                           roomId,
                                           category: cat.id,
                                           level: "مستوي مبتدئين التخمين",
-                                        })
-                                      }
+                                        });
+                                        GameEngineService.handleAction("select_category", {
+                                          roomId,
+                                          category: cat.id,
+                                          level: "مستوي مبتدئين التخمين",
+                                          playerId: socket?.id,
+                                        });
+                                      }}
                                       className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all border-b-4 active:border-b-0 active:translate-y-1 relative
                                     ${isAgreed ? "bg-green-100 text-accent-green border-green-400 scale-105 ring-2 ring-green-400 ring-offset-2" : isMyChoice ? "bg-orange-100 text-accent-orange border-orange-300 scale-105" : isNew ? "bg-yellow-50 text-yellow-700 border-yellow-400 ring-2 ring-yellow-400 ring-offset-1 hover:bg-yellow-100" : "bg-gray-100 text-brown-muted border-gray-300 hover:bg-gray-200 hover:text-brown-dark"}
                                     ${isOpponentChoice && !isMyChoice ? "hint-glow" : ""}
@@ -29042,6 +29203,10 @@ const renderBombPartyRewardBar = () => {
                                     socket?.emit("pass_turn", {
                                       roomId: room!.id,
                                     });
+                                    GameEngineService.handleAction("pass_turn", {
+                                      roomId: room!.id,
+                                      playerId: socket?.id,
+                                    });
                                   }}
                                   className={`rounded-xl p-0 text-center font-bold text-[13px] md:text-sm shadow-sm transition-all overflow-hidden relative h-9 md:h-12 flex items-center justify-center border-2 ${room.currentTurn === socket?.id ? "bg-white border-orange-300 text-orange-800 hover:bg-orange-50 active:scale-95" : "bg-gray-100 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed"}`}
                                 >
@@ -30043,46 +30208,65 @@ const BombPartyControls = ({ room, socket }: { room: any, socket: any }) => {
   const [bombPartyGuess, setBombPartyGuess] = useState("");
   const bombInputRef = useRef<HTMLInputElement>(null);
   const [bombPartyErrorShake, setBombPartyErrorShake] = useState(false);
+  const myPlayerId = room?.players?.[0]?.id || socket?.id;
 
   useEffect(() => {
-    socket?.on("bomb_party_error", () => {
+    const onError = () => {
       setBombPartyErrorShake(true);
       const audio = new Audio('/sounds/wrong.mp3');
       audio.play().catch(e => console.log('Audio play failed:', e));
       setTimeout(() => setBombPartyErrorShake(false), 500);
-    });
-    socket?.on("bomb_exploded", () => {
+    };
+
+    const onExploded = () => {
       const audio = new Audio('/sounds/pop.mp3');
       audio.play().catch(e => console.log('Audio play failed:', e));
-    });
-    socket?.on("bomb_party_correct_guess", (data: any) => {
+    };
+
+    const onCorrect = (data: any) => {
       setBombPartyGuess("");
-      if (data && data.playerId === socket?.id) {
+      if (data && (data.playerId === socket?.id || data.playerId === myPlayerId)) {
         const audio = new Audio('/sounds/correct-answer.mp3');
         audio.play().catch(e => console.log('Audio play failed:', e));
       }
       setTimeout(() => bombInputRef.current?.focus(), 50);
-    });
-    return () => {
-      socket?.off("bomb_party_error");
-      socket?.off("bomb_exploded");
-      socket?.off("bomb_party_correct_guess");
     };
-  }, [socket]);
+
+    socket?.on("bomb_party_error", onError);
+    socket?.on("bomb_exploded", onExploded);
+    socket?.on("bomb_party_correct_guess", onCorrect);
+
+    GameEngineService.on("bomb_party_error", onError);
+    GameEngineService.on("bomb_exploded", onExploded);
+    GameEngineService.on("bomb_party_correct_guess", onCorrect);
+
+    return () => {
+      socket?.off("bomb_party_error", onError);
+      socket?.off("bomb_exploded", onExploded);
+      socket?.off("bomb_party_correct_guess", onCorrect);
+
+      GameEngineService.off("bomb_party_error", onError);
+      GameEngineService.off("bomb_exploded", onExploded);
+      GameEngineService.off("bomb_party_correct_guess", onCorrect);
+    };
+  }, [socket, myPlayerId]);
 
   useEffect(() => {
     if (room?.gameState === "bomb_party_playing") {
       setTimeout(() => bombInputRef.current?.focus(), 50);
-      if (room?.bombParty?.turnPlayerId !== socket?.id) {
+      if (room?.bombParty?.turnPlayerId !== socket?.id && room?.bombParty?.turnPlayerId !== myPlayerId) {
         setBombPartyGuess("");
       }
     }
-  }, [room?.bombParty?.turnPlayerId, room?.gameState, socket?.id]);
+  }, [room?.bombParty?.turnPlayerId, room?.gameState, socket?.id, myPlayerId]);
+
+  const isMyTurn = room?.bombParty?.turnPlayerId === socket?.id || room?.bombParty?.turnPlayerId === myPlayerId;
 
   const submitBombPartyGuess = () => {
     if (!bombPartyGuess.trim()) return;
     if (room.bombParty?.explodedPlayerId) return;
     socket?.emit("bomb_party_guess", { roomId: room?.id, word: bombPartyGuess });
+    GameEngineService.handleAction("bomb_party_guess", { roomId: room?.id, word: bombPartyGuess, playerId: myPlayerId });
   };
 
   return (
@@ -30090,32 +30274,32 @@ const BombPartyControls = ({ room, socket }: { room: any, socket: any }) => {
       <input
         ref={bombInputRef}
         type="text"
-        value={room.bombParty?.turnPlayerId === socket?.id ? bombPartyGuess : ""}
+        value={isMyTurn ? bombPartyGuess : ""}
         onChange={(e) => {
-          if (room.bombParty?.turnPlayerId === socket?.id) {
+          if (isMyTurn) {
             setBombPartyGuess(e.target.value);
           }
         }}
         onBeforeInput={(e) => {
-          if (room.bombParty?.turnPlayerId !== socket?.id) {
+          if (!isMyTurn) {
             e.preventDefault();
           }
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && room.bombParty?.turnPlayerId === socket?.id) submitBombPartyGuess();
+          if (e.key === 'Enter' && isMyTurn) submitBombPartyGuess();
         }}
-        placeholder={room.bombParty?.turnPlayerId === socket?.id ? "خمن الكلمة..." : "انتظر دورك..."}
+        placeholder={isMyTurn ? "خمن الكلمة..." : "انتظر دورك..."}
         className={`w-full text-center text-lg p-2.5 rounded-xl border-2 outline-none font-bold transition-all
-          ${room.bombParty?.turnPlayerId === socket?.id 
+          ${isMyTurn 
             ? 'bg-white border-red-500 text-black shadow-[0_0_10px_rgba(239,68,68,0.3)]' 
             : 'bg-gray-800 border-gray-700 text-gray-500 select-none'}
         `}
       />
       <button
         onClick={submitBombPartyGuess}
-        disabled={room.bombParty?.turnPlayerId !== socket?.id || !bombPartyGuess.trim() || !!room.bombParty?.explodedPlayerId}
+        disabled={!isMyTurn || !bombPartyGuess.trim() || !!room.bombParty?.explodedPlayerId}
         className={`w-full py-2.5 rounded-xl font-black text-base text-white transition-all
-          ${room.bombParty?.turnPlayerId === socket?.id 
+          ${isMyTurn 
             ? bombPartyErrorShake ? 'bg-red-600 animate-shake' : 'bg-red-500 hover:bg-red-600 active:scale-95 shadow-[0_4px_0_0_#991b1b]'
             : 'bg-gray-700 text-gray-500 cursor-not-allowed'}
         `}

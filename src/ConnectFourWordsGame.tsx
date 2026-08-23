@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { GameEndControls } from './components/GameEndControls';
+import { GameEngineService } from './services/gameEngineService';
 
 export default function ConnectFourWordsGame({
   room,
@@ -152,6 +153,7 @@ export default function ConnectFourWordsGame({
     if (targetRow !== -1) {
       if (playSound) playSound("connect4Fall");
       socket?.emit("connect_four_words_drop", { roomId: room.id, colIndex, letter: selectedLetter });
+      GameEngineService.handleAction("connect_four_words_drop", { roomId: room.id, colIndex, letter: selectedLetter, playerId: myId });
       setSelectedLetter(null);
     }
   };
@@ -219,6 +221,7 @@ export default function ConnectFourWordsGame({
                   onClick={() => {
                     if (playSound) playSound("clickOpen");
                     socket?.emit("start_connect_four_words", { roomId: room.id });
+                    GameEngineService.handleAction("start_connect_four_words", { roomId: room.id, playerId: myId });
                   }}
                   disabled={isOpponentInAd}
                   className={`btn-game w-full ${isOpponentInAd ? "bg-gray-300 text-gray-500 shadow-none cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600 text-white shadow-[0_4px_0_0_#1d4ed8] active:shadow-transparent hover:scale-102"} py-3.5 px-2 text-xl font-black rounded-2xl transition-all flex items-center justify-center gap-2`}
@@ -423,6 +426,7 @@ export default function ConnectFourWordsGame({
                   onChangeGame={() => {}}
                   onRematch={() => {
                     socket?.emit("request_connect_four_words_rematch", { roomId: room.id });
+                    GameEngineService.handleAction("request_connect_four_words_rematch", { roomId: room.id, playerId: myId });
                   }}
                   onLeaveGame={handleLeaveGame}
                   playSound={playSound}
