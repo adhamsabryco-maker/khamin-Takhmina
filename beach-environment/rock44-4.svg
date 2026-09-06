@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100" width="120" height="100">
+  <!-- Grass Tufts -->
+  <path d="M 10 95 Q 20 50, 25 40 Q 30 65, 40 95 Z" fill="#22C55E"/>
+  <path d="M 40 95 Q 50 40, 55 30 Q 60 60, 70 95 Z" fill="#86EFAC"/>
+  <path d="M 70 95 Q 80 45, 85 35 Q 90 65, 100 95 Z" fill="#15803D"/>
+
+  <!-- Daisy Trio -->
+  <g transform="translate(35, 50)">
+    <circle cx="0" cy="0" r="9" fill="#FFFFFF"/>
+    <circle cx="-8" cy="0" r="6" fill="#FFFFFF"/>
+    <circle cx="8" cy="0" r="6" fill="#FFFFFF"/>
+    <circle cx="0" cy="-8" r="6" fill="#FFFFFF"/>
+    <circle cx="0" cy="8" r="6" fill="#FFFFFF"/>
+    <circle cx="0" cy="0" r="6" fill="#FACC15"/>
+  </g>
+
+  <g transform="translate(70, 45)">
+    <circle cx="0" cy="0" r="9" fill="#FFFFFF"/>
+    <circle cx="-8" cy="0" r="6" fill="#FFFFFF"/>
+    <circle cx="8" cy="0" r="6" fill="#FFFFFF"/>
+    <circle cx="0" cy="-8" r="6" fill="#FFFFFF"/>
+    <circle cx="0" cy="8" r="6" fill="#FFFFFF"/>
+    <circle cx="0" cy="0" r="6" fill="#FACC15"/>
+  </g>
+</svg>

@@ -1,0 +1,18095 @@
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+
+// server.ts
+var import_config = require("dotenv/config");
+var import_express = __toESM(require("express"), 1);
+var import_compression = __toESM(require("compression"), 1);
+var import_http = require("http");
+var import_socket = require("socket.io");
+var import_vite = require("vite");
+var import_path = __toESM(require("path"), 1);
+var import_fs = __toESM(require("fs"), 1);
+var import_crypto = __toESM(require("crypto"), 1);
+var import_better_sqlite3 = __toESM(require("better-sqlite3"), 1);
+var import_supabase_js = require("@supabase/supabase-js");
+var import_multer = __toESM(require("multer"), 1);
+var import_os = __toESM(require("os"), 1);
+var import_firebase_admin = __toESM(require("firebase-admin"), 1);
+var import_archiver = __toESM(require("archiver"), 1);
+var import_web_push = __toESM(require("web-push"), 1);
+var import_zlib = __toESM(require("zlib"), 1);
+
+// src/profanityFilter.ts
+var BadWordsFilter = __toESM(require("bad-words"), 1);
+var Filter = BadWordsFilter.default || BadWordsFilter;
+var englishFilter = new Filter();
+var profanityWords = [
+  "\u0627\u062D\u0627",
+  "\u062D\u0636\u0646",
+  "\u0645\u0646\u064A\u0648\u0643\u0629",
+  "\u062D\u0633\u0627\u0628",
+  "\u062D\u0633\u0627\u0628\u0643",
+  "\u062D\u0633\u0627\u0628\u064A\u0643",
+  "\u0645\u0631\u062A\u0628\u0637\u0629",
+  "\u0645\u0631\u062A\u0628\u0637\u0647",
+  "\u0645\u0631\u062A\u0628\u0637",
+  "\u0645\u0631\u0637\u0628\u062A",
+  "\u0643\u0648\u062F",
+  "\u0627\u0644\u0643\u0648\u062F",
+  "\u0643\u0648\u0648\u062F",
+  "\u0645\u0646\u064A\u0648\u0643\u0647",
+  "\u0628\u062D\u0628\u0643",
+  "\u0633\u0646\u0627\u0628 \u0634\u0627\u062A",
+  "\u0633\u0646\u0627\u0628",
+  "\u0627\u0646\u0633\u062A\u0627",
+  "\u0627\u0646\u0633\u062A\u062C\u0631\u0627\u0645",
+  "\u0648\u0627\u062A\u0633 \u0627\u0628",
+  "\u0648\u0627\u062A\u0633",
+  "\u062A\u064A\u0643 \u062A\u0648\u0643",
+  "\u062A\u0644\u064A\u062C\u0631\u0627\u0645",
+  "\u0643\u0648\u0627\u064A",
+  "\u062A\u0639\u0627\u0631\u0641",
+  "\u0627\u0646\u062A\u0634",
+  "\u0645\u0644\u0628\u0646",
+  "\u0645\u0646\u064A\u0646",
+  "\u0628\u0648\u0633",
+  "\u0647\u064A\u062C\u0627\u0646",
+  "\u0645\u0627\u062A\u064A\u062C\u064A",
+  "\u0639\u0644\u0642\u0629",
+  "\u0628\u0648\u0633\u0629",
+  "\u0628\u064A\u062A\u062D\u0636\u0646",
+  "\u0628\u062A\u062A\u062D\u0636\u0646",
+  "\u0628\u062A\u0646\u062D\u0636\u0646",
+  "\u0628\u062A\u062A\u0628\u0627\u0633",
+  "\u0628\u062A\u0646\u0628\u0627\u0633",
+  "\u0644\u0628\u0627\u0633",
+  "\u062E\u0631\u0645\u0627\u0646",
+  "\u0627\u062D\u0636\u0627\u0646",
+  "\u0644\u0627\u0628\u0633\u0647",
+  "\u0644\u0628\u0633\u0629",
+  "\u0644\u0627\u0628\u0633\u0629",
+  "\u0645\u0643\u0646\u0629",
+  "\u0628\u0643\u0631\u0627\u0634",
+  "\u0628\u064A\u062A\u0631\u0643\u0628",
+  "\u0628\u062A\u062A\u0631\u0643\u0628",
+  "\u0627\u062D\u0637\u0648",
+  "\u0627\u062D\u0648\u0637\u0648",
+  "\u0627\u062D\u0637\u0647",
+  "\u062E\u0631\u0645",
+  "\u0627\u062D\u064A\u0647",
+  "\u0641\u0631\u0633",
+  "\u0634\u0631\u0645\u0648\u0637\u0629",
+  "\u0634\u0631\u0645\u0648\u0637",
+  "\u0639\u0631\u0635",
+  "\u0645\u062A\u0646\u0627\u0643",
+  "\u0627\u0646\u064A\u0643",
+  "\u062E\u0648\u0644",
+  "\u0628\u0632\u0643",
+  "\u0628\u0632\u0627\u0632\u0643",
+  "\u0628\u0630\u0643",
+  "\u0628\u0632\u0647\u0627",
+  "\u0628\u064A\u0632\u0643",
+  "\u062D\u0644\u0645\u0629",
+  "\u062D\u0644\u0645\u0647",
+  "\u0634\u0641\u0627\u064A\u0641",
+  "\u0634\u0641\u0627\u064A\u0641\u0643",
+  "\u0627\u0646\u062F\u0631",
+  "\u0627\u0646\u062F\u0631\u0643",
+  "\u0643\u0644\u062A",
+  "\u0643\u0644\u0648\u062A",
+  "\u0628\u0648\u0643\u0633\u0631",
+  "\u0628\u0643\u0633\u0631",
+  "\u0644\u0628\u0648\u0629",
+  "\u0645\u0646\u064A\u0648\u0643",
+  "\u062E\u0648\u0644\u0627\u062A",
+  "\u0645\u0639\u0631\u0635",
+  "\u0642\u062D\u0628\u0629",
+  "\u0642\u062D\u0627\u0628",
+  "\u0632\u0628\u064A",
+  "\u0643\u0633",
+  "\u0643\u0633\u0645\u0643",
+  "\u0643\u0633\u0645",
+  "\u0643\u0633 \u0627\u0645\u0643",
+  "\u0627\u0645\u0643",
+  "\u0627\u0628\u0646 \u0627\u0644\u0645\u062A\u0646\u0627\u0643\u0629",
+  "\u0628\u0646\u062A \u0627\u0644\u0645\u062A\u0646\u0627\u0643\u0629",
+  "\u0627\u0628\u0646 \u0627\u0644\u0639\u0631\u0635",
+  "\u0627\u0628\u0646 \u0627\u0644\u0634\u0631\u0645\u0648\u0637\u0629",
+  "\u0627\u0628\u0646 \u0627\u0644\u0642\u062D\u0628\u0629",
+  "\u062E\u0631\u0627",
+  "\u0648\u0633\u062E",
+  "\u0648\u0633\u062E\u0629",
+  "\u0632\u0627\u0646\u064A\u0629",
+  "\u0632\u0627\u0646\u064A",
+  "\u0646\u064A\u0643",
+  "\u0646\u064A\u0643\u0647",
+  "\u0628\u0636\u0627\u0646",
+  "\u0628\u0636\u0627\u0646\u064A",
+  "\u0637\u064A\u0632",
+  "\u0637\u064A\u0632\u0643",
+  "\u0645\u0648\u0645\u0633",
+  "\u0639\u0627\u0647\u0631",
+  "\u0639\u0627\u0647\u0631\u0629",
+  "\u0641\u0627\u062C\u0631\u0629",
+  "\u0641\u0627\u062C\u0631",
+  "\u062F\u064A\u0648\u062B",
+  "\u0645\u062E\u0646\u062B",
+  "\u0634\u0627\u0630",
+  "\u0634\u0648\u0627\u0630",
+  "\u0639\u0644\u0642",
+  "\u0639\u0644\u0648\u0642",
+  "\u0646\u062A\u0639\u0631\u0641",
+  "\u0628\u062D\u0628\u0643",
+  "\u062D\u0628",
+  "\u0642\u0644\u0628\u064A",
+  "\u0628\u062A\u0627\u0639\u064A",
+  "\u0632\u0648\u0628\u0631\u064A",
+  "\u0632\u0628\u0631\u064A",
+  "\u0630\u0628\u0631\u064A",
+  "\u0630\u0628\u0631",
+  "\u0630\u0628",
+  "\u0632\u0628",
+  "\u0643\u0633",
+  "\u0643\u0633\u0643",
+  "\u0628\u062A\u0627\u0639\u0643",
+  "\u0644\u0628\u0633\u0647 \u0627\u064A\u0647",
+  "\u0628\u064A\u0627\u0643\u0644\u0646\u064A",
+  "\u062D\u064A\u062D\u0627\u0646",
+  "\u062A\u0639\u0628\u0627\u0646",
+  "\u0634\u0631\u0642\u0627\u0646",
+  "\u0645\u0643\u0646\u0647",
+  "\u0645\u0632\u0629",
+  "\u0645\u0632",
+  "\u0645\u0635",
+  "\u0645\u0635\u0645\u0635\u064A",
+  "\u0645\u0646\u064A\u0648\u0643\u0647",
+  // Franco Profanity
+  "a7a",
+  "sharmota",
+  "code",
+  "cod",
+  "tik tok",
+  "tiktok",
+  "insta",
+  "instagram",
+  "account",
+  "girl friend",
+  "boy friend",
+  "gay",
+  "guy",
+  "lesbian",
+  "telegram",
+  "whats app",
+  "whats",
+  "app",
+  "snap",
+  "snap chat",
+  "7i7an",
+  "hihan",
+  "t3ban",
+  "5rman",
+  "higan",
+  "7e7an",
+  "hegan",
+  "kiss",
+  "love",
+  "hug",
+  "bkrash",
+  "pkrash",
+  "moza",
+  "mozza",
+  "hanekk",
+  "mnyok",
+  "mnuok",
+  "from",
+  "anek",
+  "aneek",
+  "anik",
+  "aniek",
+  "anyk",
+  "mtnaka",
+  "metnaka",
+  "a7oto",
+  "ahoto",
+  "5orm",
+  "khorm",
+  "5rm",
+  "khrm",
+  "kosek",
+  "kosk",
+  "kosaha",
+  "kosha",
+  "bezk",
+  "bzk",
+  "bzaz",
+  "bezazk",
+  "sharmot",
+  "3ars",
+  "metnak",
+  "5ol",
+  "khol",
+  "labwa",
+  "bezk",
+  "bezazk",
+  "bzk",
+  "bzazk",
+  "7alama",
+  "halama",
+  "7alma",
+  "halma",
+  "shfaifk",
+  "shfaefk",
+  "shafayf",
+  "shafaif",
+  "labwa",
+  "underk",
+  "undrk",
+  "boxerk",
+  "klot",
+  "klwt",
+  "klut",
+  "klt",
+  "boxer",
+  "boksr",
+  "zobry",
+  "zbry",
+  "zbri",
+  "zbre",
+  "zpry",
+  "zpre",
+  "zpri",
+  "manyok",
+  "manyouk",
+  "mo3ars",
+  "qa7ba",
+  "ka7ba",
+  "zebi",
+  "zeby",
+  "kos",
+  "koss",
+  "kosomak",
+  "kosomk",
+  "5ara",
+  "khara",
+  "weskh",
+  "neik",
+  "neek",
+  "bedan",
+  "teez",
+  "tyz",
+  "dayos",
+  "dayouth",
+  "shaz",
+  "3alq",
+  "3alouq"
+];
+function getCharClass(char) {
+  if (/[اأإآ]/.test(char)) return "[\u0627\u0623\u0625\u0622]";
+  if (/[هة]/.test(char)) return "[\u0647\u0629]";
+  if (/[يىئ]/.test(char)) return "[\u064A\u0649\u0626]";
+  if (/[وؤ]/.test(char)) return "[\u0648\u0624]";
+  return char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function filterList(text, words) {
+  let filteredText = text;
+  const sortedWords = [...words].sort((a, b) => b.length - a.length);
+  sortedWords.forEach((word) => {
+    const cleanWord = word.replace(/\s+/g, "");
+    const chars = cleanWord.split("");
+    const separator = "[\\s\\p{P}\\p{S}\\p{Z}\\d_]*";
+    const pattern = chars.map((char) => {
+      return `${getCharClass(char)}+`;
+    }).join(separator);
+    const isArabic = /[\u0600-\u06FF]/.test(cleanWord);
+    let regex;
+    try {
+      if (isArabic) {
+        regex = new RegExp(`(?<![\\u0600-\\u06FF])${pattern}(?![\\u0600-\\u06FF])`, "giu");
+      } else {
+        regex = new RegExp(`\\b${pattern}\\b`, "giu");
+      }
+      filteredText = filteredText.replace(regex, "*".repeat(word.length));
+    } catch (e) {
+      console.error("Regex error for word:", word, e);
+    }
+  });
+  return filteredText;
+}
+function filterPhoneNumbers(text) {
+  const phoneRegex = /\b(?:\+?20|0)?1[0125]\d{8}\b|\b\d{10,15}\b|\b(?:\d[ -.]*){10,15}\b/g;
+  return text.replace(phoneRegex, "[\u0631\u0642\u0645 \u0647\u0627\u062A\u0641 \u0645\u062D\u0630\u0648\u0641]");
+}
+function filterEmojis(text) {
+  const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+  return text.replace(emojiRegex, "");
+}
+function filterProfanity(text) {
+  if (typeof text !== "string") return "";
+  let filtered = text;
+  if (/[a-zA-Z]/.test(text)) {
+    try {
+      filtered = englishFilter.clean(text);
+    } catch (e) {
+      console.error("Error in englishFilter.clean:", e);
+    }
+  }
+  filtered = filterList(filtered, profanityWords);
+  filtered = filterPhoneNumbers(filtered);
+  filtered = filterEmojis(filtered);
+  return filtered;
+}
+
+// server.ts
+var import_genai = require("@google/genai");
+
+// collectionData.ts
+var COLLECTION_DATA = [
+  {
+    id: "animals",
+    icon: "\u{1F418}",
+    name: "\u062D\u064A\u0648\u0627\u0646\u0627\u062A",
+    stages: [
+      {
+        stage: 1,
+        images: ["\u0623\u0633\u062F", "\u0628\u0627\u0646\u062F\u0627", "\u062B\u0639\u0644\u0628", "\u0632\u0631\u0627\u0641\u0629", "\u063A\u0648\u0631\u064A\u0644\u0627", "\u0641\u064A\u0644"],
+        reward: { xp: 2500 }
+      },
+      {
+        stage: 2,
+        images: ["\u062A\u0646\u064A\u0646 \u0643\u0648\u0645\u0648\u062F\u0648", "\u062D\u0635\u0627\u0646", "\u062D\u0645\u0627\u0631 \u0648\u062D\u0634\u064A", "\u0643\u0646\u063A\u0631", "\u0643\u0648\u0628\u0631\u0627", "\u0646\u0645\u0631"],
+        reward: { xp: 5e3 }
+      },
+      {
+        stage: 3,
+        images: ["\u0623\u062E\u0637\u0628\u0648\u0637", "\u062A\u0645\u0633\u0627\u062D", "\u062D\u0631\u0628\u0627\u064A\u0629", "\u0636\u0628\u0639", "\u0642\u0631\u0634", "\u0643\u0648\u0627\u0644\u0627"],
+        reward: { xp: 1e4, frame: "animals-category-frame-gift.png" }
+      }
+    ]
+  },
+  {
+    id: "birds",
+    icon: "\u{1F99C}",
+    name: "\u0637\u064A\u0648\u0631",
+    stages: [
+      {
+        stage: 1,
+        images: ["\u0635\u0642\u0631", "\u0628\u0648\u0645\u0629", "\u0628\u0637\u0631\u064A\u0642", "\u0628\u0628\u063A\u0627\u0621", "\u063A\u0631\u0627\u0628", "\u062A\u0648\u0642\u0627\u0646"],
+        reward: { xp: 2500 }
+      },
+      {
+        stage: 2,
+        images: ["\u0639\u0635\u0641\u0648\u0631", "\u0637\u0627\u0648\u0648\u0633", "\u062D\u0645\u0627\u0645\u0629", "\u0628\u0637\u0629", "\u0641\u0644\u0627\u0645\u0646\u062C\u0648", "\u0628\u0644\u0628\u0644"],
+        reward: { xp: 5e3 }
+      },
+      {
+        stage: 3,
+        images: ["\u0646\u0633\u0631", "\u064A\u0645\u0627\u0645\u0629", "\u0641\u0631\u062E\u0629", "\u0647\u062F\u0647\u062F", "\u0646\u0648\u0631\u0633", "\u0648\u0632\u0629"],
+        reward: { xp: 1e4, frame: "birds-category-frame-gift.png" }
+      }
+    ]
+  },
+  {
+    id: "food",
+    icon: "\u{1F355}",
+    name: "\u0623\u0643\u0644\u0627\u062A",
+    stages: [
+      {
+        stage: 1,
+        images: ["\u0633\u062A\u064A\u0643", "\u062C\u0645\u0628\u0631\u064A", "\u062A\u0627\u0643\u0648", "\u0628\u064A\u062A\u0632\u0627", "\u0628\u0631\u062C\u0631", "\u0623\u0646\u062F\u0648\u0645\u064A"],
+        reward: { xp: 2500 }
+      },
+      {
+        stage: 2,
+        images: ["\u0643\u0628\u062F\u0629", "\u0643\u0628\u0627\u0628", "\u0633\u0648\u0634\u064A", "\u0633\u0648\u0633\u064A\u0633", "\u0633\u0645\u0643", "\u062A\u0628\u0648\u0644\u0629"],
+        reward: { xp: 5e3 }
+      },
+      {
+        stage: 3,
+        images: ["\u0645\u0646\u062F\u064A", "\u0645\u0642\u0644\u0648\u0628\u0629", "\u0645\u062D\u0634\u064A", "\u0643\u0648\u0632\u064A", "\u0643\u0628\u0629", "\u0641\u062A\u0629"],
+        reward: { xp: 1e4, frame: "food-category-frame-gift.png" }
+      }
+    ]
+  },
+  {
+    id: "people",
+    icon: "\u{1F465}",
+    name: "\u0623\u0634\u062E\u0627\u0635",
+    stages: [
+      {
+        stage: 1,
+        images: ["\u0627\u0645\u064A\u0631 \u0643\u0631\u0627\u0631\u0629", "\u0623\u062D\u0645\u062F \u062D\u0644\u0645\u064A", "\u0646\u0627\u0646\u0633\u064A \u0639\u062C\u0631\u0645", "\u0627\u062D\u0645\u062F \u0627\u0644\u0639\u0648\u0636\u064A", "\u064A\u0627\u0633\u0645\u064A\u0646 \u0639\u0628\u062F \u0627\u0644\u0639\u0632\u064A\u0632", "\u0627\u062D\u0645\u062F \u0627\u0644\u0633\u0642\u0627"],
+        reward: { xp: 2500 }
+      },
+      {
+        stage: 2,
+        images: ["\u064A\u0633\u0631\u0627", "\u0639\u0645\u0631 \u0627\u0644\u0634\u0631\u064A\u0641", "\u0639\u0627\u062F\u0644 \u0625\u0645\u0627\u0645", "\u0633\u0645\u064A\u0631 \u063A\u0627\u0646\u0645", "\u0627\u0633\u0639\u0627\u062F \u064A\u0648\u0646\u0633", "\u0623\u062D\u0645\u062F \u0632\u0643\u064A"],
+        reward: { xp: 5e3 }
+      },
+      {
+        stage: 3,
+        images: ["\u0639\u0645\u0631\u0648 \u062F\u064A\u0627\u0628", "\u064A\u0633\u0631\u0627 \u0627\u0644\u0644\u0648\u0632\u064A", "\u0631\u0627\u0645\u0632 \u062C\u0644\u0627\u0644", "\u0634\u064A\u0631\u064A\u0646 \u0639\u0628\u062F \u0627\u0644\u0648\u0647\u0627\u0628", "\u062A\u0627\u0645\u0631 \u0639\u0627\u0634\u0648\u0631", "\u062A\u0627\u0645\u0631 \u062D\u0633\u0646\u064A"],
+        reward: { xp: 1e4, frame: "people-category-frame-gift.png" }
+      }
+    ]
+  },
+  {
+    id: "objects",
+    icon: "\u{1F4E6}",
+    name: "\u062C\u0645\u0627\u062F",
+    stages: [
+      {
+        stage: 1,
+        images: ["\u0633\u0627\u0639\u0629", "\u062E\u0644\u0627\u0637", "\u062B\u0644\u0627\u062C\u0629", "\u062A\u0644\u064A\u0641\u0632\u064A\u0648\u0646", "\u062A\u0631\u0627\u0628\u064A\u0632\u0629", "\u0628\u0627\u0628"],
+        reward: { xp: 2500 }
+      },
+      {
+        stage: 2,
+        images: ["\u0645\u0631\u0648\u062D\u0629", "\u0643\u0646\u0628\u0629", "\u063A\u0633\u0627\u0644\u0629", "\u0633\u0644\u0645", "\u062A\u064A\u0634\u064A\u0631\u062A", "\u0628\u0646\u0637\u0644\u0648\u0646"],
+        reward: { xp: 5e3 }
+      },
+      {
+        stage: 3,
+        images: ["\u0645\u064A\u0643\u0631\u0648\u064A\u0641", "\u0645\u0648\u0628\u0627\u064A\u0644", "\u0645\u0643\u0646\u0633\u0629", "\u0643\u0648\u062A\u0634\u064A", "\u062F\u0648\u0644\u0627\u0628", "\u062C\u0627\u0643\u064A\u062A"],
+        reward: { xp: 1e4, frame: "objects-category-frame-gift.png" }
+      }
+    ]
+  },
+  {
+    id: "plants",
+    icon: "\u{1F33F}",
+    name: "\u0646\u0628\u0627\u062A",
+    stages: [
+      {
+        stage: 1,
+        images: ["\u062C\u0648\u0627\u0641\u0629", "\u062A\u0641\u0627\u062D", "\u0628\u0637\u064A\u062E", "\u0628\u0627\u0630\u0646\u062C\u0627\u0646", "\u0627\u0646\u0627\u0646\u0627\u0633", "\u0627\u0641\u0648\u0643\u0627\u062F\u0648"],
+        reward: { xp: 2500 }
+      },
+      {
+        stage: 2,
+        images: ["\u0631\u0645\u0627\u0646", "\u062C\u0632\u0631", "\u062A\u064A\u0646", "\u0628\u0637\u0627\u0637\u0633", "\u0628\u0631\u0648\u0643\u0644\u064A", "\u0628\u0631\u062A\u0642\u0627\u0644"],
+        reward: { xp: 5e3 }
+      },
+      {
+        stage: 3,
+        images: ["\u0645\u0648\u0632", "\u0645\u0627\u0646\u062C\u0648", "\u0643\u0631\u0646\u0628", "\u0641\u0648\u0644 \u062D\u0631\u0627\u062A\u064A", "\u0633\u0628\u0627\u0646\u062E", "\u0630\u0631\u0629"],
+        reward: { xp: 1e4, frame: "plants-category-frame-gift.png" }
+      }
+    ]
+  },
+  {
+    id: "insects",
+    icon: "\u{1F41E}",
+    name: "\u062D\u0634\u0631\u0627\u062A",
+    stages: [
+      {
+        stage: 1,
+        images: ["\u062F\u0639\u0633\u0648\u0642\u0629", "\u062F\u0628\u0648\u0631", "\u062F\u0628\u0627\u0646\u0629", "\u062E\u0646\u0641\u0633\u0629", "\u062C\u0631\u0627\u062F\u0629", "\u0627\u0628\u0648 \u062F\u0642\u064A\u0642"],
+        reward: { xp: 2500 }
+      },
+      {
+        stage: 2,
+        images: ["\u0641\u0631\u0627\u0634\u0629", "\u0639\u0646\u0643\u0628\u0648\u062A", "\u0639\u0642\u0631\u0628", "\u0635\u0631\u0635\u0627\u0631", "\u0635\u0631\u0635\u0627\u0631 \u0627\u0644\u0644\u064A\u0644", "\u062F\u0648\u062F\u0629"],
+        reward: { xp: 5e3 }
+      },
+      {
+        stage: 3,
+        images: ["\u064A\u0631\u0627\u0639\u0629", "\u0646\u0645\u0644\u0629", "\u0646\u062D\u0644\u0629", "\u0645\u0627\u064A\u0648", "\u0641\u0631\u0633 \u0627\u0644\u0646\u0628\u064A", "\u0639\u0635\u0648\u064A\u0629"],
+        reward: { xp: 1e4, frame: "insects-category-frame-gift.png" }
+      }
+    ]
+  },
+  {
+    id: "football",
+    icon: "\u26BD",
+    name: "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645",
+    stages: [
+      {
+        stage: 1,
+        images: ["\u0639\u0645\u0627\u062F \u0645\u062A\u0639\u0628", "\u0645\u062D\u0645\u062F \u0628\u0631\u0643\u0627\u062A", "\u0644\u064A\u0648\u0646\u064A\u0644 \u0645\u064A\u0633\u064A", "\u0645\u062D\u0645\u062F \u0627\u0628\u0648 \u062A\u0631\u064A\u0643\u0647", "\u0643\u0631\u064A\u0633\u062A\u064A\u0627\u0646\u0648 \u0631\u0648\u0646\u0627\u0644\u062F\u0648", "\u0645\u062D\u0645\u062F \u0635\u0644\u0627\u062D"],
+        reward: { xp: 2500 }
+      },
+      {
+        stage: 2,
+        images: ["\u064A\u0648\u0631\u062C\u0646 \u0643\u0644\u0648\u0628", "\u0645\u062D\u0645\u0648\u062F \u0627\u0644\u062E\u0637\u064A\u0628", "\u062D\u0641\u064A\u0638 \u062F\u0631\u0627\u062C\u064A", "\u062D\u0633\u0646 \u0634\u062D\u0627\u062A\u0629", "\u0628\u064A\u0628 \u062C\u0648\u0627\u0631\u062F\u064A\u0648\u0644\u0627", "\u0623\u062D\u0645\u062F \u0634\u0648\u0628\u064A\u0631"],
+        reward: { xp: 5e3 }
+      },
+      {
+        stage: 3,
+        images: ["\u0646\u064A\u0645\u0627\u0631 \u062C\u0648\u0646\u064A\u0648\u0631", "\u0643\u064A\u0644\u064A\u0627\u0646 \u0645\u0628\u0627\u0628\u064A", "\u0632\u0644\u0627\u062A\u0627\u0646 \u0625\u0628\u0631\u0627\u0647\u064A\u0645\u0648\u0641\u064A\u062A\u0634", "\u062A\u0631\u064A\u0632\u064A\u062C\u064A\u0647", "\u0625\u064A\u0631\u0644\u064A\u0646\u062C \u0647\u0627\u0644\u0627\u0646\u062F", "\u0623\u0634\u0631\u0641 \u062D\u0643\u064A\u0645\u064A"],
+        reward: { xp: 1e4, frame: "football-category-frame-gift.png" }
+      }
+    ]
+  }
+];
+
+// server.ts
+var import_axios = __toESM(require("axios"), 1);
+var SUPABASE_URL = process.env.SUPABASE_URL || "https://genogaejxepnwaqmwoho.supabase.co";
+var SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlbm9nYWVqeGVwbndhcW13b2hvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjY2MjMxNCwiZXhwIjoyMTAyMjM4MzE0fQ.FjLFq0agFqXP0TKdr4pQ7TbHUoWExYEt8J033Ckzkso";
+var isAiStudio = Boolean(
+  process.env.APPLET_ID || process.env.K_SERVICE && process.env.K_SERVICE.includes("ais-")
+);
+var isProduction = !isAiStudio;
+var supabase = isProduction ? (0, import_supabase_js.createClient)(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
+  auth: { persistSession: false }
+}) : null;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    import_firebase_admin.default.initializeApp({
+      credential: import_firebase_admin.default.credential.cert(serviceAccount)
+    });
+    console.log("[Firebase Admin] Initialized successfully.");
+  } catch (e) {
+    console.error("[Firebase Admin] Failed to initialize:", e);
+  }
+}
+var storage = import_multer.default.diskStorage({
+  destination: import_path.default.join(process.cwd(), "public/uploads/"),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, "image-" + uniqueSuffix + import_path.default.extname(file.originalname));
+  }
+});
+var upload = (0, import_multer.default)({ storage });
+var dbUpload = (0, import_multer.default)({ dest: import_os.default.tmpdir() });
+var bombPartyNextTurn;
+var BOMB_PARTY_WORDS = [];
+var NORMALIZED_BOMB_PARTY_WORDS = [];
+try {
+  const rawWords = JSON.parse(import_fs.default.readFileSync(import_path.default.join(process.cwd(), "src/data/bomb-party-words.json"), "utf8"));
+  BOMB_PARTY_WORDS = rawWords.map((w) => w.trim().replace(/[\u064B-\u0652\u0670]/g, ""));
+  for (const w of BOMB_PARTY_WORDS) {
+    if (w) NORMALIZED_BOMB_PARTY_WORDS.push({ original: w, normalized: normalizeEgyptian(w) });
+  }
+} catch (e) {
+  console.error("Failed to load bomb party words:", e);
+}
+function getBombPartySubstring(usedWords) {
+  if (!BOMB_PARTY_WORDS || BOMB_PARTY_WORDS.length === 0) return "\u0627\u0628";
+  for (let i = 0; i < 50; i++) {
+    const randomWord = BOMB_PARTY_WORDS[Math.floor(Math.random() * BOMB_PARTY_WORDS.length)];
+    const len = Math.floor(Math.random() * 2) + 2;
+    if (randomWord.length < len) continue;
+    const startIndex = Math.floor(Math.random() * (randomWord.length - len + 1));
+    const substr = randomWord.substring(startIndex, startIndex + len);
+    const matches = BOMB_PARTY_WORDS.filter((w) => w.includes(substr) && !usedWords.includes(w));
+    if (matches.length > 5) {
+      return substr;
+    }
+  }
+  return "\u0627\u0644";
+}
+var SPIN_REWARDS = [
+  {
+    id: "time_freeze",
+    type: "helper",
+    value: "time_freeze",
+    weight: 25,
+    label: "\u062A\u062C\u0645\u064A\u062F \u0627\u0644\u0648\u0642\u062A",
+    icon: "Snowflake"
+  },
+  {
+    id: "word_length",
+    type: "helper",
+    value: "word_length",
+    weight: 50,
+    label: "\u0643\u0627\u0634\u0641 \u0627\u0644\u062D\u0631\u0648\u0641",
+    icon: "Type"
+  },
+  {
+    id: "word_count",
+    type: "helper",
+    value: "word_count",
+    weight: 60,
+    label: "\u0639\u062F\u062F \u0627\u0644\u0643\u0644\u0645\u0627\u062A",
+    icon: "Hash"
+  },
+  {
+    id: "hint",
+    type: "helper",
+    value: "hint",
+    weight: 40,
+    label: "\u062A\u0644\u0645\u064A\u062D",
+    icon: "HelpCircle"
+  },
+  {
+    id: "spy_lens",
+    type: "helper",
+    value: "spy_lens",
+    weight: 30,
+    label: "\u0627\u0644\u062C\u0627\u0633\u0648\u0633",
+    icon: "Eye"
+  },
+  {
+    id: "token_1",
+    type: "token",
+    value: 1,
+    weight: 4,
+    label: "Token 1",
+    icon: "Coins"
+  },
+  {
+    id: "token_2",
+    type: "token",
+    value: 2,
+    weight: 2,
+    label: "Token 2",
+    icon: "Coins"
+  },
+  {
+    id: "token_3",
+    type: "token",
+    value: 3,
+    weight: 1,
+    label: "Token 3",
+    icon: "Coins"
+  },
+  {
+    id: "token_4",
+    type: "token",
+    value: 4,
+    weight: 0.5,
+    label: "Token 4",
+    icon: "Coins"
+  },
+  {
+    id: "token_5",
+    type: "token",
+    value: 5,
+    weight: 0.1,
+    label: "Token 5",
+    icon: "Coins"
+  },
+  {
+    id: "token_10",
+    type: "token",
+    value: 10,
+    weight: 0.05,
+    label: "Token 10",
+    icon: "Coins"
+  },
+  {
+    id: "xp_10",
+    type: "xp",
+    value: 10,
+    weight: 20,
+    label: "10 XP",
+    icon: "Star"
+  },
+  {
+    id: "xp_20",
+    type: "xp",
+    value: 20,
+    weight: 18,
+    label: "20 XP",
+    icon: "Star"
+  },
+  {
+    id: "xp_30",
+    type: "xp",
+    value: 30,
+    weight: 16,
+    label: "30 XP",
+    icon: "Star"
+  },
+  {
+    id: "xp_40",
+    type: "xp",
+    value: 40,
+    weight: 14,
+    label: "40 XP",
+    icon: "Star"
+  },
+  {
+    id: "xp_50",
+    type: "xp",
+    value: 50,
+    weight: 10,
+    label: "50 XP",
+    icon: "Star"
+  },
+  {
+    id: "xp_100",
+    type: "xp",
+    value: 100,
+    weight: 5,
+    label: "100 XP",
+    icon: "Star"
+  },
+  {
+    id: "xp_5000",
+    type: "xp",
+    value: 5e3,
+    weight: 1e-4,
+    label: "5000 XP",
+    icon: "Star"
+  },
+  {
+    id: "xp_10000",
+    type: "xp",
+    value: 1e4,
+    weight: 1e-7,
+    label: "10000 XP",
+    icon: "Star"
+  },
+  {
+    id: "pro_30",
+    type: "pro",
+    value: 30,
+    weight: 0,
+    label: "\u0628\u0627\u0642\u0629 \u0627\u0644\u0645\u062D\u062A\u0631\u0641\u064A\u0646",
+    icon: "Crown"
+  }
+];
+var genAI = new import_genai.GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "dummy_key_to_prevent_crash"
+});
+if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
+  console.warn(
+    "WARNING: Neither GEMINI_API_KEY nor GOOGLE_API_KEY is set. AI features will not work."
+  );
+}
+var botNamesData = { boy: [], girl: [] };
+try {
+  botNamesData = JSON.parse(
+    import_fs.default.readFileSync(import_path.default.join(process.cwd(), "src/data/botNames.json"), "utf8")
+  );
+} catch (e) {
+  console.log("Error loading botNames.json", e);
+}
+var getActiveUsedNamesGlobal = () => /* @__PURE__ */ new Set();
+function getRandomBotName(gender, extraExcluded) {
+  const used = getActiveUsedNamesGlobal ? getActiveUsedNamesGlobal() : /* @__PURE__ */ new Set();
+  if (extraExcluded && Array.isArray(extraExcluded)) {
+    extraExcluded.forEach((n) => {
+      if (n) used.add(n.trim().toLowerCase());
+    });
+  }
+  const list = botNamesData[gender] || [];
+  const available = list.filter((n) => !used.has(n.trim().toLowerCase()));
+  if (available.length > 0) {
+    return available[Math.floor(Math.random() * available.length)];
+  }
+  const otherGender = gender === "girl" ? "boy" : "girl";
+  const otherList = botNamesData[otherGender] || [];
+  const availableOther = otherList.filter((n) => !used.has(n.trim().toLowerCase()));
+  if (availableOther.length > 0) {
+    return availableOther[Math.floor(Math.random() * availableOther.length)];
+  }
+  const fallbackList = list.length > 0 ? list : ["\u0627\u0644\u0639\u0642\u064A\u062F"];
+  const baseName = fallbackList[Math.floor(Math.random() * fallbackList.length)];
+  for (let i = 2; i <= 99; i++) {
+    const candidate = `${baseName} ${i}`;
+    if (!used.has(candidate.toLowerCase())) {
+      return candidate;
+    }
+  }
+  return baseName;
+}
+var BOT_PERSONAS = [
+  // --- مستوى القمة (36 - 40) - Avatar 40 ---
+  {
+    name: "\u0627\u0644\u0639\u0642\u064A\u062F",
+    age: 45,
+    level: 40,
+    avatar: "avatar-lvl-boy-40.png",
+    gender: "boy",
+    personality: "\u0623\u0639\u0644\u0649 \u0644\u0641\u0644 \u0641\u064A \u0627\u0644\u0644\u0639\u0628\u0629 '\u0627\u062A\u0639\u0644\u0645\u0648\u0627 \u0645\u0646 \u0627\u0644\u0639\u0628\u062F \u0644\u0644\u0647'"
+  },
+  {
+    name: "\u0644\u0624\u0644\u0624\u0629",
+    age: 36,
+    level: 41,
+    avatar: "avatar-lvl-girl-40.png",
+    gender: "girl",
+    personality: "\u0630\u0643\u0627\u0621 \u062D\u0627\u062F \u0648\u0647\u062F\u0648\u0621 \u0642\u0627\u062A\u0644 '\u0627\u0644\u0644\u0639\u0628 \u0641\u0646 \u0645\u0634 \u0639\u0646 \u0639\u0646'"
+  },
+  {
+    name: "\u0627\u0644\u0643\u0627\u0628\u0648",
+    age: 40,
+    level: 45,
+    avatar: "avatar-lvl-boy-40.png",
+    gender: "boy",
+    personality: "\u0645\u0644\u0643 \u0627\u0644\u0644\u0639\u0628\u0629 '\u0645\u062D\u062F\u0634 \u0628\u064A\u0627\u0643\u0644\u0647\u0627 \u0645\u0639\u0627\u064A\u0627 \u0628\u0627\u0644\u0633\u0627\u0647\u0644'"
+  },
+  {
+    name: "\u0627\u0644\u0623\u0633\u0637\u0648\u0631\u0629",
+    age: 33,
+    level: 43,
+    avatar: "avatar-lvl-girl-40.png",
+    gender: "girl",
+    personality: "\u0628\u0631\u0646\u0633\u064A\u0633\u0629 \u0627\u0644\u0644\u0639\u0628\u0629 '\u0644\u0639\u0628\u0643\u0645 \u0644\u0633\u0647 \u0645\u062D\u062A\u0627\u062C \u0634\u0648\u064A\u0629 \u0645\u062C\u0647\u0648\u062F'"
+  },
+  {
+    name: "\u0627\u0644\u0647\u0636\u0628\u0629",
+    age: 38,
+    level: 44,
+    avatar: "avatar-lvl-boy-40.png",
+    gender: "boy",
+    personality: "\u0635\u0627\u0631\u0645 \u062C\u062F\u0627\u064B '\u0627\u0644\u062E\u0637\u0623 \u0647\u0646\u0627 \u0628\u0645\u0648\u062A\u060C \u0631\u0643\u0632'"
+  },
+  {
+    name: "\u0627\u0644\u0628\u0631\u0646\u0633\u064A\u0633\u0629",
+    age: 35,
+    level: 40,
+    avatar: "avatar-lvl-girl-40.png",
+    gender: "girl",
+    personality: "\u0631\u0627\u0642\u064A\u0629 \u062C\u062F\u0627\u064B \u0628\u0633 \u0628\u062A\u062E\u0644\u0635 \u0627\u0644\u062F\u0648\u0631 \u0641\u064A \u062B\u0627\u0646\u064A\u0629"
+  },
+  {
+    name: "\u0627\u0644\u0639\u0627\u0644\u0645\u064A",
+    age: 42,
+    level: 42,
+    avatar: "avatar-lvl-boy-40.png",
+    gender: "boy",
+    personality: "\u0628\u064A\u062D\u0633\u0628\u0647\u0627 \u0628\u0627\u0644\u0648\u0631\u0642\u0629 \u0648\u0627\u0644\u0642\u0644\u0645 '\u0627\u0644\u0627\u062D\u062A\u0645\u0627\u0644\u0627\u062A \u0628\u062A\u0642\u0648\u0644 \u0625\u0646\u064A \u0647\u0643\u0633\u0628'"
+  },
+  // --- مستوى الخبراء (30 - 35) - Avatar 30 ---
+  {
+    name: "\u0627\u0644\u062D\u0631\u064A\u0641",
+    age: 35,
+    level: 35,
+    avatar: "avatar-lvl-boy-30.png",
+    gender: "boy",
+    personality: "\u062D\u0631\u064A\u0641 \u0648\u0642\u062F\u064A\u0645 \u0641\u064A \u0627\u0644\u0644\u0639\u0628\u0629\u060C \u0643\u0644\u0627\u0645\u0647 \u0641\u064A\u0647 \u062D\u0643\u0645\u0629 \u0634\u0648\u064A\u0629"
+  },
+  {
+    name: "\u0643\u0627\u0631\u0645\u0646",
+    age: 26,
+    level: 34,
+    avatar: "avatar-lvl-girl-30.png",
+    gender: "girl",
+    personality: "\u062C\u062F\u064A\u0629 \u0634\u0648\u064A\u0629\u060C \u0628\u0633 \u0628\u062A\u062D\u0628 \u0627\u0644\u0645\u0646\u0627\u0641\u0633\u0629 \u0627\u0644\u0634\u0631\u064A\u0641\u0629"
+  },
+  {
+    name: "\u0633\u0644\u0637\u0627\u0646 \u0627\u0644\u0644\u0639\u0628",
+    age: 40,
+    level: 33,
+    avatar: "avatar-lvl-boy-30.png",
+    gender: "boy",
+    personality: "\u0643\u0628\u064A\u0631 \u0627\u0644\u0642\u0639\u062F\u0629 '\u0646\u0648\u0631\u062A\u0645 \u0627\u0644\u062A\u0631\u0628\u064A\u0632\u0629 \u064A\u0627 \u0634\u0628\u0627\u0628'"
+  },
+  {
+    name: "\u062C\u064A\u062F\u0627\u0621",
+    age: 24,
+    level: 32,
+    avatar: "avatar-lvl-girl-30.png",
+    gender: "girl",
+    personality: "\u0630\u0643\u064A\u0629 \u0648\u0628\u062A\u062D\u0628 \u0627\u0644\u062A\u062D\u062F\u064A\u060C \u0628\u062A\u0633\u0623\u0644 \u0623\u0633\u0626\u0644\u0629 \u0635\u0639\u0628\u0629"
+  },
+  {
+    name: "\u0627\u0644\u0642\u0627\u0636\u064A",
+    age: 31,
+    level: 31,
+    avatar: "avatar-lvl-boy-30.png",
+    gender: "boy",
+    personality: "\u062D\u0643\u064A\u0645 \u0648\u0647\u0627\u062F\u064A\u060C \u0643\u0644\u0627\u0645\u0647 \u0645\u0648\u0632\u0648\u0646 '\u0627\u0644\u0639\u062F\u0644 \u0623\u0633\u0627\u0633 \u0627\u0644\u0644\u0639\u0628\u0629'"
+  },
+  {
+    name: "\u062A\u0627\u0631\u0644\u0627",
+    age: 29,
+    level: 30,
+    avatar: "avatar-lvl-girl-30.png",
+    gender: "girl",
+    personality: "\u063A\u0627\u0645\u0636\u0629 \u0648\u0643\u0644\u0627\u0645\u0647\u0627 \u0642\u0644\u064A\u0644 '\u0627\u0644\u0633\u0643\u0648\u062A \u0639\u0644\u0627\u0645\u0629 \u0627\u0644\u0627\u062D\u062A\u0631\u0627\u0641'"
+  },
+  {
+    name: "\u0627\u0644\u0637\u064A\u0627\u0631",
+    age: 30,
+    level: 35,
+    avatar: "avatar-lvl-boy-30.png",
+    gender: "boy",
+    personality: "\u0647\u0627\u062F\u064A \u062C\u062F\u0627\u064B \u0648\u0628\u064A\u0644\u0639\u0628 \u0628\u0628\u0631\u0648\u062F \u0623\u0639\u0635\u0627\u0628 \u064A\u062D\u0631\u0642 \u0627\u0644\u062F\u0645"
+  },
+  {
+    name: "\u062C\u0648\u0647\u0631\u0629",
+    age: 32,
+    level: 34,
+    avatar: "avatar-lvl-girl-30.png",
+    gender: "girl",
+    personality: "\u0643\u0644\u0627\u0645\u0647\u0627 \u0641\u064A\u0647 \u0631\u0632\u0627\u0646\u0629 \u0648\u0647\u062F\u0648\u0621 '\u0643\u0644 \u062F\u0648\u0631 \u0648\u0644\u0647 \u0628\u0637\u0644'"
+  },
+  // --- مستوى المحترفين (21 - 29) - Avatar 20 ---
+  {
+    name: "\u0627\u0644\u0686\u0648\u0643\u0631",
+    age: 22,
+    level: 29,
+    avatar: "avatar-lvl-boy-20.png",
+    gender: "boy",
+    personality: "\u0647\u0632\u0627\u0631 \u0648\u0641\u0631\u0641\u0634\u0629 '\u064A\u0627 \u0632\u0645\u064A\u0644\u064A' \u0648 '\u064A\u0627 \u0635\u0627\u062D\u0628\u064A'"
+  },
+  {
+    name: "\u062A\u0627\u0644\u0627",
+    age: 20,
+    level: 28,
+    avatar: "avatar-lvl-girl-20.png",
+    gender: "girl",
+    personality: "\u0647\u0627\u062F\u064A\u0629 \u0648\u0645\u0631\u0643\u0632\u0629\u060C \u0643\u0644\u0627\u0645\u0647\u0627 \u0642\u0644\u064A\u0644 \u0648\u0645\u062D\u062F\u062F"
+  },
+  {
+    name: "\u0627\u0644\u0630\u064A\u0628",
+    age: 21,
+    level: 27,
+    avatar: "avatar-lvl-boy-20.png",
+    gender: "boy",
+    personality: "\u0628\u064A\u062D\u0628 \u0627\u0644\u0631\u063A\u064A \u0648\u0627\u0644\u0643\u0644\u0627\u0645 \u0627\u0644\u062C\u0627\u0646\u0628\u064A \u0648\u0642\u0635\u0635 \u0627\u0644\u0644\u0639\u0628"
+  },
+  {
+    name: "\u0646\u0627\u064A\u0627",
+    age: 23,
+    level: 26,
+    avatar: "avatar-lvl-girl-20.png",
+    gender: "girl",
+    personality: "\u0628\u062A\u062D\u0628 \u0627\u0644\u0636\u062D\u0643 \u0648\u0627\u0644\u0647\u0632\u0627\u0631 \u0628\u0633 \u0630\u0643\u064A\u0629 \u0641\u064A \u0627\u0644\u0644\u0639\u0628"
+  },
+  {
+    name: "\u0642\u0646\u0627\u0635 \u0627\u0644\u0642\u0644\u0648\u0628",
+    age: 28,
+    level: 25,
+    avatar: "avatar-lvl-boy-20.png",
+    gender: "boy",
+    personality: "\u0645\u0634 \u0628\u064A\u062D\u0628 \u0627\u0644\u062E\u0633\u0627\u0631\u0629 \u0623\u0628\u062F\u0627\u064B '\u0646\u0644\u0639\u0628 \u062A\u0627\u0646\u064A\u061F'"
+  },
+  {
+    name: "\u0645\u064A\u0644\u0627",
+    age: 26,
+    level: 24,
+    avatar: "avatar-lvl-girl-20.png",
+    gender: "girl",
+    personality: "\u0628\u062A\u062D\u0644\u0644 \u0643\u0644 \u062D\u0631\u0643\u0629 '\u0627\u0644\u062D\u0631\u0643\u0629 \u062F\u064A \u0648\u0631\u0627\u0647\u0627 \u062D\u0627\u062C\u0629'"
+  },
+  {
+    name: "\u0645\u064A\u0643\u0627",
+    age: 25,
+    level: 23,
+    avatar: "avatar-lvl-boy-20.png",
+    gender: "boy",
+    personality: "\u0628\u064A\u062D\u0628 \u0627\u0644\u0645\u0646\u0627\u0641\u0633\u0629 '\u0648\u0631\u064A\u0646\u064A \u0647\u062A\u0639\u0645\u0644 \u0625\u064A\u0647 \u0641\u064A \u062F\u064A'"
+  },
+  {
+    name: "\u0628\u064A\u0631\u0644\u0627",
+    age: 23,
+    level: 22,
+    avatar: "avatar-lvl-girl-20.png",
+    gender: "girl",
+    personality: "\u0637\u0645\u0648\u062D\u0629 \u0648\u0639\u0627\u064A\u0632\u0629 \u062A\u0648\u0635\u0644 \u0644\u0623\u0639\u0644\u0649 \u0644\u064A\u0641\u0644"
+  },
+  {
+    name: "\u0634\u064A\u0643\u0648",
+    age: 19,
+    level: 21,
+    avatar: "avatar-lvl-boy-20.png",
+    gender: "boy",
+    personality: "\u0644\u0633\u0647 \u062C\u062F\u064A\u062F \u0648\u0628\u064A\u062A\u0639\u0644\u0645 \u0628\u0633 \u062F\u0645\u0647 \u062E\u0641\u064A\u0641"
+  },
+  {
+    name: "\u0623\u0648\u0631\u0643\u064A\u062F",
+    age: 22,
+    level: 29,
+    avatar: "avatar-lvl-girl-20.png",
+    gender: "girl",
+    personality: "\u0628\u062A\u062D\u0628 \u062A\u0634\u062C\u0639 \u0646\u0641\u0633\u0647\u0627 '\u0639\u0627\u0634 \u064A\u0627 \u0623\u0646\u0627'"
+  },
+  // --- مستوى متوسط (15 - 20) - Avatar 10 أو 20 ---
+  {
+    name: "\u0627\u0644\u0645\u0642\u0646\u0639",
+    age: 32,
+    level: 20,
+    avatar: "avatar-lvl-boy-20.png",
+    gender: "boy",
+    personality: "\u063A\u0627\u0645\u0636 \u0648\u0645\u0631\u0643\u0632 \u062C\u062F\u0627\u064B \u0641\u064A \u0627\u0644\u0648\u0631\u0642"
+  },
+  {
+    name: "\u0633\u064A\u062F\u0631\u0627",
+    age: 25,
+    level: 19,
+    avatar: "avatar-lvl-girl-20.png",
+    gender: "girl",
+    personality: "\u0633\u0631\u064A\u0639\u0629 \u062C\u062F\u0627\u064B \u0641\u064A \u0627\u0644\u0631\u062F '\u0645\u062A\u062D\u0627\u0648\u0644\u0634 \u062A\u0641\u0643\u0631 \u0643\u062A\u064A\u0631'"
+  },
+  {
+    name: "\u0627\u0644\u0635\u0627\u0631\u0648\u062E",
+    age: 25,
+    level: 18,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u0628\u064A\u062D\u0628 \u0627\u0644\u062D\u0645\u0627\u0633 '\u0627\u0644\u0643\u0648\u0631\u0629 \u0641\u064A \u0645\u0644\u0639\u0628\u064A \u062F\u0644\u0648\u0642\u062A\u064A'"
+  },
+  {
+    name: "\u0643\u0627\u0645\u064A\u0644\u064A\u0627",
+    age: 27,
+    level: 17,
+    avatar: "avatar-lvl-girl-10.png",
+    gender: "girl",
+    personality: "\u062E\u0628\u0631\u0629 \u0648\u0628\u062A\u062D\u0628 \u062A\u062F\u064A \u0646\u0635\u0627\u064A\u062D '\u0644\u0648 \u0644\u0639\u0628\u062A\u0647\u0627 \u064A\u0645\u064A\u0646 \u0623\u062D\u0644\u0649'"
+  },
+  {
+    name: "\u0627\u0644\u0648\u0646\u0634",
+    age: 25,
+    level: 16,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u062D\u0631\u064A\u0641 \u0648\u0628\u064A\u0644\u0639\u0628 \u0628\u062F\u0645\u0627\u063A\u0647 '\u0645\u062D\u062A\u0627\u062C\u0629 \u0646\u0641\u0633 \u0637\u0648\u064A\u0644'"
+  },
+  {
+    name: "\u0633\u0648\u0644",
+    age: 23,
+    level: 15,
+    avatar: "avatar-lvl-girl-10.png",
+    gender: "girl",
+    personality: "\u0648\u0627\u062B\u0642\u0629 \u0641\u064A \u0646\u0641\u0633\u0647\u0627 \u0648\u0628\u062A\u062D\u0628 \u0643\u0644\u0645\u0629 '\u062A\u0645 \u0627\u0644\u0642\u0635\u0641'"
+  },
+  {
+    name: "\u0628\u0648\u062C\u0628\u0627",
+    age: 22,
+    level: 20,
+    avatar: "avatar-lvl-boy-20.png",
+    gender: "boy",
+    personality: "\u0628\u062A\u0627\u0639 \u0642\u0641\u0634\u0627\u062A \u0623\u0641\u0644\u0627\u0645 '\u0623\u0646\u0627 \u0628\u0627\u0628\u0627 \u064A\u0644\u0627'"
+  },
+  {
+    name: "\u0644\u0648\u0631\u064A\u0646",
+    age: 24,
+    level: 19,
+    avatar: "avatar-lvl-girl-20.png",
+    gender: "girl",
+    personality: "\u0628\u062A\u062D\u0628 \u0627\u0644\u0646\u0638\u0627\u0645 '\u0644\u0648 \u0633\u0645\u062D\u062A \u0627\u0644\u0639\u0628 \u0628\u0627\u0644\u062A\u0631\u062A\u064A\u0628'"
+  },
+  // --- مستوى ناشئ (10 - 14) - Avatar 10 ---
+  {
+    name: "\u0627\u0644\u0645\u062F\u0645\u0631",
+    age: 20,
+    level: 14,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u0634\u0627\u0628 \u0637\u0645\u0648\u062D \u0628\u064A\u0644\u0639\u0628 \u0628\u062A\u0643\u062A\u064A\u0643 '\u0648\u0627\u062D\u062F\u0629 \u0648\u0627\u062D\u062F\u0629 \u0648\u0647\u062C\u064A\u0628\u0643'"
+  },
+  {
+    name: "\u0631\u064A\u062A\u0627\u0644",
+    age: 19,
+    level: 13,
+    avatar: "avatar-lvl-girl-10.png",
+    gender: "girl",
+    personality: "\u0647\u0627\u062F\u064A\u0629 \u0628\u0633 \u0630\u0643\u064A\u0629 '\u0631\u0643\u0632 \u0641\u064A \u0648\u0631\u0642\u062A\u0643 \u064A\u0627 \u0628\u0637\u0644'"
+  },
+  {
+    name: "\u0645\u0627\u0647\u064A",
+    age: 28,
+    level: 12,
+    avatar: "avatar-lvl-girl-10.png",
+    gender: "girl",
+    personality: "\u0643\u0644\u0627\u0645\u0647\u0627 \u0641\u064A\u0647 \u0631\u0632\u0627\u0646\u0629 \u0648\u0647\u062F\u0648\u0621"
+  },
+  {
+    name: "\u0632\u0639\u062A\u0631",
+    age: 27,
+    level: 11,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u0628\u064A\u062D\u0628 \u064A\u0634\u062A\u062A \u0627\u0644\u0645\u0646\u0627\u0641\u0633 '\u0628\u0635 \u0627\u0644\u0639\u0635\u0641\u0648\u0631\u0629'"
+  },
+  {
+    name: "\u0646\u0627\u0631\u062F\u064A\u0646",
+    age: 23,
+    level: 10,
+    avatar: "avatar-lvl-girl-10.png",
+    gender: "girl",
+    personality: "\u0628\u062A\u062D\u0628 \u0627\u0644\u0636\u062D\u0643 \u0648\u0627\u0644\u0647\u0632\u0627\u0631 \u062C\u062F\u0627\u064B"
+  },
+  {
+    name: "\u0643\u064A\u0645\u0648",
+    age: 22,
+    level: 14,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u0628\u064A\u0644\u0639\u0628 \u0628\u0633\u0631\u0639\u0647 \u0648\u0628\u064A\u0647\u0632\u0631 \u0637\u0648\u0644 \u0627\u0644\u0648\u0642\u062A"
+  },
+  {
+    name: "\u0633\u0645\u0627",
+    age: 28,
+    level: 13,
+    avatar: "avatar-lvl-girl-10.png",
+    gender: "girl",
+    personality: "\u0644\u0639\u0628 \u0645\u0645\u062A\u0639 \u0648\u0647\u0627\u062F\u064A \u0644\u0644\u062C\u0645\u064A\u0639"
+  },
+  {
+    name: "\u0627\u0644\u0632\u0648\u0632",
+    age: 31,
+    level: 12,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u0628\u064A\u062D\u0628 \u064A\u0637\u0628\u0642 \u0627\u0644\u0642\u0648\u0627\u0646\u064A\u0646 \u0628\u0627\u0644\u0638\u0628\u0637"
+  },
+  {
+    name: "\u0633\u064A\u0644\u064A\u0627",
+    age: 27,
+    level: 11,
+    avatar: "avatar-lvl-girl-10.png",
+    gender: "girl",
+    personality: "\u0628\u062A\u062D\u0628 \u062A\u062F\u0631\u062F\u0634 \u0648\u0647\u064A \u0628\u062A\u0644\u0639\u0628"
+  },
+  {
+    name: "\u0639\u0628\u0648\u062F",
+    age: 29,
+    level: 10,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u0628\u0631\u0646\u0633 \u0641\u064A \u0646\u0641\u0633\u0647 \u0648\u0628\u064A\u0644\u0639\u0628 \u0628\u0634\u064A\u0627\u0643\u0629"
+  },
+  // --- باقي الـ 50 شخصية ---
+  {
+    name: "\u0645\u0631\u062A\u0636\u0649",
+    age: 21,
+    level: 11,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u0628\u064A\u062D\u0628 \u0627\u0644\u062A\u062D\u062F\u064A '\u0647\u0643\u0633\u0628\u0643 \u064A\u0639\u0646\u064A \u0647\u0643\u0633\u0628\u0643'"
+  },
+  {
+    name: "\u062F\u0627\u0631\u0627",
+    age: 22,
+    level: 12,
+    avatar: "avatar-lvl-girl-10.png",
+    gender: "girl",
+    personality: "\u0645\u062C\u0627\u0645\u0644\u0629 \u062C\u062F\u0627\u064B '\u0644\u0639\u0628\u0643 \u062D\u0644\u0648 \u0623\u0648\u064A'"
+  },
+  {
+    name: "\u0639\u0646\u0627\u0628",
+    age: 24,
+    level: 13,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u0643\u0644\u0627\u0645\u0647 \u0643\u0648\u0631\u0629 '\u0623\u0646\u0627 \u0647\u0639\u0645\u0644 \u0639\u0644\u064A\u0643 \u0631\u064A\u0645\u0648\u0646\u062A\u0627\u062F\u0627'"
+  },
+  {
+    name: "\u0644\u064A \u0644\u064A",
+    age: 21,
+    level: 14,
+    avatar: "avatar-lvl-girl-10.png",
+    gender: "girl",
+    personality: "\u0628\u062A\u062D\u0628 \u0627\u0644\u0643\u0644\u0627\u0645 \u0639\u0646 \u0627\u0644\u062D\u0638"
+  },
+  {
+    name: "\u0633\u0648\u0643\u0627",
+    age: 18,
+    level: 10,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u0645\u0631\u062A\u0628\u0643 \u0634\u0648\u064A\u0629 \u0628\u0633 \u0628\u064A\u062D\u0627\u0648\u0644"
+  },
+  {
+    name: "\u062A\u064A\u062A\u0629",
+    age: 19,
+    level: 15,
+    avatar: "avatar-lvl-girl-10.png",
+    gender: "girl",
+    personality: "\u0628\u062A\u062D\u0628 \u0627\u0644\u0625\u064A\u0645\u0648\u062C\u064A\u0632 \u062C\u062F\u0627\u064B"
+  },
+  {
+    name: "\u0628\u064A\u0628\u0648",
+    age: 17,
+    level: 12,
+    avatar: "avatar-lvl-boy-10.png",
+    gender: "boy",
+    personality: "\u0644\u0633\u0647 \u0628\u064A\u062A\u0639\u0644\u0645 \u0628\u0633 \u0645\u062A\u062D\u0645\u0633"
+  }
+];
+var botAnswersCache = {};
+var configCache = {
+  avatars: {},
+  frames: {},
+  stars: {},
+  aiBotEnabled: false,
+  quickChat: [],
+  version: "1.0.0"
+};
+function findQuestionId(text, quickChat) {
+  if (!quickChat) return null;
+  const normalizedInput = normalizeEgyptian(text);
+  for (const item of quickChat) {
+    const normalizedItemText = normalizeEgyptian(item.text);
+    if (normalizedItemText === normalizedInput) {
+      return item.id;
+    }
+    if (item.children && item.children.length > 0) {
+      const foundId = findQuestionId(text, item.children);
+      if (foundId) return foundId;
+    }
+  }
+  return null;
+}
+function getBotAnswer(category, imageName, questionId, botAnswers) {
+  const actualImageName = imageName && typeof imageName === "object" ? imageName.name : imageName;
+  const normImage = normalizeEgyptian(actualImageName);
+  let categoryData = botAnswers[category];
+  if (!categoryData) {
+    const qcId = category.startsWith("qc_") ? category : `qc_${category}`;
+    categoryData = botAnswers[qcId];
+  }
+  if (!categoryData) {
+    const mappings = {
+      \u062D\u064A\u0648\u0627\u0646\u0627\u062A: "qc_animals",
+      \u0623\u0643\u0644\u0627\u062A: "qc_food",
+      \u0627\u0634\u062E\u0627\u0635: "qc_people",
+      \u062C\u0645\u0627\u062F: "qc_objects",
+      \u0646\u0628\u0627\u062A: "qc_plants",
+      \u0637\u064A\u0648\u0631: "qc_birds",
+      \u062D\u0634\u0631\u0627\u062A: "qc_insects",
+      "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645": "qc_football"
+    };
+    const mappedId = mappings[category] || mappings[normalizeEgyptian(category)];
+    if (mappedId) categoryData = botAnswers[mappedId];
+  }
+  if (!categoryData) {
+    const catKey = Object.keys(botAnswers).find(
+      (k) => normalizeEgyptian(k) === normalizeEgyptian(category)
+    );
+    if (catKey) categoryData = botAnswers[catKey];
+  }
+  if (!categoryData) {
+    return null;
+  }
+  if (categoryData[questionId] && typeof categoryData[questionId] === "object" && !Array.isArray(categoryData[questionId])) {
+    const branchData = categoryData[questionId];
+    const imageInThisBranch = !!Object.keys(branchData).find(
+      (k) => normalizeEgyptian(k) === normImage
+    );
+    return imageInThisBranch ? "\u0622\u0647" : "\u0644\u0623";
+  }
+  for (const key of Object.keys(categoryData)) {
+    const value = categoryData[key];
+    if (typeof value === "object" && !Array.isArray(value)) {
+      const imageKey = Object.keys(value).find(
+        (k) => normalizeEgyptian(k) === normImage
+      );
+      if (imageKey) {
+        const ids = value[imageKey];
+        const found = Array.isArray(ids) && ids.includes(questionId);
+        return found ? "\u0622\u0647" : "\u0644\u0623";
+      }
+    } else if (Array.isArray(value)) {
+      if (normalizeEgyptian(key) === normImage) {
+        const found = value.includes(questionId);
+        return found ? "\u0622\u0647" : "\u0644\u0623";
+      }
+    }
+  }
+  return null;
+}
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+function normalizeEgyptian(text) {
+  if (!text) return "";
+  return text.replace(/[\u064B-\u0652\u0670]/g, "").replace(/[أإآء]/g, "\u0627").replace(/ة/g, "\u0647").replace(/ى/g, "\u064A").replace(/ؤ/g, "\u0648").replace(/ئ/g, "\u064A").replace(/لآ/g, "\u0644\u0627").replace(/[ـ]/g, "").replace(/[؟?]/g, "").replace(/\s+/g, "").trim();
+}
+function isSameDay(d1, d2) {
+  const date1 = new Date(d1);
+  const date2 = new Date(d2);
+  return date1.getUTCFullYear() === date2.getUTCFullYear() && date1.getUTCMonth() === date2.getUTCMonth() && date1.getUTCDate() === date2.getUTCDate();
+}
+var GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+var GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+var APP_URL = process.env.APP_URL || "http://localhost:3000";
+async function startServer() {
+  let adminTokens;
+  try {
+    let getClientIp = function(socket) {
+      const forwardedFor = socket.handshake.headers["x-forwarded-for"];
+      return Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor ? forwardedFor.split(",")[0].trim() : socket.handshake.address;
+    }, isSameNetwork = function(ip1, ip2) {
+      if (!ip1 || !ip2) return false;
+      if (ip1 === ip2) return true;
+      const norm1 = ip1.replace(/^::ffff:/, "");
+      const norm2 = ip2.replace(/^::ffff:/, "");
+      if (norm1 === norm2) return true;
+      if (norm1.includes(".") && norm2.includes(".")) {
+        const p1 = norm1.split(".");
+        const p2 = norm2.split(".");
+        if (p1.length === 4 && p2.length === 4 && p1[0] === p2[0] && p1[1] === p2[1] && p1[2] === p2[2]) {
+          return true;
+        }
+      }
+      if (norm1.includes(":") && norm2.includes(":")) {
+        const p1 = norm1.split(":");
+        const p2 = norm2.split(":");
+        if (p1.length >= 4 && p2.length >= 4) {
+          if (p1[0] === p2[0] && p1[1] === p2[1] && p1[2] === p2[2] && p1[3] === p2[3]) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }, getAllWordsFromBotAnswers = function() {
+      const words = [];
+      if (!botAnswersCache) return words;
+      for (const catKey in botAnswersCache) {
+        const cat = botAnswersCache[catKey];
+        if (!cat || typeof cat !== "object") continue;
+        for (const subKey in cat) {
+          const sub = cat[subKey];
+          if (!sub || typeof sub !== "object") continue;
+          for (const word in sub) {
+            const qIds = sub[word];
+            if (Array.isArray(qIds) && qIds.length > 0 && word.trim().length >= 2) {
+              words.push({ word: word.trim(), questionIds: qIds, category: catKey, subcategory: subKey });
+            }
+          }
+        }
+      }
+      return words;
+    }, cleanupPlayerOldBotRooms = function(playerSerial, currentRoomId) {
+      if (!playerSerial || !rooms) return;
+      for (const [rId, room] of rooms.entries()) {
+        if (rId === currentRoomId) continue;
+        if (!room || !room.players) continue;
+        const hasBot = room.players.some((p) => p.isBot);
+        if (hasBot) {
+          const isPlayerInRoom = room.players.some((p) => p.serial === playerSerial);
+          if (isPlayerInRoom) {
+            if (intervals.has(rId)) {
+              clearInterval(intervals.get(rId));
+              intervals.delete(rId);
+            }
+            if (botIntervals.has(rId)) {
+              clearInterval(botIntervals.get(rId));
+              botIntervals.delete(rId);
+            }
+            rooms.delete(rId);
+          }
+        }
+      }
+    }, isRoomFinished = function(room) {
+      if (!room || !room.gameState) return false;
+      const state = (room.gameState || "").toLowerCase();
+      return state === "finished" || state.endsWith("_finished") || state === "bus_complete_evaluating";
+    }, getGameInfoForRoom = function(room) {
+      const mode = room.selectionMode || room.category || "";
+      const state = (room.gameState || "").toLowerCase();
+      if (room.isCustomImageMode || mode === "custom" || state === "custom_image_upload") {
+        return { name: "\u0627\u0631\u0641\u0639 \u0635\u0648\u0631\u0629", icon: "\u{1F4F8}" };
+      }
+      if (mode === "bus_complete" || mode === "\u062A\u062E\u0645\u064A\u0646\u0629 \u0643\u0648\u0645\u0628\u0644\u064A\u062A" || state.startsWith("bus_complete")) {
+        return { name: "\u062A\u062E\u0645\u064A\u0646\u0629 \u0643\u0648\u0645\u0628\u0644\u064A\u062A", icon: "\u{1F68C}" };
+      }
+      if (mode === "iq" || state.startsWith("iq_")) {
+        return { name: "\u062A\u062E\u0645\u064A\u0646\u0629 IQ", icon: "IQ" };
+      }
+      if (mode === "dots" || state.startsWith("dots_")) {
+        return { name: "\u0646\u0642\u0637\u0629 \u0648\u062E\u0637", icon: "/dots-and-boxes-logo.png" };
+      }
+      if (mode === "speed_cups" || state.startsWith("speed_cups_")) {
+        return { name: "\u0623\u0643\u0648\u0627\u0628 \u0627\u0644\u0633\u0631\u0639\u0629", icon: "/speed-cups/speed-cups-logo.png" };
+      }
+      if (mode === "connect_four_words" || state.startsWith("connect_four_words")) {
+        return { name: "\u062A\u062E\u0645\u064A\u0646\u0629 4 \u062D\u0631\u0648\u0641", icon: "/connect-4-logo.png" };
+      }
+      if (mode === "space_war" || state.startsWith("space_war")) {
+        return { name: "\u062D\u0631\u0628 \u0627\u0644\u0641\u0636\u0627\u0621", icon: "\u{1F680}" };
+      }
+      if (mode === "beach_race" || state.startsWith("beach_race_")) {
+        return { name: "\u0633\u0628\u0627\u0642 \u0627\u0644\u062A\u062E\u0645\u064A\u0646", icon: "\u{1F407}" };
+      }
+      if (mode === "puzzle" || state.startsWith("puzzle")) {
+        return { name: "\u062A\u062E\u0645\u064A\u0646\u0629 Puzzle", icon: "\u{1F9E9}" };
+      }
+      if (mode === "wordle" || state.startsWith("wordle")) {
+        return { name: "\u062A\u062E\u0645\u064A\u0646\u0629 \u0643\u0644\u0645\u0629", icon: "/word-le-logo.png" };
+      }
+      if (mode === "bomb_party" || state.startsWith("bomb_party")) {
+        return { name: "\u0642\u0646\u0628\u0644\u0629 \u0627\u0644\u062A\u062E\u0645\u064A\u0646", icon: "\u{1F4A3}" };
+      }
+      if (mode === "xo" || state.startsWith("xo_")) {
+        return { name: "\u062A\u062E\u0645\u064A\u0646\u0629 XO", icon: "XO" };
+      }
+      if (mode === "hand" || mode === "hand_khamin" || state.startsWith("hand_")) {
+        return { name: "\u062A\u062E\u0645\u064A\u0646\u0629 \u0643\u0641 \u064A\u062F", icon: "\u{1F590}" };
+      }
+      return { name: "\u0641\u0626\u0627\u062A \u062C\u0627\u0647\u0632\u0629", icon: "\u{1F5BC}\uFE0F" };
+    }, isValidSqliteDatabase = function(filePath) {
+      if (!import_fs.default.existsSync(filePath)) return false;
+      try {
+        const stat = import_fs.default.statSync(filePath);
+        if (stat.size < 100) return false;
+        const fd = import_fs.default.openSync(filePath, "r");
+        const header = Buffer.alloc(16);
+        import_fs.default.readSync(fd, header, 0, 16, 0);
+        import_fs.default.closeSync(fd);
+        if (header.toString("utf8", 0, 16) !== "SQLite format 3\0") {
+          return false;
+        }
+        let testDb = null;
+        try {
+          testDb = new import_better_sqlite3.default(filePath, { readonly: true, timeout: 5e3 });
+          const quickCheck = testDb.pragma("quick_check");
+          if (!quickCheck || quickCheck.length === 0 || quickCheck[0].quick_check !== "ok") {
+            return false;
+          }
+          testDb.prepare("SELECT count(*) FROM sqlite_master").get();
+          return true;
+        } catch (e) {
+          return false;
+        } finally {
+          if (testDb) {
+            try {
+              testDb.close();
+            } catch (e) {
+            }
+          }
+        }
+      } catch (e) {
+        return false;
+      }
+    }, cleanupOldNotificationsAndLogs = function() {
+      try {
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1e3;
+        const sevenDaysAgoISO = new Date(sevenDaysAgo).toISOString();
+        let totalDeleted = 0;
+        try {
+          const res1 = db.prepare(`
+            DELETE FROM admin_messages 
+            WHERE read = 1 OR timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
+          totalDeleted += res1.changes;
+        } catch (e) {
+        }
+        try {
+          const resFriends = db.prepare(`
+            DELETE FROM friends 
+            WHERE status = 'pending' AND (created_at < datetime('now', '-7 days') OR created_at < ? OR created_at IS NULL)
+          `).run(sevenDaysAgoISO);
+          totalDeleted += resFriends.changes;
+        } catch (e) {
+        }
+        try {
+          const res2 = db.prepare(`
+            DELETE FROM like_notifications 
+            WHERE read = 1 OR timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
+          totalDeleted += res2.changes;
+        } catch (e) {
+        }
+        try {
+          const res3 = db.prepare(`
+            DELETE FROM gift_notifications 
+            WHERE read = 1 OR timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
+          totalDeleted += res3.changes;
+        } catch (e) {
+        }
+        try {
+          const res4 = db.prepare(`
+            DELETE FROM collection_notifications 
+            WHERE status != 'pending' OR timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
+          totalDeleted += res4.changes;
+        } catch (e) {
+        }
+        try {
+          const res5 = db.prepare(`
+            DELETE FROM friend_accepted_notifications 
+            WHERE read = 1 OR timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
+          totalDeleted += res5.changes;
+        } catch (e) {
+        }
+        try {
+          const res6 = db.prepare(`
+            DELETE FROM player_likes_log 
+            WHERE timestamp < ? OR timestamp < ? OR timestamp IS NULL
+          `).run(sevenDaysAgo, sevenDaysAgoISO);
+          totalDeleted += res6.changes;
+        } catch (e) {
+        }
+        try {
+          const res7 = db.prepare(`
+            DELETE FROM scheduled_push_notifications 
+            WHERE status = 'sent' AND scheduledAt < ?
+          `).run(sevenDaysAgo);
+          totalDeleted += res7.changes;
+        } catch (e) {
+        }
+        if (totalDeleted > 0) {
+          console.log(`[DB Cleanup] Purged ${totalDeleted} obsolete notifications, pending friend requests, and old messages.`);
+        }
+      } catch (err) {
+        console.warn("[DB Cleanup] Warning during notifications cleanup:", err);
+      }
+    }, triggerSyncToSupabase = function() {
+      dbIsDirty = true;
+    }, getGameImageDirs = function() {
+      const baseDir = process.cwd();
+      const candidates = [
+        import_path.default.join(baseDir, "public", "game_images"),
+        import_path.default.join(baseDir, "dist", "game_images"),
+        import_path.default.join(baseDir, "game_images"),
+        import_path.default.join(baseDir, "dist", "public", "game_images")
+      ];
+      try {
+        return Array.from(
+          new Set(
+            candidates.filter((d) => {
+              try {
+                return import_fs.default.existsSync(d);
+              } catch (e) {
+                return false;
+              }
+            })
+          )
+        );
+      } catch (e) {
+        return [import_path.default.join(baseDir, "public", "game_images")];
+      }
+    }, normalizeArabicText = function(str) {
+      if (!str) return "";
+      return str.normalize("NFC").trim().toLowerCase().replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u00A0\u0640]/g, "").replace(/[أإآء]/g, "\u0627").replace(/ة/g, "\u0647").replace(/ى/g, "\u064A").replace(/[\u064B-\u065F]/g, "").replace(/[-_()]/g, " ").replace(/\s+/g, " ").trim();
+    }, indexGameImages = function() {
+      try {
+        let scanDir = function(currentDir, relCat) {
+          try {
+            if (!import_fs.default.existsSync(currentDir)) return;
+            const entries = import_fs.default.readdirSync(currentDir, { withFileTypes: true });
+            for (const entry of entries) {
+              const fullPath = import_path.default.join(currentDir, entry.name);
+              if (entry.isDirectory()) {
+                scanDir(fullPath, entry.name);
+              } else if (entry.isFile()) {
+                const parsed = import_path.default.parse(entry.name);
+                const ext = parsed.ext.toLowerCase();
+                if ([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"].includes(ext)) {
+                  const rawName = parsed.name;
+                  const normName = normalizeArabicText(rawName);
+                  const normCat = normalizeArabicText(relCat);
+                  let stdCat = relCat.toLowerCase();
+                  if (arabicCategoryToEnglish[normCat]) {
+                    stdCat = arabicCategoryToEnglish[normCat];
+                  } else if (arabicCategoryToEnglish[relCat.toLowerCase()]) {
+                    stdCat = arabicCategoryToEnglish[relCat.toLowerCase()];
+                  }
+                  diskEntriesToSync.push({ category: stdCat, name: rawName, fullPath });
+                  if (relCat) {
+                    newMap.set(`${relCat.toLowerCase()}/${rawName.toLowerCase()}`, fullPath);
+                    newMap.set(`${normCat}/${normName}`, fullPath);
+                    const mappedEng = arabicCategoryToEnglish[normCat] || arabicCategoryToEnglish[relCat.toLowerCase()];
+                    if (mappedEng) {
+                      newMap.set(`${mappedEng}/${normName}`, fullPath);
+                      newMap.set(`${mappedEng}/${rawName.toLowerCase()}`, fullPath);
+                    }
+                    const mappedAr = englishCategoryToArabic[normCat] || englishCategoryToArabic[relCat.toLowerCase()];
+                    if (mappedAr) {
+                      newMap.set(`${normalizeArabicText(mappedAr)}/${normName}`, fullPath);
+                    }
+                  }
+                  if (!newMap.has(normName)) {
+                    newMap.set(normName, fullPath);
+                  }
+                  if (!newMap.has(rawName.toLowerCase())) {
+                    newMap.set(rawName.toLowerCase(), fullPath);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error indexing directory:", currentDir, e);
+          }
+        };
+        const newMap = /* @__PURE__ */ new Map();
+        const searchDirs = getGameImageDirs();
+        if (searchDirs.length === 0) searchDirs.push(primaryGameImagesDir);
+        const arabicCategoryToEnglish = {
+          "\u062D\u0634\u0631\u0627\u062A": "insects",
+          "\u062D\u064A\u0648\u0627\u0646\u0627\u062A": "animals",
+          "\u0637\u064A\u0648\u0631": "birds",
+          "\u0623\u0643\u0644\u0627\u062A": "food",
+          "\u0627\u0643\u0644\u0627\u062A": "food",
+          "\u0637\u0639\u0627\u0645": "food",
+          "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645": "football",
+          "\u0643\u0648\u0631\u0629": "football",
+          "\u062C\u0645\u0627\u062F": "objects",
+          "\u0627\u0634\u064A\u0627\u0621": "objects",
+          "\u0623\u0634\u064A\u0627\u0621": "objects",
+          "\u0646\u0628\u0627\u062A": "plants",
+          "\u0646\u0628\u0627\u062A\u0627\u062A": "plants",
+          "\u0627\u0634\u062E\u0627\u0635": "people",
+          "\u0623\u0634\u062E\u0627\u0635": "people"
+        };
+        const englishCategoryToArabic = {
+          "insects": "\u062D\u0634\u0631\u0627\u062A",
+          "animals": "\u062D\u064A\u0648\u0627\u0646\u0627\u062A",
+          "birds": "\u0637\u064A\u0648\u0631",
+          "food": "\u0623\u0643\u0644\u0627\u062A",
+          "football": "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645",
+          "objects": "\u062C\u0645\u0627\u062F",
+          "plants": "\u0646\u0628\u0627\u062A",
+          "people": "\u0627\u0634\u062E\u0627\u0635"
+        };
+        const diskEntriesToSync = [];
+        for (const d of searchDirs) {
+          scanDir(d, "");
+        }
+        diskImagesMap = newMap;
+        console.log(`[Game Images] Scanned ${searchDirs.length} directories, indexed ${newMap.size} image lookup entries.`);
+        if (diskEntriesToSync.length > 0) {
+          try {
+            const checkStmt = db.prepare("SELECT id FROM custom_images WHERE (category = ? OR lower(category) = ?) AND name = ? LIMIT 1");
+            const insertStmt = db.prepare(`
+              INSERT INTO custom_images (id, category, name, data, addedBy, timestamp, level)
+              VALUES (?, ?, ?, '', 'system', ?, '\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646')
+            `);
+            let syncedCount = 0;
+            const syncTransaction = db.transaction((entries) => {
+              for (const item of entries) {
+                if (!item.category || !item.name) continue;
+                const existing = checkStmt.get(item.category, item.category.toLowerCase(), item.name);
+                if (!existing) {
+                  const id = `disk_${item.category}_${Math.random().toString(36).substring(2, 9)}`;
+                  insertStmt.run(id, item.category, item.name, Date.now());
+                  syncedCount++;
+                }
+              }
+            });
+            syncTransaction(diskEntriesToSync);
+            if (syncedCount > 0) {
+              console.log(`[Game Images] Successfully auto-registered ${syncedCount} new images from disk into custom_images database.`);
+            }
+          } catch (dbSyncErr) {
+            console.error("[Game Images] Error syncing disk images to DB:", dbSyncErr);
+          }
+        }
+        try {
+          const standardCategories = [
+            { id: "animals", name: "\u062D\u064A\u0648\u0627\u0646\u0627\u062A", icon: "\u{1F418}" },
+            { id: "birds", name: "\u0637\u064A\u0648\u0631", icon: "\u{1F99C}" },
+            { id: "food", name: "\u0623\u0643\u0644\u0627\u062A", icon: "\u{1F355}" },
+            { id: "football", name: "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645", icon: "\u26BD" },
+            { id: "insects", name: "\u062D\u0634\u0631\u0627\u062A", icon: "\u{1F41E}" },
+            { id: "objects", name: "\u062C\u0645\u0627\u062F", icon: "\u{1F4E6}" },
+            { id: "plants", name: "\u0646\u0628\u0627\u062A", icon: "\u{1F33F}" },
+            { id: "people", name: "\u0627\u0634\u062E\u0627\u0635", icon: "\u{1F465}" }
+          ];
+          const upsertCat = db.prepare(`
+            INSERT INTO categories (id, name, icon, timestamp)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET name=excluded.name, icon=excluded.icon
+          `);
+          for (const c of standardCategories) {
+            upsertCat.run(c.id, c.name, c.icon, Date.now());
+          }
+        } catch (catSyncErr) {
+          console.error("[Game Images] Error syncing categories table:", catSyncErr);
+        }
+      } catch (err) {
+        console.error("[Game Images] Error in indexGameImages:", err);
+      }
+    }, getSafeImageFileName = function(category, name) {
+      const safeCat = encodeURIComponent(category).replace(/%/g, "_");
+      const safeName = encodeURIComponent(name).replace(/%/g, "_");
+      return `${safeCat}_${safeName}`;
+    }, findImageOnDisk = function(category, name) {
+      try {
+        if (!name) return null;
+        let decodedName = name;
+        try {
+          decodedName = decodeURIComponent(name);
+        } catch (e) {
+        }
+        let decodedCat = category || "";
+        try {
+          decodedCat = decodeURIComponent(category || "");
+        } catch (e) {
+        }
+        const extMatch = decodedName.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i);
+        if (extMatch) {
+          decodedName = decodedName.replace(/\.(jpg|jpeg|png|webp|gif|svg)$/i, "");
+        }
+        const normCat = normalizeArabicText(decodedCat);
+        const normName = normalizeArabicText(decodedName);
+        if (diskImagesMap.size === 0) {
+          indexGameImages();
+        }
+        const candidateKeys = [
+          `${decodedCat.toLowerCase()}/${decodedName.toLowerCase()}`,
+          `${normCat}/${normName}`,
+          `${decodedCat.toLowerCase()}/${normName}`,
+          `${normCat}/${decodedName.toLowerCase()}`,
+          decodedName.toLowerCase(),
+          normName
+        ];
+        for (const k of candidateKeys) {
+          if (diskImagesMap.has(k)) {
+            const p = diskImagesMap.get(k);
+            if (import_fs.default.existsSync(p)) return p;
+          }
+        }
+        const extensions = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".JPG", ".PNG", ".JPEG", ".WEBP"];
+        const searchDirs = getGameImageDirs();
+        const catNamesToTry = [
+          decodedCat,
+          decodedCat.toLowerCase(),
+          normCat,
+          ...decodedCat ? [decodedCat.charAt(0).toUpperCase() + decodedCat.slice(1)] : [],
+          ""
+        ];
+        for (const baseDir of searchDirs) {
+          for (const c of catNamesToTry) {
+            const dirToCheck = c ? import_path.default.join(baseDir, c) : baseDir;
+            if (import_fs.default.existsSync(dirToCheck)) {
+              for (const ext of extensions) {
+                const tryPath1 = import_path.default.join(dirToCheck, `${decodedName}${ext}`);
+                if (import_fs.default.existsSync(tryPath1)) return tryPath1;
+                const tryPath2 = import_path.default.join(dirToCheck, `${normName}${ext}`);
+                if (import_fs.default.existsSync(tryPath2)) return tryPath2;
+              }
+            }
+          }
+        }
+        for (const [key, filePath] of diskImagesMap.entries()) {
+          const parsed = import_path.default.parse(filePath);
+          const fNameNorm = normalizeArabicText(parsed.name);
+          if (fNameNorm === normName || fNameNorm.includes(normName) || normName.includes(fNameNorm)) {
+            if (import_fs.default.existsSync(filePath)) return filePath;
+          }
+        }
+        return null;
+      } catch (e) {
+        console.error("Error in findImageOnDisk:", e);
+        return null;
+      }
+    }, migrateExistingImagesToDisk = function() {
+      try {
+        const rows = db.prepare("SELECT id, category, name, data FROM custom_images WHERE data IS NOT NULL AND length(data) > 100").all();
+        if (rows.length > 0) {
+          console.log(`[Image Migration] Found ${rows.length} Base64 images in database. Starting disk migration...`);
+          let migratedCount = 0;
+          for (const row of rows) {
+            if (!row.category || !row.name || !row.data) continue;
+            let base64Data = row.data;
+            let ext = ".jpg";
+            if (base64Data.startsWith("data:")) {
+              if (base64Data.startsWith("data:image/png")) ext = ".png";
+              else if (base64Data.startsWith("data:image/webp")) ext = ".webp";
+              const commaIdx = base64Data.indexOf(",");
+              if (commaIdx !== -1) {
+                base64Data = base64Data.substring(commaIdx + 1);
+              }
+            }
+            const baseName = getSafeImageFileName(row.category, row.name);
+            const filePath = import_path.default.join(primaryGameImagesDir, `${baseName}${ext}`);
+            try {
+              import_fs.default.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+              migratedCount++;
+            } catch (writeErr) {
+              console.error(`[Image Migration] Failed to write image ${row.name}:`, writeErr);
+            }
+          }
+          console.log(`[Image Migration] Successfully saved ${migratedCount} images to public/game_images/`);
+          indexGameImages();
+          db.exec("UPDATE custom_images SET data = '' WHERE length(data) > 0");
+          console.log("[Image Migration] Cleared Base64 data from database.");
+        } else {
+          console.log("[Image Migration] All images are already stored on disk.");
+        }
+        try {
+          db.exec("UPDATE custom_images SET data = '' WHERE data IS NOT NULL AND data != ''");
+        } catch (e) {
+        }
+      } catch (err) {
+        console.error("[Image Migration] Error during image migration:", err);
+      }
+    }, getRainGiftEventDay = function() {
+      const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Africa/Cairo",
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: false
+      }).formatToParts(/* @__PURE__ */ new Date());
+      let year = 0, month = 0, day = 0, hour = 0, minute = 0;
+      for (const part of parts) {
+        if (part.type === "year") year = parseInt(part.value, 10);
+        if (part.type === "month") month = parseInt(part.value, 10);
+        if (part.type === "day") day = parseInt(part.value, 10);
+        if (part.type === "hour") {
+          hour = parseInt(part.value, 10);
+          if (hour === 24) hour = 0;
+        }
+        if (part.type === "minute") minute = parseInt(part.value, 10);
+      }
+      if (hour < 18 || hour === 18 && minute < 50) {
+        const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+        d.setUTCDate(d.getUTCDate() - 1);
+        year = d.getUTCFullYear();
+        month = d.getUTCMonth() + 1;
+        day = d.getUTCDate();
+      }
+      return `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+    }, checkDailyReset = function(player, serial, socket) {
+      if (!player) return;
+      const getLuckyWheelResetDay = () => {
+        const parts = new Intl.DateTimeFormat("en-GB", {
+          timeZone: "Africa/Cairo",
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          hour12: false
+        }).formatToParts(/* @__PURE__ */ new Date());
+        let year = 0, month = 0, day = 0, hour = 0, minute = 0;
+        for (const part of parts) {
+          if (part.type === "year") year = parseInt(part.value, 10);
+          if (part.type === "month") month = parseInt(part.value, 10);
+          if (part.type === "day") day = parseInt(part.value, 10);
+          if (part.type === "hour") {
+            hour = parseInt(part.value, 10);
+            if (hour === 24) hour = 0;
+          }
+          if (part.type === "minute") minute = parseInt(part.value, 10);
+        }
+        if (hour < 23 || hour === 23 && minute < 50) {
+          const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+          d.setUTCDate(d.getUTCDate() - 1);
+          year = d.getUTCFullYear();
+          month = d.getUTCMonth() + 1;
+          day = d.getUTCDate();
+        }
+        return `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+      };
+      let needsSave = false;
+      const currentDay = getRainGiftEventDay();
+      if (player.lastRainGiftResetDay !== currentDay) {
+        player.lastRainGiftResetDay = currentDay;
+        if (player.rainGiftTokens && player.rainGiftTokens > 0) {
+          player.tokens = Math.max(
+            0,
+            (player.tokens || 0) - player.rainGiftTokens
+          );
+          player.rainGiftTokens = 0;
+        }
+        if (player.rainGiftHelpers) {
+          if (!player.ownedHelpers) player.ownedHelpers = {};
+          for (const [helperId, count] of Object.entries(
+            player.rainGiftHelpers
+          )) {
+            if (typeof count === "number" && count > 0) {
+              player.ownedHelpers[helperId] = Math.max(
+                0,
+                (player.ownedHelpers[helperId] || 0) - count
+              );
+              if (player.ownedHelpers[helperId] === 0) {
+                delete player.ownedHelpers[helperId];
+              }
+            }
+          }
+          player.rainGiftHelpers = {};
+        }
+        needsSave = true;
+      }
+      const currentLuckyWheelDay = getLuckyWheelResetDay();
+      if (player.lastLuckyWheelResetDay !== currentLuckyWheelDay) {
+        player.lastLuckyWheelResetDay = currentLuckyWheelDay;
+        if (player.luckyWheelTokens && player.luckyWheelTokens > 0) {
+          player.tokens = Math.max(
+            0,
+            (player.tokens || 0) - player.luckyWheelTokens
+          );
+          player.luckyWheelTokens = 0;
+        }
+        if (player.luckyWheelHelpers) {
+          if (!player.ownedHelpers) player.ownedHelpers = {};
+          for (const [helperId, count] of Object.entries(
+            player.luckyWheelHelpers
+          )) {
+            if (typeof count === "number" && count > 0) {
+              player.ownedHelpers[helperId] = Math.max(
+                0,
+                (player.ownedHelpers[helperId] || 0) - count
+              );
+              if (player.ownedHelpers[helperId] === 0) {
+                delete player.ownedHelpers[helperId];
+              }
+            }
+          }
+          player.luckyWheelHelpers = {};
+        }
+        needsSave = true;
+      }
+      if (player.citySearchRewards && player.citySearchRewards.length > 0) {
+        const oneWeekMs = 7 * 24 * 60 * 60 * 1e3;
+        const now = Date.now();
+        const initialCount = player.citySearchRewards.length;
+        player.citySearchRewards = player.citySearchRewards.filter(
+          (reward) => {
+            if (now - reward.timestamp > oneWeekMs) {
+              if (reward.type === "token") {
+                player.tokens = Math.max(
+                  0,
+                  (player.tokens || 0) - reward.amount
+                );
+              } else if (reward.type === "helper" && reward.id) {
+                if (!player.ownedHelpers) player.ownedHelpers = {};
+                player.ownedHelpers[reward.id] = Math.max(
+                  0,
+                  (player.ownedHelpers[reward.id] || 0) - reward.amount
+                );
+                if (player.ownedHelpers[reward.id] === 0)
+                  delete player.ownedHelpers[reward.id];
+              }
+              return false;
+            }
+            return true;
+          }
+        );
+        if (player.citySearchRewards.length !== initialCount) {
+          needsSave = true;
+        }
+      }
+      if (needsSave) {
+        savePlayerData(serial);
+        if (socket) {
+          emitPlayerDataUpdate(socket, serial, {
+            serial,
+            tokens: player.tokens,
+            ownedHelpers: player.ownedHelpers
+          });
+        }
+      }
+    }, getRandomPuzzleImages = function() {
+      try {
+        const imagesResult = db.prepare("SELECT name, category FROM custom_images ORDER BY RANDOM() LIMIT 3").all();
+        if (imagesResult && imagesResult.length > 0) {
+          const imgs = imagesResult.map((r, idx) => ({
+            name: r.name || "\u0635\u0648\u0631\u0629 \u0627\u0644\u062C\u0648\u0644\u0629 " + (idx + 1),
+            category: r.category
+          }));
+          while (imgs.length < 3) {
+            imgs.push(imgs[0]);
+          }
+          return imgs;
+        }
+        const allDiskEntries = [];
+        for (const [key, filePath] of diskImagesMap.entries()) {
+          if (key.includes("/")) {
+            const parts = key.split("/");
+            const cat = parts[0];
+            const name = import_path.default.parse(filePath).name;
+            allDiskEntries.push({ name, category: cat });
+          }
+        }
+        if (allDiskEntries.length > 0) {
+          const shuffled = [...allDiskEntries].sort(() => 0.5 - Math.random());
+          const selected = shuffled.slice(0, 3);
+          while (selected.length < 3) {
+            selected.push(selected[0]);
+          }
+          return selected;
+        }
+      } catch (e) {
+        console.error("Error fetching puzzle images:", e);
+      }
+      return [];
+    }, savePlayerData = function(serial, immediate = false) {
+      if (isShuttingDown || !db || !db.open) return;
+      try {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        const performWrite = () => {
+          if (isShuttingDown || !db || !db.open) return;
+          pendingWrites.delete(serial);
+          try {
+            insertPlayer.run({
+              ...player,
+              gender: player.gender || "boy",
+              fingerprint: player.fingerprint || null,
+              ip: player.ip || null,
+              reportedBy: JSON.stringify(player.reportedBy || []),
+              email: player.email || null,
+              isAdmin: player.isAdmin ? 1 : 0,
+              tokens: player.tokens || 0,
+              randomXp: player.randomXp !== void 0 ? player.randomXp : player.xp || 0,
+              adsWatchedToday: player.adsWatchedToday || 0,
+              lastAdWatchDate: player.lastAdWatchDate || null,
+              keyAdsWatchedToday: player.keyAdsWatchedToday || 0,
+              lastKeyAdWatchDate: player.lastKeyAdWatchDate || null,
+              ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
+              dailyQuestStreak: player.dailyQuestStreak || 1,
+              streak: player.streak || 0,
+              lastDailyClaim: player.lastDailyClaim || 0,
+              weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
+              lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0,
+              proPackageExpiry: player.proPackageExpiry || 0,
+              unlockedHelpersExpiry: player.unlockedHelpersExpiry || 0,
+              claimedRewards: JSON.stringify(player.claimedRewards || []),
+              lastRenameAt: player.lastRenameAt || 0,
+              lastRenameUnlockMonth: player.lastRenameUnlockMonth || null,
+              pendingAvatar: player.pendingAvatar || null,
+              avatarStatus: player.avatarStatus || "approved",
+              lastComplaintAt: player.lastComplaintAt || 0,
+              lastContactAt: player.lastContactAt || 0,
+              blockedSerials: JSON.stringify(player.blockedSerials || []),
+              blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
+              recentOpponents: JSON.stringify(player.recentOpponents || []),
+              reportedSerials: JSON.stringify(player.reportedSerials || []),
+              selectedFrame: player.selectedFrame || "",
+              lastRainGiftResetDay: player.lastRainGiftResetDay || null,
+              rainGiftTokens: player.rainGiftTokens || 0,
+              rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
+              rainGiftClaimedDay: player.rainGiftClaimedDay || null,
+              notificationsEnabled: player.notificationsEnabled !== void 0 ? player.notificationsEnabled : 0,
+              hideMyInfo: player.hideMyInfo !== void 0 ? player.hideMyInfo : 0,
+              hideFriendRequests: player.hideFriendRequests !== void 0 ? player.hideFriendRequests : 0,
+              disableGuessChat: player.disableGuessChat !== void 0 ? player.disableGuessChat : 0,
+              secretToken: player.secretToken || null,
+              lastSpinDate: player.lastSpinDate || null,
+              dailySpinCount: player.dailySpinCount || 0,
+              freeSpinUsed: player.freeSpinUsed || 0,
+              luckyWheelTokens: player.luckyWheelTokens || 0,
+              luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
+              lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
+              luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
+              citySearchRewards: JSON.stringify(player.citySearchRewards || []),
+              keys: player.keys || 0,
+              likes: player.likes || 0,
+              lastActiveAt: player.lastActiveAt || 0,
+              busCompleteWins: player.busCompleteWins || 0,
+              busCompleteUsedLetters: JSON.stringify(
+                player.busCompleteUsedLetters || []
+              ),
+              busCompleteRewardLevel: player.busCompleteRewardLevel || 1,
+              busCompleteMatchPoints: player.busCompleteMatchPoints || 0,
+              busCompleteExpiring: JSON.stringify(player.busCompleteExpiring || []),
+              xoWins: player.xoWins || 0,
+              xoRewardLevel: player.xoRewardLevel || 1,
+              xoMatchPoints: player.xoMatchPoints || 0,
+              handWins: player.handWins || 0,
+              handRewardLevel: player.handRewardLevel || 1,
+              handMatchPoints: player.handMatchPoints || 0,
+              iqWins: player.iqWins || 0,
+              iqRewardLevel: player.iqRewardLevel || 1,
+              iqMatchPoints: player.iqMatchPoints || 0,
+              dotsWins: player.dotsWins || 0,
+              dotsRewardLevel: player.dotsRewardLevel || 1,
+              dotsMatchPoints: player.dotsMatchPoints || 0,
+              speedCupsWins: player.speedCupsWins || 0,
+              speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
+              speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
+              bombPartyWins: player.bombPartyWins || 0,
+              wordleWins: player.wordleWins || 0,
+              wordleRewardLevel: player.wordleRewardLevel || 1,
+              wordleMatchPoints: player.wordleMatchPoints || 0,
+              connectFourWordsWins: player.connectFourWordsWins || 0,
+              connectFourWordsRewardLevel: player.connectFourWordsRewardLevel || 1,
+              connectFourWordsMatchPoints: player.connectFourWordsMatchPoints || 0,
+              spaceWarWins: player.spaceWarWins || 0,
+              spaceWarRewardLevel: player.spaceWarRewardLevel || 1,
+              spaceWarMatchPoints: player.spaceWarMatchPoints || 0,
+              puzzleWins: player.puzzleWins || 0,
+              puzzleRewardLevel: player.puzzleRewardLevel || 1,
+              puzzleMatchPoints: player.puzzleMatchPoints || 0,
+              beachRaceWins: player.beachRaceWins || 0,
+              beachRaceRewardLevel: player.beachRaceRewardLevel || 1,
+              beachRaceMatchPoints: player.beachRaceMatchPoints || 0
+            });
+            invalidateTopPlayersCache();
+            triggerSyncToSupabase();
+          } catch (err) {
+            console.error(`Deferred write failed for ${serial}:`, err);
+          }
+        };
+        if (immediate) {
+          const pending = pendingWrites.get(serial);
+          if (pending) {
+            clearTimeout(pending);
+            pendingWrites.delete(serial);
+          }
+          performWrite();
+        } else {
+          const pending = pendingWrites.get(serial);
+          if (pending) {
+            clearTimeout(pending);
+          }
+          const timeout = setTimeout(performWrite, 3e3);
+          pendingWrites.set(serial, timeout);
+        }
+      } catch (err) {
+        console.error(`Failed to save player data for ${serial}:`, err);
+      }
+    }, saveAllPlayersData = function() {
+      try {
+        const players = Array.from(allPlayers.values());
+        if (players.length > 100) {
+          console.log(
+            `[DB] Warning: Full save of ${players.length} players. This might block the event loop.`
+          );
+        }
+        insertMany(players);
+        invalidateTopPlayersCache();
+        triggerSyncToSupabase();
+      } catch (err) {
+        console.error("Failed to save all players data:", err);
+      }
+    }, loadPlayersData = function() {
+      try {
+        const rows = db.prepare("SELECT * FROM players").all();
+        allPlayers.clear();
+        rows.forEach((row) => {
+          let reportedBy = [];
+          try {
+            reportedBy = JSON.parse(row.reportedBy || "[]");
+          } catch (e) {
+          }
+          allPlayers.set(row.serial, {
+            ...row,
+            gender: row.gender || "boy",
+            fingerprint: row.fingerprint || null,
+            ip: row.ip || null,
+            reports: row.reports || 0,
+            banUntil: row.banUntil || 0,
+            banCount: row.banCount || 0,
+            isPermanentBan: row.isPermanentBan || 0,
+            reportedBy,
+            email: row.email,
+            isAdmin: row.isAdmin === 1,
+            streak: row.streak || 0,
+            tokens: row.tokens || 0,
+            adsWatchedToday: row.adsWatchedToday || 0,
+            lastAdWatchDate: row.lastAdWatchDate || null,
+            keyAdsWatchedToday: row.keyAdsWatchedToday || 0,
+            lastKeyAdWatchDate: row.lastKeyAdWatchDate || null,
+            ownedHelpers: JSON.parse(row.ownedHelpers || "{}"),
+            dailyQuestStreak: row.dailyQuestStreak || 1,
+            lastDailyClaim: row.lastDailyClaim || 0,
+            weeklyTokensClaimed: row.weeklyTokensClaimed || 0,
+            lastWeeklyTokenReset: row.lastWeeklyTokenReset || 0,
+            proPackageExpiry: row.proPackageExpiry || 0,
+            unlockedHelpersExpiry: row.unlockedHelpersExpiry || 0,
+            claimedRewards: JSON.parse(row.claimedRewards || "[]"),
+            lastRenameAt: row.lastRenameAt || 0,
+            lastRenameUnlockMonth: row.lastRenameUnlockMonth || null,
+            pendingAvatar: row.pendingAvatar,
+            avatarStatus: row.avatarStatus || "approved",
+            blockedSerials: JSON.parse(row.blockedSerials || "[]"),
+            blockedFingerprints: JSON.parse(row.blockedFingerprints || "[]"),
+            recentOpponents: JSON.parse(row.recentOpponents || "[]"),
+            reportedSerials: JSON.parse(row.reportedSerials || "[]"),
+            selectedFrame: row.selectedFrame || "",
+            randomXp: row.randomXp || row.xp || 0,
+            lastRainGiftResetDay: row.lastRainGiftResetDay || null,
+            rainGiftTokens: row.rainGiftTokens || 0,
+            rainGiftHelpers: JSON.parse(row.rainGiftHelpers || "{}"),
+            rainGiftClaimedDay: row.rainGiftClaimedDay || null,
+            notificationsEnabled: row.notificationsEnabled !== void 0 ? row.notificationsEnabled : 0,
+            hideMyInfo: row.hideMyInfo !== void 0 ? row.hideMyInfo : 0,
+            hideFriendRequests: row.hideFriendRequests !== void 0 ? row.hideFriendRequests : 0,
+            disableGuessChat: row.disableGuessChat !== void 0 ? row.disableGuessChat : 0,
+            secretToken: row.secretToken || null,
+            lastSpinDate: row.lastSpinDate || null,
+            dailySpinCount: row.dailySpinCount || 0,
+            freeSpinUsed: row.freeSpinUsed || 0,
+            luckyWheelTokens: row.luckyWheelTokens || 0,
+            luckyWheelHelpers: JSON.parse(row.luckyWheelHelpers || "{}"),
+            lastLuckyWheelResetDay: row.lastLuckyWheelResetDay || null,
+            luckyWheelDaysUsed: row.luckyWheelDaysUsed || 0,
+            citySearchRewards: JSON.parse(row.citySearchRewards || "[]"),
+            keys: row.keys || 0,
+            likes: row.likes || 0,
+            lastActiveAt: row.lastActiveAt ? row.lastActiveAt : Date.now(),
+            busCompleteWins: row.busCompleteWins || 0,
+            busCompleteUsedLetters: JSON.parse(
+              row.busCompleteUsedLetters || "[]"
+            ),
+            busCompleteRewardLevel: row.busCompleteRewardLevel || 1,
+            busCompleteMatchPoints: row.busCompleteMatchPoints || 0,
+            busCompleteExpiring: JSON.parse(row.busCompleteExpiring || "[]"),
+            xoWins: row.xoWins || 0,
+            xoRewardLevel: row.xoRewardLevel || 1,
+            xoMatchPoints: row.xoMatchPoints || 0,
+            handWins: row.handWins || 0,
+            handRewardLevel: row.handRewardLevel || 1,
+            handMatchPoints: row.handMatchPoints || 0,
+            iqWins: row.iqWins || 0,
+            iqRewardLevel: row.iqRewardLevel || 1,
+            iqMatchPoints: row.iqMatchPoints || 0,
+            dotsWins: row.dotsWins || 0,
+            dotsRewardLevel: row.dotsRewardLevel || 1,
+            dotsMatchPoints: row.dotsMatchPoints || 0,
+            speedCupsWins: row.speedCupsWins || 0,
+            speedCupsRewardLevel: row.speedCupsRewardLevel || 1,
+            speedCupsMatchPoints: row.speedCupsMatchPoints || 0,
+            bombPartyWins: row.bombPartyWins || 0,
+            wordleWins: row.wordleWins || 0,
+            wordleRewardLevel: row.wordleRewardLevel || 1,
+            wordleMatchPoints: row.wordleMatchPoints || 0,
+            connectFourWordsWins: row.connectFourWordsWins || 0,
+            connectFourWordsRewardLevel: row.connectFourWordsRewardLevel || 1,
+            connectFourWordsMatchPoints: row.connectFourWordsMatchPoints || 0,
+            spaceWarWins: row.spaceWarWins || 0,
+            spaceWarRewardLevel: row.spaceWarRewardLevel || 1,
+            spaceWarMatchPoints: row.spaceWarMatchPoints || 0,
+            puzzleWins: row.puzzleWins || 0,
+            puzzleRewardLevel: row.puzzleRewardLevel || 1,
+            puzzleMatchPoints: row.puzzleMatchPoints || 0,
+            beachRaceWins: row.beachRaceWins || 0,
+            beachRaceRewardLevel: row.beachRaceRewardLevel || 1,
+            beachRaceMatchPoints: row.beachRaceMatchPoints || 0
+          });
+        });
+        console.log(`Loaded ${allPlayers.size} players from SQLite.`);
+      } catch (err) {
+        console.error("Failed to load players data:", err);
+      }
+    }, isPlayerActiveForLeaderboard = function(p, now) {
+      if (p.isAdmin || p.isPermanentBan || p.banUntil && p.banUntil > now)
+        return false;
+      if (!p.lastActiveAt) return false;
+      return now - p.lastActiveAt <= 24 * 60 * 60 * 1e3;
+    }, updateHighestLikesGlobal = function() {
+      let highestLikesPlayer = "";
+      let maxLikes = 0;
+      const now = Date.now();
+      for (const p of allPlayers.values()) {
+        if (!p.isAdmin && !p.isPermanentBan && !(p.banUntil && p.banUntil > now)) {
+          if ((p.likes || 0) > maxLikes) {
+            maxLikes = p.likes || 0;
+            highestLikesPlayer = p.serial;
+          }
+        }
+      }
+      globalMaxLikes = maxLikes;
+      const rewardSerials = [];
+      if (highestLikesPlayer) rewardSerials.push(highestLikesPlayer);
+      const highestLikesPlayersData = rewardSerials.map((serial) => {
+        const p = allPlayers.get(serial);
+        if (p) {
+          return {
+            serial: p.serial,
+            name: p.name,
+            avatar: p.avatar,
+            selectedFrame: p.selectedFrame,
+            xp: p.xp,
+            isAdmin: !!p.isAdmin
+          };
+        }
+        return null;
+      }).filter((p) => p !== null);
+      highestLikesSerials = rewardSerials;
+      io.emit("highest_likes_update", {
+        serials: highestLikesSerials,
+        value: globalMaxLikes,
+        players: highestLikesPlayersData
+      });
+    }, updateHighestStreakGlobal = function() {
+      let highestStreakPlayer = "";
+      let maxStreak = 0;
+      const now = Date.now();
+      for (const p of allPlayers.values()) {
+        if (!p.isAdmin && !p.isPermanentBan && !(p.banUntil && p.banUntil > now)) {
+          if ((p.streak || 0) > maxStreak) {
+            maxStreak = p.streak || 0;
+            highestStreakPlayer = p.serial;
+          }
+        }
+      }
+      globalMaxStreak = maxStreak;
+      const rewardSerials = [];
+      if (highestStreakPlayer) rewardSerials.push(highestStreakPlayer);
+      const highestStreakPlayersData = rewardSerials.map((serial) => {
+        const p = allPlayers.get(serial);
+        if (p) {
+          return {
+            serial: p.serial,
+            name: p.name,
+            avatar: p.avatar,
+            xp: p.xp,
+            selectedFrame: p.selectedFrame,
+            isOnline: playerSockets.has(p.serial),
+            streak: p.streak,
+            isAdmin: !!p.isAdmin
+          };
+        }
+        return null;
+      }).filter((p) => p !== null);
+      highestStreakSerials = rewardSerials;
+      io.emit("highest_streak_update", {
+        serials: highestStreakSerials,
+        value: globalMaxStreak,
+        players: highestStreakPlayersData
+      });
+    }, updateHighestLevelGlobal = function() {
+      let highestLevelPlayer = "";
+      let maxLevelXp = 0;
+      const now = Date.now();
+      for (const p of allPlayers.values()) {
+        if (!p.isAdmin && !p.isPermanentBan && !(p.banUntil && p.banUntil > now)) {
+          if ((p.xp || 0) > maxLevelXp) {
+            maxLevelXp = p.xp || 0;
+            highestLevelPlayer = p.serial;
+          }
+        }
+      }
+      globalMaxLevelXp = maxLevelXp;
+      const rewardSerials = [];
+      if (highestLevelPlayer) rewardSerials.push(highestLevelPlayer);
+      const highestLevelPlayersData = rewardSerials.map((serial) => {
+        const p = allPlayers.get(serial);
+        if (p) {
+          return {
+            serial: p.serial,
+            name: p.name,
+            avatar: p.avatar,
+            selectedFrame: p.selectedFrame,
+            xp: p.xp,
+            isAdmin: !!p.isAdmin
+          };
+        }
+        return null;
+      }).filter((p) => p !== null);
+      highestLevelSerials = rewardSerials;
+      io.emit("highest_level_update", {
+        serials: highestLevelSerials,
+        value: globalMaxLevelXp,
+        players: highestLevelPlayersData
+      });
+    }, getTopPlayers = function(force = false, limit = 100) {
+      const now = Date.now();
+      if (force || now - topPlayersCacheTime > 6e4) {
+        updateHighestLikesGlobal();
+        updateHighestStreakGlobal();
+        updateHighestLevelGlobal();
+        cachedTopPlayers = Array.from(allPlayers.values()).filter((p) => isPlayerActiveForLeaderboard(p, now)).sort((a, b) => {
+          const aXp = a.randomXp !== void 0 ? a.randomXp : a.xp || 0;
+          const bXp = b.randomXp !== void 0 ? b.randomXp : b.xp || 0;
+          if (bXp !== aXp) return bXp - aXp;
+          const winsA = a.wins || 0;
+          const winsB = b.wins || 0;
+          if (winsB !== winsA) return winsB - winsA;
+          const bStreak = b.streak || 0;
+          const aStreak = a.streak || 0;
+          if (bStreak !== aStreak) return bStreak - aStreak;
+          return (a.serial || "").localeCompare(b.serial || "");
+        }).slice(0, 100).map((p, i) => ({
+          name: p.name,
+          xp: p.randomXp !== void 0 ? p.randomXp : p.xp || 0,
+          level: getLevel(p.randomXp !== void 0 ? p.randomXp : p.xp || 0),
+          wins: p.wins,
+          streak: p.streak || 0,
+          likes: p.likes || 0,
+          isHighestLikes: highestLikesSerials.includes(p.serial) && (p.likes || 0) > 0,
+          isHighestStreak: highestStreakSerials.includes(p.serial) && (p.streak || 0) > 0,
+          avatar: p.avatar,
+          selectedFrame: p.selectedFrame,
+          gender: p.gender,
+          busCompleteWins: p.busCompleteWins || 0,
+          xoWins: p.xoWins || 0,
+          handWins: p.handWins || 0,
+          iqWins: p.iqWins || 0,
+          dotsWins: p.dotsWins || 0,
+          speedCupsWins: p.speedCupsWins || 0,
+          bombPartyWins: p.bombPartyWins || 0,
+          wordleWins: p.wordleWins || 0,
+          connectFourWordsWins: p.connectFourWordsWins || 0,
+          spaceWarWins: p.spaceWarWins || 0,
+          puzzleWins: p.puzzleWins || 0,
+          beachRaceWins: p.beachRaceWins || 0,
+          isAdmin: p.isAdmin,
+          serial: p.serial,
+          isOnline: playerSockets.has(p.serial),
+          rank: i + 1
+        }));
+        topPlayersCacheTime = now;
+      }
+      return limit ? cachedTopPlayers.slice(0, limit) : cachedTopPlayers;
+    }, getPlayerRank = function(serial) {
+      if (!serial) return -1;
+      const topList = getTopPlayers(false, 100);
+      const index = topList.findIndex((p) => p.serial === serial);
+      return index >= 0 ? index + 1 : -1;
+    }, invalidateTopPlayersCache = function() {
+      topPlayersCacheTime = 0;
+    }, getTargetFakeBots = function() {
+      const now = /* @__PURE__ */ new Date();
+      const options = {
+        timeZone: "Africa/Cairo",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: false
+      };
+      const parts = new Intl.DateTimeFormat("en-US", options).formatToParts(
+        now
+      );
+      let hour = 0;
+      let minute = 0;
+      for (const part of parts) {
+        if (part.type === "hour") hour = parseInt(part.value);
+        if (part.type === "minute") minute = parseInt(part.value);
+      }
+      if (hour === 24) hour = 0;
+      const timeInHours = hour + minute / 60;
+      let min = 10;
+      let max = 30;
+      if (timeInHours >= 19 && timeInHours <= 23.99) {
+        min = 35;
+        max = 50;
+      } else if (timeInHours >= 3 && timeInHours <= 7) {
+        min = 5;
+        max = 15;
+      } else if (timeInHours > 7 && timeInHours < 19) {
+        const progress = (timeInHours - 7) / 12;
+        min = 5 + Math.floor(progress * 30);
+        max = 15 + Math.floor(progress * 35);
+      } else {
+        const progress = timeInHours / 3;
+        min = 35 - Math.floor(progress * 30);
+        max = 50 - Math.floor(progress * 35);
+      }
+      return min + Math.floor(Math.random() * (max - min));
+    }, updateFakeBotsGradually = function() {
+      const targetBots = getTargetFakeBots();
+      if (currentFakeBots < targetBots) {
+        currentFakeBots += Math.floor(Math.random() * 5) + 1;
+      } else if (currentFakeBots > targetBots) {
+        currentFakeBots -= Math.floor(Math.random() * 5) + 1;
+      }
+      currentFakeBots += Math.floor(Math.random() * 3) - 1;
+      if (currentFakeBots < 5) currentFakeBots = 5;
+      broadcastOnlineCount();
+      const nextDelay = 3e4 + Math.random() * 6e4;
+      setTimeout(updateFakeBotsGradually, nextDelay);
+    }, broadcastOnlineCount = function(immediate = false) {
+      const now = Date.now();
+      const minInterval = 5e3;
+      if (immediate || now - lastOnlineCountBroadcastTime >= minInterval) {
+        if (pendingOnlineCountTimeout) {
+          clearTimeout(pendingOnlineCountTimeout);
+          pendingOnlineCountTimeout = null;
+        }
+        lastOnlineCountBroadcastTime = now;
+        io.emit("online_count", {
+          online: playerSockets.size + currentFakeBots,
+          total: allPlayers.size + 50
+        });
+      } else if (!pendingOnlineCountTimeout) {
+        const remaining = minInterval - (now - lastOnlineCountBroadcastTime);
+        pendingOnlineCountTimeout = setTimeout(() => {
+          pendingOnlineCountTimeout = null;
+          lastOnlineCountBroadcastTime = Date.now();
+          io.emit("online_count", {
+            online: playerSockets.size + currentFakeBots,
+            total: allPlayers.size + 50
+          });
+        }, remaining);
+      }
+    }, isBlocked = function(p1, p2) {
+      const now = Date.now();
+      const b1 = blocks.get(p1.playerId) || [];
+      const b2 = blocks.get(p2.playerId) || [];
+      if (b1.length > 0)
+        blocks.set(
+          p1.playerId,
+          b1.filter((b) => b.expiresAt > now)
+        );
+      if (b2.length > 0)
+        blocks.set(
+          p2.playerId,
+          b2.filter((b) => b.expiresAt > now)
+        );
+      const hasTemporaryBlock = b1.some((b) => b.blockedId === p2.playerId && b.expiresAt > now) || b2.some((b) => b.blockedId === p1.playerId && b.expiresAt > now);
+      if (hasTemporaryBlock) return true;
+      const serverP1 = allPlayers.get(p1.serial);
+      const serverP2 = allPlayers.get(p2.serial);
+      if (serverP1) {
+        if (serverP1.blockedSerials?.includes(p2.serial)) return true;
+        if (serverP2?.fingerprint && serverP1.blockedFingerprints?.includes(serverP2.fingerprint))
+          return true;
+      }
+      if (serverP2) {
+        if (serverP2.blockedSerials?.includes(p1.serial)) return true;
+        if (serverP1?.fingerprint && serverP2.blockedFingerprints?.includes(serverP1.fingerprint))
+          return true;
+      }
+      return false;
+    }, processQueue = function() {
+      const now = Date.now();
+      const availablePlayers = matchmakingQueue.filter(
+        (p) => p.status === "searching" && p.socket.connected
+      );
+      availablePlayers.sort((a, b) => a.joinedAt - b.joinedAt);
+      const matchedIndices = /* @__PURE__ */ new Set();
+      for (let i = 0; i < availablePlayers.length; i++) {
+        if (matchedIndices.has(i)) continue;
+        for (let j = i + 1; j < availablePlayers.length; j++) {
+          if (matchedIndices.has(j)) continue;
+          const p1 = availablePlayers[i];
+          const p2 = availablePlayers[j];
+          if (isBlocked(p1, p2)) continue;
+          if (!p1.isBot && !p2.isBot && isSameNetwork(p1.ip, p2.ip)) {
+            continue;
+          }
+          const p1Level = getLevel(p1.xp);
+          const p2Level = getLevel(p2.xp);
+          if (p1.useToken && p2Level < 40) continue;
+          if (p2.useToken && p1Level < 40) continue;
+          const p1SkippedP2 = p1.skipped?.get(p2.playerId);
+          const p2SkippedP1 = p2.skipped?.get(p1.playerId);
+          if (p1SkippedP2 && now < p1SkippedP2) continue;
+          if (p2SkippedP1 && now < p2SkippedP1) continue;
+          matchedIndices.add(i);
+          matchedIndices.add(j);
+          p1.status = "proposing";
+          p2.status = "proposing";
+          const matchId = `match_${Math.random().toString(36).substr(2, 9)}`;
+          const timeoutId = setTimeout(() => {
+            const match = pendingMatches.get(matchId);
+            if (match) {
+              pendingMatches.delete(matchId);
+              [match.p1, match.p2].forEach((p) => {
+                if (p.isBot) return;
+                p.status = "searching";
+                p.socket.emit("match_rejected", { reason: "timeout" });
+                const other = p === match.p1 ? match.p2 : match.p1;
+                if (!p.skipped) p.skipped = /* @__PURE__ */ new Map();
+                p.skipped.set(other.playerId, Date.now() + 1e4);
+                matchmakingQueue.push(p);
+              });
+              processQueue();
+            }
+          }, 12e3);
+          pendingMatches.set(matchId, {
+            id: matchId,
+            p1,
+            p2,
+            p1Response: null,
+            p2Response: null,
+            timeoutId,
+            createdAt: now
+          });
+          p1.socket.emit("match_proposed", {
+            matchId,
+            opponent: {
+              name: p2.playerName,
+              avatar: p2.avatar,
+              gender: p2.gender,
+              selectedFrame: p2.selectedFrame || "",
+              age: p2.age,
+              level: getLevel(p2.xp || 0),
+              proPackageExpiry: p2.proPackageExpiry || null
+            }
+          });
+          p2.socket.emit("match_proposed", {
+            matchId,
+            opponent: {
+              name: p1.playerName,
+              avatar: p1.avatar,
+              gender: p1.gender,
+              selectedFrame: p1.selectedFrame || "",
+              age: p1.age,
+              level: getLevel(p1.xp || 0),
+              proPackageExpiry: p1.proPackageExpiry || null
+            }
+          });
+          break;
+        }
+      }
+      if (configCache.aiBotEnabled) {
+        for (let i = 0; i < availablePlayers.length; i++) {
+          if (matchedIndices.has(i)) continue;
+          const p = availablePlayers[i];
+          if (!p.isBot && p.status === "searching" && Date.now() - p.joinedAt >= 5e3) {
+            matchedIndices.add(i);
+            p.status = "proposing";
+            const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
+            const botName = getRandomBotName(botPersona.gender, [p.playerName || p.name]);
+            const bot = {
+              id: "bot_" + Date.now() + Math.random().toString(36).substr(2, 5),
+              playerId: "bot_" + Date.now() + Math.random().toString(36).substr(2, 5),
+              playerName: botName,
+              personaName: botPersona.name,
+              avatar: botPersona.avatar,
+              gender: botPersona.gender,
+              age: botPersona.age,
+              xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
+              streak: 0,
+              wins: Math.floor(botPersona.level * (Math.random() * 5 + 2)),
+              busCompleteWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              xoWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              handWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              iqWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              dotsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              speedCupsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              bombPartyWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              wordleWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              connectFourWordsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              spaceWarWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+              serial: "bot_" + Date.now() + Math.random().toString(36).substr(2, 5),
+              joinedAt: Date.now(),
+              status: "proposing",
+              isBot: true,
+              disableGuessChat: 1,
+              persona: botPersona.personality,
+              socket: {
+                id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
+                connected: true,
+                emit: (event, data) => {
+                }
+              }
+            };
+            const matchId = `match_${Math.random().toString(36).substr(2, 9)}`;
+            const timeoutId = setTimeout(() => {
+              const match = pendingMatches.get(matchId);
+              if (match) {
+                pendingMatches.delete(matchId);
+                match.p1.status = "searching";
+                match.p1.socket.emit("match_rejected", { reason: "timeout" });
+                if (!match.p1.skipped) match.p1.skipped = /* @__PURE__ */ new Map();
+                match.p1.skipped.set(bot.playerId, Date.now() + 1e4);
+                matchmakingQueue.push(match.p1);
+                processQueue();
+              }
+            }, 12e3);
+            pendingMatches.set(matchId, {
+              id: matchId,
+              p1: p,
+              p2: bot,
+              p1Response: null,
+              p2Response: null,
+              timeoutId,
+              createdAt: now
+            });
+            p.socket.emit("match_proposed", {
+              matchId,
+              opponent: {
+                name: bot.playerName,
+                avatar: bot.avatar,
+                gender: bot.gender,
+                selectedFrame: "",
+                age: bot.age,
+                level: getLevel(bot.xp || 0),
+                proPackageExpiry: null
+              }
+            });
+          }
+        }
+      }
+      for (let i = matchmakingQueue.length - 1; i >= 0; i--) {
+        if (matchmakingQueue[i].status === "proposing") {
+          matchmakingQueue.splice(i, 1);
+        }
+      }
+    }, finalizeMatch = function(matchId) {
+      const match = pendingMatches.get(matchId);
+      if (!match) return;
+      if (match.p1Response !== "accept" || match.p2Response !== "accept") {
+        return;
+      }
+      clearTimeout(match.timeoutId);
+      pendingMatches.delete(matchId);
+      const roomId = `random_${Math.random().toString(36).substr(2, 9)}`;
+      match.p1.socket.join(roomId);
+      if (match.p1.socket.data) match.p1.socket.data.isSearching = false;
+      if (match.p2.isBot) {
+        match.p2.socket.emit = (event, data) => {
+          handleBotEvent(roomId, event, data);
+        };
+      } else {
+        match.p2.socket.join(roomId);
+        if (match.p2.socket.data) match.p2.socket.data.isSearching = false;
+      }
+      const p1ServerPlayer = allPlayers.get(match.p1.serial);
+      const p2ServerPlayer = match.p2.isBot ? null : allPlayers.get(match.p2.serial);
+      const room = {
+        id: roomId,
+        players: [
+          {
+            id: match.p1.socket.id,
+            playerId: match.p1.playerId,
+            serial: match.p1.serial,
+            name: match.p1.playerName,
+            age: match.p1.age,
+            avatar: match.p1.avatar,
+            gender: match.p1.gender || "boy",
+            selectedFrame: match.p1.selectedFrame || "",
+            score: 1e3,
+            helperCharge: 0,
+            targetImage: null,
+            isMuted: false,
+            hasGuessed: false,
+            selectedCategory: null,
+            hintCount: 0,
+            quickGuessUsed: false,
+            wordLengthUsed: false,
+            timeFreezeUsed: false,
+            wordCountUsed: false,
+            spyLensUsed: false,
+            reported: false,
+            xp: p1ServerPlayer ? p1ServerPlayer.xp : match.p1.xp || 0,
+            level: getLevel(
+              p1ServerPlayer ? p1ServerPlayer.xp : match.p1.xp || 0
+            ),
+            streak: p1ServerPlayer ? p1ServerPlayer.streak || 0 : match.p1.streak || 0,
+            wins: p1ServerPlayer ? p1ServerPlayer.wins || 0 : match.p1.wins || 0,
+            reports: p1ServerPlayer ? p1ServerPlayer.reports : 0,
+            reportedBy: p1ServerPlayer ? p1ServerPlayer.reportedBy : [],
+            useToken: match.p1.useToken,
+            profanityCount: 0,
+            helpersUsedCount: 0,
+            ownedHelpers: match.p1.ownedHelpers || {},
+            isAdmin: !!p1ServerPlayer?.isAdmin,
+            isPro: !!p1ServerPlayer?.proPackageExpiry && p1ServerPlayer.proPackageExpiry > Date.now(),
+            hideFriendRequests: p1ServerPlayer ? p1ServerPlayer.hideFriendRequests || 0 : 0,
+            disableGuessChat: match.p1.isBot ? 1 : p1ServerPlayer ? p1ServerPlayer.disableGuessChat || 0 : 0,
+            busCompleteWins: p1ServerPlayer ? p1ServerPlayer.busCompleteWins || 0 : 0,
+            xoWins: p1ServerPlayer ? p1ServerPlayer.xoWins || 0 : match.p1.xoWins || 0,
+            handWins: p1ServerPlayer ? p1ServerPlayer.handWins || 0 : match.p1.handWins || 0,
+            iqWins: p1ServerPlayer ? p1ServerPlayer.iqWins || 0 : match.p1.iqWins || 0,
+            dotsWins: p1ServerPlayer ? p1ServerPlayer.dotsWins || 0 : match.p1.dotsWins || 0,
+            speedCupsWins: p1ServerPlayer ? p1ServerPlayer.speedCupsWins || 0 : match.p1.speedCupsWins || 0,
+            bombPartyWins: p1ServerPlayer ? p1ServerPlayer.bombPartyWins || 0 : match.p1.bombPartyWins || 0,
+            wordleWins: p1ServerPlayer ? p1ServerPlayer.wordleWins || 0 : match.p1.wordleWins || 0,
+            connectFourWordsWins: p1ServerPlayer ? p1ServerPlayer.connectFourWordsWins || 0 : match.p1.connectFourWordsWins || 0,
+            spaceWarWins: p1ServerPlayer ? p1ServerPlayer.spaceWarWins || 0 : match.p1.spaceWarWins || 0,
+            puzzleWins: p1ServerPlayer ? p1ServerPlayer.puzzleWins || 0 : match.p1.puzzleWins || 0,
+            beachRaceWins: p1ServerPlayer ? p1ServerPlayer.beachRaceWins || 0 : match.p1.beachRaceWins || 0
+          },
+          {
+            id: match.p2.socket.id,
+            playerId: match.p2.playerId,
+            serial: match.p2.serial || "bot_serial",
+            name: match.p2.playerName,
+            age: match.p2.age,
+            avatar: match.p2.avatar,
+            gender: match.p2.gender || "boy",
+            selectedFrame: match.p2.selectedFrame || "",
+            score: 1e3,
+            helperCharge: 0,
+            targetImage: null,
+            isMuted: false,
+            hasGuessed: false,
+            selectedCategory: null,
+            hintCount: 0,
+            quickGuessUsed: false,
+            wordLengthUsed: false,
+            timeFreezeUsed: false,
+            wordCountUsed: false,
+            spyLensUsed: false,
+            reported: false,
+            xp: p2ServerPlayer ? p2ServerPlayer.xp : match.p2.xp || 0,
+            level: getLevel(
+              p2ServerPlayer ? p2ServerPlayer.xp : match.p2.xp || 0
+            ),
+            streak: p2ServerPlayer ? p2ServerPlayer.streak || 0 : match.p2.streak || 0,
+            wins: p2ServerPlayer ? p2ServerPlayer.wins || 0 : match.p2.wins || 0,
+            reports: p2ServerPlayer ? p2ServerPlayer.reports : 0,
+            reportedBy: p2ServerPlayer ? p2ServerPlayer.reportedBy : [],
+            isBot: match.p2.isBot,
+            persona: match.p2.persona,
+            personaName: match.p2.personaName,
+            useToken: match.p2.useToken,
+            profanityCount: 0,
+            helpersUsedCount: 0,
+            ownedHelpers: match.p2.ownedHelpers || {},
+            isAdmin: !!p2ServerPlayer?.isAdmin,
+            isPro: !!p2ServerPlayer?.proPackageExpiry && p2ServerPlayer.proPackageExpiry > Date.now(),
+            hideFriendRequests: p2ServerPlayer ? p2ServerPlayer.hideFriendRequests || 0 : 0,
+            disableGuessChat: match.p2.isBot ? 1 : p2ServerPlayer ? p2ServerPlayer.disableGuessChat || 0 : 0,
+            busCompleteWins: p2ServerPlayer ? p2ServerPlayer.busCompleteWins || 0 : 0,
+            xoWins: p2ServerPlayer ? p2ServerPlayer.xoWins || 0 : match.p2.xoWins || 0,
+            handWins: p2ServerPlayer ? p2ServerPlayer.handWins || 0 : match.p2.handWins || 0,
+            iqWins: p2ServerPlayer ? p2ServerPlayer.iqWins || 0 : match.p2.iqWins || 0,
+            dotsWins: p2ServerPlayer ? p2ServerPlayer.dotsWins || 0 : match.p2.dotsWins || 0,
+            speedCupsWins: p2ServerPlayer ? p2ServerPlayer.speedCupsWins || 0 : match.p2.speedCupsWins || 0,
+            bombPartyWins: p2ServerPlayer ? p2ServerPlayer.bombPartyWins || 0 : match.p2.bombPartyWins || 0,
+            wordleWins: p2ServerPlayer ? p2ServerPlayer.wordleWins || 0 : match.p2.wordleWins || 0,
+            connectFourWordsWins: p2ServerPlayer ? p2ServerPlayer.connectFourWordsWins || 0 : match.p2.connectFourWordsWins || 0,
+            spaceWarWins: p2ServerPlayer ? p2ServerPlayer.spaceWarWins || 0 : match.p2.spaceWarWins || 0,
+            puzzleWins: p2ServerPlayer ? p2ServerPlayer.puzzleWins || 0 : match.p2.puzzleWins || 0,
+            beachRaceWins: p2ServerPlayer ? p2ServerPlayer.beachRaceWins || 0 : match.p2.beachRaceWins || 0
+          }
+        ],
+        gameState: "waiting",
+        timer: 60,
+        category: "people",
+        isPaused: false,
+        pausingPlayerId: null,
+        quickGuessTimer: 0,
+        adCooldownTimer: 0,
+        matchType: "random"
+      };
+      cleanupPlayerOldBotRooms(match.p1.serial, roomId);
+      if (!match.p2.isBot) {
+        cleanupPlayerOldBotRooms(match.p2.serial, roomId);
+      }
+      rooms.set(roomId, room);
+      startWaitingInterval(roomId);
+      match.p1.socket.emit("room_update", room);
+      match.p1.socket.emit("random_match_found", { roomId });
+      if (!match.p2.isBot) {
+        match.p2.socket.emit("room_update", room);
+        match.p2.socket.emit("random_match_found", { roomId });
+      }
+      io.to(roomId).emit("room_update", room);
+      io.to(roomId).emit("random_match_found", { roomId });
+      if (match.p2.isBot) {
+        handleBotEvent(roomId, "room_update", room);
+      }
+    }, checkBotMatchmaking = function() {
+      const configPath2 = import_path.default.join(process.cwd(), "public/uploads/config.json");
+      let aiBotEnabled = false;
+      if (import_fs.default.existsSync(configPath2)) {
+        try {
+          const config = JSON.parse(import_fs.default.readFileSync(configPath2, "utf-8"));
+          aiBotEnabled = !!config.aiBotEnabled;
+        } catch (e) {
+        }
+      }
+      if (!aiBotEnabled) return;
+      const now = Date.now();
+      const humanSearching = matchmakingQueue.find(
+        (p) => !p.isBot && p.status === "searching"
+      );
+      if (!humanSearching) return;
+      for (let i = 0; i < matchmakingQueue.length; i++) {
+        const p = matchmakingQueue[i];
+        if (p.isBot || p.status !== "searching") continue;
+        if (p.joinedAt && now - p.joinedAt > 1e4 && !p.useToken) {
+          p.status = "proposing";
+          matchmakingQueue.splice(i, 1);
+          const botPersona = BOT_PERSONAS[Math.floor(Math.random() * BOT_PERSONAS.length)];
+          const matchId = `match_bot_${Math.random().toString(36).substr(2, 9)}`;
+          const botAvatar = botPersona.avatar;
+          const botName = getRandomBotName(botPersona.gender, [p.playerName || p.name]);
+          const botPlayer = {
+            playerId: `bot_${Math.random().toString(36).substr(2, 9)}`,
+            playerName: botName,
+            personaName: botPersona.name,
+            avatar: botAvatar,
+            age: botPersona.age,
+            gender: botPersona.gender,
+            xp: (botPersona.level - 1) * (botPersona.level - 1) * 50,
+            wins: Math.floor(botPersona.level * (Math.random() * 5 + 2)),
+            busCompleteWins: Math.floor(
+              botPersona.level * (Math.random() * 3 + 1)
+            ),
+            xoWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            handWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            iqWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            dotsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            speedCupsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            bombPartyWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            wordleWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            connectFourWordsWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            spaceWarWins: Math.floor(botPersona.level * (Math.random() * 3 + 1)),
+            isBot: true,
+            disableGuessChat: 1,
+            persona: botPersona.personality,
+            selectedFrame: "",
+            socket: {
+              id: `bot_socket_${Math.random().toString(36).substr(2, 9)}`,
+              emit: (event, data) => {
+                handleBotEvent(matchId, event, data);
+              }
+            }
+          };
+          pendingMatches.set(matchId, {
+            id: matchId,
+            p1: p,
+            p2: botPlayer,
+            p1Response: null,
+            p2Response: null,
+            timeoutId: setTimeout(() => {
+              const match = pendingMatches.get(matchId);
+              if (match && match.p1Response !== "accept") {
+                pendingMatches.delete(matchId);
+                match.p1.status = "searching";
+                match.p1.socket.emit("match_rejected", { reason: "timeout" });
+                matchmakingQueue.push(match.p1);
+              }
+            }, 12e3)
+          });
+          p.socket.emit("match_proposed", {
+            matchId,
+            opponent: {
+              name: botPlayer.playerName,
+              avatar: botPlayer.avatar,
+              selectedFrame: botPlayer.selectedFrame || "",
+              age: botPlayer.age,
+              level: botPersona.level,
+              proPackageExpiry: null
+            },
+            opponentAccepted: false
+          });
+          break;
+        }
+      }
+    }, startBotQuestioning = function(roomId) {
+      const room = rooms.get(roomId);
+      if (!room || room.gameState !== "discussion") return;
+      const bot = room.players.find((p) => p.isBot);
+      if (!bot) return;
+      if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+      if (room.currentTurn === bot.id) {
+        setTimeout(
+          () => {
+            triggerBotQuestion(roomId, bot);
+          },
+          3e3 + Math.random() * 2e3
+        );
+      }
+    }, handleBotChat = function(roomId, bot, text) {
+      const room = rooms.get(roomId);
+      if (!room) return;
+      if (room.matchType === "random") {
+        const botInRoom = room.players.find((p) => p.id === bot.id);
+        if (botInRoom) {
+          botInRoom.helperCharge = (botInRoom.helperCharge || 0) + 1;
+          if (text === "\u0622\u0647" || text === "\u0623\u064A\u0648\u0629" || text === "\u0641\u0639\u0644\u0627" || text === "\u0635\u062D") {
+            const lastQuestion = room.chatHistory?.slice().reverse().find(
+              (m) => m.senderId !== bot.id && m.text !== "\u0622\u0647" && m.text !== "\u0644\u0623"
+            );
+            if (lastQuestion) {
+              const askingPlayer = room.players.find(
+                (p) => p.id === lastQuestion.senderId
+              );
+              if (askingPlayer && !askingPlayer.isBot) {
+                askingPlayer.helperCharge = (askingPlayer.helperCharge || 0) + 2;
+              }
+            }
+          }
+        }
+      }
+      const messageObj = { senderId: bot.id, text };
+      if (!room.chatHistory) room.chatHistory = [];
+      room.chatHistory.push({
+        ...messageObj,
+        senderName: bot.name,
+        timestamp: Date.now()
+      });
+      io.to(roomId).emit("chat_bubble", messageObj);
+      if (room.gameState === "discussion") {
+        const opponent = room.players.find((p) => p.id !== bot.id);
+        if (text.startsWith("\u0622\u0647") || text.startsWith("\u0644\u0623")) {
+          room.currentTurn = bot.id;
+          room.waitingForAnswerFrom = null;
+        } else {
+          room.currentTurn = null;
+          room.waitingForAnswerFrom = opponent?.id || null;
+        }
+        io.to(roomId).emit("room_update", room);
+      }
+    }, startBotGuessing = function(roomId) {
+      const room = rooms.get(roomId);
+      if (!room) return;
+      const bot = room.players.find((p) => p.isBot);
+      if (!bot) return;
+      const player = room.players.find((p) => !p.isBot);
+      if (!player) return;
+      setTimeout(
+        async () => {
+          const currentRoom = rooms.get(roomId);
+          if (!currentRoom || currentRoom.gameState !== "guessing") return;
+          if (currentRoom.isWaitingForReconnect) {
+            setTimeout(() => startBotGuessing(roomId), 2e3);
+            return;
+          }
+          const currentBot = currentRoom.players.find((p) => p.isBot);
+          const currentPlayer = currentRoom.players.find((p) => !p.isBot);
+          if (!currentBot || !currentPlayer) return;
+          const targetImage = currentBot.targetImage;
+          const winCount = playerBotHistory.get(currentPlayer.playerId) || 0;
+          let shouldWin = false;
+          if (winCount > 0) {
+            const winChance = Math.min(0.2 + winCount * 0.1, 0.6);
+            shouldWin = Math.random() < winChance;
+          }
+          playerBotHistory.set(player.playerId, winCount + 1);
+          let guess = targetImage;
+          if (!shouldWin) {
+            const categoryImages = getCategoryImages(currentRoom.category);
+            const wrongImages = categoryImages.filter(
+              (img) => img !== targetImage
+            );
+            guess = wrongImages[Math.floor(Math.random() * wrongImages.length)] || "\u0645\u0634 \u0639\u0627\u0631\u0641";
+          }
+          bot.hasGuessed = true;
+          const correct = guess === targetImage;
+          io.to(roomId).emit("guess_result", { playerId: bot.id, correct });
+          if (correct) {
+            endGame(roomId, bot.name, false, true);
+          } else {
+            if (room.players.every((p) => p.hasGuessed)) {
+              endGame(roomId, null);
+            }
+          }
+        },
+        1e4 + Math.random() * 15e3
+      );
+    }, clearBotSelectionModeTimeouts = function(roomId) {
+      const keys = [
+        roomId + "_mode_agree_timeout",
+        roomId + "_mode_hesitate_timeout",
+        roomId + "_mode_agree_after_hesitate_timeout",
+        roomId + "_mode_confirm_timeout",
+        roomId + "_mode_proactive_timeout",
+        roomId + "_bus_setup_timeout",
+        roomId + "_bus_playing_submit_timeout"
+      ];
+      keys.forEach((key) => {
+        if (botTimeouts.has(key)) {
+          clearTimeout(botTimeouts.get(key));
+          botTimeouts.delete(key);
+        }
+      });
+    }, initializeHandGame = function(room) {
+      room.gameState = "hand_playing";
+      room.category = "hand_khamin";
+      room.handGrid = Array(100).fill(null);
+      const firstPlayerIdx = Math.floor(Math.random() * 2);
+      room.handPickerId = room.players[firstPlayerIdx].id;
+      room.handSearcherId = room.players[1 - firstPlayerIdx].id;
+      room.handPhase = "picking";
+      room.handTargetNumber = null;
+      room.handSearcherSelected = null;
+      room.handP1Score = 0;
+      room.handP2Score = 0;
+      room.handWinner = null;
+      room.timer = 30;
+      if (intervals.has(room.id)) clearInterval(intervals.get(room.id));
+      const interval = setInterval(() => {
+        const r = rooms.get(room.id);
+        if (!r || r.gameState !== "hand_playing" && r.gameState !== "hand_finished") {
+          clearInterval(interval);
+          return;
+        }
+        if (r.adPausedPlayers && r.adPausedPlayers.size > 0) return;
+        if (r.gameState === "hand_playing" && r.handPhase === "picking") {
+          if (r.timer > 0) {
+            r.timer--;
+            io.to(r.id).emit("timer_update", r.timer);
+          }
+          if (r.timer <= 0) {
+            const temp = r.handPickerId;
+            r.handPickerId = r.handSearcherId;
+            r.handSearcherId = temp;
+            r.timer = 30;
+            io.to(r.id).emit("timer_update", r.timer);
+            io.to(r.id).emit("room_update", r);
+            const bot = r.players.find((p) => p.isBot);
+            if (bot) handleBotEvent(r.id, "room_update", r);
+          }
+        }
+      }, 1e3);
+      intervals.set(room.id, interval);
+      const minX = 17;
+      const maxX = 220;
+      const minY = 122;
+      const maxY = 390;
+      const width = maxX - minX;
+      const height = maxY - minY;
+      const numbers = Array.from({ length: HAND_POINTS.length }, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+      room.handNumbers = HAND_POINTS.map((pt, i) => ({
+        val: numbers[i],
+        left: `${(pt.x - minX) / width * 100}%`,
+        top: `${(pt.y - minY) / height * 100}%`,
+        fontSize: `${13 + Math.random() * 4}px`,
+        rotate: `${-15 + Math.random() * 30}deg`
+      }));
+    }, executeSelectionModeConfirmation = function(roomId) {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "waiting" && room.players.length === 2) {
+        const p1 = room.players[0];
+        const p2 = room.players[1];
+        const p1SocketId = p1.id;
+        const p2SocketId = p2.id;
+        const mode = p1.selectedSelectionMode;
+        if (p1.selectedSelectionMode && p1.selectedSelectionMode === room.players[1].selectedSelectionMode) {
+          const mode2 = p1.selectedSelectionMode;
+          if (mode2 === "custom" && room.matchType !== "private") {
+            return;
+          }
+          room.selectionMode = mode2;
+          p1.selectedSelectionMode = void 0;
+          room.players[1].selectedSelectionMode = void 0;
+          if (mode2 === "custom") {
+            room.gameState = "custom_image_upload";
+            room.isCustomImageMode = true;
+            room.category = "\u0635\u0648\u0631 \u0645\u062E\u0635\u0635\u0629";
+            room.timer = 180;
+            room.customImages = {};
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const interval = setInterval(() => {
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "custom_image_upload") {
+                clearInterval(interval);
+                return;
+              }
+              const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+              if (!isAdPlaying) {
+                r.timer--;
+                if (r.timer <= 0) {
+                  clearInterval(interval);
+                  io.to(roomId).emit("game_stopped", {
+                    reason: "\u0627\u0646\u062A\u0647\u0649 \u0627\u0644\u0648\u0642\u062A \u0644\u062A\u062C\u0647\u064A\u0632 \u0627\u0644\u0635\u0648\u0631!"
+                  });
+                  rooms.delete(roomId);
+                } else {
+                  io.to(roomId).emit("timer_update", r.timer);
+                }
+              }
+            }, 1e3);
+            intervals.set(roomId, interval);
+          } else if (mode2 === "bus_complete") {
+            room.gameState = "bus_complete_setup";
+            room.category = "\u062A\u062E\u0645\u064A\u0646\u0629 \u0643\u0648\u0645\u0628\u0644\u064A\u062A";
+            room.busCompleteLetter = null;
+            room.busCompleteSubmittedPlayers = [];
+            room.busCompleteAnswers = {};
+            room.busCompleteDraftAnswers = {};
+            room.busCompleteScores = {};
+            room.busCompleteSubmitTimes = {};
+            room.busCompleteWinner = null;
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "iq") {
+            room.iqLevel = 1;
+            room.iqMatchWins = {};
+            initializeIQGame(room);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "dots") {
+            room.dotsLevel = 1;
+            room.dotsMatchWins = {};
+            initializeDotsGame(room);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "speed_cups") {
+            room.speedCupsLevel = 1;
+            room.speedCupsMatchWins = {};
+            initializeSpeedCupsGame(room);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "connect_four_words") {
+            room.gameState = "connect_four_words_setup";
+            room.category = "connect_four_words";
+            const validWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 4);
+            const targetWordObj = validWords[Math.floor(Math.random() * validWords.length)];
+            const targetWord = targetWordObj ? targetWordObj.original : "\u0643\u0631\u0633\u064A";
+            room.connectFourWords = {
+              targetWord,
+              letters: targetWord.split(""),
+              // Not shuffled for now
+              board: Array(6).fill(null).map(() => Array(7).fill({ playerId: null, letter: null })),
+              turn: room.players[0].id,
+              winnerId: null,
+              winningCells: null,
+              readyPlayers: [],
+              rematchRequestedBy: [],
+              startTime: null
+            };
+            io.to(roomId).emit("room_update", room);
+          } else if (mode2 === "space_war") {
+            room.gameState = "space_war_setup";
+            room.category = "space_war";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const readyPlayers = [];
+            const bot = room.players.find((p) => p.isBot);
+            const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter(
+              (w) => w.normalized.length >= 3 && w.normalized.length <= 5 && !w.original.includes(" ") && !w.normalized.includes(" ") && !w.original.includes("-")
+            );
+            room.spaceWar = {
+              p1Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p2Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p1Revealed: [],
+              p2Revealed: [],
+              readyPlayers,
+              startTime: Date.now(),
+              winnerId: null,
+              rematchRequestedBy: [],
+              gameOver: false,
+              startRequestedBy: []
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "iq") {
+            room.iqLevel = 1;
+            room.iqMatchWins = {};
+            initializeIQGame(room);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "dots") {
+            room.dotsLevel = 1;
+            room.dotsMatchWins = {};
+            initializeDotsGame(room);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "speed_cups") {
+            room.speedCupsLevel = 1;
+            room.speedCupsMatchWins = {};
+            initializeSpeedCupsGame(room);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "connect_four_words") {
+            room.gameState = "connect_four_words_setup";
+            room.category = "connect_four_words";
+            const validWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 4);
+            const targetWordObj = validWords[Math.floor(Math.random() * validWords.length)];
+            const targetWord = targetWordObj ? targetWordObj.original : "\u0643\u0631\u0633\u064A";
+            room.connectFourWords = {
+              targetWord,
+              letters: targetWord.split(""),
+              // Not shuffled for now
+              board: Array(6).fill(null).map(() => Array(7).fill({ playerId: null, letter: null })),
+              turn: room.players[0].id,
+              winnerId: null,
+              winningCells: null,
+              readyPlayers: [],
+              rematchRequestedBy: [],
+              startTime: null
+            };
+            io.to(roomId).emit("room_update", room);
+          } else if (mode2 === "space_war") {
+            room.gameState = "space_war_setup";
+            room.category = "space_war";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const readyPlayers = [];
+            const bot = room.players.find((p) => p.isBot);
+            const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length >= 3 && w.normalized.length <= 5 && !w.original.includes(" ") && !w.normalized.includes(" ") && !w.original.includes("-"));
+            room.spaceWar = {
+              p1Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p2Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              readyPlayers,
+              startTime: Date.now(),
+              winnerId: null,
+              rematchRequestedBy: [],
+              gameOver: false,
+              startRequestedBy: []
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) handleBotEvent(roomId, "room_update", room);
+          } else if (mode2 === "beach_race") {
+            room.gameState = "beach_race_setup";
+            room.category = "beach_race";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const readyPlayers = [];
+            const bot = room.players.find((p) => p.isBot);
+            const allWords = getAllWordsFromBotAnswers();
+            const chosenWordObj = allWords.length > 0 ? allWords[Math.floor(Math.random() * allWords.length)] : { word: "\u0628\u0627\u0646\u062F\u0627", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
+            const p12 = room.players[0];
+            const p22 = room.players[1];
+            room.beachRace = {
+              targetWord: chosenWordObj.word,
+              questionIds: chosenWordObj.questionIds,
+              category: chosenWordObj.category,
+              subcategory: chosenWordObj.subcategory,
+              readyPlayers,
+              startTime: Date.now(),
+              winnerId: null,
+              gameOver: false,
+              rematchRequestedBy: [],
+              playersProgress: {
+                [p12.id]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
+                [p22 ? p22.id : "bot"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
+              }
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) handleBotEvent(roomId, "room_update", room);
+          } else if (mode2 === "puzzle") {
+            room.gameState = "puzzle_setup";
+            room.category = "puzzle";
+            room.puzzle = {
+              currentRound: 1,
+              images: getRandomPuzzleImages(),
+              roundStartTime: Date.now(),
+              lastChanceStartTime: null,
+              playersProgress: {},
+              gameOver: false,
+              startRequestedBy: []
+            };
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "wordle") {
+            room.gameState = "wordle_setup";
+            room.category = "wordle";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const readyPlayers = [];
+            const bot = room.players.find((p) => p.isBot);
+            room.wordle = {
+              targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 5).length)].original,
+              guesses: {},
+              winnerId: null,
+              startTime: Date.now(),
+              gameOver: false,
+              startRequestedBy: [],
+              readyPlayers
+            };
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "beach_race") {
+            room.gameState = "beach_race_setup";
+            room.category = "beach_race";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const readyPlayers = [];
+            const bot = room.players.find((p) => p.isBot);
+            const allWords = getAllWordsFromBotAnswers();
+            const chosenWordObj = allWords.length > 0 ? allWords[Math.floor(Math.random() * allWords.length)] : { word: "\u0628\u0627\u0646\u062F\u0627", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
+            const p12 = room.players[0];
+            const p22 = room.players[1];
+            room.beachRace = {
+              targetWord: chosenWordObj.word,
+              questionIds: chosenWordObj.questionIds,
+              category: chosenWordObj.category,
+              subcategory: chosenWordObj.subcategory,
+              readyPlayers,
+              startTime: Date.now(),
+              winnerId: null,
+              gameOver: false,
+              rematchRequestedBy: [],
+              playersProgress: {
+                [p12.id]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
+                [p22 ? p22.id : "bot"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
+              }
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) handleBotEvent(roomId, "room_update", room);
+          } else if (mode2 === "bomb_party") {
+            room.gameState = "bomb_party_setup";
+            room.category = "bomb_party";
+            const startingPlayerIndex = Math.floor(Math.random() * room.players.length);
+            room.bombParty = {
+              turnPlayerId: room.players[startingPlayerIndex].id,
+              bombStartTime: Date.now(),
+              turnTimeLimit: 2e4,
+              matchWins: {},
+              usedWords: [],
+              currentSubstring: getBombPartySubstring([]),
+              explodedPlayerId: null,
+              gameOver: false,
+              startRequestedBy: [],
+              winThreshold: 3
+            };
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "xo") {
+            room.gameState = "xo_playing";
+            room.category = "xo";
+            room.xoLevel = 1;
+            room.xoMatchWins = {};
+            const size = 3;
+            room.xoBoardSize = size;
+            room.xoWinLength = 3;
+            room.xoBoard = Array(size * size).fill(null);
+            room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
+            room.xoOPlayer = room.players.find(
+              (p) => p.id !== room.xoXPlayer
+            ).id;
+            room.xoTurn = room.xoXPlayer;
+            room.xoWinner = null;
+            room.xoWinningLine = null;
+            room.timer = getXOTimerLimit(size);
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const interval = setInterval(() => {
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "xo_playing" && r.gameState !== "xo_finished") {
+                clearInterval(interval);
+                return;
+              }
+              if (r.gameState === "xo_playing") {
+                const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+                if (!isAdPlaying) {
+                  r.timer--;
+                  if (r.timer <= 0) {
+                    clearInterval(interval);
+                    r.xoWinner = "draw";
+                    r.gameState = "xo_finished";
+                    r.xoMatchWins = r.xoMatchWins || {};
+                    r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
+                    io.to(roomId).emit("room_update", r);
+                  } else {
+                    io.to(roomId).emit("timer_update", r.timer);
+                  }
+                }
+              }
+            }, 1e3);
+            intervals.set(roomId, interval);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === "hand_khamin") {
+            initializeHandGame(room);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode2 === null) {
+            room.gameState = "waiting";
+            room.selectionMode = null;
+            room.category = null;
+            room.busCompleteLetter = null;
+            room.busCompleteSubmittedPlayers = [];
+            room.busCompleteRematchRequestedBy = [];
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            startWaitingInterval(roomId);
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      }
+    }, executeSearchBusCompleteLetter = function(roomId, hideResults) {
+      const room = rooms.get(roomId);
+      if (room && room.gameState === "bus_complete_setup") {
+        room.gameState = "bus_complete_spin";
+        const hasBot = room.players.some((p) => p.isBot);
+        room.busCompleteHideResults = hideResults || hasBot;
+        io.to(roomId).emit("room_update", room);
+        const arabicLetters = [
+          "\u0623",
+          "\u0628",
+          "\u062A",
+          "\u062B",
+          "\u062C",
+          "\u062D",
+          "\u062E",
+          "\u062F",
+          "\u0630",
+          "\u0631",
+          "\u0632",
+          "\u0633",
+          "\u0634",
+          "\u0635",
+          "\u0636",
+          "\u0637",
+          "\u0638",
+          "\u0639",
+          "\u063A",
+          "\u0641",
+          "\u0642",
+          "\u0643",
+          "\u0644",
+          "\u0645",
+          "\u0646",
+          "\u0647",
+          "\u0648",
+          "\u064A"
+        ];
+        const player1Serial = room.players[0]?.serial;
+        const player2Serial = room.players[1]?.serial;
+        const p1 = player1Serial ? allPlayers.get(player1Serial) : null;
+        const p2 = player2Serial ? allPlayers.get(player2Serial) : null;
+        let used1 = p1?.busCompleteUsedLetters || [];
+        let used2 = p2?.busCompleteUsedLetters || [];
+        let availableLetters = arabicLetters.filter(
+          (l) => !used1.includes(l) && !used2.includes(l)
+        );
+        if (availableLetters.length === 0) {
+          availableLetters = arabicLetters;
+          if (p1) {
+            p1.busCompleteUsedLetters = [];
+            savePlayerData(p1.serial);
+          }
+          if (p2) {
+            p2.busCompleteUsedLetters = [];
+            savePlayerData(p2.serial);
+          }
+        }
+        const randomLetter = availableLetters[Math.floor(Math.random() * availableLetters.length)];
+        room.busCompleteLetter = randomLetter;
+        setTimeout(() => {
+          const r = rooms.get(roomId);
+          if (r && r.gameState === "bus_complete_spin") {
+            r.gameState = "bus_complete_playing";
+            r.timer = 300;
+            r.busCompleteAdViewers = [];
+            r.busCompleteCooldowns = {};
+            if (p1 && r.busCompleteLetter) {
+              p1.busCompleteUsedLetters = [
+                ...p1.busCompleteUsedLetters || [],
+                r.busCompleteLetter
+              ];
+              savePlayerData(p1.serial);
+            }
+            if (p2 && r.busCompleteLetter) {
+              p2.busCompleteUsedLetters = [
+                ...p2.busCompleteUsedLetters || [],
+                r.busCompleteLetter
+              ];
+              savePlayerData(p2.serial);
+            }
+            io.to(roomId).emit("room_update", r);
+            const bot = r.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", r);
+            }
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const interval = setInterval(() => {
+              const currentRoom = rooms.get(roomId);
+              if (!currentRoom || currentRoom.gameState !== "bus_complete_playing") {
+                clearInterval(interval);
+                return;
+              }
+              let isCooldownActive = false;
+              let anyCooldownDecremented = false;
+              if (currentRoom.busCompleteCooldowns) {
+                Object.keys(currentRoom.busCompleteCooldowns).forEach((pid) => {
+                  if (currentRoom.busCompleteCooldowns[pid] > 0) {
+                    currentRoom.busCompleteCooldowns[pid]--;
+                    isCooldownActive = true;
+                    anyCooldownDecremented = true;
+                  }
+                });
+              }
+              const isAdPlaying = currentRoom.busCompleteAdViewers && currentRoom.busCompleteAdViewers.length > 0 || currentRoom.adPausedPlayers && currentRoom.adPausedPlayers.size > 0;
+              if (isAdPlaying || isCooldownActive) {
+                if (anyCooldownDecremented || isAdPlaying) {
+                  io.to(roomId).emit("room_update", currentRoom);
+                }
+                return;
+              }
+              currentRoom.timer--;
+              if (currentRoom.timer <= 0) {
+                clearInterval(interval);
+                currentRoom.gameState = "bus_complete_evaluating";
+                evaluateBusCompleteAnswers(currentRoom);
+                const bot2 = currentRoom.players.find((p) => p.isBot);
+                if (bot2) handleBotEvent(roomId, "room_update", currentRoom);
+                io.to(roomId).emit("room_update", currentRoom);
+              } else {
+                io.to(roomId).emit("room_update", currentRoom);
+              }
+            }, 1e3);
+            intervals.set(roomId, interval);
+          }
+        }, 3e3);
+      }
+    }, executeBotXOMove = function(roomId) {
+      if (botFlags.has(roomId + "_xo_move_scheduled")) return;
+      botFlags.set(roomId + "_xo_move_scheduled", true);
+      const room = rooms.get(roomId);
+      if (!room || room.gameState !== "xo_playing") {
+        botFlags.delete(roomId + "_xo_move_scheduled");
+        return;
+      }
+      const bot = room.players.find((p) => p.isBot);
+      if (!bot || room.xoTurn !== bot.id) {
+        botFlags.delete(roomId + "_xo_move_scheduled");
+        return;
+      }
+      setTimeout(
+        () => {
+          botFlags.delete(roomId + "_xo_move_scheduled");
+          const r = rooms.get(roomId);
+          if (!r || r.gameState !== "xo_playing" || r.xoTurn !== bot.id) return;
+          if (r.isWaitingForReconnect) {
+            setTimeout(() => {
+              executeBotXOMove(roomId);
+            }, 2e3);
+            return;
+          }
+          const emptyIndices = [];
+          const size = r.xoBoardSize || 3;
+          const winLength = r.xoWinLength || 3;
+          const level = r.xoLevel || 1;
+          for (let i = 0; i < size * size; i++)
+            if (r.xoBoard[i] === null) emptyIndices.push(i);
+          if (emptyIndices.length > 0) {
+            const winLines = getWinningLines(size, winLength);
+            let selectedIdx = null;
+            const piece = r.xoXPlayer === bot.id ? "X" : "O";
+            const enemyPiece = r.xoXPlayer === bot.id ? "O" : "X";
+            const getWinningMove = (p, targetCount) => {
+              const candidates = [];
+              for (const line of winLines) {
+                let pCount = 0;
+                let enemyCount = 0;
+                let nullIndices = [];
+                for (const idx of line) {
+                  if (r.xoBoard[idx] === p) pCount++;
+                  else if (r.xoBoard[idx] !== null) enemyCount++;
+                  else nullIndices.push(idx);
+                }
+                if (pCount === targetCount && enemyCount === 0 && nullIndices.length > 0) {
+                  candidates.push(nullIndices[Math.floor(Math.random() * nullIndices.length)]);
+                }
+              }
+              if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
+              return null;
+            };
+            const winMove = getWinningMove(piece, winLength - 1);
+            const blockMove = getWinningMove(enemyPiece, winLength - 1);
+            const smartBuildMove = winLength > 3 ? getWinningMove(piece, winLength - 2) : null;
+            const smartBlockMove = winLength > 3 ? getWinningMove(enemyPiece, winLength - 2) : null;
+            const winChance = 0.65 + level * 0.04;
+            const smartChance = 0.4 + level * 0.07;
+            if (winMove !== null && Math.random() < winChance) {
+              selectedIdx = winMove;
+            } else if (blockMove !== null) {
+              selectedIdx = blockMove;
+            } else if (smartBlockMove !== null && Math.random() < smartChance) {
+              selectedIdx = smartBlockMove;
+            } else if (smartBuildMove !== null && Math.random() < smartChance) {
+              selectedIdx = smartBuildMove;
+            } else {
+              const adjacentIndices = emptyIndices.filter((idx) => {
+                const row = Math.floor(idx / size);
+                const col = idx % size;
+                for (let dr = -1; dr <= 1; dr++) {
+                  for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    const r2 = row + dr;
+                    const c2 = col + dc;
+                    if (r2 >= 0 && r2 < size && c2 >= 0 && c2 < size) {
+                      if (r.xoBoard[r2 * size + c2] !== null) return true;
+                    }
+                  }
+                }
+                return false;
+              });
+              const pool = adjacentIndices.length > 0 ? adjacentIndices : emptyIndices;
+              selectedIdx = pool[Math.floor(Math.random() * pool.length)];
+            }
+            r.xoBoard[selectedIdx] = piece;
+            let bWinner = null;
+            let bWinningLine = null;
+            for (const line of winLines) {
+              let isWin = true;
+              for (const idx of line) {
+                if (r.xoBoard[idx] !== piece) {
+                  isWin = false;
+                  break;
+                }
+              }
+              if (isWin) {
+                bWinner = r.xoXPlayer === bot.id ? r.xoXPlayer : r.xoOPlayer;
+                bWinningLine = line;
+                break;
+              }
+            }
+            if (bWinner) {
+              r.xoWinner = bWinner;
+              r.xoWinningLine = bWinningLine;
+              r.gameState = "xo_finished";
+              r.xoMatchWins = r.xoMatchWins || {};
+              r.xoMatchWins[bWinner] = (r.xoMatchWins[bWinner] || 0) + 1;
+              const pWinner = r.players.find((p) => p.id === bWinner);
+              if (pWinner) {
+                pWinner.xoWins = (pWinner.xoWins || 0) + 1;
+                const dbP = allPlayers.get(pWinner.serial);
+                if (dbP) {
+                  dbP.xoWins = pWinner.xoWins;
+                  if (r.matchType === "random") {
+                    dbP.xoMatchPoints = (dbP.xoMatchPoints || 0) + 10;
+                  }
+                  pWinner.xoMatchPoints = dbP.xoMatchPoints;
+                  savePlayerData(pWinner.serial);
+                  io.to(pWinner.id).emit("player_data_update", dbP);
+                }
+              }
+            } else if (r.xoBoard.every((cell) => cell !== null)) {
+              r.xoWinner = "draw";
+              r.gameState = "xo_finished";
+              r.xoMatchWins = r.xoMatchWins || {};
+              r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
+            } else {
+              r.xoTurn = r.xoXPlayer === bot.id ? r.xoOPlayer : r.xoXPlayer;
+            }
+            io.to(roomId).emit("room_update", r);
+            if (r.players.some((p) => p.isBot)) {
+              handleBotEvent(roomId, "room_update", r);
+            }
+          }
+        },
+        1e3 + Math.random() * 1500
+      );
+    }, sendRoomUpdate = function(roomId, customRoom) {
+      const room = customRoom || rooms.get(roomId);
+      if (!room) return;
+      if (room.category === "iq" && room.iqBoard) {
+        const sanitizedRoom = {
+          ...room,
+          iqPreloadImages: room.iqPreloadImages || [],
+          iqBoard: room.iqBoard.map((img, idx) => {
+            const isRevealed = room.iqFlipped?.includes(idx) || room.iqMatched?.includes(idx);
+            return isRevealed ? img : "";
+          })
+        };
+        io.to(roomId).emit("room_update", sanitizedRoom);
+      } else {
+        io.to(roomId).emit("room_update", room);
+      }
+    }, executeBotBeachRace = function(roomId) {
+      if (intervals.has(roomId + "_beach_race_bot")) return;
+      const interval = setInterval(() => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing" || room.beachRace.gameOver) {
+          clearInterval(intervals.get(roomId + "_beach_race_bot"));
+          intervals.delete(roomId + "_beach_race_bot");
+          return;
+        }
+        const bot = room.players.find((p) => p.isBot);
+        if (!bot) return;
+        if (!room.beachRace.playersProgress) {
+          room.beachRace.playersProgress = {};
+        }
+        if (!room.beachRace.playersProgress[bot.id]) {
+          room.beachRace.playersProgress[bot.id] = { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false };
+        }
+        const progress = room.beachRace.playersProgress[bot.id];
+        const currentStartTime = room.beachRace.startTime;
+        if (progress.isAtCheckpoint) {
+          if (!botFlags.has(roomId + "_beach_race_checkpoint_wait")) {
+            botFlags.set(roomId + "_beach_race_checkpoint_wait", true);
+            setTimeout(() => {
+              botFlags.delete(roomId + "_beach_race_checkpoint_wait");
+              const currentRoom = rooms.get(roomId);
+              if (currentRoom && currentRoom.gameState === "beach_race_playing" && currentRoom.beachRace.startTime === currentStartTime && currentRoom.beachRace.playersProgress?.[bot.id]) {
+                currentRoom.beachRace.playersProgress[bot.id].isAtCheckpoint = false;
+                if (currentRoom.beachRace.playersProgress[bot.id].stage === 1 && currentRoom.beachRace.playersProgress[bot.id].distance >= 300) {
+                  currentRoom.beachRace.playersProgress[bot.id].stage = 2;
+                } else if (currentRoom.beachRace.playersProgress[bot.id].stage === 2 && currentRoom.beachRace.playersProgress[bot.id].distance >= 600) {
+                  currentRoom.beachRace.playersProgress[bot.id].stage = 3;
+                }
+                io.to(roomId).emit("room_update", currentRoom);
+              }
+            }, 4e3 + Math.random() * 6e3);
+          }
+          return;
+        }
+        if (progress.distance >= 1e3) {
+          if (!botFlags.has(roomId + "_beach_race_final_wait")) {
+            botFlags.set(roomId + "_beach_race_final_wait", true);
+            const willWin = Math.random() < 0.35;
+            if (willWin) {
+              setTimeout(() => {
+                botFlags.delete(roomId + "_beach_race_final_wait");
+                const currentRoom = rooms.get(roomId);
+                if (currentRoom && currentRoom.gameState === "beach_race_playing" && currentRoom.beachRace.startTime === currentStartTime && !currentRoom.beachRace.gameOver) {
+                  currentRoom.beachRace.gameOver = true;
+                  currentRoom.beachRace.winnerId = bot.id;
+                  currentRoom.gameState = "beach_race_finished";
+                  bot.beachRaceWins = (bot.beachRaceWins || 0) + 1;
+                  io.to(roomId).emit("beach_race_finished", { winnerId: bot.id, targetWord: currentRoom.beachRace.targetWord });
+                  io.to(roomId).emit("room_update", currentRoom);
+                }
+              }, 55e3 + Math.random() * 4e3);
+            }
+          }
+          return;
+        }
+        const isHittingObstacle = Math.random() < 0.08;
+        const speed = isHittingObstacle ? 1 : 4.5 + Math.random() * 1.8;
+        progress.distance += speed;
+        if (progress.distance >= 333 && progress.stage === 1) {
+          progress.distance = 333;
+          progress.isAtCheckpoint = true;
+        } else if (progress.distance >= 666 && progress.stage === 2) {
+          progress.distance = 666;
+          progress.isAtCheckpoint = true;
+        } else if (progress.distance >= 1e3) {
+          progress.distance = 1e3;
+        }
+        io.to(roomId).emit("beach_race_progress_updated", {
+          playerId: bot.id,
+          distance: progress.distance,
+          collectedLetters: []
+        });
+      }, 1e3);
+      intervals.set(roomId + "_beach_race_bot", interval);
+    }, executeBotIQMove = function(roomId) {
+      if (botFlags.has(roomId + "_iq_move_scheduled")) return;
+      botFlags.set(roomId + "_iq_move_scheduled", true);
+      const room = rooms.get(roomId);
+      if (!room || room.gameState !== "iq_playing") {
+        botFlags.delete(roomId + "_iq_move_scheduled");
+        return;
+      }
+      const bot = room.players.find((p) => p.isBot);
+      if (!bot || room.iqTurn !== bot.id) {
+        botFlags.delete(roomId + "_iq_move_scheduled");
+        return;
+      }
+      setTimeout(() => {
+        botFlags.delete(roomId + "_iq_move_scheduled");
+        const r = rooms.get(roomId);
+        if (!r || r.gameState !== "iq_playing" || r.iqTurn !== bot.id) return;
+        if (r.isWaitingForReconnect) {
+          setTimeout(() => {
+            executeBotIQMove(roomId);
+          }, 2e3);
+          return;
+        }
+        const unmatched = [];
+        const size = r.iqBoard.length;
+        for (let i = 0; i < size; i++) {
+          if (!r.iqMatched.includes(i)) {
+            unmatched.push(i);
+          }
+        }
+        if (unmatched.length < 2) return;
+        const level = r.iqLevel || 1;
+        if (!r.iqSeen) r.iqSeen = [];
+        const consecutive = r.botConsecutiveMatches || 0;
+        let idx1 = -1;
+        let idx2 = -1;
+        let forceMismatch = false;
+        if (level === 1 && consecutive >= 2) {
+          forceMismatch = true;
+        } else if (level === 2 && consecutive >= 1) {
+          forceMismatch = true;
+        } else if (level === 3 && consecutive >= 1) {
+          forceMismatch = true;
+        }
+        let scanChance = 0;
+        let memoryChance = 0;
+        if (!forceMismatch) {
+          if (level === 1) {
+            if (consecutive === 0) {
+              scanChance = 0.2;
+              memoryChance = 0.35;
+            } else if (consecutive === 1) {
+              scanChance = 0.1;
+              memoryChance = 0.15;
+            }
+          } else if (level === 2) {
+            if (consecutive === 0) {
+              scanChance = 0.12;
+              memoryChance = 0.2;
+            }
+          } else {
+            if (consecutive === 0) {
+              scanChance = 0.05;
+              memoryChance = 0.1;
+            }
+          }
+        }
+        let foundPairInMemory = false;
+        if (Math.random() < scanChance) {
+          const seenUnmatched = unmatched.filter((idx) => r.iqSeen.includes(idx));
+          for (let i = 0; i < seenUnmatched.length; i++) {
+            for (let j = i + 1; j < seenUnmatched.length; j++) {
+              const u1 = seenUnmatched[i];
+              const u2 = seenUnmatched[j];
+              if (r.iqBoard[u1] === r.iqBoard[u2]) {
+                idx1 = u1;
+                idx2 = u2;
+                foundPairInMemory = true;
+                break;
+              }
+            }
+            if (foundPairInMemory) break;
+          }
+        }
+        if (!foundPairInMemory) {
+          const shuffledUnmatched = [...unmatched].sort(() => Math.random() - 0.5);
+          idx1 = shuffledUnmatched[0];
+          const partnerIdx = unmatched.find((idx) => idx !== idx1 && r.iqBoard[idx] === r.iqBoard[idx1]);
+          const partnerHasBeenSeen = partnerIdx !== void 0 && r.iqSeen.includes(partnerIdx);
+          if (partnerIdx !== void 0 && partnerHasBeenSeen && !forceMismatch && Math.random() < memoryChance) {
+            idx2 = partnerIdx;
+          } else {
+            const otherUnmatched = shuffledUnmatched.filter((idx) => idx !== idx1);
+            const mismatchPool = otherUnmatched.filter((idx) => r.iqBoard[idx] !== r.iqBoard[idx1]);
+            if (forceMismatch && mismatchPool.length > 0) {
+              idx2 = mismatchPool[Math.floor(Math.random() * mismatchPool.length)];
+            } else {
+              idx2 = otherUnmatched[Math.floor(Math.random() * otherUnmatched.length)];
+            }
+          }
+        }
+        r.iqFlipped = [idx1];
+        if (!r.iqSeen.includes(idx1)) {
+          r.iqSeen.push(idx1);
+        }
+        sendRoomUpdate(roomId, r);
+        setTimeout(() => {
+          const r2 = rooms.get(roomId);
+          if (!r2 || r2.gameState !== "iq_playing" || r2.iqTurn !== bot.id) return;
+          r2.iqFlipped = [idx1, idx2];
+          if (!r2.iqSeen) r2.iqSeen = [];
+          if (!r2.iqSeen.includes(idx2)) {
+            r2.iqSeen.push(idx2);
+          }
+          sendRoomUpdate(roomId, r2);
+          setTimeout(() => {
+            const currentRoom = rooms.get(roomId);
+            if (!currentRoom || currentRoom.gameState !== "iq_playing") return;
+            const isMatch = currentRoom.iqBoard[idx1] === currentRoom.iqBoard[idx2];
+            if (isMatch) {
+              currentRoom.iqMatched.push(idx1, idx2);
+              if (currentRoom.iqTurn === currentRoom.iqPlayer1) {
+                currentRoom.iqP1Score = (currentRoom.iqP1Score || 0) + 1;
+              } else {
+                currentRoom.iqP2Score = (currentRoom.iqP2Score || 0) + 1;
+              }
+            }
+            if (currentRoom.iqMatched.length === currentRoom.iqBoard.length) {
+              const p1Score = currentRoom.iqP1Score || 0;
+              const p2Score = currentRoom.iqP2Score || 0;
+              if (p1Score > p2Score) currentRoom.iqWinner = currentRoom.iqPlayer1;
+              else if (p2Score > p1Score) currentRoom.iqWinner = currentRoom.iqPlayer2;
+              else currentRoom.iqWinner = "draw";
+              currentRoom.gameState = "iq_finished";
+              currentRoom.iqMatchWins[currentRoom.iqWinner] = (currentRoom.iqMatchWins[currentRoom.iqWinner] || 0) + 1;
+              if (currentRoom.iqWinner && currentRoom.iqWinner !== "draw") {
+                const winnerPlayer = currentRoom.players.find((p) => p.id === currentRoom.iqWinner);
+                if (winnerPlayer) {
+                  winnerPlayer.iqWins = (winnerPlayer.iqWins || 0) + 1;
+                  const dbP = allPlayers.get(winnerPlayer.serial);
+                  if (dbP) {
+                    dbP.iqWins = winnerPlayer.iqWins;
+                    dbP.iqMatchPoints = (dbP.iqMatchPoints || 0) + 10;
+                    savePlayerData(winnerPlayer.serial);
+                    io.to(winnerPlayer.id).emit("player_data_update", dbP);
+                  }
+                }
+              }
+            }
+            if (isMatch) {
+              if (currentRoom.gameState === "iq_playing") {
+                currentRoom.iqTurnTimer = (currentRoom.iqTurnTimer || 10) + 10;
+              }
+              const bPlayer = currentRoom.players.find((p) => p.isBot);
+              if (bPlayer && currentRoom.iqTurn === bPlayer.id) {
+                currentRoom.botConsecutiveMatches = (currentRoom.botConsecutiveMatches || 0) + 1;
+              }
+            } else {
+              if (currentRoom.gameState === "iq_playing") {
+                currentRoom.iqTurn = currentRoom.iqTurn === currentRoom.iqPlayer1 ? currentRoom.iqPlayer2 : currentRoom.iqPlayer1;
+                currentRoom.iqTurnTimer = 10;
+              }
+              currentRoom.botConsecutiveMatches = 0;
+            }
+            currentRoom.iqFlipped = [];
+            sendRoomUpdate(roomId, currentRoom);
+            if (currentRoom.gameState === "iq_playing") {
+              const bPlayer = currentRoom.players.find((p) => p.isBot);
+              if (bPlayer) {
+                handleBotEvent(roomId, "room_update", currentRoom);
+              }
+            }
+          }, 800);
+        }, 600);
+      }, 600 + Math.random() * 500);
+    }, getTempItemsSum = function(player) {
+      let tempKeys = 0;
+      let tempTokens = (player.luckyWheelTokens || 0) + (player.rainGiftTokens || 0);
+      let tempHelpersObj = {};
+      if (player.citySearchRewards && Array.isArray(player.citySearchRewards)) {
+        player.citySearchRewards.forEach((r) => {
+          if (r.type === "key") tempKeys += r.amount;
+          else if (r.type === "token") tempTokens += r.amount;
+          else if (r.type === "helper" && r.helperId) {
+            tempHelpersObj[r.helperId] = (tempHelpersObj[r.helperId] || 0) + r.amount;
+          }
+        });
+      } else if (typeof player.citySearchRewards === "string") {
+        try {
+          const parsed = JSON.parse(player.citySearchRewards);
+          parsed.forEach((r) => {
+            if (r.type === "key") tempKeys += r.amount;
+            else if (r.type === "token") tempTokens += r.amount;
+            else if (r.type === "helper" && r.helperId) {
+              tempHelpersObj[r.helperId] = (tempHelpersObj[r.helperId] || 0) + r.amount;
+            }
+          });
+        } catch (e) {
+        }
+      }
+      if (player.luckyWheelHelpers) {
+        const h = typeof player.luckyWheelHelpers === "string" ? JSON.parse(player.luckyWheelHelpers) : player.luckyWheelHelpers;
+        Object.entries(h).forEach(([key, val]) => {
+          tempHelpersObj[key] = (tempHelpersObj[key] || 0) + Number(val);
+        });
+      }
+      if (player.rainGiftHelpers) {
+        const h = typeof player.rainGiftHelpers === "string" ? JSON.parse(player.rainGiftHelpers) : player.rainGiftHelpers;
+        Object.entries(h).forEach(([key, val]) => {
+          tempHelpersObj[key] = (tempHelpersObj[key] || 0) + Number(val);
+        });
+      }
+      return { keys: tempKeys, tokens: tempTokens, helpers: tempHelpersObj };
+    }, emitPlayerDataUpdate = function(target, serial, data) {
+      const player = allPlayers.get(serial);
+      const tempItems = player ? getTempItemsSum(player) : void 0;
+      target.emit("player_data_update", { ...data, tempItems });
+    }, normalizeArabicStr = function(str, phonetic = false) {
+      if (!str || typeof str !== "string") return "";
+      let res = str.trim().replace(/[أإآا]/g, "\u0627").replace(/[ةه]/g, "\u0647").replace(/[ىي]/g, "\u064A");
+      if (phonetic) {
+        res = res.replace(/[ثط]/g, "\u062A").replace(/[ص]/g, "\u0633").replace(/[ق]/g, "\u0643").replace(/[ض]/g, "\u062F").replace(/[ظذ]/g, "\u0632");
+      }
+      return res.replace(/\s+/g, "").replace(/[^ء-يa-zA-Z]/g, "");
+    }, evaluateBusCompleteAnswers = function(room) {
+      const letter = room.busCompleteLetter;
+      if (!letter) return;
+      const baseTargetLetter = normalizeArabicStr(letter);
+      const phoneticTargetLetter = normalizeArabicStr(letter, true);
+      room.busCompleteScores = {};
+      room.players.forEach((p) => {
+        room.busCompleteScores[p.id] = {
+          boy: 0,
+          girl: 0,
+          animal: 0,
+          plant: 0,
+          inanimate: 0,
+          country: 0,
+          total: 0
+        };
+        const answers = room.busCompleteAnswers?.[p.id] || {};
+        const categories = [
+          "boy",
+          "girl",
+          "animal",
+          "plant",
+          "inanimate",
+          "country"
+        ];
+        categories.forEach((cat) => {
+          let ans = answers[cat];
+          let ansPhonetic = normalizeArabicStr(ans, true);
+          if (ansPhonetic && ansPhonetic.startsWith(phoneticTargetLetter)) {
+            const letterData = busCompleteData[baseTargetLetter] || {};
+            const validListPhonetic = (letterData[cat] || []).map(
+              (val) => normalizeArabicStr(val, true)
+            );
+            if (validListPhonetic.includes(ansPhonetic)) {
+              room.busCompleteScores[p.id][cat] = 10;
+              room.busCompleteScores[p.id].total += 10;
+            } else {
+              room.busCompleteScores[p.id][cat] = 0;
+            }
+          }
+        });
+      });
+      const p1 = room.players[0];
+      const p2 = room.players[1];
+      if (p1 && p2) {
+        const s1 = room.busCompleteScores[p1.id].total;
+        const s2 = room.busCompleteScores[p2.id].total;
+        const t1 = room.busCompleteSubmitTimes?.[p1.id] || 300;
+        const t2 = room.busCompleteSubmitTimes?.[p2.id] || 300;
+        if (s1 === 0 && s2 === 0) {
+          room.busCompleteWinner = "none";
+        } else if (s1 > s2 || s1 === s2 && t1 < t2) {
+          room.busCompleteWinner = p1.id;
+          p1.busCompleteWins = (p1.busCompleteWins || 0) + 1;
+          const dbP1 = allPlayers.get(p1.serial);
+          if (dbP1) {
+            dbP1.busCompleteWins = p1.busCompleteWins;
+            savePlayerData(p1.serial);
+          }
+        } else if (s2 > s1 || s1 === s2 && t2 < t1) {
+          room.busCompleteWinner = p2.id;
+          p2.busCompleteWins = (p2.busCompleteWins || 0) + 1;
+          const dbP2 = allPlayers.get(p2.serial);
+          if (dbP2) {
+            dbP2.busCompleteWins = p2.busCompleteWins;
+            savePlayerData(p2.serial);
+          }
+        } else {
+          room.busCompleteWinner = "tie";
+        }
+        if (room.matchType === "random") {
+          if (room.busCompleteWinner === p1.id) {
+            p1.busCompleteMatchPoints = (p1.busCompleteMatchPoints || 0) + 10;
+            const dbP1 = allPlayers.get(p1.serial);
+            if (dbP1) {
+              dbP1.busCompleteMatchPoints = p1.busCompleteMatchPoints;
+              savePlayerData(p1.serial);
+              io.to(p1.id).emit("player_data_update", dbP1);
+            }
+          } else if (room.busCompleteWinner === p2.id) {
+            p2.busCompleteMatchPoints = (p2.busCompleteMatchPoints || 0) + 10;
+            const dbP2 = allPlayers.get(p2.serial);
+            if (dbP2) {
+              dbP2.busCompleteMatchPoints = p2.busCompleteMatchPoints;
+              savePlayerData(p2.serial);
+              io.to(p2.id).emit("player_data_update", dbP2);
+            }
+          }
+        }
+      }
+    }, initializeDotsGame = function(room) {
+      room.gameState = "dots_playing";
+      room.category = "dots";
+      room.dotsLevel = room.dotsLevel || 1;
+      room.dotsMatchWins = room.dotsMatchWins || {};
+      const size = room.dotsLevel === 1 ? 4 : room.dotsLevel === 2 ? 6 : 8;
+      room.dotsBoardSize = size;
+      room.dotsLines = {};
+      room.dotsBoxes = {};
+      room.dotsLastMove = null;
+      room.dotsPlayer1 = room.players[0]?.id;
+      room.dotsPlayer2 = room.players[1]?.id;
+      room.dotsTurn = Math.random() > 0.5 ? room.dotsPlayer1 : room.dotsPlayer2;
+      room.dotsTurnTimer = 15;
+      room.timer = room.dotsLevel === 1 ? 300 : room.dotsLevel === 2 ? 600 : 900;
+      room.dotsP1Score = 0;
+      room.dotsP2Score = 0;
+      room.dotsWinner = null;
+      room.dotsRematchRequestedBy = [];
+      room.dotsAdPausedPlayers = /* @__PURE__ */ new Set();
+      room.dotsAdPausedPlayersArray = [];
+      if (botTimeouts.has(room.id + "_dots_move_timeout")) {
+        clearTimeout(botTimeouts.get(room.id + "_dots_move_timeout"));
+        botTimeouts.delete(room.id + "_dots_move_timeout");
+      }
+      if (botTimeouts.has(room.id + "_dots_restart_timeout")) {
+        clearTimeout(botTimeouts.get(room.id + "_dots_restart_timeout"));
+        botTimeouts.delete(room.id + "_dots_restart_timeout");
+      }
+      if (intervals.has(room.id)) clearInterval(intervals.get(room.id));
+      const interval = setInterval(() => {
+        const r = rooms.get(room.id);
+        if (r && r.gameState === "dots_playing") {
+          const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+          if (!isAdPlaying) {
+            r.timer--;
+            if (r.timer <= 0) {
+              clearInterval(interval);
+              r.dotsWinner = "draw";
+              r.gameState = "dots_finished";
+              r.dotsMatchWins["draw"] = (r.dotsMatchWins["draw"] || 0) + 1;
+              sendRoomUpdate(room.id, r);
+            } else {
+              io.to(room.id).emit("timer_update", r.timer);
+            }
+          }
+        }
+      }, 1e3);
+      intervals.set(room.id, interval);
+      sendRoomUpdate(room.id, room);
+    }, initializeSpeedCupsGame = function(room) {
+      room.gameState = "speed_cups_waiting";
+      room.category = "speed_cups";
+      room.speedCupsLevel = room.speedCupsLevel || 1;
+      room.speedCupsMatchWins = room.speedCupsMatchWins || {};
+      room.speedCupsRematchRequestedBy = [];
+      room.players.forEach((p) => {
+        room.speedCupsMatchWins[p.id] = room.speedCupsMatchWins[p.id] || 0;
+      });
+      try {
+        const cardsData = JSON.parse(import_fs.default.readFileSync(import_path.default.join(process.cwd(), "src/data/speed-cups-cards.json"), "utf8"));
+        let cards = [...cardsData.cards];
+        cards = cards.sort(() => Math.random() - 0.5);
+        room.speedCupsCards = cards;
+        room.speedCupsCurrentCardIndex = 0;
+        room.speedCupsP1Stack = [];
+        room.speedCupsP2Stack = [];
+        room.speedCupsP1Done = false;
+        room.speedCupsP2Done = false;
+      } catch (err) {
+        console.error("Error loading speed cups cards:", err);
+      }
+      sendRoomUpdate(room.id, room);
+    }, evaluateSpeedCupsRound = function(roomId, whoRangFirst) {
+      const room = rooms.get(roomId);
+      if (!room || room.gameState !== "speed_cups_playing") return;
+      const botKey = roomId + "_speed_cups_bot_timeout";
+      if (botTimeouts.has(botKey)) {
+        clearTimeout(botTimeouts.get(botKey));
+        botTimeouts.delete(botKey);
+      }
+      room.gameState = "speed_cups_evaluating";
+      const currentCard = room.speedCupsCards?.[room.speedCupsCurrentCardIndex];
+      if (currentCard) {
+        const correctOrder = currentCard.color_order;
+        const p1Correct = JSON.stringify(room.speedCupsP1Stack) === JSON.stringify(correctOrder);
+        const p2Correct = room.players.length > 1 ? JSON.stringify(room.speedCupsP2Stack) === JSON.stringify(correctOrder) : false;
+        if (whoRangFirst === "p1") {
+          if (p1Correct) {
+            room.speedCupsMatchWins[room.players[0].id] = (room.speedCupsMatchWins[room.players[0].id] || 0) + 1;
+          } else if (p2Correct) {
+            room.speedCupsMatchWins[room.players[1].id] = (room.speedCupsMatchWins[room.players[1].id] || 0) + 1;
+          }
+        } else if (whoRangFirst === "p2") {
+          if (p2Correct) {
+            room.speedCupsMatchWins[room.players[1].id] = (room.speedCupsMatchWins[room.players[1].id] || 0) + 1;
+          } else if (p1Correct) {
+            room.speedCupsMatchWins[room.players[0].id] = (room.speedCupsMatchWins[room.players[0].id] || 0) + 1;
+          }
+        } else {
+          if (p1Correct && p2Correct) {
+            room.speedCupsMatchWins[room.players[0].id] = (room.speedCupsMatchWins[room.players[0].id] || 0) + 1;
+            if (room.players.length > 1) {
+              room.speedCupsMatchWins[room.players[1].id] = (room.speedCupsMatchWins[room.players[1].id] || 0) + 1;
+            }
+          } else if (p1Correct) {
+            room.speedCupsMatchWins[room.players[0].id] = (room.speedCupsMatchWins[room.players[0].id] || 0) + 1;
+          } else if (p2Correct) {
+            room.speedCupsMatchWins[room.players[1].id] = (room.speedCupsMatchWins[room.players[1].id] || 0) + 1;
+          }
+        }
+      }
+      sendRoomUpdate(roomId, room);
+      setTimeout(() => {
+        const r = rooms.get(roomId);
+        if (!r) return;
+        r.speedCupsCurrentCardIndex = (r.speedCupsCurrentCardIndex || 0) + 1;
+        if (r.speedCupsCurrentCardIndex >= (r.speedCupsCards?.length || 0)) {
+          r.gameState = "speed_cups_finished";
+          const p1Wins = r.speedCupsMatchWins[r.players[0].id] || 0;
+          const p2Wins = r.players.length > 1 ? r.speedCupsMatchWins[r.players[1].id] || 0 : 0;
+          if (p1Wins > p2Wins) {
+            r.speedCupsWinner = r.players[0].id;
+          } else if (p2Wins > p1Wins && r.players.length > 1) {
+            r.speedCupsWinner = r.players[1].id;
+          } else {
+            r.speedCupsWinner = "draw";
+          }
+          if (r.speedCupsWinner && r.speedCupsWinner !== "draw") {
+            const winnerPlayer = r.players.find((p) => p.id === r.speedCupsWinner);
+            if (winnerPlayer) {
+              winnerPlayer.speedCupsWins = (winnerPlayer.speedCupsWins || 0) + 1;
+              const dbP = allPlayers.get(winnerPlayer.serial);
+              if (dbP) {
+                dbP.speedCupsWins = winnerPlayer.speedCupsWins;
+                dbP.speedCupsMatchPoints = (dbP.speedCupsMatchPoints || 0) + 10;
+                savePlayerData(winnerPlayer.serial);
+                io.to(winnerPlayer.id).emit("player_data_update", dbP);
+              }
+            }
+          }
+          const p1ServerPlayer = allPlayers.get(r.players[0].serial);
+          const p2ServerPlayer = r.players.length > 1 ? allPlayers.get(r.players[1].serial) : null;
+          if (p1ServerPlayer) {
+            p1ServerPlayer.speedCupsMatchPoints = (p1ServerPlayer.speedCupsMatchPoints || 0) + 5;
+            if (p1Wins > p2Wins) p1ServerPlayer.speedCupsMatchPoints += 15;
+            else if (p1Wins === p2Wins) p1ServerPlayer.speedCupsMatchPoints += 5;
+            savePlayerData(r.players[0].serial);
+            io.to(r.players[0].id).emit("player_data_update", p1ServerPlayer);
+            r.players[0].speedCupsMatchPoints = p1ServerPlayer.speedCupsMatchPoints;
+          }
+          if (p2ServerPlayer) {
+            p2ServerPlayer.speedCupsMatchPoints = (p2ServerPlayer.speedCupsMatchPoints || 0) + 5;
+            if (p2Wins > p1Wins) p2ServerPlayer.speedCupsMatchPoints += 15;
+            else if (p1Wins === p2Wins) p2ServerPlayer.speedCupsMatchPoints += 5;
+            savePlayerData(r.players[1].serial);
+            io.to(r.players[1].id).emit("player_data_update", p2ServerPlayer);
+            r.players[1].speedCupsMatchPoints = p2ServerPlayer.speedCupsMatchPoints;
+          }
+        } else {
+          r.speedCupsP1Stack = [];
+          r.speedCupsP2Stack = [];
+          r.speedCupsP1Done = false;
+          r.speedCupsP2Done = false;
+          startSpeedCupsCountdown(roomId);
+        }
+        sendRoomUpdate(roomId, r);
+        if (r.gameState === "speed_cups_finished" && r.players.some((p) => p.isBot)) {
+          handleBotEvent(roomId, "room_update", r);
+        }
+      }, 3e3);
+    }, startSpeedCupsCountdown = function(roomId) {
+      const room = rooms.get(roomId);
+      if (!room || room.category !== "speed_cups") return;
+      room.gameState = "speed_cups_countdown";
+      room.speedCupsTimer = 3;
+      sendRoomUpdate(roomId, room);
+      if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+      let countdown = 3;
+      const interval = setInterval(() => {
+        const r = rooms.get(roomId);
+        if (!r || r.gameState !== "speed_cups_countdown") {
+          clearInterval(interval);
+          return;
+        }
+        if (r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0) return;
+        countdown--;
+        r.speedCupsTimer = countdown;
+        if (countdown <= 0) {
+          clearInterval(interval);
+          r.gameState = "speed_cups_playing";
+          r.speedCupsTimer = 10;
+          sendRoomUpdate(roomId, r);
+          if (r.players.some((p) => p.isBot)) {
+            handleBotEvent(roomId, "room_update", r);
+          }
+          let roundTimer = 10;
+          const roundInterval = setInterval(() => {
+            const currentR = rooms.get(roomId);
+            if (!currentR || currentR.gameState !== "speed_cups_playing") {
+              clearInterval(roundInterval);
+              return;
+            }
+            if (currentR.adPausedPlayersArray && currentR.adPausedPlayersArray.length > 0) return;
+            roundTimer--;
+            currentR.speedCupsTimer = roundTimer;
+            if (roundTimer <= 0) {
+              clearInterval(roundInterval);
+              evaluateSpeedCupsRound(roomId);
+            } else {
+              io.to(roomId).emit("speed_cups_timer_update", roundTimer);
+            }
+          }, 1e3);
+          intervals.set(roomId, roundInterval);
+        } else {
+          io.to(roomId).emit("speed_cups_timer_update", countdown);
+        }
+      }, 1e3);
+      intervals.set(roomId, interval);
+    }, initializeIQGame = function(room) {
+      room.gameState = "iq_playing";
+      room.category = "iq";
+      room.iqLevel = room.iqLevel || 1;
+      room.iqMatchWins = room.iqMatchWins || {};
+      const size = room.iqLevel === 1 ? 4 : room.iqLevel === 2 ? 6 : 8;
+      room.iqBoardSize = size;
+      const allPossibleCategories = ["animals", "birds", "food", "people", "objects", "plants", "insects", "football"];
+      if (room.iqLevel === 1 || !room.iqLevelCategories || room.iqLevelCategories.length !== 3) {
+        const shuffled = [...allPossibleCategories];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        room.iqLevelCategories = shuffled.slice(0, 3);
+      }
+      let selectedCategory = room.iqLevelCategories[room.iqLevel - 1] || "animals";
+      let allImages = [];
+      try {
+        const normCat = normalizeArabicText(selectedCategory);
+        allImages = db.prepare("SELECT name, category FROM custom_images WHERE category = ? OR lower(category) = ? OR category = ?").all(selectedCategory, selectedCategory.toLowerCase(), normCat);
+      } catch (e) {
+        console.error("Error loading images for category:", selectedCategory, e);
+      }
+      if (allImages.length === 0) {
+        try {
+          const diskMatches = [];
+          const normCat = normalizeArabicText(selectedCategory);
+          for (const [key, filePath] of diskImagesMap.entries()) {
+            if (key.includes("/")) {
+              const parts = key.split("/");
+              const cat = parts[0];
+              const name = import_path.default.parse(filePath).name;
+              if (cat === selectedCategory || cat.toLowerCase() === selectedCategory.toLowerCase() || cat === normCat) {
+                diskMatches.push({ name, category: cat });
+              }
+            }
+          }
+          if (diskMatches.length > 0) {
+            allImages = diskMatches;
+          } else {
+            const activeCategoriesResult = db.prepare("SELECT DISTINCT category FROM custom_images").all();
+            const activeCategories = activeCategoriesResult.map((c) => c.category).filter((c) => c);
+            if (activeCategories.length > 0) {
+              const fallbackCategory = activeCategories[Math.floor(Math.random() * activeCategories.length)];
+              allImages = db.prepare("SELECT name, category FROM custom_images WHERE category = ?").all(fallbackCategory);
+              selectedCategory = fallbackCategory;
+            } else {
+              for (const [key, filePath] of diskImagesMap.entries()) {
+                if (key.includes("/")) {
+                  const parts = key.split("/");
+                  const cat = parts[0];
+                  const name = import_path.default.parse(filePath).name;
+                  allImages.push({ name, category: cat });
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching fallback categories:", e);
+        }
+      }
+      const arabicCategoryNames = {
+        animals: "\u062D\u064A\u0648\u0627\u0646\u0627\u062A",
+        birds: "\u0637\u064A\u0648\u0631",
+        food: "\u0623\u0643\u0644\u0627\u062A",
+        people: "\u0627\u0634\u062E\u0627\u0635",
+        objects: "\u062C\u0645\u0627\u062F",
+        plants: "\u0646\u0628\u0627\u062A",
+        insects: "\u062D\u0634\u0631\u0627\u062A",
+        football: "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645"
+      };
+      room.iqCategory = selectedCategory;
+      room.iqCategoryName = arabicCategoryNames[selectedCategory] || selectedCategory;
+      let neededPairs = size * size / 2;
+      let selectedImages = [];
+      if (allImages.length > 0) {
+        for (let i = allImages.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allImages[i], allImages[j]] = [allImages[j], allImages[i]];
+        }
+        for (let i = 0; i < neededPairs; i++) {
+          const imgItem = allImages[i % allImages.length];
+          selectedImages.push(`/api/image/${encodeURIComponent(imgItem.category || selectedCategory)}/${encodeURIComponent(imgItem.name)}`);
+        }
+      } else {
+        for (let i = 0; i < neededPairs; i++) {
+          selectedImages.push("");
+        }
+      }
+      let board = [...selectedImages, ...selectedImages];
+      for (let i = board.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [board[i], board[j]] = [board[j], board[i]];
+      }
+      room.iqBoard = board;
+      room.iqPreloadImages = Array.from(new Set(selectedImages.filter(Boolean)));
+      room.iqFlipped = [];
+      room.iqMatched = [];
+      room.iqSeen = [];
+      room.botConsecutiveMatches = 0;
+      room.iqPlayer1 = room.players[Math.floor(Math.random() * 2)].id;
+      room.iqPlayer2 = room.players.find((p) => p.id !== room.iqPlayer1).id;
+      room.iqPlayer1Color = "red";
+      room.iqPlayer2Color = "green";
+      room.iqP1Score = 0;
+      room.iqP2Score = 0;
+      room.iqTurn = room.iqPlayer1;
+      room.iqWinner = null;
+      room.timer = room.iqLevel === 1 ? 5 * 60 : room.iqLevel === 2 ? 10 * 60 : 15 * 60;
+      room.iqTurnTimer = 10;
+      if (intervals.has(room.id)) clearInterval(intervals.get(room.id));
+      const interval = setInterval(() => {
+        const r = rooms.get(room.id);
+        if (!r || r.gameState !== "iq_playing" && r.gameState !== "iq_finished") {
+          clearInterval(interval);
+          return;
+        }
+        if (r.gameState === "iq_playing") {
+          const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+          if (!isAdPlaying) {
+            r.timer--;
+            r.iqTurnTimer--;
+            if (r.timer <= 0) {
+              clearInterval(interval);
+              r.iqWinner = "draw";
+              r.gameState = "iq_finished";
+              r.iqMatchWins["draw"] = (r.iqMatchWins["draw"] || 0) + 1;
+              sendRoomUpdate(room.id, r);
+            } else if (r.iqTurnTimer <= 0) {
+              r.iqTurnTimer = 10;
+              r.iqFlipped = [];
+              r.iqTurn = r.iqTurn === r.iqPlayer1 ? r.iqPlayer2 : r.iqPlayer1;
+              sendRoomUpdate(room.id, r);
+              const bot2 = r.players.find((p) => p.isBot);
+              if (bot2) {
+                handleBotEvent(room.id, "room_update", r);
+              }
+            } else {
+              io.to(room.id).emit("timer_update", r.timer);
+              io.to(room.id).emit("iq_timer_update", r.iqTurnTimer);
+            }
+          }
+        }
+      }, 1e3);
+      intervals.set(room.id, interval);
+      const bot = room.players.find((p) => p.isBot);
+      if (bot) {
+        handleBotEvent(room.id, "room_update", room);
+      }
+    }, startWaitingInterval = function(roomId) {
+      if (intervals.has(roomId)) {
+        clearInterval(intervals.get(roomId));
+        intervals.delete(roomId);
+      }
+      const room = rooms.get(roomId);
+      if (room) room.timer = 60;
+      const interval = setInterval(() => {
+        const r = rooms.get(roomId);
+        if (!r) {
+          clearInterval(interval);
+          return;
+        }
+        if (r.gameState === "waiting") {
+          const isAnyAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+          if (r.timer > 0) {
+            if (!isAnyAdPlaying) {
+              r.timer--;
+              io.to(roomId).emit("timer_update", r.timer);
+            }
+          } else {
+            clearInterval(interval);
+            io.to(roomId).emit("game_stopped", {
+              reason: "\u0627\u0646\u062A\u0647\u0649 \u0627\u0644\u0648\u0642\u062A! \u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0627\u062A\u0641\u0627\u0642 \u0639\u0644\u0649 \u0641\u0626\u0629."
+            });
+            io.in(roomId).socketsLeave(roomId);
+            rooms.delete(roomId);
+          }
+        } else {
+          clearInterval(interval);
+        }
+      }, 1e3);
+      intervals.set(roomId, interval);
+    }, getCategoryImages = function(category, level = "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646") {
+      try {
+        const cleanCat = (category || "").trim();
+        const normCat = normalizeArabicText(cleanCat);
+        let customImages = db.prepare(
+          "SELECT id, name, timestamp FROM custom_images WHERE (category = ? OR lower(category) = ? OR category = ?) AND (level = ? OR level IS NULL OR level = '')"
+        ).all(cleanCat, cleanCat.toLowerCase(), normCat, level);
+        if (!customImages || customImages.length === 0) {
+          customImages = db.prepare(
+            "SELECT id, name, timestamp FROM custom_images WHERE category = ? OR lower(category) = ? OR category = ?"
+          ).all(cleanCat, cleanCat.toLowerCase(), normCat);
+        }
+        if (!customImages || customImages.length === 0) {
+          const diskList = [];
+          const seen = /* @__PURE__ */ new Set();
+          for (const [key, filePath] of diskImagesMap.entries()) {
+            if (key.startsWith(`${cleanCat.toLowerCase()}/`) || key.startsWith(`${normCat}/`)) {
+              const namePart = import_path.default.parse(filePath).name;
+              if (!seen.has(namePart)) {
+                seen.add(namePart);
+                diskList.push({
+                  id: `disk_${namePart}`,
+                  name: namePart,
+                  timestamp: Date.now()
+                });
+              }
+            }
+          }
+          if (diskList.length > 0) return diskList;
+        }
+        return customImages || [];
+      } catch (err) {
+        console.error("Error fetching custom images:", err);
+        return [];
+      }
+    }, startGame = function(roomId) {
+      const room = rooms.get(roomId);
+      if (!room || room.gameState !== "waiting" && room.gameState !== "custom_image_upload") {
+        return;
+      }
+      const p1 = room.players[0];
+      const p2 = room.players[1];
+      if (p1.selectedCategory && p1.selectedCategory === p2.selectedCategory && p1.selectedLevel === p2.selectedLevel) {
+        room.category = p1.selectedCategory;
+        room.level = p1.selectedLevel || "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+      }
+      if (!room.category && !room.isCustomImageMode) {
+        console.error(`[StartGame] No category selected for room ${roomId}`);
+        io.to(roomId).emit("game_stopped", {
+          reason: "\u0644\u0645 \u064A\u062A\u0645 \u0627\u062E\u062A\u064A\u0627\u0631 \u0641\u0626\u0629 \u0644\u0644\u0645\u0628\u0627\u0631\u0627\u0629."
+        });
+        io.in(roomId).socketsLeave(roomId);
+        rooms.delete(roomId);
+        return;
+      }
+      let categoryImages = [];
+      if (!room.isCustomImageMode) {
+        categoryImages = getCategoryImages(
+          room.category,
+          room.level || "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646"
+        );
+      }
+      const pool = [];
+      if (!room.isCustomImageMode) {
+        const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1e3;
+        categoryImages.forEach((img) => {
+          pool.push(img);
+          if (img.timestamp && img.timestamp > threeDaysAgo) {
+            pool.push(img);
+            pool.push(img);
+          }
+        });
+      }
+      const shuffled = pool.length > 0 ? [...pool].sort(() => 0.5 - Math.random()) : [];
+      if (!room.isCustomImageMode && shuffled.length === 0) {
+        io.to(roomId).emit("game_stopped", {
+          reason: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0635\u0648\u0631 \u0641\u064A \u0647\u0630\u0647 \u0627\u0644\u0641\u0626\u0629 \u062D\u0627\u0644\u064A\u0627\u064B."
+        });
+        io.in(roomId).socketsLeave(roomId);
+        rooms.delete(roomId);
+        return;
+      }
+      if (room.isCustomImageMode) {
+        room.players[0].targetImage = {
+          id: "c1",
+          name: room.customImages[room.players[1].id].name,
+          url: room.customImages[room.players[1].id].url || room.customImages[room.players[1].id].image
+        };
+        room.players[1].targetImage = {
+          id: "c2",
+          name: room.customImages[room.players[0].id].name,
+          url: room.customImages[room.players[0].id].url || room.customImages[room.players[0].id].image
+        };
+      } else {
+        let secondIdx = 1 % shuffled.length;
+        if (shuffled.length > 1) {
+          while (shuffled[secondIdx].name === shuffled[0].name && secondIdx < shuffled.length - 1) {
+            secondIdx++;
+          }
+        }
+        const p0 = shuffled[0];
+        const p12 = shuffled[secondIdx];
+        const p0Url = `/api/image/${encodeURIComponent(room.category)}/${encodeURIComponent(p0.name)}`;
+        const p1Url = `/api/image/${encodeURIComponent(room.category)}/${encodeURIComponent(p12.name)}`;
+        room.players[0].targetImage = {
+          id: p0.id,
+          name: p0.name,
+          category: room.category,
+          url: p0Url,
+          image: p0Url
+        };
+        room.players[1].targetImage = {
+          id: p12.id,
+          name: p12.name,
+          category: room.category,
+          url: p1Url,
+          image: p1Url
+        };
+      }
+      room.players[0].hintCount = 0;
+      room.players[1].hintCount = 0;
+      room.players[0].quickGuessUsed = false;
+      room.players[1].quickGuessUsed = false;
+      room.players[0].chatBuffer = "";
+      room.players[1].chatBuffer = "";
+      room.players[0].engChatBuffer = "";
+      room.players[1].engChatBuffer = "";
+      room.gameState = "discussion";
+      room.timer = 600;
+      room.startTime = Date.now();
+      room.isPaused = false;
+      room.isFrozen = false;
+      room.freezeTimer = 0;
+      room.adCooldownTimer = 0;
+      room.lastUpdates = null;
+      room.currentTurn = room.players[0].id;
+      room.waitingForAnswerFrom = null;
+      io.to(roomId).emit("room_update", room);
+      io.to(roomId).emit("game_started");
+      const bot = room.players.find((p) => p.isBot);
+      if (bot) {
+        handleBotEvent(roomId, "game_started", null);
+      }
+      if (intervals.has(roomId)) {
+        clearInterval(intervals.get(roomId));
+        intervals.delete(roomId);
+      }
+      const interval = setInterval(() => {
+        if (room.adPausedPlayers && room.adPausedPlayers.size > 0) {
+          return;
+        }
+        if (room.adCooldownTimer > 0) {
+          room.adCooldownTimer--;
+          io.to(roomId).emit("ad_cooldown_update", room.adCooldownTimer);
+          return;
+        }
+        if (room.isWaitingForJudgment) {
+          if (room.judgmentTimer > 0) {
+            room.judgmentTimer--;
+            io.to(roomId).emit("judgment_timer_update", room.judgmentTimer);
+          } else {
+            room.isWaitingForJudgment = false;
+            const guessingPlayer = room.players.find(
+              (p) => p.id === room.guessingPlayerId
+            );
+            if (guessingPlayer) {
+              endGame(roomId, guessingPlayer.name, false, true);
+            }
+          }
+          return;
+        }
+        if (room.isPaused) {
+          if (room.quickGuessTimer > 0) {
+            room.quickGuessTimer--;
+          }
+          if (room.quickGuessTimer <= 0) {
+            room.isPaused = false;
+            const pausingPlayerId = room.pausingPlayerId;
+            room.pausingPlayerId = null;
+            const opponent = room.players.find(
+              (p) => p.id !== pausingPlayerId
+            );
+            endGame(roomId, opponent ? opponent.name : "\u0627\u0644\u0645\u0646\u0627\u0641\u0633");
+          } else {
+            io.to(roomId).emit(
+              "quick_guess_timer_update",
+              room.quickGuessTimer
+            );
+          }
+          return;
+        }
+        if (room.isFrozen) {
+          if (room.freezeTimer > 0) {
+            room.freezeTimer--;
+            io.to(roomId).emit("freeze_timer_update", room.freezeTimer);
+          } else {
+            room.isFrozen = false;
+            room.freezeTimer = 0;
+            io.to(roomId).emit("freeze_ended");
+          }
+          return;
+        }
+        if (room.timer > 0) {
+          room.timer--;
+        }
+        if (room.timer <= 0) {
+          if (room.gameState === "discussion") {
+            room.gameState = "guessing";
+            room.timer = 60;
+            io.to(roomId).emit("room_update", room);
+            const bot2 = room.players.find((p) => p.isBot);
+            if (bot2) {
+              startBotGuessing(roomId);
+            }
+          } else {
+            if (intervals.has(roomId)) {
+              clearInterval(intervals.get(roomId));
+              intervals.delete(roomId);
+            }
+            endGame(roomId, null);
+          }
+        } else {
+          io.to(roomId).emit("timer_update", room.timer);
+        }
+      }, 1e3);
+      intervals.set(roomId, interval);
+    }, recordCollectionWin = function(playerSerial, imageName) {
+      try {
+        const normalizedName = normalizeEgyptian(imageName).toLowerCase();
+        let targetCategory = null;
+        let targetStage = null;
+        for (const category of COLLECTION_DATA) {
+          for (const stage of category.stages) {
+            if (stage.images.some(
+              (img) => normalizeEgyptian(img).toLowerCase() === normalizedName
+            )) {
+              targetCategory = category;
+              targetStage = stage;
+              break;
+            }
+          }
+          if (targetCategory) break;
+        }
+        if (!targetCategory || !targetStage) return;
+        if (targetStage.stage > 1) {
+          const previousStageClaimed = db.prepare(
+            `
+          SELECT 1 FROM claimed_collection_rewards 
+          WHERE player_serial = ? AND category_id = ? AND stage = ?
+        `
+          ).get(playerSerial, targetCategory.id, targetStage.stage - 1);
+          if (!previousStageClaimed) {
+            console.log(
+              `[Collection] Stage ${targetStage.stage} not unlocked for ${playerSerial}`
+            );
+            return;
+          }
+        }
+        db.prepare(
+          `
+        INSERT INTO player_collections (player_serial, image_name, count)
+        VALUES (?, ?, 1)
+        ON CONFLICT(player_serial, image_name) DO UPDATE SET count = MIN(count + 1, 15)
+      `
+        ).run(playerSerial, normalizedName);
+        const collection = db.prepare(`SELECT * FROM player_collections WHERE player_serial = ?`).all(playerSerial);
+        const collectionMap = new Map(
+          collection.map((c) => [c.image_name, c.count])
+        );
+        for (const category of COLLECTION_DATA) {
+          for (const stage of category.stages) {
+            const isStageComplete = stage.images.every((imgName) => {
+              const normImgName = normalizeEgyptian(imgName).toLowerCase();
+              return (collectionMap.get(normImgName) || 0) >= 5;
+            });
+            if (isStageComplete) {
+              console.log(
+                `[Collection] Stage ${stage.stage} complete for ${playerSerial}`
+              );
+              const alreadyClaimed = db.prepare(
+                `
+              SELECT 1 FROM claimed_collection_rewards 
+              WHERE player_serial = ? AND category_id = ? AND stage = ?
+            `
+              ).get(playerSerial, category.id, stage.stage);
+              if (!alreadyClaimed) {
+                console.log(
+                  `[Collection] Reward ready to be claimed for stage ${stage.stage} by ${playerSerial}`
+                );
+              } else {
+                console.log(
+                  `[Collection] Reward already claimed for stage ${stage.stage} by ${playerSerial}`
+                );
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error recording collection win:", error);
+      }
+    }, endGame = function(roomId, winnerName, isForced = false, isTrueWin = false) {
+      const room = rooms.get(roomId);
+      if (room) {
+        if (room.gameState === "finished") return;
+        if (intervals.has(roomId)) {
+          clearInterval(intervals.get(roomId));
+          intervals.delete(roomId);
+        }
+        room.gameState = "finished";
+        const winner = room.players.find((p) => p.name === winnerName);
+        const loser = room.players.find((p) => p.name !== winnerName);
+        room.winnerId = winner ? winner.id : null;
+        if (winner && loser && winner.serial && loser.serial) {
+          const p1Data = allPlayers.get(winner.serial);
+          const p2Data = allPlayers.get(loser.serial);
+          if (p1Data && p2Data && p1Data.ip && p1Data.fingerprint) {
+            if (p1Data.ip === p2Data.ip && p1Data.fingerprint === p2Data.fingerprint) {
+              const yesterday = Date.now() - 24 * 60 * 60 * 1e3;
+              if (!p1Data.lastSystemReportAt || p1Data.lastSystemReportAt <= yesterday) {
+                db.prepare(
+                  "INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason, roomId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                ).run(
+                  Math.random().toString(36).substr(2, 9),
+                  Date.now(),
+                  "SYSTEM",
+                  "\u0646\u0638\u0627\u0645 \u0627\u0644\u062D\u0645\u0627\u064A\u0629",
+                  winner.serial,
+                  winner.name,
+                  "\u0627\u0644\u0646\u0638\u0627\u0645 \u064A\u0634\u062A\u0628\u0647 \u0641\u064A \u0627\u0646 \u0627\u0644\u0644\u0627\u0639\u0628 \u064A\u063A\u0634 \u0623\u0648 \u064A\u062A\u0644\u0627\u0639\u0628 \u0628\u0627\u0644\u0646\u0642\u0627\u0637 (\u064A\u0644\u0639\u0628 \u0636\u062F \u062D\u0633\u0627\u0628\u0647 \u0627\u0644\u0622\u062E\u0631 \u0641\u064A \u0646\u0641\u0633 \u0627\u0644\u062C\u0647\u0627\u0632)",
+                  room.id
+                );
+                p1Data.lastSystemReportAt = Date.now();
+                savePlayerData(winner.serial);
+              }
+              if (!p2Data.lastSystemReportAt || p2Data.lastSystemReportAt <= yesterday) {
+                db.prepare(
+                  "INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason, roomId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                ).run(
+                  Math.random().toString(36).substr(2, 9),
+                  Date.now(),
+                  "SYSTEM",
+                  "\u0646\u0638\u0627\u0645 \u0627\u0644\u062D\u0645\u0627\u064A\u0629",
+                  loser.serial,
+                  loser.name,
+                  "\u0627\u0644\u0646\u0638\u0627\u0645 \u064A\u0634\u062A\u0628\u0647 \u0641\u064A \u0627\u0646 \u0627\u0644\u0644\u0627\u0639\u0628 \u064A\u063A\u0634 \u0623\u0648 \u064A\u062A\u0644\u0627\u0639\u0628 \u0628\u0627\u0644\u0646\u0642\u0627\u0637 (\u064A\u0644\u0639\u0628 \u0636\u062F \u062D\u0633\u0627\u0628\u0647 \u0627\u0644\u0622\u062E\u0631 \u0641\u064A \u0646\u0641\u0633 \u0627\u0644\u062C\u0647\u0627\u0632)",
+                  room.id
+                );
+                p2Data.lastSystemReportAt = Date.now();
+                savePlayerData(loser.serial);
+              }
+            }
+          }
+        }
+        const updates = {};
+        const duration = room.startTime ? Date.now() - room.startTime : 0;
+        const scale = Math.min(1, duration / 6e5);
+        const isEarlyForfeit = isForced && duration < 3e5 && winnerName !== null;
+        const shouldScale = isForced && duration < 3e5 || winnerName === null;
+        let refundWinnerToken = false;
+        if (winnerName === null) {
+          room.players.forEach((p) => {
+            let drawXP = !shouldScale ? 20 : Math.floor(20 * scale);
+            if (room.matchType === "private" || room.matchType === "friend") {
+              drawXP = 5;
+            }
+            if (p.level >= 50 && !p.useToken && room.matchType !== "private" && room.matchType !== "friend") {
+              drawXP = 0;
+            }
+            p.xp = (p.xp || 0) + drawXP;
+            if (room.matchType === "random" || room.matchType === void 0) {
+              p.randomXp = (p.randomXp !== void 0 ? p.randomXp : p.xp - drawXP) + drawXP;
+              p.streak = 0;
+            }
+            p.level = getLevel(p.xp);
+            updates[p.id] = {
+              xp: drawXP,
+              streak: p.streak || 0,
+              wins: p.wins || 0,
+              won: false,
+              level: p.level
+            };
+          });
+        } else {
+          if (winner) {
+            let effectiveStreak = Math.min(winner.streak || 0, 20);
+            let baseXP = 100 + effectiveStreak * 2;
+            if (room.matchType === "private" || room.matchType === "friend") {
+              baseXP = 20;
+            }
+            let winnerXP = !shouldScale ? baseXP : Math.floor(baseXP * scale);
+            if (isEarlyForfeit && winner.level >= 50 && room.matchType !== "private" && room.matchType !== "friend") {
+              winnerXP = 0;
+              if (winner.useToken) {
+                refundWinnerToken = true;
+              }
+            } else if (winner.level >= 50 && !winner.useToken && room.matchType !== "private" && room.matchType !== "friend") {
+              winnerXP = 0;
+            } else if (winner.useToken) {
+              let bonus = !shouldScale ? 500 : Math.floor(500 * scale);
+              winnerXP += bonus;
+            }
+            winner.xp = (winner.xp || 0) + winnerXP;
+            if (room.matchType === "random" || room.matchType === void 0) {
+              winner.randomXp = (winner.randomXp !== void 0 ? winner.randomXp : winner.xp - winnerXP) + winnerXP;
+            }
+            winner.level = getLevel(winner.xp);
+            if (isTrueWin) {
+              if (room.matchType === "random" || room.matchType === void 0) {
+                winner.streak = (winner.streak || 0) + 1;
+                winner.wins = (winner.wins || 0) + 1;
+                if (winner.serial && winner.targetImage) {
+                  recordCollectionWin(winner.serial, winner.targetImage.name);
+                }
+              }
+              if (winner.streak > 20) {
+                const p1Data = allPlayers.get(winner.serial);
+                if (p1Data) {
+                  const yesterday = Date.now() - 24 * 60 * 60 * 1e3;
+                  if (!p1Data.lastSystemReportAt || p1Data.lastSystemReportAt <= yesterday) {
+                    const reportId = Math.random().toString(36).substr(2, 9);
+                    db.prepare(
+                      "INSERT INTO reports (id, reporterSerial, reporterName, reportedSerial, reportedName, reason, timestamp, roomId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                    ).run(
+                      reportId,
+                      "SYSTEM",
+                      "\u0646\u0638\u0627\u0645 \u0627\u0644\u062D\u0645\u0627\u064A\u0629",
+                      winner.serial,
+                      winner.name,
+                      "\u0627\u0644\u0646\u0638\u0627\u0645 \u064A\u0634\u062A\u0628\u0647 \u0641\u064A \u0627\u0646 \u0627\u0644\u0644\u0627\u0639\u0628 \u064A\u063A\u0634 (\u0643\u062B\u0631\u0629 \u0627\u0644\u0641\u0648\u0632 \u0627\u0644\u0645\u062A\u062A\u0627\u0644\u064A \u0628\u0634\u0643\u0644 \u063A\u064A\u0631 \u0637\u0628\u064A\u0639\u064A \u062A\u062C\u0627\u0648\u0632 20 \u0645\u0628\u0627\u0631\u0627\u0629)",
+                      Date.now(),
+                      room.id
+                    );
+                    p1Data.lastSystemReportAt = Date.now();
+                    savePlayerData(winner.serial);
+                  }
+                }
+              }
+            }
+            updates[winner.id] = {
+              xp: winnerXP,
+              streak: winner.streak || 0,
+              wins: winner.wins || 0,
+              won: true,
+              level: winner.level,
+              useToken: winner.useToken
+            };
+          }
+          if (loser) {
+            let loserXP = !shouldScale ? 20 : Math.floor(20 * scale);
+            if (room.matchType === "private" || room.matchType === "friend") {
+              loserXP = 10;
+            }
+            if (loser.level >= 50 && !loser.useToken && room.matchType !== "private" && room.matchType !== "friend") {
+              loserXP = 0;
+            }
+            loser.xp = (loser.xp || 0) + loserXP;
+            if (room.matchType === "random" || room.matchType === void 0) {
+              loser.randomXp = (loser.randomXp !== void 0 ? loser.randomXp : loser.xp - loserXP) + loserXP;
+              loser.streak = 0;
+            }
+            loser.level = getLevel(loser.xp);
+            updates[loser.id] = {
+              xp: loserXP,
+              streak: loser.streak || 0,
+              wins: loser.wins || 0,
+              won: false,
+              level: loser.level,
+              useToken: loser.useToken
+            };
+          }
+        }
+        room.lastUpdates = updates;
+        io.to(roomId).emit("room_update", room);
+        if (botIntervals.has(roomId)) {
+          clearInterval(botIntervals.get(roomId));
+          botIntervals.delete(roomId);
+        }
+        if (botTimeouts.has(roomId + "_agree_timeout")) {
+          clearTimeout(botTimeouts.get(roomId + "_agree_timeout"));
+          botTimeouts.delete(roomId + "_agree_timeout");
+        }
+        botConversations.delete(roomId);
+        botConversations.delete(roomId + "_category_triggered");
+        room.players.forEach((p) => {
+          if (p.isBot) return;
+          const opponent = room.players.find((op) => op.id !== p.id);
+          const player = allPlayers.get(p.serial || "");
+          if (player) {
+            player.xp = p.xp;
+            if (p.randomXp !== void 0) player.randomXp = p.randomXp;
+            player.level = getLevel(p.xp);
+            if (p.wins !== void 0) {
+              player.wins = p.wins;
+            }
+            if (p.streak !== void 0) {
+              player.streak = p.streak;
+            }
+            if (opponent && !opponent.isBot && opponent.serial) {
+              if (!player.recentOpponents) {
+                player.recentOpponents = [];
+              }
+              player.recentOpponents = player.recentOpponents.filter(
+                (op) => op.serial !== opponent.serial
+              );
+              player.recentOpponents.unshift({
+                serial: opponent.serial,
+                name: opponent.name,
+                avatar: opponent.avatar,
+                selectedFrame: opponent.selectedFrame || "",
+                timestamp: Date.now(),
+                level: opponent.level || getLevel(opponent.xp || 0),
+                xp: opponent.xp || 0
+              });
+              if (player.recentOpponents.length > 10) {
+                player.recentOpponents = player.recentOpponents.slice(0, 10);
+              }
+            }
+            savePlayerData(p.serial);
+            if (p.useToken && (player.tokens || 0) > 0) {
+              const isRefundedWinner = p.id === winner?.id && refundWinnerToken;
+              if (!isRefundedWinner) {
+                if (player.rainGiftTokens && player.rainGiftTokens > 0) {
+                  player.rainGiftTokens -= 1;
+                } else if (player.luckyWheelTokens && player.luckyWheelTokens > 0) {
+                  player.luckyWheelTokens -= 1;
+                } else if (player.citySearchRewards) {
+                  const rewardIndex = player.citySearchRewards.findIndex(
+                    (r) => r.type === "token" && r.amount > 0
+                  );
+                  if (rewardIndex !== -1) {
+                    player.citySearchRewards[rewardIndex].amount -= 1;
+                    if (player.citySearchRewards[rewardIndex].amount <= 0) {
+                      player.citySearchRewards.splice(rewardIndex, 1);
+                    }
+                  }
+                }
+                player.tokens = (player.tokens || 0) - 1;
+              }
+            }
+            if (updates[p.id]) {
+              updates[p.id].tokens = player.tokens || 0;
+            }
+            savePlayerData(player.serial);
+            for (const [socketId, s] of io.sockets.sockets) {
+              if (s.data?.serial === player.serial) {
+                emitPlayerDataUpdate(io.to(socketId), player.serial, {
+                  serial: player.serial,
+                  ownedHelpers: player.ownedHelpers,
+                  xp: player.xp,
+                  level: player.level,
+                  wins: player.wins,
+                  streak: player.streak || 0,
+                  tokens: player.tokens,
+                  recentOpponents: player.recentOpponents
+                });
+                break;
+              }
+            }
+          } else {
+            for (const [serial, data] of allPlayers.entries()) {
+              if (data.name === p.name) {
+                data.xp = p.xp;
+                data.level = getLevel(p.xp);
+                data.wins = p.wins || 0;
+                if (opponent && !opponent.isBot && opponent.serial) {
+                  if (!data.recentOpponents) {
+                    data.recentOpponents = [];
+                  }
+                  data.recentOpponents = data.recentOpponents.filter(
+                    (op) => op.serial !== opponent.serial
+                  );
+                  data.recentOpponents.unshift({
+                    serial: opponent.serial,
+                    name: opponent.name,
+                    avatar: opponent.avatar,
+                    selectedFrame: opponent.selectedFrame || "",
+                    timestamp: Date.now(),
+                    level: opponent.level || getLevel(opponent.xp || 0),
+                    xp: opponent.xp || 0
+                  });
+                  if (data.recentOpponents.length > 10) {
+                    data.recentOpponents = data.recentOpponents.slice(0, 10);
+                  }
+                }
+                if (p.useToken && (data.tokens || 0) > 0) {
+                  data.tokens = (data.tokens || 0) - 1;
+                }
+                if (updates[p.id]) {
+                  updates[p.id].tokens = data.tokens || 0;
+                }
+                savePlayerData(serial);
+                for (const [socketId, s] of io.sockets.sockets) {
+                  if (s.data?.serial === serial) {
+                    emitPlayerDataUpdate(io.to(socketId), serial, {
+                      serial,
+                      ownedHelpers: data.ownedHelpers,
+                      xp: data.xp,
+                      level: data.level,
+                      wins: data.wins,
+                      streak: data.streak || 0,
+                      tokens: data.tokens,
+                      recentOpponents: data.recentOpponents
+                    });
+                    break;
+                  }
+                }
+                break;
+              }
+            }
+          }
+        });
+        updateHighestLikesGlobal();
+        updateHighestStreakGlobal();
+        io.to(roomId).emit("game_finished", {
+          room,
+          winnerId: room.winnerId,
+          updates
+        });
+      }
+    };
+    const getLevel = (xp) => Math.floor(Math.sqrt(xp / 50)) + 1;
+    const getQuickGuessWaitTime = (level) => {
+      return Math.max(3, 150 - (level - 1) * 3);
+    };
+    const getQuickGuessThreshold = (level) => {
+      return 600 - getQuickGuessWaitTime(level);
+    };
+    const app = (0, import_express.default)();
+    const httpServer = (0, import_http.createServer)(app);
+    const io = new import_socket.Server(httpServer, {
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "x-no-compression"],
+        credentials: true
+      },
+      transports: ["websocket"],
+      perMessageDeflate: {
+        threshold: 1024
+      },
+      httpCompression: true,
+      pingInterval: 3e4,
+      pingTimeout: 2e4
+    });
+    const PORT = 3e3;
+    app.use((req, res, next) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-no-compression");
+      if (req.method === "OPTIONS") {
+        return res.sendStatus(200);
+      }
+      next();
+    });
+    app.use(
+      (0, import_compression.default)({
+        threshold: 1024,
+        // Compress responses above 1KB
+        filter: (req, res) => {
+          if (req.headers["x-no-compression"]) {
+            return false;
+          }
+          return import_compression.default.filter(req, res);
+        }
+      })
+    );
+    app.use((req, res, next) => {
+      const isStaticOrNoisy = req.url.startsWith("/assets/") || req.url.startsWith("/uploads/") || req.url.startsWith("/game_images/") || req.url.startsWith("/api/image/") || req.url.startsWith("/socket.io/") || req.url.startsWith("/api/admin/push-stats") || req.url.startsWith("/api/admin/images") || req.url.startsWith("/api/push/scheduled") || req.url.match(
+        /\.(js|css|png|jpg|jpeg|gif|ico|svg|json|wav|mp3|mp4|woff|woff2|ttf|eot)$/i
+      );
+      if (!isStaticOrNoisy) {
+        console.log(`[REQUEST] ${req.method} ${req.url}`);
+      }
+      next();
+    });
+    app.use(import_express.default.json({ limit: "50mb" }));
+    app.use(
+      "/uploads",
+      import_express.default.static(import_path.default.join(process.cwd(), "public/uploads"), {
+        maxAge: "1y",
+        etag: true,
+        immutable: true,
+        setHeaders: (res) => {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      })
+    );
+    app.use(
+      import_express.default.static(import_path.default.join(process.cwd(), "public"), {
+        maxAge: "1y",
+        etag: true,
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith(".html") || filePath.endsWith("sw.js") || filePath.endsWith("manifest.json") || filePath.endsWith("manifest.webmanifest") || filePath.endsWith("version.json")) {
+            res.setHeader("Cache-Control", "no-cache, must-revalidate");
+          } else {
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          }
+        }
+      })
+    );
+    const getRedirectUri = (req) => {
+      if (process.env.APP_URL) {
+        const baseUrl = process.env.APP_URL.replace(/\/$/, "");
+        return `${baseUrl}/api/auth/google/callback`;
+      }
+      const protoHeader = req.headers["x-forwarded-proto"];
+      const hostHeader = req.headers["x-forwarded-host"];
+      const protocol = Array.isArray(protoHeader) ? protoHeader[0] : protoHeader || req.protocol;
+      const host = Array.isArray(hostHeader) ? hostHeader[0] : hostHeader || req.get("host");
+      const finalProtocol = process.env.NODE_ENV === "production" ? "https" : protocol;
+      return `${finalProtocol}://${host}/api/auth/google/callback`;
+    };
+    app.post("/api/paymob/pay-wallet", async (req, res) => {
+      try {
+        const { mobileNumber, paymentToken } = req.body;
+        const response = await fetch(
+          "https://accept.paymob.com/api/acceptance/payments/pay",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source: {
+                identifier: mobileNumber,
+                subtype: "WALLET"
+              },
+              payment_token: paymentToken
+            })
+          }
+        );
+        const data = await response.json();
+        if (data.redirect_url) {
+          return res.json({ url: data.redirect_url });
+        } else {
+          return res.status(400).json({ message: "\u0641\u0634\u0644 \u0627\u0644\u062D\u0635\u0648\u0644 \u0639\u0644\u0649 \u0631\u0627\u0628\u0637 \u0627\u0644\u062A\u062D\u0648\u064A\u0644", details: data });
+        }
+      } catch (error) {
+        console.error("Paymob wallet error:", error);
+        res.status(500).json({ message: "\u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u0627\u062A\u0635\u0627\u0644 \u0628\u0640 Paymob" });
+      }
+    });
+    app.post("/api/upload", upload.single("image"), (req, res) => {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      res.json({ filename: req.file.filename });
+    });
+    app.delete("/api/upload/:filename", (req, res) => {
+      const { filename } = req.params;
+      const filePath = import_path.default.join(process.cwd(), "public/uploads", filename);
+      if (import_fs.default.existsSync(filePath)) {
+        import_fs.default.unlinkSync(filePath);
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: "File not found" });
+      }
+    });
+    const APP_VERSION_FILE = import_path.default.join(process.cwd(), "version.json");
+    let currentVersion = "1.1.5";
+    if (import_fs.default.existsSync(APP_VERSION_FILE)) {
+      try {
+        const vData = JSON.parse(import_fs.default.readFileSync(APP_VERSION_FILE, "utf-8"));
+        currentVersion = vData.version || "1.1.1";
+      } catch (e) {
+        console.error("Error reading version.json:", e);
+      }
+    }
+    let isShuttingDown = false;
+    configCache = {
+      avatars: {},
+      frames: {},
+      stars: {},
+      aiBotEnabled: false,
+      quickChat: [],
+      version: currentVersion
+    };
+    let activeGlobalReward = null;
+    let gamePolicies = {
+      termsAr: "\u0627\u0644\u0634\u0631\u0648\u0637 \u0648\u0627\u0644\u0623\u062D\u0643\u0627\u0645 \u0627\u0644\u0627\u0641\u062A\u0631\u0627\u0636\u064A\u0629 \u0644\u0644\u0639\u0628\u0629 \u062E\u0645\u0646 \u062A\u062E\u0645\u064A\u0646\u0629.\n\n1. \u064A\u062C\u0628 \u0627\u062D\u062A\u0631\u0627\u0645 \u062C\u0645\u064A\u0639 \u0627\u0644\u0644\u0627\u0639\u0628\u064A\u0646.\n2. \u064A\u0645\u0646\u0639 \u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0623\u064A \u0628\u0631\u0627\u0645\u062C \u0645\u0633\u0627\u0639\u062F\u0629 \u0623\u0648 \u063A\u0634.\n3. \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u063A\u064A\u0631 \u0645\u0633\u0624\u0648\u0644\u0629 \u0639\u0646 \u0623\u064A \u062E\u0633\u0627\u0631\u0629 \u0644\u0644\u0628\u064A\u0627\u0646\u0627\u062A.",
+      termsEn: "Default Terms and Conditions for Guess Guess game.\n\n1. All players must be respected.\n2. Use of any helper programs or cheating is prohibited.\n3. The administration is not responsible for any data loss.",
+      privacyAr: "\u0633\u064A\u0627\u0633\u0629 \u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629 \u0644\u0644\u0639\u0628\u0629 \u062E\u0645\u0646 \u062A\u062E\u0645\u064A\u0646\u0629.\n\n1. \u0646\u062D\u0646 \u0646\u0642\u0648\u0645 \u0628\u062C\u0645\u0639 \u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629 \u0645\u062B\u0644 \u0627\u0644\u0627\u0633\u0645 \u0648\u0627\u0644\u0635\u0648\u0631\u0629 \u0627\u0644\u0631\u0645\u0632\u064A\u0629.\n2. \u0644\u0627 \u0646\u0642\u0648\u0645 \u0628\u0645\u0634\u0627\u0631\u0643\u0629 \u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u0645\u0639 \u0623\u064A \u0637\u0631\u0641 \u062B\u0627\u0644\u062B.\n3. \u064A\u062A\u0645 \u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0644\u062A\u062D\u0633\u064A\u0646 \u062A\u062C\u0631\u0628\u0629 \u0627\u0644\u0644\u0639\u0628 \u0641\u0642\u0637.",
+      privacyEn: "Privacy Policy for Guess Guess game.\n\n1. We collect your basic data such as name and avatar.\n2. We do not share your data with any third party.\n3. Data is used only to improve the gaming experience.",
+      isRainGiftEnabled: true
+    };
+    const configPath = import_path.default.join(process.cwd(), "public/uploads/config.json");
+    if (import_fs.default.existsSync(configPath)) {
+      try {
+        configCache = JSON.parse(import_fs.default.readFileSync(configPath, "utf-8"));
+        if (currentVersion) {
+          configCache.version = currentVersion;
+        }
+      } catch (e) {
+        console.error("Error reading config:", e);
+      }
+    }
+    const botAnswersPath = import_path.default.join(
+      process.cwd(),
+      "public/uploads/bot_answers.json"
+    );
+    if (import_fs.default.existsSync(botAnswersPath)) {
+      try {
+        botAnswersCache = JSON.parse(import_fs.default.readFileSync(botAnswersPath, "utf-8"));
+        console.log(
+          `[BotAnswers] Loaded ${Object.keys(botAnswersCache).length} categories`
+        );
+        console.log("[BotAnswers] Loaded successfully.");
+      } catch (e) {
+        console.error("Error reading bot_answers:", e);
+      }
+    }
+    const manifestHandler = (req, res) => {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      const version = configCache.version || "1.1.1";
+      const iconPath = `/icon-3.png`;
+      res.json({
+        id: "/",
+        name: "\u062E\u0645\u0646 \u062A\u062E\u0645\u064A\u0646\u0629",
+        short_name: "\u062E\u0645\u0646 \u062A\u062E\u0645\u064A\u0646\u0629",
+        description: "\u0645\u0646\u0635\u0629 \u062E\u0645\u0646 \u062A\u062E\u0645\u064A\u0646\u0629 \u0644\u0644\u0623\u0644\u0639\u0627\u0628 \u0627\u0644\u062C\u0645\u0627\u0639\u064A\u0629 \u0623\u0648\u0646\u0644\u0627\u064A\u0646! \u062A\u0636\u0645 \u0623\u0643\u062B\u0631 \u0645\u0646 13 \u0644\u0639\u0628\u0629 \u0645\u0645\u062A\u0639\u0629 \u0645\u062B\u0644 \u062A\u062E\u0645\u064A\u0646 \u0627\u0644\u0635\u0648\u0631\u060C \u0633\u0628\u0627\u0642 \u0627\u0644\u062A\u062E\u0645\u064A\u0646\u060C \u0628\u0627\u0632\u0644\u060C \u0648\u0648\u0631\u062F\u0644\u060C \u0648\u0623\u062A\u0648\u0628\u064A\u0633 \u0643\u0648\u0645\u0628\u0644\u064A\u062A. \u0627\u0644\u0639\u0628 \u0648\u062A\u062D\u062F\u0651 \u0623\u0635\u062F\u0642\u0627\u0626\u0643 \u0627\u0644\u0622\u0646 \u0645\u0639 \u0623\u0644\u0639\u0627\u0628 \u062C\u062F\u064A\u062F\u0629 \u0628\u0627\u0633\u062A\u0645\u0631\u0627\u0631.",
+        start_url: "/",
+        display: "standalone",
+        background_color: "#ffffff",
+        theme_color: "#ffffff",
+        icons: [
+          {
+            src: "/icon-3.png",
+            sizes: "144x144",
+            purpose: "any",
+            type: "image/png"
+          },
+          {
+            src: "/icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "/icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any"
+          }
+        ],
+        screenshots: [
+          {
+            src: "/screenshot-mobile.png",
+            sizes: "1080x1920",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "Game Play on Mobile"
+          },
+          {
+            src: "/screenshot-desktop.png",
+            sizes: "1920x1080",
+            type: "image/png",
+            form_factor: "wide",
+            label: "Game Play on Desktop"
+          }
+        ]
+      });
+    };
+    app.get("/manifest.json", manifestHandler);
+    app.get("/manifest.webmanifest", manifestHandler);
+    app.get("/icon-3.png", (req, res) => {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      const iconFile = import_path.default.join(process.cwd(), "dist", "icon-3.png");
+      const publicIconFile = import_path.default.join(process.cwd(), "public", "icon-3.png");
+      const rootIconFile = import_path.default.join(process.cwd(), "icon-3.png");
+      if (import_fs.default.existsSync(iconFile)) {
+        res.sendFile(iconFile);
+      } else if (import_fs.default.existsSync(publicIconFile)) {
+        res.sendFile(publicIconFile);
+      } else if (import_fs.default.existsSync(rootIconFile)) {
+        res.sendFile(rootIconFile);
+      } else {
+        res.status(404).send("Icon not found");
+      }
+    });
+    app.post("/api/config", async (req, res) => {
+      console.log("[API] Received config update:", req.body);
+      configCache = req.body;
+      import_fs.default.writeFileSync(configPath, JSON.stringify(req.body, null, 2));
+      try {
+        db.prepare(
+          "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+        ).run("game_config", JSON.stringify(req.body));
+      } catch (dbErr) {
+        console.error("[Config DB] Failed to save config to DB:", dbErr);
+      }
+      if (req.body.version) {
+        try {
+          import_fs.default.writeFileSync(
+            APP_VERSION_FILE,
+            JSON.stringify({ version: req.body.version }, null, 2)
+          );
+        } catch (e) {
+          console.error("Error updating version.json:", e);
+        }
+      }
+      io.emit("config_updated", req.body);
+      res.json({ success: true });
+    });
+    app.get("/api/admin/download-config", (req, res) => {
+      if (import_fs.default.existsSync(configPath)) {
+        res.download(configPath, "config.json");
+      } else {
+        res.status(404).json({ error: "Config file not found" });
+      }
+    });
+    app.post(
+      "/api/admin/upload-config",
+      upload.single("config"),
+      async (req, res) => {
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+        try {
+          const newConfig = JSON.parse(import_fs.default.readFileSync(req.file.path, "utf-8"));
+          configCache = newConfig;
+          import_fs.default.writeFileSync(configPath, JSON.stringify(newConfig, null, 2));
+          try {
+            if (newConfig.mockAdImage !== void 0) {
+              db.prepare(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+              ).run("mockAdImage", newConfig.mockAdImage || "");
+            }
+            if (newConfig.mockAdLink !== void 0) {
+              db.prepare(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+              ).run("mockAdLink", newConfig.mockAdLink || "");
+            }
+          } catch (dbErr) {
+            console.error(
+              "[Config DB] Failed to save mock ad to DB from upload:",
+              dbErr
+            );
+          }
+          import_fs.default.unlinkSync(req.file.path);
+          io.emit("config_updated", newConfig);
+          res.json({ success: true });
+        } catch (e) {
+          console.error("Error uploading config:", e);
+          res.status(400).json({ error: "Invalid JSON format" });
+        }
+      }
+    );
+    app.get("/api/config", (req, res) => {
+      res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
+      res.json({
+        ...configCache,
+        maintenance: process.env.MAINTENANCE_MODE === "true"
+      });
+    });
+    app.get("/api/admin/bot-answers", (req, res) => {
+      res.json(botAnswersCache);
+    });
+    app.post("/api/admin/bot-answers", async (req, res) => {
+      try {
+        const newAnswers = req.body;
+        const botAnswersPath2 = import_path.default.join(
+          process.cwd(),
+          "public/uploads/bot_answers.json"
+        );
+        import_fs.default.writeFileSync(botAnswersPath2, JSON.stringify(newAnswers, null, 2));
+        botAnswersCache = newAnswers;
+        console.log("[BotAnswers] Updated via API");
+        res.json({ success: true });
+      } catch (e) {
+        console.error("Error saving bot answers:", e);
+        res.status(500).json({ error: e.message });
+      }
+    });
+    app.get("/api/version", (req, res) => {
+      res.setHeader("Cache-Control", "public, max-age=30");
+      res.json({ version: configCache.version || "1.1.1" });
+    });
+    app.get("/api/maintenance", (req, res) => {
+      res.setHeader("Cache-Control", "public, max-age=60");
+      res.json({ maintenance: process.env.MAINTENANCE_MODE === "true" });
+    });
+    app.get("/api/push/public-key", (req, res) => {
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.json({ publicKey: vapidKeys.publicKey });
+    });
+    app.post("/api/push/subscribe", import_express.default.json(), (req, res) => {
+      const { serial, subscription } = req.body;
+      if (!subscription)
+        return res.status(400).json({ error: "No subscription provided" });
+      try {
+        const subStr = JSON.stringify(subscription);
+        const existing = db.prepare(
+          "SELECT id, serial FROM push_subscriptions WHERE subscription = ?"
+        ).get(subStr);
+        if (!existing) {
+          db.prepare(
+            "INSERT INTO push_subscriptions (serial, subscription, timestamp) VALUES (?, ?, ?)"
+          ).run(serial || null, subStr, Date.now());
+        } else if (serial && existing.serial !== serial) {
+          db.prepare(
+            "UPDATE push_subscriptions SET serial = ? WHERE id = ?"
+          ).run(serial, existing.id);
+        }
+        if (serial) {
+          db.prepare(
+            "UPDATE players SET notificationsEnabled = 1 WHERE serial = ?"
+          ).run(serial);
+          const p = allPlayers.get(serial);
+          if (p) p.notificationsEnabled = 1;
+        }
+        res.status(201).json({ success: true });
+      } catch (err) {
+        console.error("Failed to save push subscription:", err);
+        res.status(500).json({ error: "Failed to save subscription" });
+      }
+    });
+    app.post("/api/push/unsubscribe", import_express.default.json(), (req, res) => {
+      const { serial, subscription } = req.body;
+      if (!subscription)
+        return res.status(400).json({ error: "No subscription provided" });
+      try {
+        const subStr = JSON.stringify(subscription);
+        db.prepare("DELETE FROM push_subscriptions WHERE subscription = ?").run(
+          subStr
+        );
+        if (serial) {
+          db.prepare(
+            "UPDATE players SET notificationsEnabled = 0 WHERE serial = ?"
+          ).run(serial);
+          const p = allPlayers.get(serial);
+          if (p) p.notificationsEnabled = 0;
+        }
+        res.json({ success: true });
+      } catch (err) {
+        console.error("Failed to remove push subscription:", err);
+        res.status(500).json({ error: "Failed to remove subscription" });
+      }
+    });
+    app.get("/api/admin/push-stats", (req, res) => {
+      const token = req.query.token;
+      if (!adminTokens.has(token))
+        return res.status(403).json({ error: "Unauthorized" });
+      const stats = db.prepare(
+        `
+      SELECT COUNT(DISTINCT ps.serial) as count 
+      FROM push_subscriptions ps
+      INNER JOIN players p ON ps.serial = p.serial
+      WHERE p.notificationsEnabled = 1
+    `
+      ).get();
+      const totalPlayers = db.prepare("SELECT COUNT(*) as count FROM players").get();
+      res.json({
+        count: stats.count || 0,
+        totalPlayers: totalPlayers.count || 0
+      });
+    });
+    app.post("/api/push/send", import_express.default.json(), async (req, res) => {
+      const { title, body, url, sendToBell, adminToken } = req.body;
+      if (!adminTokens.has(adminToken))
+        return res.status(403).json({ error: "Unauthorized" });
+      const subscriptions = db.prepare("SELECT subscription, serial FROM push_subscriptions").all();
+      const payload = JSON.stringify({ title, body, url: url || "/" });
+      console.log(
+        `[Push] Sending notification to ${subscriptions.length} devices...`
+      );
+      res.json({
+        success: true,
+        sentCount: subscriptions.length,
+        totalAttempted: subscriptions.length,
+        isBackground: true
+      });
+      setTimeout(async () => {
+        const BATCH_SIZE = 50;
+        const DELAY_MS = 1e3;
+        for (let i = 0; i < subscriptions.length; i += BATCH_SIZE) {
+          const batch = subscriptions.slice(i, i + BATCH_SIZE);
+          await Promise.all(
+            batch.map(async (sub) => {
+              try {
+                const subscription = JSON.parse(sub.subscription);
+                await import_web_push.default.sendNotification(subscription, payload);
+              } catch (err) {
+                if (err.statusCode === 410 || err.statusCode === 404) {
+                  db.prepare(
+                    "DELETE FROM push_subscriptions WHERE subscription = ?"
+                  ).run(sub.subscription);
+                }
+              }
+            })
+          );
+          if (i + BATCH_SIZE < subscriptions.length) {
+            await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+          }
+        }
+        if (sendToBell) {
+          const allPlayerRecords = db.prepare("SELECT serial FROM players").all();
+          const insertMessage = db.prepare(
+            "INSERT INTO admin_messages (playerSerial, message, timestamp) VALUES (?, ?, ?)"
+          );
+          const now = Date.now();
+          const messageWithTitle = title + "\n\n" + body;
+          const transaction = db.transaction(() => {
+            for (const p of allPlayerRecords) {
+              if (p.serial) {
+                insertMessage.run(p.serial, messageWithTitle, now);
+              }
+            }
+          });
+          try {
+            transaction();
+            io.emit("new_admin_message");
+          } catch (e) {
+            console.error("Failed to send to bell:", e);
+          }
+        }
+        console.log(
+          `[Push] Finished background sending to ${subscriptions.length} devices.`
+        );
+      }, 0);
+    });
+    app.get("/api/push/scheduled", import_express.default.json(), (req, res) => {
+      const adminToken = req.query.adminToken;
+      if (!adminTokens.has(adminToken))
+        return res.status(403).json({ error: "Unauthorized" });
+      const scheduled = db.prepare(
+        "SELECT * FROM scheduled_push_notifications ORDER BY scheduledAt ASC"
+      ).all();
+      res.json(scheduled);
+    });
+    app.post("/api/push/schedule", import_express.default.json(), (req, res) => {
+      const { title, body, url, scheduledTimes, sendToBell, adminToken } = req.body;
+      if (!adminTokens.has(adminToken))
+        return res.status(403).json({ error: "Unauthorized" });
+      const groupId = Math.random().toString(36).substring(2, 15);
+      const createdAt = Date.now();
+      const insert = db.prepare(`
+      INSERT INTO scheduled_push_notifications (id, title, body, url, scheduledAt, createdAt, status, groupId, sendToBell)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+    `);
+      const transaction = db.transaction((times) => {
+        for (const time of times) {
+          const id = Math.random().toString(36).substring(2, 15);
+          insert.run(
+            id,
+            title,
+            body,
+            url || "/",
+            time,
+            createdAt,
+            groupId,
+            sendToBell ? 1 : 0
+          );
+        }
+      });
+      transaction(scheduledTimes);
+      res.json({ success: true, groupId });
+    });
+    app.delete("/api/push/scheduled/:id", import_express.default.json(), (req, res) => {
+      const adminToken = req.query.adminToken;
+      if (!adminTokens.has(adminToken))
+        return res.status(403).json({ error: "Unauthorized" });
+      db.prepare(
+        "DELETE FROM scheduled_push_notifications WHERE id = ? OR groupId = ?"
+      ).run(req.params.id, req.params.id);
+      res.json({ success: true });
+    });
+    setInterval(
+      () => {
+        if (isShuttingDown || !db || !db.open) return;
+        try {
+          const today = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Africa/Cairo"
+          }).format(/* @__PURE__ */ new Date());
+          let lastCheckDaySetting = db.prepare(
+            "SELECT value FROM settings WHERE key = 'last_top_player_check_day'"
+          ).get();
+          let lastCheckDay = lastCheckDaySetting?.value;
+          if (lastCheckDay === today) return;
+          const topPlayers = getTopPlayers();
+          if (topPlayers.length === 0) return;
+          const currentTopPlayer = topPlayers[0];
+          let currentTopSerialSetting = db.prepare(
+            "SELECT value FROM settings WHERE key = 'current_top_player_serial'"
+          ).get();
+          let topPlayerStreakSetting = db.prepare(
+            "SELECT value FROM settings WHERE key = 'top_player_days_streak'"
+          ).get();
+          const currentTopSerial = currentTopSerialSetting?.value;
+          let streak = topPlayerStreakSetting ? parseInt(topPlayerStreakSetting.value, 10) : 0;
+          const now = Date.now();
+          if (!currentTopSerial || currentTopSerial !== currentTopPlayer.serial) {
+            db.prepare(
+              "INSERT OR REPLACE INTO settings (key, value) VALUES ('current_top_player_serial', ?)"
+            ).run(currentTopPlayer.serial);
+            db.prepare(
+              "INSERT OR REPLACE INTO settings (key, value) VALUES ('top_player_days_streak', '1')"
+            ).run();
+          } else {
+            streak += 1;
+            if (streak >= 7) {
+              const playerRecord = allPlayers.get(currentTopPlayer.serial);
+              if (playerRecord) {
+                playerRecord.tokens = (playerRecord.tokens || 0) + 10;
+                playerRecord.keys = (playerRecord.keys || 0) + 50;
+                playerRecord.proPackageExpiry = Math.max(playerRecord.proPackageExpiry || now, now) + 24 * 60 * 60 * 1e3;
+                db.prepare(
+                  "UPDATE players SET tokens = ?, keys = ?, proPackageExpiry = ? WHERE serial = ?"
+                ).run(
+                  playerRecord.tokens,
+                  playerRecord.keys,
+                  playerRecord.proPackageExpiry,
+                  playerRecord.serial
+                );
+                const notificationId = Math.random().toString(36).substring(2, 11);
+                const msgTitle = "\u0647\u062F\u064A\u0629 \u0645\u062C\u0627\u0646\u064A\u0629 \u0644\u062D\u0641\u0627\u0638\u0643 \u0639\u0644\u064A \u0627\u0644\u062A\u0631\u062A\u064A\u0628 \u0627\u0644\u0627\u0648\u0644 \u0644\u0645\u062F\u0629 \u0627\u0633\u0628\u0648\u0639 \u{1F60D}.";
+                const msgBody = "( 10 \u062A\u062E\u0645\u064A\u0646\u0627\u062A, 1 \u064A\u0648\u0645 \u0628\u0627\u0642\u0629 \u0627\u0644\u0645\u062D\u062A\u0631\u0641\u064A\u0646, 50 \u0645\u0641\u062A\u0627\u062D )\n\u062D\u0627\u0641\u0638 \u0639\u0644\u064A \u062A\u0631\u062A\u064A\u0628\u0643 \u0627\u0644\u0623\u0648\u0644, \u0644\u062A\u062D\u0635\u0644 \u0639\u0644\u064A \u0647\u062F\u064A\u0629 \u{1F381} \u0643\u0644 \u0627\u0633\u0628\u0648\u0639.";
+                const fullMsg = msgTitle + "\n\n" + msgBody;
+                try {
+                  db.prepare(
+                    "INSERT INTO admin_messages (id, playerSerial, message, timestamp) VALUES (?, ?, ?, ?)"
+                  ).run(notificationId, playerRecord.serial, fullMsg, now);
+                  io.emit("new_admin_message");
+                } catch (e) {
+                  db.prepare(
+                    "INSERT INTO admin_messages (playerSerial, message, timestamp) VALUES (?, ?, ?)"
+                  ).run(playerRecord.serial, fullMsg, now);
+                  io.emit("new_admin_message");
+                }
+                const subscriptions = db.prepare("SELECT subscription FROM push_subscriptions WHERE serial = ?").all(playerRecord.serial);
+                if (subscriptions.length > 0) {
+                  const payload = JSON.stringify({
+                    title: "\u0645\u0628\u0631\u0648\u0643 \u0628\u0637\u0644 \u0627\u0644\u062A\u0631\u062A\u064A\u0628! \u{1F3C6}",
+                    body: msgTitle,
+                    url: "/"
+                  });
+                  subscriptions.forEach((sub) => {
+                    try {
+                      const subscription = JSON.parse(sub.subscription);
+                      import_web_push.default.sendNotification(subscription, payload).catch((err) => {
+                        if (err.statusCode === 410 || err.statusCode === 404) {
+                          db.prepare(
+                            "DELETE FROM push_subscriptions WHERE subscription = ?"
+                          ).run(sub.subscription);
+                        }
+                      });
+                    } catch (e) {
+                    }
+                  });
+                }
+              }
+              streak = 0;
+            }
+            db.prepare(
+              "INSERT OR REPLACE INTO settings (key, value) VALUES ('top_player_days_streak', ?)"
+            ).run(streak.toString());
+          }
+          db.prepare(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('last_top_player_check_day', ?)"
+          ).run(today);
+        } catch (err) {
+          console.error("Error in weekly top player reward worker:", err);
+        }
+      },
+      60 * 60 * 1e3
+    );
+    setInterval(async () => {
+      if (isShuttingDown || !db || !db.open) return;
+      const now = Date.now();
+      const pendingNotifications = db.prepare(
+        `
+      SELECT * FROM scheduled_push_notifications 
+      WHERE status = 'pending' AND scheduledAt <= ?
+    `
+      ).all(now);
+      for (const notification of pendingNotifications) {
+        db.prepare(
+          "UPDATE scheduled_push_notifications SET status = 'sending' WHERE id = ?"
+        ).run(notification.id);
+        const subscriptions = db.prepare("SELECT subscription, serial FROM push_subscriptions").all();
+        const payload = JSON.stringify({
+          title: notification.title,
+          body: notification.body,
+          url: notification.url || "/"
+        });
+        console.log(
+          `[Push] Sending scheduled notification "${notification.title}" to ${subscriptions.length} devices in batches...`
+        );
+        const BATCH_SIZE = 50;
+        const DELAY_MS = 1e3;
+        for (let i = 0; i < subscriptions.length; i += BATCH_SIZE) {
+          const batch = subscriptions.slice(i, i + BATCH_SIZE);
+          await Promise.all(
+            batch.map(async (sub) => {
+              try {
+                const subscription = JSON.parse(sub.subscription);
+                await import_web_push.default.sendNotification(subscription, payload);
+              } catch (err) {
+                if (err.statusCode === 410 || err.statusCode === 404) {
+                  db.prepare(
+                    "DELETE FROM push_subscriptions WHERE subscription = ?"
+                  ).run(sub.subscription);
+                }
+              }
+            })
+          );
+          if (i + BATCH_SIZE < subscriptions.length) {
+            await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+          }
+        }
+        if (notification.sendToBell) {
+          try {
+            const allPlayerRecords = db.prepare("SELECT serial FROM players").all();
+            const insertMessage = db.prepare(
+              "INSERT INTO admin_messages (playerSerial, message, timestamp) VALUES (?, ?, ?)"
+            );
+            const nowTime = Date.now();
+            const messageWithTitle = notification.title + "\n\n" + notification.body;
+            db.transaction(() => {
+              for (const p of allPlayerRecords) {
+                if (p.serial) {
+                  insertMessage.run(p.serial, messageWithTitle, nowTime);
+                }
+              }
+            })();
+            io.emit("new_admin_message");
+          } catch (e) {
+            console.error("Failed to send scheduled push to bell:", e);
+          }
+        }
+        db.prepare(
+          "UPDATE scheduled_push_notifications SET status = 'sent' WHERE id = ?"
+        ).run(notification.id);
+      }
+    }, 6e4);
+    app.get("/api/auth/google/url", (req, res) => {
+      const redirectUri = getRedirectUri(req);
+      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email%20profile`;
+      res.json({ url });
+    });
+    app.get("/api/auth/google/callback", async (req, res) => {
+      console.log("Received callback request:", req.url);
+      const { code } = req.query;
+      const redirectUri = getRedirectUri(req);
+      console.log("Constructed Redirect URI:", redirectUri);
+      try {
+        const tokenResponse = await import_axios.default.post(
+          "https://oauth2.googleapis.com/token",
+          {
+            code,
+            client_id: GOOGLE_CLIENT_ID,
+            client_secret: GOOGLE_CLIENT_SECRET,
+            redirect_uri: redirectUri,
+            grant_type: "authorization_code"
+          }
+        );
+        const { access_token } = tokenResponse.data;
+        const userResponse = await import_axios.default.get(
+          "https://www.googleapis.com/oauth2/v2/userinfo",
+          {
+            headers: { Authorization: `Bearer ${access_token}` }
+          }
+        );
+        const { email, name, picture } = userResponse.data;
+        const isAdmin = email === "adhamsabry.co@gmail.com";
+        let adminToken = null;
+        if (isAdmin) {
+          adminToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          adminTokens.add(adminToken);
+        }
+        const payload = {
+          admin_auth: "success",
+          adminToken: adminToken || "",
+          email: email || "",
+          name: name || "",
+          picture: picture || "",
+          isAdmin: isAdmin ? "true" : "false"
+        };
+        res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', payload: ${JSON.stringify(payload)} }, '*');
+                window.close();
+              } else {
+                try {
+                  const payload = ${JSON.stringify(payload)};
+                  if (payload.isAdmin === "true") {
+                    localStorage.setItem("khamin_is_admin", "true");
+                    localStorage.setItem("khamin_admin_email", payload.email || "");
+                    localStorage.setItem("khamin_admin_token", payload.adminToken || "");
+                    window.location.href = "/";
+                  } else {
+                    document.body.innerHTML = 'Authentication successful. You can close this window.';
+                  }
+                } catch (e) {
+                  document.body.innerHTML = 'Authentication successful. You can close this window.';
+                }
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      } catch (error) {
+        console.error(
+          "Google Auth Error:",
+          error.response?.data || error.message
+        );
+        const errorDetails = error.response?.data || error.message;
+        let arabicReason = "\u062D\u062F\u062B \u062E\u0637\u0623 \u063A\u064A\u0631 \u0645\u0639\u0631\u0648\u0641.";
+        if (errorDetails?.error === "redirect_uri_mismatch") {
+          arabicReason = "\u0631\u0627\u0628\u0637 \u0627\u0644\u062A\u062D\u0648\u064A\u0644 (Redirect URI) \u063A\u064A\u0631 \u0645\u062A\u0637\u0627\u0628\u0642 \u0645\u0639 \u0627\u0644\u0645\u0633\u062C\u0644 \u0641\u064A Google Cloud.";
+        } else if (errorDetails?.error === "invalid_client") {
+          arabicReason = "\u0628\u064A\u0627\u0646\u0627\u062A GOOGLE_CLIENT_ID \u0623\u0648 GOOGLE_CLIENT_SECRET \u063A\u064A\u0631 \u0635\u062D\u064A\u062D\u0629.";
+        } else if (errorDetails?.error === "invalid_grant") {
+          arabicReason = "\u0627\u0644\u0643\u0648\u062F \u0645\u0646\u062A\u0647\u064A \u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0629 \u0623\u0648 \u062A\u0645 \u0627\u0633\u062A\u062E\u062F\u0627\u0645\u0647 \u0628\u0627\u0644\u0641\u0639\u0644. \u064A\u0631\u062C\u0649 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629 \u0645\u0631\u0629 \u0623\u062E\u0631\u0649.";
+        }
+        res.status(500).send(`
+        <html dir="rtl">
+          <body style="font-family: 'Cairo', sans-serif; padding: 20px; text-align: center; background-color: #fef2f2;">
+            <h2 style="color: #dc2626;">\u0641\u0634\u0644 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644</h2>
+            <p style="font-size: 18px;">\u0627\u0644\u0633\u0628\u0628 \u0627\u0644\u0645\u062D\u062A\u0645\u0644: <strong>${arabicReason}</strong></p>
+            
+            <div style="margin-top: 30px; padding: 15px; background: #fff; border: 1px solid #fca5a5; border-radius: 8px; text-align: left; direction: ltr;">
+              <p style="margin-top: 0; color: #666;">\u062A\u0641\u0627\u0635\u064A\u0644 \u0627\u0644\u062E\u0637\u0623 \u0627\u0644\u062A\u0642\u0646\u064A (\u0644\u0644\u0645\u0637\u0648\u0631):</p>
+              <pre style="background: #f1f5f9; padding: 10px; border-radius: 5px; overflow-x: auto;">${JSON.stringify(errorDetails, null, 2)}</pre>
+              <p>Constructed Redirect URI: <br><strong>${redirectUri}</strong></p>
+            </div>
+            
+            <a href="/" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 5px; cursor: pointer; text-decoration: none;">\u0627\u0644\u0639\u0648\u062F\u0629 \u0644\u0644\u0631\u0626\u064A\u0633\u064A\u0629</a>
+          </body>
+        </html>
+      `);
+      }
+    });
+    const getWinningLines = (size, winLength) => {
+      const lines = [];
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c <= size - winLength; c++) {
+          const line = [];
+          for (let i = 0; i < winLength; i++) line.push(r * size + c + i);
+          lines.push(line);
+        }
+      }
+      for (let c = 0; c < size; c++) {
+        for (let r = 0; r <= size - winLength; r++) {
+          const line = [];
+          for (let i = 0; i < winLength; i++) line.push((r + i) * size + c);
+          lines.push(line);
+        }
+      }
+      for (let r = 0; r <= size - winLength; r++) {
+        for (let c = 0; c <= size - winLength; c++) {
+          const line = [];
+          for (let i = 0; i < winLength; i++) line.push((r + i) * size + c + i);
+          lines.push(line);
+        }
+      }
+      for (let r = 0; r <= size - winLength; r++) {
+        for (let c = winLength - 1; c < size; c++) {
+          const line = [];
+          for (let i = 0; i < winLength; i++) line.push((r + i) * size + c - i);
+          lines.push(line);
+        }
+      }
+      return lines;
+    };
+    const getXOTimerLimit = (size) => {
+      if (size <= 5) return 120;
+      if (size <= 8) return 180;
+      return 300;
+    };
+    const rooms = /* @__PURE__ */ new Map();
+    const intervals = /* @__PURE__ */ new Map();
+    const matchmakingQueue = [];
+    const matchmakingInterval = setInterval(() => {
+      processQueue();
+    }, 1e3);
+    setInterval(() => {
+      if (!rooms) return;
+      const now = Date.now();
+      for (const [roomId, room] of rooms.entries()) {
+        if (!room) continue;
+        const players = room.players || [];
+        const hasBot = players.some((p) => p.isBot);
+        const humanPlayers = players.filter((p) => !p.isBot);
+        if (humanPlayers.length === 0) {
+          if (intervals.has(roomId)) {
+            clearInterval(intervals.get(roomId));
+            intervals.delete(roomId);
+          }
+          if (botIntervals.has(roomId)) {
+            clearInterval(botIntervals.get(roomId));
+            botIntervals.delete(roomId);
+          }
+          rooms.delete(roomId);
+          continue;
+        }
+        const roomFinished = isRoomFinished(room);
+        if (hasBot) {
+          if (roomFinished) {
+            if (!room.finishedAt) room.finishedAt = now;
+            if (now - room.finishedAt > 15 * 60 * 1e3) {
+              if (intervals.has(roomId)) {
+                clearInterval(intervals.get(roomId));
+                intervals.delete(roomId);
+              }
+              if (botIntervals.has(roomId)) {
+                clearInterval(botIntervals.get(roomId));
+                botIntervals.delete(roomId);
+              }
+              rooms.delete(roomId);
+              continue;
+            }
+          }
+          const allHumansDisconnected = humanPlayers.every((hp) => {
+            const socketInRoom = io?.sockets?.sockets?.has(hp.id);
+            const activeSocketId = hp.serial ? playerSockets.get(hp.serial) : null;
+            return !socketInRoom || activeSocketId && activeSocketId !== hp.id;
+          });
+          if (allHumansDisconnected) {
+            if (!room.humansDisconnectedSince) {
+              room.humansDisconnectedSince = now;
+            } else if (now - room.humansDisconnectedSince >= 3e4) {
+              io.to(roomId).emit("game_stopped", { reason: "\u0627\u0646\u0642\u0637\u0639 \u0627\u062A\u0635\u0627\u0644 \u0627\u0644\u0644\u0627\u0639\u0628" });
+              if (intervals.has(roomId)) {
+                clearInterval(intervals.get(roomId));
+                intervals.delete(roomId);
+              }
+              if (botIntervals.has(roomId)) {
+                clearInterval(botIntervals.get(roomId));
+                botIntervals.delete(roomId);
+              }
+              rooms.delete(roomId);
+              continue;
+            }
+          } else {
+            room.humansDisconnectedSince = null;
+          }
+          const roomAge = now - (room.startedAt || room.gameStartTime || room.startTime || room.createdAt || now);
+          if (roomAge > 10 * 60 * 1e3) {
+            if (intervals.has(roomId)) {
+              clearInterval(intervals.get(roomId));
+              intervals.delete(roomId);
+            }
+            if (botIntervals.has(roomId)) {
+              clearInterval(botIntervals.get(roomId));
+              botIntervals.delete(roomId);
+            }
+            rooms.delete(roomId);
+            continue;
+          }
+        } else {
+          if (roomFinished) {
+            if (!room.finishedAt) room.finishedAt = now;
+            if (now - room.finishedAt > 3 * 60 * 1e3) {
+              if (intervals.has(roomId)) {
+                clearInterval(intervals.get(roomId));
+                intervals.delete(roomId);
+              }
+              rooms.delete(roomId);
+              continue;
+            }
+          }
+          const allDisconnected = players.every((p) => {
+            const socketInRoom = io?.sockets?.sockets?.has(p.id);
+            const activeSocketId = p.serial ? playerSockets.get(p.serial) : null;
+            return !socketInRoom && (!activeSocketId || activeSocketId !== p.id);
+          });
+          if (allDisconnected) {
+            if (!room.allDisconnectedSince) {
+              room.allDisconnectedSince = now;
+            } else if (now - room.allDisconnectedSince > 6e4) {
+              if (intervals.has(roomId)) {
+                clearInterval(intervals.get(roomId));
+                intervals.delete(roomId);
+              }
+              rooms.delete(roomId);
+              continue;
+            }
+          } else {
+            room.allDisconnectedSince = null;
+          }
+        }
+      }
+    }, 1e4);
+    const reportsList = [];
+    const blocks = /* @__PURE__ */ new Map();
+    const pendingMatches = /* @__PURE__ */ new Map();
+    const friendChallengeCooldowns = /* @__PURE__ */ new Map();
+    const allPlayers = /* @__PURE__ */ new Map();
+    getActiveUsedNamesGlobal = () => {
+      const used = /* @__PURE__ */ new Set();
+      if (allPlayers) {
+        for (const player of allPlayers.values()) {
+          if (player && player.name) {
+            used.add(player.name.trim().toLowerCase());
+          }
+        }
+      }
+      if (rooms) {
+        for (const room of rooms.values()) {
+          if (!room) continue;
+          if (room.p1 && (room.p1.playerName || room.p1.name)) {
+            used.add((room.p1.playerName || room.p1.name).trim().toLowerCase());
+          }
+          if (room.p2 && (room.p2.playerName || room.p2.name)) {
+            used.add((room.p2.playerName || room.p2.name).trim().toLowerCase());
+          }
+          if (Array.isArray(room.players)) {
+            for (const pl of room.players) {
+              if (pl && (pl.playerName || pl.name)) {
+                used.add((pl.playerName || pl.name).trim().toLowerCase());
+              }
+            }
+          }
+        }
+      }
+      if (matchmakingQueue) {
+        for (const item of matchmakingQueue) {
+          if (item && (item.playerName || item.name)) {
+            used.add((item.playerName || item.name).trim().toLowerCase());
+          }
+        }
+      }
+      return used;
+    };
+    const playerSockets = /* @__PURE__ */ new Map();
+    let dbPath = import_path.default.join(process.cwd(), "players.db");
+    console.log(`[DB] Opening local players database at: ${dbPath}`);
+    let initialDownloadSucceeded = false;
+    let remoteFileSizeAtStart = 0;
+    if (isProduction && supabase) {
+      try {
+        console.log("[DB] Downloading latest database 'players.db.gz' from Supabase Storage...");
+        const tempCandidatePath = import_path.default.join(import_os.default.tmpdir(), `candidate_${Date.now()}.db`);
+        try {
+          const { data, error } = await supabase.storage.from("database").download("players.db.gz");
+          if (!error && data) {
+            const rawBuffer = Buffer.from(await data.arrayBuffer());
+            if (rawBuffer.length > 0) {
+              remoteFileSizeAtStart = rawBuffer.length;
+              let finalDbBuffer;
+              if (rawBuffer[0] === 31 && rawBuffer[1] === 139) {
+                console.log(`[DB] Decompressing players.db.gz (${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB compressed)...`);
+                finalDbBuffer = import_zlib.default.gunzipSync(rawBuffer);
+              } else {
+                finalDbBuffer = rawBuffer;
+              }
+              import_fs.default.writeFileSync(tempCandidatePath, finalDbBuffer);
+              if (isValidSqliteDatabase(tempCandidatePath)) {
+                import_fs.default.copyFileSync(tempCandidatePath, dbPath);
+                initialDownloadSucceeded = true;
+                console.log(`[DB] Successfully restored and verified players.db (${(finalDbBuffer.length / 1024 / 1024).toFixed(2)} MB) from Supabase Storage.`);
+              } else {
+                console.warn("[DB] Remote database downloaded but failed integrity check. Preserving local data.");
+              }
+            }
+          } else {
+            console.log("[DB] Remote players.db.gz not found or error:", error?.message);
+          }
+        } catch (rawErr) {
+          console.warn("[DB] Failed downloading database:", rawErr);
+        }
+        try {
+          if (import_fs.default.existsSync(tempCandidatePath)) import_fs.default.unlinkSync(tempCandidatePath);
+        } catch (e) {
+        }
+      } catch (dlErr) {
+        console.error("[DB] Failed to download database from Supabase Storage:", dlErr);
+      }
+    } else {
+      console.log("[DB] Running in AI Studio local dev mode. Skipping Supabase download to keep database isolated.");
+    }
+    if (import_fs.default.existsSync(dbPath) && !isValidSqliteDatabase(dbPath)) {
+      console.error("[DB] Warning: Local players.db is malformed! Cleaning up corrupt file to prevent crash.");
+      try {
+        import_fs.default.unlinkSync(dbPath);
+        if (import_fs.default.existsSync(dbPath + "-wal")) import_fs.default.unlinkSync(dbPath + "-wal");
+        if (import_fs.default.existsSync(dbPath + "-shm")) import_fs.default.unlinkSync(dbPath + "-shm");
+      } catch (e) {
+      }
+    }
+    let db = new import_better_sqlite3.default(dbPath, { timeout: 1e4 });
+    db.pragma("journal_mode = WAL");
+    db.pragma("synchronous = NORMAL");
+    try {
+      db.exec("CREATE TABLE IF NOT EXISTS custom_images (id TEXT PRIMARY KEY, category TEXT, name TEXT, data TEXT, timestamp INTEGER)");
+      db.exec("UPDATE custom_images SET data = '' WHERE data IS NOT NULL AND data != ''");
+      try {
+        const purgeAdmin = db.prepare("DELETE FROM admin_messages").run();
+        if (purgeAdmin.changes > 0) {
+          console.log(`[DB Cleanup] Fresh start: Purged ${purgeAdmin.changes} accumulated admin messages.`);
+        }
+      } catch (e) {
+      }
+      cleanupOldNotificationsAndLogs();
+      const freelistCount = db.pragma("freelist_count", { simple: true });
+      const currentDbSize = import_fs.default.existsSync(dbPath) ? import_fs.default.statSync(dbPath).size : 0;
+      if (freelistCount > 100) {
+        console.log(`[DB Optimization] Startup check: database is ${(currentDbSize / 1024 / 1024).toFixed(2)} MB (${freelistCount} free pages). Running VACUUM...`);
+        db.pragma("wal_checkpoint(TRUNCATE)");
+        db.exec("VACUUM");
+        const shrunkSize = import_fs.default.statSync(dbPath).size;
+        console.log(`[DB Optimization] VACUUM completed! Database size permanently shrunk from ${(currentDbSize / 1024 / 1024).toFixed(2)} MB to ${(shrunkSize / 1024 / 1024).toFixed(2)} MB.`);
+      }
+    } catch (e) {
+      console.warn("[DB Optimization] Startup VACUUM check note:", e);
+    }
+    let isUploadingDb = false;
+    let dbIsDirty = false;
+    let flushAllPendingPlayerWrites = () => {
+    };
+    async function syncDbToSupabase(force = false, isShutdown = false) {
+      console.log(`[DB] syncDbToSupabase triggered (force=${force}, isShutdown=${isShutdown}, isProduction=${isProduction}, supabase=${!!supabase}, dbIsDirty=${dbIsDirty}, isUploadingDb=${isUploadingDb})`);
+      if (!isProduction || !supabase) {
+        console.log("[DB] Sync aborted: Not in production or no supabase client");
+        return;
+      }
+      if (!force && !dbIsDirty) {
+        console.log("[DB] Sync aborted: Not forced and DB is not dirty");
+        return;
+      }
+      if (isUploadingDb) {
+        console.log("[DB] Sync aborted: Upload already in progress");
+        return;
+      }
+      isUploadingDb = true;
+      try {
+        if (typeof flushAllPendingPlayerWrites === "function") {
+          flushAllPendingPlayerWrites();
+        }
+        console.log(`[DB] Step 1: Flushing WAL synchronously...`);
+        try {
+          if (db) {
+            db.pragma("wal_checkpoint(TRUNCATE)");
+          }
+        } catch (e) {
+          console.warn("[DB] WAL checkpoint warning:", e);
+        }
+        const rawFileSize = import_fs.default.statSync(dbPath).size;
+        console.log(`[DB] Step 2: Source database size is ${(rawFileSize / 1024 / 1024).toFixed(2)} MB.`);
+        if (!force && !initialDownloadSucceeded && remoteFileSizeAtStart > 3 * 1024 * 1024 && rawFileSize < 500 * 1024) {
+          console.warn(`[DB] Safety blocked upload: local backup is only ${(rawFileSize / 1024).toFixed(1)} KB while remote is ${(remoteFileSizeAtStart / 1024 / 1024).toFixed(2)} MB. Avoiding accidental overwrite.`);
+          return;
+        }
+        console.log(`[DB] Step 3: Reading database file directly (Zero CPU)...`);
+        const rawBuffer = import_fs.default.readFileSync(dbPath);
+        const compressedBuffer = import_zlib.default.gzipSync(rawBuffer);
+        console.log(`[DB] Step 4: Uploading compressed database (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB vs ${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB raw) to Supabase Storage...`);
+        const uploadStartTime = Date.now();
+        let uploadErrorMsg = null;
+        try {
+          const uploadPromise = supabase.storage.from("database").upload("players.db.gz", compressedBuffer, {
+            upsert: true,
+            contentType: "application/gzip"
+          });
+          const timeoutPromise = new Promise(
+            (_, reject) => setTimeout(() => reject(new Error("Supabase upload timed out after 10s")), 1e4)
+          );
+          const { error } = await Promise.race([uploadPromise, timeoutPromise]);
+          if (error) {
+            uploadErrorMsg = error.message || String(error);
+          }
+        } catch (fetchErr) {
+          uploadErrorMsg = fetchErr?.message || String(fetchErr);
+        }
+        const step5Msg = `[DB] Step 5: Supabase upload finished in ${Date.now() - uploadStartTime}ms. Error status: ${uploadErrorMsg ? uploadErrorMsg : "Success"}
+`;
+        try {
+          import_fs.default.writeSync(1, step5Msg);
+        } catch (e) {
+          console.log(step5Msg);
+        }
+        if (uploadErrorMsg) {
+          console.error("[DB] Error uploading players.db.gz to Supabase Storage:", uploadErrorMsg);
+        } else {
+          dbIsDirty = false;
+          initialDownloadSucceeded = true;
+          const successMsg = `[DB] Successfully synced players.db.gz (${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB) to Supabase Storage.
+`;
+          try {
+            import_fs.default.writeSync(1, successMsg);
+          } catch (e) {
+            console.log(successMsg);
+          }
+        }
+      } catch (err) {
+        console.error("[DB] CRITICAL ERROR in syncDbToSupabase try-catch:", err);
+      } finally {
+        isUploadingDb = false;
+      }
+    }
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1e3;
+    if (isProduction) {
+      setInterval(() => {
+        if (isShuttingDown || !db || !db.open) return;
+        console.log("[DB] 24-hour scheduled maintenance triggered. Cleaning old notifications and syncing database...");
+        cleanupOldNotificationsAndLogs();
+        syncDbToSupabase(true);
+      }, TWENTY_FOUR_HOURS);
+    }
+    console.log(`[DB] Database initialized successfully ${isProduction ? "with Supabase Storage backup" : "in local isolated mode"}.`);
+    try {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS shop_items (
+          id TEXT PRIMARY KEY,
+          name TEXT,
+          description TEXT,
+          price REAL,
+          type TEXT,
+          image TEXT,
+          amount INTEGER,
+          active INTEGER DEFAULT 1,
+          timestamp INTEGER
+        )
+      `);
+    } catch (err) {
+      console.error("[DB] Failed to create shop items table:", err);
+    }
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS admin_tokens (
+        token TEXT PRIMARY KEY,
+        expiresAt INTEGER
+      );
+    `);
+    adminTokens = {
+      add: async (token, expiresInMs = 1e3 * 60 * 60 * 24 * 365 * 100) => {
+        const expiresAt = Date.now() + expiresInMs;
+        await db.prepare(
+          "INSERT INTO admin_tokens (token, expiresAt) VALUES (?, ?)"
+        ).run(token, expiresAt);
+      },
+      has: async (token) => {
+        if (!token) return false;
+        const row = await db.prepare("SELECT expiresAt FROM admin_tokens WHERE token = ?").get(token);
+        if (!row) return false;
+        if (Date.now() > row.expiresAt) {
+          await db.prepare("DELETE FROM admin_tokens WHERE token = ?").run(token);
+          return false;
+        }
+        return true;
+      },
+      delete: async (token) => {
+        await db.prepare("DELETE FROM admin_tokens WHERE token = ?").run(token);
+      },
+      cleanup: async () => {
+        await db.prepare("DELETE FROM admin_tokens WHERE expiresAt < ?").run(
+          Date.now()
+        );
+      }
+    };
+    await adminTokens.cleanup();
+    process.on("uncaughtException", (err) => {
+      console.error("[DB FATAL] Ignored uncaught exception to prevent crash during shutdown:", err);
+    });
+    process.on("unhandledRejection", (err) => {
+      console.error("[DB FATAL] Ignored unhandled rejection to prevent crash during shutdown:", err);
+    });
+    const shutdown = async (signal) => {
+      if (isShuttingDown) return;
+      isShuttingDown = true;
+      console.log(`[DB] Received ${signal}. Stopping server traffic and syncing database...`);
+      const safetyExitTimer = setTimeout(() => {
+        console.log("[DB] Shutdown safety timer elapsed (15s). Forcing clean exit now.");
+        process.exit(0);
+      }, 15e3);
+      safetyExitTimer.unref();
+      try {
+        if (io) io.close();
+        if (httpServer) httpServer.close();
+        console.log("[DB] Web and Socket server closed.");
+      } catch (e) {
+      }
+      try {
+        if (typeof flushAllPendingPlayerWrites === "function") {
+          flushAllPendingPlayerWrites();
+        }
+      } catch (e) {
+      }
+      try {
+        if (isProduction && supabase) {
+          await syncDbToSupabase(true, true);
+          console.log("[DB] Shutdown sync complete.");
+        }
+      } catch (err) {
+        console.error("[DB] Error during shutdown sync:", err);
+      }
+      if (db && db.open) {
+        console.log("[DB] Closing database connection...");
+        try {
+          db.close();
+        } catch (e) {
+        }
+      }
+      const exitMsg = "[DB] Shutdown complete. Exiting process cleanly now.\n";
+      try {
+        import_fs.default.writeSync(1, exitMsg);
+      } catch (e) {
+        console.log(exitMsg);
+      }
+      setTimeout(() => {
+        process.exit(0);
+      }, 300);
+    };
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS banned_identities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fingerprint TEXT,
+      ip TEXT,
+      timestamp INTEGER
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS players (
+      serial TEXT PRIMARY KEY,
+      name TEXT,
+      avatar TEXT,
+      xp INTEGER,
+      wins INTEGER,
+      level INTEGER,
+      gender TEXT
+    )
+  `);
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN gender TEXT DEFAULT 'boy'`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN fingerprint TEXT`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN ip TEXT`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN reports INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN banUntil INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN banCount INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN isPermanentBan INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN reportedBy TEXT DEFAULT '[]'`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN email TEXT`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN isAdmin INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN tokens INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN busCompleteWins INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN busCompleteUsedLetters TEXT DEFAULT '[]'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN busCompleteRewardLevel INTEGER DEFAULT 1`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN busCompleteMatchPoints INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN busCompleteExpiring TEXT DEFAULT '[]'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN xoWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN xoRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN xoMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN handWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN handRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN handMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN iqWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN iqRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN iqMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN dotsWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN dotsRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN dotsMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN speedCupsWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN speedCupsRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN speedCupsMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN bombPartyWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN wordleWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN wordleRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN wordleMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN connectFourWordsWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN connectFourWordsRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN connectFourWordsMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN spaceWarWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN spaceWarRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN spaceWarMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN puzzleWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN puzzleRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN puzzleMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN beachRaceWins INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN beachRaceRewardLevel INTEGER DEFAULT 1`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN beachRaceMatchPoints INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN randomXp INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `UPDATE players SET randomXp = xp WHERE randomXp = 0 OR randomXp IS NULL`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN adsWatchedToday INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN lastAdWatchDate TEXT`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN keyAdsWatchedToday INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN lastKeyAdWatchDate TEXT`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN ownedHelpers TEXT DEFAULT '{}'`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN lastRainGiftResetDay TEXT`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN rainGiftTokens INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN rainGiftHelpers TEXT DEFAULT '{}'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN dailyQuestStreak INTEGER DEFAULT 1`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN lastDailyClaim INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN weeklyTokensClaimed INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN streak INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN rainGiftClaimedDay TEXT DEFAULT NULL`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN lastWeeklyTokenReset INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN proPackageExpiry INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN unlockedHelpersExpiry INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN claimedRewards TEXT DEFAULT '[]'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN reportedSerials TEXT DEFAULT '[]'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN lastRenameAt INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN pendingAvatar TEXT`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN avatarStatus TEXT DEFAULT 'approved'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN lastComplaintAt INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN lastContactAt INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN blockedSerials TEXT DEFAULT '[]'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN lastActiveAt INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `UPDATE players SET lastActiveAt = ${Date.now()} WHERE lastActiveAt = 0 OR lastActiveAt IS NULL`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN blockedFingerprints TEXT DEFAULT '[]'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN recentOpponents TEXT DEFAULT '[]'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN selectedFrame TEXT DEFAULT ''`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN notificationsEnabled INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`UPDATE players SET notificationsEnabled = 1 WHERE serial IN (SELECT serial FROM push_subscriptions WHERE serial IS NOT NULL)`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN hideMyInfo INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN hideFriendRequests INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN disableGuessChat INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN secretToken TEXT`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN lastSpinDate TEXT`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN dailySpinCount INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN freeSpinUsed INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN luckyWheelTokens INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN luckyWheelHelpers TEXT DEFAULT '{}'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN lastLuckyWheelResetDay TEXT`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN luckyWheelDaysUsed INTEGER DEFAULT 0`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN citySearchRewards TEXT DEFAULT '[]'`
+      );
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN keys INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(`ALTER TABLE players ADD COLUMN likes INTEGER DEFAULT 0`);
+    } catch (e) {
+    }
+    try {
+      db.exec(
+        `ALTER TABLE players ADD COLUMN lastRenameUnlockMonth TEXT DEFAULT NULL`
+      );
+    } catch (e) {
+    }
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS player_likes_log (
+      id TEXT PRIMARY KEY,
+      giver_serial TEXT,
+      receiver_serial TEXT,
+      timestamp INTEGER
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS shop_items (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      description TEXT,
+      price REAL,
+      type TEXT,
+      image TEXT,
+      amount INTEGER,
+      active INTEGER DEFAULT 1,
+      timestamp INTEGER
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      serial TEXT,
+      subscription TEXT,
+      timestamp INTEGER
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS friends (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player1 TEXT NOT NULL,
+      player2 TEXT NOT NULL,
+      status TEXT NOT NULL,
+      sender TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(player1, player2)
+    )
+  `);
+    let vapidKeys = { publicKey: "", privateKey: "" };
+    const existingVapid = db.prepare("SELECT value FROM settings WHERE key = ?").get("vapid_keys");
+    if (existingVapid) {
+      vapidKeys = JSON.parse(existingVapid.value);
+    } else {
+      vapidKeys = import_web_push.default.generateVAPIDKeys();
+      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+        "vapid_keys",
+        JSON.stringify(vapidKeys)
+      );
+    }
+    import_web_push.default.setVapidDetails(
+      "mailto:adhamsabry.co@gmail.com",
+      vapidKeys.publicKey,
+      vapidKeys.privateKey
+    );
+    try {
+      const savedConfig = db.prepare("SELECT value FROM settings WHERE key = ?").get("game_config");
+      if (savedConfig) {
+        const parsedConfig = JSON.parse(savedConfig.value);
+        configCache = { ...configCache, ...parsedConfig };
+        if (currentVersion) {
+          configCache.version = currentVersion;
+        }
+        console.log("[Config] Loaded from SQLite database.");
+      } else {
+        console.log("[Config] No config found in SQLite, using file/defaults.");
+      }
+    } catch (e) {
+      console.error("[Config] Failed to load from SQLite:", e);
+    }
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS reward_history (
+      id TEXT PRIMARY KEY,
+      type TEXT,
+      durationHours INTEGER,
+      tokenAmount INTEGER,
+      expiresInDays INTEGER,
+      message TEXT,
+      sentAt INTEGER,
+      expiresAt INTEGER
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS custom_images (
+      id TEXT PRIMARY KEY,
+      category TEXT,
+      name TEXT,
+      data TEXT,
+      addedBy TEXT,
+      timestamp INTEGER,
+      level TEXT
+    )
+  `);
+    try {
+      db.exec(
+        `ALTER TABLE custom_images ADD COLUMN level TEXT DEFAULT '\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646'`
+      );
+    } catch (e) {
+    }
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS used_prizes (
+      serial TEXT,
+      prize_id TEXT,
+      date TEXT,
+      PRIMARY KEY (serial, prize_id, date)
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS categories (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      icon TEXT,
+      timestamp INTEGER
+    )
+  `);
+    const catCount = db.prepare("SELECT COUNT(*) as count FROM categories").get();
+    if (catCount.count === 0) {
+      const defaultCategories = [
+        { id: "people", name: "\u0627\u0634\u062E\u0627\u0635", icon: "\u{1F465}" },
+        { id: "food", name: "\u0623\u0643\u0644\u0627\u062A", icon: "\u{1F355}" },
+        { id: "animals", name: "\u062D\u064A\u0648\u0627\u0646\u0627\u062A", icon: "\u{1F418}" },
+        { id: "objects", name: "\u062C\u0645\u0627\u062F", icon: "\u{1F4E6}" },
+        { id: "birds", name: "\u0637\u064A\u0648\u0631", icon: "\u{1F99C}" },
+        { id: "plants", name: "\u0646\u0628\u0627\u062A", icon: "\u{1F33F}" },
+        { id: "insects", name: "\u062D\u0634\u0631\u0627\u062A", icon: "\u{1F41E}" },
+        { id: "football", name: "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645", icon: "\u26BD" }
+      ];
+      const insertCat = db.prepare(
+        "INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)"
+      );
+      const insertManyCats = db.transaction((cats) => {
+        for (const cat of cats) {
+          insertCat.run(cat.id, cat.name, cat.icon, Date.now());
+        }
+      });
+      insertManyCats(defaultCategories);
+    }
+    const categoriesToMigrate = [
+      { oldName: "\u062D\u0634\u0631\u0627\u062A", newId: "insects", newName: "\u062D\u0634\u0631\u0627\u062A", newIcon: "\u{1F41E}" },
+      {
+        oldName: "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645",
+        newId: "football",
+        newName: "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645",
+        newIcon: "\u26BD"
+      },
+      { oldName: "\u062C\u0645\u0627\u062F", newId: "objects", newName: "\u062C\u0645\u0627\u062F", newIcon: "\u{1F4E6}" },
+      { oldName: "\u0646\u0628\u0627\u062A", newId: "plants", newName: "\u0646\u0628\u0627\u062A", newIcon: "\u{1F33F}" },
+      {
+        oldName: "\u062D\u064A\u0648\u0627\u0646\u0627\u062A",
+        newId: "animals",
+        newName: "\u062D\u064A\u0648\u0627\u0646\u0627\u062A",
+        newIcon: "\u{1F418}"
+      },
+      { oldName: "\u0623\u0643\u0644\u0627\u062A", newId: "food", newName: "\u0623\u0643\u0644\u0627\u062A", newIcon: "\u{1F355}" },
+      { oldName: "\u0627\u0634\u062E\u0627\u0635", newId: "people", newName: "\u0627\u0634\u062E\u0627\u0635", newIcon: "\u{1F465}" },
+      { oldName: "\u0637\u064A\u0648\u0631", newId: "birds", newName: "\u0637\u064A\u0648\u0631", newIcon: "\u{1F99C}" }
+    ];
+    for (const cat of categoriesToMigrate) {
+      const existingCat = db.prepare("SELECT * FROM categories WHERE name = ?").get(cat.oldName);
+      if (existingCat) {
+        if (existingCat.id !== cat.newId) {
+          db.prepare(
+            "UPDATE custom_images SET category = ? WHERE category = ?"
+          ).run(cat.newId, existingCat.id);
+          db.prepare("UPDATE categories SET id = ? WHERE id = ?").run(
+            cat.newId,
+            existingCat.id
+          );
+        }
+      } else {
+        const exists = db.prepare("SELECT * FROM categories WHERE id = ?").get(cat.newId);
+        if (!exists) {
+          db.prepare(
+            "INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)"
+          ).run(cat.newId, cat.newName, cat.newIcon, Date.now());
+        }
+      }
+    }
+    const primaryGameImagesDir = import_path.default.join(process.cwd(), "public", "game_images");
+    try {
+      if (!import_fs.default.existsSync(primaryGameImagesDir)) {
+        import_fs.default.mkdirSync(primaryGameImagesDir, { recursive: true });
+      }
+    } catch (e) {
+      console.warn("[Game Images] Note: Could not create primaryGameImagesDir:", e);
+    }
+    let diskImagesMap = /* @__PURE__ */ new Map();
+    try {
+      indexGameImages();
+    } catch (e) {
+      console.error("[Game Images] Startup index failed gracefully:", e);
+    }
+    migrateExistingImagesToDisk();
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS reports (
+      id TEXT PRIMARY KEY,
+      timestamp INTEGER,
+      reporterSerial TEXT,
+      reporterName TEXT,
+      reportedSerial TEXT,
+      reportedName TEXT,
+      reason TEXT,
+      roomId TEXT
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS like_notifications (
+      id TEXT PRIMARY KEY,
+      receiverSerial TEXT NOT NULL,
+      senderSerial TEXT NOT NULL,
+      senderName TEXT,
+      senderAvatar TEXT,
+      senderLevel INTEGER,
+      timestamp INTEGER,
+      read INTEGER DEFAULT 0
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS friend_accepted_notifications (
+      id TEXT PRIMARY KEY,
+      receiverSerial TEXT NOT NULL,
+      senderSerial TEXT NOT NULL,
+      senderName TEXT,
+      senderAvatar TEXT,
+      senderLevel INTEGER,
+      timestamp INTEGER,
+      read INTEGER DEFAULT 0
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS admin_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      playerSerial TEXT NOT NULL,
+      message TEXT NOT NULL,
+      read INTEGER DEFAULT 0,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS gift_notifications (
+      id TEXT PRIMARY KEY,
+      senderSerial TEXT NOT NULL,
+      receiverSerial TEXT NOT NULL,
+      senderName TEXT,
+      senderAvatar TEXT,
+      gifts TEXT NOT NULL,
+      timestamp INTEGER,
+      read INTEGER DEFAULT 0
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS contacts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      playerSerial TEXT,
+      name TEXT,
+      subject TEXT,
+      message TEXT,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS player_collections (
+      player_serial TEXT,
+      image_name TEXT,
+      count INTEGER DEFAULT 0,
+      PRIMARY KEY (player_serial, image_name)
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS claimed_collection_rewards (
+      player_serial TEXT,
+      category_id TEXT,
+      stage INTEGER,
+      PRIMARY KEY (player_serial, category_id, stage)
+    )
+  `);
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS scheduled_push_notifications (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      url TEXT,
+      scheduledAt INTEGER NOT NULL,
+      createdAt INTEGER NOT NULL,
+      status TEXT DEFAULT 'pending',
+      groupId TEXT,
+      sendToBell INTEGER DEFAULT 0
+    )
+  `);
+    try {
+      db.exec(
+        "ALTER TABLE scheduled_push_notifications ADD COLUMN sendToBell INTEGER DEFAULT 0;"
+      );
+    } catch (e) {
+    }
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS collection_notifications (
+      id TEXT PRIMARY KEY,
+      sender_serial TEXT,
+      receiver_serial TEXT,
+      image_name TEXT,
+      category_id TEXT,
+      type TEXT, 
+      status TEXT, 
+      timestamp INTEGER
+    )
+  `);
+    try {
+      db.exec(
+        "ALTER TABLE scheduled_push_notifications ADD COLUMN groupId TEXT"
+      );
+    } catch (e) {
+    }
+    const insertPlayer = db.prepare(`
+    INSERT OR REPLACE INTO players (serial, name, avatar, xp, wins, level, gender, fingerprint, ip, reports, banUntil, banCount, isPermanentBan, reportedBy, email, isAdmin, tokens, randomXp, adsWatchedToday, lastAdWatchDate, keyAdsWatchedToday, lastKeyAdWatchDate, ownedHelpers, dailyQuestStreak, lastDailyClaim, weeklyTokensClaimed, streak, lastWeeklyTokenReset, proPackageExpiry, unlockedHelpersExpiry, claimedRewards, lastRenameAt, lastRenameUnlockMonth, pendingAvatar, avatarStatus, lastComplaintAt, lastContactAt, blockedSerials, blockedFingerprints, recentOpponents, reportedSerials, selectedFrame, lastRainGiftResetDay, rainGiftTokens, rainGiftHelpers, rainGiftClaimedDay, notificationsEnabled, hideMyInfo, hideFriendRequests, disableGuessChat, secretToken, lastSpinDate, dailySpinCount, freeSpinUsed, luckyWheelTokens, luckyWheelHelpers, lastLuckyWheelResetDay, luckyWheelDaysUsed, citySearchRewards, keys, likes, lastActiveAt, busCompleteWins, busCompleteUsedLetters, busCompleteRewardLevel, busCompleteMatchPoints, busCompleteExpiring, xoWins, xoRewardLevel, xoMatchPoints, handWins, handRewardLevel, handMatchPoints, iqWins, iqRewardLevel, iqMatchPoints, dotsWins, dotsRewardLevel, dotsMatchPoints, speedCupsWins, speedCupsRewardLevel, speedCupsMatchPoints, bombPartyWins, wordleWins, wordleRewardLevel, wordleMatchPoints, connectFourWordsWins, connectFourWordsRewardLevel, connectFourWordsMatchPoints, spaceWarWins, spaceWarRewardLevel, spaceWarMatchPoints, puzzleWins, puzzleRewardLevel, puzzleMatchPoints, beachRaceWins, beachRaceRewardLevel, beachRaceMatchPoints)
+    VALUES (@serial, @name, @avatar, @xp, @wins, @level, @gender, @fingerprint, @ip, @reports, @banUntil, @banCount, @isPermanentBan, @reportedBy, @email, @isAdmin, @tokens, @randomXp, @adsWatchedToday, @lastAdWatchDate, @keyAdsWatchedToday, @lastKeyAdWatchDate, @ownedHelpers, @dailyQuestStreak, @lastDailyClaim, @weeklyTokensClaimed, @streak, @lastWeeklyTokenReset, @proPackageExpiry, @unlockedHelpersExpiry, @claimedRewards, @lastRenameAt, @lastRenameUnlockMonth, @pendingAvatar, @avatarStatus, @lastComplaintAt, @lastContactAt, @blockedSerials, @blockedFingerprints, @recentOpponents, @reportedSerials, @selectedFrame, @lastRainGiftResetDay, @rainGiftTokens, @rainGiftHelpers, @rainGiftClaimedDay, @notificationsEnabled, @hideMyInfo, @hideFriendRequests, @disableGuessChat, @secretToken, @lastSpinDate, @dailySpinCount, @freeSpinUsed, @luckyWheelTokens, @luckyWheelHelpers, @lastLuckyWheelResetDay, @luckyWheelDaysUsed, @citySearchRewards, @keys, @likes, @lastActiveAt, @busCompleteWins, @busCompleteUsedLetters, @busCompleteRewardLevel, @busCompleteMatchPoints, @busCompleteExpiring, @xoWins, @xoRewardLevel, @xoMatchPoints, @handWins, @handRewardLevel, @handMatchPoints, @iqWins, @iqRewardLevel, @iqMatchPoints, @dotsWins, @dotsRewardLevel, @dotsMatchPoints, @speedCupsWins, @speedCupsRewardLevel, @speedCupsMatchPoints, @bombPartyWins, @wordleWins, @wordleRewardLevel, @wordleMatchPoints, @connectFourWordsWins, @connectFourWordsRewardLevel, @connectFourWordsMatchPoints, @spaceWarWins, @spaceWarRewardLevel, @spaceWarMatchPoints, @puzzleWins, @puzzleRewardLevel, @puzzleMatchPoints, @beachRaceWins, @beachRaceRewardLevel, @beachRaceMatchPoints)
+  `);
+    const pendingWrites = /* @__PURE__ */ new Map();
+    flushAllPendingPlayerWrites = () => {
+      if (pendingWrites.size === 0) return;
+      if (!db || !db.open) {
+        for (const timeout of pendingWrites.values()) {
+          clearTimeout(timeout);
+        }
+        pendingWrites.clear();
+        return;
+      }
+      console.log(`[DB] Flushing ${pendingWrites.size} pending player writes immediately...`);
+      for (const [serial, timeout] of pendingWrites.entries()) {
+        clearTimeout(timeout);
+        try {
+          const player = allPlayers.get(serial);
+          if (player) {
+            insertPlayer.run({
+              ...player,
+              gender: player.gender || "boy",
+              fingerprint: player.fingerprint || null,
+              ip: player.ip || null,
+              reportedBy: JSON.stringify(player.reportedBy || []),
+              email: player.email || null,
+              isAdmin: player.isAdmin ? 1 : 0,
+              tokens: player.tokens || 0,
+              randomXp: player.randomXp !== void 0 ? player.randomXp : player.xp || 0,
+              adsWatchedToday: player.adsWatchedToday || 0,
+              lastAdWatchDate: player.lastAdWatchDate || null,
+              keyAdsWatchedToday: player.keyAdsWatchedToday || 0,
+              lastKeyAdWatchDate: player.lastKeyAdWatchDate || null,
+              ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
+              dailyQuestStreak: player.dailyQuestStreak || 1,
+              streak: player.streak || 0,
+              lastDailyClaim: player.lastDailyClaim || 0,
+              weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
+              lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0,
+              proPackageExpiry: player.proPackageExpiry || 0,
+              unlockedHelpersExpiry: player.unlockedHelpersExpiry || 0,
+              claimedRewards: JSON.stringify(player.claimedRewards || []),
+              lastRenameAt: player.lastRenameAt || 0,
+              lastRenameUnlockMonth: player.lastRenameUnlockMonth || null,
+              pendingAvatar: player.pendingAvatar || null,
+              avatarStatus: player.avatarStatus || "approved",
+              lastComplaintAt: player.lastComplaintAt || 0,
+              lastContactAt: player.lastContactAt || 0,
+              blockedSerials: JSON.stringify(player.blockedSerials || []),
+              blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
+              recentOpponents: JSON.stringify(player.recentOpponents || []),
+              reportedSerials: JSON.stringify(player.reportedSerials || []),
+              selectedFrame: player.selectedFrame || "",
+              lastRainGiftResetDay: player.lastRainGiftResetDay || null,
+              rainGiftTokens: player.rainGiftTokens || 0,
+              rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
+              rainGiftClaimedDay: player.rainGiftClaimedDay || null,
+              notificationsEnabled: player.notificationsEnabled !== void 0 ? player.notificationsEnabled : 0,
+              hideMyInfo: player.hideMyInfo !== void 0 ? player.hideMyInfo : 0,
+              hideFriendRequests: player.hideFriendRequests !== void 0 ? player.hideFriendRequests : 0,
+              disableGuessChat: player.disableGuessChat !== void 0 ? player.disableGuessChat : 0,
+              secretToken: player.secretToken || null,
+              lastSpinDate: player.lastSpinDate || null,
+              dailySpinCount: player.dailySpinCount || 0,
+              freeSpinUsed: player.freeSpinUsed || 0,
+              luckyWheelTokens: player.luckyWheelTokens || 0,
+              luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
+              lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
+              luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
+              citySearchRewards: JSON.stringify(player.citySearchRewards || []),
+              keys: player.keys || 0,
+              likes: player.likes || 0,
+              lastActiveAt: player.lastActiveAt || 0,
+              busCompleteWins: player.busCompleteWins || 0,
+              busCompleteUsedLetters: JSON.stringify(
+                player.busCompleteUsedLetters || []
+              ),
+              busCompleteRewardLevel: player.busCompleteRewardLevel || 1,
+              busCompleteMatchPoints: player.busCompleteMatchPoints || 0,
+              busCompleteExpiring: JSON.stringify(player.busCompleteExpiring || []),
+              xoWins: player.xoWins || 0,
+              xoRewardLevel: player.xoRewardLevel || 1,
+              xoMatchPoints: player.xoMatchPoints || 0,
+              handWins: player.handWins || 0,
+              handRewardLevel: player.handRewardLevel || 1,
+              handMatchPoints: player.handMatchPoints || 0,
+              iqWins: player.iqWins || 0,
+              iqRewardLevel: player.iqRewardLevel || 1,
+              iqMatchPoints: player.iqMatchPoints || 0,
+              dotsWins: player.dotsWins || 0,
+              dotsRewardLevel: player.dotsRewardLevel || 1,
+              dotsMatchPoints: player.dotsMatchPoints || 0,
+              speedCupsWins: player.speedCupsWins || 0,
+              speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
+              speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
+              bombPartyWins: player.bombPartyWins || 0,
+              wordleWins: player.wordleWins || 0,
+              wordleRewardLevel: player.wordleRewardLevel || 1,
+              wordleMatchPoints: player.wordleMatchPoints || 0,
+              connectFourWordsWins: player.connectFourWordsWins || 0,
+              connectFourWordsRewardLevel: player.connectFourWordsRewardLevel || 1,
+              connectFourWordsMatchPoints: player.connectFourWordsMatchPoints || 0,
+              spaceWarWins: player.spaceWarWins || 0,
+              spaceWarRewardLevel: player.spaceWarRewardLevel || 1,
+              spaceWarMatchPoints: player.spaceWarMatchPoints || 0,
+              puzzleWins: player.puzzleWins || 0,
+              puzzleRewardLevel: player.puzzleRewardLevel || 1,
+              puzzleMatchPoints: player.puzzleMatchPoints || 0,
+              beachRaceWins: player.beachRaceWins || 0,
+              beachRaceRewardLevel: player.beachRaceRewardLevel || 1,
+              beachRaceMatchPoints: player.beachRaceMatchPoints || 0
+            });
+          }
+        } catch (e) {
+          console.error(`[DB] Error flushing pending write for ${serial}:`, e);
+        }
+      }
+      pendingWrites.clear();
+      invalidateTopPlayersCache();
+    };
+    const insertMany = db.transaction((players) => {
+      for (const player of players) {
+        insertPlayer.run({
+          ...player,
+          gender: player.gender || "boy",
+          fingerprint: player.fingerprint || null,
+          ip: player.ip || null,
+          reportedBy: JSON.stringify(player.reportedBy || []),
+          email: player.email || null,
+          isAdmin: player.isAdmin ? 1 : 0,
+          tokens: player.tokens || 0,
+          randomXp: player.randomXp !== void 0 ? player.randomXp : player.xp || 0,
+          adsWatchedToday: player.adsWatchedToday || 0,
+          lastAdWatchDate: player.lastAdWatchDate || null,
+          keyAdsWatchedToday: player.keyAdsWatchedToday || 0,
+          lastKeyAdWatchDate: player.lastKeyAdWatchDate || null,
+          ownedHelpers: JSON.stringify(player.ownedHelpers || {}),
+          dailyQuestStreak: player.dailyQuestStreak || 1,
+          lastDailyClaim: player.lastDailyClaim || 0,
+          weeklyTokensClaimed: player.weeklyTokensClaimed || 0,
+          lastWeeklyTokenReset: player.lastWeeklyTokenReset || 0,
+          proPackageExpiry: player.proPackageExpiry || 0,
+          unlockedHelpersExpiry: player.unlockedHelpersExpiry || 0,
+          claimedRewards: JSON.stringify(player.claimedRewards || []),
+          lastRenameAt: player.lastRenameAt || 0,
+          lastRenameUnlockMonth: player.lastRenameUnlockMonth || null,
+          pendingAvatar: player.pendingAvatar || null,
+          avatarStatus: player.avatarStatus || "approved",
+          lastComplaintAt: player.lastComplaintAt || 0,
+          lastContactAt: player.lastContactAt || 0,
+          blockedSerials: JSON.stringify(player.blockedSerials || []),
+          blockedFingerprints: JSON.stringify(player.blockedFingerprints || []),
+          recentOpponents: JSON.stringify(player.recentOpponents || []),
+          reportedSerials: JSON.stringify(player.reportedSerials || []),
+          selectedFrame: player.selectedFrame || "",
+          lastRainGiftResetDay: player.lastRainGiftResetDay || null,
+          rainGiftTokens: player.rainGiftTokens || 0,
+          rainGiftHelpers: JSON.stringify(player.rainGiftHelpers || {}),
+          rainGiftClaimedDay: player.rainGiftClaimedDay || null,
+          notificationsEnabled: player.notificationsEnabled !== void 0 ? player.notificationsEnabled : 0,
+          hideMyInfo: player.hideMyInfo !== void 0 ? player.hideMyInfo : 0,
+          hideFriendRequests: player.hideFriendRequests !== void 0 ? player.hideFriendRequests : 0,
+          disableGuessChat: player.disableGuessChat !== void 0 ? player.disableGuessChat : 0,
+          secretToken: player.secretToken || null,
+          lastSpinDate: player.lastSpinDate || null,
+          dailySpinCount: player.dailySpinCount || 0,
+          freeSpinUsed: player.freeSpinUsed || 0,
+          luckyWheelTokens: player.luckyWheelTokens || 0,
+          luckyWheelHelpers: JSON.stringify(player.luckyWheelHelpers || {}),
+          lastLuckyWheelResetDay: player.lastLuckyWheelResetDay || null,
+          luckyWheelDaysUsed: player.luckyWheelDaysUsed || 0,
+          citySearchRewards: JSON.stringify(player.citySearchRewards || []),
+          keys: player.keys || 0,
+          likes: player.likes || 0,
+          lastActiveAt: player.lastActiveAt || 0,
+          busCompleteWins: player.busCompleteWins || 0,
+          busCompleteUsedLetters: JSON.stringify(
+            player.busCompleteUsedLetters || []
+          ),
+          busCompleteRewardLevel: player.busCompleteRewardLevel || 1,
+          busCompleteMatchPoints: player.busCompleteMatchPoints || 0,
+          busCompleteExpiring: JSON.stringify(player.busCompleteExpiring || []),
+          xoWins: player.xoWins || 0,
+          xoRewardLevel: player.xoRewardLevel || 1,
+          xoMatchPoints: player.xoMatchPoints || 0,
+          handWins: player.handWins || 0,
+          handRewardLevel: player.handRewardLevel || 1,
+          handMatchPoints: player.handMatchPoints || 0,
+          iqWins: player.iqWins || 0,
+          iqRewardLevel: player.iqRewardLevel || 1,
+          iqMatchPoints: player.iqMatchPoints || 0,
+          dotsWins: player.dotsWins || 0,
+          dotsRewardLevel: player.dotsRewardLevel || 1,
+          dotsMatchPoints: player.dotsMatchPoints || 0,
+          speedCupsWins: player.speedCupsWins || 0,
+          speedCupsRewardLevel: player.speedCupsRewardLevel || 1,
+          speedCupsMatchPoints: player.speedCupsMatchPoints || 0,
+          bombPartyWins: player.bombPartyWins || 0,
+          wordleWins: player.wordleWins || 0,
+          wordleRewardLevel: player.wordleRewardLevel || 1,
+          wordleMatchPoints: player.wordleMatchPoints || 0,
+          connectFourWordsWins: player.connectFourWordsWins || 0,
+          connectFourWordsRewardLevel: player.connectFourWordsRewardLevel || 1,
+          connectFourWordsMatchPoints: player.connectFourWordsMatchPoints || 0,
+          spaceWarWins: player.spaceWarWins || 0,
+          spaceWarRewardLevel: player.spaceWarRewardLevel || 1,
+          spaceWarMatchPoints: player.spaceWarMatchPoints || 0,
+          puzzleWins: player.puzzleWins || 0,
+          puzzleRewardLevel: player.puzzleRewardLevel || 1,
+          puzzleMatchPoints: player.puzzleMatchPoints || 0,
+          beachRaceWins: player.beachRaceWins || 0,
+          beachRaceRewardLevel: player.beachRaceRewardLevel || 1,
+          beachRaceMatchPoints: player.beachRaceMatchPoints || 0
+        });
+      }
+    });
+    loadPlayersData();
+    try {
+      const likesCounts = db.prepare(
+        "SELECT receiver_serial, COUNT(*) as count FROM player_likes_log GROUP BY receiver_serial"
+      ).all();
+      for (const row of likesCounts) {
+        const player = allPlayers.get(row.receiver_serial);
+        if (player && (player.likes || 0) < row.count) {
+          player.likes = row.count;
+          db.prepare("UPDATE players SET likes = ? WHERE serial = ?").run(
+            row.count,
+            row.receiver_serial
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Failed to restore likes:", err);
+    }
+    try {
+      const rewardRow = db.prepare("SELECT value FROM settings WHERE key = ?").get("global_reward");
+      if (rewardRow && rewardRow.value) {
+        activeGlobalReward = JSON.parse(rewardRow.value);
+        if (activeGlobalReward.expiresAt < Date.now()) {
+          activeGlobalReward = null;
+          db.prepare("DELETE FROM settings WHERE key = ?").run("global_reward");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load global reward:", err);
+    }
+    try {
+      const termsArRow = db.prepare("SELECT value FROM settings WHERE key = ?").get("terms_policy_ar");
+      if (termsArRow && termsArRow.value)
+        gamePolicies.termsAr = termsArRow.value;
+      const termsEnRow = db.prepare("SELECT value FROM settings WHERE key = ?").get("terms_policy_en");
+      if (termsEnRow && termsEnRow.value)
+        gamePolicies.termsEn = termsEnRow.value;
+      const privacyArRow = db.prepare("SELECT value FROM settings WHERE key = ?").get("privacy_policy_ar");
+      if (privacyArRow && privacyArRow.value)
+        gamePolicies.privacyAr = privacyArRow.value;
+      const privacyEnRow = db.prepare("SELECT value FROM settings WHERE key = ?").get("privacy_policy_en");
+      if (privacyEnRow && privacyEnRow.value)
+        gamePolicies.privacyEn = privacyEnRow.value;
+      const rainGiftRow = db.prepare("SELECT value FROM settings WHERE key = ?").get("is_rain_gift_enabled");
+      if (rainGiftRow && rainGiftRow.value !== void 0)
+        gamePolicies.isRainGiftEnabled = rainGiftRow.value === "true";
+      const mockAdImageRow = db.prepare("SELECT value FROM settings WHERE key = ?").get("mockAdImage");
+      if (mockAdImageRow && mockAdImageRow.value) {
+        configCache.mockAdImage = mockAdImageRow.value;
+      }
+      const mockAdLinkRow = db.prepare("SELECT value FROM settings WHERE key = ?").get("mockAdLink");
+      if (mockAdLinkRow && mockAdLinkRow.value) {
+        configCache.mockAdLink = mockAdLinkRow.value;
+      }
+    } catch (err) {
+      console.error("Failed to load game policies:", err);
+    }
+    try {
+      const streakResetRow = db.prepare("SELECT value FROM settings WHERE key = ?").get("streak_reset_v5_random");
+      if (!streakResetRow) {
+        console.log(
+          "[Migration] Performing one-time streak reset to start fresh for Random Match competition..."
+        );
+        db.prepare("UPDATE players SET streak = 0").run();
+        for (const p of allPlayers.values()) {
+          p.streak = 0;
+        }
+        db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+          "streak_reset_v5_random",
+          "true"
+        );
+      }
+    } catch (e) {
+      console.error("Streak reset migration failed:", e);
+    }
+    let cachedTopPlayers = [];
+    let topPlayersCacheTime = 0;
+    let highestLikesSerials = [];
+    let highestStreakSerials = [];
+    let highestLevelSerials = [];
+    let globalMaxLikes = 0;
+    let globalMaxStreak = 0;
+    let globalMaxLevelXp = 0;
+    setInterval(() => {
+      const now = Date.now();
+      for (const [key, expiresAt] of friendChallengeCooldowns.entries()) {
+        if (now > expiresAt) {
+          friendChallengeCooldowns.delete(key);
+        }
+      }
+    }, 5 * 6e4);
+    let currentFakeBots = 50;
+    let pendingOnlineCountTimeout = null;
+    let lastOnlineCountBroadcastTime = 0;
+    updateFakeBotsGradually();
+    app.get("/api/reports", (req, res) => {
+      res.json(reportsList);
+    });
+    app.get("/api/admin/players", (req, res) => {
+      res.json(Array.from(allPlayers.values()));
+    });
+    app.get("/api/admin/download-db", (req, res) => {
+      const token = req.query.token;
+      console.log(`[DB Download] Request received with token: ${token}`);
+      console.log(`[DB Download] Current adminTokens: (DB backed)`);
+      if (!token || !adminTokens.has(token)) {
+        console.log(`[DB Download] Unauthorized. Token missing or invalid.`);
+        return res.status(403).send("Unauthorized");
+      }
+      console.log(`[DB Download] Token valid. Sending file: ${dbPath}`);
+      res.download(dbPath, "players.db", (err) => {
+        if (err) {
+          console.error("Error downloading database:", err);
+          if (!res.headersSent) {
+            res.status(500).send("Error downloading database");
+          }
+        } else {
+          console.log(`[DB Download] File sent successfully.`);
+          adminTokens.delete(token);
+        }
+      });
+    });
+    app.get("/api/admin/download-uploads", (req, res) => {
+      const token = req.query.token;
+      if (!token || !adminTokens.has(token)) {
+        return res.status(403).send("Unauthorized");
+      }
+      const uploadsPath = import_path.default.join(process.cwd(), "public/uploads");
+      if (!import_fs.default.existsSync(uploadsPath)) {
+        return res.status(404).send("Uploads folder not found");
+      }
+      res.attachment("uploads-backup.zip");
+      const archive = (0, import_archiver.default)("zip", {
+        zlib: { level: 9 }
+        // Sets the compression level.
+      });
+      archive.on("error", (err) => {
+        console.error("Error creating zip archive:", err);
+        if (!res.headersSent) {
+          res.status(500).send({ error: err.message });
+        }
+      });
+      archive.pipe(res);
+      archive.directory(uploadsPath, false);
+      archive.finalize().then(() => {
+        adminTokens.delete(token);
+      });
+    });
+    app.post(
+      "/api/admin/upload-db",
+      dbUpload.single("database"),
+      (req, res) => {
+        const token = req.query.token;
+        console.log(`[DB Upload] Request received with token: ${token}`);
+        if (!token || !adminTokens.has(token)) {
+          console.log(`[DB Upload] Unauthorized. Token missing or invalid.`);
+          return res.status(403).send("Unauthorized");
+        }
+        if (!req.file) {
+          console.log(`[DB Upload] No file uploaded.`);
+          return res.status(400).send("No file uploaded");
+        }
+        console.log(
+          `[DB Upload] Token valid. Processing file: ${req.file.path}`
+        );
+        try {
+          console.log(`[DB Upload] Closing current database connection...`);
+          db.close();
+          console.log(`[DB Upload] Overwriting database file at ${dbPath}...`);
+          import_fs.default.copyFileSync(req.file.path, dbPath);
+          const walPath = `${dbPath}-wal`;
+          const shmPath = `${dbPath}-shm`;
+          if (import_fs.default.existsSync(walPath)) {
+            console.log(`[DB Upload] Deleting old WAL file...`);
+            import_fs.default.unlinkSync(walPath);
+          }
+          if (import_fs.default.existsSync(shmPath)) {
+            console.log(`[DB Upload] Deleting old SHM file...`);
+            import_fs.default.unlinkSync(shmPath);
+          }
+          console.log(`[DB Upload] Cleaning up temporary file...`);
+          import_fs.default.unlinkSync(req.file.path);
+          console.log(
+            `[DB Upload] Database replaced successfully. Restarting server...`
+          );
+          res.json({
+            success: true,
+            message: "Database uploaded successfully. Server will restart."
+          });
+          setTimeout(() => {
+            process.exit(0);
+          }, 1e3);
+        } catch (err) {
+          console.error("[DB Upload] Error uploading database:", err);
+          if (!res.headersSent) {
+            res.status(500).send("Error uploading database");
+          }
+        }
+      }
+    );
+    app.post("/api/paymob/initiate", async (req, res) => {
+      try {
+        const {
+          itemId,
+          playerSerial,
+          paymentMethod,
+          customerInfo,
+          quantity = 1
+        } = req.body;
+        const player = allPlayers.get(playerSerial);
+        if (!player) return res.status(404).json({ error: "Player not found" });
+        const item = db.prepare("SELECT * FROM shop_items WHERE id = ? AND active = 1").get(itemId);
+        if (!item) return res.status(404).json({ error: "Item not found" });
+        const getSetting = (key, defaultValue) => {
+          const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key);
+          return row ? row.value : defaultValue;
+        };
+        const PAYMOB_API_KEY = getSetting(
+          "paymob_api_key",
+          "ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRFek9EazBNU3dpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5ySGdYVGNEVmFpSkQ2bTktQ1lETzJzSEV1N3JqVjR1RkdpR2F2dHlZNEM4T0JicXFSYWF3NEFqVWdES1otQ25NOHd3aGtDZlVfVFk3UkRjNV9jZ3BUZw=="
+        );
+        const WALLET_INTEGRATION_ID = getSetting(
+          "paymob_wallet_integration_id",
+          "5579190"
+        );
+        const CARD_INTEGRATION_ID = getSetting(
+          "paymob_card_integration_id",
+          "5572379"
+        );
+        const IFRAME_ID = getSetting("paymob_iframe_id", "1013400");
+        const integrationId = paymentMethod === "wallet" ? WALLET_INTEGRATION_ID : CARD_INTEGRATION_ID;
+        const authRes = await fetch(
+          "https://accept.paymob.com/api/auth/tokens",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ api_key: PAYMOB_API_KEY })
+          }
+        );
+        const authData = await authRes.json();
+        const authToken = authData.token;
+        const amountCents = Math.round(item.price * 100) * quantity;
+        const orderRes = await fetch(
+          "https://accept.paymob.com/api/ecommerce/orders",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              auth_token: authToken,
+              delivery_needed: "false",
+              amount_cents: amountCents,
+              currency: "EGP",
+              items: [
+                {
+                  name: item.name,
+                  amount_cents: Math.round(item.price * 100),
+                  description: item.description,
+                  quantity: quantity.toString()
+                }
+              ]
+            })
+          }
+        );
+        const orderData = await orderRes.json();
+        const orderId = orderData.id;
+        const paymentKeyRes = await fetch(
+          "https://accept.paymob.com/api/acceptance/payment_keys",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              auth_token: authToken,
+              amount_cents: amountCents,
+              expiration: 3600,
+              order_id: orderId,
+              billing_data: {
+                apartment: "NA",
+                email: customerInfo?.email || player.email || "test@test.com",
+                floor: "NA",
+                first_name: customerInfo?.name || player.name,
+                street: "NA",
+                building: "NA",
+                phone_number: customerInfo?.phone || "01000000000",
+                shipping_method: "NA",
+                postal_code: "NA",
+                city: "NA",
+                country: "EG",
+                last_name: player.serial,
+                state: "NA"
+              },
+              currency: "EGP",
+              integration_id: integrationId
+            })
+          }
+        );
+        const paymentKeyData = await paymentKeyRes.json();
+        const paymentToken = paymentKeyData.token;
+        db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+          `order_${orderId}`,
+          JSON.stringify({ playerSerial, itemId, quantity })
+        );
+        if (paymentMethod === "wallet") {
+          const walletRes = await fetch(
+            "https://accept.paymob.com/api/acceptance/payments/pay",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                source: {
+                  identifier: customerInfo?.phone,
+                  subtype: "WALLET"
+                },
+                payment_token: paymentToken
+              })
+            }
+          );
+          const walletData = await walletRes.json();
+          if (walletData.redirect_url) {
+            res.json({ redirectUrl: walletData.redirect_url });
+          } else {
+            res.status(500).json({ error: "\u0641\u0634\u0644 \u0641\u064A \u0625\u0646\u0634\u0627\u0621 \u0631\u0627\u0628\u0637 \u0627\u0644\u062F\u0641\u0639 \u0644\u0644\u0645\u062D\u0641\u0638\u0629" });
+          }
+        } else {
+          res.json({
+            redirectUrl: `https://accept.paymob.com/api/acceptance/iframes/${IFRAME_ID}?payment_token=${paymentToken}`
+          });
+        }
+      } catch (err) {
+        console.error("Paymob initiate error:", err);
+        res.status(500).json({ error: "Payment initiation failed" });
+      }
+    });
+    app.post("/api/paymob/webhook", (req, res) => {
+      try {
+        const hmac = req.query.hmac;
+        const { obj } = req.body;
+        const getSetting = (key, defaultValue) => {
+          const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key);
+          return row ? row.value : defaultValue;
+        };
+        const PAYMOB_HMAC = getSetting(
+          "paymob_hmac",
+          "A2DBAF7F92579F5B6CE8687D60BE29BA"
+        );
+        if (obj && hmac) {
+          const hmacString = [
+            obj.amount_cents,
+            obj.created_at,
+            obj.currency,
+            obj.error_occured,
+            obj.has_parent_transaction,
+            obj.id,
+            obj.integration_id,
+            obj.is_3d_secure,
+            obj.is_auth,
+            obj.is_capture,
+            obj.is_refunded,
+            obj.is_standalone_payment,
+            obj.is_voided,
+            obj.order.id,
+            obj.owner,
+            obj.pending,
+            obj.source_data.pan,
+            obj.source_data.sub_type,
+            obj.source_data.type,
+            obj.success
+          ].join("");
+          const calculatedHmac = import_crypto.default.createHmac("sha512", PAYMOB_HMAC).update(hmacString).digest("hex");
+          if (calculatedHmac !== hmac) {
+            console.error("Paymob Webhook: Invalid HMAC signature");
+            return res.status(401).send("Unauthorized");
+          }
+        }
+        if (obj && obj.success === true) {
+          const orderId = obj.order.id;
+          const orderInfoRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`order_${orderId}`);
+          if (orderInfoRow) {
+            const orderInfo = JSON.parse(orderInfoRow.value);
+            const player = allPlayers.get(orderInfo.playerSerial);
+            const item = db.prepare("SELECT * FROM shop_items WHERE id = ?").get(orderInfo.itemId);
+            if (player && item) {
+              if (item.type === "tokens" || item.type.startsWith("token_pack")) {
+                const qty = orderInfo.quantity || 1;
+                const addedTokens = (item.amount || 1) * qty;
+                player.tokens = (player.tokens || 0) + addedTokens;
+                savePlayerData(player.serial);
+                const socketId = playerSockets.get(player.serial);
+                if (socketId) {
+                  io.to(socketId).emit("player_update", player);
+                  io.to(socketId).emit("show_alert", {
+                    message: `\u062A\u0645 \u0625\u0636\u0627\u0641\u0629 ${addedTokens} Tokens \u0628\u0646\u062C\u0627\u062D!`,
+                    title: "\u0639\u0645\u0644\u064A\u0629 \u0646\u0627\u062C\u062D\u0629"
+                  });
+                }
+              } else if (item.type === "pro_pack") {
+                const days = item.amount > 0 ? item.amount : 30;
+                const ms = days * 24 * 60 * 60 * 1e3;
+                player.proPackageExpiry = Date.now() + ms;
+                savePlayerData(player.serial);
+                const socketId = playerSockets.get(player.serial);
+                if (socketId) {
+                  io.to(socketId).emit("player_update", player);
+                  io.to(socketId).emit("show_alert", {
+                    message: `\u062A\u0645 \u062A\u0641\u0639\u064A\u0644 \u0628\u0627\u0642\u0629 \u0627\u0644\u0645\u062D\u062A\u0631\u0641\u064A\u0646 (${days} \u064A\u0648\u0645) \u0628\u0646\u062C\u0627\u062D!`,
+                    title: "\u0639\u0645\u0644\u064A\u0629 \u0646\u0627\u062C\u062D\u0629"
+                  });
+                }
+              }
+            }
+          }
+        }
+        res.status(200).send("OK");
+      } catch (err) {
+        console.error("Paymob webhook error:", err);
+        res.status(500).send("Error");
+      }
+    });
+    const contactIps = /* @__PURE__ */ new Map();
+    app.post("/api/contact", (req, res) => {
+      try {
+        const { playerSerial, name, subject, message } = req.body;
+        const ip = req.ip || req.socket.remoteAddress || "unknown";
+        if (!name || !subject || !message) {
+          return res.status(400).json({ error: "Missing fields" });
+        }
+        if (playerSerial) {
+          const player = allPlayers.get(playerSerial);
+          if (player) {
+            if (player.lastContactAt && isSameDay(player.lastContactAt, Date.now())) {
+              return res.status(429).json({ error: "\u0644\u0642\u062F \u0642\u0645\u062A \u0628\u0625\u0631\u0633\u0627\u0644 \u0631\u0633\u0627\u0644\u0629 \u0627\u0644\u064A\u0648\u0645 \u0628\u0627\u0644\u0641\u0639\u0644." });
+            }
+            player.lastContactAt = Date.now();
+            savePlayerData(playerSerial);
+          }
+        } else {
+          const lastContact = contactIps.get(ip);
+          if (lastContact && isSameDay(lastContact, Date.now())) {
+            return res.status(429).json({ error: "\u0644\u0642\u062F \u0642\u0645\u062A \u0628\u0625\u0631\u0633\u0627\u0644 \u0631\u0633\u0627\u0644\u0629 \u0627\u0644\u064A\u0648\u0645 \u0628\u0627\u0644\u0641\u0639\u0644." });
+          }
+          contactIps.set(ip, Date.now());
+        }
+        db.prepare(
+          "INSERT INTO contacts (playerSerial, name, subject, message) VALUES (?, ?, ?, ?)"
+        ).run(playerSerial || null, name, subject, message);
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error saving contact message:", error);
+        res.status(500).json({ error: "Failed to save message" });
+      }
+    });
+    app.get("/api/categories", (req, res) => {
+      try {
+        res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
+        const standardCategories = [
+          { id: "animals", name: "\u062D\u064A\u0648\u0627\u0646\u0627\u062A", icon: "\u{1F418}" },
+          { id: "birds", name: "\u0637\u064A\u0648\u0631", icon: "\u{1F99C}" },
+          { id: "food", name: "\u0623\u0643\u0644\u0627\u062A", icon: "\u{1F355}" },
+          { id: "football", name: "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645", icon: "\u26BD" },
+          { id: "insects", name: "\u062D\u0634\u0631\u0627\u062A", icon: "\u{1F41E}" },
+          { id: "objects", name: "\u062C\u0645\u0627\u062F", icon: "\u{1F4E6}" },
+          { id: "plants", name: "\u0646\u0628\u0627\u062A", icon: "\u{1F33F}" },
+          { id: "people", name: "\u0627\u0634\u062E\u0627\u0635", icon: "\u{1F465}" }
+        ];
+        try {
+          const upsertCat = db.prepare(`
+            INSERT INTO categories (id, name, icon, timestamp)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET name=excluded.name, icon=excluded.icon
+          `);
+          for (const c of standardCategories) {
+            upsertCat.run(c.id, c.name, c.icon, Date.now());
+          }
+        } catch (e) {
+        }
+        const categories = db.prepare(
+          `
+        SELECT c.id, c.name, c.icon, c.timestamp, MAX(i.timestamp) as latestImageTimestamp
+        FROM categories c
+        LEFT JOIN custom_images i ON c.id = i.category
+        GROUP BY c.id
+        ORDER BY c.timestamp ASC
+      `
+        ).all();
+        res.json(categories);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        res.status(500).json({ error: "Failed to fetch categories" });
+      }
+    });
+    app.get("/api/image/:category/:name", (req, res) => {
+      try {
+        const { category, name } = req.params;
+        const diskFile = findImageOnDisk(category, name);
+        if (diskFile && import_fs.default.existsSync(diskFile)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return res.sendFile(diskFile);
+        }
+        let decodedName = name;
+        try {
+          decodedName = decodeURIComponent(name);
+        } catch (e) {
+        }
+        const image = db.prepare(
+          "SELECT data FROM custom_images WHERE (category = ? AND name = ?) OR name = ? LIMIT 1"
+        ).get(category, decodedName, decodedName);
+        if (image && image.data && image.data.length > 20) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          let base64Data = image.data;
+          let mimeType = "image/jpeg";
+          if (base64Data.startsWith("data:")) {
+            const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (matches && matches.length === 3) {
+              mimeType = matches[1];
+              base64Data = matches[2];
+            }
+          }
+          const imgBuffer = Buffer.from(base64Data, "base64");
+          res.setHeader("Content-Type", mimeType);
+          return res.send(imgBuffer);
+        } else {
+          console.warn(`[Image 404] Not found on disk or DB: Category='${category}', Name='${name}' (Decoded: '${decodedName}')`);
+          return res.status(404).send("Not found");
+        }
+      } catch (error) {
+        console.error("Error fetching image:", error);
+        res.status(500).send("Error");
+      }
+    });
+    app.get("/api/image/:name", (req, res) => {
+      try {
+        const { name } = req.params;
+        const diskFile = findImageOnDisk("", name);
+        if (diskFile && import_fs.default.existsSync(diskFile)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return res.sendFile(diskFile);
+        }
+        let decodedName = name;
+        try {
+          decodedName = decodeURIComponent(name);
+        } catch (e) {
+        }
+        const image = db.prepare("SELECT data FROM custom_images WHERE name = ? LIMIT 1").get(decodedName);
+        if (image && image.data && image.data.length > 20) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          let base64Data = image.data;
+          let mimeType = "image/jpeg";
+          if (base64Data.startsWith("data:")) {
+            const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (matches && matches.length === 3) {
+              mimeType = matches[1];
+              base64Data = matches[2];
+            }
+          }
+          res.setHeader("Content-Type", mimeType);
+          return res.send(Buffer.from(base64Data, "base64"));
+        }
+        return res.status(404).send("Not found");
+      } catch (error) {
+        console.error("Error fetching image by name:", error);
+        res.status(500).send("Error");
+      }
+    });
+    app.get("/api/collection/:serial", (req, res) => {
+      try {
+        const { serial } = req.params;
+        res.setHeader("Cache-Control", "private, max-age=10");
+        const collection = db.prepare("SELECT * FROM player_collections WHERE player_serial = ?").all(serial);
+        const claimed = db.prepare(
+          "SELECT * FROM claimed_collection_rewards WHERE player_serial = ?"
+        ).all(serial);
+        res.json({ collection, claimed });
+      } catch (error) {
+        console.error("Error fetching collection:", error);
+        res.status(500).json({ error: "Failed to fetch collection" });
+      }
+    });
+    app.post("/api/admin/categories", (req, res) => {
+      try {
+        const { name, icon } = req.body;
+        if (!name || !icon) {
+          return res.status(400).json({ error: "Missing fields" });
+        }
+        const id = Math.random().toString(36).substring(2, 15);
+        db.prepare(
+          "INSERT INTO categories (id, name, icon, timestamp) VALUES (?, ?, ?, ?)"
+        ).run(id, name, icon, Date.now());
+        res.json({ success: true, id, name, icon });
+      } catch (error) {
+        console.error("Error adding category:", error);
+        res.status(500).json({ error: "Failed to add category" });
+      }
+    });
+    app.delete("/api/admin/categories/:id", (req, res) => {
+      try {
+        const { id } = req.params;
+        db.prepare("DELETE FROM categories WHERE id = ?").run(id);
+        db.prepare("DELETE FROM custom_images WHERE category = ?").run(id);
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting category:", error);
+        res.status(500).json({ error: "Failed to delete category" });
+      }
+    });
+    app.get("/api/admin/images", (req, res) => {
+      try {
+        try {
+          db.exec(
+            `ALTER TABLE custom_images ADD COLUMN level TEXT DEFAULT '\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646'`
+          );
+        } catch (e) {
+        }
+        const images = db.prepare("SELECT id, name, category, level, timestamp FROM custom_images ORDER BY timestamp DESC").all();
+        res.json(images);
+      } catch (error) {
+        console.error("Error fetching images:", error);
+        res.status(500).json({ error: "Failed to fetch images" });
+      }
+    });
+    app.post("/api/admin/images", (req, res) => {
+      try {
+        const { category, name, data, addedBy, level } = req.body;
+        if (!category || !name || !data) {
+          return res.status(400).json({ error: "Missing fields" });
+        }
+        let base64Data = data;
+        let ext = ".jpg";
+        if (base64Data.startsWith("data:")) {
+          if (base64Data.startsWith("data:image/png")) ext = ".png";
+          else if (base64Data.startsWith("data:image/webp")) ext = ".webp";
+          const commaIdx = base64Data.indexOf(",");
+          if (commaIdx !== -1) {
+            base64Data = base64Data.substring(commaIdx + 1);
+          }
+        }
+        const catDir = import_path.default.join(primaryGameImagesDir, category);
+        if (!import_fs.default.existsSync(catDir)) {
+          import_fs.default.mkdirSync(catDir, { recursive: true });
+        }
+        const filePath = import_path.default.join(catDir, `${name}${ext}`);
+        try {
+          import_fs.default.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+          indexGameImages();
+        } catch (e) {
+          console.error("Error saving image file to disk:", e);
+        }
+        const id = Math.random().toString(36).substring(2, 15);
+        const imgLevel = level || "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+        db.prepare(
+          "INSERT INTO custom_images (id, category, name, data, addedBy, timestamp, level) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).run(
+          id,
+          category,
+          name,
+          "",
+          // Store empty string to keep SQLite DB small (<1MB) and lightning fast!
+          addedBy || "admin",
+          Date.now(),
+          imgLevel
+        );
+        dbIsDirty = true;
+        io.emit("categories_updated");
+        res.json({ success: true, id });
+      } catch (error) {
+        console.error("Error adding image:", error);
+        res.status(500).json({ error: "Failed to add image" });
+      }
+    });
+    app.post("/api/admin/sync-database", async (req, res) => {
+      try {
+        const token = req.query.token || req.headers.authorization?.replace("Bearer ", "");
+        if (!token || !await adminTokens.has(token)) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+        console.log("[DB] Manual backup sync triggered by admin via API...");
+        await syncDbToSupabase(true);
+        res.json({ success: true, message: "Database backup successfully synced to Supabase" });
+      } catch (err) {
+        console.error("[DB] Manual sync failed:", err);
+        res.status(500).json({ error: err.message || "Failed to sync database" });
+      }
+    });
+    app.delete("/api/admin/images/:id", (req, res) => {
+      try {
+        const { id } = req.params;
+        const img = db.prepare("SELECT category, name FROM custom_images WHERE id = ?").get(id);
+        if (img && img.category && img.name) {
+          const diskFile = findImageOnDisk(img.category, img.name);
+          if (diskFile && import_fs.default.existsSync(diskFile)) {
+            try {
+              import_fs.default.unlinkSync(diskFile);
+            } catch (e) {
+            }
+          }
+        }
+        db.prepare("DELETE FROM custom_images WHERE id = ?").run(id);
+        indexGameImages();
+        dbIsDirty = true;
+        io.emit("categories_updated");
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting image:", error);
+        res.status(500).json({ error: "Failed to delete image" });
+      }
+    });
+    const botConversations = /* @__PURE__ */ new Map();
+    const botFlags = /* @__PURE__ */ new Map();
+    const botIntervals = /* @__PURE__ */ new Map();
+    const botTimeouts = /* @__PURE__ */ new Map();
+    const playerBotHistory = /* @__PURE__ */ new Map();
+    async function triggerBotQuestion(roomId, bot) {
+      const currentRoom = rooms.get(roomId);
+      if (!currentRoom || currentRoom.gameState !== "discussion") return;
+      if (currentRoom.isWaitingForReconnect) {
+        setTimeout(() => triggerBotQuestion(roomId, bot), 2e3);
+        return;
+      }
+      if (currentRoom.currentTurn !== bot.id) return;
+      if (bot.level >= 10 && Math.random() < 0.1) {
+        const botPlayerInRoom = currentRoom.players.find(
+          (p) => p.id === bot.id
+        );
+        if (!botPlayerInRoom) return;
+        const helperRequiredPoints = {
+          hint: 6,
+          word_length: 12,
+          word_count: 18,
+          time_freeze: 24,
+          spy_lens: 30
+        };
+        const helpers = [
+          "word_length",
+          "word_count",
+          "time_freeze",
+          "hint",
+          "spy_lens"
+        ];
+        const availableHelpers = helpers.filter((h) => {
+          const requiredLevels = {
+            hint: 10,
+            word_length: 20,
+            time_freeze: 30,
+            word_count: 40,
+            spy_lens: 50
+          };
+          if (bot.level < (requiredLevels[h] || 0)) return false;
+          const currentCharge = botPlayerInRoom.helperCharge || 0;
+          const requiredCharge = helperRequiredPoints[h] || 0;
+          if (currentCharge < requiredCharge) return false;
+          if (h === "word_length")
+            return !botPlayerInRoom.wordLengthUsed && !botPlayerInRoom.wordLengthWatching;
+          if (h === "word_count")
+            return !botPlayerInRoom.wordCountUsed && !botPlayerInRoom.wordCountWatching;
+          if (h === "time_freeze")
+            return !botPlayerInRoom.timeFreezeUsed && !botPlayerInRoom.timeFreezeWatching;
+          if (h === "hint")
+            return (botPlayerInRoom.hintCount || 0) < 1 && !botPlayerInRoom.hintWatching;
+          if (h === "spy_lens")
+            return !botPlayerInRoom.spyLensUsed && !botPlayerInRoom.spyLensWatching;
+          return true;
+        });
+        if (availableHelpers.length > 0) {
+          const randomHelper = availableHelpers[Math.floor(Math.random() * availableHelpers.length)];
+          if (randomHelper === "word_length")
+            botPlayerInRoom.wordLengthWatching = true;
+          if (randomHelper === "word_count")
+            botPlayerInRoom.wordCountWatching = true;
+          if (randomHelper === "time_freeze")
+            botPlayerInRoom.timeFreezeWatching = true;
+          if (randomHelper === "hint") botPlayerInRoom.hintWatching = true;
+          if (randomHelper === "spy_lens")
+            botPlayerInRoom.spyLensWatching = true;
+          const helperNames = {
+            word_length: "\u0643\u0627\u0634\u0641 \u0627\u0644\u062D\u0631\u0648\u0641",
+            word_count: "\u0639\u062F\u062F \u0627\u0644\u0643\u0644\u0645\u0627\u062A",
+            time_freeze: "\u062A\u062C\u0645\u064A\u062F \u0627\u0644\u0648\u0642\u062A",
+            hint: "\u062A\u0644\u0645\u064A\u062D",
+            spy_lens: "\u0627\u0644\u062C\u0627\u0633\u0648\u0633"
+          };
+          const verb = bot.gender === "girl" || bot.gender === "female" ? "\u062A\u0642\u0648\u0645" : "\u064A\u0642\u0648\u0645";
+          io.to(roomId).emit("chat_bubble", {
+            senderId: "system",
+            text: `${verb} ${bot.name} \u0628\u0645\u0634\u0627\u0647\u062F\u0629 \u0625\u0639\u0644\u0627\u0646 \u0644\u0641\u062A\u062D \u0648\u0633\u064A\u0644\u0629 \u0645\u0633\u0627\u0639\u062F\u0629 "${helperNames[randomHelper]}"\u060C \u0627\u0646\u062A\u0638\u0631 \u0642\u0644\u064A\u0644\u0627\u064B.`
+          });
+          const adDuration = 5e3 + Math.random() * 1e4;
+          await new Promise((resolve) => setTimeout(resolve, adDuration));
+          const roomStillExists = rooms.get(roomId);
+          if (!roomStillExists) return;
+          const botStillInRoom = roomStillExists.players.find(
+            (p) => p.id === bot.id
+          );
+          if (!botStillInRoom) return;
+          if (randomHelper === "word_length")
+            botStillInRoom.wordLengthUsed = true;
+          if (randomHelper === "word_count")
+            botStillInRoom.wordCountUsed = true;
+          if (randomHelper === "time_freeze")
+            botStillInRoom.timeFreezeUsed = true;
+          if (randomHelper === "hint")
+            botStillInRoom.hintCount = (botStillInRoom.hintCount || 0) + 1;
+          if (randomHelper === "spy_lens") botStillInRoom.spyLensUsed = true;
+          io.to(roomId).emit("room_update", roomStillExists);
+          await new Promise(
+            (resolve) => setTimeout(resolve, 1e3 + Math.random() * 1e3)
+          );
+          const updatedRoom = rooms.get(roomId);
+          if (!updatedRoom || updatedRoom.gameState !== "discussion" || updatedRoom.currentTurn !== bot.id)
+            return;
+        }
+      }
+      try {
+        const player = currentRoom.players.find((p) => !p.isBot);
+        const botPersona = BOT_PERSONAS.find(
+          (p) => p.name === (bot.personaName || bot.name)
+        );
+        const winCount = playerBotHistory.get(player.playerId) || 0;
+        const botLevel = botPersona ? botPersona.level : 1;
+        const quickGuessCooldown = Math.max(3, 150 - (botLevel - 1) * 3);
+        const elapsedTime = 600 - (currentRoom.timer || 600);
+        if (winCount > 0 && elapsedTime >= quickGuessCooldown && Math.random() < 0.15) {
+          const confirmedAnswersCount = currentRoom.confirmedAnswers ? currentRoom.confirmedAnswers.length : 0;
+          currentRoom.isPaused = true;
+          currentRoom.pausingPlayerId = bot.id;
+          currentRoom.quickGuessTimer = 15;
+          io.to(roomId).emit("room_update", currentRoom);
+          io.to(roomId).emit("quick_guess_started", { playerId: bot.id });
+          await new Promise(
+            (resolve) => setTimeout(resolve, 3e3 + Math.random() * 2e3)
+          );
+          const updatedRoom = rooms.get(roomId);
+          if (!updatedRoom || updatedRoom.gameState !== "discussion") return;
+          let isCorrect = false;
+          let guess = "";
+          if (confirmedAnswersCount >= 3) {
+            isCorrect = true;
+            guess = bot.targetImage.name || bot.targetImage;
+          } else {
+            const categoryImages2 = getCategoryImages(currentRoom.category);
+            const wrongImages = categoryImages2.filter(
+              (img) => img !== bot.targetImage
+            );
+            guess = wrongImages[Math.floor(Math.random() * wrongImages.length)]?.name || "\u0645\u0634 \u0639\u0627\u0631\u0641";
+          }
+          updatedRoom.isPaused = false;
+          updatedRoom.pausingPlayerId = null;
+          io.to(roomId).emit("room_update", updatedRoom);
+          if (isCorrect) {
+            io.to(roomId).emit("guess_result", {
+              playerId: bot.id,
+              correct: true
+            });
+            endGame(roomId, bot.name, false, true);
+          } else {
+            io.to(roomId).emit("guess_result", {
+              playerId: bot.id,
+              correct: false
+            });
+            endGame(roomId, player.name);
+          }
+          return;
+        }
+        const configPath2 = import_path.default.join(process.cwd(), "public/uploads/config.json");
+        let questions = [];
+        let isAskingBranch = false;
+        if (import_fs.default.existsSync(configPath2)) {
+          try {
+            const config = JSON.parse(import_fs.default.readFileSync(configPath2, "utf-8"));
+            if (config.quickChat) {
+              const catKey = `qc_${currentRoom.category}`;
+              const categoryNode = config.quickChat.find(
+                (qc) => qc.id === catKey || qc.id === currentRoom.category || qc.text === currentRoom.category || normalizeEgyptian(qc.text) === normalizeEgyptian(currentRoom.category) || qc.id === `qc_animals` && currentRoom.category === "\u062D\u064A\u0648\u0627\u0646\u0627\u062A" || qc.id === `qc_food` && currentRoom.category === "\u0623\u0643\u0644\u0627\u062A" || qc.id === `qc_people` && currentRoom.category === "\u0627\u0634\u062E\u0627\u0635" || qc.id === `qc_objects` && currentRoom.category === "\u062C\u0645\u0627\u062F" || qc.id === `qc_plants` && currentRoom.category === "\u0646\u0628\u0627\u062A" || qc.id === `qc_birds` && currentRoom.category === "\u0637\u064A\u0648\u0631" || qc.id === `qc_insects` && currentRoom.category === "\u062D\u0634\u0631\u0627\u062A" || qc.id === `qc_football` && currentRoom.category === "\u0643\u0631\u0629 \u0627\u0644\u0642\u062F\u0645"
+              );
+              if (categoryNode && categoryNode.children) {
+                const branches = categoryNode.children.filter(
+                  (c) => c.children && c.children.length > 0
+                );
+                const topLevelLeaves = categoryNode.children.filter(
+                  (c) => !c.children || c.children.length === 0
+                );
+                const chatHistory2 = currentRoom.chatHistory || [];
+                const askedQuestionTexts = /* @__PURE__ */ new Set();
+                const rejectedBranchTexts = /* @__PURE__ */ new Set();
+                let confirmedBranch = null;
+                const normalize = (t) => normalizeEgyptian(t);
+                for (let i = 0; i < chatHistory2.length; i++) {
+                  const msg = chatHistory2[i];
+                  let text = msg.text.trim();
+                  if (text === "\u0627\u0647") text = "\u0622\u0647";
+                  if (text === "\u0644\u0627") text = "\u0644\u0623";
+                  const normText = normalize(text);
+                  if (text === "\u0622\u0647" || text === "\u0644\u0623") continue;
+                  if (msg.senderId === bot.id) {
+                    askedQuestionTexts.add(normText);
+                    const branch = branches.find(
+                      (b) => normText === normalize(b.text)
+                    );
+                    if (branch && i < chatHistory2.length - 1) {
+                      const answerMsg = chatHistory2[i + 1];
+                      if (answerMsg.senderId !== bot.id) {
+                        let answer = answerMsg.text.trim();
+                        if (answer === "\u0627\u0647") answer = "\u0622\u0647";
+                        if (answer === "\u0644\u0627") answer = "\u0644\u0623";
+                        if (answer === "\u0622\u0647") {
+                          confirmedBranch = branch;
+                        } else if (answer === "\u0644\u0623") {
+                          rejectedBranchTexts.add(normalize(branch.text));
+                          if (branches.length === 2) {
+                            const otherBranch = branches.find(
+                              (b) => b.text !== branch.text
+                            );
+                            if (otherBranch) {
+                              confirmedBranch = otherBranch;
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                if (confirmedBranch) {
+                  confirmedBranch.children.forEach((q) => {
+                    if (!askedQuestionTexts.has(normalize(q.text))) {
+                      questions.push(q.text);
+                    }
+                  });
+                  if (questions.length === 0) {
+                    topLevelLeaves.forEach((l) => {
+                      if (!askedQuestionTexts.has(normalize(l.text))) {
+                        questions.push(l.text);
+                      }
+                    });
+                  }
+                } else {
+                  const unaskedBranches = branches.filter(
+                    (b) => !askedQuestionTexts.has(normalize(b.text)) && !rejectedBranchTexts.has(normalize(b.text))
+                  );
+                  if (unaskedBranches.length > 0) {
+                    unaskedBranches.forEach((b) => questions.push(b.text));
+                    isAskingBranch = true;
+                  } else {
+                    const allPossibleLeaves = [];
+                    topLevelLeaves.forEach(
+                      (l) => allPossibleLeaves.push(l.text)
+                    );
+                    branches.forEach((b) => {
+                      if (!rejectedBranchTexts.has(normalize(b.text))) {
+                        b.children.forEach(
+                          (c) => allPossibleLeaves.push(c.text)
+                        );
+                      }
+                    });
+                    allPossibleLeaves.forEach((qText) => {
+                      if (!askedQuestionTexts.has(normalize(qText))) {
+                        questions.push(qText);
+                      }
+                    });
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Config Parsing Error in triggerBotQuestion:", e);
+          }
+        }
+        const categoryImages = getCategoryImages(currentRoom.category);
+        const categoryImageNames = categoryImages.map((img) => img.name).join("\u060C ");
+        let botReply = "";
+        if (questions.length > 0) {
+          botReply = questions[Math.floor(Math.random() * questions.length)];
+        } else {
+          currentRoom.currentTurn = player.id;
+          currentRoom.waitingForAnswerFrom = null;
+          io.to(roomId).emit("room_update", currentRoom);
+          return;
+        }
+        const chatHistory = botConversations.get(roomId) || [];
+        chatHistory.push({ role: "model", parts: [{ text: botReply }] });
+        botConversations.set(roomId, chatHistory);
+        if (!isAskingBranch && Math.random() < 0.15) {
+          io.to(roomId).emit("opponent_typing");
+          await new Promise(
+            (resolve) => setTimeout(resolve, 2e3 + Math.random() * 2e3)
+          );
+          io.to(roomId).emit("opponent_stop_typing");
+          await new Promise(
+            (resolve) => setTimeout(resolve, 1e3 + Math.random() * 1e3)
+          );
+          handleBotChat(roomId, bot, botReply);
+        } else {
+          handleBotChat(roomId, bot, botReply);
+        }
+      } catch (error) {
+        console.error("Bot Questioning Error:", error);
+      }
+    }
+    const HAND_POINTS = [
+      { x: 220, y: 245 },
+      { x: 212, y: 260 },
+      { x: 207, y: 276 },
+      { x: 199, y: 292 },
+      { x: 195, y: 311 },
+      { x: 175, y: 300 },
+      { x: 183, y: 143 },
+      { x: 178, y: 163 },
+      { x: 175, y: 183 },
+      { x: 171, y: 200 },
+      { x: 166, y: 218 },
+      { x: 164, y: 237 },
+      { x: 157, y: 259 },
+      { x: 159, y: 280 },
+      { x: 136, y: 260 },
+      { x: 118, y: 122 },
+      { x: 116, y: 142 },
+      { x: 120, y: 163 },
+      { x: 116, y: 184 },
+      { x: 118, y: 205 },
+      { x: 118, y: 224 },
+      { x: 118, y: 244 },
+      { x: 110, y: 266 },
+      { x: 17, y: 219 },
+      { x: 23, y: 235 },
+      { x: 30, y: 252 },
+      { x: 37, y: 268 },
+      { x: 55, y: 145 },
+      { x: 60, y: 165 },
+      { x: 59, y: 182 },
+      { x: 64, y: 198 },
+      { x: 67, y: 215 },
+      { x: 70, y: 232 },
+      { x: 74, y: 250 },
+      { x: 81, y: 272 },
+      { x: 61, y: 282 },
+      { x: 41, y: 286 },
+      { x: 138, y: 277 },
+      { x: 117, y: 282 },
+      { x: 96, y: 285 },
+      { x: 73, y: 293 },
+      { x: 48, y: 301 },
+      { x: 153, y: 298 },
+      { x: 130, y: 295 },
+      { x: 103, y: 301 },
+      { x: 77, y: 310 },
+      { x: 54, y: 318 },
+      { x: 189, y: 330 },
+      { x: 170, y: 316 },
+      { x: 144, y: 311 },
+      { x: 117, y: 312 },
+      { x: 93, y: 318 },
+      { x: 71, y: 327 },
+      { x: 57, y: 342 },
+      { x: 185, y: 349 },
+      { x: 168, y: 335 },
+      { x: 147, y: 329 },
+      { x: 124, y: 327 },
+      { x: 101, y: 336 },
+      { x: 79, y: 343 },
+      { x: 177, y: 368 },
+      { x: 161, y: 351 },
+      { x: 138, y: 343 },
+      { x: 115, y: 351 },
+      { x: 91, y: 356 },
+      { x: 65, y: 363 },
+      { x: 166, y: 387 },
+      { x: 153, y: 367 },
+      { x: 132, y: 363 },
+      { x: 108, y: 372 },
+      { x: 82, y: 374 },
+      { x: 142, y: 386 },
+      { x: 115, y: 389 },
+      { x: 91, y: 390 },
+      { x: 69, y: 387 }
+    ];
+    async function handleBotEvent(roomId, event, data) {
+      const room = rooms.get(roomId);
+      if (!room) return;
+      const botPlayer = room.players.find((p) => p.isBot);
+      const humanPlayer = room.players.find((p) => !p.isBot);
+      if (!botPlayer || !humanPlayer) {
+        return;
+      }
+      if (room.gameState === "space_war_playing" && !room.spaceWar.gameOver) {
+        const jamKey = roomId + "_spacewar_jam_timeout";
+        if (!botTimeouts.has(jamKey)) {
+          const jamDelay = 5e3 + Math.random() * 1e4;
+          const timeout = setTimeout(() => {
+            botTimeouts.delete(jamKey);
+            const r = rooms.get(roomId);
+            if (r && r.gameState === "space_war_playing" && !r.spaceWar.gameOver) {
+              io.to(roomId).emit("space_war_powerup", { roomId: r.id, type: "jam", from: botPlayer.id });
+              handleBotEvent(roomId, "room_update", r);
+            }
+          }, jamDelay);
+          botTimeouts.set(jamKey, timeout);
+        }
+      }
+      if (event === "bus_complete_letter_change_requested") {
+        setTimeout(
+          () => {
+            const r = rooms.get(roomId);
+            if (r && r.busCompleteChangeLetterRequestBy) {
+              r.busCompleteChangeLetterRequestBy = null;
+              r.gameState = "bus_complete_setup";
+              r.busCompleteLetter = void 0;
+              r.busCompleteSubmittedPlayers = [];
+              r.busCompleteAnswers = {};
+              r.busCompleteScores = {};
+              if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
+                clearTimeout(
+                  botTimeouts.get(roomId + "_bus_playing_submit_timeout")
+                );
+                botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
+              }
+              botFlags.delete(roomId + "_bus_playing_submit_timeout_scheduled");
+              if (botTimeouts.has(roomId + "_bus_setup_timeout")) {
+                clearTimeout(botTimeouts.get(roomId + "_bus_setup_timeout"));
+                botTimeouts.delete(roomId + "_bus_setup_timeout");
+              }
+              if (r.timerInterval) clearInterval(r.timerInterval);
+              if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+              io.to(roomId).emit("room_update", r);
+              handleBotEvent(roomId, "room_update", r);
+            }
+          },
+          1500 + Math.random() * 2e3
+        );
+      }
+      if (event === "room_update") {
+        if (room.gameState === "beach_race_setup") {
+          const startKey = roomId + "_beach_race_bot_start";
+          if (!botTimeouts.has(startKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(startKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "beach_race_setup") return;
+              if (!r.beachRace.readyPlayers) {
+                r.beachRace.readyPlayers = [];
+              }
+              const bPlayer = r.players.find((p) => p.isBot);
+              if (bPlayer && !r.beachRace.readyPlayers.includes(bPlayer.id)) {
+                r.beachRace.readyPlayers.push(bPlayer.id);
+                if (r.beachRace.readyPlayers.length >= r.players.length) {
+                  r.gameState = "beach_race_playing";
+                  r.beachRace.startTime = Date.now();
+                  r.beachRace.gameOver = false;
+                }
+                io.to(roomId).emit("room_update", r);
+                handleBotEvent(roomId, "room_update", r);
+              }
+            }, 2500 + Math.random() * 2e3);
+            botTimeouts.set(startKey, timeout);
+          }
+        }
+        if (room.gameState === "beach_race_playing" && !room.beachRace.gameOver) {
+          executeBotBeachRace(roomId);
+        }
+        if (!botConversations.has(roomId)) {
+          botConversations.set(roomId, []);
+        }
+        if (room.gameState === "xo_playing" && room.xoTurn === botPlayer.id) {
+          executeBotXOMove(roomId);
+        }
+        if (room.gameState === "speed_cups_waiting" && room.category === "speed_cups") {
+          const startKey = roomId + "_speed_cups_bot_start";
+          if (!botTimeouts.has(startKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(startKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "speed_cups_waiting") return;
+              const isAdPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+              if (isAdPlaying) return;
+              startSpeedCupsCountdown(roomId);
+            }, 5e3 + Math.random() * 2e3);
+            botTimeouts.set(startKey, timeout);
+          }
+        }
+        if (room.gameState !== "speed_cups_waiting" || room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0) {
+          if (botTimeouts.has(roomId + "_speed_cups_bot_start")) {
+            clearTimeout(botTimeouts.get(roomId + "_speed_cups_bot_start"));
+            botTimeouts.delete(roomId + "_speed_cups_bot_start");
+          }
+        }
+        if (room.gameState === "speed_cups_finished" && room.category === "speed_cups") {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            const rematchKey = roomId + "_speed_cups_bot_rematch";
+            if (!botTimeouts.has(rematchKey)) {
+              const timeout = setTimeout(() => {
+                botTimeouts.delete(rematchKey);
+                const r = rooms.get(roomId);
+                if (!r || r.gameState !== "speed_cups_finished") return;
+                const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+                if (isAdStillPlaying) return;
+                r.speedCupsRematchRequestedBy = r.speedCupsRematchRequestedBy || [];
+                if (!r.speedCupsRematchRequestedBy.includes(botPlayer.id)) {
+                  r.speedCupsRematchRequestedBy.push(botPlayer.id);
+                  if (r.speedCupsRematchRequestedBy.length === r.players.length) {
+                    initializeSpeedCupsGame(r);
+                    const bot = r.players.find((p) => p.isBot);
+                    if (bot) {
+                      handleBotEvent(roomId, "room_update", r);
+                    }
+                  } else {
+                    sendRoomUpdate(roomId, r);
+                  }
+                }
+              }, 2500 + Math.random() * 2e3);
+              botTimeouts.set(rematchKey, timeout);
+            }
+          }
+        }
+        if (room.gameState !== "speed_cups_finished" || room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0) {
+          if (botTimeouts.has(roomId + "_speed_cups_bot_rematch")) {
+            clearTimeout(botTimeouts.get(roomId + "_speed_cups_bot_rematch"));
+            botTimeouts.delete(roomId + "_speed_cups_bot_rematch");
+          }
+        }
+        if (room.gameState === "bomb_party_playing" && room.bombParty && room.bombParty.turnPlayerId === botPlayer.id && !room.bombParty.explodedPlayerId && !room.bombParty.gameOver) {
+          const botKey = roomId + "_bomb_party_bot_timeout";
+          if (!botTimeouts.has(botKey)) {
+            const willSucceed = Math.random() < 0.4;
+            if (willSucceed) {
+              const substrNormal = normalizeEgyptian(room.bombParty.currentSubstring);
+              const validWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => {
+                return w.normalized.includes(substrNormal) && !room.bombParty.usedWords.includes(w.original);
+              });
+              if (validWords.length > 0) {
+                const chosenWord = validWords[Math.floor(Math.random() * validWords.length)].original;
+                const timeLeft = room.bombParty.turnTimeLimit - (Date.now() - room.bombParty.bombStartTime);
+                let delay = 2500 + Math.random() * 3e3;
+                if (delay > timeLeft - 500) {
+                  delay = Math.max(1800, Math.max(100, timeLeft - 500));
+                }
+                const timeout = setTimeout(() => {
+                  botTimeouts.delete(botKey);
+                  const r = rooms.get(roomId);
+                  if (!r || r.gameState !== "bomb_party_playing" || r.bombParty.explodedPlayerId || r.bombParty.turnPlayerId !== botPlayer.id) return;
+                  const guess = normalizeEgyptian(chosenWord);
+                  const validWordObj = NORMALIZED_BOMB_PARTY_WORDS.find((w) => w.normalized === guess)?.original;
+                  if (validWordObj) {
+                    r.bombParty.usedWords.push(validWordObj);
+                    if (!r.bombParty.stats) r.bombParty.stats = {};
+                    if (!r.bombParty.stats[botPlayer.id]) r.bombParty.stats[botPlayer.id] = { correct: 0, incorrect: 0 };
+                    r.bombParty.stats[botPlayer.id].correct++;
+                    io.to(roomId).emit("bomb_party_correct_guess", { playerId: botPlayer.id, word: validWordObj });
+                    bombPartyNextTurn(r, io, roomId);
+                  }
+                }, delay);
+                botTimeouts.set(botKey, timeout);
+              }
+            } else {
+            }
+          }
+        }
+        if (room.gameState !== "bomb_party_playing" || !room.bombParty || room.bombParty.turnPlayerId !== botPlayer.id || room.bombParty.explodedPlayerId) {
+          if (botTimeouts.has(roomId + "_bomb_party_bot_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_bomb_party_bot_timeout"));
+            botTimeouts.delete(roomId + "_bomb_party_bot_timeout");
+          }
+        }
+        if (room.gameState === "bomb_party_finished" && room.category === "bomb_party") {
+          const rematchKey = roomId + "_bomb_party_bot_rematch";
+          if (!botTimeouts.has(rematchKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(rematchKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "bomb_party_finished") return;
+              r.bombParty.rematchRequestedBy = r.bombParty.rematchRequestedBy || [];
+              if (!r.bombParty.rematchRequestedBy.includes(botPlayer.id)) {
+                r.bombParty.rematchRequestedBy.push(botPlayer.id);
+                if (r.bombParty.rematchRequestedBy.length === r.players.length) {
+                  r.gameState = "bomb_party_setup";
+                  const startingPlayerIndex = Math.floor(Math.random() * r.players.length);
+                  r.bombParty = {
+                    turnPlayerId: r.players[startingPlayerIndex].id,
+                    bombStartTime: Date.now(),
+                    turnTimeLimit: 2e4,
+                    matchWins: {},
+                    usedWords: [],
+                    currentSubstring: getBombPartySubstring([]),
+                    explodedPlayerId: null,
+                    gameOver: false,
+                    startRequestedBy: [],
+                    winThreshold: 3,
+                    rematchRequestedBy: []
+                  };
+                  io.to(roomId).emit("room_update", r);
+                  io.to(roomId).emit("bomb_party_rematch_started");
+                  handleBotEvent(roomId, "room_update", r);
+                } else {
+                  io.to(roomId).emit("room_update", r);
+                }
+              }
+            }, 2500 + Math.random() * 2e3);
+            botTimeouts.set(rematchKey, timeout);
+          }
+        }
+        if (room.gameState !== "bomb_party_finished") {
+          if (botTimeouts.has(roomId + "_bomb_party_bot_rematch")) {
+            clearTimeout(botTimeouts.get(roomId + "_bomb_party_bot_rematch"));
+            botTimeouts.delete(roomId + "_bomb_party_bot_rematch");
+          }
+        }
+        if (room.gameState === "connect_four_words_playing" && room.connectFourWords && room.connectFourWords.turn === botPlayer.id) {
+          const botKey = roomId + "_connect_four_words_bot_drop";
+          if (!botTimeouts.has(botKey)) {
+            const startTime = room.connectFourWords.startTime || Date.now();
+            const elapsedMin = (Date.now() - startTime) / (60 * 1e3);
+            const progressRatio = Math.min(elapsedMin / 10, 1);
+            const baseDelay = 1200 + progressRatio * 1800;
+            const randDelay = 800 + progressRatio * 700;
+            const delay = baseDelay + Math.random() * randDelay;
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(botKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "connect_four_words_playing" || r.connectFourWords.turn !== botPlayer.id) {
+                return;
+              }
+              const availableCols = [];
+              for (let c = 0; c < 7; c++) {
+                if (!r.connectFourWords.board[0][c].playerId) {
+                  availableCols.push(c);
+                }
+              }
+              if (availableCols.length === 0) return;
+              const targetWord = r.connectFourWords.targetWord;
+              const targetNormalized = normalizeEgyptian(targetWord);
+              const targetReversed = targetNormalized.split("").reverse().join("");
+              const board = r.connectFourWords.board;
+              const letters = r.connectFourWords.letters;
+              const humanPlayer2 = r.players.find((p) => p.id !== botPlayer.id);
+              const humanId = humanPlayer2 ? humanPlayer2.id : "human";
+              let filledCount = 0;
+              for (let row = 0; row < 6; row++) {
+                for (let col = 0; col < 7; col++) {
+                  if (board[row][col].playerId) filledCount++;
+                }
+              }
+              const elapsedSeconds = (Date.now() - startTime) / 1e3;
+              const isAdvancedStage = filledCount >= 14 || elapsedSeconds >= 300;
+              let mistakeRate = 0.35;
+              if (isAdvancedStage) {
+                mistakeRate = Math.min(0.48, 0.35 + (filledCount - 10) * 0.015 + elapsedSeconds / 600 * 0.08);
+              }
+              const checkWinForVirtualMove = (col, letter2, playerId) => {
+                let targetR = -1;
+                for (let row = 5; row >= 0; row--) {
+                  if (!board[row][col].playerId) {
+                    targetR = row;
+                    break;
+                  }
+                }
+                if (targetR === -1) return false;
+                const tempBoard = board.map((row) => row.map((cell) => ({ ...cell })));
+                tempBoard[targetR][col] = { playerId, letter: letter2 };
+                const checkLine = (r2, c, dr, dc) => {
+                  let str = "";
+                  for (let i = 0; i < 4; i++) {
+                    const nr = r2 + dr * i;
+                    const nc = c + dc * i;
+                    if (nr >= 0 && nr < 6 && nc >= 0 && nc < 7) {
+                      const cell = tempBoard[nr][nc];
+                      if (cell.playerId === playerId && cell.letter) {
+                        str += normalizeEgyptian(cell.letter);
+                      } else {
+                        break;
+                      }
+                    }
+                  }
+                  return str === targetNormalized || str === targetReversed;
+                };
+                for (let r2 = 0; r2 < 6; r2++) {
+                  for (let c = 0; c < 7; c++) {
+                    if (checkLine(r2, c, 0, 1) || checkLine(r2, c, 1, 0) || checkLine(r2, c, 1, 1) || checkLine(r2, c, 1, -1)) {
+                      return true;
+                    }
+                  }
+                }
+                return false;
+              };
+              const evaluateMoveHeuristic = (col, letter2, playerId) => {
+                let targetR = -1;
+                for (let row = 5; row >= 0; row--) {
+                  if (!board[row][col].playerId) {
+                    targetR = row;
+                    break;
+                  }
+                }
+                if (targetR === -1) return -1;
+                let score = 0;
+                const directions = [
+                  { dr: 0, dc: 1 },
+                  { dr: 1, dc: 0 },
+                  { dr: 1, dc: 1 },
+                  { dr: 1, dc: -1 }
+                ];
+                for (const { dr, dc } of directions) {
+                  for (let step = 0; step < 4; step++) {
+                    const startRow = targetR - dr * step;
+                    const startCol = col - dc * step;
+                    let isValidLine = true;
+                    for (let i = 0; i < 4; i++) {
+                      const nr = startRow + dr * i;
+                      const nc = startCol + dc * i;
+                      if (nr < 0 || nr >= 6 || nc < 0 || nc >= 7) {
+                        isValidLine = false;
+                        break;
+                      }
+                    }
+                    if (!isValidLine) continue;
+                    const checkCompatibilityForWord = (word) => {
+                      let matchingCount = 0;
+                      for (let i = 0; i < 4; i++) {
+                        const nr = startRow + dr * i;
+                        const nc = startCol + dc * i;
+                        const expectedLetter = word[i];
+                        if (nr === targetR && nc === col) {
+                          if (normalizeEgyptian(letter2) === expectedLetter) {
+                            matchingCount++;
+                          } else {
+                            return -1;
+                          }
+                          continue;
+                        }
+                        const cell = board[nr][nc];
+                        if (cell.playerId) {
+                          if (cell.playerId !== playerId || normalizeEgyptian(cell.letter) !== expectedLetter) {
+                            return -1;
+                          }
+                          matchingCount++;
+                        }
+                      }
+                      return matchingCount;
+                    };
+                    const matchNormal = checkCompatibilityForWord(targetNormalized);
+                    const matchReversed = checkCompatibilityForWord(targetReversed);
+                    const bestMatch = Math.max(matchNormal, matchReversed);
+                    if (bestMatch >= 0) {
+                      if (bestMatch === 4) score += 1e4;
+                      else if (bestMatch === 3) score += 100;
+                      else if (bestMatch === 2) score += 10;
+                      else score += 1;
+                    }
+                  }
+                }
+                return score;
+              };
+              const allPossibleMoves = [];
+              for (const c of availableCols) {
+                for (const l of letters) {
+                  allPossibleMoves.push({ col: c, letter: l });
+                }
+              }
+              const winningMoves = [];
+              const opponentWinningMovesInColumns = {};
+              for (const move of allPossibleMoves) {
+                if (checkWinForVirtualMove(move.col, move.letter, botPlayer.id)) {
+                  winningMoves.push(move);
+                }
+              }
+              for (const c of availableCols) {
+                for (const l of letters) {
+                  if (checkWinForVirtualMove(c, l, humanId)) {
+                    if (!opponentWinningMovesInColumns[c]) {
+                      opponentWinningMovesInColumns[c] = [];
+                    }
+                    opponentWinningMovesInColumns[c].push({ letter: l });
+                  }
+                }
+              }
+              const hasOpponentThreats = Object.keys(opponentWinningMovesInColumns).length > 0;
+              const isConfused = Math.random() < mistakeRate;
+              let finalMove = null;
+              if (!isConfused) {
+                if (winningMoves.length > 0) {
+                  if (Math.random() < 0.6) {
+                    finalMove = winningMoves[Math.floor(Math.random() * winningMoves.length)];
+                  }
+                } else if (hasOpponentThreats) {
+                  if (Math.random() < 0.5) {
+                    const threatenedCols = Object.keys(opponentWinningMovesInColumns).map(Number);
+                    const colToBlock = threatenedCols[Math.floor(Math.random() * threatenedCols.length)];
+                    let bestLetterForBlock = letters[0];
+                    let bestBlockScore = -1;
+                    for (const l of letters) {
+                      const score = evaluateMoveHeuristic(colToBlock, l, botPlayer.id);
+                      if (score > bestBlockScore) {
+                        bestBlockScore = score;
+                        bestLetterForBlock = l;
+                      }
+                    }
+                    finalMove = { col: colToBlock, letter: bestLetterForBlock };
+                  }
+                }
+              }
+              if (!finalMove) {
+                const scoredMoves = [];
+                const defenseWeight = isAdvancedStage ? 0.45 : 0.6;
+                for (const move of allPossibleMoves) {
+                  const offenseScore = evaluateMoveHeuristic(move.col, move.letter, botPlayer.id);
+                  const defenseScore = evaluateMoveHeuristic(move.col, move.letter, humanId);
+                  const humanJitter = Math.random() * 10 - 5;
+                  let moveScore = offenseScore + defenseWeight * defenseScore + humanJitter;
+                  let targetR = -1;
+                  for (let row = 5; row >= 0; row--) {
+                    if (!board[row][move.col].playerId) {
+                      targetR = row;
+                      break;
+                    }
+                  }
+                  if (targetR > 0) {
+                    const tempBoard = board.map((row) => row.map((cell) => ({ ...cell })));
+                    tempBoard[targetR][move.col] = { playerId: botPlayer.id, letter: move.letter };
+                    let setsUpOpponentWin = false;
+                    const checkWinForOpponentAbove = (oppLetter) => {
+                      const tempBoardAbove = tempBoard.map((row) => row.map((cell) => ({ ...cell })));
+                      tempBoardAbove[targetR - 1][move.col] = { playerId: humanId, letter: oppLetter };
+                      const checkLine = (r2, c, dr, dc) => {
+                        let str = "";
+                        for (let i = 0; i < 4; i++) {
+                          const nr = r2 + dr * i;
+                          const nc = c + dc * i;
+                          if (nr >= 0 && nr < 6 && nc >= 0 && nc < 7) {
+                            const cell = tempBoardAbove[nr][nc];
+                            if (cell.playerId === humanId && cell.letter) {
+                              str += normalizeEgyptian(cell.letter);
+                            } else {
+                              break;
+                            }
+                          }
+                        }
+                        return str === targetNormalized || str === targetReversed;
+                      };
+                      for (let r2 = 0; r2 < 6; r2++) {
+                        for (let c = 0; c < 7; c++) {
+                          if (checkLine(r2, c, 0, 1) || checkLine(r2, c, 1, 0) || checkLine(r2, c, 1, 1) || checkLine(r2, c, 1, -1)) {
+                            return true;
+                          }
+                        }
+                      }
+                      return false;
+                    };
+                    for (const l of letters) {
+                      if (checkWinForOpponentAbove(l)) {
+                        setsUpOpponentWin = true;
+                        break;
+                      }
+                    }
+                    if (setsUpOpponentWin) {
+                      if (Math.random() < 0.45) {
+                        moveScore -= 150;
+                      }
+                    }
+                  }
+                  scoredMoves.push({ ...move, score: moveScore });
+                }
+                scoredMoves.sort((a, b) => b.score - a.score);
+                const bestScore = scoredMoves[0].score;
+                const threshold = Math.max(bestScore - 30, bestScore * 0.5);
+                const bestMoves = scoredMoves.filter((m) => m.score >= threshold);
+                finalMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+              }
+              const colIndex = finalMove.col;
+              const letter = finalMove.letter;
+              let targetRow = -1;
+              for (let row = 5; row >= 0; row--) {
+                if (!r.connectFourWords.board[row][colIndex].playerId) {
+                  targetRow = row;
+                  break;
+                }
+              }
+              if (targetRow !== -1) {
+                r.connectFourWords.board[targetRow][colIndex] = { playerId: botPlayer.id, letter };
+                let winningCells = null;
+                const checkLine = (row, col, dr, dc) => {
+                  let str = "";
+                  let cells = [];
+                  for (let i = 0; i < 4; i++) {
+                    const nr = row + dr * i;
+                    const nc = col + dc * i;
+                    if (nr >= 0 && nr < 6 && nc >= 0 && nc < 7) {
+                      const cell = board[nr][nc];
+                      if (cell.playerId === botPlayer.id && cell.letter) {
+                        str += normalizeEgyptian(cell.letter);
+                        cells.push({ r: nr, c: nc });
+                      } else {
+                        break;
+                      }
+                    }
+                  }
+                  if (str === targetNormalized || str === targetReversed) return cells;
+                  return null;
+                };
+                for (let row = 0; row < 6; row++) {
+                  for (let col = 0; col < 7; col++) {
+                    winningCells = winningCells || checkLine(row, col, 0, 1) || checkLine(row, col, 1, 0) || checkLine(row, col, 1, 1) || checkLine(row, col, 1, -1);
+                    if (winningCells) break;
+                  }
+                  if (winningCells) break;
+                }
+                if (winningCells) {
+                  r.gameState = "connect_four_words_finished";
+                  r.connectFourWords.winnerId = botPlayer.id;
+                  r.connectFourWords.winningCells = winningCells;
+                  const winnerPlayer = r.players.find((p) => p.id === botPlayer.id);
+                  if (winnerPlayer) {
+                    winnerPlayer.connectFourWordsWins = (winnerPlayer.connectFourWordsWins || 0) + 1;
+                  }
+                } else {
+                  let isFull = true;
+                  for (let c = 0; c < 7; c++) {
+                    if (!board[0][c].playerId) {
+                      isFull = false;
+                      break;
+                    }
+                  }
+                  if (isFull) {
+                    r.gameState = "connect_four_words_finished";
+                    r.connectFourWords.winnerId = "draw";
+                  } else {
+                    const opp = r.players.find((p) => p.id !== botPlayer.id);
+                    if (opp) r.connectFourWords.turn = opp.id;
+                  }
+                }
+                io.to(roomId).emit("room_update", r);
+              }
+            }, delay);
+            botTimeouts.set(botKey, timeout);
+          }
+        }
+        if (room.gameState === "wordle_playing" && room.wordle && !room.wordle.gameOver) {
+          const botKey = roomId + "_wordle_bot_guess_timeout";
+          if (!botTimeouts.has(botKey)) {
+            const delay = 6e4 + Math.random() * 3e4;
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(botKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "wordle_playing" || r.wordle.gameOver) return;
+              const botGuesses = r.wordle.guesses?.[botPlayer.id] || [];
+              const targetLen = r.wordle.targetWord.length;
+              let pool = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.original.length === targetLen);
+              if (botGuesses.length > 0) {
+                const lastGuessObj = botGuesses[botGuesses.length - 1];
+                const lastGuess = normalizeEgyptian(lastGuessObj.word);
+                const lastResult = lastGuessObj.result;
+                pool = pool.filter((w) => {
+                  const normWord = w.normalized;
+                  if (normWord.length !== targetLen) return false;
+                  for (let i = 0; i < targetLen; i++) {
+                    const status = lastResult[i];
+                    const char = lastGuess[i];
+                    if (status === "correct") {
+                      if (normWord[i] !== char) return false;
+                    } else if (status === "present") {
+                      if (!normWord.includes(char) || normWord[i] === char) return false;
+                    } else if (status === "absent") {
+                      const isElsewhere = lastResult.some((status2, idx2) => idx2 !== i && (status2 === "correct" || status2 === "present") && lastGuess[idx2] === char);
+                      if (isElsewhere) {
+                        if (normWord[i] === char) return false;
+                      } else {
+                        if (normWord.includes(char)) return false;
+                      }
+                    }
+                  }
+                  return true;
+                });
+              }
+              if (pool.length === 0) {
+                pool = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.original.length === targetLen);
+              }
+              let chosenWordObj = pool[Math.floor(Math.random() * pool.length)];
+              const currentTurnCount = botGuesses.length;
+              const targetNormal = normalizeEgyptian(r.wordle.targetWord);
+              const elapsedTime = Date.now() - (r.wordle.startTime || Date.now());
+              const timeRemaining = 10 * 60 * 1e3 - elapsedTime;
+              const isLastMinute = timeRemaining < 60 * 1e3;
+              const isLastGuess = currentTurnCount >= 5;
+              if (isLastMinute || isLastGuess) {
+                const findTargetChance = isLastMinute ? 0.75 : 0.25;
+                if (Math.random() < findTargetChance) {
+                  const targetObj = NORMALIZED_BOMB_PARTY_WORDS.find((w) => w.normalized === targetNormal);
+                  if (targetObj) {
+                    chosenWordObj = targetObj;
+                  }
+                }
+              }
+              if (chosenWordObj && chosenWordObj.normalized === targetNormal && !isLastMinute && !isLastGuess) {
+                const altPool = pool.filter((w) => w.normalized !== targetNormal);
+                if (altPool.length > 0) {
+                  chosenWordObj = altPool[Math.floor(Math.random() * altPool.length)];
+                }
+              }
+              if (chosenWordObj) {
+                const guessWord = chosenWordObj.original;
+                const guessNorm = normalizeEgyptian(guessWord);
+                const targetWordNorm = normalizeEgyptian(r.wordle.targetWord);
+                const result = new Array(guessNorm.length).fill("absent");
+                const targetLetters = targetWordNorm.split("");
+                for (let i = 0; i < guessNorm.length; i++) {
+                  if (guessNorm[i] === targetLetters[i]) {
+                    result[i] = "correct";
+                    targetLetters[i] = null;
+                  }
+                }
+                for (let i = 0; i < guessNorm.length; i++) {
+                  if (result[i] !== "correct") {
+                    const idx = targetLetters.indexOf(guessNorm[i]);
+                    if (idx !== -1) {
+                      result[i] = "present";
+                      targetLetters[idx] = null;
+                    }
+                  }
+                }
+                if (!r.wordle.guesses) r.wordle.guesses = {};
+                if (!r.wordle.guesses[botPlayer.id]) r.wordle.guesses[botPlayer.id] = [];
+                r.wordle.guesses[botPlayer.id].push({ word: guessWord, result });
+                io.to(roomId).emit("wordle_guess_result", {
+                  playerId: botPlayer.id,
+                  guess: { word: guessWord, result }
+                });
+                if (result.every((res) => res === "correct")) {
+                  r.wordle.gameOver = true;
+                  r.wordle.winnerId = botPlayer.id;
+                  r.gameState = "wordle_finished";
+                  io.to(roomId).emit("wordle_finished", { winnerId: botPlayer.id, word: r.wordle.targetWord });
+                  const winnerPlayer = r.players.find((p) => p.id === botPlayer.id);
+                  if (winnerPlayer) {
+                    winnerPlayer.wordleWins = (winnerPlayer.wordleWins || 0) + 1;
+                  }
+                }
+                io.to(roomId).emit("room_update", r);
+                handleBotEvent(roomId, "room_update", r);
+              }
+            }, delay);
+            botTimeouts.set(botKey, timeout);
+          }
+        }
+        if (room.gameState !== "wordle_playing" || !room.wordle || room.wordle.gameOver) {
+          if (botTimeouts.has(roomId + "_wordle_bot_guess_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_wordle_bot_guess_timeout"));
+            botTimeouts.delete(roomId + "_wordle_bot_guess_timeout");
+          }
+        }
+        if (room.gameState === "wordle_finished" || room.gameState === "connect_four_words_finished" && room.category === "wordle") {
+          const rematchKey = roomId + "_wordle_bot_rematch";
+          if (!botTimeouts.has(rematchKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(rematchKey);
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "wordle_finished") return;
+              r.wordle.rematchRequestedBy = r.wordle.rematchRequestedBy || [];
+              if (!r.wordle.rematchRequestedBy.includes(botPlayer.id)) {
+                r.wordle.rematchRequestedBy.push(botPlayer.id);
+                if (r.wordle.rematchRequestedBy.length === r.players.length) {
+                  r.gameState = "wordle_setup";
+                  const readyPlayers = [];
+                  const bot = r.players.find((p) => p.isBot);
+                  if (bot) {
+                    readyPlayers.push(bot.id);
+                  }
+                  r.wordle = {
+                    targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 5).length)].original,
+                    guesses: {},
+                    winnerId: null,
+                    startTime: Date.now(),
+                    rematchRequestedBy: [],
+                    gameOver: false,
+                    startRequestedBy: [],
+                    readyPlayers
+                  };
+                  io.to(roomId).emit("room_update", r);
+                  io.to(roomId).emit("wordle_rematch_started");
+                  handleBotEvent(roomId, "room_update", r);
+                } else {
+                  io.to(roomId).emit("room_update", r);
+                }
+              }
+            }, 8e3 + Math.random() * 3e3);
+            botTimeouts.set(rematchKey, timeout);
+          }
+        }
+        if (room.gameState !== "wordle_finished") {
+          if (botTimeouts.has(roomId + "_wordle_bot_rematch")) {
+            clearTimeout(botTimeouts.get(roomId + "_wordle_bot_rematch"));
+            botTimeouts.delete(roomId + "_wordle_bot_rematch");
+          }
+        }
+        if (room.gameState === "puzzle_setup") {
+          const setupKey = roomId + "_puzzle_bot_setup";
+          if (!botTimeouts.has(setupKey)) {
+            const timeout = setTimeout(() => {
+              botTimeouts.delete(setupKey);
+              const r = rooms.get(roomId);
+              if (r && r.gameState === "puzzle_setup") {
+                r.puzzle.startRequestedBy = r.puzzle.startRequestedBy || [];
+                const botPlayer2 = r.players.find((p) => p.isBot);
+                if (botPlayer2 && !r.puzzle.startRequestedBy.includes(botPlayer2.id)) {
+                  r.puzzle.startRequestedBy.push(botPlayer2.id);
+                }
+                if (r.puzzle.startRequestedBy.length >= r.players.length) {
+                  r.gameState = "puzzle_playing";
+                  r.puzzle.roundStartTime = Date.now();
+                  r.puzzle.lastChanceStartTime = null;
+                  r.puzzle.playersProgress = {};
+                  r.puzzle.botPieces = {};
+                }
+                io.to(roomId).emit("room_update", r);
+                if (botPlayer2 && r.gameState === "puzzle_playing") {
+                  handleBotEvent(roomId, "room_update", r);
+                }
+              }
+            }, 1500);
+            botTimeouts.set(setupKey, timeout);
+          }
+        }
+        if (room.gameState !== "puzzle_setup") {
+          if (botTimeouts.has(roomId + "_puzzle_bot_setup")) {
+            clearTimeout(botTimeouts.get(roomId + "_puzzle_bot_setup"));
+            botTimeouts.delete(roomId + "_puzzle_bot_setup");
+          }
+        }
+        if (room.gameState === "puzzle_playing") {
+          const puzzleBotKey = roomId + "_puzzle_bot_step";
+          if (!botTimeouts.has(puzzleBotKey)) {
+            const runBotStep = () => {
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "puzzle_playing") {
+                botTimeouts.delete(puzzleBotKey);
+                return;
+              }
+              if (!r.puzzle.botPieces) r.puzzle.botPieces = {};
+              const currentPieces = r.puzzle.botPieces[r.puzzle.currentRound] || 0;
+              let limit = 5 * 60 * 1e3;
+              if (r.puzzle.currentRound === 2) limit = 10 * 60 * 1e3;
+              else if (r.puzzle.currentRound === 3) limit = 15 * 60 * 1e3;
+              let remaining = 0;
+              if (r.puzzle.lastChanceStartTime) {
+                remaining = Math.max(0, 20 * 1e3 - (Date.now() - r.puzzle.lastChanceStartTime));
+              } else if (r.puzzle.roundStartTime) {
+                remaining = Math.max(0, limit - (Date.now() - r.puzzle.roundStartTime));
+              }
+              let delay = 3500;
+              if (r.puzzle.lastChanceStartTime) {
+                delay = 1500 + Math.random() * 1300;
+              } else if (r.puzzle.currentRound === 1) {
+                const rand = Math.random();
+                if (rand < 0.35) {
+                  delay = 2e3 + Math.random() * 1500;
+                } else if (rand < 0.75) {
+                  delay = 3500 + Math.random() * 2e3;
+                } else {
+                  delay = 6e3 + Math.random() * 3e3;
+                }
+              } else if (r.puzzle.currentRound === 2) {
+                const rand = Math.random();
+                if (rand < 0.3) {
+                  delay = 3e3 + Math.random() * 2e3;
+                } else if (rand < 0.7) {
+                  delay = 5500 + Math.random() * 3e3;
+                } else {
+                  delay = 9e3 + Math.random() * 5e3;
+                }
+              } else {
+                const rand = Math.random();
+                if (rand < 0.25) {
+                  delay = 4e3 + Math.random() * 2500;
+                } else if (rand < 0.7) {
+                  delay = 7500 + Math.random() * 4e3;
+                } else {
+                  delay = 12e3 + Math.random() * 6e3;
+                }
+              }
+              if (currentPieces < 48) {
+                const added = Math.random() < 0.15 && currentPieces < 47 ? 2 : 1;
+                const nextPieces = Math.min(48, currentPieces + added);
+                r.puzzle.botPieces[r.puzzle.currentRound] = nextPieces;
+                const nextProgress = Math.floor(nextPieces / 49 * 100);
+                if (!r.puzzle.playersProgress) r.puzzle.playersProgress = {};
+                r.puzzle.playersProgress[botPlayer.id] = nextProgress;
+                io.to(roomId).emit("room_update", r);
+              } else if (currentPieces >= 48) {
+                if (remaining <= 4e3 && remaining > 0) {
+                  r.puzzle.botPieces[r.puzzle.currentRound] = 49;
+                  if (!r.puzzle.playersProgress) r.puzzle.playersProgress = {};
+                  r.puzzle.playersProgress[botPlayer.id] = 100;
+                  if (!r.puzzle.lastChanceStartTime) {
+                    r.puzzle.lastChanceStartTime = Date.now();
+                  }
+                  io.to(roomId).emit("room_update", r);
+                  botTimeouts.delete(puzzleBotKey);
+                  return;
+                } else {
+                  delay = 1e3;
+                }
+              }
+              const timeout = setTimeout(runBotStep, delay);
+              botTimeouts.set(puzzleBotKey, timeout);
+            };
+            const firstTimeout = setTimeout(runBotStep, 2e3);
+            botTimeouts.set(puzzleBotKey, firstTimeout);
+          }
+        }
+        if (room.gameState !== "puzzle_playing") {
+          const puzzleBotKey = roomId + "_puzzle_bot_step";
+          if (botTimeouts.has(puzzleBotKey)) {
+            clearTimeout(botTimeouts.get(puzzleBotKey));
+            botTimeouts.delete(puzzleBotKey);
+          }
+        }
+        if (room.gameState === "speed_cups_playing") {
+          const isBotP1 = room.players[0]?.id === botPlayer.id;
+          const isBotP2 = room.players.length > 1 && room.players[1]?.id === botPlayer.id;
+          const botDone = isBotP1 ? room.speedCupsP1Done : isBotP2 ? room.speedCupsP2Done : false;
+          if (!botDone) {
+            const botKey = roomId + "_speed_cups_bot_timeout";
+            if (!botTimeouts.has(botKey)) {
+              const isCorrect = Math.random() < 0.4;
+              const currentCard = room.speedCupsCards?.[room.speedCupsCurrentCardIndex];
+              if (currentCard) {
+                let targetStack = [...currentCard.color_order];
+                if (!isCorrect) {
+                  if (Math.random() < 0.7) {
+                    const idx1 = Math.floor(Math.random() * 5);
+                    let idx2 = Math.floor(Math.random() * 5);
+                    while (idx2 === idx1) {
+                      idx2 = Math.floor(Math.random() * 5);
+                    }
+                    const temp = targetStack[idx1];
+                    targetStack[idx1] = targetStack[idx2];
+                    targetStack[idx2] = temp;
+                  } else {
+                    let attempts = 0;
+                    while (attempts < 10) {
+                      targetStack.sort(() => Math.random() - 0.5);
+                      if (JSON.stringify(targetStack) !== JSON.stringify(currentCard.color_order)) {
+                        break;
+                      }
+                      attempts++;
+                    }
+                  }
+                }
+                const placeNextCup = (cupIndex) => {
+                  const r = rooms.get(roomId);
+                  if (!r || r.gameState !== "speed_cups_playing") return;
+                  if (r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0) {
+                    const timeout2 = setTimeout(() => placeNextCup(cupIndex), 500);
+                    botTimeouts.set(botKey, timeout2);
+                    return;
+                  }
+                  if (cupIndex < 5) {
+                    if (isBotP1) {
+                      r.speedCupsP1Stack = r.speedCupsP1Stack || [];
+                      r.speedCupsP1Stack = [...r.speedCupsP1Stack, targetStack[cupIndex]];
+                    } else if (isBotP2) {
+                      r.speedCupsP2Stack = r.speedCupsP2Stack || [];
+                      r.speedCupsP2Stack = [...r.speedCupsP2Stack, targetStack[cupIndex]];
+                    }
+                    sendRoomUpdate(roomId, r);
+                    let nextDelay = 250 + Math.random() * 350;
+                    if (Math.random() > 0.7 || cupIndex === 2 || cupIndex === 3) {
+                      nextDelay += 300 + Math.random() * 600;
+                    }
+                    const timeout2 = setTimeout(() => placeNextCup(cupIndex + 1), nextDelay);
+                    botTimeouts.set(botKey, timeout2);
+                  } else {
+                    const ringDelay = 200 + Math.random() * 400;
+                    const timeout2 = setTimeout(() => {
+                      botTimeouts.delete(botKey);
+                      const currentR = rooms.get(roomId);
+                      if (!currentR || currentR.gameState !== "speed_cups_playing") return;
+                      if (currentR.adPausedPlayersArray && currentR.adPausedPlayersArray.length > 0) {
+                        const retry = setTimeout(() => placeNextCup(5), 500);
+                        botTimeouts.set(botKey, retry);
+                        return;
+                      }
+                      if (isBotP1) {
+                        currentR.speedCupsP1Done = true;
+                        evaluateSpeedCupsRound(roomId, "p1");
+                      } else if (isBotP2) {
+                        currentR.speedCupsP2Done = true;
+                        evaluateSpeedCupsRound(roomId, "p2");
+                      }
+                    }, ringDelay);
+                    botTimeouts.set(botKey, timeout2);
+                  }
+                };
+                const initialDelay = 600 + Math.random() * 600;
+                const timeout = setTimeout(() => placeNextCup(0), initialDelay);
+                botTimeouts.set(botKey, timeout);
+              }
+            }
+          }
+        }
+        if (room.gameState === "dots_playing" && room.dotsTurn === botPlayer.id) {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            if (!botTimeouts.has(roomId + "_dots_move_timeout")) {
+              botTimeouts.set(
+                roomId + "_dots_move_timeout",
+                setTimeout(() => {
+                  botTimeouts.delete(roomId + "_dots_move_timeout");
+                  const r = rooms.get(roomId);
+                  if (!r || r.gameState !== "dots_playing" || r.dotsTurn !== botPlayer.id) return;
+                  const size = r.dotsBoardSize;
+                  const availableLines = [];
+                  for (let rIdx = 0; rIdx < size; rIdx++) {
+                    for (let cIdx = 0; cIdx < size - 1; cIdx++) {
+                      const lineId = `${rIdx},${cIdx}-${rIdx},${cIdx + 1}`;
+                      if (!r.dotsLines[lineId]) {
+                        availableLines.push({ r1: rIdx, c1: cIdx, r2: rIdx, c2: cIdx + 1 });
+                      }
+                    }
+                  }
+                  for (let rIdx = 0; rIdx < size - 1; rIdx++) {
+                    for (let cIdx = 0; cIdx < size; cIdx++) {
+                      const lineId = `${rIdx},${cIdx}-${rIdx + 1},${cIdx}`;
+                      if (!r.dotsLines[lineId]) {
+                        availableLines.push({ r1: rIdx, c1: cIdx, r2: rIdx + 1, c2: cIdx });
+                      }
+                    }
+                  }
+                  if (availableLines.length > 0) {
+                    let chosen = null;
+                    for (const line of availableLines) {
+                      const { r1, c1, r2, c2 } = line;
+                      let lineId = "";
+                      if (r1 === r2) {
+                        lineId = `${r1},${Math.min(c1, c2)}-${r1},${Math.max(c1, c2)}`;
+                      } else {
+                        lineId = `${Math.min(r1, r2)},${c1}-${Math.max(r1, r2)},${c1}`;
+                      }
+                      r.dotsLines[lineId] = botPlayer.id;
+                      let completes = false;
+                      const isBoxComplete = (row, col) => {
+                        const top = `${row},${col}-${row},${col + 1}`;
+                        const bottom = `${row + 1},${col}-${row + 1},${col + 1}`;
+                        const left = `${row},${col}-${row + 1},${col}`;
+                        const right = `${row},${col + 1}-${row + 1},${col + 1}`;
+                        return r.dotsLines[top] && r.dotsLines[bottom] && r.dotsLines[left] && r.dotsLines[right];
+                      };
+                      if (r1 === r2) {
+                        if (r1 - 1 >= 0 && isBoxComplete(r1 - 1, Math.min(c1, c2))) completes = true;
+                        if (r1 < size - 1 && isBoxComplete(r1, Math.min(c1, c2))) completes = true;
+                      } else {
+                        if (c1 - 1 >= 0 && isBoxComplete(Math.min(r1, r2), c1 - 1)) completes = true;
+                        if (c1 < size - 1 && isBoxComplete(Math.min(r1, r2), c1)) completes = true;
+                      }
+                      delete r.dotsLines[lineId];
+                      if (completes) {
+                        chosen = line;
+                        break;
+                      }
+                    }
+                    if (!chosen) {
+                      chosen = availableLines[Math.floor(Math.random() * availableLines.length)];
+                    }
+                    if (chosen) {
+                      const fakeSocket = { id: botPlayer.id };
+                      const handler = io._events.submit_dots_move || Array.from(io.sockets.sockets.values())[0]?.listeners("submit_dots_move")?.[0];
+                      const { r1, c1, r2, c2 } = chosen;
+                      let lineId = "";
+                      if (r1 === r2) {
+                        lineId = `${r1},${Math.min(c1, c2)}-${r1},${Math.max(c1, c2)}`;
+                      } else {
+                        lineId = `${Math.min(r1, r2)},${c1}-${Math.max(r1, r2)},${c1}`;
+                      }
+                      r.dotsLines[lineId] = botPlayer.id;
+                      r.dotsLastMove = lineId;
+                      r.dotsTurnTimer = 15;
+                      let boxCompleted = false;
+                      const isBoxComplete = (rRow, rCol) => {
+                        const top = `${rRow},${rCol}-${rRow},${rCol + 1}`;
+                        const bottom = `${rRow + 1},${rCol}-${rRow + 1},${rCol + 1}`;
+                        const left = `${rRow},${rCol}-${rRow + 1},${rCol}`;
+                        const right = `${rRow},${rCol + 1}-${rRow + 1},${rCol + 1}`;
+                        return r.dotsLines[top] && r.dotsLines[bottom] && r.dotsLines[left] && r.dotsLines[right];
+                      };
+                      const checkAndCompleteBox = (rRow, rCol) => {
+                        if (rRow >= 0 && rRow < size - 1 && rCol >= 0 && rCol < size - 1) {
+                          if (!r.dotsBoxes[`${rRow},${rCol}`] && isBoxComplete(rRow, rCol)) {
+                            r.dotsBoxes[`${rRow},${rCol}`] = botPlayer.id;
+                            boxCompleted = true;
+                            if (botPlayer.id === r.dotsPlayer1) r.dotsP1Score = (r.dotsP1Score || 0) + 1;
+                            else r.dotsP2Score = (r.dotsP2Score || 0) + 1;
+                          }
+                        }
+                      };
+                      if (r1 === r2) {
+                        checkAndCompleteBox(r1 - 1, Math.min(c1, c2));
+                        checkAndCompleteBox(r1, Math.min(c1, c2));
+                      } else {
+                        checkAndCompleteBox(Math.min(r1, r2), c1 - 1);
+                        checkAndCompleteBox(Math.min(r1, r2), c1);
+                      }
+                      if (!boxCompleted) {
+                        r.dotsTurn = r.dotsTurn === r.dotsPlayer1 ? r.dotsPlayer2 : r.dotsPlayer1;
+                      }
+                      const totalBoxes = (size - 1) * (size - 1);
+                      if (Object.keys(r.dotsBoxes).length === totalBoxes) {
+                        if (r.dotsP1Score > r.dotsP2Score) r.dotsWinner = r.dotsPlayer1;
+                        else if (r.dotsP2Score > r.dotsP1Score) r.dotsWinner = r.dotsPlayer2;
+                        else r.dotsWinner = "draw";
+                        r.gameState = "dots_finished";
+                        r.dotsMatchWins[r.dotsWinner] = (r.dotsMatchWins[r.dotsWinner] || 0) + 1;
+                        if (r.dotsWinner && r.dotsWinner !== "draw") {
+                          const winnerPlayer = r.players.find((p) => p.id === r.dotsWinner);
+                          if (winnerPlayer) {
+                            winnerPlayer.dotsWins = (winnerPlayer.dotsWins || 0) + 1;
+                            const dbP = allPlayers.get(winnerPlayer.serial);
+                            if (dbP) {
+                              dbP.dotsWins = winnerPlayer.dotsWins;
+                              dbP.dotsMatchPoints = (dbP.dotsMatchPoints || 0) + 10;
+                              savePlayerData(winnerPlayer.serial);
+                              io.to(winnerPlayer.id).emit("player_data_update", dbP);
+                            }
+                          }
+                        }
+                        if (r.dotsLevel === 3) {
+                          const p1ServerPlayer = r.players[0]?.serial ? allPlayers.get(r.players[0].serial) : null;
+                          const p2ServerPlayer = r.players[1]?.serial ? allPlayers.get(r.players[1].serial) : null;
+                          const p1TotalWins = r.dotsMatchWins[r.dotsPlayer1] || 0;
+                          const p2TotalWins = r.dotsMatchWins[r.dotsPlayer2] || 0;
+                          if (p1ServerPlayer) {
+                            p1ServerPlayer.dotsMatchPoints = (p1ServerPlayer.dotsMatchPoints || 0) + 5;
+                            if (p1TotalWins > p2TotalWins) p1ServerPlayer.dotsMatchPoints += 15;
+                            else if (p1TotalWins === p2TotalWins) p1ServerPlayer.dotsMatchPoints += 5;
+                            savePlayerData(r.players[0].serial);
+                            io.to(r.players[0].id).emit("player_data_update", p1ServerPlayer);
+                            const p1Idx = r.players.findIndex((p) => p.id === r.dotsPlayer1);
+                            if (p1Idx !== -1) r.players[p1Idx].dotsMatchPoints = p1ServerPlayer.dotsMatchPoints;
+                          }
+                          if (p2ServerPlayer) {
+                            p2ServerPlayer.dotsMatchPoints = (p2ServerPlayer.dotsMatchPoints || 0) + 5;
+                            if (p2TotalWins > p1TotalWins) p2ServerPlayer.dotsMatchPoints += 15;
+                            else if (p1TotalWins === p2TotalWins) p2ServerPlayer.dotsMatchPoints += 5;
+                            savePlayerData(r.players[1].serial);
+                            io.to(r.players[1].id).emit("player_data_update", p2ServerPlayer);
+                            const p2Idx = r.players.findIndex((p) => p.id === r.dotsPlayer2);
+                            if (p2Idx !== -1) r.players[p2Idx].dotsMatchPoints = p2ServerPlayer.dotsMatchPoints;
+                          }
+                        }
+                      }
+                      sendRoomUpdate(roomId, r);
+                      if (boxCompleted && r.gameState === "dots_playing") {
+                        handleBotEvent(roomId, "room_update", r);
+                      }
+                    }
+                  }
+                }, Math.random() * 800 + 600)
+              );
+            }
+          }
+        }
+        if (room.gameState === "dots_finished") {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            if (!botTimeouts.has(roomId + "_dots_restart_timeout")) {
+              botTimeouts.set(
+                roomId + "_dots_restart_timeout",
+                setTimeout(() => {
+                  botTimeouts.delete(roomId + "_dots_restart_timeout");
+                  const r = rooms.get(roomId);
+                  if (r && r.gameState === "dots_finished") {
+                    const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+                    if (isAdStillPlaying) return;
+                    if ((r.dotsLevel || 1) >= 3) {
+                      if (!r.dotsRematchRequestedBy) r.dotsRematchRequestedBy = [];
+                      if (!r.dotsRematchRequestedBy.includes(botPlayer.id)) {
+                        r.dotsRematchRequestedBy.push(botPlayer.id);
+                      }
+                      if (r.dotsRematchRequestedBy.length < 2) {
+                        sendRoomUpdate(roomId, r);
+                        return;
+                      }
+                      r.dotsRematchRequestedBy = [];
+                      r.dotsLevel = 1;
+                      r.dotsMatchWins = {};
+                    } else {
+                      r.dotsLevel = (r.dotsLevel || 1) + 1;
+                    }
+                    initializeDotsGame(r);
+                    sendRoomUpdate(roomId, r);
+                    handleBotEvent(roomId, "room_update", r);
+                  }
+                }, 4e3)
+              );
+            }
+          }
+        }
+        if (room.gameState === "iq_playing" && room.iqTurn === botPlayer.id) {
+          executeBotIQMove(roomId);
+        }
+        if (room.gameState === "hand_playing") {
+          if (room.handPhase === "picking" && room.handPickerId === botPlayer.id) {
+            if (!botTimeouts.has(roomId + "_hand_pick_timeout")) {
+              const delay = 2e3 + Math.random() * 2e3;
+              const timeout = setTimeout(() => {
+                const r = rooms.get(roomId);
+                if (r && r.gameState === "hand_playing" && r.handPhase === "picking" && r.handPickerId === botPlayer.id) {
+                  const availableNumbers = r.handNumbers.map((n) => n.val);
+                  const target = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
+                  r.handTargetNumber = target;
+                  r.handPhase = "searching";
+                  io.to(roomId).emit("room_update", r);
+                  handleBotEvent(roomId, "room_update", r);
+                }
+                botTimeouts.delete(roomId + "_hand_pick_timeout");
+              }, delay);
+              botTimeouts.set(roomId + "_hand_pick_timeout", timeout);
+            }
+          }
+          if (room.handPhase === "searching" && room.handPickerId === botPlayer.id) {
+            if (!botTimeouts.has(roomId + "_hand_grid_timeout")) {
+              const delay = 800 + Math.random() * 800;
+              const timeout = setTimeout(() => {
+                const r = rooms.get(roomId);
+                if (r && r.gameState === "hand_playing" && r.handPhase === "searching" && r.handPickerId === botPlayer.id) {
+                  botTimeouts.delete(roomId + "_hand_grid_timeout");
+                  const emptyIdx = r.handGrid.findIndex((c) => c === null);
+                  if (emptyIdx !== -1) {
+                    r.handGrid[emptyIdx] = botPlayer.id;
+                    if (r.handGrid.every((c) => c !== null)) {
+                      r.gameState = "hand_finished";
+                      const p1Count = r.handGrid.filter((c) => c === r.players[0].id).length;
+                      const p2Count = r.handGrid.filter((c) => c === r.players[1].id).length;
+                      r.handP1Score = p1Count;
+                      r.handP2Score = p2Count;
+                      if (p1Count > p2Count) r.handWinner = r.players[0].id;
+                      else if (p2Count > p1Count) r.handWinner = r.players[1].id;
+                      else r.handWinner = "draw";
+                      if (r.handWinner && r.handWinner !== "draw") {
+                        const pWinner = r.players.find((p) => p.id === r.handWinner);
+                        if (pWinner) {
+                          pWinner.handWins = (pWinner.handWins || 0) + 1;
+                          const dbP = allPlayers.get(pWinner.serial);
+                          if (dbP) {
+                            dbP.handWins = pWinner.handWins;
+                            if (r.matchType === "random") {
+                              dbP.handMatchPoints = (dbP.handMatchPoints || 0) + 10;
+                            }
+                            pWinner.handMatchPoints = dbP.handMatchPoints;
+                            savePlayerData(pWinner.serial);
+                            io.to(pWinner.id).emit("player_data_update", dbP);
+                          }
+                        }
+                      }
+                    }
+                    io.to(roomId).emit("room_update", r);
+                    handleBotEvent(roomId, "room_update", r);
+                  }
+                } else {
+                  botTimeouts.delete(roomId + "_hand_grid_timeout");
+                }
+              }, delay);
+              botTimeouts.set(roomId + "_hand_grid_timeout", timeout);
+            }
+          }
+          if (room.handPhase === "searching" && room.handSearcherId === botPlayer.id) {
+            if (!botTimeouts.has(roomId + "_hand_search_timeout")) {
+              const delay = 5e3 + Math.random() * 7e3;
+              const timeout = setTimeout(() => {
+                const r = rooms.get(roomId);
+                if (r && r.gameState === "hand_playing" && r.handPhase === "searching" && r.handSearcherId === botPlayer.id) {
+                  botTimeouts.delete(roomId + "_hand_search_timeout");
+                  r.handSearcherSelected = r.handTargetNumber;
+                  const temp = r.handPickerId;
+                  r.handPickerId = r.handSearcherId;
+                  r.handSearcherId = temp;
+                  r.handPhase = "picking";
+                  r.handTargetNumber = null;
+                  r.handSearcherSelected = null;
+                  r.timer = 30;
+                  if (botTimeouts.has(roomId + "_hand_grid_timeout")) {
+                    clearTimeout(botTimeouts.get(roomId + "_hand_grid_timeout"));
+                    botTimeouts.delete(roomId + "_hand_grid_timeout");
+                  }
+                  io.to(roomId).emit("room_update", r);
+                  handleBotEvent(roomId, "room_update", r);
+                } else {
+                  botTimeouts.delete(roomId + "_hand_search_timeout");
+                }
+              }, delay);
+              botTimeouts.set(roomId + "_hand_search_timeout", timeout);
+            }
+          }
+        }
+        if (room.gameState === "hand_finished") {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            if (!botTimeouts.has(roomId + "_hand_restart_timeout")) {
+              botTimeouts.set(
+                roomId + "_hand_restart_timeout",
+                setTimeout(() => {
+                  botTimeouts.delete(roomId + "_hand_restart_timeout");
+                  const r = rooms.get(roomId);
+                  if (r && r.gameState === "hand_finished") {
+                    const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+                    if (isAdStillPlaying) return;
+                    if (!r.handRematchRequestedBy) r.handRematchRequestedBy = [];
+                    if (!r.handRematchRequestedBy.includes(botPlayer.id)) {
+                      r.handRematchRequestedBy.push(botPlayer.id);
+                    }
+                    io.to(roomId).emit("room_update", r);
+                    if (r.handRematchRequestedBy.length < 2) return;
+                    r.handRematchRequestedBy = [];
+                    initializeHandGame(r);
+                    io.to(roomId).emit("room_update", r);
+                    handleBotEvent(roomId, "room_update", r);
+                  }
+                }, 4e3 + Math.random() * 3e3)
+              );
+            }
+          } else {
+            if (botTimeouts.has(roomId + "_hand_restart_timeout")) {
+              clearTimeout(botTimeouts.get(roomId + "_hand_restart_timeout"));
+              botTimeouts.delete(roomId + "_hand_restart_timeout");
+            }
+          }
+        }
+        if (room.gameState === "iq_finished") {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            if (!botTimeouts.has(roomId + "_iq_restart_timeout")) {
+              botTimeouts.set(
+                roomId + "_iq_restart_timeout",
+                setTimeout(() => {
+                  botTimeouts.delete(roomId + "_iq_restart_timeout");
+                  const r = rooms.get(roomId);
+                  if (r && r.gameState === "iq_finished") {
+                    const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+                    if (isAdStillPlaying) return;
+                    if ((r.iqLevel || 1) >= 3) {
+                      if (!r.iqRematchRequestedBy) r.iqRematchRequestedBy = [];
+                      if (!r.iqRematchRequestedBy.includes(botPlayer.id)) {
+                        r.iqRematchRequestedBy.push(botPlayer.id);
+                      }
+                      io.to(roomId).emit("room_update", r);
+                      if (r.iqRematchRequestedBy.length < 2) return;
+                      r.iqRematchRequestedBy = [];
+                      r.iqLevel = 1;
+                      r.iqMatchWins = {};
+                    } else {
+                      r.iqLevel = (r.iqLevel || 1) + 1;
+                    }
+                    initializeIQGame(r);
+                    io.to(roomId).emit("room_update", r);
+                  }
+                }, 4e3 + Math.random() * 3e3)
+              );
+            }
+          } else {
+            if (botTimeouts.has(roomId + "_iq_restart_timeout")) {
+              clearTimeout(botTimeouts.get(roomId + "_iq_restart_timeout"));
+              botTimeouts.delete(roomId + "_iq_restart_timeout");
+            }
+          }
+        }
+        if (room.gameState !== "iq_finished" || room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0) {
+          if (botTimeouts.has(roomId + "_iq_restart_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_iq_restart_timeout"));
+            botTimeouts.delete(roomId + "_iq_restart_timeout");
+          }
+        }
+        if (room.gameState === "xo_finished") {
+          const isAdPlaying = room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0;
+          if (!isAdPlaying) {
+            if (!botTimeouts.has(roomId + "_xo_restart_timeout")) {
+              botTimeouts.set(
+                roomId + "_xo_restart_timeout",
+                setTimeout(() => {
+                  botTimeouts.delete(roomId + "_xo_restart_timeout");
+                  const r = rooms.get(roomId);
+                  if (r && r.gameState === "xo_finished") {
+                    const isAdStillPlaying = r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0;
+                    if (isAdStillPlaying) return;
+                    if ((r.xoLevel || 1) >= 8) {
+                      if (!r.xoRematchRequestedBy) r.xoRematchRequestedBy = [];
+                      if (!r.xoRematchRequestedBy.includes(botPlayer.id)) {
+                        r.xoRematchRequestedBy.push(botPlayer.id);
+                      }
+                      io.to(roomId).emit("room_update", r);
+                      if (r.xoRematchRequestedBy.length < 2) return;
+                      r.xoRematchRequestedBy = [];
+                      r.xoLevel = 1;
+                      r.xoMatchWins = {};
+                    } else {
+                      r.xoLevel = (r.xoLevel || 1) + 1;
+                    }
+                    r.gameState = "xo_playing";
+                    r.category = "xo";
+                    const size = r.xoLevel + 2;
+                    r.xoBoardSize = size;
+                    r.xoWinLength = size === 3 ? 3 : size === 4 || size === 5 ? 4 : 5;
+                    r.xoBoard = Array(size * size).fill(null);
+                    r.xoXPlayer = r.players[Math.floor(Math.random() * 2)].id;
+                    r.xoOPlayer = r.players.find((p) => p.id !== r.xoXPlayer).id;
+                    r.xoTurn = r.xoXPlayer;
+                    r.xoWinner = null;
+                    r.xoWinningLine = null;
+                    r.timer = getXOTimerLimit(size);
+                    if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                    const interval = setInterval(() => {
+                      const updatedRoom = rooms.get(roomId);
+                      if (!updatedRoom || updatedRoom.gameState !== "xo_playing" && updatedRoom.gameState !== "xo_finished") {
+                        clearInterval(interval);
+                        return;
+                      }
+                      if (updatedRoom.gameState === "xo_playing") {
+                        const isAdPlaying2 = updatedRoom.adPausedPlayers && updatedRoom.adPausedPlayers.size > 0;
+                        if (!isAdPlaying2) {
+                          updatedRoom.timer--;
+                          if (updatedRoom.timer <= 0) {
+                            clearInterval(interval);
+                            updatedRoom.xoWinner = "draw";
+                            updatedRoom.gameState = "xo_finished";
+                            updatedRoom.xoMatchWins = updatedRoom.xoMatchWins || {};
+                            updatedRoom.xoMatchWins["draw"] = (updatedRoom.xoMatchWins["draw"] || 0) + 1;
+                            io.to(roomId).emit("room_update", updatedRoom);
+                            handleBotEvent(roomId, "room_update", updatedRoom);
+                          } else {
+                            io.to(roomId).emit("timer_update", updatedRoom.timer);
+                          }
+                        }
+                      }
+                    }, 1e3);
+                    intervals.set(roomId, interval);
+                    const bot = r.players.find((p) => p.isBot);
+                    if (bot) {
+                      handleBotEvent(roomId, "room_update", r);
+                    }
+                    io.to(roomId).emit("room_update", r);
+                  }
+                }, 4500 + Math.random() * 2e3)
+              );
+            }
+          }
+        }
+        if (room.gameState !== "xo_finished" || room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0) {
+          if (botTimeouts.has(roomId + "_xo_restart_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_xo_restart_timeout"));
+            botTimeouts.delete(roomId + "_xo_restart_timeout");
+          }
+        }
+        if (room.gameState === "bus_complete_playing" && !room.busCompleteSubmittedPlayers?.includes(botPlayer.id)) {
+          if (!botFlags.has(roomId + "_bus_playing_submit_timeout_scheduled")) {
+            botFlags.set(
+              roomId + "_bus_playing_submit_timeout_scheduled",
+              true
+            );
+            const willWin = Math.random() < 0.4;
+            let wrongCount = 0;
+            if (!willWin) {
+              const rand = Math.random();
+              if (rand < 0.4) wrongCount = 1;
+              else if (rand < 0.7) wrongCount = 2;
+              else if (rand < 0.9) wrongCount = 3;
+              else wrongCount = 4;
+            }
+            const submitDelay = willWin ? 6e4 + Math.random() * 12e4 : 15e4 + Math.random() * 9e4;
+            const watchAdChance = Math.random();
+            if (watchAdChance < 0.3) {
+              const delayBeforeAd = submitDelay * 0.4;
+              const adDuration = 5e3 + Math.random() * 5e3;
+              setTimeout(() => {
+                const currentRoom = rooms.get(roomId);
+                if (currentRoom && currentRoom.gameState === "bus_complete_playing" && !currentRoom.busCompleteSubmittedPlayers?.includes(
+                  botPlayer.id
+                )) {
+                  if (!currentRoom.adPausedPlayers)
+                    currentRoom.adPausedPlayers = /* @__PURE__ */ new Set();
+                  currentRoom.adPausedPlayers.add(botPlayer.id);
+                  currentRoom.adPausedPlayersArray = Array.from(
+                    currentRoom.adPausedPlayers
+                  );
+                  if (!currentRoom.powerUpAdsInProgress)
+                    currentRoom.powerUpAdsInProgress = /* @__PURE__ */ new Map();
+                  currentRoom.powerUpAdsInProgress.set(
+                    botPlayer.id,
+                    "bot_simulated_ad"
+                  );
+                  io.to(roomId).emit("room_update", currentRoom);
+                  setTimeout(() => {
+                    const rAfterAd = rooms.get(roomId);
+                    if (rAfterAd && rAfterAd.adPausedPlayers) {
+                      rAfterAd.adPausedPlayers.delete(botPlayer.id);
+                      rAfterAd.adPausedPlayersArray = Array.from(
+                        rAfterAd.adPausedPlayers
+                      );
+                      if (rAfterAd.powerUpAdsInProgress) {
+                        rAfterAd.powerUpAdsInProgress.delete(botPlayer.id);
+                      }
+                      io.to(roomId).emit("room_update", rAfterAd);
+                    }
+                  }, adDuration);
+                }
+              }, delayBeforeAd);
+            }
+            const runBusCompleteBotSubmit = () => {
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "bus_complete_playing" || r.busCompleteSubmittedPlayers?.includes(botPlayer.id))
+                return;
+              if (r.isWaitingForReconnect) {
+                const nextTimeout = setTimeout(runBusCompleteBotSubmit, 2e3);
+                botTimeouts.set(roomId + "_bus_playing_submit_timeout", nextTimeout);
+                return;
+              }
+              let mappedLetter = r.busCompleteLetter || "\u0627";
+              if (mappedLetter === "\u0623" || mappedLetter === "\u0625" || mappedLetter === "\u0622")
+                mappedLetter = "\u0627";
+              if (mappedLetter === "\u0629") mappedLetter = "\u0647";
+              if (mappedLetter === "\u0649") mappedLetter = "\u064A";
+              const letterData = busCompleteData[mappedLetter] || {};
+              const categories = [
+                "boy",
+                "girl",
+                "animal",
+                "plant",
+                "inanimate",
+                "country"
+              ];
+              const answers = {};
+              const lastWrongCats = botFlags.get(roomId + "_last_wrong_cats") || [];
+              const availableToWrong = categories.filter(
+                (c) => !lastWrongCats.includes(c)
+              );
+              const catsToWrong = availableToWrong.length >= wrongCount ? availableToWrong : [...categories];
+              const shuffledCats = catsToWrong.sort(() => 0.5 - Math.random());
+              const chosenWrongs = shuffledCats.slice(0, wrongCount);
+              botFlags.set(roomId + "_last_wrong_cats", chosenWrongs);
+              categories.forEach((cat) => {
+                const words = letterData[cat] || [];
+                if (chosenWrongs.includes(cat)) {
+                  if (Math.random() < 0.6) {
+                    answers[cat] = "";
+                  } else {
+                    const fallbackWrongs = [
+                      "\u0645\u0639\u0631\u0641\u0634",
+                      "\u0627\u064A \u062D\u0627\u062C\u0629",
+                      "\u0645\u0634 \u0639\u0627\u0631\u0641",
+                      "\u0635\u0639\u0628",
+                      "\u0644\u0627 \u064A\u0648\u062C\u062F"
+                    ];
+                    answers[cat] = fallbackWrongs[Math.floor(Math.random() * fallbackWrongs.length)];
+                  }
+                } else if (words.length > 0) {
+                  answers[cat] = words[Math.floor(Math.random() * words.length)];
+                } else {
+                  answers[cat] = "";
+                }
+              });
+              const botId = botPlayer.id;
+              if (!r.busCompleteAnswers) r.busCompleteAnswers = {};
+              if (!r.busCompleteSubmitTimes) r.busCompleteSubmitTimes = {};
+              if (!r.busCompleteSubmittedPlayers)
+                r.busCompleteSubmittedPlayers = [];
+              r.busCompleteAnswers[botId] = answers;
+              const timeReduction = r.busCompleteTimerReduction || 0;
+              r.busCompleteSubmitTimes[botId] = 300 - (r.timer + timeReduction);
+              if (!r.busCompleteSubmittedPlayers.includes(botId)) {
+                r.busCompleteSubmittedPlayers.push(botId);
+                if (r.busCompleteSubmittedPlayers.length === 1 && r.timer > 60) {
+                  r.busCompleteTimerReduction = r.timer - 60;
+                  r.timer = 60;
+                }
+                if (r.busCompleteSubmittedPlayers.length === 2) {
+                  if (intervals.has(roomId)) {
+                    clearInterval(intervals.get(roomId));
+                    intervals.delete(roomId);
+                  }
+                  r.gameState = "bus_complete_evaluating";
+                  evaluateBusCompleteAnswers(r);
+                  handleBotEvent(roomId, "room_update", r);
+                }
+              }
+              io.to(roomId).emit("room_update", r);
+            };
+            const timeout = setTimeout(runBusCompleteBotSubmit, submitDelay);
+            botTimeouts.set(roomId + "_bus_playing_submit_timeout", timeout);
+          }
+        } else {
+          if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
+            clearTimeout(
+              botTimeouts.get(roomId + "_bus_playing_submit_timeout")
+            );
+            botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
+            botFlags.delete(roomId + "_bus_playing_submit_timeout_scheduled");
+          }
+        }
+        if (room.gameState === "bus_complete_setup" && !room.busCompleteLetter) {
+          if (!botTimeouts.has(roomId + "_bus_setup_timeout")) {
+            const setupDelay = 8e3 + Math.random() * 4e3;
+            const setupTimeout = setTimeout(() => {
+              const r = rooms.get(roomId);
+              if (r && r.gameState === "bus_complete_setup" && !r.busCompleteLetter) {
+                executeSearchBusCompleteLetter(roomId);
+              }
+              botTimeouts.delete(roomId + "_bus_setup_timeout");
+            }, setupDelay);
+            botTimeouts.set(roomId + "_bus_setup_timeout", setupTimeout);
+          }
+        } else {
+          if (botTimeouts.has(roomId + "_bus_setup_timeout")) {
+            clearTimeout(botTimeouts.get(roomId + "_bus_setup_timeout"));
+            botTimeouts.delete(roomId + "_bus_setup_timeout");
+          }
+        }
+        if (room.gameState === "bus_complete_evaluating") {
+          if (!botFlags.has(roomId + "_bus_eval_rematch")) {
+            botFlags.set(roomId + "_bus_eval_rematch", true);
+            const rematchDelay = 8e3 + Math.random() * 7e3;
+            setTimeout(() => {
+              const r = rooms.get(roomId);
+              if (r && r.gameState === "bus_complete_evaluating") {
+                if (!r.busCompleteRematchRequestedBy) {
+                  r.busCompleteRematchRequestedBy = [];
+                }
+                if (!r.busCompleteRematchRequestedBy.includes(botPlayer.id)) {
+                  r.busCompleteRematchRequestedBy.push(botPlayer.id);
+                }
+                if (r.busCompleteRematchRequestedBy.length >= 2) {
+                  r.gameState = "bus_complete_setup";
+                  r.category = "\u062A\u062E\u0645\u064A\u0646\u0629 \u0643\u0648\u0645\u0628\u0644\u064A\u062A";
+                  r.busCompleteLetter = null;
+                  r.busCompleteSubmittedPlayers = [];
+                  r.busCompleteRematchRequestedBy = [];
+                  r.busCompleteAnswers = {};
+                  r.busCompleteDraftAnswers = {};
+                  r.busCompleteScores = {};
+                  r.busCompleteSubmitTimes = {};
+                  r.busCompleteWinner = null;
+                  if (intervals.has(roomId))
+                    clearInterval(intervals.get(roomId));
+                  handleBotEvent(roomId, "room_update", r);
+                }
+                io.to(roomId).emit("room_update", r);
+              }
+            }, rematchDelay);
+          }
+        } else {
+          botFlags.delete(roomId + "_bus_eval_rematch");
+        }
+        if (room.gameState === "waiting" && room.selectionMode === "ready") {
+          if (!botFlags.has(roomId + "_category_logic")) {
+            botFlags.set(roomId + "_category_logic", true);
+            const performCategorySelection = async () => {
+              const categories = [
+                "animals",
+                "food",
+                "people",
+                "objects",
+                "birds",
+                "plants",
+                "insects",
+                "football"
+              ];
+              await new Promise(
+                (r) => setTimeout(r, 1e3 + Math.random() * 2e3)
+              );
+              let currentRoom = rooms.get(roomId);
+              if (!currentRoom || currentRoom.gameState !== "waiting") return;
+              let currentPlayer = currentRoom.players.find(
+                (p) => !p.isBot
+              );
+              const rand = Math.random();
+              if (rand < 0.3 && currentPlayer?.selectedCategory) {
+                botPlayer.selectedCategory = currentPlayer.selectedCategory;
+                botPlayer.selectedLevel = currentPlayer.selectedLevel || "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+                currentRoom.category = currentPlayer.selectedCategory;
+                currentRoom.level = currentPlayer.selectedLevel || "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+                io.to(currentRoom.id).emit("room_update", currentRoom);
+                if (Math.random() < 0.5) {
+                  setTimeout(
+                    () => {
+                      const r = rooms.get(roomId);
+                      if (r && r.gameState === "waiting" && r.players.every(
+                        (p) => p.selectedCategory === r.category && p.selectedLevel === r.level
+                      )) {
+                        r.gameState = "starting";
+                        io.to(roomId).emit("match_intro_triggered");
+                      }
+                    },
+                    1500 + Math.random() * 2e3
+                  );
+                }
+              } else {
+                botPlayer.selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+                botPlayer.selectedLevel = "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+                io.to(currentRoom.id).emit("room_update", currentRoom);
+                if (Math.random() < 0.4) {
+                  await new Promise(
+                    (r) => setTimeout(r, 2e3 + Math.random() * 2e3)
+                  );
+                  currentRoom = rooms.get(roomId);
+                  if (!currentRoom || currentRoom.gameState !== "waiting")
+                    return;
+                  botPlayer.selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+                  botPlayer.selectedLevel = "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+                  io.to(currentRoom.id).emit("room_update", currentRoom);
+                }
+                await new Promise(
+                  (r) => setTimeout(r, 4e3 + Math.random() * 4e3)
+                );
+                currentRoom = rooms.get(roomId);
+                if (!currentRoom || currentRoom.gameState !== "waiting") return;
+                currentPlayer = currentRoom.players.find((p) => !p.isBot);
+                if (currentPlayer?.selectedCategory) {
+                  botPlayer.selectedCategory = currentPlayer.selectedCategory;
+                  botPlayer.selectedLevel = currentPlayer.selectedLevel || "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+                  currentRoom.category = currentPlayer.selectedCategory;
+                  currentRoom.level = currentPlayer.selectedLevel || "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+                  io.to(currentRoom.id).emit("room_update", currentRoom);
+                  if (Math.random() < 0.5) {
+                    setTimeout(
+                      () => {
+                        const r = rooms.get(roomId);
+                        if (r && r.gameState === "waiting" && r.players.every(
+                          (p) => p.selectedCategory === r.category && p.selectedLevel === r.level
+                        )) {
+                          r.gameState = "starting";
+                          io.to(roomId).emit("match_intro_triggered");
+                        }
+                      },
+                      1500 + Math.random() * 2e3
+                    );
+                  }
+                }
+              }
+            };
+            performCategorySelection();
+          } else {
+            if (humanPlayer?.selectedCategory && (botPlayer.selectedCategory !== humanPlayer.selectedCategory || botPlayer.selectedLevel !== humanPlayer.selectedLevel)) {
+              if (!botTimeouts.has(roomId + "_agree_timeout")) {
+                const timeout = setTimeout(
+                  () => {
+                    const currentRoom = rooms.get(roomId);
+                    if (!currentRoom || currentRoom.gameState !== "waiting")
+                      return;
+                    const currentPlayer = currentRoom.players.find(
+                      (p) => !p.isBot
+                    );
+                    if (currentPlayer?.selectedCategory) {
+                      botPlayer.selectedCategory = currentPlayer.selectedCategory;
+                      botPlayer.selectedLevel = currentPlayer.selectedLevel || "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+                      currentRoom.category = currentPlayer.selectedCategory;
+                      currentRoom.level = currentPlayer.selectedLevel || "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+                      io.to(currentRoom.id).emit("room_update", currentRoom);
+                      if (Math.random() < 0.5) {
+                        setTimeout(
+                          () => {
+                            const r = rooms.get(roomId);
+                            if (r && r.gameState === "waiting" && r.players.every(
+                              (p) => p.selectedCategory === r.category && p.selectedLevel === r.level
+                            )) {
+                              r.gameState = "starting";
+                              io.to(roomId).emit("match_intro_triggered");
+                            }
+                          },
+                          1500 + Math.random() * 2e3
+                        );
+                      }
+                    }
+                    botTimeouts.delete(roomId + "_agree_timeout");
+                  },
+                  3e3 + Math.random() * 2e3
+                );
+                botTimeouts.set(roomId + "_agree_timeout", timeout);
+              }
+            }
+          }
+        }
+        if (room.gameState === "waiting" && !room.selectionMode) {
+          const currentHumanMode = humanPlayer?.selectedSelectionMode;
+          const lastHumanMode = botFlags.get(roomId + "_last_human_mode");
+          if (currentHumanMode !== lastHumanMode) {
+            botFlags.set(roomId + "_last_human_mode", currentHumanMode || null);
+            clearBotSelectionModeTimeouts(roomId);
+          }
+          if (currentHumanMode) {
+            if (botPlayer.selectedSelectionMode !== currentHumanMode) {
+              const hasAgreeTimeout = botTimeouts.has(
+                roomId + "_mode_agree_timeout"
+              );
+              const hasHesitateTimeout = botTimeouts.has(
+                roomId + "_mode_hesitate_timeout"
+              );
+              const hasAgreeAfterHesitate = botTimeouts.has(
+                roomId + "_mode_agree_after_hesitate_timeout"
+              );
+              if (!hasAgreeTimeout && !hasHesitateTimeout && !hasAgreeAfterHesitate) {
+                const roll = Math.random();
+                if (roll < 0.9) {
+                  const delay = 1500 + Math.random() * 1e3;
+                  const timeout = setTimeout(() => {
+                    const r = rooms.get(roomId);
+                    if (!r || r.gameState !== "waiting" || r.selectionMode)
+                      return;
+                    const hp = r.players.find((p) => !p.isBot);
+                    const bp = r.players.find((p) => p.isBot);
+                    if (hp && hp.selectedSelectionMode) {
+                      bp.selectedSelectionMode = hp.selectedSelectionMode;
+                      io.to(roomId).emit("room_update", r);
+                      const confirmTimeout = setTimeout(
+                        () => {
+                          const rr = rooms.get(roomId);
+                          if (!rr || rr.gameState !== "waiting" || rr.selectionMode)
+                            return;
+                          const hpp = rr.players.find((p) => !p.isBot);
+                          const bpp = rr.players.find((p) => p.isBot);
+                          if (hpp && bpp && hpp.selectedSelectionMode === bpp.selectedSelectionMode) {
+                            executeSelectionModeConfirmation(roomId);
+                          }
+                        },
+                        2e3 + Math.random() * 1500
+                      );
+                      botTimeouts.set(
+                        roomId + "_mode_confirm_timeout",
+                        confirmTimeout
+                      );
+                    }
+                    botTimeouts.delete(roomId + "_mode_agree_timeout");
+                  }, delay);
+                  botTimeouts.set(roomId + "_mode_agree_timeout", timeout);
+                } else {
+                  const diffMode = currentHumanMode === "bus_complete" ? "ready" : "bus_complete";
+                  const hesitateDelay = 1500 + Math.random() * 1e3;
+                  const timeout = setTimeout(() => {
+                    const r = rooms.get(roomId);
+                    if (!r || r.gameState !== "waiting" || r.selectionMode)
+                      return;
+                    const hp = r.players.find((p) => !p.isBot);
+                    const bp = r.players.find((p) => p.isBot);
+                    if (hp && hp.selectedSelectionMode === currentHumanMode) {
+                      bp.selectedSelectionMode = diffMode;
+                      io.to(roomId).emit("room_update", r);
+                      const agreeDelay = 2500 + Math.random() * 2e3;
+                      const followTimeout = setTimeout(() => {
+                        const r2 = rooms.get(roomId);
+                        if (!r2 || r2.gameState !== "waiting" || r2.selectionMode)
+                          return;
+                        const hp2 = r2.players.find((p) => !p.isBot);
+                        const bp2 = r2.players.find((p) => p.isBot);
+                        if (hp2 && hp2.selectedSelectionMode) {
+                          bp2.selectedSelectionMode = hp2.selectedSelectionMode;
+                          io.to(roomId).emit("room_update", r2);
+                          const lastConfirmTimeout = setTimeout(
+                            () => {
+                              const r3 = rooms.get(roomId);
+                              if (!r3 || r3.gameState !== "waiting" || r3.selectionMode)
+                                return;
+                              const hp3 = r3.players.find((p) => !p.isBot);
+                              const bp3 = r3.players.find((p) => p.isBot);
+                              if (hp3 && bp3 && hp3.selectedSelectionMode === bp3.selectedSelectionMode) {
+                                executeSelectionModeConfirmation(roomId);
+                              }
+                            },
+                            2e3 + Math.random() * 1e3
+                          );
+                          botTimeouts.set(
+                            roomId + "_mode_confirm_timeout",
+                            lastConfirmTimeout
+                          );
+                        }
+                        botTimeouts.delete(
+                          roomId + "_mode_agree_after_hesitate_timeout"
+                        );
+                      }, agreeDelay);
+                      botTimeouts.set(
+                        roomId + "_mode_agree_after_hesitate_timeout",
+                        followTimeout
+                      );
+                    }
+                    botTimeouts.delete(roomId + "_mode_hesitate_timeout");
+                  }, hesitateDelay);
+                  botTimeouts.set(roomId + "_mode_hesitate_timeout", timeout);
+                }
+              }
+            } else {
+              if (!botTimeouts.has(roomId + "_mode_confirm_timeout")) {
+                const confirmTimeout = setTimeout(
+                  () => {
+                    const r = rooms.get(roomId);
+                    if (!r || r.gameState !== "waiting" || r.selectionMode)
+                      return;
+                    const hp = r.players.find((p) => !p.isBot);
+                    const bp = r.players.find((p) => p.isBot);
+                    if (hp && bp && hp.selectedSelectionMode === bp.selectedSelectionMode) {
+                      executeSelectionModeConfirmation(roomId);
+                    }
+                  },
+                  2500 + Math.random() * 1500
+                );
+                botTimeouts.set(
+                  roomId + "_mode_confirm_timeout",
+                  confirmTimeout
+                );
+              }
+            }
+          } else {
+            clearBotSelectionModeTimeouts(roomId);
+            if (!botTimeouts.has(roomId + "_mode_proactive_timeout") && !botPlayer.selectedSelectionMode) {
+              const delay = 8e3;
+              const proactiveTimeout = setTimeout(() => {
+                const r = rooms.get(roomId);
+                if (!r || r.gameState !== "waiting" || r.selectionMode) return;
+                const hp = r.players.find((p) => !p.isBot);
+                const bp = r.players.find((p) => p.isBot);
+                if (hp && !hp.selectedSelectionMode && !bp.selectedSelectionMode) {
+                  const proposed = Math.random() < 0.5 ? "ready" : "connect_four_words";
+                  bp.selectedSelectionMode = proposed;
+                  io.to(roomId).emit("room_update", r);
+                }
+                botTimeouts.delete(roomId + "_mode_proactive_timeout");
+              }, delay);
+              botTimeouts.set(
+                roomId + "_mode_proactive_timeout",
+                proactiveTimeout
+              );
+            }
+          }
+        }
+      }
+      if (event === "game_started") {
+        botConversations.set(roomId, []);
+        startBotQuestioning(roomId);
+      }
+      if (event === "chat_message") {
+        if (room.gameState === "waiting") return;
+        const { senderId, text } = data;
+        if (senderId === botPlayer.id) return;
+        const history = botConversations.get(roomId) || [];
+        history.push({ role: "user", parts: [{ text }] });
+        botConversations.set(roomId, history);
+        if (text === "\u0622\u0647" || text === "\u0644\u0623") {
+          if (room.currentTurn === botPlayer.id) {
+            setTimeout(
+              () => {
+                triggerBotQuestion(roomId, botPlayer);
+              },
+              2e3 + Math.random() * 2e3
+            );
+          }
+          return;
+        }
+        const emojiRegex = /^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?(\u200D\p{Emoji_Presentation}|\u200D\p{Emoji}\uFE0F)*)+$/u;
+        const isUserEmoji = emojiRegex.test(text.trim());
+        try {
+          const botPersona = BOT_PERSONAS.find(
+            (p) => p.name === (botPlayer.personaName || botPlayer.name)
+          );
+          let botReply = "";
+          if (isUserEmoji) {
+            const fallbackEmojis = [
+              "\u{1F602}",
+              "\u{1F92A}",
+              "\u{1F621}",
+              "\u{1F614}",
+              "\u{1F914}",
+              "\u{1F644}",
+              "\u{1F92F}",
+              "\u{1F62D}",
+              "\u{1F440}",
+              "\u{1F552}",
+              "\u{1F44B}",
+              "\u270B",
+              "\u{1F44C}",
+              "\u{1F44D}",
+              "\u{1F44E}",
+              "\u{1F389}",
+              "\u{1F937}\u{1F3FC}\u200D\u2642\uFE0F",
+              "\u{1F937}\u{1F3FB}\u200D\u2640\uFE0F",
+              "\u{1F926}\u{1F3FC}\u200D\u2642\uFE0F",
+              "\u{1F926}"
+            ];
+            botReply = fallbackEmojis[Math.floor(Math.random() * fallbackEmojis.length)];
+          } else {
+            let botAnswers = {};
+            let config = { quickChat: [] };
+            try {
+              const botAnswersPath2 = import_path.default.join(
+                process.cwd(),
+                "public/uploads/bot_answers.json"
+              );
+              const configPath2 = import_path.default.join(
+                process.cwd(),
+                "public/uploads/config.json"
+              );
+              botAnswers = JSON.parse(import_fs.default.readFileSync(botAnswersPath2, "utf-8"));
+              config = JSON.parse(import_fs.default.readFileSync(configPath2, "utf-8"));
+            } catch (e) {
+              console.error("Error reading bot files:", e);
+            }
+            const botImage = botPlayer.targetImage;
+            const botImageName = botImage && typeof botImage === "object" ? botImage.name : botImage;
+            const playerImage = humanPlayer.targetImage;
+            const playerImageName = playerImage && typeof playerImage === "object" ? playerImage.name : playerImage;
+            const questionId = findQuestionId(text, config.quickChat || []);
+            let deterministicAnswer = null;
+            if (questionId) {
+              if (questionId === room.category || questionId === `qc_${room.category}`) {
+                deterministicAnswer = "\u0622\u0647";
+              } else {
+                deterministicAnswer = getBotAnswer(
+                  room.category,
+                  playerImageName,
+                  questionId,
+                  botAnswers
+                );
+              }
+            }
+            if (deterministicAnswer) {
+              botReply = deterministicAnswer;
+            } else {
+              botReply = "\u0644\u0623";
+            }
+            botReply = botReply.trim();
+          }
+          history.push({ role: "model", parts: [{ text: botReply }] });
+          botConversations.set(roomId, history);
+          const typingDelay = Math.min(
+            4e3,
+            Math.max(1e3, botReply.length * 50)
+          );
+          setTimeout(() => {
+            const messageObj = { senderId: botPlayer.id, text: botReply };
+            if (!room.chatHistory) room.chatHistory = [];
+            room.chatHistory.push({
+              ...messageObj,
+              senderName: botPlayer.name,
+              timestamp: Date.now()
+            });
+            io.to(roomId).emit("chat_bubble", messageObj);
+            if (botReply === "\u0622\u0647" || botReply === "\u0644\u0623") {
+              room.currentTurn = botPlayer.id;
+              room.waitingForAnswerFrom = null;
+              io.to(roomId).emit("room_update", room);
+              setTimeout(
+                () => {
+                  triggerBotQuestion(roomId, botPlayer);
+                },
+                2e3 + Math.random() * 2e3
+              );
+            }
+          }, typingDelay);
+        } catch (error) {
+          console.error("Gemini Error:", error);
+        }
+      }
+    }
+    const CATEGORIES = {};
+    let busCompleteData = {};
+    try {
+      busCompleteData = JSON.parse(
+        import_fs.default.readFileSync(
+          import_path.default.join(process.cwd(), "src/data/busCompleteData.json"),
+          "utf8"
+        )
+      );
+    } catch (e) {
+      console.log("Error loading busCompleteData.json", e);
+    }
+    io.on("connection", (socket) => {
+      const originalEmit = socket.emit;
+      socket.emit = function(event, ...args) {
+        if (event === "player_data_update" && args[0] && typeof args[0] === "object") {
+          const stripped = { ...args[0] };
+          delete stripped.friends;
+          delete stripped.matches;
+          delete stripped.achievements;
+          delete stripped.recentOpponents;
+          args[0] = stripped;
+        }
+        return originalEmit.apply(this, [event, ...args]);
+      };
+      broadcastOnlineCount();
+      socket.emit("top_3_update", getTopPlayers(false, 3));
+      socket.emit("policies_update", gamePolicies);
+      const highestLikesPlayersDataForNewUser = highestLikesSerials.map((serial) => {
+        const p = allPlayers.get(serial);
+        if (p) {
+          return {
+            serial: p.serial,
+            name: p.name,
+            avatar: p.avatar,
+            selectedFrame: p.selectedFrame,
+            xp: p.xp,
+            isAdmin: !!p.isAdmin
+          };
+        }
+        return null;
+      }).filter((p) => p !== null);
+      socket.emit("highest_likes_update", {
+        serials: highestLikesSerials,
+        value: globalMaxLikes,
+        players: highestLikesPlayersDataForNewUser
+      });
+      const highestStreakPlayersDataForNewUser = highestStreakSerials.map((serial) => {
+        const p = allPlayers.get(serial);
+        if (p) {
+          return {
+            serial: p.serial,
+            name: p.name,
+            avatar: p.avatar,
+            xp: p.xp,
+            selectedFrame: p.selectedFrame,
+            isOnline: playerSockets.has(p.serial),
+            streak: p.streak,
+            isAdmin: !!p.isAdmin
+          };
+        }
+        return null;
+      }).filter((p) => p !== null);
+      socket.emit("highest_streak_update", {
+        serials: highestStreakSerials,
+        value: globalMaxStreak,
+        players: highestStreakPlayersDataForNewUser
+      });
+      const highestLevelPlayersDataForNewUser = highestLevelSerials.map((serial) => {
+        const p = allPlayers.get(serial);
+        if (p) {
+          return {
+            serial: p.serial,
+            name: p.name,
+            avatar: p.avatar,
+            selectedFrame: p.selectedFrame,
+            xp: p.xp,
+            isAdmin: !!p.isAdmin
+          };
+        }
+        return null;
+      }).filter((p) => p !== null);
+      socket.emit("highest_level_update", {
+        serials: highestLevelSerials,
+        value: globalMaxLevelXp,
+        players: highestLevelPlayersDataForNewUser
+      });
+      try {
+        const luckyWheelSetting = db.prepare("SELECT value FROM settings WHERE key = ?").get("lucky_wheel_enabled");
+        socket.emit("app_settings", {
+          lucky_wheel_enabled: luckyWheelSetting ? luckyWheelSetting.value === "true" : true
+        });
+      } catch (e) {
+        console.error("Failed to fetch app settings:", e);
+      }
+      socket.on("request_match_intro", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "waiting") {
+          room.gameState = "starting";
+          io.to(roomId).emit("match_intro_triggered");
+        }
+      });
+      socket.on(
+        "google_login_or_register",
+        ({ email, name, picture, fingerprint }, callback) => {
+          const ip = getClientIp(socket);
+          const banned = db.prepare(
+            "SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL)"
+          ).get(fingerprint || null);
+          if (banned) {
+            if (callback) callback({ error: "\u062A\u0645 \u062D\u0638\u0631\u0643 \u0646\u0647\u0627\u0626\u064A\u0627\u064B \u0645\u0646 \u0627\u0644\u0644\u0639\u0628\u0629" });
+            return;
+          }
+          let playerEntry = null;
+          for (const p of allPlayers.values()) {
+            if (p.email === email && p.isAdmin === false) {
+              playerEntry = p;
+              break;
+            }
+          }
+          if (playerEntry) {
+            playerEntry.fingerprint = fingerprint || playerEntry.fingerprint;
+            playerEntry.ip = ip || playerEntry.ip;
+            let secretTokenToUse = playerEntry.secretToken;
+            if (!secretTokenToUse) {
+              secretTokenToUse = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+              playerEntry.secretToken = secretTokenToUse;
+            }
+            savePlayerData(playerEntry.serial);
+            if (callback)
+              callback({
+                serial: playerEntry.serial,
+                secretToken: secretTokenToUse,
+                name: playerEntry.name
+              });
+          } else {
+            if (callback)
+              callback({ requiresRegistration: true, email, name, picture });
+          }
+        }
+      );
+      socket.on(
+        "register_player",
+        ({ name, avatar, xp, gender, fingerprint, selectedFrame, email }, callback) => {
+          const ip = getClientIp(socket);
+          const banned = db.prepare(
+            "SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL)"
+          ).get(fingerprint || null);
+          if (banned) {
+            callback({ error: "\u062A\u0645 \u062D\u0638\u0631\u0643 \u0646\u0647\u0627\u0626\u064A\u0627\u064B \u0645\u0646 \u0627\u0644\u0644\u0639\u0628\u0629" });
+            return;
+          }
+          const serial = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          const level = getLevel(xp || 0);
+          let filteredName = filterProfanity(name);
+          if (filteredName.length > 15) {
+            filteredName = filteredName.substring(0, 15);
+          }
+          for (const p of allPlayers.values()) {
+            if (p.name && p.name.toLowerCase() === filteredName.toLowerCase()) {
+              callback({
+                error: "\u0647\u0630\u0627 \u0627\u0644\u0627\u0633\u0645 \u0645\u0633\u062A\u062E\u062F\u0645 \u0628\u0627\u0644\u0641\u0639\u0644\u060C \u064A\u0631\u062C\u0649 \u0627\u062E\u062A\u064A\u0627\u0631 \u0627\u0633\u0645 \u0622\u062E\u0631."
+              });
+              return;
+            }
+          }
+          const secretToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          allPlayers.set(serial, {
+            name: filteredName,
+            level,
+            avatar,
+            gender: gender || "boy",
+            fingerprint: fingerprint || null,
+            ip,
+            selectedFrame: selectedFrame || "",
+            xp: xp || 0,
+            streak: 0,
+            serial,
+            wins: 0,
+            reports: 0,
+            banUntil: 0,
+            banCount: 0,
+            isPermanentBan: 0,
+            reportedBy: [],
+            tokens: 0,
+            keys: 0,
+            adsWatchedToday: 0,
+            lastAdWatchDate: null,
+            secretToken,
+            email: email || null,
+            lastActiveAt: Date.now()
+          });
+          socket.data = { ...socket.data, serial };
+          savePlayerData(serial);
+          callback({ serial, secretToken, name: filteredName });
+        }
+      );
+      socket.on("claim_serial_prize", ({ serial, helperId }, callback) => {
+        if (!serial || !helperId) {
+          callback({ success: false, error: "\u0628\u064A\u0627\u0646\u0627\u062A \u063A\u064A\u0631 \u0645\u0643\u062A\u0645\u0644\u0629" });
+          return;
+        }
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        const check = db.prepare(
+          "SELECT * FROM used_prizes WHERE serial = ? AND prize_id = ? AND date = ?"
+        ).get(serial, helperId, today);
+        if (check) {
+          callback({
+            success: false,
+            error: "\u062A\u0645 \u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0647\u0630\u0647 \u0627\u0644\u062C\u0627\u0626\u0632\u0629 \u0627\u0644\u064A\u0648\u0645 \u0628\u0627\u0644\u0641\u0639\u0644"
+          });
+          return;
+        }
+        db.prepare(
+          "INSERT INTO used_prizes (serial, prize_id, date) VALUES (?, ?, ?)"
+        ).run(serial, helperId, today);
+        callback({ success: true, helperId });
+      });
+      socket.on("start_ad_watch", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        player.adWatchStartTime = Date.now();
+      });
+      socket.on("watch_ad_request", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        if (!player.adWatchStartTime || Date.now() - player.adWatchStartTime < 4e3) {
+          socket.emit("ad_error", "\u064A\u062C\u0628 \u0645\u0634\u0627\u0647\u062F\u0629 \u0627\u0644\u0625\u0639\u0644\u0627\u0646 \u0628\u0627\u0644\u0643\u0627\u0645\u0644!");
+          return;
+        }
+        player.adWatchStartTime = 0;
+        const level = getLevel(player.xp);
+        if (level < 1) {
+          socket.emit("ad_error", "\u064A\u062C\u0628 \u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0644\u0645\u0633\u062A\u0648\u0649 1 \u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0647\u0630\u0647 \u0627\u0644\u0645\u064A\u0632\u0629");
+          return;
+        }
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        if (player.lastAdWatchDate !== today) {
+          player.adsWatchedToday = 0;
+          player.lastAdWatchDate = today;
+        }
+        if ((player.adsWatchedToday || 0) >= 5) {
+          socket.emit("ad_error", "\u0644\u0642\u062F \u0627\u0633\u062A\u0647\u0644\u0643\u062A \u062C\u0645\u064A\u0639 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0627\u0644\u064A\u0648\u0645\u064A\u0629 (5/5)");
+          return;
+        }
+        player.adsWatchedToday = (player.adsWatchedToday || 0) + 1;
+        player.tokens = (player.tokens || 0) + 1;
+        savePlayerData(serial);
+        socket.emit("ad_success", {
+          tokens: player.tokens,
+          adsWatched: player.adsWatchedToday,
+          maxAds: 5
+        });
+        socket.emit("player_stats_update", {
+          xp: player.xp,
+          level: getLevel(player.xp),
+          streak: 0,
+          wins: player.wins || 0,
+          tokens: player.tokens
+        });
+      });
+      socket.on("check_ad_status", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        if (player.lastAdWatchDate !== today) {
+          player.adsWatchedToday = 0;
+          player.lastAdWatchDate = today;
+          savePlayerData(serial);
+        }
+        socket.emit("ad_status", {
+          adsWatched: player.adsWatchedToday || 0,
+          maxAds: 5,
+          canWatch: (player.adsWatchedToday || 0) < 5 && getLevel(player.xp) >= 1
+        });
+      });
+      socket.on("watch_key_ad_request", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        if (!player.adWatchStartTime || Date.now() - player.adWatchStartTime < 4e3) {
+          socket.emit("ad_error", "\u064A\u062C\u0628 \u0645\u0634\u0627\u0647\u062F\u0629 \u0627\u0644\u0625\u0639\u0644\u0627\u0646 \u0628\u0627\u0644\u0643\u0627\u0645\u0644!");
+          return;
+        }
+        player.adWatchStartTime = 0;
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        if (player.lastKeyAdWatchDate !== today) {
+          player.keyAdsWatchedToday = 0;
+          player.lastKeyAdWatchDate = today;
+        }
+        if ((player.keyAdsWatchedToday || 0) >= 5) {
+          socket.emit("ad_error", "\u0644\u0642\u062F \u0627\u0633\u062A\u0647\u0644\u0643\u062A \u062C\u0645\u064A\u0639 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0627\u0644\u064A\u0648\u0645\u064A\u0629 (5/5)");
+          return;
+        }
+        player.keyAdsWatchedToday = (player.keyAdsWatchedToday || 0) + 1;
+        player.keys = (player.keys || 0) + 1;
+        savePlayerData(serial);
+        socket.emit("key_ad_success", {
+          keys: player.keys,
+          adsWatched: player.keyAdsWatchedToday,
+          maxAds: 5
+        });
+      });
+      socket.on("check_key_ad_status", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        if (player.lastKeyAdWatchDate !== today) {
+          player.keyAdsWatchedToday = 0;
+          player.lastKeyAdWatchDate = today;
+          savePlayerData(serial);
+        }
+        socket.emit("key_ad_status", {
+          adsWatched: player.keyAdsWatchedToday || 0,
+          maxAds: 5,
+          canWatch: (player.keyAdsWatchedToday || 0) < 5
+        });
+      });
+      socket.on("get_spin_status", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        if (player.lastSpinDate !== today) {
+          player.dailySpinCount = 0;
+          player.freeSpinUsed = 0;
+          player.lastSpinDate = today;
+          savePlayerData(serial);
+        }
+        socket.emit("spin_status", {
+          dailySpinCount: player.dailySpinCount || 0,
+          freeSpinUsed: player.freeSpinUsed || 0,
+          maxPaidSpins: 10,
+          hasFreeSpin: (player.freeSpinUsed || 0) === 0
+        });
+      });
+      socket.on("perform_spin", ({ serial, isAdSpin }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        if (player.lastSpinDate !== today) {
+          player.dailySpinCount = 0;
+          player.freeSpinUsed = 0;
+          player.lastSpinDate = today;
+        }
+        const freeSpinAvailable = (player.freeSpinUsed || 0) === 0;
+        const paidSpinsDone = (player.dailySpinCount || 0) - (player.freeSpinUsed || 0);
+        if (!isAdSpin && !freeSpinAvailable) {
+          socket.emit("spin_error", "\u0644\u0642\u062F \u0627\u0633\u062A\u0646\u0641\u062F\u062A \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629 \u0627\u0644\u0645\u062C\u0627\u0646\u064A\u0629 \u0627\u0644\u064A\u0648\u0645!");
+          return;
+        }
+        if (isAdSpin && paidSpinsDone >= 10 && !player.isAdmin) {
+          socket.emit(
+            "spin_error",
+            "\u0644\u0642\u062F \u0627\u0633\u062A\u0646\u0641\u062F\u062A \u062C\u0645\u064A\u0639 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0627\u0644\u0645\u062F\u0641\u0648\u0639\u0629 \u0627\u0644\u064A\u0648\u0645 (10 \u0645\u062D\u0627\u0648\u0644\u0627\u062A)!"
+          );
+          return;
+        }
+        const totalWeight = SPIN_REWARDS.reduce(
+          (sum, item) => sum + item.weight,
+          0
+        );
+        let random = Math.random() * totalWeight;
+        let selectedReward = SPIN_REWARDS[0];
+        for (const reward of SPIN_REWARDS) {
+          if (random < reward.weight) {
+            selectedReward = reward;
+            break;
+          }
+          random -= reward.weight;
+        }
+        if (!isAdSpin) {
+          player.freeSpinUsed = 1;
+          const daysUsed = player.luckyWheelDaysUsed || 0;
+          player.luckyWheelDaysUsed = daysUsed + 1;
+        }
+        player.dailySpinCount = (player.dailySpinCount || 0) + 1;
+        if (selectedReward.type === "xp") {
+          player.xp = (player.xp || 0) + selectedReward.value;
+        } else if (selectedReward.type === "token") {
+          player.tokens = (player.tokens || 0) + selectedReward.value;
+          player.luckyWheelTokens = (player.luckyWheelTokens || 0) + selectedReward.value;
+        } else if (selectedReward.type === "helper") {
+          const helpers = player.ownedHelpers || {};
+          helpers[selectedReward.value] = (helpers[selectedReward.value] || 0) + 1;
+          player.ownedHelpers = helpers;
+          const lwHelpers = player.luckyWheelHelpers || {};
+          lwHelpers[selectedReward.value] = (lwHelpers[selectedReward.value] || 0) + 1;
+          player.luckyWheelHelpers = lwHelpers;
+        } else if (selectedReward.type === "pro") {
+          const currentExpiry = player.proPackageExpiry || Date.now();
+          player.proPackageExpiry = Math.max(currentExpiry, Date.now()) + selectedReward.value * 24 * 60 * 60 * 1e3;
+        }
+        savePlayerData(serial);
+        socket.emit("spin_result", {
+          reward: selectedReward,
+          dailySpinCount: player.dailySpinCount,
+          freeSpinUsed: player.freeSpinUsed,
+          newStats: {
+            xp: player.xp,
+            tokens: player.tokens,
+            ownedHelpers: player.ownedHelpers || {},
+            proPackageExpiry: player.proPackageExpiry,
+            tempItems: getTempItemsSum(player)
+          }
+        });
+      });
+      socket.on("claim_daily_quest", ({ serial, isPro }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        checkDailyReset(player, serial, socket);
+        const now = Date.now();
+        const lastClaim = player.lastDailyClaim || 0;
+        const isSameDay2 = (d1, d2) => {
+          const date1 = new Date(d1);
+          const date2 = new Date(d2);
+          return date1.getUTCFullYear() === date2.getUTCFullYear() && date1.getUTCMonth() === date2.getUTCMonth() && date1.getUTCDate() === date2.getUTCDate();
+        };
+        if (lastClaim !== 0 && isSameDay2(now, lastClaim)) {
+          socket.emit("daily_quest_error", "\u0644\u0642\u062F \u062D\u0635\u0644\u062A \u0639\u0644\u0649 \u062C\u0627\u0626\u0632\u062A\u0643 \u0627\u0644\u064A\u0648\u0645 \u0628\u0627\u0644\u0641\u0639\u0644!");
+          return;
+        }
+        let streak = player.dailyQuestStreak || 1;
+        if (streak > 7) streak = 1;
+        const isConsecutiveDay = (d1, d2) => {
+          const date1 = new Date(d1);
+          const date2 = new Date(d2);
+          date2.setUTCDate(date2.getUTCDate() + 1);
+          return date1.getUTCFullYear() === date2.getUTCFullYear() && date1.getUTCMonth() === date2.getUTCMonth() && date1.getUTCDate() === date2.getUTCDate();
+        };
+        if (lastClaim !== 0 && !isConsecutiveDay(now, lastClaim)) {
+          streak = 1;
+        }
+        const dayIndex = (streak - 1) % 7;
+        const xpRewards = [50, 100, 150, 250, 300, 400, 500];
+        let xpReward = xpRewards[dayIndex];
+        let tokenReward = 0;
+        const HELPER_ITEMS = [
+          { id: "word_length", name: "\u0643\u0627\u0634\u0641 \u0627\u0644\u062D\u0631\u0648\u0641", icon: "Type" },
+          { id: "word_count", name: "\u0639\u062F\u062F \u0627\u0644\u0643\u0644\u0645\u0627\u062A", icon: "Hash" },
+          { id: "time_freeze", name: "\u062A\u062C\u0645\u064A\u062F \u0627\u0644\u0648\u0642\u062A", icon: "Snowflake" },
+          { id: "hint", name: "\u062A\u0644\u0645\u064A\u062D", icon: "HelpCircle" },
+          { id: "spy_lens", name: "\u0627\u0644\u062C\u0627\u0633\u0648\u0633", icon: "Eye" }
+        ];
+        const randomHelper = HELPER_ITEMS[Math.floor(Math.random() * HELPER_ITEMS.length)];
+        const playerLevel = getLevel(player.xp);
+        let helperReward = randomHelper;
+        if (playerLevel >= 50) {
+          helperReward = { id: "bonus_xp", name: "100 XP \u0625\u0636\u0627\u0641\u064A\u0629", icon: "\u2B50" };
+          xpReward += 100;
+        }
+        if (playerLevel >= 50) {
+          const oneWeek = 7 * 24 * 60 * 60 * 1e3;
+          if (!player.lastWeeklyTokenReset || now - player.lastWeeklyTokenReset > oneWeek) {
+            player.weeklyTokensClaimed = 0;
+            player.lastWeeklyTokenReset = now;
+          }
+          if ((player.weeklyTokensClaimed || 0) < 2) {
+            if (Math.random() < 0.2) {
+              tokenReward = 1;
+              player.weeklyTokensClaimed = (player.weeklyTokensClaimed || 0) + 1;
+            }
+          }
+        }
+        player.xp = (player.xp || 0) + xpReward;
+        player.level = getLevel(player.xp);
+        if (tokenReward > 0) {
+          player.tokens = (player.tokens || 0) + tokenReward;
+        }
+        if (!player.ownedHelpers) player.ownedHelpers = {};
+        if (helperReward && helperReward.id !== "bonus_xp") {
+          player.ownedHelpers[helperReward.id] = (player.ownedHelpers[helperReward.id] || 0) + 1;
+        }
+        player.dailyQuestStreak = streak + 1;
+        player.lastDailyClaim = now;
+        savePlayerData(serial);
+        socket.emit("daily_quest_success", {
+          xpReward,
+          tokenReward,
+          helperReward,
+          newXp: player.xp,
+          newTokens: player.tokens,
+          newOwnedHelpers: player.ownedHelpers,
+          newStreak: player.dailyQuestStreak,
+          newLastClaim: player.lastDailyClaim,
+          weeklyTokensClaimed: player.weeklyTokensClaimed || 0
+        });
+        socket.emit("player_stats_update", {
+          xp: player.xp,
+          level: player.level,
+          streak: 0,
+          wins: player.wins || 0,
+          tokens: player.tokens
+        });
+      });
+      socket.on("rain_gift_pay", ({ serial }, callback) => {
+        const player = allPlayers.get(serial);
+        if (!player) {
+          if (callback) callback({ success: false, error: "\u0644\u0627\u0639\u0628 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F" });
+          return;
+        }
+        if (player.isAdmin) {
+          if (callback) callback({ success: true });
+          return;
+        }
+        if ((player.keys || 0) < 5) {
+          if (callback)
+            callback({ success: false, error: "\u0644\u0627 \u062A\u0645\u0644\u0643 \u0645\u0641\u0627\u062A\u064A\u062D \u0643\u0627\u0641\u064A\u0629!" });
+          return;
+        }
+        player.keys -= 5;
+        savePlayerData(serial);
+        emitPlayerDataUpdate(socket, serial, {
+          serial,
+          keys: player.keys
+        });
+        if (callback) callback({ success: true });
+      });
+      socket.on("claim_rain_gift", ({ serial, rewards, isPro }) => {
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        checkDailyReset(player, serial, socket);
+        const currentDay = getRainGiftEventDay();
+        if (player.rainGiftClaimedDay === currentDay) {
+          console.log(`[Rain Gift] Prevented double claim for ${serial}`);
+          if (socket)
+            socket.emit(
+              "rain_gift_error",
+              "\u0644\u0642\u062F \u0627\u0633\u062A\u0644\u0645\u062A \u0647\u062F\u064A\u0629 \u0645\u0637\u0631 \u0627\u0644\u0647\u062F\u0627\u064A\u0627 \u0628\u0627\u0644\u0641\u0639\u0644 \u0627\u0644\u064A\u0648\u0645!"
+            );
+          return;
+        }
+        if (rewards.xp) player.xp = (player.xp || 0) + rewards.xp;
+        if (rewards.tokens) {
+          player.tokens = (player.tokens || 0) + rewards.tokens;
+          player.rainGiftTokens = (player.rainGiftTokens || 0) + rewards.tokens;
+        }
+        if (rewards.helpers && typeof rewards.helpers === "object") {
+          if (!player.ownedHelpers) player.ownedHelpers = {};
+          if (!player.rainGiftHelpers) player.rainGiftHelpers = {};
+          const playerLevel = getLevel(player.xp);
+          Object.entries(rewards.helpers).forEach(([helperId, count]) => {
+            if (typeof count === "number" && count > 0) {
+              if (playerLevel >= 50) {
+                player.xp = (player.xp || 0) + count * 10;
+              } else {
+                player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + count;
+                player.rainGiftHelpers[helperId] = (player.rainGiftHelpers[helperId] || 0) + count;
+              }
+            }
+          });
+        }
+        player.rainGiftClaimedDay = currentDay;
+        player.level = getLevel(player.xp);
+        savePlayerData(serial);
+        emitPlayerDataUpdate(socket, serial, {
+          serial,
+          xp: player.xp,
+          tokens: player.tokens,
+          ownedHelpers: player.ownedHelpers,
+          level: player.level,
+          keys: player.keys
+        });
+        socket.emit("player_stats_update", {
+          xp: player.xp,
+          level: player.level,
+          streak: player.streak || 0,
+          wins: player.wins || 0,
+          tokens: player.tokens
+        });
+      });
+      socket.on("update_player_data", ({ serial, ...updates }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const allowedFields = ["name", "avatar", "gender", "age"];
+          const safeUpdates = {};
+          for (const key of allowedFields) {
+            if (updates[key] !== void 0) {
+              safeUpdates[key] = updates[key];
+            }
+          }
+          if (Object.keys(safeUpdates).length > 0) {
+            Object.assign(player, safeUpdates);
+            savePlayerData(serial);
+            emitPlayerDataUpdate(socket, player.serial, player);
+            for (const room of rooms.values()) {
+              const roomPlayer = room.players.find(
+                (p) => p.serial === serial
+              );
+              if (roomPlayer) {
+                Object.assign(roomPlayer, safeUpdates);
+              }
+            }
+          }
+        }
+      });
+      socket.on("use_helper", ({ roomId, helperId, serial }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState === "finished") return;
+        const player = room.players.find((p) => p.id === socket.id);
+        if (!player) return;
+        const dbPlayer = allPlayers.get(serial);
+        if (!dbPlayer || !dbPlayer.ownedHelpers || !dbPlayer.ownedHelpers[helperId] || dbPlayer.ownedHelpers[helperId] <= 0) {
+          socket.emit("error", "\u0644\u0627 \u062A\u0645\u0644\u0643 \u0647\u0630\u0647 \u0627\u0644\u0645\u0633\u0627\u0639\u062F\u0629!");
+          return;
+        }
+        if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[helperId] > 0) {
+          dbPlayer.rainGiftHelpers[helperId] -= 1;
+        } else if (dbPlayer.luckyWheelHelpers && dbPlayer.luckyWheelHelpers[helperId] > 0) {
+          dbPlayer.luckyWheelHelpers[helperId] -= 1;
+        } else if (dbPlayer.citySearchRewards) {
+          const rewardIndex = dbPlayer.citySearchRewards.findIndex(
+            (r) => r.type === "helper" && r.id === helperId && r.amount > 0
+          );
+          if (rewardIndex !== -1) {
+            dbPlayer.citySearchRewards[rewardIndex].amount -= 1;
+            if (dbPlayer.citySearchRewards[rewardIndex].amount <= 0) {
+              dbPlayer.citySearchRewards.splice(rewardIndex, 1);
+            }
+          }
+        }
+        dbPlayer.ownedHelpers[helperId] -= 1;
+        if (dbPlayer.ownedHelpers[helperId] === 0) {
+          delete dbPlayer.ownedHelpers[helperId];
+        }
+        let foundKey = false;
+        if (Math.random() < 0.15) {
+          dbPlayer.keys = (dbPlayer.keys || 0) + 1;
+          foundKey = true;
+        }
+        savePlayerData(serial);
+        emitPlayerDataUpdate(socket, serial, {
+          serial,
+          ownedHelpers: dbPlayer.ownedHelpers,
+          keys: dbPlayer.keys
+        });
+        if (foundKey) {
+          socket.emit("key_found", { keys: dbPlayer.keys });
+        }
+        io.to(roomId).emit("helper_used", { playerId: socket.id, helperId });
+        if (helperId === "reveal_letter") {
+          const targetName = player.targetImage.name;
+          const revealedCount = player.hintCount || 0;
+          const letterToReveal = targetName[revealedCount] || targetName[0];
+          socket.emit("helper_effect", {
+            helperId,
+            data: {
+              message: `\u0627\u0644\u0645\u0633\u0627\u0639\u062F\u0629: \u0627\u0644\u062D\u0631\u0641 \u0627\u0644\u062A\u0627\u0644\u064A \u0647\u0648 "${letterToReveal}"`,
+              letter: letterToReveal
+            }
+          });
+        } else if (helperId === "extra_time") {
+          room.timer = (room.timer || 0) + 30;
+          io.to(roomId).emit("timer_update", room.timer);
+          socket.emit("helper_effect", {
+            helperId,
+            data: { message: "\u062A\u0645 \u0625\u0636\u0627\u0641\u0629 30 \u062B\u0627\u0646\u064A\u0629 \u0644\u0644\u0648\u0642\u062A!" }
+          });
+        } else if (helperId === "remove_wrong") {
+          socket.emit("helper_effect", {
+            helperId,
+            data: { message: "\u062A\u0645 \u062A\u0633\u0647\u064A\u0644 \u0627\u0644\u062A\u062E\u0645\u064A\u0646 \u0644\u0643!" }
+          });
+        }
+      });
+      socket.on(
+        "request_custom_avatar",
+        ({ playerSerial, avatar, status }, callback) => {
+          const player = allPlayers.get(playerSerial);
+          if (player) {
+            if (getLevel(player.xp) < 50) {
+              if (callback)
+                callback({
+                  success: false,
+                  message: "\u064A\u062C\u0628 \u0623\u0646 \u064A\u0643\u0648\u0646 \u0645\u0633\u062A\u0648\u0627\u0643 50+ \u0644\u0631\u0641\u0639 \u0635\u0648\u0631\u0629 \u0645\u062E\u0635\u0635\u0629"
+                });
+              return;
+            }
+            if (status === "approved") {
+              player.avatar = avatar;
+              player.avatarStatus = "approved";
+              player.pendingAvatar = void 0;
+              if (callback)
+                callback({ success: true, message: "\u062A\u0645\u062A \u0631\u0641\u0639 \u0627\u0644\u0635\u0648\u0631\u0629 \u0628\u0646\u062C\u0627\u062D!" });
+            } else {
+              player.pendingAvatar = avatar;
+              player.avatarStatus = "pending";
+              if (callback)
+                callback({
+                  success: true,
+                  message: "\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0635\u0648\u0631\u0629 \u0644\u0644\u0645\u0631\u0627\u062C\u0639\u0629 \u0627\u0644\u064A\u062F\u0648\u064A\u0629."
+                });
+            }
+            savePlayerData(playerSerial);
+          }
+        }
+      );
+      socket.on("admin_get_pending_avatars", (callback) => {
+        const pending = Array.from(allPlayers.values()).filter((p) => p.avatarStatus === "pending" && p.pendingAvatar).map((p) => ({
+          serial: p.serial,
+          name: p.name,
+          level: getLevel(p.xp),
+          pendingAvatar: p.pendingAvatar
+        }));
+        callback(pending);
+      });
+      socket.on("admin_review_avatar", ({ playerSerial, status }, callback) => {
+        const player = allPlayers.get(playerSerial);
+        if (player) {
+          if (status === "approved" && player.pendingAvatar) {
+            player.avatar = player.pendingAvatar;
+            player.avatarStatus = "approved";
+            player.pendingAvatar = void 0;
+          } else if (status === "rejected") {
+            player.avatarStatus = "rejected";
+            player.pendingAvatar = void 0;
+          }
+          savePlayerData(playerSerial);
+          if (callback) callback({ success: true });
+          const socketId = playerSockets.get(playerSerial);
+          if (socketId) {
+            io.to(socketId).emit("avatar_review_result", {
+              success: true,
+              status: player.avatarStatus,
+              avatar: player.avatar,
+              message: status === "approved" ? "\u062A\u0645\u062A \u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629 \u0639\u0644\u0649 \u0635\u0648\u0631\u062A\u0643 \u0627\u0644\u0634\u062E\u0635\u064A\u0629!" : "\u062A\u0645 \u0631\u0641\u0636 \u0635\u0648\u0631\u062A\u0643 \u0627\u0644\u0634\u062E\u0635\u064A\u0629 \u0644\u0645\u062E\u0627\u0644\u0641\u062A\u0647\u0627 \u0627\u0644\u0633\u064A\u0627\u0633\u0627\u062A."
+            });
+          }
+        } else {
+          if (callback) callback({ success: false, error: "\u0627\u0644\u0644\u0627\u0639\u0628 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F" });
+        }
+      });
+      socket.on(
+        "update_profile",
+        ({ playerSerial, playerName, avatar, gender }, callback) => {
+          if (socket.data?.serial !== playerSerial && !socket.data?.isAdmin) {
+            if (callback) callback({ success: false, error: "Unauthorized" });
+            return;
+          }
+          const player = allPlayers.get(playerSerial);
+          if (player) {
+            let filteredName = filterProfanity(playerName);
+            if (filteredName.length > 15) {
+              filteredName = filteredName.substring(0, 15);
+            }
+            if (player.name !== filteredName) {
+              for (const [s, p] of allPlayers.entries()) {
+                if (s !== playerSerial && p.name && p.name.toLowerCase() === filteredName.toLowerCase()) {
+                  if (callback)
+                    callback({
+                      success: false,
+                      error: "\u0647\u0630\u0627 \u0627\u0644\u0627\u0633\u0645 \u0645\u0633\u062A\u062E\u062F\u0645 \u0628\u0627\u0644\u0641\u0639\u0644\u060C \u064A\u0631\u062C\u0649 \u0627\u062E\u062A\u064A\u0627\u0631 \u0627\u0633\u0645 \u0622\u062E\u0631."
+                    });
+                  return;
+                }
+              }
+              player.name = filteredName;
+              player.lastRenameAt = Date.now();
+            }
+            const isCustom = avatar && avatar.startsWith("data:image/");
+            if (isCustom) {
+              if (player.avatarStatus !== "approved" || player.avatar !== avatar) {
+                console.log(
+                  `Player ${player.name} tried to set unapproved custom avatar.`
+                );
+              } else {
+                player.avatar = avatar;
+              }
+            } else {
+              player.avatar = avatar;
+            }
+            if (gender) {
+              player.gender = gender;
+              for (const [roomId, room] of rooms.entries()) {
+                const playerInRoom = room.players.find(
+                  (p) => p.serial === playerSerial
+                );
+                if (playerInRoom) {
+                  playerInRoom.gender = gender;
+                  io.to(roomId).emit("room_update", room);
+                }
+              }
+            }
+            savePlayerData(playerSerial);
+            if (callback)
+              callback({
+                name: player.name,
+                lastRenameAt: player.lastRenameAt
+              });
+          }
+        }
+      );
+      socket.on(
+        "check_name_availability",
+        ({ name, playerSerial }, callback) => {
+          let filteredName = filterProfanity(name);
+          if (filteredName.length > 15) {
+            filteredName = filteredName.substring(0, 15);
+          }
+          for (const [s, p] of allPlayers.entries()) {
+            if (s !== playerSerial && p.name && p.name.toLowerCase() === filteredName.toLowerCase()) {
+              callback({ available: false });
+              return;
+            }
+          }
+          callback({ available: true });
+        }
+      );
+      socket.on("unlock_name_change", ({ playerSerial }, callback) => {
+        const player = allPlayers.get(playerSerial);
+        if (!player) {
+          if (callback) callback({ success: false, error: "\u0627\u0644\u0644\u0627\u0639\u0628 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F" });
+          return;
+        }
+        const currentMonth = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Africa/Cairo",
+          year: "numeric",
+          month: "2-digit"
+        }).format(/* @__PURE__ */ new Date());
+        if (player.lastRenameUnlockMonth === currentMonth) {
+          if (callback)
+            callback({
+              success: false,
+              error: "\u0644\u0642\u062F \u0627\u0633\u062A\u062E\u062F\u0645\u062A \u0641\u0631\u0635\u0629 \u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u0627\u0633\u0645 \u0644\u0647\u0630\u0627 \u0627\u0644\u0634\u0647\u0631."
+            });
+          return;
+        }
+        if ((player.keys || 0) < 25) {
+          if (callback)
+            callback({
+              success: false,
+              error: "\u0644\u0627 \u062A\u0645\u0644\u0643 \u0645\u0641\u0627\u062A\u064A\u062D \u0643\u0627\u0641\u064A\u0629 (25 \u0645\u0641\u062A\u0627\u062D \u0645\u0637\u0644\u0648\u0628)."
+            });
+          return;
+        }
+        player.keys = (player.keys || 0) - 25;
+        player.lastRenameAt = 0;
+        player.lastRenameUnlockMonth = currentMonth;
+        savePlayerData(playerSerial);
+        socket.emit("player_data_update", {
+          keys: player.keys,
+          lastRenameAt: player.lastRenameAt
+        });
+        if (callback) callback({ success: true, keys: player.keys });
+      });
+      socket.on(
+        "update_selected_frame",
+        ({ playerSerial, frame }, callback) => {
+          const player = allPlayers.get(playerSerial);
+          if (player) {
+            player.selectedFrame = frame;
+            savePlayerData(playerSerial);
+            if (callback)
+              callback({ success: true, frame: player.selectedFrame });
+          } else {
+            if (callback)
+              callback({ success: false, error: "Player not found" });
+          }
+        }
+      );
+      socket.on(
+        "update_player_privacy",
+        ({ serial, hideMyInfo, hideFriendRequests, disableGuessChat }) => {
+          const player = allPlayers.get(serial);
+          if (player) {
+            if (hideMyInfo !== void 0)
+              player.hideMyInfo = hideMyInfo ? 1 : 0;
+            if (hideFriendRequests !== void 0)
+              player.hideFriendRequests = hideFriendRequests ? 1 : 0;
+            if (disableGuessChat !== void 0)
+              player.disableGuessChat = disableGuessChat ? 1 : 0;
+            savePlayerData(serial);
+          }
+          if (disableGuessChat !== void 0) {
+            rooms.forEach((room) => {
+              const p = room.players?.find((rp) => rp.serial === serial || rp.id === socket.id);
+              if (p) {
+                p.disableGuessChat = disableGuessChat ? 1 : 0;
+                io.to(room.id).emit("room_update", room);
+              }
+            });
+          }
+        }
+      );
+      socket.on("update_player_notifications", ({ serial, enabled }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          player.notificationsEnabled = enabled ? 1 : 0;
+          savePlayerData(serial);
+        }
+      });
+      socket.on("get_top_players", (callback) => {
+        if (typeof callback === "function") {
+          callback(getTopPlayers(false, 100));
+        }
+      });
+      socket.on("get_player_rank", (serial, callback) => {
+        if (typeof callback === "function") {
+          callback(getPlayerRank(serial));
+        }
+      });
+      socket.on("get_highest_likes_serial", (callback) => {
+        const highestLikesPlayersData = highestLikesSerials.map((serial) => {
+          const p = allPlayers.get(serial);
+          return p ? {
+            serial: p.serial,
+            name: p.name,
+            avatar: p.avatar,
+            selectedFrame: p.selectedFrame,
+            xp: p.xp,
+            isAdmin: !!p.isAdmin
+          } : null;
+        }).filter((p) => p !== null);
+        callback({
+          serials: highestLikesSerials,
+          value: globalMaxLikes,
+          players: highestLikesPlayersData
+        });
+      });
+      socket.on("get_highest_streak_serial", (callback) => {
+        const highestStreakPlayersData = highestStreakSerials.map((serial) => {
+          const p = allPlayers.get(serial);
+          return p ? {
+            serial: p.serial,
+            name: p.name,
+            avatar: p.avatar,
+            xp: p.xp,
+            selectedFrame: p.selectedFrame,
+            isOnline: playerSockets.has(p.serial),
+            streak: p.streak,
+            isAdmin: !!p.isAdmin
+          } : null;
+        }).filter((p) => p !== null);
+        callback({
+          serials: highestStreakSerials,
+          value: globalMaxStreak,
+          players: highestStreakPlayersData
+        });
+      });
+      socket.on("get_highest_level_serial", (callback) => {
+        const highestLevelPlayersData = highestLevelSerials.map((serial) => {
+          const p = allPlayers.get(serial);
+          return p ? {
+            serial: p.serial,
+            name: p.name,
+            avatar: p.avatar,
+            selectedFrame: p.selectedFrame,
+            xp: p.xp,
+            isAdmin: !!p.isAdmin
+          } : null;
+        }).filter((p) => p !== null);
+        callback({
+          serials: highestLevelSerials,
+          value: globalMaxLevelXp,
+          players: highestLevelPlayersData
+        });
+      });
+      socket.on("get_city_search", ({ serial }) => {
+        if (!serial) return;
+        const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(`city_search_${serial}`);
+        if (row) {
+          socket.emit("city_search_update", JSON.parse(row.value));
+        } else {
+          socket.emit("city_search_update", null);
+        }
+      });
+      socket.on("start_city_search", ({ serial, cityId }) => {
+        if (!serial) return;
+        const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(`city_search_${serial}`);
+        if (row) {
+          const state = JSON.parse(row.value);
+          if (state.active) return;
+        }
+        let xp = Math.floor(Math.random() * 201);
+        let time_freeze = 0;
+        for (let i = 0; i < 5; i++) if (Math.random() < 0.7) time_freeze++;
+        let word_count = 0;
+        for (let i = 0; i < 5; i++) if (Math.random() < 0.6) word_count++;
+        let word_length = 0;
+        for (let i = 0; i < 5; i++) if (Math.random() < 0.5) word_length++;
+        let hint = 0;
+        for (let i = 0; i < 5; i++) if (Math.random() < 0.4) hint++;
+        let spy_lens = 0;
+        for (let i = 0; i < 5; i++) if (Math.random() < 0.2) spy_lens++;
+        let tokens = 0;
+        for (let i = 0; i < 5; i++) if (Math.random() < 0.03) tokens++;
+        let pro_package_days = 0;
+        for (let i = 0; i < 5; i++)
+          if (Math.random() < 1e-6) pro_package_days++;
+        let keys = 0;
+        if (Math.random() < 0.45) keys = 1 + Math.floor(Math.random() * 2);
+        const newState = {
+          active: true,
+          cityId,
+          startTime: Date.now(),
+          endTime: Date.now() + 60 * 60 * 1e3,
+          // 1 hour
+          rewards: {
+            xp,
+            time_freeze,
+            word_count,
+            word_length,
+            hint,
+            spy_lens,
+            tokens,
+            pro_package_days,
+            keys
+          }
+        };
+        db.prepare(
+          "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+        ).run(`city_search_${serial}`, JSON.stringify(newState));
+        socket.emit("city_search_update", newState);
+      });
+      socket.on("claim_city_search", ({ serial }) => {
+        if (!serial) return;
+        const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(`city_search_${serial}`);
+        if (!row) return;
+        const state = JSON.parse(row.value);
+        if (!state.active || Date.now() < state.endTime) return;
+        const player = allPlayers.get(serial);
+        if (!player) return;
+        player.xp += state.rewards.xp;
+        if (!player.citySearchRewards) player.citySearchRewards = [];
+        const now = Date.now();
+        if (state.rewards.tokens > 0) {
+          player.tokens = (player.tokens || 0) + state.rewards.tokens;
+          player.citySearchRewards.push({
+            type: "token",
+            amount: state.rewards.tokens,
+            timestamp: now
+          });
+          const tokenRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`tokens_${serial}`);
+          let currentTokens = tokenRow ? parseInt(tokenRow.value) : 0;
+          db.prepare(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+          ).run(
+            `tokens_${serial}`,
+            (currentTokens + state.rewards.tokens).toString()
+          );
+        }
+        if (state.rewards.pro_package_days > 0) {
+          const proRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`pro_package_${serial}`);
+          let currentExpiry = proRow ? parseInt(proRow.value) : Date.now();
+          if (currentExpiry < Date.now()) currentExpiry = Date.now();
+          const newExpiry = currentExpiry + state.rewards.pro_package_days * 24 * 60 * 60 * 1e3;
+          db.prepare(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+          ).run(`pro_package_${serial}`, newExpiry.toString());
+          player.proPackageExpiry = newExpiry;
+        }
+        if (state.rewards.keys && state.rewards.keys > 0) {
+          player.keys = (player.keys || 0) + state.rewards.keys;
+          player.citySearchRewards.push({
+            type: "key",
+            amount: state.rewards.keys,
+            timestamp: now
+          });
+        }
+        if (!player.ownedHelpers) player.ownedHelpers = {};
+        const helperRewards = [
+          { id: "time_freeze", amount: state.rewards.time_freeze },
+          { id: "word_count", amount: state.rewards.word_count },
+          { id: "word_length", amount: state.rewards.word_length },
+          { id: "hint", amount: state.rewards.hint },
+          { id: "spy_lens", amount: state.rewards.spy_lens }
+        ];
+        helperRewards.forEach((reward) => {
+          if (reward.amount > 0) {
+            player.ownedHelpers[reward.id] = (player.ownedHelpers[reward.id] || 0) + reward.amount;
+            player.citySearchRewards.push({
+              type: "helper",
+              id: reward.id,
+              amount: reward.amount,
+              timestamp: now
+            });
+          }
+        });
+        savePlayerData(serial);
+        db.prepare("DELETE FROM settings WHERE key = ?").run(
+          `city_search_${serial}`
+        );
+        socket.emit("city_search_update", null);
+        socket.emit("rewards_claimed", state.rewards);
+      });
+      socket.on("get_player_data", (data, callback) => {
+        const serial = typeof data === "string" ? data : data.serial;
+        const fingerprint = typeof data === "object" ? data.fingerprint : null;
+        const secretToken = typeof data === "object" ? data.secretToken : null;
+        const player = allPlayers.get(serial);
+        if (player && callback) {
+          let isAuthorized = false;
+          if (player.secretToken) {
+            if (secretToken) {
+              isAuthorized = player.secretToken === secretToken;
+            } else {
+              if (!player.fingerprint || player.fingerprint === fingerprint) {
+                isAuthorized = true;
+              }
+            }
+          } else {
+            if (!player.fingerprint || player.fingerprint === fingerprint) {
+              isAuthorized = true;
+              player.secretToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+              savePlayerData(serial);
+            }
+          }
+          if (!isAuthorized) {
+            callback({
+              error: "\u0639\u0630\u0631\u0627\u064B\u060C \u0647\u0630\u0627 \u0627\u0644\u062D\u0633\u0627\u0628 \u0645\u062D\u0645\u064A. \u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 (Secret Token) \u0627\u0644\u0635\u062D\u064A\u062D\u0629 \u0623\u0648 \u0627\u0644\u062F\u062E\u0648\u0644 \u0645\u0646 \u062C\u0647\u0627\u0632\u0643 \u0627\u0644\u0623\u0635\u0644\u064A."
+            });
+            return;
+          }
+          checkDailyReset(player, serial, socket);
+          const ip = getClientIp(socket);
+          const banned = db.prepare(
+            "SELECT * FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL)"
+          ).get(fingerprint || null);
+          if (banned || player.isPermanentBan) {
+            callback({ error: "\u062A\u0645 \u062D\u0638\u0631\u0643 \u0646\u0647\u0627\u0626\u064A\u0627\u064B \u0645\u0646 \u0627\u0644\u0644\u0639\u0628\u0629" });
+            return;
+          }
+          let updated = false;
+          if (player.busCompleteExpiring && player.busCompleteExpiring.length > 0) {
+            const now2 = Date.now();
+            const validExpiring = [];
+            let expiredKeys = 0;
+            const expiredHelpers = {
+              hint: 0,
+              word_length: 0,
+              time_freeze: 0,
+              word_count: 0,
+              spy_lens: 0
+            };
+            for (const item of player.busCompleteExpiring) {
+              if (item.expiresAt <= now2) {
+                expiredKeys += item.keys || 0;
+                if (item.helpers) {
+                  for (const h in expiredHelpers) {
+                    expiredHelpers[h] += item.helpers[h] || 0;
+                  }
+                }
+              } else {
+                validExpiring.push(item);
+              }
+            }
+            if (player.busCompleteExpiring.length !== validExpiring.length) {
+              player.busCompleteExpiring = validExpiring;
+              player.keys = Math.max(0, (player.keys || 0) - expiredKeys);
+              if (!player.ownedHelpers) player.ownedHelpers = {};
+              for (const h in expiredHelpers) {
+                player.ownedHelpers[h] = Math.max(
+                  0,
+                  (player.ownedHelpers[h] || 0) - expiredHelpers[h]
+                );
+              }
+              updated = true;
+            }
+          }
+          if (ip && player.ip !== ip) {
+            player.ip = ip;
+            updated = true;
+          }
+          if (!player.fingerprint && fingerprint) {
+            player.fingerprint = fingerprint;
+            updated = true;
+          }
+          if (updated) {
+            savePlayerData(serial);
+          }
+          const now = Date.now();
+          const lastClaim = player.lastDailyClaim || 0;
+          const isSameDay2 = (d1, d2) => {
+            const date1 = new Date(d1);
+            const date2 = new Date(d2);
+            return date1.getUTCFullYear() === date2.getUTCFullYear() && date1.getUTCMonth() === date2.getUTCMonth() && date1.getUTCDate() === date2.getUTCDate();
+          };
+          if (activeGlobalReward && activeGlobalReward.expiresAt > Date.now()) {
+            if (!player.claimedRewards) player.claimedRewards = [];
+            if (!player.claimedRewards.includes(activeGlobalReward.id)) {
+              const level = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+              if (activeGlobalReward.type !== "tokens" || level >= 50) {
+                socket.emit("global_reward_available", activeGlobalReward);
+              }
+            }
+          }
+          let activeRoomId = null;
+          for (const [roomId, room] of rooms.entries()) {
+            const p = room.players.find((pl) => pl.serial === serial);
+            if (p) {
+              activeRoomId = roomId;
+              break;
+            }
+          }
+          const enrichedPlayer = {
+            ...player,
+            isHighestLikes: highestLikesSerials.includes(player.serial) && (player.likes || 0) > 0,
+            tempItems: getTempItemsSum(player),
+            activeRoomId
+          };
+          callback(enrichedPlayer);
+          for (const [roomId, room] of rooms.entries()) {
+            const p = room.players.find((pl) => pl.serial === serial);
+            if (p) {
+              const oldSocketId = p.id;
+              const opponent = room.players.find((pl) => pl.serial !== serial);
+              const isOpponentOnline = opponent && playerSockets.has(opponent.serial);
+              if (serial === room.disconnectedPlayerSerial) {
+                if (isOpponentOnline || opponent?.isBot) {
+                  room.isWaitingForReconnect = false;
+                  room.disconnectedPlayerSerial = null;
+                } else {
+                  room.isWaitingForReconnect = true;
+                  room.disconnectedPlayerSerial = opponent?.serial || null;
+                }
+              } else {
+                if (!isOpponentOnline && !opponent?.isBot) {
+                  room.isWaitingForReconnect = true;
+                  room.disconnectedPlayerSerial = opponent?.serial || null;
+                }
+              }
+              p.id = socket.id;
+              if (oldSocketId && oldSocketId !== socket.id) {
+                if (room.xoXPlayer === oldSocketId) room.xoXPlayer = socket.id;
+                if (room.xoOPlayer === oldSocketId) room.xoOPlayer = socket.id;
+                if (room.xoTurn === oldSocketId) room.xoTurn = socket.id;
+                if (room.xoWinner === oldSocketId) room.xoWinner = socket.id;
+                if (room.xoMatchWins && room.xoMatchWins[oldSocketId] !== void 0) {
+                  room.xoMatchWins[socket.id] = room.xoMatchWins[oldSocketId];
+                  delete room.xoMatchWins[oldSocketId];
+                }
+                if (room.xoRematchRequestedBy) {
+                  room.xoRematchRequestedBy = room.xoRematchRequestedBy.map((id) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.currentTurn === oldSocketId) room.currentTurn = socket.id;
+                if (room.guessingPlayerId === oldSocketId) room.guessingPlayerId = socket.id;
+                if (room.pausingPlayerId === oldSocketId) room.pausingPlayerId = socket.id;
+                if (room.busCompleteChangeLetterRequestBy === oldSocketId) room.busCompleteChangeLetterRequestBy = socket.id;
+                if (room.busCompleteWinner === oldSocketId) room.busCompleteWinner = socket.id;
+                if (room.handPickerId === oldSocketId) room.handPickerId = socket.id;
+                if (room.handSearcherId === oldSocketId) room.handSearcherId = socket.id;
+                if (room.handWinner === oldSocketId) room.handWinner = socket.id;
+                if (room.handMatchWins && room.handMatchWins[oldSocketId] !== void 0) {
+                  room.handMatchWins[socket.id] = room.handMatchWins[oldSocketId];
+                  delete room.handMatchWins[oldSocketId];
+                }
+                if (room.handRematchRequestedBy) {
+                  room.handRematchRequestedBy = room.handRematchRequestedBy.map((id) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.dotsPlayer1 === oldSocketId) room.dotsPlayer1 = socket.id;
+                if (room.dotsPlayer2 === oldSocketId) room.dotsPlayer2 = socket.id;
+                if (room.dotsTurn === oldSocketId) room.dotsTurn = socket.id;
+                if (room.dotsWinner === oldSocketId) room.dotsWinner = socket.id;
+                if (room.dotsMatchWins && room.dotsMatchWins[oldSocketId] !== void 0) {
+                  room.dotsMatchWins[socket.id] = room.dotsMatchWins[oldSocketId];
+                  delete room.dotsMatchWins[oldSocketId];
+                }
+                if (room.dotsLines) {
+                  for (const [key, val] of Object.entries(room.dotsLines)) {
+                    if (val === oldSocketId) room.dotsLines[key] = socket.id;
+                  }
+                }
+                if (room.dotsBoxes) {
+                  for (const [key, val] of Object.entries(room.dotsBoxes)) {
+                    if (val === oldSocketId) room.dotsBoxes[key] = socket.id;
+                  }
+                }
+                if (room.dotsRematchRequestedBy) {
+                  room.dotsRematchRequestedBy = room.dotsRematchRequestedBy.map((id) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.iqPlayer1 === oldSocketId) room.iqPlayer1 = socket.id;
+                if (room.iqPlayer2 === oldSocketId) room.iqPlayer2 = socket.id;
+                if (room.iqTurn === oldSocketId) room.iqTurn = socket.id;
+                if (room.iqWinner === oldSocketId) room.iqWinner = socket.id;
+                if (room.iqMatchWins && room.iqMatchWins[oldSocketId] !== void 0) {
+                  room.iqMatchWins[socket.id] = room.iqMatchWins[oldSocketId];
+                  delete room.iqMatchWins[oldSocketId];
+                }
+                if (room.iqRematchRequestedBy) {
+                  room.iqRematchRequestedBy = room.iqRematchRequestedBy.map((id) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.busCompleteSubmittedPlayers) {
+                  room.busCompleteSubmittedPlayers = room.busCompleteSubmittedPlayers.map((id) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.busCompleteRematchRequestedBy) {
+                  room.busCompleteRematchRequestedBy = room.busCompleteRematchRequestedBy.map((id) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.busCompleteAdViewers) {
+                  room.busCompleteAdViewers = room.busCompleteAdViewers.map((id) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.busCompleteCooldowns && room.busCompleteCooldowns[oldSocketId] !== void 0) {
+                  room.busCompleteCooldowns[socket.id] = room.busCompleteCooldowns[oldSocketId];
+                  delete room.busCompleteCooldowns[oldSocketId];
+                }
+                if (room.busCompleteAnswers && room.busCompleteAnswers[oldSocketId] !== void 0) {
+                  room.busCompleteAnswers[socket.id] = room.busCompleteAnswers[oldSocketId];
+                  delete room.busCompleteAnswers[oldSocketId];
+                }
+                if (room.busCompleteSubmitTimes && room.busCompleteSubmitTimes[oldSocketId] !== void 0) {
+                  room.busCompleteSubmitTimes[socket.id] = room.busCompleteSubmitTimes[oldSocketId];
+                  delete room.busCompleteSubmitTimes[oldSocketId];
+                }
+                if (room.customImages && room.customImages[oldSocketId] !== void 0) {
+                  room.customImages[socket.id] = room.customImages[oldSocketId];
+                  delete room.customImages[oldSocketId];
+                }
+                if (room.speedCupsWinner === oldSocketId) room.speedCupsWinner = socket.id;
+                if (room.speedCupsMatchWins && room.speedCupsMatchWins[oldSocketId] !== void 0) {
+                  room.speedCupsMatchWins[socket.id] = room.speedCupsMatchWins[oldSocketId];
+                  delete room.speedCupsMatchWins[oldSocketId];
+                }
+                if (room.speedCupsRematchRequestedBy) {
+                  room.speedCupsRematchRequestedBy = room.speedCupsRematchRequestedBy.map((id) => id === oldSocketId ? socket.id : id);
+                }
+                if (room.bombParty) {
+                  if (room.bombParty.turnPlayerId === oldSocketId) room.bombParty.turnPlayerId = socket.id;
+                  if (room.bombParty.explodedPlayerId === oldSocketId) room.bombParty.explodedPlayerId = socket.id;
+                  if (room.bombParty.stats && room.bombParty.stats[oldSocketId] !== void 0) {
+                    room.bombParty.stats[socket.id] = room.bombParty.stats[oldSocketId];
+                    delete room.bombParty.stats[oldSocketId];
+                  }
+                  if (room.bombParty.matchWins && room.bombParty.matchWins[oldSocketId] !== void 0) {
+                    room.bombParty.matchWins[socket.id] = room.bombParty.matchWins[oldSocketId];
+                    delete room.bombParty.matchWins[oldSocketId];
+                  }
+                  if (room.bombParty.rematchRequestedBy) {
+                    room.bombParty.rematchRequestedBy = room.bombParty.rematchRequestedBy.map((id) => id === oldSocketId ? socket.id : id);
+                  }
+                }
+                if (room.busCompleteDraftAnswers && room.busCompleteDraftAnswers[oldSocketId] !== void 0) {
+                  room.busCompleteDraftAnswers[socket.id] = room.busCompleteDraftAnswers[oldSocketId];
+                  delete room.busCompleteDraftAnswers[oldSocketId];
+                }
+                if (room.adPausedPlayers && room.adPausedPlayers.has(oldSocketId)) {
+                  room.adPausedPlayers.delete(oldSocketId);
+                  room.adPausedPlayers.add(socket.id);
+                }
+                if (room.powerUpAdsInProgress && room.powerUpAdsInProgress.has(oldSocketId)) {
+                  const val = room.powerUpAdsInProgress.get(oldSocketId);
+                  room.powerUpAdsInProgress.delete(oldSocketId);
+                  room.powerUpAdsInProgress.set(socket.id, val);
+                }
+                if (room.adRewardedPowerUps && room.adRewardedPowerUps.has(oldSocketId)) {
+                  const val = room.adRewardedPowerUps.get(oldSocketId);
+                  room.adRewardedPowerUps.delete(oldSocketId);
+                  room.adRewardedPowerUps.set(socket.id, val);
+                }
+              }
+              socket.join(roomId);
+              io.to(roomId).emit("player_reconnected", {
+                name: p.name
+              });
+              if (room.isWaitingForReconnect) {
+                socket.emit("player_disconnected_waiting", {
+                  name: opponent?.name || "\u0627\u0644\u0645\u0646\u0627\u0641\u0633"
+                });
+              }
+              io.to(roomId).emit("room_update", room);
+              const hasBot = room.players.some((pl) => pl.isBot);
+              if (hasBot) {
+                handleBotEvent(roomId, "room_update", room);
+              }
+              break;
+            }
+          }
+        } else if (callback) {
+          callback(null);
+        }
+      });
+      socket.on("get_blocked_players", ({ serial }, callback) => {
+        const player = allPlayers.get(serial);
+        if (player && player.blockedSerials && callback) {
+          const blockedList = player.blockedSerials.map(
+            (blockedSerial) => {
+              const bPlayer = allPlayers.get(blockedSerial);
+              return {
+                serial: blockedSerial,
+                name: bPlayer ? bPlayer.name : "\u0644\u0627\u0639\u0628 \u063A\u064A\u0631 \u0645\u0639\u0631\u0648\u0641"
+              };
+            }
+          );
+          callback(blockedList);
+        } else if (callback) {
+          callback([]);
+        }
+      });
+      socket.on("unblock_player", ({ serial, blockedSerial }, callback) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          if (player.blockedSerials) {
+            player.blockedSerials = player.blockedSerials.filter(
+              (s) => s !== blockedSerial
+            );
+          }
+          const blockedPlayer = allPlayers.get(blockedSerial);
+          if (blockedPlayer && blockedPlayer.fingerprint && player.blockedFingerprints) {
+            player.blockedFingerprints = player.blockedFingerprints.filter(
+              (f) => f !== blockedPlayer.fingerprint
+            );
+          }
+          savePlayerData(serial);
+          if (callback) callback({ success: true });
+        } else {
+          if (callback) callback({ success: false });
+        }
+      });
+      socket.on("delete_account", ({ playerSerial }, callback) => {
+        try {
+          db.prepare(
+            "DELETE FROM reports WHERE reporterSerial = ? OR reportedSerial = ?"
+          ).run(playerSerial, playerSerial);
+          db.prepare(
+            "DELETE FROM friends WHERE player1 = ? OR player2 = ?"
+          ).run(playerSerial, playerSerial);
+          db.prepare("DELETE FROM players WHERE serial = ?").run(playerSerial);
+          allPlayers.delete(playerSerial);
+          if (callback) callback({ success: true });
+          setTimeout(() => {
+            socket.disconnect(true);
+          }, 500);
+        } catch (err) {
+          console.error("Failed to delete player from DB:", err);
+          if (callback) callback({ success: false, error: "Database error" });
+        }
+      });
+      socket.on(
+        "join_room",
+        ({ roomId, playerName, avatar, age, xp, streak, serial, wins }) => {
+          socket.data.isSearching = false;
+          const serverPlayer = allPlayers.get(serial);
+          if (!serverPlayer) {
+            socket.emit("auth_error");
+            return;
+          }
+          checkDailyReset(serverPlayer, serial, socket);
+          if (serverPlayer.email === "adhamsabry.co@gmail.com" && (serverPlayer.banUntil > 0 || serverPlayer.isPermanentBan)) {
+            serverPlayer.banUntil = 0;
+            serverPlayer.isPermanentBan = 0;
+            savePlayerData(serial);
+          }
+          let validAge = age;
+          if (typeof age === "number" && age > 80) {
+            validAge = 80;
+          }
+          if (serverPlayer.isPermanentBan) {
+            socket.emit("banned_status", { isPermanent: true });
+            return;
+          }
+          if (serverPlayer.banUntil > Date.now()) {
+            socket.emit("banned_status", {
+              banUntil: serverPlayer.banUntil,
+              isPermanent: false
+            });
+            return;
+          }
+          const existingRoom = rooms.get(roomId);
+          if (existingRoom && existingRoom.gameState === "finished") {
+            if (intervals.has(roomId)) {
+              clearInterval(intervals.get(roomId));
+              intervals.delete(roomId);
+            }
+            io.in(roomId).socketsLeave(roomId);
+            rooms.delete(roomId);
+          }
+          const isAlreadyInMatch = Array.from(rooms.values()).some(
+            (room2) => room2.id !== roomId && room2.gameState !== "finished" && room2.gameState !== "waiting" && room2.players.some((p) => p.serial === serial)
+          );
+          if (isAlreadyInMatch && !serverPlayer.isAdmin) {
+            socket.emit("error", { message: "\u0623\u0646\u062A \u0628\u0627\u0644\u0641\u0639\u0644 \u0641\u064A \u0645\u0628\u0627\u0631\u0627\u0629 \u0623\u062E\u0631\u0649!" });
+            return;
+          }
+          if (!rooms.has(roomId)) {
+            rooms.set(roomId, {
+              startTime: Date.now(),
+              id: roomId,
+              players: [],
+              gameState: "waiting",
+              timer: 60,
+              category: "people",
+              isPaused: false,
+              pausingPlayerId: null,
+              quickGuessTimer: 0,
+              adCooldownTimer: 0,
+              lastUpdates: null,
+              chatHistory: [],
+              currentTurn: null,
+              waitingForAnswerFrom: null,
+              matchType: "private",
+              selectionMode: null
+            });
+          }
+          const room = rooms.get(roomId);
+          if (room && room.players.length < 2) {
+            socket.join(roomId);
+            const actualXp = serverPlayer.xp;
+            const actualWins = serverPlayer.wins;
+            const actualReports = serverPlayer.reports;
+            const actualReportedBy = serverPlayer.reportedBy;
+            const actualName = serverPlayer.name || filterProfanity(playerName);
+            const player = {
+              id: socket.id,
+              serial,
+              name: actualName,
+              age: validAge,
+              avatar,
+              gender: serverPlayer.gender || "boy",
+              selectedFrame: serverPlayer.selectedFrame || "",
+              score: 1e3,
+              helperCharge: 0,
+              targetImage: null,
+              isMuted: false,
+              hasGuessed: false,
+              selectedCategory: null,
+              hintCount: 0,
+              quickGuessUsed: false,
+              wordLengthUsed: false,
+              timeFreezeUsed: false,
+              wordCountUsed: false,
+              spyLensUsed: false,
+              reported: false,
+              xp: actualXp,
+              level: getLevel(actualXp),
+              streak: serverPlayer.streak || 0,
+              wins: actualWins,
+              reports: actualReports,
+              reportedBy: actualReportedBy,
+              usedToken: false,
+              profanityCount: 0,
+              helpersUsedCount: 0,
+              ownedHelpers: serverPlayer.ownedHelpers || {},
+              isAdmin: !!serverPlayer.isAdmin,
+              isPro: !!serverPlayer.proPackageExpiry && serverPlayer.proPackageExpiry > Date.now(),
+              hideFriendRequests: serverPlayer.hideFriendRequests || 0,
+              busCompleteWins: serverPlayer.busCompleteWins || 0,
+              xoWins: serverPlayer.xoWins || 0,
+              handWins: serverPlayer.handWins || 0,
+              iqWins: serverPlayer.iqWins || 0,
+              dotsWins: serverPlayer.dotsWins || 0,
+              speedCupsWins: serverPlayer.speedCupsWins || 0,
+              bombPartyWins: serverPlayer.bombPartyWins || 0,
+              wordleWins: serverPlayer.wordleWins || 0,
+              connectFourWordsWins: serverPlayer.connectFourWordsWins || 0,
+              spaceWarWins: serverPlayer.spaceWarWins || 0,
+              puzzleWins: serverPlayer.puzzleWins || 0,
+              beachRaceWins: serverPlayer.beachRaceWins || 0
+            };
+            room.players.push(player);
+            if (room.players.length === 2) {
+              room.selectionMode = null;
+              startWaitingInterval(roomId);
+            }
+            io.to(roomId).emit("room_update", room);
+          } else {
+            socket.emit("error", "\u0627\u0644\u063A\u0631\u0641\u0629 \u0645\u0645\u062A\u0644\u0626\u0629\u060C \u064A\u062C\u0628 \u062A\u063A\u064A\u064A\u0631 \u0643\u0648\u062F \u0627\u0644\u063A\u0631\u0641\u0629");
+          }
+        }
+      );
+      socket.on("propose_selection_mode", ({ roomId, mode }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "waiting") {
+          const player = room.players.find((p) => p.id === socket.id);
+          if (player) {
+            player.selectedSelectionMode = mode;
+            io.to(roomId).emit("room_update", room);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          }
+        }
+      });
+      socket.on("confirm_selection_mode", ({ roomId }) => {
+        executeSelectionModeConfirmation(roomId);
+      });
+      function startBeachRaceSetup(room, roomId) {
+        room.gameState = "beach_race_setup";
+        room.category = "beach_race";
+        if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+        if (intervals.has(roomId + "_beach_race_bot")) {
+          clearInterval(intervals.get(roomId + "_beach_race_bot"));
+          intervals.delete(roomId + "_beach_race_bot");
+        }
+        const startKey = roomId + "_beach_race_bot_start";
+        if (botTimeouts.has(startKey)) {
+          clearTimeout(botTimeouts.get(startKey));
+          botTimeouts.delete(startKey);
+        }
+        const rematchKey = roomId + "_beach_race_bot_rematch";
+        if (botTimeouts.has(rematchKey)) {
+          clearTimeout(botTimeouts.get(rematchKey));
+          botTimeouts.delete(rematchKey);
+        }
+        botFlags.delete(roomId + "_beach_race_checkpoint_wait");
+        botFlags.delete(roomId + "_beach_race_final_wait");
+        const readyPlayers = [];
+        const allWords = getAllWordsFromBotAnswers();
+        const chosenWordObj = allWords.length > 0 ? allWords[Math.floor(Math.random() * allWords.length)] : { word: "\u0628\u0627\u0646\u062F\u0627", questionIds: ["q_a_w_2", "q_a_w_9", "q_a_w_40"], category: "qc_animals", subcategory: "qc_animals_wild" };
+        const p1 = room.players[0];
+        const p2 = room.players[1];
+        room.beachRace = {
+          targetWord: chosenWordObj.word,
+          questionIds: chosenWordObj.questionIds,
+          category: chosenWordObj.category,
+          subcategory: chosenWordObj.subcategory,
+          readyPlayers,
+          startTime: Date.now(),
+          winnerId: null,
+          gameOver: false,
+          rematchRequestedBy: [],
+          playersProgress: {
+            [p1 ? p1.id : "p1"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false },
+            [p2 ? p2.id : "p2"]: { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false }
+          }
+        };
+        io.to(roomId).emit("room_update", room);
+        const bot = room.players.find((p) => p.isBot);
+        if (bot) {
+          handleBotEvent(roomId, "room_update", room);
+        }
+      }
+      socket.on("select_private_mode", ({ roomId, mode }) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          if (mode === "custom" && room.matchType !== "private") {
+            return;
+          }
+          room.selectionMode = mode;
+          if (mode === "custom") {
+            room.gameState = "custom_image_upload";
+            room.isCustomImageMode = true;
+            room.category = "\u0635\u0648\u0631 \u0645\u062E\u0635\u0635\u0629";
+            room.timer = 180;
+            room.customImages = {};
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const interval = setInterval(() => {
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "custom_image_upload") {
+                clearInterval(interval);
+                return;
+              }
+              const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+              if (!isAdPlaying) {
+                r.timer--;
+                if (r.timer <= 0) {
+                  clearInterval(interval);
+                  io.to(roomId).emit("game_stopped", {
+                    reason: "\u0627\u0646\u062A\u0647\u0649 \u0627\u0644\u0648\u0642\u062A \u0644\u062A\u062C\u0647\u064A\u0632 \u0627\u0644\u0635\u0648\u0631!"
+                  });
+                  rooms.delete(roomId);
+                } else {
+                  io.to(roomId).emit("timer_update", r.timer);
+                }
+              }
+            }, 1e3);
+            intervals.set(roomId, interval);
+          } else if (mode === "bus_complete") {
+            room.gameState = "bus_complete_setup";
+            room.category = "\u062A\u062E\u0645\u064A\u0646\u0629 \u0643\u0648\u0645\u0628\u0644\u064A\u062A";
+            room.busCompleteLetter = null;
+            room.busCompleteSubmittedPlayers = [];
+            room.busCompleteAnswers = {};
+            room.busCompleteDraftAnswers = {};
+            room.busCompleteScores = {};
+            room.busCompleteSubmitTimes = {};
+            room.busCompleteWinner = null;
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const opponent = room.players.find((p) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "iq") {
+            room.iqLevel = 1;
+            room.iqMatchWins = {};
+            initializeIQGame(room);
+            const opponent = room.players.find((p) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "connect_four_words") {
+            room.gameState = "connect_four_words_setup";
+            room.category = "connect_four_words";
+            const validWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 4);
+            const targetWordObj = validWords[Math.floor(Math.random() * validWords.length)];
+            const targetWord = targetWordObj ? targetWordObj.original : "\u0643\u0631\u0633\u064A";
+            room.connectFourWords = {
+              targetWord,
+              letters: targetWord.split(""),
+              // Not shuffled for now
+              board: Array(6).fill(null).map(() => Array(7).fill({ playerId: null, letter: null })),
+              turn: room.players[0].id,
+              winnerId: null,
+              winningCells: null,
+              readyPlayers: [],
+              rematchRequestedBy: [],
+              startTime: null
+            };
+            io.to(roomId).emit("room_update", room);
+          } else if (mode === "space_war") {
+            room.gameState = "space_war_setup";
+            room.category = "space_war";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const readyPlayers = [];
+            const bot = room.players.find((p) => p.isBot);
+            const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length >= 3 && w.normalized.length <= 5 && !w.original.includes(" ") && !w.normalized.includes(" ") && !w.original.includes("-"));
+            room.spaceWar = {
+              p1Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p2Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              readyPlayers,
+              startTime: Date.now(),
+              winnerId: null,
+              rematchRequestedBy: [],
+              gameOver: false,
+              startRequestedBy: []
+            };
+            io.to(roomId).emit("room_update", room);
+            if (bot) handleBotEvent(roomId, "room_update", room);
+          } else if (mode === "beach_race") {
+            startBeachRaceSetup(room, roomId);
+          } else if (mode === "puzzle") {
+            room.gameState = "puzzle_setup";
+            room.category = "puzzle";
+            room.puzzle = {
+              currentRound: 1,
+              images: getRandomPuzzleImages(),
+              roundStartTime: Date.now(),
+              lastChanceStartTime: null,
+              playersProgress: {},
+              gameOver: false,
+              startRequestedBy: []
+            };
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "wordle") {
+            room.gameState = "wordle_setup";
+            room.category = "wordle";
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const readyPlayers = [];
+            const bot = room.players.find((p) => p.isBot);
+            room.wordle = {
+              targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 5).length)].original,
+              guesses: {},
+              winnerId: null,
+              startTime: Date.now(),
+              gameOver: false,
+              startRequestedBy: [],
+              readyPlayers
+            };
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "bomb_party") {
+            room.gameState = "bomb_party_setup";
+            room.category = "bomb_party";
+            const startingPlayerIndex = Math.floor(Math.random() * room.players.length);
+            room.bombParty = {
+              turnPlayerId: room.players[startingPlayerIndex].id,
+              bombStartTime: Date.now(),
+              turnTimeLimit: 2e4,
+              matchWins: {},
+              usedWords: [],
+              currentSubstring: getBombPartySubstring([]),
+              explodedPlayerId: null,
+              gameOver: false,
+              startRequestedBy: [],
+              winThreshold: 3,
+              stats: {}
+            };
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const opponent = room.players.find((p) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "xo") {
+            room.gameState = "xo_playing";
+            room.category = "xo";
+            room.xoLevel = 1;
+            room.xoMatchWins = {};
+            const size = 3;
+            room.xoBoardSize = size;
+            room.xoWinLength = 3;
+            room.xoBoard = Array(size * size).fill(null);
+            room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
+            room.xoOPlayer = room.players.find(
+              (p) => p.id !== room.xoXPlayer
+            ).id;
+            room.xoTurn = room.xoXPlayer;
+            room.xoWinner = null;
+            room.xoWinningLine = null;
+            room.timer = getXOTimerLimit(size);
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const interval = setInterval(() => {
+              const r = rooms.get(roomId);
+              if (!r || r.gameState !== "xo_playing" && r.gameState !== "xo_finished") {
+                clearInterval(interval);
+                return;
+              }
+              if (r.gameState === "xo_playing") {
+                const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+                if (!isAdPlaying) {
+                  r.timer--;
+                  if (r.timer <= 0) {
+                    clearInterval(interval);
+                    r.xoWinner = "draw";
+                    r.gameState = "xo_finished";
+                    r.xoMatchWins = r.xoMatchWins || {};
+                    r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
+                    io.to(roomId).emit("room_update", r);
+                  } else {
+                    io.to(roomId).emit("timer_update", r.timer);
+                  }
+                }
+              }
+            }, 1e3);
+            intervals.set(roomId, interval);
+            const opponent = room.players.find((p) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === "hand_khamin") {
+            initializeHandGame(room);
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else if (mode === null) {
+            room.gameState = "waiting";
+            room.selectionMode = null;
+            room.category = null;
+            room.busCompleteLetter = null;
+            room.busCompleteSubmittedPlayers = [];
+            room.busCompleteRematchRequestedBy = [];
+            if (room.beachRace) {
+              room.beachRace.rematchRequestedBy = [];
+              room.beachRace.readyPlayers = [];
+            }
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            if (intervals.has(roomId + "_beach_race_bot")) {
+              clearInterval(intervals.get(roomId + "_beach_race_bot"));
+              intervals.delete(roomId + "_beach_race_bot");
+            }
+            const startKey = roomId + "_beach_race_bot_start";
+            if (botTimeouts.has(startKey)) {
+              clearTimeout(botTimeouts.get(startKey));
+              botTimeouts.delete(startKey);
+            }
+            const rematchKey = roomId + "_beach_race_bot_rematch";
+            if (botTimeouts.has(rematchKey)) {
+              clearTimeout(botTimeouts.get(rematchKey));
+              botTimeouts.delete(rematchKey);
+            }
+            botFlags.delete(roomId + "_beach_race_checkpoint_wait");
+            botFlags.delete(roomId + "_beach_race_final_wait");
+            startWaitingInterval(roomId);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("request_bus_complete_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "bus_complete_evaluating") {
+          if (!room.busCompleteRematchRequestedBy) {
+            room.busCompleteRematchRequestedBy = [];
+          }
+          if (!room.busCompleteRematchRequestedBy.includes(socket.id)) {
+            room.busCompleteRematchRequestedBy.push(socket.id);
+          }
+          const botPlayer = room.players.find((p) => p.isBot);
+          if (botPlayer && !room.busCompleteRematchRequestedBy.includes(botPlayer.id)) {
+            room.busCompleteRematchRequestedBy.push(botPlayer.id);
+          }
+          if (room.busCompleteRematchRequestedBy.length >= room.players.length) {
+            room.gameState = "bus_complete_setup";
+            room.category = "\u062A\u062E\u0645\u064A\u0646\u0629 \u0643\u0648\u0645\u0628\u0644\u064A\u062A";
+            room.busCompleteLetter = null;
+            room.busCompleteSubmittedPlayers = [];
+            room.busCompleteRematchRequestedBy = [];
+            room.busCompleteAnswers = {};
+            room.busCompleteDraftAnswers = {};
+            room.busCompleteScores = {};
+            room.busCompleteSubmitTimes = {};
+            room.busCompleteWinner = null;
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            if (botPlayer) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("request_change_bus_complete_letter", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && (room.gameState === "bus_complete_playing" || room.gameState === "bus_complete_spin" || room.gameState === "bus_complete_evaluating") && !room.busCompleteChangeLetterRequestBy) {
+          room.busCompleteChangeLetterRequestBy = socket.id;
+          const opponent = room.players.find((p) => p.id !== socket.id);
+          const requestor = room.players.find((p) => p.id === socket.id);
+          if (opponent && requestor) {
+            const opponentSocketId = playerSockets.get(opponent.serial) || opponent.id;
+            io.to(opponentSocketId).emit(
+              "bus_complete_letter_change_requested",
+              {
+                opponentName: requestor.name
+              }
+            );
+          }
+          io.to(roomId).emit("room_update", room);
+          if (opponent && opponent.isBot) {
+            handleBotEvent(
+              roomId,
+              "bus_complete_letter_change_requested",
+              null
+            );
+          }
+        }
+      });
+      socket.on("accept_change_bus_complete_letter", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.busCompleteChangeLetterRequestBy) {
+          room.busCompleteChangeLetterRequestBy = null;
+          room.gameState = "bus_complete_setup";
+          room.busCompleteLetter = void 0;
+          room.busCompleteSubmittedPlayers = [];
+          room.busCompleteAnswers = {};
+          room.busCompleteDraftAnswers = {};
+          if (room.timerInterval) clearInterval(room.timerInterval);
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("reject_change_bus_complete_letter", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          const requestorId = room.busCompleteChangeLetterRequestBy;
+          room.busCompleteChangeLetterRequestBy = null;
+          if (requestorId) {
+            const opponent = room.players.find((p) => p.id === socket.id);
+            io.to(requestorId).emit("bus_complete_letter_change_rejected", {
+              opponentName: opponent?.name || "\u0627\u0644\u0645\u0646\u0627\u0641\u0633"
+            });
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("search_bus_complete_letter", ({ roomId, hideResults }) => {
+        executeSearchBusCompleteLetter(roomId, hideResults);
+      });
+      socket.on("bus_complete_ad_start", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && (room.gameState === "bus_complete_playing" || room.gameState === "xo_playing" || room.gameState.startsWith("hand_") || room.gameState.endsWith("_finished"))) {
+          if (!room.adPausedPlayers) room.adPausedPlayers = /* @__PURE__ */ new Set();
+          room.adPausedPlayers.add(socket.id);
+          room.adPausedPlayersArray = Array.from(room.adPausedPlayers);
+          if (room.gameState === "bus_complete_playing") {
+            if (!room.busCompleteAdViewers) room.busCompleteAdViewers = [];
+            if (!room.busCompleteAdViewers.includes(socket.id)) {
+              room.busCompleteAdViewers.push(socket.id);
+            }
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("bus_complete_ad_end", ({ roomId, completed }) => {
+        const room = rooms.get(roomId);
+        if (room && (room.gameState === "bus_complete_playing" || room.gameState === "xo_playing" || room.gameState.startsWith("hand_") || room.gameState.endsWith("_finished"))) {
+          if (room.adPausedPlayers) {
+            room.adPausedPlayers.delete(socket.id);
+            room.adPausedPlayersArray = Array.from(room.adPausedPlayers);
+          }
+          if (room.busCompleteAdViewers) {
+            room.busCompleteAdViewers = room.busCompleteAdViewers.filter(
+              (id) => id !== socket.id
+            );
+          }
+          if (completed && room.gameState === "bus_complete_playing") {
+            if (!room.busCompleteCooldowns) room.busCompleteCooldowns = {};
+            room.busCompleteCooldowns[socket.id] = 30;
+          }
+          io.to(roomId).emit("room_update", room);
+          if (room.players.some((p) => p.isBot)) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        }
+      });
+      socket.on("update_bus_answers_draft", ({ roomId, answers }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "bus_complete_playing") {
+          room.busCompleteDraftAnswers = room.busCompleteDraftAnswers || {};
+          room.busCompleteDraftAnswers[socket.id] = answers;
+        }
+      });
+      socket.on("submit_bus_complete", ({ roomId, answers }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "bus_complete_playing") {
+          if (!room.busCompleteAnswers) room.busCompleteAnswers = {};
+          if (!room.busCompleteSubmitTimes) room.busCompleteSubmitTimes = {};
+          if (!room.busCompleteSubmittedPlayers)
+            room.busCompleteSubmittedPlayers = [];
+          room.busCompleteAnswers[socket.id] = answers;
+          const timeReduction = room.busCompleteTimerReduction || 0;
+          room.busCompleteSubmitTimes[socket.id] = 300 - (room.timer + timeReduction);
+          if (!room.busCompleteSubmittedPlayers.includes(socket.id)) {
+            room.busCompleteSubmittedPlayers.push(socket.id);
+            if (room.busCompleteSubmittedPlayers.length === 1 && room.timer > 60) {
+              const previousTimer = room.timer;
+              room.busCompleteTimerReduction = room.timer - 60;
+              room.timer = 60;
+              const botPlayer = room.players.find((p) => p.isBot);
+              if (botPlayer) {
+                if (botTimeouts.has(roomId + "_bus_playing_submit_timeout")) {
+                  clearTimeout(
+                    botTimeouts.get(roomId + "_bus_playing_submit_timeout")
+                  );
+                  botTimeouts.delete(roomId + "_bus_playing_submit_timeout");
+                }
+                botFlags.delete(
+                  roomId + "_bus_playing_submit_timeout_scheduled"
+                );
+                const elapsedSec = 300 - previousTimer;
+                let botReactionDelay = 0;
+                if (elapsedSec < 25) {
+                  const targetTotalTime = 25 + Math.random() * 5;
+                  botReactionDelay = (targetTotalTime - elapsedSec) * 1e3;
+                } else {
+                  botReactionDelay = 3e3 + Math.random() * 2e3;
+                }
+                setTimeout(() => {
+                  const r = rooms.get(roomId);
+                  if (r && r.gameState === "bus_complete_playing" && !r.busCompleteSubmittedPlayers?.includes(botPlayer.id)) {
+                    let mappedLetter = r.busCompleteLetter || "\u0627";
+                    if (mappedLetter === "\u0623" || mappedLetter === "\u0625" || mappedLetter === "\u0622")
+                      mappedLetter = "\u0627";
+                    if (mappedLetter === "\u0629") mappedLetter = "\u0647";
+                    if (mappedLetter === "\u0649") mappedLetter = "\u064A";
+                    const letterData = busCompleteData[mappedLetter] || {};
+                    const categories = [
+                      "boy",
+                      "girl",
+                      "animal",
+                      "plant",
+                      "inanimate",
+                      "country"
+                    ];
+                    const answers2 = {};
+                    const willWin = Math.random() < 0.25;
+                    let wrongCount = willWin ? 0 : Math.floor(Math.random() * 2) + 1;
+                    const lastWrongCats = botFlags.get(roomId + "_last_wrong_cats") || [];
+                    const availableToWrong = categories.filter(
+                      (c) => !lastWrongCats.includes(c)
+                    );
+                    const catsToWrong = availableToWrong.length >= wrongCount ? availableToWrong : [...categories];
+                    const shuffledCats = catsToWrong.sort(
+                      () => 0.5 - Math.random()
+                    );
+                    const chosenWrongs = shuffledCats.slice(0, wrongCount);
+                    botFlags.set(roomId + "_last_wrong_cats", chosenWrongs);
+                    categories.forEach((cat) => {
+                      const words = letterData[cat] || [];
+                      if (chosenWrongs.includes(cat)) {
+                        if (Math.random() < 0.6) {
+                          answers2[cat] = "";
+                        } else {
+                          const fallbackWrongs = [
+                            "\u0645\u0639\u0631\u0641\u0634",
+                            "\u0627\u064A \u062D\u0627\u062C\u0629",
+                            "\u0645\u0634 \u0639\u0627\u0631\u0641",
+                            "\u0635\u0639\u0628",
+                            "\u0644\u0627 \u064A\u0648\u062C\u062F"
+                          ];
+                          answers2[cat] = fallbackWrongs[Math.floor(Math.random() * fallbackWrongs.length)];
+                        }
+                      } else if (words.length > 0) {
+                        answers2[cat] = words[Math.floor(Math.random() * words.length)];
+                      } else {
+                        answers2[cat] = "";
+                      }
+                    });
+                    const botId = botPlayer.id;
+                    if (!r.busCompleteAnswers) r.busCompleteAnswers = {};
+                    if (!r.busCompleteSubmitTimes)
+                      r.busCompleteSubmitTimes = {};
+                    if (!r.busCompleteSubmittedPlayers)
+                      r.busCompleteSubmittedPlayers = [];
+                    r.busCompleteAnswers[botId] = answers2;
+                    const timeReduction2 = r.busCompleteTimerReduction || 0;
+                    r.busCompleteSubmitTimes[botId] = 300 - (r.timer + timeReduction2);
+                    if (!r.busCompleteSubmittedPlayers.includes(botId)) {
+                      r.busCompleteSubmittedPlayers.push(botId);
+                      if (r.busCompleteSubmittedPlayers.length === 2) {
+                        if (intervals.has(roomId)) {
+                          clearInterval(intervals.get(roomId));
+                          intervals.delete(roomId);
+                        }
+                        r.gameState = "bus_complete_evaluating";
+                        evaluateBusCompleteAnswers(r);
+                        handleBotEvent(roomId, "room_update", r);
+                      }
+                    }
+                    io.to(roomId).emit("room_update", r);
+                  }
+                }, botReactionDelay);
+              }
+            }
+          }
+          if (room.busCompleteSubmittedPlayers.length === 2) {
+            if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+            room.gameState = "bus_complete_evaluating";
+            evaluateBusCompleteAnswers(room);
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) handleBotEvent(roomId, "room_update", room);
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("hand_pick_number", ({ roomId, number }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "hand_playing" && room.handPhase === "picking" && room.handPickerId === socket.id) {
+          room.handTargetNumber = number;
+          room.handPhase = "searching";
+          io.to(roomId).emit("room_update", room);
+          if (room.players.some((p) => p.isBot)) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        }
+      });
+      socket.on("hand_click_cell", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "hand_playing" && room.handPhase === "searching" && room.handPickerId === socket.id) {
+          const emptyIdx = room.handGrid.findIndex((c) => c === null);
+          if (emptyIdx !== -1) {
+            room.handGrid[emptyIdx] = socket.id;
+            if (room.handGrid.every((c) => c !== null)) {
+              room.gameState = "hand_finished";
+              const p1Count = room.handGrid.filter((c) => c === room.players[0].id).length;
+              const p2Count = room.handGrid.filter((c) => c === room.players[1].id).length;
+              room.handP1Score = p1Count;
+              room.handP2Score = p2Count;
+              if (p1Count > p2Count) room.handWinner = room.players[0].id;
+              else if (p2Count > p1Count) room.handWinner = room.players[1].id;
+              else room.handWinner = "draw";
+              if (room.handWinner && room.handWinner !== "draw") {
+                const pWinner = room.players.find((p) => p.id === room.handWinner);
+                if (pWinner) {
+                  pWinner.handWins = (pWinner.handWins || 0) + 1;
+                  const dbP = allPlayers.get(pWinner.serial);
+                  if (dbP) {
+                    dbP.handWins = pWinner.handWins;
+                    if (room.matchType === "random") {
+                      dbP.handMatchPoints = (dbP.handMatchPoints || 0) + 10;
+                    }
+                    pWinner.handMatchPoints = dbP.handMatchPoints;
+                    savePlayerData(pWinner.serial);
+                    io.to(pWinner.id).emit("player_data_update", dbP);
+                  }
+                }
+              }
+            }
+            io.to(roomId).emit("room_update", room);
+            if (room.gameState === "hand_finished" && room.players.some((p) => p.isBot)) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          }
+        }
+      });
+      socket.on("hand_select_number", ({ roomId, number }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "hand_playing" && room.handPhase === "searching" && room.handSearcherId === socket.id) {
+          room.handSearcherSelected = number;
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("hand_ring_bell", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "hand_playing" && room.handPhase === "searching" && room.handSearcherId === socket.id) {
+          if (room.handSearcherSelected === room.handTargetNumber) {
+            const temp = room.handPickerId;
+            room.handPickerId = room.handSearcherId;
+            room.handSearcherId = temp;
+            room.handPhase = "picking";
+            room.handTargetNumber = null;
+            room.handSearcherSelected = null;
+            room.timer = 30;
+            io.to(roomId).emit("hand_bell_rung");
+            io.to(roomId).emit("room_update", room);
+            if (room.players.some((p) => p.isBot)) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          } else {
+            socket.emit("hand_wrong_guess");
+          }
+        }
+      });
+      socket.on("submit_dots_move", ({ roomId, r1, c1, r2, c2 }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "dots_playing" || room.dotsTurn !== socket.id) {
+          if (room) socket.emit("room_update", room);
+          return;
+        }
+        if (room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0) {
+          socket.emit("room_update", room);
+          return;
+        }
+        const size = room.dotsBoardSize;
+        if (r1 < 0 || r1 >= size || c1 < 0 || c1 >= size || r2 < 0 || r2 >= size || c2 < 0 || c2 >= size) {
+          socket.emit("room_update", room);
+          return;
+        }
+        if (!(Math.abs(r1 - r2) === 1 && c1 === c2 || Math.abs(c1 - c2) === 1 && r1 === r2)) {
+          socket.emit("room_update", room);
+          return;
+        }
+        let lineId = "";
+        if (r1 === r2) {
+          lineId = `${r1},${Math.min(c1, c2)}-${r1},${Math.max(c1, c2)}`;
+        } else {
+          lineId = `${Math.min(r1, r2)},${c1}-${Math.max(r1, r2)},${c1}`;
+        }
+        if (room.dotsLines[lineId]) {
+          socket.emit("room_update", room);
+          return;
+        }
+        room.dotsLines[lineId] = socket.id;
+        room.dotsLastMove = lineId;
+        room.dotsTurnTimer = 15;
+        let boxCompleted = false;
+        const isBoxComplete = (r, c) => {
+          const top = `${r},${c}-${r},${c + 1}`;
+          const bottom = `${r + 1},${c}-${r + 1},${c + 1}`;
+          const left = `${r},${c}-${r + 1},${c}`;
+          const right = `${r},${c + 1}-${r + 1},${c + 1}`;
+          return room.dotsLines[top] && room.dotsLines[bottom] && room.dotsLines[left] && room.dotsLines[right];
+        };
+        const checkAndCompleteBox = (r, c) => {
+          if (r >= 0 && r < size - 1 && c >= 0 && c < size - 1) {
+            if (!room.dotsBoxes[`${r},${c}`] && isBoxComplete(r, c)) {
+              room.dotsBoxes[`${r},${c}`] = socket.id;
+              boxCompleted = true;
+              if (socket.id === room.dotsPlayer1) {
+                room.dotsP1Score = (room.dotsP1Score || 0) + 1;
+              } else {
+                room.dotsP2Score = (room.dotsP2Score || 0) + 1;
+              }
+            }
+          }
+        };
+        if (r1 === r2) {
+          checkAndCompleteBox(r1 - 1, Math.min(c1, c2));
+          checkAndCompleteBox(r1, Math.min(c1, c2));
+        } else {
+          checkAndCompleteBox(Math.min(r1, r2), c1 - 1);
+          checkAndCompleteBox(Math.min(r1, r2), c1);
+        }
+        if (!boxCompleted) {
+          room.dotsTurn = room.dotsTurn === room.dotsPlayer1 ? room.dotsPlayer2 : room.dotsPlayer1;
+        }
+        const totalBoxes = (size - 1) * (size - 1);
+        if (Object.keys(room.dotsBoxes).length === totalBoxes) {
+          if (room.dotsP1Score > room.dotsP2Score) room.dotsWinner = room.dotsPlayer1;
+          else if (room.dotsP2Score > room.dotsP1Score) room.dotsWinner = room.dotsPlayer2;
+          else room.dotsWinner = "draw";
+          room.gameState = "dots_finished";
+          room.dotsMatchWins[room.dotsWinner] = (room.dotsMatchWins[room.dotsWinner] || 0) + 1;
+          if (room.dotsWinner && room.dotsWinner !== "draw") {
+            const winnerPlayer = room.players.find((p) => p.id === room.dotsWinner);
+            if (winnerPlayer) {
+              winnerPlayer.dotsWins = (winnerPlayer.dotsWins || 0) + 1;
+              const dbP = allPlayers.get(winnerPlayer.serial);
+              if (dbP) {
+                dbP.dotsWins = winnerPlayer.dotsWins;
+                dbP.dotsMatchPoints = (dbP.dotsMatchPoints || 0) + 10;
+                savePlayerData(winnerPlayer.serial);
+                io.to(winnerPlayer.id).emit("player_data_update", dbP);
+              }
+            }
+          }
+          if (room.dotsLevel === 3) {
+            const p1ServerPlayer = room.players[0]?.serial ? allPlayers.get(room.players[0].serial) : null;
+            const p2ServerPlayer = room.players[1]?.serial ? allPlayers.get(room.players[1].serial) : null;
+            const p1TotalWins = room.dotsMatchWins[room.dotsPlayer1] || 0;
+            const p2TotalWins = room.dotsMatchWins[room.dotsPlayer2] || 0;
+            if (p1ServerPlayer) {
+              p1ServerPlayer.dotsMatchPoints = (p1ServerPlayer.dotsMatchPoints || 0) + 5;
+              if (p1TotalWins > p2TotalWins) p1ServerPlayer.dotsMatchPoints += 15;
+              else if (p1TotalWins === p2TotalWins) p1ServerPlayer.dotsMatchPoints += 5;
+              savePlayerData(room.players[0].serial);
+              io.to(room.players[0].id).emit("player_data_update", p1ServerPlayer);
+              const p1Idx = room.players.findIndex((p) => p.id === room.dotsPlayer1);
+              if (p1Idx !== -1) room.players[p1Idx].dotsMatchPoints = p1ServerPlayer.dotsMatchPoints;
+            }
+            if (p2ServerPlayer) {
+              p2ServerPlayer.dotsMatchPoints = (p2ServerPlayer.dotsMatchPoints || 0) + 5;
+              if (p2TotalWins > p1TotalWins) p2ServerPlayer.dotsMatchPoints += 15;
+              else if (p1TotalWins === p2TotalWins) p2ServerPlayer.dotsMatchPoints += 5;
+              savePlayerData(room.players[1].serial);
+              io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
+              const p2Idx = room.players.findIndex((p) => p.id === room.dotsPlayer2);
+              if (p2Idx !== -1) room.players[p2Idx].dotsMatchPoints = p2ServerPlayer.dotsMatchPoints;
+            }
+          }
+        }
+        sendRoomUpdate(roomId, room);
+        if (room.players.some((p) => p.isBot)) {
+          handleBotEvent(roomId, "room_update", room);
+        }
+      });
+      socket.on("submit_iq_move", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "iq_playing" && room.iqTurn === socket.id) {
+          if (!room.iqFlipped) room.iqFlipped = [];
+          if (!room.iqMatched) room.iqMatched = [];
+          if (!room.iqSeen) room.iqSeen = [];
+          if (!room.iqFlipped.includes(index) && !room.iqMatched.includes(index) && room.iqFlipped.length < 2) {
+            room.iqFlipped.push(index);
+            if (!room.iqSeen.includes(index)) {
+              room.iqSeen.push(index);
+            }
+            sendRoomUpdate(roomId, room);
+            if (room.iqFlipped.length === 2) {
+              const [idx1, idx2] = room.iqFlipped;
+              const isMatch = room.iqBoard[idx1] === room.iqBoard[idx2];
+              setTimeout(() => {
+                const currentRoom = rooms.get(roomId);
+                if (!currentRoom || currentRoom.gameState !== "iq_playing") return;
+                if (isMatch) {
+                  currentRoom.iqMatched.push(idx1, idx2);
+                  if (currentRoom.iqTurn === currentRoom.iqPlayer1) {
+                    currentRoom.iqP1Score = (currentRoom.iqP1Score || 0) + 1;
+                  } else {
+                    currentRoom.iqP2Score = (currentRoom.iqP2Score || 0) + 1;
+                  }
+                }
+                if (currentRoom.iqMatched.length === currentRoom.iqBoard.length) {
+                  const p1Score = currentRoom.iqP1Score || 0;
+                  const p2Score = currentRoom.iqP2Score || 0;
+                  if (p1Score > p2Score) currentRoom.iqWinner = currentRoom.iqPlayer1;
+                  else if (p2Score > p1Score) currentRoom.iqWinner = currentRoom.iqPlayer2;
+                  else currentRoom.iqWinner = "draw";
+                  currentRoom.gameState = "iq_finished";
+                  currentRoom.iqMatchWins[currentRoom.iqWinner] = (currentRoom.iqMatchWins[currentRoom.iqWinner] || 0) + 1;
+                  if (currentRoom.iqWinner && currentRoom.iqWinner !== "draw") {
+                    const winnerPlayer = currentRoom.players.find((p) => p.id === currentRoom.iqWinner);
+                    if (winnerPlayer) {
+                      winnerPlayer.iqWins = (winnerPlayer.iqWins || 0) + 1;
+                      const dbP = allPlayers.get(winnerPlayer.serial);
+                      if (dbP) {
+                        dbP.iqWins = winnerPlayer.iqWins;
+                        dbP.iqMatchPoints = (dbP.iqMatchPoints || 0) + 10;
+                        savePlayerData(winnerPlayer.serial);
+                        io.to(winnerPlayer.id).emit("player_data_update", dbP);
+                      }
+                    }
+                  }
+                }
+                if (isMatch) {
+                  if (currentRoom.gameState === "iq_playing") {
+                    currentRoom.iqTurnTimer = (currentRoom.iqTurnTimer || 10) + 10;
+                  }
+                  currentRoom.botConsecutiveMatches = 0;
+                } else {
+                  if (currentRoom.gameState === "iq_playing") {
+                    currentRoom.iqTurn = currentRoom.iqTurn === currentRoom.iqPlayer1 ? currentRoom.iqPlayer2 : currentRoom.iqPlayer1;
+                    currentRoom.iqTurnTimer = 10;
+                  }
+                  currentRoom.botConsecutiveMatches = 0;
+                }
+                currentRoom.iqFlipped = [];
+                sendRoomUpdate(roomId, currentRoom);
+                if (currentRoom.gameState === "iq_playing" && currentRoom.players.some((p) => p.isBot)) {
+                  handleBotEvent(roomId, "room_update", currentRoom);
+                }
+              }, 800);
+            }
+          }
+        }
+      });
+      socket.on("submit_xo_move", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "xo_playing" && room.xoTurn === socket.id) {
+          if (room.xoBoard && room.xoBoard[index] === null && !room.xoWinner) {
+            const piece = room.xoXPlayer === socket.id ? "X" : "O";
+            room.xoBoard[index] = piece;
+            const winLines = getWinningLines(
+              room.xoBoardSize || 3,
+              room.xoWinLength || 3
+            );
+            let winner = null;
+            let winningLine = null;
+            for (const line of winLines) {
+              let isWin = true;
+              for (const idx of line) {
+                if (room.xoBoard[idx] !== piece) {
+                  isWin = false;
+                  break;
+                }
+              }
+              if (isWin) {
+                winner = room.xoXPlayer === socket.id ? room.xoXPlayer : room.xoOPlayer;
+                winningLine = line;
+                break;
+              }
+            }
+            if (winner) {
+              room.xoWinner = winner;
+              room.xoWinningLine = winningLine;
+              room.gameState = "xo_finished";
+              room.xoMatchWins = room.xoMatchWins || {};
+              room.xoMatchWins[winner] = (room.xoMatchWins[winner] || 0) + 1;
+              const pWinner = room.players.find((p) => p.id === winner);
+              if (pWinner) {
+                pWinner.xoWins = (pWinner.xoWins || 0) + 1;
+                const dbP = allPlayers.get(pWinner.serial);
+                if (dbP) {
+                  dbP.xoWins = pWinner.xoWins;
+                  if (room.matchType === "random") {
+                    dbP.xoMatchPoints = (dbP.xoMatchPoints || 0) + 10;
+                  }
+                  pWinner.xoMatchPoints = dbP.xoMatchPoints;
+                  savePlayerData(pWinner.serial);
+                  io.to(pWinner.id).emit("player_data_update", dbP);
+                }
+              }
+            } else if (room.xoBoard.every((cell) => cell !== null)) {
+              room.xoWinner = "draw";
+              room.gameState = "xo_finished";
+              room.xoMatchWins = room.xoMatchWins || {};
+              room.xoMatchWins["draw"] = (room.xoMatchWins["draw"] || 0) + 1;
+            } else {
+              room.xoTurn = room.xoXPlayer === socket.id ? room.xoOPlayer : room.xoXPlayer;
+            }
+            io.to(roomId).emit("room_update", room);
+            if (room.players.some((p) => p.isBot)) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          }
+        }
+      });
+      socket.on("speed_cups_start", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.category === "speed_cups" && room.gameState === "speed_cups_waiting") {
+          if (room.adPausedPlayersArray && room.adPausedPlayersArray.length > 0) return;
+          startSpeedCupsCountdown(roomId);
+        }
+      });
+      socket.on("speed_cups_click_cup", ({ roomId, color }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "speed_cups_playing") {
+          const isP1 = room.players[0]?.id === socket.id;
+          const isP2 = room.players.length > 1 && room.players[1]?.id === socket.id;
+          if (isP1 && !room.speedCupsP1Done) {
+            room.speedCupsP1Stack = room.speedCupsP1Stack || [];
+            if (!room.speedCupsP1Stack.includes(color) && room.speedCupsP1Stack.length < 5) {
+              room.speedCupsP1Stack = [...room.speedCupsP1Stack, color];
+              sendRoomUpdate(roomId, room);
+            }
+          } else if (isP2 && !room.speedCupsP2Done) {
+            room.speedCupsP2Stack = room.speedCupsP2Stack || [];
+            if (!room.speedCupsP2Stack.includes(color) && room.speedCupsP2Stack.length < 5) {
+              room.speedCupsP2Stack = [...room.speedCupsP2Stack, color];
+              sendRoomUpdate(roomId, room);
+            }
+          }
+        }
+      });
+      socket.on("speed_cups_clear_cups", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "speed_cups_playing") {
+          const isP1 = room.players[0]?.id === socket.id;
+          const isP2 = room.players.length > 1 && room.players[1]?.id === socket.id;
+          if (isP1 && !room.speedCupsP1Done) {
+            room.speedCupsP1Stack = [];
+            sendRoomUpdate(roomId, room);
+          } else if (isP2 && !room.speedCupsP2Done) {
+            room.speedCupsP2Stack = [];
+            sendRoomUpdate(roomId, room);
+          }
+        }
+      });
+      socket.on("speed_cups_ring_bell", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "speed_cups_playing") {
+          const isP1 = room.players[0]?.id === socket.id;
+          const isP2 = room.players.length > 1 && room.players[1]?.id === socket.id;
+          if (isP1 && !room.speedCupsP1Done && room.speedCupsP1Stack?.length === 5) {
+            room.speedCupsP1Done = true;
+            evaluateSpeedCupsRound(roomId, "p1");
+          } else if (isP2 && !room.speedCupsP2Done && room.speedCupsP2Stack?.length === 5) {
+            room.speedCupsP2Done = true;
+            evaluateSpeedCupsRound(roomId, "p2");
+          }
+        }
+      });
+      socket.on("speed_cups_propose_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "speed_cups_finished") {
+          room.speedCupsRematchRequestedBy = room.speedCupsRematchRequestedBy || [];
+          if (!room.speedCupsRematchRequestedBy.includes(socket.id)) {
+            room.speedCupsRematchRequestedBy.push(socket.id);
+            const botPlayer = room.players.find((p) => p.isBot);
+            if (botPlayer && !room.speedCupsRematchRequestedBy.includes(botPlayer.id)) {
+              room.speedCupsRematchRequestedBy.push(botPlayer.id);
+            }
+            if (room.speedCupsRematchRequestedBy.length === room.players.length) {
+              initializeSpeedCupsGame(room);
+              startSpeedCupsCountdown(roomId);
+              const bot = room.players.find((p) => p.isBot);
+              if (bot) {
+                handleBotEvent(roomId, "room_update", room);
+              }
+            } else {
+              sendRoomUpdate(roomId, room);
+            }
+          }
+        }
+      });
+      socket.on("undo_bus_complete", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "bus_complete_playing") {
+          if (room.busCompleteSubmittedPlayers && room.busCompleteSubmittedPlayers.includes(socket.id)) {
+            room.busCompleteSubmittedPlayers = room.busCompleteSubmittedPlayers.filter(
+              (p) => p !== socket.id
+            );
+            if (room.busCompleteSubmittedPlayers.length === 0 && room.busCompleteTimerReduction) {
+              room.timer += room.busCompleteTimerReduction;
+              room.busCompleteTimerReduction = 0;
+            }
+            io.to(roomId).emit("room_update", room);
+          }
+        }
+      });
+      socket.on(
+        "find_random_match",
+        ({
+          playerId,
+          playerName,
+          avatar,
+          age,
+          xp,
+          streak,
+          serial,
+          wins,
+          useToken
+        }) => {
+          const bannedPlayer = allPlayers.get(serial);
+          if (!bannedPlayer) {
+            socket.emit("auth_error");
+            return;
+          }
+          if (bannedPlayer.email === "adhamsabry.co@gmail.com" && (bannedPlayer.banUntil > 0 || bannedPlayer.isPermanentBan)) {
+            bannedPlayer.banUntil = 0;
+            bannedPlayer.isPermanentBan = 0;
+            savePlayerData(serial);
+          }
+          if (useToken && (bannedPlayer.tokens || 0) <= 0) {
+            socket.emit("error", "\u0644\u0627 \u062A\u0645\u0644\u0643 Tokens \u0643\u0627\u0641\u064A\u0629");
+            return;
+          }
+          if (useToken && getLevel(bannedPlayer.xp || 0) < 50) {
+            socket.emit("error", "\u064A\u062C\u0628 \u0623\u0646 \u062A\u0635\u0644 \u0644\u0644\u0645\u0633\u062A\u0648\u0649 50 \u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u0640 Tokens");
+            return;
+          }
+          let validAge = age;
+          if (typeof age === "number" && age > 80) {
+            validAge = 80;
+          }
+          if (bannedPlayer.isPermanentBan) {
+            socket.emit("banned_status", { isPermanent: true });
+            return;
+          }
+          if (bannedPlayer.banUntil > Date.now()) {
+            socket.emit("banned_status", {
+              banUntil: bannedPlayer.banUntil,
+              isPermanent: false
+            });
+            return;
+          }
+          const existingIndex = matchmakingQueue.findIndex(
+            (p) => p.playerId === playerId || p.id === socket.id
+          );
+          if (existingIndex !== -1) matchmakingQueue.splice(existingIndex, 1);
+          socket.data.isSearching = true;
+          for (const [matchId, match] of pendingMatches.entries()) {
+            if (match.p1.socket.id === socket.id || match.p2.socket.id === socket.id) {
+              const oppData = match.p1.socket.id === socket.id ? match.p2 : match.p1;
+              pendingMatches.delete(matchId);
+              oppData.status = "searching";
+              oppData.socket.emit("match_rejected", {
+                reason: "opponent_left"
+              });
+              matchmakingQueue.unshift(oppData);
+              break;
+            }
+          }
+          const actualXp = bannedPlayer.xp;
+          const actualWins = bannedPlayer.wins;
+          const actualName = bannedPlayer.name || filterProfanity(playerName);
+          const playerIp = getClientIp(socket);
+          matchmakingQueue.push({
+            id: socket.id,
+            socket,
+            playerId,
+            playerName: actualName,
+            avatar,
+            gender: bannedPlayer.gender || "boy",
+            selectedFrame: bannedPlayer.selectedFrame || "",
+            age: validAge,
+            xp: actualXp,
+            streak: bannedPlayer.streak || 0,
+            serial,
+            wins: actualWins,
+            useToken: !!useToken,
+            ownedHelpers: bannedPlayer.ownedHelpers || {},
+            proPackageExpiry: bannedPlayer.proPackageExpiry || null,
+            skipped: /* @__PURE__ */ new Map(),
+            // Initialize skipped map (playerId -> timestamp)
+            joinedAt: Date.now(),
+            status: "searching",
+            ip: playerIp
+          });
+          socket.emit("waiting_for_match");
+          processQueue();
+        }
+      );
+      socket.on("respond_to_match", ({ matchId, response }) => {
+        const match = pendingMatches.get(matchId);
+        if (!match) {
+          console.log(
+            `[Matchmaking] Match ${matchId} not found for response ${response}`
+          );
+          return;
+        }
+        const isP1 = match.p1.socket.id === socket.id;
+        const isP2 = match.p2.socket.id === socket.id;
+        if (!isP1 && !isP2) {
+          console.log(
+            `[Matchmaking] Socket ${socket.id} is neither P1 nor P2 for match ${matchId}`
+          );
+          return;
+        }
+        if (isP1) match.p1Response = response;
+        if (isP2) match.p2Response = response;
+        if (isP1 && response === "accept" && match.p2.isBot) {
+          setTimeout(
+            () => {
+              const currentMatch = pendingMatches.get(matchId);
+              if (currentMatch && currentMatch.p1Response === "accept") {
+                currentMatch.p2Response = "accept";
+                currentMatch.p1.socket.emit("opponent_accepted");
+                if (currentMatch.p1Response === "accept" && currentMatch.p2Response === "accept") {
+                  finalizeMatch(matchId);
+                }
+              }
+            },
+            1500 + Math.random() * 1500
+          );
+        }
+        const myData = isP1 ? match.p1 : match.p2;
+        const oppData = isP1 ? match.p2 : match.p1;
+        if (response === "accept") {
+          oppData.socket.emit("opponent_accepted");
+        }
+        if (response === "block") {
+          const myBlocks = blocks.get(myData.playerId) || [];
+          myBlocks.push({
+            blockedId: oppData.playerId,
+            expiresAt: Date.now() + 60 * 60 * 1e3
+          });
+          blocks.set(myData.playerId, myBlocks);
+        }
+        if (response === "reject" || response === "block") {
+          clearTimeout(match.timeoutId);
+          pendingMatches.delete(matchId);
+          oppData.socket.emit("match_rejected", {
+            reason: response === "block" ? "blocked" : "rejected"
+          });
+          myData.socket.emit("match_rejected", { reason: "you_rejected" });
+          if (!oppData.isBot) {
+            oppData.status = "searching";
+            matchmakingQueue.unshift(oppData);
+            processQueue();
+          }
+          if (!myData.isBot) {
+            myData.status = "searching";
+            setTimeout(() => {
+              const stillInQueue = matchmakingQueue.some(
+                (p) => p.id === myData.id
+              );
+              if (!stillInQueue && myData.socket.connected && myData.socket.data?.isSearching) {
+                matchmakingQueue.push(myData);
+              }
+            }, 5e3);
+          }
+          return;
+        }
+        if (match.p1Response === "accept" && match.p2Response === "accept") {
+          finalizeMatch(matchId);
+        }
+      });
+      socket.on(
+        "select_category",
+        ({ roomId, category, level = "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646" }) => {
+          const room = rooms.get(roomId);
+          if (room && room.gameState === "waiting") {
+            const player = room.players.find((p) => p.id === socket.id);
+            if (player) {
+              player.selectedCategory = category;
+              player.selectedLevel = level;
+              const allSelected = room.players.length === 2 && category !== null && room.players.every(
+                (p) => p.selectedCategory === category && p.selectedLevel === level
+              );
+              if (allSelected) {
+                room.category = category;
+                room.level = level;
+              }
+              io.to(roomId).emit("room_update", room);
+              const bot = room.players.find((p) => p.isBot);
+              if (bot) {
+                handleBotEvent(roomId, "room_update", room);
+              }
+            }
+          }
+        }
+      );
+      socket.on("start_custom_image_upload", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "waiting") {
+          room.isCustomImageMode = true;
+          room.category = "custom_image";
+          room.level = "\u0645\u0633\u062A\u0648\u064A \u0645\u062D\u062A\u0631\u0641\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+          room.gameState = "custom_image_upload";
+          room.timer = 180;
+          io.to(roomId).emit("room_update", room);
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+          const interval = setInterval(() => {
+            const r = rooms.get(roomId);
+            if (!r || r.gameState !== "custom_image_upload") {
+              clearInterval(interval);
+              return;
+            }
+            const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+            if (!isAdPlaying) {
+              r.timer--;
+              if (r.timer <= 0) {
+                clearInterval(interval);
+                io.to(roomId).emit("game_stopped", {
+                  reason: "\u0627\u0646\u062A\u0647\u0649 \u0627\u0644\u0648\u0642\u062A \u0644\u062A\u062C\u0647\u064A\u0632 \u0627\u0644\u0635\u0648\u0631!"
+                });
+                io.in(roomId).socketsLeave(roomId);
+                rooms.delete(roomId);
+              } else {
+                io.to(roomId).emit("timer_update", r.timer);
+              }
+            }
+          }, 1e3);
+          intervals.set(roomId, interval);
+        }
+      });
+      socket.on("submit_custom_image", ({ roomId, imageBase64, answer }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "custom_image_upload") {
+          if (!room.customImages) room.customImages = {};
+          room.customImages[socket.id] = {
+            url: imageBase64,
+            name: answer,
+            ready: true
+          };
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("start_game_custom", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "custom_image_upload" && room.customImages && Object.keys(room.customImages).length === 2) {
+          room.gameState = "starting";
+          io.to(roomId).emit("match_intro_triggered");
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("force_start_game", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.players.length === 2 && room.gameState === "starting") {
+          room.gameState = "waiting";
+          startGame(roomId);
+        }
+      });
+      socket.on("start_game_request", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.players.length === 2 && room.gameState === "waiting") {
+          const p1 = room.players[0];
+          const p2 = room.players[1];
+          if (p1.selectedCategory && p1.selectedCategory === p2.selectedCategory && p1.selectedLevel === p2.selectedLevel) {
+            startGame(roomId);
+          }
+        }
+      });
+      socket.on("send_emote", ({ roomId, emote }) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          io.to(roomId).emit("emote_received", { senderId: socket.id, emote });
+          const sender = room.players.find((p) => p.id === socket.id);
+          if (sender && !sender.isBot) {
+            const bot = room.players.find((p) => p.isBot);
+            if (bot) {
+              setTimeout(
+                () => {
+                  const botEmotes = [
+                    "\u{1F602}",
+                    "\u{1F92A}",
+                    "\u{1F621}",
+                    "\u{1F614}",
+                    "\u{1F914}",
+                    "\u{1F644}",
+                    "\u{1F92F}",
+                    "\u{1F62D}",
+                    "\u{1F440}",
+                    "\u{1F552}",
+                    "\u{1F44B}",
+                    "\u270B",
+                    "\u{1F44C}",
+                    "\u{1F44D}",
+                    "\u{1F44E}",
+                    "\u{1F389}",
+                    "\u{1F937}\u{1F3FC}\u200D\u2642\uFE0F",
+                    "\u{1F937}\u{1F3FB}\u200D\u2640\uFE0F",
+                    "\u{1F926}\u{1F3FC}\u200D\u2642\uFE0F",
+                    "\u{1F926}"
+                  ];
+                  const randomEmote = botEmotes[Math.floor(Math.random() * botEmotes.length)];
+                  io.to(roomId).emit("emote_received", {
+                    senderId: bot.id,
+                    emote: randomEmote
+                  });
+                },
+                1e3 + Math.random() * 2e3
+              );
+            }
+          }
+        }
+      });
+      socket.on("send_chat", ({ roomId, text, passTurn }) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          const sender = room.players.find((p) => p.id === socket.id);
+          if (!sender) return;
+          const messageToSend = filterProfanity(text);
+          const originalText = text;
+          if (room.gameState === "discussion") {
+            const opponent = room.players.find((p) => p.id !== socket.id);
+            const emojiRegex = /^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?(\u200D\p{Emoji_Presentation}|\u200D\p{Emoji}\uFE0F)*)+$/u;
+            const isEmoji = emojiRegex.test(messageToSend.trim());
+            if (!isEmoji) {
+              if (room.matchType === "random") {
+                sender.helperCharge = (sender.helperCharge || 0) + 1;
+              }
+              if (messageToSend === "\u0622\u0647" || messageToSend === "\u0644\u0623") {
+                if (messageToSend === "\u0622\u0647") {
+                  if (!room.confirmedAnswers) room.confirmedAnswers = [];
+                  const lastQuestion = room.chatHistory?.slice().reverse().find(
+                    (m) => m.senderId !== socket.id && m.text !== "\u0622\u0647" && m.text !== "\u0644\u0623"
+                  );
+                  if (lastQuestion) {
+                    room.confirmedAnswers.push(lastQuestion.text);
+                    if (room.matchType === "random") {
+                      const askingPlayer = room.players.find(
+                        (p) => p.id === lastQuestion.senderId
+                      );
+                      if (askingPlayer) {
+                        askingPlayer.helperCharge = (askingPlayer.helperCharge || 0) + 2;
+                      }
+                    }
+                  }
+                }
+                if (passTurn && opponent) {
+                  room.currentTurn = opponent.id;
+                  room.waitingForAnswerFrom = null;
+                } else {
+                  room.currentTurn = socket.id;
+                  room.waitingForAnswerFrom = null;
+                }
+              } else {
+                room.currentTurn = null;
+                if (opponent) {
+                  room.waitingForAnswerFrom = opponent.id;
+                }
+              }
+            }
+          }
+          if (!room.chatHistory) room.chatHistory = [];
+          room.chatHistory.push({
+            senderId: socket.id,
+            senderName: sender.name,
+            text: messageToSend,
+            originalText,
+            timestamp: Date.now()
+          });
+          if (room.chatHistory.length > 500) room.chatHistory.shift();
+          io.to(roomId).emit("chat_bubble", {
+            senderId: socket.id,
+            text: messageToSend
+          });
+          io.to(roomId).emit("room_update", room);
+          socket.to(roomId).emit("opponent_stop_typing");
+          const bot = room.players.find((p) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, "chat_message", {
+              senderId: socket.id,
+              text: messageToSend
+            });
+          }
+        }
+      });
+      socket.on("pass_turn", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "discussion") {
+          const opponent = room.players.find((p) => p.id !== socket.id);
+          if (opponent) {
+            room.currentTurn = opponent.id;
+            room.waitingForAnswerFrom = null;
+            io.to(roomId).emit("room_update", room);
+            if (opponent.isBot) {
+              setTimeout(
+                () => {
+                  triggerBotQuestion(roomId, opponent);
+                },
+                2e3 + Math.random() * 2e3
+              );
+            }
+          }
+        }
+      });
+      socket.on("typing", ({ roomId }) => {
+        socket.to(roomId).emit("opponent_typing");
+      });
+      socket.on("stop_typing", ({ roomId }) => {
+        socket.to(roomId).emit("opponent_stop_typing");
+      });
+      socket.on("submit_guess", ({ roomId, guess }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "guessing") {
+          const player = room.players.find((p) => p.id === socket.id);
+          if (player) {
+            const isCorrect = normalizeEgyptian(guess.trim()).toLowerCase() === normalizeEgyptian(player.targetImage.name).toLowerCase();
+            if (isCorrect) {
+              player.hasGuessed = true;
+              player.lastGuess = guess;
+              player.score += 500;
+              io.to(roomId).emit("guess_result", {
+                playerId: socket.id,
+                correct: true
+              });
+              endGame(roomId, player.name, false, true);
+            } else {
+              player.lastGuess = guess;
+              io.to(roomId).emit("guess_result", {
+                playerId: socket.id,
+                correct: false
+              });
+            }
+          }
+        }
+      });
+      socket.on("custom_guess", ({ roomId, guess, type }) => {
+        const room = rooms.get(roomId);
+        if (room && room.isCustomImageMode) {
+          const opponent = room.players.find((p) => p.id !== socket.id);
+          if (opponent) {
+            room.isWaitingForJudgment = true;
+            room.judgmentTimer = 15;
+            room.judgingPlayerId = opponent.id;
+            room.guessingPlayerId = socket.id;
+            room.judgmentType = type;
+            const opponentSocketId = playerSockets.get(opponent.serial) || opponent.id;
+            io.to(opponentSocketId).emit("judgment_requested", {
+              guess,
+              type,
+              playerId: socket.id
+            });
+          }
+        }
+      });
+      socket.on(
+        "custom_guess_judgment",
+        ({ roomId, guess, type, playerId, isCorrect }) => {
+          const room = rooms.get(roomId);
+          if (room && room.isCustomImageMode) {
+            room.isWaitingForJudgment = false;
+            const judgingPlayer = room.players.find(
+              (p) => p.id === socket.id
+            );
+            const guessingPlayer = room.players.find(
+              (p) => p.id === playerId
+            );
+            if (guessingPlayer && judgingPlayer) {
+              if (isCorrect) {
+                guessingPlayer.hasGuessed = true;
+                guessingPlayer.lastGuess = guess;
+                guessingPlayer.score += 500;
+                io.to(roomId).emit("guess_result", {
+                  playerId,
+                  correct: true,
+                  type
+                });
+                if (type === "quick") {
+                  guessingPlayer.quickGuessUsed = true;
+                  room.isPaused = false;
+                  room.quickGuessTimer = 0;
+                  room.pausingPlayerId = null;
+                  io.to(roomId).emit("room_update", room);
+                }
+                endGame(roomId, guessingPlayer.name, false, true);
+              } else {
+                guessingPlayer.lastGuess = guess;
+                io.to(roomId).emit("guess_result", {
+                  playerId,
+                  correct: false,
+                  type
+                });
+                endGame(roomId, judgingPlayer.name, false, true);
+              }
+            }
+          }
+        }
+      );
+      socket.on("use_card", ({ roomId, cardType, serial, isAdReward }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.isPaused) return;
+        const player = room.players.find((p) => p.id === socket.id);
+        const opponent = room.players.find((p) => p.id !== socket.id);
+        if (!player || !opponent) return;
+        const dbPlayer = allPlayers.get(serial);
+        if (dbPlayer) checkDailyReset(dbPlayer, serial, socket);
+        const hasFreeUse = dbPlayer && dbPlayer.ownedHelpers && dbPlayer.ownedHelpers[cardType] > 0;
+        const hasPro = dbPlayer && dbPlayer.proPackageExpiry && dbPlayer.proPackageExpiry > Date.now();
+        const hasUnlockedHelpers = dbPlayer && dbPlayer.unlockedHelpersExpiry && dbPlayer.unlockedHelpersExpiry > Date.now();
+        const isVerifiedAdReward = isAdReward && room.adRewardedPowerUps && room.adRewardedPowerUps.get(socket.id) === cardType;
+        const deductFreeUse = () => {
+          const requiredLevels = {
+            hint: 10,
+            word_length: 20,
+            time_freeze: 30,
+            word_count: 40,
+            spy_lens: 50
+          };
+          const playerLevel = getLevel(dbPlayer.xp || 0);
+          const isLevelLocked = cardType !== "quick_guess" && playerLevel < (requiredLevels[cardType] || 0);
+          if (isVerifiedAdReward) {
+            if (room.adRewardedPowerUps)
+              room.adRewardedPowerUps.delete(socket.id);
+            if (hasFreeUse && !hasPro && !hasUnlockedHelpers) {
+              if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[cardType] > 0) {
+                dbPlayer.rainGiftHelpers[cardType] -= 1;
+              } else if (dbPlayer.luckyWheelHelpers && dbPlayer.luckyWheelHelpers[cardType] > 0) {
+                dbPlayer.luckyWheelHelpers[cardType] -= 1;
+              } else if (dbPlayer.citySearchRewards) {
+                const rewardIndex = dbPlayer.citySearchRewards.findIndex(
+                  (r) => r.type === "helper" && r.id === cardType && r.amount > 0
+                );
+                if (rewardIndex !== -1) {
+                  dbPlayer.citySearchRewards[rewardIndex].amount -= 1;
+                  if (dbPlayer.citySearchRewards[rewardIndex].amount <= 0) {
+                    dbPlayer.citySearchRewards.splice(rewardIndex, 1);
+                  }
+                }
+              }
+              dbPlayer.ownedHelpers[cardType] -= 1;
+              if (dbPlayer.ownedHelpers[cardType] <= 0) {
+                delete dbPlayer.ownedHelpers[cardType];
+              }
+              savePlayerData(serial);
+              emitPlayerDataUpdate(socket, serial, {
+                serial,
+                ownedHelpers: dbPlayer.ownedHelpers
+              });
+              player.ownedHelpers = dbPlayer.ownedHelpers;
+            }
+            return;
+          }
+          if (hasFreeUse && !hasPro && !hasUnlockedHelpers) {
+            if (dbPlayer.rainGiftHelpers && dbPlayer.rainGiftHelpers[cardType] > 0) {
+              dbPlayer.rainGiftHelpers[cardType] -= 1;
+            } else if (dbPlayer.luckyWheelHelpers && dbPlayer.luckyWheelHelpers[cardType] > 0) {
+              dbPlayer.luckyWheelHelpers[cardType] -= 1;
+            } else if (dbPlayer.citySearchRewards) {
+              const rewardIndex = dbPlayer.citySearchRewards.findIndex(
+                (r) => r.type === "helper" && r.id === cardType && r.amount > 0
+              );
+              if (rewardIndex !== -1) {
+                dbPlayer.citySearchRewards[rewardIndex].amount -= 1;
+                if (dbPlayer.citySearchRewards[rewardIndex].amount <= 0) {
+                  dbPlayer.citySearchRewards.splice(rewardIndex, 1);
+                }
+              }
+            }
+            dbPlayer.ownedHelpers[cardType] -= 1;
+            if (dbPlayer.ownedHelpers[cardType] <= 0) {
+              delete dbPlayer.ownedHelpers[cardType];
+            }
+            savePlayerData(serial);
+            emitPlayerDataUpdate(socket, serial, {
+              serial,
+              ownedHelpers: dbPlayer.ownedHelpers
+            });
+            player.ownedHelpers = dbPlayer.ownedHelpers;
+          }
+        };
+        const dropKeyChance = () => {
+          if (dbPlayer && !hasPro && Math.random() < 0.15) {
+            dbPlayer.keys = (dbPlayer.keys || 0) + 1;
+            savePlayerData(serial);
+            emitPlayerDataUpdate(socket, serial, {
+              serial,
+              keys: dbPlayer.keys
+            });
+            socket.emit("key_found", { keys: dbPlayer.keys });
+          }
+        };
+        if (cardType === "hint") {
+          const playerLevel = getLevel(player.xp || 0);
+          if ((playerLevel >= 10 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && (!player.hintCount || player.hintCount < 2)) {
+            deductFreeUse();
+            dropKeyChance();
+            if (!player.hintCount) player.hintCount = 0;
+            player.hintCount++;
+            player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
+            const targetName = player.targetImage.name;
+            const hintChar = targetName[player.hintCount - 1] || "?";
+            socket.emit("hint_received", {
+              hint: `\u0627\u0644\u062A\u0644\u0645\u064A\u062D \u0631\u0642\u0645 ${player.hintCount}: \u0627\u0644\u062D\u0631\u0641 \u0647\u0648 "${hintChar}"`,
+              count: player.hintCount
+            });
+            io.to(roomId).emit("room_update", room);
+          }
+        } else if (cardType === "quick_guess") {
+          const playerLevel = getLevel(player.xp || 0);
+          const threshold = getQuickGuessThreshold(playerLevel);
+          if (room.timer <= threshold && !player.quickGuessUsed) {
+            player.quickGuessUsed = true;
+            room.isPaused = true;
+            room.pausingPlayerId = socket.id;
+            room.quickGuessTimer = 60;
+            io.to(roomId).emit("room_update", room);
+            io.to(roomId).emit("quick_guess_started", { playerId: socket.id });
+          }
+        } else if (cardType === "word_length") {
+          const playerLevel = getLevel(player.xp || 0);
+          if ((playerLevel >= 20 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.wordLengthUsed) {
+            deductFreeUse();
+            dropKeyChance();
+            player.wordLengthUsed = true;
+            player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
+            const targetName = player.targetImage.name;
+            const lengthWithoutSpaces = targetName.replace(/\s+/g, "").length;
+            socket.emit("word_length_result", { length: lengthWithoutSpaces });
+            io.to(roomId).emit("room_update", room);
+          }
+        } else if (cardType === "word_count") {
+          const playerLevel = getLevel(player.xp || 0);
+          if ((playerLevel >= 40 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.wordCountUsed) {
+            deductFreeUse();
+            dropKeyChance();
+            player.wordCountUsed = true;
+            player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
+            const targetName = player.targetImage.name;
+            const wordCount = targetName.trim().split(/\s+/).length;
+            socket.emit("word_count_result", { count: wordCount });
+            io.to(roomId).emit("room_update", room);
+          }
+        } else if (cardType === "time_freeze") {
+          const playerLevel = getLevel(player.xp || 0);
+          if ((playerLevel >= 30 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.timeFreezeUsed && !room.isFrozen) {
+            deductFreeUse();
+            dropKeyChance();
+            player.timeFreezeUsed = true;
+            room.isFrozen = true;
+            room.freezeTimer = 60;
+            io.to(roomId).emit("freeze_started", { playerId: socket.id });
+            io.to(roomId).emit("room_update", room);
+          }
+        } else if (cardType === "spy_lens") {
+          const playerLevel = getLevel(player.xp || 0);
+          if ((playerLevel >= 50 || hasFreeUse || hasPro || hasUnlockedHelpers || isVerifiedAdReward) && !player.spyLensUsed) {
+            deductFreeUse();
+            dropKeyChance();
+            player.spyLensUsed = true;
+            player.helpersUsedCount = (player.helpersUsedCount || 0) + 1;
+            const imageToSend = player.targetImage.image || player.targetImage.url;
+            socket.emit("spy_lens_active", { image: imageToSend });
+            io.to(roomId).emit("room_update", room);
+          }
+        }
+      });
+      socket.on("cancel_quick_guess", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.isPaused && room.pausingPlayerId === socket.id) {
+          const player = room.players.find((p) => p.id === socket.id);
+          const playerLevel = getLevel(player.xp || 0);
+          if (playerLevel >= 20) {
+            room.isPaused = false;
+            room.pausingPlayerId = null;
+            room.quickGuessTimer = 0;
+            if (player) {
+              player.quickGuessUsed = false;
+            }
+            io.to(roomId).emit("room_update", room);
+          }
+        }
+      });
+      socket.on("ad_started", ({ roomId, powerUpName, helperId }) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          if (!room.adPausedPlayers) room.adPausedPlayers = /* @__PURE__ */ new Set();
+          const sender = room.players.find((p) => p.id === socket.id || p.socketId === socket.id);
+          if (sender && sender.isBot) return;
+          const alreadyInAd = room.adPausedPlayers.has(socket.id);
+          room.adPausedPlayers.add(socket.id);
+          room.adPausedPlayersArray = Array.from(room.adPausedPlayers).filter((id) => {
+            const p = room.players.find((pl) => pl.id === id || pl.socketId === id);
+            return !p || !p.isBot;
+          });
+          if (powerUpName) {
+            if (!room.powerUpAdsInProgress)
+              room.powerUpAdsInProgress = /* @__PURE__ */ new Map();
+            room.powerUpAdsInProgress.set(socket.id, helperId || true);
+            if (!alreadyInAd) {
+              const sender2 = room.players.find((p) => p.id === socket.id);
+              if (sender2) {
+                const verb = sender2.gender === "girl" || sender2.gender === "female" ? "\u062A\u0642\u0648\u0645" : "\u064A\u0642\u0648\u0645";
+                const actionText = powerUpName === "\u0627\u0633\u062A\u0644\u0627\u0645 \u0645\u0643\u0627\u0641\u0623\u0629" ? `\u0628\u0645\u0634\u0627\u0647\u062F\u0629 \u0625\u0639\u0644\u0627\u0646 \u0644\u0627\u0633\u062A\u0644\u0627\u0645 \u0645\u0643\u0627\u0641\u0623\u0629` : powerUpName === "\u0641\u062A\u062D \u0641\u0626\u0627\u062A \u0627\u0644\u062A\u062E\u0645\u064A\u0646" ? `\u0628\u0645\u0634\u0627\u0647\u062F\u0629 \u0625\u0639\u0644\u0627\u0646 \u0644\u0641\u062A\u062D \u0641\u0626\u0627\u062A \u0627\u0644\u062A\u062E\u0645\u064A\u0646` : powerUpName === "\u0641\u062A\u062D \u0634\u0627\u062A \u0627\u0644\u062F\u0631\u062F\u0634\u0629" ? `\u0628\u0645\u0634\u0627\u0647\u062F\u0629 \u0625\u0639\u0644\u0627\u0646 \u0644\u0641\u062A\u062D \u0634\u0627\u062A \u0627\u0644\u062F\u0631\u062F\u0634\u0629` : `\u0628\u0645\u0634\u0627\u0647\u062F\u0629 \u0625\u0639\u0644\u0627\u0646 \u0644\u0641\u062A\u062D \u0648\u0633\u064A\u0644\u0629 \u0645\u0633\u0627\u0639\u062F\u0629 "${powerUpName}"`;
+                io.to(roomId).emit("chat_bubble", {
+                  senderId: "system",
+                  text: `${verb} ${sender2.name} ${actionText}\u060C \u0627\u0646\u062A\u0638\u0631 \u0642\u0644\u064A\u0644\u0627\u064B.`
+                });
+              }
+            }
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("ad_reward_ready", ({ roomId, helperId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.powerUpAdsInProgress && room.powerUpAdsInProgress.has(socket.id)) {
+          if (!room.adRewardedPowerUps) room.adRewardedPowerUps = /* @__PURE__ */ new Map();
+          room.adRewardedPowerUps.set(socket.id, helperId);
+        }
+      });
+      socket.on("ad_ended", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.adPausedPlayers) {
+          room.adPausedPlayers.delete(socket.id);
+          const player = room.players.find((p) => p.socketId === socket.id || p.id === socket.id);
+          if (player) room.adPausedPlayers.delete(player.id);
+          room.adPausedPlayersArray = Array.from(room.adPausedPlayers).filter((id) => {
+            const p = room.players.find((pl) => pl.id === id || pl.socketId === id);
+            return !p || !p.isBot;
+          });
+          if (room.powerUpAdsInProgress && room.powerUpAdsInProgress.has(socket.id)) {
+            room.powerUpAdsInProgress.delete(socket.id);
+            room.adCooldownTimer = 30;
+          }
+          io.to(roomId).emit("room_update", room);
+          if (room.players.some((p) => p.isBot)) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        }
+      });
+      socket.on("submit_quick_guess", ({ roomId, guess }) => {
+        const room = rooms.get(roomId);
+        if (room && room.isPaused && room.pausingPlayerId === socket.id) {
+          const player = room.players.find((p) => p.id === socket.id);
+          const isCorrect = normalizeEgyptian(guess.trim()).toLowerCase() === normalizeEgyptian(player.targetImage.name).toLowerCase();
+          if (isCorrect) {
+            io.to(roomId).emit("guess_result", {
+              playerId: socket.id,
+              correct: true
+            });
+            endGame(roomId, player.name, false, true);
+          } else {
+            io.to(roomId).emit("guess_result", {
+              playerId: socket.id,
+              correct: false
+            });
+            const opponent = room.players.find((p) => p.id !== socket.id);
+            endGame(roomId, opponent ? opponent.name : "\u0627\u0644\u0645\u0646\u0627\u0641\u0633");
+          }
+        }
+      });
+      socket.on(
+        "report_player_by_serial",
+        ({ reporterSerial, reportedSerial, reason }, callback) => {
+          const serverReportedPlayer = allPlayers.get(reportedSerial);
+          const serverReporter = allPlayers.get(reporterSerial);
+          if (serverReportedPlayer && serverReporter) {
+            const now = Date.now();
+            const oneDayInMs = 24 * 60 * 60 * 1e3;
+            const lastReport = serverReportedPlayer.reportedBy.find(
+              (r) => r.reporterSerial === serverReporter.serial
+            );
+            if (!lastReport || now - lastReport.timestamp >= oneDayInMs) {
+              if (lastReport) {
+                lastReport.timestamp = now;
+              } else {
+                serverReportedPlayer.reportedBy.push({
+                  reporterSerial: serverReporter.serial,
+                  timestamp: now
+                });
+              }
+              serverReportedPlayer.reports += 1;
+              if (!serverReporter.reportedSerials)
+                serverReporter.reportedSerials = [];
+              if (!serverReporter.reportedSerials.includes(reportedSerial)) {
+                serverReporter.reportedSerials.push(reportedSerial);
+              }
+              try {
+                const reportId = Math.random().toString(36).substr(2, 9);
+                db.prepare(
+                  `
+              INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason, roomId)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `
+                ).run(
+                  reportId,
+                  now,
+                  serverReporter.serial,
+                  serverReporter.name,
+                  serverReportedPlayer.serial,
+                  serverReportedPlayer.name,
+                  reason,
+                  "profile"
+                );
+              } catch (err) {
+                console.error("Failed to save report to DB:", err);
+              }
+              for (const [socketId, s] of io.sockets.sockets) {
+                if (s.data?.serial === serverReportedPlayer.serial) {
+                  emitPlayerDataUpdate(
+                    io.to(socketId),
+                    serverReportedPlayer.serial,
+                    { reports: serverReportedPlayer.reports }
+                  );
+                  break;
+                }
+              }
+              if (serverReportedPlayer.reports >= 10) {
+                serverReportedPlayer.reports = 0;
+                serverReportedPlayer.banCount += 1;
+                if (serverReportedPlayer.banCount >= 5) {
+                  serverReportedPlayer.isPermanentBan = 1;
+                  for (const [socketId, s] of io.sockets.sockets) {
+                    if (s.data?.serial === serverReportedPlayer.serial) {
+                      io.to(socketId).emit("banned_status", {
+                        isPermanent: true
+                      });
+                      break;
+                    }
+                  }
+                } else {
+                  serverReportedPlayer.banUntil = now + oneDayInMs;
+                  for (const [socketId, s] of io.sockets.sockets) {
+                    if (s.data?.serial === serverReportedPlayer.serial) {
+                      io.to(socketId).emit("banned_status", {
+                        banUntil: serverReportedPlayer.banUntil,
+                        isPermanent: false
+                      });
+                      break;
+                    }
+                  }
+                }
+              }
+              savePlayerData(serverReportedPlayer.serial);
+              savePlayerData(serverReporter.serial);
+              for (const [socketId, s] of io.sockets.sockets) {
+                if (s.data?.serial === serverReporter.serial) {
+                  io.to(socketId).emit(
+                    "update_reported_serials",
+                    serverReporter.reportedSerials
+                  );
+                  break;
+                }
+              }
+              if (callback) callback({ success: true });
+            } else {
+              if (callback)
+                callback({
+                  success: false,
+                  message: "\u0644\u0642\u062F \u0642\u0645\u062A \u0628\u0627\u0644\u0625\u0628\u0644\u0627\u063A \u0639\u0646 \u0647\u0630\u0627 \u0627\u0644\u0644\u0627\u0639\u0628 \u0628\u0627\u0644\u0641\u0639\u0644."
+                });
+            }
+          } else {
+            if (callback)
+              callback({
+                success: false,
+                message: "\u062D\u062F\u062B \u062E\u0637\u0623 \u0623\u062B\u0646\u0627\u0621 \u0645\u0639\u0627\u0644\u062C\u0629 \u0627\u0644\u0625\u0628\u0644\u0627\u063A."
+              });
+          }
+        }
+      );
+      socket.on(
+        "report_player",
+        ({ roomId, reportedPlayerId, reason }, callback) => {
+          const room = rooms.get(roomId);
+          if (room) {
+            const reportedPlayer = room.players.find(
+              (p) => p.id === reportedPlayerId
+            );
+            const reporter = room.players.find((p) => p.id === socket.id);
+            if (reportedPlayer && reporter) {
+              reportedPlayer.reported = true;
+              const serverReportedPlayer = allPlayers.get(
+                reportedPlayer.serial
+              );
+              const serverReporter = allPlayers.get(reporter.serial);
+              console.log(
+                `Report attempt: Reporter=${reporter.name}(Serial: ${reporter.serial}, ID: ${reporter.id}), Reported=${reportedPlayer.name}(Serial: ${reportedPlayer.serial}, ID: ${reportedPlayer.id})`
+              );
+              console.log(
+                `AllPlayers keys: ${Array.from(allPlayers.keys()).join(", ")}`
+              );
+              if (serverReportedPlayer && serverReporter) {
+                const now = Date.now();
+                const oneDayInMs = 24 * 60 * 60 * 1e3;
+                const lastReport = serverReportedPlayer.reportedBy.find(
+                  (r) => r.reporterSerial === serverReporter.serial
+                );
+                if (!lastReport || now - lastReport.timestamp >= oneDayInMs) {
+                  console.log(
+                    `Report accepted for ${serverReportedPlayer.name}. Previous reports: ${serverReportedPlayer.reports}`
+                  );
+                  if (lastReport) {
+                    lastReport.timestamp = now;
+                  } else {
+                    serverReportedPlayer.reportedBy.push({
+                      reporterSerial: serverReporter.serial,
+                      timestamp: now
+                    });
+                  }
+                  serverReportedPlayer.reports += 1;
+                  reportedPlayer.reports = serverReportedPlayer.reports;
+                  try {
+                    const reportId = Math.random().toString(36).substr(2, 9);
+                    db.prepare(
+                      `
+                  INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reportedSerial, reportedName, reason, roomId)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `
+                    ).run(
+                      reportId,
+                      now,
+                      serverReporter.serial,
+                      reporter.name,
+                      serverReportedPlayer.serial,
+                      reportedPlayer.name,
+                      reason,
+                      roomId
+                    );
+                  } catch (err) {
+                    console.error("Failed to save report to DB:", err);
+                  }
+                  emitPlayerDataUpdate(
+                    io.to(reportedPlayer.id),
+                    serverReportedPlayer.serial,
+                    { reports: serverReportedPlayer.reports }
+                  );
+                  if (serverReportedPlayer.reports >= 10) {
+                    serverReportedPlayer.reports = 0;
+                    reportedPlayer.reports = 0;
+                    serverReportedPlayer.banCount += 1;
+                    if (serverReportedPlayer.banCount >= 5) {
+                      serverReportedPlayer.isPermanentBan = 1;
+                      console.log(
+                        `Player ${serverReportedPlayer.name} has been permanently banned.`
+                      );
+                      io.to(reportedPlayer.id).emit("banned_status", {
+                        isPermanent: true
+                      });
+                    } else {
+                      serverReportedPlayer.banUntil = now + oneDayInMs;
+                      console.log(
+                        `Player ${serverReportedPlayer.name} has been banned for 24 hours (Ban #${serverReportedPlayer.banCount}).`
+                      );
+                      io.to(reportedPlayer.id).emit("banned_status", {
+                        banUntil: serverReportedPlayer.banUntil,
+                        isPermanent: false
+                      });
+                    }
+                  }
+                  savePlayerData(serverReportedPlayer.serial);
+                  if (callback) callback({ success: true });
+                } else {
+                  console.log(
+                    `Report rejected: Already reported within 24h by ${serverReporter.name}`
+                  );
+                  if (callback)
+                    callback({
+                      success: false,
+                      message: "\u0644\u0642\u062F \u0642\u0645\u062A \u0628\u0627\u0644\u0625\u0628\u0644\u0627\u063A \u0639\u0646 \u0647\u0630\u0627 \u0627\u0644\u0644\u0627\u0639\u0628 \u0628\u0627\u0644\u0641\u0639\u0644."
+                    });
+                }
+              } else if (!serverReportedPlayer && reportedPlayer.isBot) {
+                if (callback) {
+                  callback({
+                    success: true,
+                    message: "\u062A\u0645 \u0627\u0633\u062A\u0644\u0627\u0645 \u0627\u0644\u0628\u0644\u0627\u063A \u0628\u0646\u062C\u0627\u062D"
+                  });
+                }
+              } else {
+                if (callback)
+                  callback({
+                    success: false,
+                    message: "\u062D\u062F\u062B \u062E\u0637\u0623 \u0623\u062B\u0646\u0627\u0621 \u0645\u0639\u0627\u0644\u062C\u0629 \u0627\u0644\u0625\u0628\u0644\u0627\u063A."
+                  });
+              }
+              const report = {
+                id: Math.random().toString(36).substr(2, 9),
+                timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+                roomId,
+                reporterId: reporter.id,
+                reporterName: reporter.name,
+                reportedPlayerId: reportedPlayer.id,
+                reportedPlayerName: reportedPlayer.name,
+                reason
+              };
+              reportsList.push(report);
+              console.log(
+                `Player ${reportedPlayer.name} (${reportedPlayer.id}) reported for: ${reason} in room ${roomId}`
+              );
+              io.to(roomId).emit("room_update", room);
+            }
+          }
+        }
+      );
+      socket.on(
+        "block_player_by_serial",
+        ({ blockerSerial, blockedSerial }, callback) => {
+          const serverBlocker = allPlayers.get(blockerSerial);
+          const serverBlocked = allPlayers.get(blockedSerial);
+          if (serverBlocker && serverBlocked) {
+            if (!serverBlocker.blockedSerials)
+              serverBlocker.blockedSerials = [];
+            if (!serverBlocker.blockedFingerprints)
+              serverBlocker.blockedFingerprints = [];
+            if (!serverBlocker.blockedSerials.includes(serverBlocked.serial)) {
+              serverBlocker.blockedSerials.push(serverBlocked.serial);
+            }
+            if (serverBlocker.recentOpponents) {
+              serverBlocker.recentOpponents = serverBlocker.recentOpponents.filter(
+                (op) => op.serial !== blockedSerial
+              );
+            }
+            if (serverBlocked.fingerprint && !serverBlocker.blockedFingerprints.includes(
+              serverBlocked.fingerprint
+            )) {
+              serverBlocker.blockedFingerprints.push(serverBlocked.fingerprint);
+            }
+            savePlayerData(serverBlocker.serial);
+            if (callback) callback({ success: true });
+          } else {
+            if (callback)
+              callback({ success: false, error: "\u062D\u062F\u062B \u062E\u0637\u0623 \u0623\u062B\u0646\u0627\u0621 \u062D\u0638\u0631 \u0627\u0644\u0644\u0627\u0639\u0628." });
+          }
+        }
+      );
+      socket.on("block_player", ({ roomId, blockedPlayerId }, callback) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          const blockedPlayer = room.players.find(
+            (p) => p.id === blockedPlayerId
+          );
+          const blocker = room.players.find((p) => p.id === socket.id);
+          if (blockedPlayer && blocker) {
+            const serverBlocker = allPlayers.get(blocker.serial);
+            const serverBlocked = allPlayers.get(blockedPlayer.serial);
+            if (serverBlocker && serverBlocked) {
+              if (!serverBlocker.blockedSerials)
+                serverBlocker.blockedSerials = [];
+              if (!serverBlocker.blockedFingerprints)
+                serverBlocker.blockedFingerprints = [];
+              if (!serverBlocker.blockedSerials.includes(serverBlocked.serial)) {
+                serverBlocker.blockedSerials.push(serverBlocked.serial);
+              }
+              if (serverBlocker.recentOpponents) {
+                serverBlocker.recentOpponents = serverBlocker.recentOpponents.filter(
+                  (op) => op.serial !== serverBlocked.serial
+                );
+              }
+              if (serverBlocked.fingerprint && !serverBlocker.blockedFingerprints.includes(
+                serverBlocked.fingerprint
+              )) {
+                serverBlocker.blockedFingerprints.push(
+                  serverBlocked.fingerprint
+                );
+              }
+              blockedPlayer.isMuted = true;
+              const blockedSocketId = playerSockets.get(blockedPlayer.serial) || blockedPlayer.id;
+              io.to(blockedSocketId).emit("opponent_muted_you", true);
+              io.to(roomId).emit("room_update", room);
+              savePlayerData(blocker.serial);
+              console.log(
+                `Player ${blocker.name} blocked ${blockedPlayer.name}`
+              );
+              if (callback) callback({ success: true });
+            } else {
+              if (callback)
+                callback({ success: false, error: "Player not found" });
+            }
+          } else {
+            if (callback)
+              callback({ success: false, error: "Player not in room" });
+          }
+        } else {
+          if (callback) callback({ success: false, error: "Room not found" });
+        }
+      });
+      socket.on("send_complaint", ({ text }, callback) => {
+        const player = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (player) {
+          if (player.lastComplaintAt && isSameDay(player.lastComplaintAt, Date.now())) {
+            callback({
+              success: false,
+              error: "\u0644\u0642\u062F \u0642\u0645\u062A \u0628\u0625\u0631\u0633\u0627\u0644 \u0634\u0643\u0648\u0649 \u0627\u0644\u064A\u0648\u0645 \u0628\u0627\u0644\u0641\u0639\u0644."
+            });
+            return;
+          }
+          player.lastComplaintAt = Date.now();
+          savePlayerData(player.serial);
+          const reportId = Math.random().toString(36).substr(2, 9);
+          db.prepare(
+            "INSERT INTO reports (id, timestamp, reporterSerial, reporterName, reason) VALUES (?, ?, ?, ?, ?)"
+          ).run(reportId, Date.now(), player.serial, player.name, text);
+          callback({ success: true });
+        } else {
+          callback({ success: false, error: "Player not found" });
+        }
+      });
+      socket.on("check_complaint_status", (_, callback) => {
+        const player = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (player) {
+          const canSend = !player.lastComplaintAt || !isSameDay(player.lastComplaintAt, Date.now());
+          callback({ success: true, canSend });
+        } else {
+          callback({ success: false, error: "Player not found" });
+        }
+      });
+      socket.on("leave_room", ({ roomId }, callback) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          const player = room.players.find((p) => p.id === socket.id);
+          if (player) {
+            const opponent = room.players.find((p) => p.id !== socket.id);
+            if (!isRoomFinished(room) && room.gameState !== "waiting") {
+              const messageObj = {
+                senderId: "system",
+                text: `\u063A\u0627\u062F\u0631 ${player.name} \u0627\u0644\u063A\u0631\u0641\u0629`
+              };
+              if (!room.chatHistory) room.chatHistory = [];
+              room.chatHistory.push({
+                ...messageObj,
+                senderName: "\u0627\u0644\u0646\u0638\u0627\u0645",
+                timestamp: Date.now()
+              });
+              io.to(roomId).emit("chat_bubble", messageObj);
+              if (!isRoomFinished(room) && (room.gameState.startsWith("bus_complete") || room.gameState === "custom_image_upload" || room.gameState.startsWith("xo_") || room.gameState.startsWith("hand_") || room.gameState.startsWith("iq_") || room.gameState.startsWith("dots_") || room.gameState.startsWith("speed_cups_") || room.gameState.startsWith("bomb_party_") || room.gameState.startsWith("connect_four_words") || room.gameState.startsWith("wordle") || room.gameState.startsWith("space_war") || room.gameState.startsWith("puzzle"))) {
+                io.to(roomId).emit("game_stopped", {
+                  reason: "\u0627\u0644\u0645\u0646\u0627\u0641\u0633 \u063A\u0627\u062F\u0631 \u0627\u0644\u0645\u0628\u0627\u0631\u0627\u0629"
+                });
+                if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+                rooms.delete(roomId);
+              } else if (isRoomFinished(room)) {
+                socket.to(roomId).emit("opponent_left_lobby");
+                if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+                rooms.delete(roomId);
+              } else {
+                endGame(roomId, opponent ? opponent.name : "\u0627\u0644\u0645\u0646\u0627\u0641\u0633", true);
+              }
+            } else if (room.gameState === "waiting") {
+              socket.to(roomId).emit("opponent_left_lobby");
+            }
+            room.players = room.players.filter((p) => p.id !== socket.id);
+            if (intervals.has(roomId)) {
+              clearInterval(intervals.get(roomId));
+              intervals.delete(roomId);
+            }
+            if (botIntervals.has(roomId)) {
+              clearInterval(botIntervals.get(roomId));
+              botIntervals.delete(roomId);
+            }
+            if (!isRoomFinished(room) || room.players.length === 0 || room.players.every((p) => p.isBot)) {
+              io.in(roomId).socketsLeave(roomId);
+              rooms.delete(roomId);
+            } else {
+              socket.to(roomId).emit("room_update", room);
+            }
+          }
+        }
+        socket.leave(roomId);
+        if (callback) callback();
+      });
+      socket.on("leave_matchmaking", () => {
+        socket.data.isSearching = false;
+        const qIndex = matchmakingQueue.findIndex((p) => p.id === socket.id);
+        if (qIndex !== -1) matchmakingQueue.splice(qIndex, 1);
+        for (const [matchId, match] of pendingMatches.entries()) {
+          if (match.p1.socket.id === socket.id || match.p2.socket.id === socket.id) {
+            const oppData = match.p1.socket.id === socket.id ? match.p2 : match.p1;
+            clearTimeout(match.timeoutId);
+            pendingMatches.delete(matchId);
+            oppData.status = "searching";
+            oppData.socket.emit("match_rejected", { reason: "opponent_left" });
+            matchmakingQueue.unshift(oppData);
+            processQueue();
+            break;
+          }
+        }
+      });
+      socket.on("toggle_mute_opponent", ({ roomId, isMuted }) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          const opponent = room.players.find((p) => p.id !== socket.id);
+          if (opponent) {
+            const opponentSocketId = playerSockets.get(opponent.serial) || opponent.id;
+            io.to(opponentSocketId).emit("opponent_muted_you", isMuted);
+          }
+        }
+      });
+      socket.on("restart_xo", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "xo_finished") {
+          if ((room.xoLevel || 1) >= 8) {
+            if (room.players.length < 2) return;
+            if (!room.xoRematchRequestedBy) room.xoRematchRequestedBy = [];
+            if (!room.xoRematchRequestedBy.includes(socket.id)) {
+              room.xoRematchRequestedBy.push(socket.id);
+            }
+            const botPlayer = room.players.find((p) => p.isBot);
+            if (botPlayer && !room.xoRematchRequestedBy.includes(botPlayer.id)) {
+              room.xoRematchRequestedBy.push(botPlayer.id);
+            }
+            if (room.xoRematchRequestedBy.length < room.players.length) {
+              io.to(roomId).emit("room_update", room);
+              return;
+            }
+            room.xoRematchRequestedBy = [];
+            room.xoLevel = 1;
+            room.xoMatchWins = {};
+          } else {
+            room.xoLevel = (room.xoLevel || 1) + 1;
+          }
+          room.gameState = "xo_playing";
+          room.category = "xo";
+          const size = room.xoLevel + 2;
+          room.xoBoardSize = size;
+          room.xoWinLength = size === 3 ? 3 : size === 4 || size === 5 ? 4 : 5;
+          room.xoBoard = Array(size * size).fill(null);
+          room.xoXPlayer = room.players[Math.floor(Math.random() * 2)].id;
+          room.xoOPlayer = room.players.find(
+            (p) => p.id !== room.xoXPlayer
+          ).id;
+          room.xoTurn = room.xoXPlayer;
+          room.xoWinner = null;
+          room.xoWinningLine = null;
+          room.timer = getXOTimerLimit(size);
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+          const interval = setInterval(() => {
+            const r = rooms.get(roomId);
+            if (!r || r.gameState !== "xo_playing" && r.gameState !== "xo_finished") {
+              clearInterval(interval);
+              return;
+            }
+            if (r.gameState === "xo_playing") {
+              const isAdPlaying = r.adPausedPlayers && r.adPausedPlayers.size > 0;
+              if (!isAdPlaying) {
+                r.timer--;
+                if (r.timer <= 0) {
+                  clearInterval(interval);
+                  r.xoWinner = "draw";
+                  r.gameState = "xo_finished";
+                  r.xoMatchWins = r.xoMatchWins || {};
+                  r.xoMatchWins["draw"] = (r.xoMatchWins["draw"] || 0) + 1;
+                  io.to(roomId).emit("room_update", r);
+                } else {
+                  io.to(roomId).emit("timer_update", r.timer);
+                }
+              }
+            }
+          }, 1e3);
+          intervals.set(roomId, interval);
+          const bot = room.players.find((p) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("restart_iq", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "iq_finished") {
+          if ((room.iqLevel || 1) >= 3) {
+            if (room.players.length < 2) return;
+            if (!room.iqRematchRequestedBy) room.iqRematchRequestedBy = [];
+            if (!room.iqRematchRequestedBy.includes(socket.id)) {
+              room.iqRematchRequestedBy.push(socket.id);
+            }
+            const botPlayer = room.players.find((p) => p.isBot);
+            if (botPlayer && !room.iqRematchRequestedBy.includes(botPlayer.id)) {
+              room.iqRematchRequestedBy.push(botPlayer.id);
+            }
+            if (room.iqRematchRequestedBy.length < room.players.length) {
+              sendRoomUpdate(roomId, room);
+              return;
+            }
+            room.iqRematchRequestedBy = [];
+            room.iqLevel = 1;
+            room.iqMatchWins = {};
+          } else {
+            room.iqLevel = (room.iqLevel || 1) + 1;
+          }
+          initializeIQGame(room);
+          sendRoomUpdate(roomId, room);
+          const bot = room.players.find((p) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        }
+      });
+      socket.on("restart_dots", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "dots_finished") {
+          if ((room.dotsLevel || 1) >= 3) {
+            if (room.players.length < 2) return;
+            if (!room.dotsRematchRequestedBy) room.dotsRematchRequestedBy = [];
+            if (!room.dotsRematchRequestedBy.includes(socket.id)) {
+              room.dotsRematchRequestedBy.push(socket.id);
+            }
+            const botPlayer = room.players.find((p) => p.isBot);
+            if (botPlayer && !room.dotsRematchRequestedBy.includes(botPlayer.id)) {
+              room.dotsRematchRequestedBy.push(botPlayer.id);
+            }
+            if (room.dotsRematchRequestedBy.length < room.players.length) {
+              sendRoomUpdate(roomId, room);
+              return;
+            }
+            room.dotsRematchRequestedBy = [];
+            room.dotsLevel = 1;
+            room.dotsMatchWins = {};
+          } else {
+            room.dotsLevel = (room.dotsLevel || 1) + 1;
+          }
+          initializeDotsGame(room);
+          sendRoomUpdate(roomId, room);
+          const bot = room.players.find((p) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        }
+      });
+      bombPartyNextTurn = function(room, io2, roomId) {
+        room.bombParty.turnTimeLimit -= 1e3;
+        if (room.bombParty.turnTimeLimit < 1e3) {
+          room.bombParty.gameOver = true;
+          room.gameState = "bomb_party_finished";
+          const p1Id = room.players[0].id;
+          const p2Id = room.players[1].id;
+          const p1Stats = room.bombParty.stats?.[p1Id] || { correct: 0, incorrect: 0 };
+          const p2Stats = room.bombParty.stats?.[p2Id] || { correct: 0, incorrect: 0 };
+          let matchWinnerId = null;
+          if (p1Stats.correct > p2Stats.correct) matchWinnerId = p1Id;
+          else if (p2Stats.correct > p1Stats.correct) matchWinnerId = p2Id;
+          room.bombParty.matchWinnerId = matchWinnerId;
+          if (matchWinnerId) {
+            room.bombParty.matchWins = room.bombParty.matchWins || {};
+            room.bombParty.matchWins[matchWinnerId] = (room.bombParty.matchWins[matchWinnerId] || 0) + 1;
+            const winnerPlayer = room.players.find((p) => p.id === matchWinnerId);
+            if (winnerPlayer) {
+              winnerPlayer.bombPartyWins = (winnerPlayer.bombPartyWins || 0) + 1;
+              const pRecord = allPlayers.get(winnerPlayer.serial);
+              if (pRecord) {
+                pRecord.bombPartyWins = winnerPlayer.bombPartyWins;
+                savePlayerData(pRecord.serial);
+              }
+            }
+          }
+          io2.to(roomId).emit("room_update", room);
+          handleBotEvent(roomId, "room_update", room);
+          return;
+        }
+        room.bombParty.explodedPlayerId = null;
+        room.bombParty.currentSubstring = getBombPartySubstring(room.bombParty.usedWords || []);
+        const opponent = room.players.find((p) => p.id !== room.bombParty.turnPlayerId);
+        if (opponent) {
+          room.bombParty.turnPlayerId = opponent.id;
+        }
+        room.bombParty.bombStartTime = Date.now();
+        io2.to(roomId).emit("room_update", room);
+        handleBotEvent(roomId, "room_update", room);
+      };
+      socket.on("bomb_party_guess", ({ roomId, word }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "bomb_party_playing" || room.bombParty.explodedPlayerId) return;
+        if (room.bombParty.turnPlayerId !== socket.id) return;
+        const guess = normalizeEgyptian(word);
+        const validWordObj = NORMALIZED_BOMB_PARTY_WORDS.find((w) => w.normalized === guess)?.original;
+        if (validWordObj) {
+          const substrNormal = normalizeEgyptian(room.bombParty.currentSubstring);
+          if (guess.includes(substrNormal)) {
+            if (!room.bombParty.usedWords.includes(validWordObj)) {
+              room.bombParty.usedWords.push(validWordObj);
+              if (!room.bombParty.stats) room.bombParty.stats = {};
+              if (!room.bombParty.stats[socket.id]) room.bombParty.stats[socket.id] = { correct: 0, incorrect: 0 };
+              room.bombParty.stats[socket.id].correct++;
+              io.to(roomId).emit("bomb_party_correct_guess", { playerId: socket.id, word: validWordObj });
+              bombPartyNextTurn(room, io, roomId);
+              return;
+            } else {
+              socket.emit("bomb_party_error", { reason: "\u0627\u0644\u0643\u0644\u0645\u0629 \u062F\u064A \u0627\u062A\u0642\u0627\u0644\u062A \u0642\u0628\u0644 \u0643\u062F\u0627!" });
+              return;
+            }
+          } else {
+            socket.emit("bomb_party_error", { reason: "\u0627\u0644\u0643\u0644\u0645\u0629 \u0645\u0634 \u0628\u062A\u062D\u062A\u0648\u064A \u0639\u0644\u0649 \u0627\u0644\u062D\u0631\u0648\u0641 \u0627\u0644\u0645\u0637\u0644\u0648\u0628\u0629!" });
+            return;
+          }
+        } else {
+          socket.emit("bomb_party_error", { reason: "\u0643\u0644\u0645\u0629 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F\u0629 \u0641\u064A \u0627\u0644\u0642\u0627\u0645\u0648\u0633!" });
+          return;
+        }
+      });
+      socket.on("request_bomb_party_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "bomb_party_finished") return;
+        if (!room.bombParty.rematchRequestedBy) {
+          room.bombParty.rematchRequestedBy = [];
+        }
+        if (!room.bombParty.rematchRequestedBy.includes(socket.id)) {
+          room.bombParty.rematchRequestedBy.push(socket.id);
+        }
+        const botPlayer = room.players.find((p) => p.isBot);
+        if (botPlayer && !room.bombParty.rematchRequestedBy.includes(botPlayer.id)) {
+          room.bombParty.rematchRequestedBy.push(botPlayer.id);
+        }
+        if (room.bombParty.rematchRequestedBy.length >= room.players.length) {
+          room.gameState = "bomb_party_setup";
+          const startingPlayerIndex = Math.floor(Math.random() * room.players.length);
+          room.bombParty = {
+            turnPlayerId: room.players[startingPlayerIndex].id,
+            bombStartTime: Date.now(),
+            turnTimeLimit: 2e4,
+            matchWins: {},
+            usedWords: [],
+            currentSubstring: getBombPartySubstring([]),
+            explodedPlayerId: null,
+            gameOver: false,
+            startRequestedBy: [],
+            winThreshold: 3,
+            rematchRequestedBy: [],
+            stats: {}
+          };
+          io.to(roomId).emit("room_update", room);
+          io.to(roomId).emit("bomb_party_rematch_started");
+          if (botPlayer) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        } else {
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("start_bomb_party", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "bomb_party_setup") return;
+        room.gameState = "bomb_party_playing";
+        room.bombParty.bombStartTime = Date.now();
+        if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+        const interval = setInterval(() => {
+          const r = rooms.get(roomId);
+          if (!r || r.gameState !== "bomb_party_playing") {
+            clearInterval(interval);
+            return;
+          }
+          if (!r.bombParty.explodedPlayerId && !r.bombParty.gameOver) {
+            const now = Date.now();
+            if (now - r.bombParty.bombStartTime > r.bombParty.turnTimeLimit + 150) {
+              r.bombParty.explodedPlayerId = r.bombParty.turnPlayerId;
+              if (!r.bombParty.stats) r.bombParty.stats = {};
+              if (!r.bombParty.stats[r.bombParty.turnPlayerId]) r.bombParty.stats[r.bombParty.turnPlayerId] = { correct: 0, incorrect: 0 };
+              r.bombParty.stats[r.bombParty.turnPlayerId].incorrect++;
+              const willBeGameOver = r.bombParty.turnTimeLimit - 1e3 < 1e3;
+              io.to(roomId).emit("room_update", r);
+              io.to(roomId).emit("bomb_exploded", {
+                loserId: r.bombParty.turnPlayerId,
+                gameOver: willBeGameOver
+              });
+              setTimeout(() => {
+                const currentRoom = rooms.get(roomId);
+                if (currentRoom && currentRoom.gameState === "bomb_party_playing") {
+                  bombPartyNextTurn(currentRoom, io, roomId);
+                }
+              }, 1e3);
+            }
+          }
+        }, 30);
+        intervals.set(roomId, interval);
+        io.to(roomId).emit("room_update", room);
+        handleBotEvent(roomId, "room_update", room);
+      });
+      socket.on("start_connect_four_words", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "connect_four_words_setup") return;
+        const player = room.players.find((p) => p.socketId === socket.id || p.id === socket.id);
+        const pId = player ? player.id : socket.id;
+        if (!room.connectFourWords.readyPlayers.includes(pId)) {
+          room.connectFourWords.readyPlayers.push(pId);
+        }
+        const isBotRoom = room.players.some((p) => p.isBot);
+        if (room.connectFourWords.readyPlayers.length === 2 || isBotRoom) {
+          room.gameState = "connect_four_words_playing";
+          room.connectFourWords.startTime = Date.now();
+          if (intervals.has(roomId)) {
+            clearInterval(intervals.get(roomId));
+          }
+          const interval = setInterval(() => {
+            const r = rooms.get(roomId);
+            if (!r || r.gameState !== "connect_four_words_playing") {
+              clearInterval(interval);
+              intervals.delete(roomId);
+              return;
+            }
+            if (r.adPausedPlayersArray && r.adPausedPlayersArray.length > 0) return;
+            if (Date.now() - r.connectFourWords.startTime >= 10 * 60 * 1e3) {
+              r.gameState = "connect_four_words_finished";
+              r.connectFourWords.winnerId = null;
+              clearInterval(interval);
+              intervals.delete(roomId);
+              io.to(roomId).emit("room_update", r);
+              const bot2 = r.players.find((p) => p.isBot);
+              if (bot2) handleBotEvent(roomId, "room_update", r);
+            }
+          }, 1e3);
+          intervals.set(roomId, interval);
+        }
+        io.to(roomId).emit("room_update", room);
+        const bot = room.players.find((p) => p.isBot);
+        if (bot) handleBotEvent(roomId, "room_update", room);
+      });
+      socket.on("connect_four_words_drop", ({ roomId, colIndex, letter }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "connect_four_words_playing") return;
+        if (room.connectFourWords.turn !== socket.id) return;
+        let targetRow = -1;
+        for (let r = 5; r >= 0; r--) {
+          if (!room.connectFourWords.board[r][colIndex].playerId) {
+            targetRow = r;
+            break;
+          }
+        }
+        if (targetRow === -1) return;
+        room.connectFourWords.board[targetRow][colIndex] = { playerId: socket.id, letter };
+        const board = room.connectFourWords.board;
+        const targetNormalized = normalizeEgyptian(room.connectFourWords.targetWord);
+        const targetReversed = targetNormalized.split("").reverse().join("");
+        let winningCells = null;
+        const checkLine = (r, c, dr, dc) => {
+          let str = "";
+          let cells = [];
+          for (let i = 0; i < 4; i++) {
+            const nr = r + dr * i;
+            const nc = c + dc * i;
+            if (nr >= 0 && nr < 6 && nc >= 0 && nc < 7) {
+              const cell = board[nr][nc];
+              if (cell.playerId === socket.id && cell.letter) {
+                str += normalizeEgyptian(cell.letter);
+                cells.push({ r: nr, c: nc });
+              } else {
+                break;
+              }
+            }
+          }
+          if (str === targetNormalized || str === targetReversed) return cells;
+          return null;
+        };
+        for (let r = 0; r < 6; r++) {
+          for (let c = 0; c < 7; c++) {
+            winningCells = winningCells || checkLine(r, c, 0, 1) || checkLine(r, c, 1, 0) || checkLine(r, c, 1, 1) || checkLine(r, c, 1, -1);
+            if (winningCells) break;
+          }
+          if (winningCells) break;
+        }
+        if (winningCells) {
+          room.gameState = "connect_four_words_finished";
+          room.connectFourWords.winnerId = socket.id;
+          room.connectFourWords.winningCells = winningCells;
+          const winnerIndex = room.players.findIndex((p) => p.id === socket.id);
+          const opponentIndex = room.players.findIndex((p) => p.id !== socket.id);
+          if (winnerIndex !== -1 && !room.players[winnerIndex].isBot) {
+            const s = room.players[winnerIndex].serial;
+            try {
+              const dbP = allPlayers.get(s);
+              if (dbP) {
+                dbP.connectFourWordsWins = (dbP.connectFourWordsWins || 0) + 1;
+                dbP.connectFourWordsMatchPoints = (dbP.connectFourWordsMatchPoints || 0) + 10;
+                savePlayerData(s);
+                io.to(room.players[winnerIndex].id).emit("player_data_update", dbP);
+              }
+            } catch (e) {
+            }
+          }
+        } else {
+          let isFull = true;
+          for (let c = 0; c < 7; c++) {
+            if (!board[0][c].playerId) {
+              isFull = false;
+              break;
+            }
+          }
+          if (isFull) {
+            room.gameState = "connect_four_words_finished";
+            room.connectFourWords.winnerId = "draw";
+          } else {
+            const opponent = room.players.find((p) => p.id !== socket.id);
+            if (opponent) room.connectFourWords.turn = opponent.id;
+          }
+        }
+        io.to(roomId).emit("room_update", room);
+        const bot = room.players.find((p) => p.isBot);
+        if (bot) handleBotEvent(roomId, "room_update", room);
+      });
+      socket.on("request_connect_four_words_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "connect_four_words_finished") return;
+        const player = room.players.find((p) => p.socketId === socket.id || p.id === socket.id);
+        const pId = player ? player.id : socket.id;
+        if (!room.connectFourWords.rematchRequestedBy.includes(pId)) {
+          room.connectFourWords.rematchRequestedBy.push(pId);
+        }
+        const isBotRoom = room.players.some((p) => p.isBot);
+        if (room.connectFourWords.rematchRequestedBy.length === 2 || isBotRoom) {
+          room.gameState = "connect_four_words_setup";
+          const validWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 4);
+          const targetWordObj = validWords[Math.floor(Math.random() * validWords.length)];
+          const targetWord = targetWordObj ? targetWordObj.original : "\u0643\u0631\u0633\u064A";
+          room.connectFourWords = {
+            targetWord,
+            letters: targetWord.split(""),
+            board: Array(6).fill(null).map(() => Array(7).fill({ playerId: null, letter: null })),
+            turn: room.players[0].id,
+            winnerId: null,
+            winningCells: null,
+            readyPlayers: [],
+            rematchRequestedBy: [],
+            startTime: null
+          };
+        }
+        io.to(roomId).emit("room_update", room);
+        const bot = room.players.find((p) => p.isBot);
+        if (bot) handleBotEvent(roomId, "room_update", room);
+      });
+      socket.on("start_puzzle", ({ roomId, playerId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "puzzle_setup") return;
+        room.puzzle.startRequestedBy = room.puzzle.startRequestedBy || [];
+        const player = room.players.find((p) => playerId && p.id === playerId || p.socketId === socket.id || p.id === socket.id);
+        const pId = player ? player.id : socket.id;
+        if (!room.puzzle.startRequestedBy.includes(pId)) {
+          room.puzzle.startRequestedBy.push(pId);
+        }
+        if (player && player.id && !room.puzzle.startRequestedBy.includes(player.id)) {
+          room.puzzle.startRequestedBy.push(player.id);
+        }
+        if (!room.puzzle.startRequestedBy.includes(socket.id)) {
+          room.puzzle.startRequestedBy.push(socket.id);
+        }
+        const botPlayer = room.players.find((p) => p.isBot);
+        if (botPlayer && !room.puzzle.startRequestedBy.includes(botPlayer.id)) {
+          room.puzzle.startRequestedBy.push(botPlayer.id);
+        }
+        if (room.puzzle.startRequestedBy.length >= room.players.length) {
+          room.gameState = "puzzle_playing";
+          room.puzzle.roundStartTime = Date.now();
+          room.puzzle.lastChanceStartTime = null;
+          room.puzzle.playersProgress = {};
+          room.puzzle.botPieces = {};
+          if (botPlayer) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        }
+        io.to(roomId).emit("room_update", room);
+      });
+      socket.on("puzzle_progress", ({ roomId, progress }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "puzzle_playing") return;
+        if (!room.puzzle.playersProgress) room.puzzle.playersProgress = {};
+        room.puzzle.playersProgress[socket.id] = progress;
+        io.to(roomId).emit("room_update", room);
+      });
+      socket.on("puzzle_done", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "puzzle_playing") return;
+        if (!room.puzzle.lastChanceStartTime) {
+          room.puzzle.lastChanceStartTime = Date.now();
+          io.to(roomId).emit("room_update", room);
+          const bot = room.players.find((p) => p.isBot);
+          if (bot) handleBotEvent(roomId, "room_update", room);
+        }
+      });
+      socket.on("puzzle_round_end", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "puzzle_playing") return;
+        if (!room.puzzle.totalScores) room.puzzle.totalScores = {};
+        for (const pid of Object.keys(room.puzzle.playersProgress || {})) {
+          room.puzzle.totalScores[pid] = (room.puzzle.totalScores[pid] || 0) + (room.puzzle.playersProgress[pid] || 0);
+        }
+        const puzzleBotKey = roomId + "_puzzle_bot_step";
+        if (botTimeouts.has(puzzleBotKey)) {
+          clearTimeout(botTimeouts.get(puzzleBotKey));
+          botTimeouts.delete(puzzleBotKey);
+        }
+        const bot = room.players.find((p) => p.isBot);
+        if (room.puzzle.currentRound < 3) {
+          room.puzzle.currentRound++;
+          room.puzzle.roundStartTime = Date.now();
+          room.puzzle.lastChanceStartTime = null;
+          room.puzzle.playersProgress = {};
+          room.puzzle.botPieces = {};
+          io.to(roomId).emit("room_update", room);
+          if (bot) handleBotEvent(roomId, "room_update", room);
+        } else {
+          room.gameState = "puzzle_finished";
+          room.puzzle.gameOver = true;
+          let maxScore = -1;
+          let winners = [];
+          for (const p of room.players) {
+            const pScore = room.puzzle.totalScores?.[p.id] || 0;
+            if (pScore > maxScore) {
+              maxScore = pScore;
+              winners = [p];
+            } else if (pScore === maxScore && maxScore > 0) {
+              winners.push(p);
+            }
+          }
+          if (winners.length === 1) {
+            const winnerPlayer = winners[0];
+            room.puzzle.winnerId = winnerPlayer.id;
+            winnerPlayer.puzzleWins = (winnerPlayer.puzzleWins || 0) + 1;
+            winnerPlayer.puzzleMatchPoints = (winnerPlayer.puzzleMatchPoints || 0) + 10;
+            if (!winnerPlayer.isBot && winnerPlayer.serial) {
+              const dbP = allPlayers.get(winnerPlayer.serial);
+              if (dbP) {
+                dbP.puzzleWins = winnerPlayer.puzzleWins;
+                dbP.puzzleMatchPoints = winnerPlayer.puzzleMatchPoints;
+                savePlayerData(winnerPlayer.serial);
+                io.to(winnerPlayer.socketId || winnerPlayer.id).emit("player_data_update", dbP);
+              }
+            }
+          }
+          io.to(roomId).emit("room_update", room);
+          if (bot) handleBotEvent(roomId, "room_update", room);
+        }
+      });
+      socket.on("request_puzzle_rematch", ({ roomId, playerId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "puzzle_finished") return;
+        if (!room.puzzle.rematchRequestedBy) {
+          room.puzzle.rematchRequestedBy = [];
+        }
+        const player = room.players.find((p) => p.socketId === socket.id || p.id === socket.id);
+        const pId = player ? player.id : socket.id;
+        if (!room.puzzle.rematchRequestedBy.includes(pId)) {
+          room.puzzle.rematchRequestedBy.push(pId);
+        }
+        const botPlayer = room.players.find((p) => p.isBot);
+        if (botPlayer && !room.puzzle.rematchRequestedBy.includes(botPlayer.id)) {
+          room.puzzle.rematchRequestedBy.push(botPlayer.id);
+        }
+        if (room.puzzle.rematchRequestedBy.length >= room.players.length) {
+          room.gameState = "puzzle_setup";
+          room.puzzle = {
+            currentRound: 1,
+            roundStartTime: null,
+            lastChanceStartTime: null,
+            playersProgress: {},
+            totalScores: {},
+            images: getRandomPuzzleImages(),
+            botPieces: {},
+            rematchRequestedBy: [],
+            gameOver: false,
+            startRequestedBy: []
+          };
+        }
+        io.to(roomId).emit("room_update", room);
+        if (botPlayer) handleBotEvent(roomId, "room_update", room);
+      });
+      socket.on("start_wordle", ({ roomId, playerId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "wordle_setup") return;
+        if (!room.wordle.readyPlayers) {
+          room.wordle.readyPlayers = [];
+        }
+        const player = room.players.find((p) => playerId && p.id === playerId || p.socketId === socket.id || p.id === socket.id);
+        if (player && !room.wordle.readyPlayers.includes(player.id)) {
+          room.wordle.readyPlayers.push(player.id);
+        }
+        const bots = room.players.filter((p) => p.isBot);
+        bots.forEach((b) => {
+          if (!room.wordle.readyPlayers.includes(b.id)) {
+            room.wordle.readyPlayers.push(b.id);
+          }
+        });
+        if (room.wordle.readyPlayers.length >= room.players.length) {
+          room.gameState = "wordle_playing";
+          room.wordle.startTime = Date.now();
+          room.wordle.gameOver = false;
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+          const interval = setInterval(() => {
+            const r = rooms.get(roomId);
+            if (!r || r.gameState !== "wordle_playing") {
+              clearInterval(interval);
+              return;
+            }
+            if (r.wordle.pausedAt) return;
+            if (Date.now() - r.wordle.startTime > 10 * 60 * 1e3) {
+              r.wordle.gameOver = true;
+              r.gameState = "wordle_finished";
+              io.to(roomId).emit("room_update", r);
+              io.to(roomId).emit("wordle_finished", { winnerId: null, word: r.wordle.targetWord });
+            }
+          }, 1e3);
+          intervals.set(roomId, interval);
+        }
+        io.to(roomId).emit("room_update", room);
+        handleBotEvent(roomId, "room_update", room);
+      });
+      socket.on("wordle_pause", (roomId) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "wordle_playing" || room.wordle.gameOver) return;
+        if (!room.wordle.pausedAt) {
+          room.wordle.pausedAt = Date.now();
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("wordle_resume", (roomId) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "wordle_playing" || room.wordle.gameOver) return;
+        if (room.wordle.pausedAt) {
+          room.wordle.startTime += Date.now() - room.wordle.pausedAt;
+          room.wordle.pausedAt = null;
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("wordle_guess", ({ roomId, word }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "wordle_playing" || room.wordle.gameOver) return;
+        const guess = normalizeEgyptian(word);
+        const targetWord = normalizeEgyptian(room.wordle.targetWord);
+        if (guess.length !== targetWord.length) return;
+        const validWordObj = NORMALIZED_BOMB_PARTY_WORDS.find((w) => w.normalized === guess)?.original || word;
+        const result = new Array(guess.length).fill("absent");
+        const targetLetters = targetWord.split("");
+        for (let i = 0; i < guess.length; i++) {
+          if (guess[i] === targetLetters[i]) {
+            result[i] = "correct";
+            targetLetters[i] = null;
+          }
+        }
+        for (let i = 0; i < guess.length; i++) {
+          if (result[i] !== "correct") {
+            const index = targetLetters.indexOf(guess[i]);
+            if (index !== -1) {
+              result[i] = "present";
+              targetLetters[index] = null;
+            }
+          }
+        }
+        if (!room.wordle.guesses[socket.id]) room.wordle.guesses[socket.id] = [];
+        room.wordle.guesses[socket.id].push({ word: validWordObj, result });
+        io.to(roomId).emit("wordle_guess_result", {
+          playerId: socket.id,
+          guess: { word: validWordObj, result }
+        });
+        if (result.every((r) => r === "correct")) {
+          room.wordle.gameOver = true;
+          room.wordle.winnerId = socket.id;
+          room.gameState = "wordle_finished";
+          const winnerPlayer = room.players.find((p) => p.id === socket.id);
+          if (winnerPlayer) {
+            winnerPlayer.wordleWins = (winnerPlayer.wordleWins || 0) + 1;
+            const dbP = allPlayers.get(winnerPlayer.serial);
+            if (dbP) {
+              dbP.wordleWins = winnerPlayer.wordleWins;
+              dbP.wordleMatchPoints = (dbP.wordleMatchPoints || 0) + 10;
+              savePlayerData(winnerPlayer.serial);
+              io.to(winnerPlayer.id).emit("player_data_update", dbP);
+            }
+          }
+          io.to(roomId).emit("wordle_finished", { winnerId: socket.id, word: room.wordle.targetWord });
+        }
+        io.to(roomId).emit("room_update", room);
+        handleBotEvent(roomId, "room_update", room);
+      });
+      socket.on("request_wordle_rematch", ({ roomId, playerId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "wordle_finished") return;
+        if (!room.wordle.rematchRequestedBy) {
+          room.wordle.rematchRequestedBy = [];
+        }
+        const player = room.players.find((p) => playerId && p.id === playerId || p.socketId === socket.id || p.id === socket.id);
+        if (player && !room.wordle.rematchRequestedBy.includes(player.id)) {
+          room.wordle.rematchRequestedBy.push(player.id);
+        }
+        const botPlayer = room.players.find((p) => p.isBot);
+        if (botPlayer && !room.wordle.rematchRequestedBy.includes(botPlayer.id)) {
+          room.wordle.rematchRequestedBy.push(botPlayer.id);
+        }
+        if (room.wordle.rematchRequestedBy.length >= room.players.length) {
+          room.gameState = "wordle_setup";
+          const readyPlayers = [];
+          const bot = room.players.find((p) => p.isBot);
+          if (bot) {
+            readyPlayers.push(bot.id);
+          }
+          room.wordle = {
+            targetWord: NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 5)[Math.floor(Math.random() * NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length === 5).length)].original,
+            guesses: {},
+            winnerId: null,
+            startTime: Date.now(),
+            rematchRequestedBy: [],
+            gameOver: false,
+            startRequestedBy: [],
+            readyPlayers
+          };
+          if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+          io.to(roomId).emit("room_update", room);
+          io.to(roomId).emit("wordle_rematch_started");
+          if (bot) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        } else {
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("claim_wordle_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.wordleRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          if ((player.wordleMatchPoints || 0) >= targetPoints) {
+            player.wordleMatchPoints = (player.wordleMatchPoints || 0) - targetPoints;
+            player.wordleRewardLevel = currentLevel + 1;
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            player.xp = (player.xp || 0) + xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            for (const [helperId, amount] of Object.entries(helpersReward)) {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + amount;
+            }
+            savePlayerData(serial);
+            socket.emit("player_data_update", player);
+            socket.emit("wordle_reward_claimed", {
+              newLevel: currentLevel + 1,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+      socket.on("claim_beach_race_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.beachRaceRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          if ((player.beachRaceMatchPoints || 0) >= targetPoints) {
+            player.beachRaceMatchPoints = (player.beachRaceMatchPoints || 0) - targetPoints;
+            player.beachRaceRewardLevel = currentLevel + 1;
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            player.xp = (player.xp || 0) + xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            for (const [helperId, amount] of Object.entries(helpersReward)) {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + amount;
+            }
+            savePlayerData(serial);
+            socket.emit("player_data_update", player);
+            socket.emit("beach_race_reward_claimed", {
+              newLevel: currentLevel + 1,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+      socket.on("start_beach_race", ({ roomId, playerId }) => {
+        import_fs.default.appendFileSync("debug.log", "START_BEACH_RACE " + roomId + " " + socket.id + " " + playerId + "\n");
+        const room = rooms.get(roomId);
+        if (room) import_fs.default.appendFileSync("debug.log", "PLAYERS: " + JSON.stringify(room.players.map((p) => p.id)) + " READY: " + JSON.stringify(room.beachRace?.readyPlayers) + "\n");
+        if (!room || room.gameState !== "beach_race_setup") return;
+        const startKey = roomId + "_beach_race_bot_start";
+        if (botTimeouts.has(startKey)) {
+          clearTimeout(botTimeouts.get(startKey));
+          botTimeouts.delete(startKey);
+        }
+        if (!room.beachRace.readyPlayers) {
+          room.beachRace.readyPlayers = [];
+        }
+        const player = room.players.find((p) => playerId && p.id === playerId || p.socketId === socket.id || p.id === socket.id);
+        if (player && !room.beachRace.readyPlayers.includes(player.id)) {
+          room.beachRace.readyPlayers.push(player.id);
+        }
+        const botPlayer = room.players.find((p) => p.isBot);
+        if (botPlayer && !room.beachRace.readyPlayers.includes(botPlayer.id)) {
+          room.beachRace.readyPlayers.push(botPlayer.id);
+        }
+        if (room.beachRace.readyPlayers.length >= room.players.length) {
+          room.gameState = "beach_race_playing";
+          room.beachRace.startTime = Date.now();
+          room.beachRace.gameOver = false;
+        }
+        io.to(roomId).emit("room_update", room);
+        handleBotEvent(roomId, "room_update", room);
+      });
+      socket.on("beach_race_update_progress", ({ roomId, distance, collectedLetters }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing") return;
+        const pId = socket.id;
+        if (!room.beachRace.playersProgress) {
+          room.beachRace.playersProgress = {};
+        }
+        if (!room.beachRace.playersProgress[pId]) {
+          room.beachRace.playersProgress[pId] = { distance: 0, stage: 1, collectedLetters: [], isAtCheckpoint: false };
+        }
+        room.beachRace.playersProgress[pId].distance = distance;
+        if (collectedLetters && Array.isArray(collectedLetters)) {
+          room.beachRace.playersProgress[pId].collectedLetters = collectedLetters;
+        }
+        socket.to(roomId).emit("beach_race_progress_updated", {
+          playerId: pId,
+          distance,
+          collectedLetters
+        });
+      });
+      socket.on("beach_race_reach_checkpoint", ({ roomId, stage }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing") return;
+        const pId = socket.id;
+        if (room.beachRace.playersProgress && room.beachRace.playersProgress[pId]) {
+          room.beachRace.playersProgress[pId].stage = stage;
+          room.beachRace.playersProgress[pId].isAtCheckpoint = true;
+        }
+        io.to(roomId).emit("room_update", room);
+      });
+      socket.on("beach_race_resume_runner", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing") return;
+        const pId = socket.id;
+        if (room.beachRace.playersProgress && room.beachRace.playersProgress[pId]) {
+          room.beachRace.playersProgress[pId].isAtCheckpoint = false;
+        }
+        io.to(roomId).emit("room_update", room);
+      });
+      socket.on("beach_race_submit_guess", ({ roomId, guessWord, carrotsCount }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing" || room.beachRace.gameOver) return;
+        const targetWord = normalizeEgyptian(room.beachRace.targetWord);
+        const playerGuess = normalizeEgyptian(guessWord);
+        if (playerGuess === targetWord) {
+          room.beachRace.gameOver = true;
+          room.beachRace.winnerId = socket.id;
+          room.gameState = "beach_race_finished";
+          const winnerPlayer = room.players.find((p) => p.id === socket.id);
+          if (winnerPlayer) {
+            winnerPlayer.beachRaceWins = (winnerPlayer.beachRaceWins || 0) + 1;
+            const dbP = allPlayers.get(winnerPlayer.serial);
+            if (dbP) {
+              dbP.beachRaceWins = winnerPlayer.beachRaceWins;
+              const rawCarrots = Math.max(0, parseInt(carrotsCount) || 0);
+              const bonusCarrotPoints = Math.floor(rawCarrots / 10);
+              dbP.beachRaceMatchPoints = (dbP.beachRaceMatchPoints || 0) + 10 + bonusCarrotPoints;
+              savePlayerData(winnerPlayer.serial);
+              io.to(winnerPlayer.id).emit("player_data_update", dbP);
+            }
+          }
+          io.to(roomId).emit("beach_race_finished", { winnerId: socket.id, targetWord: room.beachRace.targetWord });
+          io.to(roomId).emit("room_update", room);
+        } else {
+          socket.emit("beach_race_wrong_guess", { message: "\u062A\u062E\u0645\u064A\u0646 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D" });
+        }
+      });
+      socket.on("beach_race_time_up", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_playing" || room.beachRace.gameOver) return;
+        room.beachRace.gameOver = true;
+        room.beachRace.winnerId = null;
+        room.gameState = "beach_race_finished";
+        io.to(roomId).emit("beach_race_finished", { winnerId: null, targetWord: room.beachRace.targetWord });
+        io.to(roomId).emit("room_update", room);
+      });
+      socket.on("request_beach_race_rematch", ({ roomId, playerId }) => {
+        const room = rooms.get(roomId);
+        if (!room || room.gameState !== "beach_race_finished") return;
+        if (!room.beachRace) {
+          startBeachRaceSetup(room, roomId);
+          return;
+        }
+        if (!room.beachRace.rematchRequestedBy) {
+          room.beachRace.rematchRequestedBy = [];
+        }
+        const player = room.players.find((p) => playerId && p.id === playerId || p.socketId === socket.id || p.id === socket.id);
+        const pId = player ? player.id : socket.id;
+        if (!room.beachRace.rematchRequestedBy.includes(pId)) {
+          room.beachRace.rematchRequestedBy.push(pId);
+        }
+        const botPlayer = room.players.find((p) => p.isBot);
+        if (botPlayer && !room.beachRace.rematchRequestedBy.includes(botPlayer.id)) {
+          room.beachRace.rematchRequestedBy.push(botPlayer.id);
+        }
+        if (room.beachRace.rematchRequestedBy.length >= room.players.length) {
+          startBeachRaceSetup(room, roomId);
+        } else {
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("claim_connect_four_words_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.connectFourWordsRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          if ((player.connectFourWordsMatchPoints || 0) >= targetPoints) {
+            player.connectFourWordsMatchPoints = (player.connectFourWordsMatchPoints || 0) - targetPoints;
+            player.connectFourWordsRewardLevel = currentLevel + 1;
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            player.xp = (player.xp || 0) + xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            for (const [helperId, amount] of Object.entries(helpersReward)) {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + amount;
+            }
+            savePlayerData(serial);
+            socket.emit("player_data_update", player);
+          }
+        }
+      });
+      socket.on("request_hand_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "hand_finished") {
+          if (!room.handRematchRequestedBy) {
+            room.handRematchRequestedBy = [];
+          }
+          if (!room.handRematchRequestedBy.includes(socket.id)) {
+            room.handRematchRequestedBy.push(socket.id);
+          }
+          if (room.handRematchRequestedBy.length >= 2) {
+            room.handRematchRequestedBy = [];
+            initializeHandGame(room);
+            const opponent = room.players.find((p) => p.id !== socket.id);
+            if (opponent && opponent.isBot) {
+              handleBotEvent(roomId, "room_update", room);
+            }
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("play_again", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          for (const key of Array.from(botTimeouts.keys())) {
+            if (key.startsWith(roomId)) {
+              clearTimeout(botTimeouts.get(key));
+              botTimeouts.delete(key);
+            }
+          }
+          for (const key of Object.keys(botFlags)) {
+            if (key.startsWith(roomId)) {
+              delete botFlags[key];
+            }
+          }
+          room.gameState = "waiting";
+          room.finishedAt = null;
+          room.adPausedPlayers = /* @__PURE__ */ new Set();
+          room.adPausedPlayersArray = [];
+          if (room.powerUpAdsInProgress) room.powerUpAdsInProgress.clear();
+          room.spaceWar = null;
+          room.puzzle = null;
+          room.beachRace = null;
+          room.wordle = null;
+          room.connectFourWords = null;
+          room.bombParty = null;
+          room.timer = 120;
+          room.winnerId = null;
+          room.isPaused = false;
+          room.pausingPlayerId = null;
+          room.quickGuessTimer = 0;
+          room.isFrozen = false;
+          room.freezeTimer = 0;
+          room.adCooldownTimer = 0;
+          room.isCustomImageMode = false;
+          room.selectionMode = null;
+          room.customImages = {};
+          room.dotsBoardSize = null;
+          room.dotsLines = {};
+          room.dotsBoxes = {};
+          room.dotsPlayer1 = null;
+          room.dotsPlayer2 = null;
+          room.dotsTurn = null;
+          room.dotsTurnTimer = 15;
+          room.dotsP1Score = 0;
+          room.dotsP2Score = 0;
+          room.dotsWinner = null;
+          room.dotsRematchRequestedBy = [];
+          room.dotsLevel = 1;
+          room.dotsMatchWins = {};
+          room.handGrid = null;
+          room.handPickerId = null;
+          room.handSearcherId = null;
+          room.handPhase = null;
+          room.handTargetNumber = null;
+          room.handSearcherSelected = null;
+          room.handRematchRequestedBy = [];
+          room.handP1Score = 0;
+          room.handP2Score = 0;
+          room.handWinner = null;
+          room.handNumbers = null;
+          room.iqBoard = null;
+          room.iqFlipped = null;
+          room.iqMatched = null;
+          room.iqTurn = null;
+          room.iqLevel = 1;
+          room.iqMatchWins = {};
+          room.iqBoardSize = null;
+          room.xoBoard = null;
+          room.xoTurn = null;
+          room.xoWinner = null;
+          room.xoWinningLine = null;
+          room.xoXPlayer = null;
+          room.xoOPlayer = null;
+          room.xoLevel = 1;
+          room.xoMatchWins = {};
+          room.xoBoardSize = 3;
+          room.xoWinLength = 3;
+          room.busCompleteScores = {};
+          room.busCompleteSubmitTimes = {};
+          room.busCompleteWinner = null;
+          room.busCompleteLetter = null;
+          room.busCompleteChangeLetterRequestBy = null;
+          room.busCompleteSubmittedPlayers = [];
+          room.busCompleteViewersCount = 0;
+          room.busCompleteRematchRequestedBy = [];
+          room.speedCupsLevel = 1;
+          room.speedCupsMatchWins = {};
+          room.speedCupsRematchRequestedBy = [];
+          room.speedCupsCards = [];
+          room.speedCupsCurrentCardIndex = 0;
+          room.speedCupsP1Stack = [];
+          room.speedCupsP2Stack = [];
+          room.speedCupsP1Done = false;
+          room.speedCupsP2Done = false;
+          room.speedCupsWinner = null;
+          room.players.forEach((p) => {
+            p.targetImage = null;
+            p.hasGuessed = false;
+            p.lastGuess = "";
+            p.wantsRematch = false;
+            p.selectedCategory = null;
+            p.selectedLevel = "\u0645\u0633\u062A\u0648\u064A \u0645\u0628\u062A\u062F\u0626\u064A\u0646 \u0627\u0644\u062A\u062E\u0645\u064A\u0646";
+            p.hintCount = 0;
+            p.quickGuessUsed = false;
+            p.wordLengthUsed = false;
+            p.timeFreezeUsed = false;
+            p.wordCountUsed = false;
+            p.spyLensUsed = false;
+            p.helperCharge = 0;
+            p.chatBuffer = "";
+            p.selectedSelectionMode = null;
+            p.engChatBuffer = "";
+          });
+          if (intervals.has(roomId)) {
+            clearInterval(intervals.get(roomId));
+            intervals.delete(roomId);
+          }
+          startWaitingInterval(roomId);
+          io.to(roomId).emit("room_update", room);
+          const bot = room.players.find((p) => p.isBot);
+          if (bot) {
+            handleBotEvent(roomId, "room_update", room);
+          }
+        } else if (!room) {
+          socket.emit("opponent_left_lobby");
+        }
+      });
+      socket.on("admin_get_players", (callback) => {
+        const player = socket.data?.serial ? allPlayers.get(socket.data.serial) : void 0;
+        if (player?.isAdmin || socket.data?.isAdmin) {
+          const playersWithOnlineStatus = Array.from(allPlayers.values()).map(
+            (p) => ({
+              ...p,
+              isOnline: playerSockets.has(p.serial)
+            })
+          );
+          callback(playersWithOnlineStatus);
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_get_shop_items", (callback) => {
+        const player = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (player?.isAdmin || socket.data?.isAdmin) {
+          try {
+            const items = db.prepare("SELECT * FROM shop_items ORDER BY timestamp DESC").all();
+            callback(items);
+          } catch (err) {
+            callback({ error: "Database error" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_add_shop_item", (item, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            const id = Math.random().toString(36).substring(2, 15);
+            db.prepare(
+              "INSERT INTO shop_items (id, name, description, price, type, image, amount, active, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ).run(
+              id,
+              item.name,
+              item.description,
+              item.price,
+              item.type,
+              item.image,
+              item.amount || 0,
+              item.active ? 1 : 0,
+              Date.now()
+            );
+            callback({ success: true, id });
+          } catch (err) {
+            callback({ error: "Database error" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_update_shop_item", ({ id, updates }, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            const setClause = Object.keys(updates).map((k) => `${k} = ?`).join(", ");
+            const values = Object.values(updates).map(
+              (v) => typeof v === "boolean" ? v ? 1 : 0 : v
+            );
+            db.prepare(`UPDATE shop_items SET ${setClause} WHERE id = ?`).run(
+              ...values,
+              id
+            );
+            callback({ success: true });
+          } catch (err) {
+            console.error("Error updating shop item:", err);
+            callback({ error: "Database error" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_delete_shop_item", (id, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            db.prepare("DELETE FROM shop_items WHERE id = ?").run(id);
+            callback({ success: true });
+          } catch (err) {
+            callback({ error: "Database error" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_get_settings", (callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            const rows = db.prepare("SELECT * FROM settings").all();
+            const settings = rows.reduce((acc, row) => {
+              acc[row.key] = row.value;
+              return acc;
+            }, {});
+            callback(settings);
+          } catch (err) {
+            callback({ error: "Database error" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_update_settings", (settings, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            const stmt = db.prepare(
+              "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+            );
+            db.transaction(() => {
+              for (const [key, value] of Object.entries(settings)) {
+                stmt.run(key, String(value));
+              }
+            })();
+            if (settings.lucky_wheel_enabled !== void 0) {
+              io.emit("app_settings", {
+                lucky_wheel_enabled: settings.lucky_wheel_enabled === "true" || settings.lucky_wheel_enabled === true
+              });
+            }
+            callback({ success: true });
+          } catch (err) {
+            callback({ error: "Database error" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_send_announcement", (message, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        console.log(
+          `[Admin Send Announcement] socket.data.serial: ${socket.data?.serial}, admin.isAdmin: ${admin2?.isAdmin}, socket.data.isAdmin: ${socket.data?.isAdmin}`
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          io.emit("system_announcement", message);
+          callback({ success: true });
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_force_refresh", (callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        console.log(
+          `[Admin Force Refresh] socket.data.serial: ${socket.data?.serial}, admin.isAdmin: ${admin2?.isAdmin}, socket.data.isAdmin: ${socket.data?.isAdmin}`
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          io.emit("force_refresh");
+          callback({ success: true });
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_sync_database", async (callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            console.log("[DB] Manual backup sync triggered by admin via Socket...");
+            await syncDbToSupabase(true);
+            callback({ success: true, message: "\u062A\u0645 \u062A\u062D\u062F\u064A\u062B \u0648\u0631\u0641\u0639 \u0646\u0633\u062E\u0629 \u0642\u0627\u0639\u062F\u0629 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0625\u0644\u0649 \u0627\u0644\u0633\u062D\u0627\u0628\u0629 \u0628\u0646\u062C\u0627\u062D!" });
+          } catch (err) {
+            console.error("[DB] Socket sync error:", err);
+            callback({ error: err.message || "\u0641\u0634\u0644 \u0631\u0641\u0639 \u0642\u0627\u0639\u062F\u0629 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_update_policies", (data, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            gamePolicies.termsAr = data.termsAr;
+            gamePolicies.termsEn = data.termsEn;
+            gamePolicies.privacyAr = data.privacyAr;
+            gamePolicies.privacyEn = data.privacyEn;
+            gamePolicies.isRainGiftEnabled = data.isRainGiftEnabled;
+            db.prepare(
+              "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+            ).run("terms_policy_ar", data.termsAr);
+            db.prepare(
+              "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+            ).run("terms_policy_en", data.termsEn);
+            db.prepare(
+              "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+            ).run("privacy_policy_ar", data.privacyAr);
+            db.prepare(
+              "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+            ).run("privacy_policy_en", data.privacyEn);
+            db.prepare(
+              "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+            ).run(
+              "is_rain_gift_enabled",
+              data.isRainGiftEnabled ? "true" : "false"
+            );
+            io.emit("policies_update", gamePolicies);
+            callback({ success: true });
+          } catch (err) {
+            console.error("Failed to update policies:", err);
+            callback({ error: "Failed to update policies" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_set_global_reward", (rewardData, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            const newReward = {
+              id: "reward_" + Date.now(),
+              type: rewardData.type,
+              // 'pro_package', 'unlock_helpers', or 'tokens'
+              durationHours: rewardData.durationHours,
+              tokenAmount: rewardData.tokenAmount || 0,
+              message: rewardData.message,
+              expiresAt: Date.now() + (rewardData.durationHours || 24) * 60 * 60 * 1e3
+            };
+            activeGlobalReward = newReward;
+            db.prepare(
+              "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+            ).run("global_reward", JSON.stringify(newReward));
+            try {
+              db.prepare(
+                "INSERT INTO reward_history (id, type, durationHours, tokenAmount, expiresInDays, message, sentAt, expiresAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+              ).run(
+                newReward.id,
+                newReward.type,
+                newReward.durationHours,
+                newReward.tokenAmount,
+                Math.ceil(newReward.durationHours / 24),
+                newReward.message,
+                Date.now(),
+                newReward.expiresAt
+              );
+            } catch (historyErr) {
+              console.error("Failed to save reward history:", historyErr);
+            }
+            if (newReward.type === "tokens") {
+              io.sockets.sockets.forEach((s) => {
+                const serial = s.data?.serial;
+                if (serial) {
+                  const player = allPlayers.get(serial);
+                  if (player) {
+                    const level = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+                    if (level >= 50) {
+                      s.emit("global_reward_available", newReward);
+                    }
+                  }
+                }
+              });
+            } else {
+              io.emit("global_reward_available", newReward);
+            }
+            callback({ success: true, reward: newReward });
+          } catch (err) {
+            console.error("Failed to set global reward:", err);
+            callback({ error: "Failed to set reward" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_get_reward_history", (callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            const history = db.prepare(
+              "SELECT * FROM reward_history ORDER BY sentAt DESC LIMIT 20"
+            ).all();
+            callback(history);
+          } catch (err) {
+            console.error("Failed to get reward history:", err);
+            callback([]);
+          }
+        } else {
+          callback([]);
+        }
+      });
+      socket.on("admin_cancel_global_reward", (callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            activeGlobalReward = null;
+            db.prepare("DELETE FROM settings WHERE key = ?").run(
+              "global_reward"
+            );
+            io.emit("global_reward_available", null);
+            callback({ success: true });
+          } catch (err) {
+            console.error("Failed to cancel global reward:", err);
+            callback({ error: "Failed to cancel reward" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("claim_bus_complete_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const level = player.busCompleteRewardLevel || 1;
+          const requiredPoints = level * 100;
+          if ((player.busCompleteMatchPoints || 0) >= requiredPoints) {
+            player.busCompleteMatchPoints -= requiredPoints;
+            const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
+            player.xp = (player.xp || 0) + xpReward;
+            const keysReward = level;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            const helpersReward = {};
+            [
+              "hint",
+              "word_length",
+              "time_freeze",
+              "word_count",
+              "spy_lens"
+            ].forEach((h) => {
+              player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
+              helpersReward[h] = level;
+            });
+            if (!player.busCompleteExpiring) player.busCompleteExpiring = [];
+            player.busCompleteExpiring.push({
+              expiresAt: Date.now() + 48 * 60 * 60 * 1e3,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+            player.busCompleteRewardLevel = level === 10 ? 1 : level + 1;
+            const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+            if (!player.level || newLevel > player.level) {
+              player.level = newLevel;
+            }
+            savePlayerData(serial);
+            socket.emit("update_player", player);
+            socket.emit("bus_complete_reward_claimed", {
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward,
+              newLevel: player.busCompleteRewardLevel,
+              points: player.busCompleteMatchPoints
+            });
+          }
+        }
+      });
+      socket.on("claim_hand_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const level = player.handRewardLevel || 1;
+          const requiredPoints = level * 100;
+          if ((player.handMatchPoints || 0) >= requiredPoints) {
+            player.handMatchPoints -= requiredPoints;
+            const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
+            player.xp = (player.xp || 0) + xpReward;
+            const keysReward = level;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            const helpersReward = {};
+            [
+              "skip_letter",
+              "remove_category",
+              "time_freeze",
+              "word_count",
+              "spy_lens"
+            ].forEach((h) => {
+              player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
+              helpersReward[h] = level;
+            });
+            player.handRewardLevel = level === 10 ? 1 : level + 1;
+            const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+            if (!player.level || newLevel > player.level) {
+              player.level = newLevel;
+            }
+            savePlayerData(serial);
+            socket.emit("update_player", player);
+            socket.emit("hand_reward_claimed", {
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward,
+              newLevel: player.handRewardLevel,
+              points: player.handMatchPoints
+            });
+          }
+        }
+      });
+      socket.on("claim_iq_reward", async ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.iqRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          if ((player.iqMatchPoints || 0) >= targetPoints) {
+            player.iqMatchPoints = (player.iqMatchPoints || 0) - targetPoints;
+            player.iqRewardLevel = currentLevel + 1;
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            player.xp += xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = { time_freeze: 0, word_length: 0, word_count: 0, hint: 0, spy_lens: 0 };
+            if (!player.ownedHelpers) player.ownedHelpers = { time_freeze: 0, word_length: 0, word_count: 0, hint: 0, spy_lens: 0 };
+            player.ownedHelpers.time_freeze += helpersReward.time_freeze;
+            player.ownedHelpers.word_length += helpersReward.word_length;
+            player.ownedHelpers.word_count += helpersReward.word_count;
+            player.ownedHelpers.hint += helpersReward.hint;
+            player.ownedHelpers.spy_lens += helpersReward.spy_lens;
+            savePlayerData(player.serial);
+            socket.emit("iq_reward_claimed", {
+              newLevel: player.iqRewardLevel,
+              points: player.iqMatchPoints,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+      socket.on("claim_dots_reward", async ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.dotsRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          if ((player.dotsMatchPoints || 0) >= targetPoints) {
+            player.dotsMatchPoints = (player.dotsMatchPoints || 0) - targetPoints;
+            player.dotsRewardLevel = currentLevel + 1;
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            player.xp += xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = { time_freeze: 0, word_length: 0, word_count: 0, hint: 0, spy_lens: 0 };
+            player.ownedHelpers.time_freeze += helpersReward.time_freeze;
+            player.ownedHelpers.word_length += helpersReward.word_length;
+            player.ownedHelpers.word_count += helpersReward.word_count;
+            player.ownedHelpers.hint += helpersReward.hint;
+            player.ownedHelpers.spy_lens += helpersReward.spy_lens;
+            savePlayerData(player.serial);
+            socket.emit("dots_reward_claimed", {
+              newLevel: player.dotsRewardLevel,
+              points: player.dotsMatchPoints,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+      socket.on("claim_speed_cups_reward", async ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.speedCupsRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          if ((player.speedCupsMatchPoints || 0) >= targetPoints) {
+            player.speedCupsMatchPoints = (player.speedCupsMatchPoints || 0) - targetPoints;
+            player.speedCupsRewardLevel = currentLevel + 1;
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            player.xp += xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = { time_freeze: 0, word_length: 0, word_count: 0, hint: 0, spy_lens: 0 };
+            player.ownedHelpers.time_freeze += helpersReward.time_freeze;
+            player.ownedHelpers.word_length += helpersReward.word_length;
+            player.ownedHelpers.word_count += helpersReward.word_count;
+            player.ownedHelpers.hint += helpersReward.hint;
+            player.ownedHelpers.spy_lens += helpersReward.spy_lens;
+            savePlayerData(player.serial);
+            socket.emit("speed_cups_reward_claimed", {
+              newLevel: player.speedCupsRewardLevel,
+              points: player.speedCupsMatchPoints,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+      socket.on("claim_bomb_party_reward", ({ serial, level }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
+          player.xp = (player.xp || 0) + xpReward;
+          const keysReward = level;
+          player.keys = (player.keys || 0) + keysReward;
+          if (!player.ownedHelpers) player.ownedHelpers = {};
+          const helpersReward = {};
+          [
+            "hint",
+            "word_length",
+            "time_freeze",
+            "word_count",
+            "spy_lens"
+          ].forEach((h) => {
+            player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
+            helpersReward[h] = level;
+          });
+          const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+          if (!player.level || newLevel > player.level) {
+            player.level = newLevel;
+          }
+          savePlayerData(serial);
+          socket.emit("update_player", player);
+          socket.emit("bomb_party_reward_claimed", {
+            xp: xpReward,
+            keys: keysReward,
+            helpers: helpersReward,
+            newLevel: level + 1
+          });
+        }
+      });
+      socket.on("claim_xo_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const level = player.xoRewardLevel || 1;
+          const requiredPoints = level * 100;
+          if ((player.xoMatchPoints || 0) >= requiredPoints) {
+            player.xoMatchPoints -= requiredPoints;
+            const xpReward = level === 1 ? 50 : 100 + 50 * (level - 1);
+            player.xp = (player.xp || 0) + xpReward;
+            const keysReward = level;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            const helpersReward = {};
+            [
+              "hint",
+              "word_length",
+              "time_freeze",
+              "word_count",
+              "spy_lens"
+            ].forEach((h) => {
+              player.ownedHelpers[h] = (player.ownedHelpers[h] || 0) + level;
+              helpersReward[h] = level;
+            });
+            player.xoRewardLevel = level === 10 ? 1 : level + 1;
+            const newLevel = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+            if (!player.level || newLevel > player.level) {
+              player.level = newLevel;
+            }
+            savePlayerData(serial);
+            socket.emit("update_player", player);
+            socket.emit("xo_reward_claimed", {
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward,
+              newLevel: player.xoRewardLevel,
+              points: player.xoMatchPoints
+            });
+          }
+        }
+      });
+      socket.on("claim_global_reward", (callback) => {
+        const serial = socket.data?.serial;
+        if (!serial) return callback({ error: "Not logged in" });
+        const player = allPlayers.get(serial);
+        if (!player) return callback({ error: "Player not found" });
+        if (!activeGlobalReward) return callback({ error: "No active reward" });
+        if (activeGlobalReward.expiresAt < Date.now())
+          return callback({ error: "Reward expired" });
+        if (!player.claimedRewards) player.claimedRewards = [];
+        if (player.claimedRewards.includes(activeGlobalReward.id)) {
+          return callback({ error: "Already claimed" });
+        }
+        const now = Date.now();
+        const remainingMs = Math.max(0, activeGlobalReward.expiresAt - now);
+        if (remainingMs <= 0) {
+          return callback({ error: "Reward expired" });
+        }
+        const level = Math.floor(Math.sqrt((player.xp || 0) / 50)) + 1;
+        if (activeGlobalReward.type === "tokens" && level < 50) {
+          return callback({
+            error: "\u0647\u0630\u0647 \u0627\u0644\u0645\u0643\u0627\u0641\u0623\u0629 \u0645\u062E\u0635\u0635\u0629 \u0644\u0644\u0627\u0639\u0628\u064A\u0646 \u0645\u0633\u062A\u0648\u0649 50 \u0641\u0645\u0627 \u0641\u0648\u0642 \u0641\u0642\u0637"
+          });
+        }
+        if (activeGlobalReward.type === "pro_package") {
+          player.proPackageExpiry = Math.max(player.proPackageExpiry || 0, now) + remainingMs;
+        } else if (activeGlobalReward.type === "unlock_helpers") {
+          player.unlockedHelpersExpiry = Math.max(player.unlockedHelpersExpiry || 0, now) + remainingMs;
+        } else if (activeGlobalReward.type === "tokens") {
+          player.tokens = (player.tokens || 0) + (activeGlobalReward.tokenAmount || 0);
+        }
+        player.claimedRewards.push(activeGlobalReward.id);
+        savePlayerData(serial);
+        callback({ success: true, player });
+      });
+      socket.on("get_shop_items", (callback) => {
+        try {
+          const items = db.prepare(
+            "SELECT * FROM shop_items WHERE active = 1 ORDER BY timestamp DESC"
+          ).all();
+          callback(items);
+        } catch (err) {
+          callback([]);
+        }
+      });
+      socket.on("buy_tokens_with_keys", ({ playerSerial }, callback) => {
+        const player = allPlayers.get(playerSerial);
+        if (player) {
+          if ((player.keys || 0) >= 100) {
+            player.keys -= 100;
+            player.tokens = (player.tokens || 0) + 10;
+            savePlayerData(playerSerial);
+            emitPlayerDataUpdate(io.to(socket.id), player.serial, player);
+            callback({ success: true });
+          } else {
+            callback({ success: false, error: "\u0644\u064A\u0633 \u0644\u062F\u064A\u0643 \u0645\u0641\u0627\u062A\u064A\u062D \u0643\u0627\u0641\u064A\u0629!" });
+          }
+        } else {
+          callback({ success: false, error: "\u0627\u0644\u0644\u0627\u0639\u0628 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F!" });
+        }
+      });
+      socket.on("buy_pro_with_keys", ({ playerSerial }, callback) => {
+        const player = allPlayers.get(playerSerial);
+        if (player) {
+          if ((player.keys || 0) >= 100) {
+            player.keys -= 100;
+            const now = Date.now();
+            player.proPackageExpiry = Math.max(player.proPackageExpiry || 0, now) + 1 * 24 * 60 * 60 * 1e3;
+            savePlayerData(playerSerial);
+            emitPlayerDataUpdate(io.to(socket.id), player.serial, player);
+            callback({
+              success: true,
+              proPackageExpiry: player.proPackageExpiry
+            });
+          } else {
+            callback({ success: false, error: "\u0644\u064A\u0633 \u0644\u062F\u064A\u0643 \u0645\u0641\u0627\u062A\u064A\u062D \u0643\u0627\u0641\u064A\u0629!" });
+          }
+        } else {
+          callback({ success: false, error: "\u0627\u0644\u0644\u0627\u0639\u0628 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F!" });
+        }
+      });
+      socket.on("admin_get_contacts", (callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            const contacts = db.prepare("SELECT * FROM contacts ORDER BY timestamp DESC").all();
+            callback(contacts);
+          } catch (err) {
+            callback({ error: "Failed to fetch contacts" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_delete_contact", (id, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            db.prepare("DELETE FROM contacts WHERE id = ?").run(id);
+            callback({ success: true });
+          } catch (err) {
+            callback({ error: "Failed to delete contact" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on(
+        "admin_reply_contact",
+        ({ contactId, message, playerSerial }, callback) => {
+          const admin2 = Array.from(allPlayers.values()).find(
+            (p) => p.serial === socket.data?.serial
+          );
+          if (admin2?.isAdmin || socket.data?.isAdmin) {
+            try {
+              db.prepare(
+                "INSERT INTO admin_messages (playerSerial, message, timestamp) VALUES (?, ?, ?)"
+              ).run(playerSerial, message, Date.now());
+              db.prepare("DELETE FROM contacts WHERE id = ?").run(contactId);
+              const targetSocketId = playerSockets.get(playerSerial);
+              if (targetSocketId) {
+                io.to(targetSocketId).emit("new_admin_message");
+              }
+              callback({ success: true });
+            } catch (err) {
+              callback({ error: "Failed to reply" });
+            }
+          } else {
+            callback({ error: "Unauthorized" });
+          }
+        }
+      );
+      socket.on(
+        "admin_reply_report",
+        ({ reportId, message, playerSerial }, callback) => {
+          const admin2 = Array.from(allPlayers.values()).find(
+            (p) => p.serial === socket.data?.serial
+          );
+          if (admin2?.isAdmin || socket.data?.isAdmin) {
+            try {
+              db.prepare(
+                "INSERT INTO admin_messages (playerSerial, message, timestamp) VALUES (?, ?, ?)"
+              ).run(playerSerial, message, Date.now());
+              db.prepare("DELETE FROM reports WHERE id = ?").run(reportId);
+              const targetSocketId = playerSockets.get(playerSerial);
+              if (targetSocketId) {
+                io.to(targetSocketId).emit("new_admin_message");
+              }
+              callback({ success: true });
+            } catch (err) {
+              callback({ error: "Failed to reply" });
+            }
+          } else {
+            callback({ error: "Unauthorized" });
+          }
+        }
+      );
+      socket.on("admin_get_reports", (callback) => {
+        const player = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (player?.isAdmin || socket.data?.isAdmin) {
+          try {
+            const reports = db.prepare("SELECT * FROM reports ORDER BY timestamp DESC").all();
+            callback(reports);
+          } catch (err) {
+            callback({ error: "Failed to fetch reports" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_delete_report", (reportId, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          try {
+            db.prepare("DELETE FROM reports WHERE id = ?").run(reportId);
+            callback({ success: true });
+          } catch (err) {
+            callback({ error: "Failed to delete report" });
+          }
+        } else {
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_update_player", ({ serial, updates }, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          const player = allPlayers.get(serial);
+          if (player) {
+            Object.assign(player, updates);
+            if (updates.xp !== void 0) player.level = getLevel(updates.xp);
+            if (updates.tokens !== void 0) player.tokens = updates.tokens;
+            if (updates.isPermanentBan === 1) {
+              if (player.fingerprint || player.ip) {
+                db.prepare(
+                  "INSERT INTO banned_identities (fingerprint, ip, timestamp) VALUES (?, ?, ?)"
+                ).run(
+                  player.fingerprint || null,
+                  player.ip || null,
+                  Date.now()
+                );
+              }
+            } else if (updates.isPermanentBan === 0) {
+              db.prepare(
+                "DELETE FROM banned_identities WHERE (fingerprint = ? AND fingerprint IS NOT NULL)"
+              ).run(player.fingerprint || null);
+            }
+            savePlayerData(serial);
+            for (const [socketId, s] of io.sockets.sockets) {
+              if (s.data?.serial === serial) {
+                emitPlayerDataUpdate(io.to(socketId), player.serial, player);
+                if (updates.isPermanentBan === 1) {
+                  io.to(socketId).emit("banned_status", { isPermanent: true });
+                } else if (updates.banUntil && updates.banUntil > Date.now()) {
+                  io.to(socketId).emit("banned_status", {
+                    banUntil: updates.banUntil,
+                    isPermanent: false
+                  });
+                }
+                break;
+              }
+            }
+            if (typeof callback === "function") callback({ success: true });
+          } else {
+            if (typeof callback === "function") callback({ error: "Player not found" });
+          }
+        } else {
+          if (typeof callback === "function") callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_delete_player", (serial, callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          if (allPlayers.has(serial)) {
+            allPlayers.delete(serial);
+            db.prepare("DELETE FROM players WHERE serial = ?").run(serial);
+            for (const [socketId, s] of io.sockets.sockets) {
+              if (s.data?.serial === serial) {
+                io.to(socketId).emit("account_deleted_by_admin");
+                io.to(socketId).emit("banned_status", { isPermanent: true });
+                break;
+              }
+            }
+            if (typeof callback === "function") callback({ success: true });
+          } else {
+            if (typeof callback === "function") callback({ error: "Player not found" });
+          }
+        } else {
+          if (typeof callback === "function") callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("get_collection_notifications", ({ serial }, callback) => {
+        if (!serial) return callback({ notifications: [] });
+        try {
+          const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1e3;
+          const notifications = db.prepare(
+            "SELECT cn.*, p.name as sender_name, p.avatar as sender_avatar, p.level as sender_level FROM collection_notifications cn LEFT JOIN players p ON cn.sender_serial = p.serial WHERE cn.receiver_serial = ? AND cn.status = ? AND cn.timestamp > ?"
+          ).all(serial, "pending", sevenDaysAgo);
+          callback({ notifications });
+        } catch (e) {
+          callback({ notifications: [] });
+        }
+      });
+      socket.on("get_like_notifications", ({ serial }, callback) => {
+        if (!serial) return callback({ notifications: [] });
+        try {
+          const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1e3;
+          const notifications = db.prepare(
+            "SELECT * FROM like_notifications WHERE receiverSerial = ? AND read = 0 AND timestamp > ? ORDER BY timestamp DESC"
+          ).all(serial, sevenDaysAgo);
+          callback({ success: true, notifications });
+        } catch (e) {
+          callback({ success: false, notifications: [] });
+        }
+      });
+      socket.on(
+        "dismiss_like_notification",
+        ({ serial, notificationId }, callback) => {
+          if (!serial || !notificationId) return callback({ success: false });
+          try {
+            db.prepare(
+              "UPDATE like_notifications SET read = 1 WHERE id = ? AND receiverSerial = ?"
+            ).run(notificationId, serial);
+            callback({ success: true });
+          } catch (e) {
+            callback({ success: false });
+          }
+        }
+      );
+      socket.on("get_friend_accepted_notifications", ({ serial }, callback) => {
+        if (!serial) return callback({ notifications: [] });
+        try {
+          const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1e3;
+          const notifications = db.prepare(
+            "SELECT * FROM friend_accepted_notifications WHERE receiverSerial = ? AND read = 0 AND timestamp > ? ORDER BY timestamp DESC"
+          ).all(serial, sevenDaysAgo);
+          callback({ success: true, notifications });
+        } catch (e) {
+          callback({ success: false, notifications: [] });
+        }
+      });
+      socket.on(
+        "dismiss_friend_accepted_notification",
+        ({ serial, notificationId }, callback) => {
+          if (!serial || !notificationId) return callback({ success: false });
+          try {
+            db.prepare(
+              "UPDATE friend_accepted_notifications SET read = 1 WHERE id = ? AND receiverSerial = ?"
+            ).run(notificationId, serial);
+            callback({ success: true });
+          } catch (e) {
+            callback({ success: false });
+          }
+        }
+      );
+      socket.on("get_admin_messages", ({ serial }, callback) => {
+        if (!serial) return callback({ messages: [] });
+        try {
+          const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1e3;
+          const messages = db.prepare(
+            "SELECT * FROM admin_messages WHERE playerSerial = ? AND read = 0 AND timestamp > ?"
+          ).all(serial, sevenDaysAgo);
+          callback({ messages });
+        } catch (e) {
+          callback({ messages: [] });
+        }
+      });
+      socket.on(
+        "mark_admin_message_read",
+        ({ serial, messageId }, callback) => {
+          if (!serial || !messageId) return callback({ success: false });
+          try {
+            db.prepare(
+              "UPDATE admin_messages SET read = 1 WHERE id = ? AND playerSerial = ?"
+            ).run(messageId, serial);
+            callback({ success: true });
+          } catch (e) {
+            callback({ success: false });
+          }
+        }
+      );
+      socket.on("send_gift", async ({ serial, targetSerial, gifts }, callback) => {
+        if (!serial || !targetSerial || !gifts)
+          return callback({ error: "Missing parameters" });
+        const sender = allPlayers.get(serial);
+        if (!sender) return callback({ error: "Sender not found" });
+        if (serial === targetSerial)
+          return callback({ error: "\u0644\u0627 \u0628\u0645\u0643\u0646\u0643 \u0627\u0631\u0633\u0627\u0644 \u0627\u0644\u0647\u062F\u0627\u064A\u0627 \u0644\u0646\u0641\u0633\u0643" });
+        try {
+          let keysToSend = Math.max(0, parseInt(gifts.keys) || 0);
+          let tokensToSend = Math.max(0, parseInt(gifts.tokens) || 0);
+          let helpersToSend = gifts.helpers || {};
+          if (keysToSend === 0 && tokensToSend === 0 && Object.keys(helpersToSend).length === 0) {
+            return callback({ error: "\u064A\u062C\u0628 \u0627\u062E\u062A\u064A\u0627\u0631 \u0647\u062F\u0627\u064A\u0627 \u0644\u0644\u0627\u0631\u0633\u0627\u0644" });
+          }
+          if ((sender.keys || 0) < keysToSend)
+            return callback({ error: "\u0644\u0627 \u062A\u0645\u062A\u0644\u0643 \u0645\u0641\u0627\u062A\u064A\u062D \u0643\u0627\u0641\u064A\u0629" });
+          if ((sender.tokens || 0) < tokensToSend)
+            return callback({ error: "\u0644\u0627 \u062A\u0645\u062A\u0644\u0643 \u062A\u062E\u0645\u064A\u0646\u0627\u062A \u0643\u0627\u0641\u064A\u0629" });
+          let validHelpers = {};
+          for (const [helperId, amount] of Object.entries(helpersToSend)) {
+            let numAmount = Math.max(0, parseInt(amount) || 0);
+            if (numAmount > 0) {
+              if ((sender.ownedHelpers?.[helperId] || 0) < numAmount) {
+                return callback({
+                  error: `\u0644\u0627 \u062A\u0645\u062A\u0644\u0643 \u0639\u062F\u062F \u0643\u0627\u0641\u064A \u0645\u0646 \u0648\u0633\u064A\u0644\u0629 \u0627\u0644\u0645\u0633\u0627\u0639\u062F\u0629 \u0627\u0644\u0645\u062E\u062A\u0627\u0631\u0629`
+                });
+              }
+              validHelpers[helperId] = numAmount;
+            }
+          }
+          if (keysToSend > 0) sender.keys -= keysToSend;
+          if (tokensToSend > 0) sender.tokens -= tokensToSend;
+          let tempKeysToSend = 0;
+          let remainingKeysToDeduct = keysToSend;
+          if (remainingKeysToDeduct > 0 && sender.citySearchRewards) {
+            for (let r of sender.citySearchRewards) {
+              if (r.type === "key" && r.amount > 0) {
+                let deduct = Math.min(r.amount, remainingKeysToDeduct);
+                r.amount -= deduct;
+                remainingKeysToDeduct -= deduct;
+                tempKeysToSend += deduct;
+                if (remainingKeysToDeduct === 0) break;
+              }
+            }
+          }
+          let tempTokensToSend = 0;
+          let remainingTokensToDeduct = tokensToSend;
+          if (remainingTokensToDeduct > 0 && sender.rainGiftTokens && sender.rainGiftTokens > 0) {
+            let deduct = Math.min(
+              sender.rainGiftTokens,
+              remainingTokensToDeduct
+            );
+            sender.rainGiftTokens -= deduct;
+            remainingTokensToDeduct -= deduct;
+            tempTokensToSend += deduct;
+          }
+          if (remainingTokensToDeduct > 0 && sender.luckyWheelTokens && sender.luckyWheelTokens > 0) {
+            let deduct = Math.min(
+              sender.luckyWheelTokens,
+              remainingTokensToDeduct
+            );
+            sender.luckyWheelTokens -= deduct;
+            remainingTokensToDeduct -= deduct;
+            tempTokensToSend += deduct;
+          }
+          if (remainingTokensToDeduct > 0 && sender.citySearchRewards) {
+            for (let r of sender.citySearchRewards) {
+              if (r.type === "token" && r.amount > 0) {
+                let deduct = Math.min(r.amount, remainingTokensToDeduct);
+                r.amount -= deduct;
+                remainingTokensToDeduct -= deduct;
+                tempTokensToSend += deduct;
+                if (remainingTokensToDeduct === 0) break;
+              }
+            }
+          }
+          let tempHelpersToSend = {};
+          for (const [helperId, amount] of Object.entries(validHelpers)) {
+            sender.ownedHelpers[helperId] -= amount;
+            let remainingHelperToDeduct = amount;
+            if (remainingHelperToDeduct > 0 && sender.rainGiftHelpers && sender.rainGiftHelpers[helperId] > 0) {
+              let deduct = Math.min(
+                sender.rainGiftHelpers[helperId],
+                remainingHelperToDeduct
+              );
+              sender.rainGiftHelpers[helperId] -= deduct;
+              remainingHelperToDeduct -= deduct;
+              tempHelpersToSend[helperId] = (tempHelpersToSend[helperId] || 0) + deduct;
+            }
+            if (remainingHelperToDeduct > 0 && sender.luckyWheelHelpers && sender.luckyWheelHelpers[helperId] > 0) {
+              let deduct = Math.min(
+                sender.luckyWheelHelpers[helperId],
+                remainingHelperToDeduct
+              );
+              sender.luckyWheelHelpers[helperId] -= deduct;
+              remainingHelperToDeduct -= deduct;
+              tempHelpersToSend[helperId] = (tempHelpersToSend[helperId] || 0) + deduct;
+            }
+            if (remainingHelperToDeduct > 0 && sender.citySearchRewards) {
+              for (let r of sender.citySearchRewards) {
+                if (r.type === "helper" && r.id === helperId && r.amount > 0) {
+                  let deduct = Math.min(r.amount, remainingHelperToDeduct);
+                  r.amount -= deduct;
+                  remainingHelperToDeduct -= deduct;
+                  tempHelpersToSend[helperId] = (tempHelpersToSend[helperId] || 0) + deduct;
+                  if (remainingHelperToDeduct === 0) break;
+                }
+              }
+            }
+          }
+          savePlayerData(serial);
+          emitPlayerDataUpdate(socket, serial, {
+            serial,
+            keys: sender.keys,
+            tokens: sender.tokens,
+            ownedHelpers: sender.ownedHelpers
+          });
+          const notificationId = Math.random().toString(36).substr(2, 9);
+          const giftsJson = JSON.stringify({
+            keys: keysToSend,
+            tokens: tokensToSend,
+            helpers: validHelpers,
+            tempKeys: tempKeysToSend,
+            tempTokens: tempTokensToSend,
+            tempHelpers: tempHelpersToSend
+          });
+          db.prepare(
+            "INSERT INTO gift_notifications (id, senderSerial, receiverSerial, senderName, senderAvatar, gifts, timestamp, read) VALUES (?, ?, ?, ?, ?, ?, ?, 0)"
+          ).run(
+            notificationId,
+            serial,
+            targetSerial,
+            sender.name,
+            sender.avatar,
+            giftsJson,
+            Date.now()
+          );
+          for (const [socketId, s] of io.sockets.sockets) {
+            if (s.data?.serial === targetSerial) {
+              io.to(socketId).emit("new_gift_notification", {
+                id: notificationId,
+                senderName: sender.name,
+                senderAvatar: sender.avatar,
+                gifts: {
+                  keys: keysToSend,
+                  tokens: tokensToSend,
+                  helpers: validHelpers,
+                  tempKeys: tempKeysToSend,
+                  tempTokens: tempTokensToSend,
+                  tempHelpers: tempHelpersToSend
+                }
+              });
+              break;
+            }
+          }
+          try {
+            const subscriptions = db.prepare("SELECT subscription FROM push_subscriptions WHERE serial = ?").all(targetSerial);
+            if (subscriptions.length > 0) {
+              const HELPER_NAMES_AR = {
+                word_length: "\u0643\u0627\u0634\u0641 \u0627\u0644\u062D\u0631\u0648\u0641",
+                word_count: "\u0639\u062F\u062F \u0627\u0644\u0643\u0644\u0645\u0627\u062A",
+                time_freeze: "\u062A\u062C\u0645\u064A\u062F \u0627\u0644\u0648\u0642\u062A",
+                hint: "\u062A\u0644\u0645\u064A\u062D",
+                spy_lens: "\u0627\u0644\u062C\u0627\u0633\u0648\u0633"
+              };
+              const helpersArray = Object.entries(validHelpers || {}).map(([id, amount]) => {
+                const arabName = HELPER_NAMES_AR[id];
+                return arabName ? `${amount} ${arabName}` : null;
+              }).filter(Boolean);
+              const itemsString = [
+                keysToSend > 0 ? `${keysToSend} \u0645\u0641\u0627\u062A\u064A\u062D` : null,
+                tokensToSend > 0 ? `${tokensToSend} \u062A\u062E\u0645\u064A\u0646\u0627\u062A` : null,
+                ...helpersArray
+              ].filter(Boolean).join(" | ");
+              const payload = JSON.stringify({
+                title: "\u0647\u062F\u064A\u0629 \u062C\u062F\u064A\u062F\u0629! \u{1F381}",
+                body: `${sender.name} \u0623\u0631\u0633\u0644 \u0644\u0643 \u0647\u062F\u0627\u064A\u0627: ${itemsString}`,
+                url: "/"
+              });
+              for (const sub of subscriptions) {
+                try {
+                  const subscription = JSON.parse(sub.subscription);
+                  await import_web_push.default.sendNotification(subscription, payload);
+                } catch (err) {
+                  if (err.statusCode === 410 || err.statusCode === 404) {
+                    db.prepare(
+                      "DELETE FROM push_subscriptions WHERE subscription = ?"
+                    ).run(sub.subscription);
+                  } else {
+                    console.error("Push Gift Error:", err.statusCode, err.body || err.message);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error sending gift push notification:", e);
+          }
+          callback({ success: true });
+        } catch (e) {
+          console.error("send_gift error", e);
+          callback({ error: "Internal server error" });
+        }
+      });
+      socket.on("get_gift_notifications", ({ serial }, callback) => {
+        if (!serial) return callback({ notifications: [] });
+        try {
+          const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1e3;
+          const rows = db.prepare(
+            "SELECT * FROM gift_notifications WHERE receiverSerial = ? AND read = 0 AND timestamp > ? ORDER BY timestamp DESC"
+          ).all(serial, sevenDaysAgo);
+          const notifications = rows.map((r) => ({
+            ...r,
+            gifts: JSON.parse(r.gifts)
+          }));
+          callback({ success: true, notifications });
+        } catch (e) {
+          callback({ success: false, notifications: [] });
+        }
+      });
+      socket.on("receive_gift", ({ serial, notificationId }, callback) => {
+        if (!serial || !notificationId)
+          return callback({ error: "Missing parameters" });
+        const receiver = allPlayers.get(serial);
+        if (!receiver) return callback({ error: "Player not found" });
+        try {
+          const notif = db.prepare(
+            "SELECT * FROM gift_notifications WHERE id = ? AND receiverSerial = ? AND read = 0"
+          ).get(notificationId, serial);
+          if (!notif)
+            return callback({
+              error: "\u0627\u0644\u0625\u0634\u0639\u0627\u0631 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F \u0623\u0648 \u062A\u0645 \u0625\u0633\u062A\u0644\u0627\u0645\u0647 \u0645\u0633\u0628\u0642\u0627\u064B"
+            });
+          const gifts = JSON.parse(notif.gifts);
+          let keysReceived = gifts.keys || 0;
+          let tokensReceived = gifts.tokens || 0;
+          let helpersReceived = gifts.helpers || {};
+          let tempKeysReceived = gifts.tempKeys || 0;
+          let tempTokensReceived = gifts.tempTokens || 0;
+          let tempHelpersReceived = gifts.tempHelpers || {};
+          receiver.keys = (receiver.keys || 0) + keysReceived;
+          receiver.tokens = (receiver.tokens || 0) + tokensReceived;
+          if (tempTokensReceived > 0) {
+            receiver.rainGiftTokens = (receiver.rainGiftTokens || 0) + tempTokensReceived;
+          }
+          if (tempKeysReceived > 0) {
+            if (!receiver.citySearchRewards) receiver.citySearchRewards = [];
+            else if (typeof receiver.citySearchRewards === "string") {
+              try {
+                receiver.citySearchRewards = JSON.parse(
+                  receiver.citySearchRewards
+                );
+              } catch (e) {
+                receiver.citySearchRewards = [];
+              }
+            }
+            receiver.citySearchRewards.push({
+              type: "key",
+              amount: tempKeysReceived,
+              timestamp: Date.now()
+            });
+          }
+          if (!receiver.ownedHelpers) receiver.ownedHelpers = {};
+          if (!receiver.rainGiftHelpers) receiver.rainGiftHelpers = {};
+          for (const [helperId, amount] of Object.entries(helpersReceived)) {
+            receiver.ownedHelpers[helperId] = (receiver.ownedHelpers[helperId] || 0) + amount;
+          }
+          for (const [helperId, amount] of Object.entries(
+            tempHelpersReceived
+          )) {
+            receiver.rainGiftHelpers[helperId] = (receiver.rainGiftHelpers[helperId] || 0) + amount;
+          }
+          db.prepare("UPDATE gift_notifications SET read = 1 WHERE id = ?").run(
+            notificationId
+          );
+          savePlayerData(serial);
+          emitPlayerDataUpdate(socket, serial, {
+            serial,
+            keys: receiver.keys,
+            tokens: receiver.tokens,
+            ownedHelpers: receiver.ownedHelpers
+          });
+          callback({ success: true });
+        } catch (e) {
+          callback({ error: "Internal server error" });
+        }
+      });
+      socket.on("get_asked_friends", ({ serial, imageName }, callback) => {
+        try {
+          const rows = db.prepare(
+            "SELECT receiver_serial FROM collection_notifications WHERE sender_serial = ? AND image_name = ? AND type = ? AND status = ?"
+          ).all(serial, imageName, "request", "pending");
+          callback({
+            success: true,
+            askedSerials: rows.map((r) => r.receiver_serial)
+          });
+        } catch (e) {
+          callback({ error: "Internal server error" });
+        }
+      });
+      socket.on(
+        "send_collection_request",
+        ({ serial, targetSerials, imageName, categoryId }, callback) => {
+          if (!serial || !targetSerials || !Array.isArray(targetSerials))
+            return callback({ error: "Invalid data" });
+          try {
+            for (const target of targetSerials) {
+              if (target === serial) continue;
+              const existing = db.prepare(
+                "SELECT 1 FROM collection_notifications WHERE sender_serial = ? AND receiver_serial = ? AND image_name = ? AND type = ? AND status = ?"
+              ).get(serial, target, imageName, "request", "pending");
+              if (existing) continue;
+              const id = Date.now().toString() + "-" + Math.random().toString(36).substr(2, 9);
+              db.prepare(
+                `
+            INSERT INTO collection_notifications (id, sender_serial, receiver_serial, image_name, category_id, type, status, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `
+              ).run(
+                id,
+                serial,
+                target,
+                imageName,
+                categoryId,
+                "request",
+                "pending",
+                Date.now()
+              );
+              const targetSocketId = playerSockets.get(target);
+              if (targetSocketId) {
+                io.to(targetSocketId).emit("new_collection_notification");
+              }
+            }
+            callback({ success: true });
+          } catch (e) {
+            callback({ error: "Failed to send request" });
+          }
+        }
+      );
+      socket.on(
+        "respond_collection_request",
+        ({ serial, notificationId, action }, callback) => {
+          if (!serial || !notificationId || !action)
+            return callback({ error: "Invalid data" });
+          try {
+            const notification = db.prepare(
+              "SELECT * FROM collection_notifications WHERE id = ? AND receiver_serial = ?"
+            ).get(notificationId, serial);
+            if (!notification) return callback({ error: "Not found" });
+            if (action === "delete") {
+              db.prepare(
+                "UPDATE collection_notifications SET status = 'deleted' WHERE id = ?"
+              ).run(notificationId);
+              return callback({ success: true });
+            }
+            if (action === "send") {
+              const normalizedName = normalizeEgyptian(
+                notification.image_name
+              ).toLowerCase();
+              const collection = db.prepare(
+                `SELECT count FROM player_collections WHERE player_serial = ? AND image_name = ?`
+              ).get(serial, normalizedName);
+              if (!collection || collection.count <= 5) {
+                return callback({
+                  error: "\u0644\u064A\u0633 \u0644\u062F\u064A\u0643 \u0635\u0648\u0631 \u0625\u0636\u0627\u0641\u064A\u0629 \u0645\u0646 \u0647\u0630\u0647 \u0627\u0644\u0635\u0648\u0631\u0629."
+                });
+              }
+              const decrease = db.prepare(
+                `UPDATE player_collections SET count = count - 1 WHERE player_serial = ? AND image_name = ?`
+              ).run(serial, normalizedName);
+              if (decrease.changes > 0) {
+                db.prepare(
+                  "UPDATE collection_notifications SET status = 'completed' WHERE id = ?"
+                ).run(notificationId);
+                const newId = Date.now().toString() + "-" + Math.random().toString(36).substr(2, 9);
+                db.prepare(
+                  `
+              INSERT INTO collection_notifications (id, sender_serial, receiver_serial, image_name, category_id, type, status, timestamp)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `
+                ).run(
+                  newId,
+                  serial,
+                  notification.sender_serial,
+                  notification.image_name,
+                  notification.category_id,
+                  "sent",
+                  "pending",
+                  Date.now()
+                );
+                const targetSocketId = playerSockets.get(
+                  notification.sender_serial
+                );
+                if (targetSocketId) {
+                  io.to(targetSocketId).emit("new_collection_notification");
+                }
+                return callback({ success: true });
+              }
+            }
+          } catch (e) {
+            callback({ error: "Failed to respond" });
+          }
+        }
+      );
+      socket.on(
+        "receive_collection_image",
+        ({ serial, notificationId }, callback) => {
+          if (!serial || !notificationId)
+            return callback({ error: "Invalid data" });
+          try {
+            const notification = db.prepare(
+              "SELECT * FROM collection_notifications WHERE id = ? AND receiver_serial = ? AND type = ? AND status = ?"
+            ).get(notificationId, serial, "sent", "pending");
+            if (!notification)
+              return callback({ error: "Not found or already received" });
+            const normalizedName = normalizeEgyptian(
+              notification.image_name
+            ).toLowerCase();
+            db.prepare(
+              `
+          INSERT INTO player_collections (player_serial, image_name, count) 
+          VALUES (?, ?, 1) 
+          ON CONFLICT(player_serial, image_name) DO UPDATE SET count = MIN(count + 1, 15)
+        `
+            ).run(serial, normalizedName);
+            db.prepare(
+              "UPDATE collection_notifications SET status = 'completed' WHERE id = ?"
+            ).run(notificationId);
+            callback({ success: true });
+          } catch (e) {
+            callback({ error: "Failed to receive" });
+          }
+        }
+      );
+      socket.on(
+        "claim_collection_reward",
+        ({ serial, categoryId, stage }, callback) => {
+          const player = allPlayers.get(serial);
+          if (!player) return;
+          const alreadyClaimed = db.prepare(
+            `
+        SELECT 1 FROM claimed_collection_rewards 
+        WHERE player_serial = ? AND category_id = ? AND stage = ?
+      `
+          ).get(serial, categoryId, stage);
+          if (alreadyClaimed) return;
+          const category = COLLECTION_DATA.find((c) => c.id === categoryId);
+          const targetStage = category?.stages.find((s) => s.stage === stage);
+          if (!category || !targetStage) return;
+          const collection = db.prepare(`SELECT * FROM player_collections WHERE player_serial = ?`).all(serial);
+          const collectionMap = new Map(
+            collection.map((c) => [c.image_name, c.count])
+          );
+          const isStageComplete = targetStage.images.every(
+            (imgName) => {
+              const normImgName = normalizeEgyptian(imgName).toLowerCase();
+              return (collectionMap.get(normImgName) || 0) >= 5;
+            }
+          );
+          if (isStageComplete) {
+            db.prepare(
+              `
+          INSERT INTO claimed_collection_rewards (player_serial, category_id, stage)
+          VALUES (?, ?, ?)
+        `
+            ).run(serial, categoryId, stage);
+            player.xp = (player.xp || 0) + targetStage.reward.xp;
+            player.level = getLevel(player.xp);
+            savePlayerData(serial);
+            socket.emit("collection_reward_claimed", {
+              categoryName: category.name,
+              stage,
+              xp: targetStage.reward.xp,
+              frame: targetStage.reward.frame
+            });
+          }
+        }
+      );
+      socket.on(
+        "admin_set_admin_status",
+        ({ serial, isAdmin, email, adminToken }, callback) => {
+          const admin2 = serial ? allPlayers.get(serial) : socket.data?.serial ? allPlayers.get(socket.data.serial) : void 0;
+          const isValidToken = adminToken && adminTokens.has(adminToken);
+          const isDefaultAdmin = email === "adhamsabry.co@gmail.com";
+          if (admin2?.isAdmin || isValidToken || isDefaultAdmin) {
+            socket.data = {
+              ...socket.data,
+              isAdmin: true,
+              email: email || admin2?.email,
+              serial: serial || admin2?.serial
+            };
+            let newToken = adminToken;
+            if (!isValidToken) {
+              newToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+              adminTokens.add(newToken);
+            }
+            if (serial) {
+              const player = allPlayers.get(serial);
+              if (player) {
+                player.isAdmin = isAdmin;
+                player.email = email;
+                savePlayerData(serial);
+                const players2 = Array.from(allPlayers.values()).map((p) => ({
+                  ...p,
+                  isOnline: playerSockets.has(p.serial)
+                }));
+                const reports2 = db.prepare("SELECT * FROM reports ORDER BY timestamp DESC").all();
+                if (typeof callback === "function")
+                  callback({
+                    success: true,
+                    players: players2,
+                    reports: reports2,
+                    adminToken: newToken
+                  });
+                return;
+              }
+            }
+            const players = Array.from(allPlayers.values()).map((p) => ({
+              ...p,
+              isOnline: playerSockets.has(p.serial)
+            }));
+            const reports = db.prepare("SELECT * FROM reports ORDER BY timestamp DESC").all();
+            if (typeof callback === "function")
+              callback({
+                success: true,
+                players,
+                reports,
+                adminToken: newToken
+              });
+          } else {
+            if (typeof callback === "function")
+              callback({ error: "Unauthorized" });
+          }
+        }
+      );
+      socket.on("admin_request_db_download", (callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          const downloadToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          adminTokens.add(downloadToken);
+          console.log(
+            `[DB Download] Generated token ${downloadToken} for admin ${admin2?.serial || socket.data?.serial}`
+          );
+          setTimeout(() => adminTokens.delete(downloadToken), 1e3 * 60 * 5);
+          callback({ success: true, token: downloadToken });
+        } else {
+          console.log(
+            `[DB Download] Unauthorized request from socket ${socket.id}`
+          );
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("admin_request_uploads_download", (callback) => {
+        const admin2 = Array.from(allPlayers.values()).find(
+          (p) => p.serial === socket.data?.serial
+        );
+        if (admin2?.isAdmin || socket.data?.isAdmin) {
+          const downloadToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          adminTokens.add(downloadToken);
+          console.log(
+            `[Uploads Download] Generated token ${downloadToken} for admin ${admin2?.serial || socket.data?.serial}`
+          );
+          setTimeout(() => adminTokens.delete(downloadToken), 1e3 * 60 * 5);
+          callback({ success: true, token: downloadToken });
+        } else {
+          console.log(
+            `[Uploads Download] Unauthorized request from socket ${socket.id}`
+          );
+          callback({ error: "Unauthorized" });
+        }
+      });
+      socket.on("set_player_serial_for_socket", (data) => {
+        const serial = typeof data === "string" ? data : data.serial;
+        const secretToken = typeof data === "object" ? data.secretToken : null;
+        const fingerprint = typeof data === "object" ? data.fingerprint : null;
+        if (serial) {
+          const serverPlayer = allPlayers.get(serial);
+          if (serverPlayer) {
+            let isAuthorized = false;
+            if (serverPlayer.secretToken) {
+              if (secretToken) {
+                isAuthorized = serverPlayer.secretToken === secretToken;
+              } else {
+                if (!serverPlayer.fingerprint || serverPlayer.fingerprint === fingerprint) {
+                  isAuthorized = true;
+                }
+              }
+            } else {
+              if (!serverPlayer.fingerprint || serverPlayer.fingerprint === fingerprint) {
+                isAuthorized = true;
+              }
+            }
+            if (!isAuthorized && !socket.data?.isAdmin) {
+              isAuthorized = true;
+              if (secretToken && !serverPlayer.secretToken) {
+                serverPlayer.secretToken = secretToken;
+              } else if (!serverPlayer.secretToken) {
+                serverPlayer.secretToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+              }
+              if (fingerprint) {
+                serverPlayer.fingerprint = fingerprint;
+              }
+            }
+          }
+          socket.data = { ...socket.data, serial };
+          if (serverPlayer) {
+            serverPlayer.lastActiveAt = Date.now();
+            savePlayerData(serial);
+          }
+          const isAdmin = serverPlayer && serverPlayer.isAdmin === true || !!socket.data?.isAdmin;
+          if (!isAdmin) {
+            const oldSocketId = playerSockets.get(serial);
+            if (oldSocketId && oldSocketId !== socket.id) {
+              const oldSocket = io.sockets.sockets.get(oldSocketId);
+              if (oldSocket) {
+                oldSocket.disconnect(true);
+              }
+            }
+          }
+          playerSockets.set(serial, socket.id);
+          broadcastOnlineCount();
+        }
+      });
+      socket.on("get_friends", ({ serial, page = 1, limit = 10 }, callback) => {
+        if (!serial) return;
+        try {
+          const offset = (page - 1) * limit;
+          const mainPlayer = allPlayers.get(serial);
+          const myBlocked = mainPlayer?.blockedSerials || [];
+          const allFriendsRows = db.prepare(
+            `
+          SELECT * FROM friends 
+          WHERE (player1 = ? OR player2 = ?) AND status = 'accepted'
+          ORDER BY created_at DESC
+        `
+          ).all(serial, serial);
+          const filteredFriendsRows = allFriendsRows.filter((row) => {
+            const friendSerial = row.player1 === serial ? row.player2 : row.player1;
+            const friendPlayer = allPlayers.get(friendSerial);
+            if (!friendPlayer) return false;
+            const theyBlockedMe = (friendPlayer.blockedSerials || []).includes(
+              serial
+            );
+            const iBlockedThem = myBlocked.includes(friendSerial);
+            return !theyBlockedMe && !iBlockedThem;
+          });
+          const paginatedRows = filteredFriendsRows.slice(
+            offset,
+            offset + limit
+          );
+          const friendsList = paginatedRows.map((row) => {
+            const friendSerial = row.player1 === serial ? row.player2 : row.player1;
+            const player = allPlayers.get(friendSerial);
+            let isInMatch = false;
+            if (player) {
+              for (const room of rooms.values()) {
+                if (room.players && room.players.some((p) => p.serial === friendSerial)) {
+                  isInMatch = true;
+                  break;
+                }
+              }
+              if (!isInMatch && matchmakingQueue.some((p) => p.serial === friendSerial)) {
+                isInMatch = true;
+              }
+              if (!isInMatch) {
+                for (const match of pendingMatches.values()) {
+                  if (match.p1.serial === friendSerial || match.p2.serial === friendSerial) {
+                    isInMatch = true;
+                    break;
+                  }
+                }
+              }
+            }
+            return player ? {
+              serial: player.serial,
+              name: player.name,
+              avatar: player.avatar,
+              level: getLevel(player.xp || 0),
+              selectedFrame: player.selectedFrame,
+              isHighestLikes: highestLikesSerials.includes(player.serial) && (player.likes || 0) > 0,
+              isAdmin: player.isAdmin ? 1 : 0,
+              isOnline: playerSockets.has(player.serial),
+              isInMatch
+            } : null;
+          }).filter(Boolean);
+          callback({
+            success: true,
+            friends: friendsList,
+            total: filteredFriendsRows.length
+          });
+        } catch (e) {
+          callback({ error: "Failed to fetch friends" });
+        }
+      });
+      socket.on("get_friend_requests", ({ serial }, callback) => {
+        if (!serial) return;
+        try {
+          const requestsRows = db.prepare(
+            `
+          SELECT * FROM friends 
+          WHERE (player1 = ? OR player2 = ?) AND status = 'pending' AND sender != ?
+        `
+          ).all(serial, serial, serial);
+          const requestsList = requestsRows.map((row) => {
+            const senderSerial = row.sender;
+            const player = allPlayers.get(senderSerial);
+            return player ? {
+              id: row.id,
+              serial: player.serial,
+              name: player.name,
+              avatar: player.avatar,
+              level: getLevel(player.xp || 0),
+              selectedFrame: player.selectedFrame,
+              timestamp: row.created_at
+            } : null;
+          }).filter(Boolean);
+          callback({ success: true, requests: requestsList });
+        } catch (e) {
+          callback({ error: "Failed to fetch requests" });
+        }
+      });
+      const handleCheckFriendStatus = ({ serial, mySerial, targetSerial }, callback) => {
+        const actualMySerial = mySerial || serial;
+        if (!actualMySerial || !targetSerial)
+          return callback({ status: "none", success: true });
+        const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+        const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
+        const row = db.prepare(
+          "SELECT status, sender FROM friends WHERE player1 = ? AND player2 = ?"
+        ).get(p1, p2);
+        if (!row) return callback({ status: "none", success: true });
+        if (row.status === "accepted")
+          return callback({ status: "friends", success: true });
+        if (row.status === "pending") {
+          return callback({
+            status: row.sender === actualMySerial ? "pending_sent" : "pending_received",
+            success: true
+          });
+        }
+        callback({ status: "none", success: true });
+      };
+      socket.on("get_friend_status", handleCheckFriendStatus);
+      socket.on("check_friend_status", handleCheckFriendStatus);
+      socket.on(
+        "search_players_by_name",
+        ({ query, requesterSerial }, callback) => {
+          try {
+            if (!query || typeof query !== "string" || query.trim().length === 0) {
+              callback({ results: [] });
+              return;
+            }
+            const searchQuery = `%${query.trim()}%`;
+            const results = db.prepare(
+              `
+          SELECT serial, name, avatar, level, hideFriendRequests, selectedFrame 
+          FROM players 
+          WHERE name LIKE ? AND (isAdmin IS NULL OR isAdmin = 0)
+          LIMIT 10
+        `
+            ).all(searchQuery);
+            callback({ success: true, results: results || [] });
+          } catch (error) {
+            console.error("Error searching players:", error);
+            callback({ success: false, error: "\u062D\u062F\u062B \u062E\u0637\u0623 \u0623\u062B\u0646\u0627\u0621 \u0627\u0644\u0628\u062D\u062B" });
+          }
+        }
+      );
+      socket.on(
+        "get_player_profile",
+        ({ targetSerial, requesterSerial }, callback) => {
+          try {
+            const targetPlayer = allPlayers.get(targetSerial);
+            if (!targetPlayer) {
+              callback({ error: "\u0631\u0628\u0645\u0627 \u0627\u0644\u0644\u0627\u0639\u0628 \u0641\u0649 \u0648\u0636\u0639 \u0627\u0644\u062E\u0627\u0635" });
+              return;
+            }
+            const claimedRows = db.prepare(
+              "SELECT * FROM claimed_collection_rewards WHERE player_serial = ?"
+            ).all(targetSerial);
+            const ownedFrames = claimedRows.filter((row) => row.stage >= 2).map((row) => row.category_id);
+            const now = Date.now();
+            const isPro = targetPlayer.proPackageExpiry && targetPlayer.proPackageExpiry > now ? true : false;
+            const activeProPackage = isPro ? {
+              type: "pro",
+              expiresAt: targetPlayer.proPackageExpiry
+            } : null;
+            let hasLikedToday = false;
+            if (requesterSerial) {
+              const lastLike = db.prepare(
+                "SELECT timestamp FROM player_likes_log WHERE giver_serial = ? AND receiver_serial = ? ORDER BY timestamp DESC LIMIT 1"
+              ).get(requesterSerial, targetSerial);
+              if (lastLike) {
+                const lastDate = new Intl.DateTimeFormat("en-CA", {
+                  timeZone: "Africa/Cairo"
+                }).format(new Date(lastLike.timestamp));
+                const todayDate = new Intl.DateTimeFormat("en-CA", {
+                  timeZone: "Africa/Cairo"
+                }).format(/* @__PURE__ */ new Date());
+                hasLikedToday = lastDate === todayDate;
+              }
+            }
+            let isBlocked2 = false;
+            let hasBlockedMe = false;
+            if (requesterSerial) {
+              const mainPlayer = allPlayers.get(requesterSerial);
+              if (mainPlayer && mainPlayer.blockedSerials && mainPlayer.blockedSerials.includes(targetSerial)) {
+                isBlocked2 = true;
+              }
+              if (targetPlayer.blockedSerials && targetPlayer.blockedSerials.includes(requesterSerial)) {
+                hasBlockedMe = true;
+              }
+            }
+            callback({
+              success: true,
+              profile: {
+                serial: targetPlayer.serial,
+                name: targetPlayer.name,
+                avatar: targetPlayer.avatar,
+                gender: targetPlayer.gender,
+                xp: targetPlayer.xp,
+                level: targetPlayer.level || 0,
+                // App will use calc if 0 maybe? getLevel(xp) is better.
+                wins: targetPlayer.wins,
+                streak: targetPlayer.streak,
+                tokens: targetPlayer.tokens,
+                keys: targetPlayer.keys,
+                likes: targetPlayer.likes || 0,
+                busCompleteWins: targetPlayer.busCompleteWins || 0,
+                xoWins: targetPlayer.xoWins || 0,
+                handWins: targetPlayer.handWins || 0,
+                iqWins: targetPlayer.iqWins || 0,
+                dotsWins: targetPlayer.dotsWins || 0,
+                speedCupsWins: targetPlayer.speedCupsWins || 0,
+                bombPartyWins: targetPlayer.bombPartyWins || 0,
+                wordleWins: targetPlayer.wordleWins || 0,
+                connectFourWordsWins: targetPlayer.connectFourWordsWins || 0,
+                spaceWarWins: targetPlayer.spaceWarWins || 0,
+                puzzleWins: targetPlayer.puzzleWins || 0,
+                beachRaceWins: targetPlayer.beachRaceWins || 0,
+                isAdmin: targetPlayer.isAdmin || 0,
+                hasLikedToday: !!hasLikedToday,
+                ownedHelpers: targetPlayer.ownedHelpers || {},
+                proPackageExpiry: targetPlayer.proPackageExpiry || 0,
+                activeProPackage,
+                selectedFrame: targetPlayer.selectedFrame || "",
+                titles: [],
+                // Future use
+                ownedFrames,
+                isBlocked: isBlocked2,
+                hasBlockedMe,
+                hideMyInfo: targetPlayer.hideMyInfo || 0,
+                hideFriendRequests: targetPlayer.hideFriendRequests || 0
+              }
+            });
+          } catch (error) {
+            console.error("Error fetching player profile:", error);
+            callback({ error: "\u0641\u0634\u0644 \u062C\u0644\u0628 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0644\u0627\u0639\u0628" });
+          }
+        }
+      );
+      socket.on(
+        "like_player",
+        async ({ targetSerial, giverSerial }, callback) => {
+          try {
+            if (!targetSerial || !giverSerial)
+              return callback({ error: "\u0628\u064A\u0627\u0646\u0627\u062A \u063A\u064A\u0631 \u0645\u0643\u062A\u0645\u0644\u0629" });
+            if (targetSerial === giverSerial)
+              return callback({ error: "\u0644\u0627 \u064A\u0645\u0643\u0646\u0643 \u0625\u0631\u0633\u0627\u0644 \u0625\u0639\u062C\u0627\u0628 \u0644\u0646\u0641\u0633\u0643" });
+            const targetPlayer = allPlayers.get(targetSerial);
+            const giverPlayer = allPlayers.get(giverSerial);
+            if (!targetPlayer || !giverPlayer)
+              return callback({ error: "\u0627\u0644\u0644\u0627\u0639\u0628 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F" });
+            const lastLike = db.prepare(
+              "SELECT timestamp FROM player_likes_log WHERE giver_serial = ? AND receiver_serial = ? ORDER BY timestamp DESC LIMIT 1"
+            ).get(giverSerial, targetSerial);
+            if (lastLike) {
+              const lastDate = new Intl.DateTimeFormat("en-CA", {
+                timeZone: "Africa/Cairo"
+              }).format(new Date(lastLike.timestamp));
+              const todayDate = new Intl.DateTimeFormat("en-CA", {
+                timeZone: "Africa/Cairo"
+              }).format(/* @__PURE__ */ new Date());
+              if (lastDate === todayDate) {
+                return callback({
+                  error: "\u0644\u0642\u062F \u0642\u0645\u062A \u0628\u0625\u0631\u0633\u0627\u0644 \u0625\u0639\u062C\u0627\u0628 \u0644\u0647\u0630\u0627 \u0627\u0644\u0644\u0627\u0639\u0628 \u0627\u0644\u064A\u0648\u0645 \u0628\u0627\u0644\u0641\u0639\u0644. \u062D\u0627\u0648\u0644 \u063A\u062F\u0627\u064B!"
+                });
+              }
+            }
+            const logId = Math.random().toString(36).substr(2, 9);
+            db.prepare(
+              "INSERT INTO player_likes_log (id, giver_serial, receiver_serial, timestamp) VALUES (?, ?, ?, ?)"
+            ).run(logId, giverSerial, targetSerial, Date.now());
+            const newLikes = (targetPlayer.likes || 0) + 1;
+            targetPlayer.likes = newLikes;
+            db.prepare("UPDATE players SET likes = ? WHERE serial = ?").run(
+              newLikes,
+              targetSerial
+            );
+            const notificationId = Math.random().toString(36).substr(2, 9);
+            db.prepare(
+              "INSERT INTO like_notifications (id, receiverSerial, senderSerial, senderName, senderAvatar, senderLevel, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            ).run(
+              notificationId,
+              targetSerial,
+              giverSerial,
+              giverPlayer.name,
+              giverPlayer.avatar,
+              giverPlayer.level || 1,
+              Date.now()
+            );
+            const targetSocketId = playerSockets ? playerSockets.get(targetSerial) : null;
+            if (targetSocketId) {
+              io.to(targetSocketId).emit("new_like_notification", {
+                id: notificationId,
+                senderSerial: giverSerial,
+                senderName: giverPlayer.name,
+                senderAvatar: giverPlayer.avatar,
+                senderLevel: giverPlayer.level || 1,
+                timestamp: Date.now()
+              });
+            }
+            let keysRewarded = 0;
+            if (newLikes % 20 === 0 && newLikes > 0) {
+              keysRewarded = 1;
+              const notificationId2 = Math.random().toString(36).substr(2, 9);
+              const message = `\u0631\u0628\u062D\u062A \u0647\u062F\u064A\u0629 \u0645\u0641\u062A\u0627\u062D \u{1F5DD}\uFE0F \u0648\u0630\u0644\u0643 \u0644\u0648\u0635\u0648\u0644 \u0639\u062F\u062F \u0627\u0644\u0642\u0644\u0648\u0628 \u0627\u0644\u064A ${newLikes}\u060C \u0648\u0645\u0639 \u0643\u0644 20 \u0642\u0644\u0628 \u0632\u064A\u0627\u062F\u0629 \u062A\u062D\u0635\u0644 \u0639\u0644\u064A \u{1F5DD}\uFE0F\u060C \u0627\u0633\u062A\u0644\u0645 \u0647\u062F\u064A\u062A\u0643`;
+              const giftsJson = JSON.stringify({ keys: 1, message });
+              const senderName = `\u0627\u0644\u0646\u0638\u0627\u0645`;
+              db.prepare(
+                "INSERT INTO gift_notifications (id, senderSerial, receiverSerial, senderName, senderAvatar, gifts, timestamp, read) VALUES (?, ?, ?, ?, ?, ?, ?, 0)"
+              ).run(
+                notificationId2,
+                "SYSTEM",
+                targetSerial,
+                senderName,
+                "",
+                giftsJson,
+                Date.now()
+              );
+              if (targetSocketId) {
+                io.to(targetSocketId).emit("new_gift_notification", {
+                  id: notificationId2,
+                  senderSerial: "SYSTEM",
+                  receiverSerial: targetSerial,
+                  senderName,
+                  senderAvatar: "",
+                  gifts: { keys: 1, message },
+                  timestamp: Date.now()
+                });
+                io.to(targetSocketId).emit("show_alert", {
+                  title: "\u0645\u062D\u0628\u0629 \u0627\u0644\u062C\u0645\u0647\u0648\u0631 \u2764\uFE0F",
+                  message: "\u0644\u0642\u062F \u062D\u0635\u0644\u062A \u0639\u0644\u0649 20 \u0625\u0639\u062C\u0627\u0628 \u062C\u062F\u064A\u062F \u0648\u062D\u0635\u0644\u062A \u0639\u0644\u0649 \u0647\u062F\u064A\u0629! \u0627\u0641\u062A\u062D \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062A \u0644\u0627\u0633\u062A\u0644\u0627\u0645\u0647\u0627."
+                });
+              }
+            }
+            if (targetSocketId) {
+              emitPlayerDataUpdate(io.to(targetSocketId), targetPlayer.serial, {
+                likes: targetPlayer.likes
+              });
+            }
+            updateHighestLikesGlobal();
+            callback({ success: true, newLikes, keysRewarded });
+          } catch (error) {
+            console.error("Error sending like:", error);
+            callback({ error: "\u062D\u062F\u062B \u062E\u0637\u0623 \u063A\u064A\u0631 \u0645\u062A\u0648\u0642\u0639" });
+          }
+        }
+      );
+      const isUserAdmin = (s) => {
+        if (!s) return false;
+        const memPlayer = allPlayers.get(s);
+        if (memPlayer && memPlayer.isAdmin) return true;
+        try {
+          const row = db.prepare("SELECT isAdmin FROM players WHERE serial = ?").get(s);
+          if (row && (row.isAdmin === 1 || row.isAdmin === true || row.isAdmin === "true")) return true;
+        } catch (e) {
+        }
+        return false;
+      };
+      const handleAddFriend = async ({ serial, mySerial, targetSerial }, callback) => {
+        const actualMySerial = mySerial || serial;
+        if (!actualMySerial || !targetSerial || actualMySerial === targetSerial)
+          return callback({ error: "Invalid targets" });
+        const targetPlayerCheck = db.prepare("SELECT hideFriendRequests FROM players WHERE serial = ?").get(targetSerial);
+        if (targetPlayerCheck && targetPlayerCheck.hideFriendRequests) {
+          return callback({ error: "\u0647\u0630\u0627 \u0627\u0644\u0644\u0627\u0639\u0628 \u0644\u0627 \u064A\u0642\u0628\u0644 \u0637\u0644\u0628\u0627\u062A \u0627\u0644\u0635\u062F\u0627\u0642\u0629" });
+        }
+        try {
+          if (!isUserAdmin(actualMySerial)) {
+            const friendsCountRow = db.prepare(
+              "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?"
+            ).get(actualMySerial, actualMySerial, "accepted");
+            if (friendsCountRow && friendsCountRow.count >= 50) {
+              return callback({
+                error: "\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0623\u0635\u062F\u0642\u0627\u0621 \u0645\u0645\u062A\u0644\u0626\u0629, \u064A\u062C\u0628 \u062D\u0630\u0641 \u0635\u062F\u064A\u0642 \u0644\u0625\u0636\u0627\u0641\u0629 \u0635\u062F\u064A\u0642 \u062C\u062F\u064A\u062F!",
+                limitReached: true
+              });
+            }
+          }
+          if (!isUserAdmin(targetSerial)) {
+            const targetFriendsCountRow = db.prepare(
+              "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?"
+            ).get(targetSerial, targetSerial, "accepted");
+            if (targetFriendsCountRow && targetFriendsCountRow.count >= 50) {
+              return callback({ error: "\u0642\u0627\u0626\u0645\u0629 \u0623\u0635\u062F\u0642\u0627\u0621 \u0647\u0630\u0627 \u0627\u0644\u0644\u0627\u0639\u0628 \u0645\u0645\u062A\u0644\u0626\u0629!" });
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+        const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+        const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
+        try {
+          db.prepare(
+            "INSERT INTO friends (player1, player2, status, sender) VALUES (?, ?, ?, ?)"
+          ).run(p1, p2, "pending", actualMySerial);
+          const targetSocketId = playerSockets.get(targetSerial);
+          if (targetSocketId) {
+            io.to(targetSocketId).emit("friend_request_received", {
+              senderSerial: actualMySerial
+            });
+          }
+          callback({ success: true });
+        } catch (e) {
+          callback({ error: "Already sent or friends" });
+        }
+      };
+      socket.on("send_friend_request", handleAddFriend);
+      socket.on("add_friend", handleAddFriend);
+      socket.on(
+        "accept_friend_request",
+        ({ serial, mySerial, targetSerial, requestId }, callback) => {
+          const actualMySerial = mySerial || serial;
+          if (!actualMySerial) return;
+          try {
+            if (!isUserAdmin(actualMySerial)) {
+              const friendsCountRow = db.prepare(
+                "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?"
+              ).get(actualMySerial, actualMySerial, "accepted");
+              if (friendsCountRow && friendsCountRow.count >= 50) {
+                if (callback)
+                  return callback({
+                    error: "\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0623\u0635\u062F\u0642\u0627\u0621 \u0645\u0645\u062A\u0644\u0626\u0629, \u064A\u062C\u0628 \u062D\u0630\u0641 \u0635\u062F\u064A\u0642 \u0644\u0625\u0636\u0627\u0641\u0629 \u0635\u062F\u064A\u0642 \u062C\u062F\u064A\u062F!",
+                    limitReached: true
+                  });
+                return;
+              }
+            }
+            let otherSerial = null;
+            if (requestId) {
+              const row = db.prepare("SELECT player1, player2 FROM friends WHERE id = ?").get(requestId);
+              if (row)
+                otherSerial = row.player1 === actualMySerial ? row.player2 : row.player1;
+            } else if (targetSerial) {
+              otherSerial = targetSerial;
+            }
+            if (otherSerial && !isUserAdmin(otherSerial)) {
+              const otherFriendsCountRow = db.prepare(
+                "SELECT COUNT(*) as count FROM friends WHERE (player1 = ? OR player2 = ?) AND status = ?"
+              ).get(otherSerial, otherSerial, "accepted");
+              if (otherFriendsCountRow && otherFriendsCountRow.count >= 50) {
+                if (callback)
+                  return callback({ error: "\u0642\u0627\u0626\u0645\u0629 \u0623\u0635\u062F\u0642\u0627\u0621 \u0647\u0630\u0627 \u0627\u0644\u0644\u0627\u0639\u0628 \u0645\u0645\u062A\u0644\u0626\u0629!" });
+                return;
+              }
+            }
+            if (requestId) {
+              db.prepare("UPDATE friends SET status = ? WHERE id = ?").run(
+                "accepted",
+                requestId
+              );
+            } else if (targetSerial) {
+              const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+              const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
+              db.prepare(
+                "UPDATE friends SET status = ? WHERE player1 = ? AND player2 = ? AND status = ? AND sender = ?"
+              ).run("accepted", p1, p2, "pending", targetSerial);
+            }
+            if (otherSerial) {
+              const senderPlayer = allPlayers.get(actualMySerial);
+              if (senderPlayer) {
+                const notificationId = Math.random().toString(36).substr(2, 9);
+                db.prepare(
+                  "INSERT INTO friend_accepted_notifications (id, receiverSerial, senderSerial, senderName, senderAvatar, senderLevel, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)"
+                ).run(
+                  notificationId,
+                  otherSerial,
+                  actualMySerial,
+                  senderPlayer.name,
+                  senderPlayer.avatar,
+                  senderPlayer.level || 1,
+                  Date.now()
+                );
+                const targetSocketId = playerSockets.get(otherSerial);
+                if (targetSocketId) {
+                  io.to(targetSocketId).emit("friend_request_accepted", {
+                    targetSerial: actualMySerial,
+                    senderName: senderPlayer.name
+                  });
+                }
+              }
+            }
+            if (callback) callback({ success: true });
+          } catch (e) {
+            if (callback) callback({ error: "Failed to accept" });
+          }
+        }
+      );
+      socket.on(
+        "reject_friend_request",
+        ({ serial, mySerial, targetSerial, requestId }, callback) => {
+          const actualMySerial = mySerial || serial;
+          if (!actualMySerial) return;
+          try {
+            if (requestId) {
+              db.prepare("DELETE FROM friends WHERE id = ?").run(requestId);
+            } else if (targetSerial) {
+              const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+              const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
+              db.prepare(
+                "DELETE FROM friends WHERE player1 = ? AND player2 = ? AND status = ? AND sender = ?"
+              ).run(p1, p2, "pending", targetSerial);
+            }
+            if (callback) callback({ success: true });
+          } catch (e) {
+            if (callback) callback({ error: "Failed to reject" });
+          }
+        }
+      );
+      socket.on(
+        "remove_friend",
+        ({ serial, mySerial, targetSerial }, callback) => {
+          const actualMySerial = mySerial || serial;
+          if (!actualMySerial || !targetSerial) return;
+          const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+          const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
+          db.prepare(
+            "DELETE FROM friends WHERE player1 = ? AND player2 = ? AND status = ?"
+          ).run(p1, p2, "accepted");
+          const targetSocketId = playerSockets.get(targetSerial);
+          if (targetSocketId) {
+            io.to(targetSocketId).emit("friend_removed", {
+              targetSerial: actualMySerial
+            });
+          }
+          if (callback) callback({ success: true });
+        }
+      );
+      const handleChallengeFriend = ({ serial, mySerial, targetSerial }, callback) => {
+        const actualMySerial = mySerial || serial;
+        if (!actualMySerial || !targetSerial)
+          return callback({ error: "\u0628\u064A\u0627\u0646\u0627\u062A \u0646\u0627\u0642\u0635\u0629" });
+        const sendKey = `${actualMySerial}_${targetSerial}`;
+        if (friendChallengeCooldowns.has(sendKey) && friendChallengeCooldowns.get(sendKey) > Date.now()) {
+          return callback({
+            error: "\u0627\u0644\u0644\u0627\u0639\u0628 \u0645\u0634\u063A\u0648\u0644 \u062D\u0627\u0644\u064A\u0627\u064B\u060C \u064A\u0631\u062C\u0649 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629 \u0628\u0639\u062F \u0642\u0644\u064A\u0644"
+          });
+        }
+        const targetSocketId = playerSockets.get(targetSerial);
+        if (!targetSocketId) return callback({ error: "\u0627\u0644\u0644\u0627\u0639\u0628 \u063A\u064A\u0631 \u0645\u062A\u0635\u0644 \u0627\u0644\u0622\u0646" });
+        const p1 = actualMySerial < targetSerial ? actualMySerial : targetSerial;
+        const p2 = actualMySerial < targetSerial ? targetSerial : actualMySerial;
+        const statusCheck = db.prepare(
+          "SELECT status FROM friends WHERE player1 = ? AND player2 = ?"
+        ).get(p1, p2);
+        if (!statusCheck || statusCheck.status !== "accepted")
+          return callback({ error: "\u064A\u062C\u0628 \u0623\u0646 \u062A\u0643\u0648\u0646\u0648\u0627 \u0623\u0635\u062F\u0642\u0627\u0621 \u0623\u0648\u0644\u0627\u064B" });
+        const isTargetInGame = Array.from(rooms.values()).some(
+          (r) => r.players.some((p) => p.serial === targetSerial)
+        );
+        if (isTargetInGame) {
+          return callback({ error: "\u0627\u0644\u0635\u062F\u064A\u0642 \u0641\u064A \u0645\u0628\u0627\u0631\u0627\u0629 \u062D\u0627\u0644\u064A\u0627\u064B" });
+        }
+        const player = allPlayers.get(actualMySerial);
+        if (!player) {
+          console.error(
+            `[Challenge] Sender player ${actualMySerial} not found in allPlayers!`
+          );
+          return callback({
+            error: "\u062D\u062F\u062B \u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u0627\u062A\u0635\u0627\u0644 - \u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0644\u0627\u0639\u0628"
+          });
+        }
+        const senderName = player.name || player.playerName || "\u0644\u0627\u0639\u0628";
+        const senderAvatar = player.avatar || "boy_1";
+        const senderLevel = player.level || getLevel(player.xp || 0);
+        const senderFrame = player.selectedFrame || "";
+        console.log(
+          `[Friend Challenge] "${senderName}" (${actualMySerial}) is challenging "${targetSerial}"`
+        );
+        io.to(targetSocketId).emit("friend_challenge_received", {
+          senderSerial: actualMySerial,
+          senderName,
+          senderAvatar,
+          senderLevel,
+          senderFrame
+        });
+        callback({ success: true });
+      };
+      socket.on("challenge_friend", handleChallengeFriend);
+      socket.on("send_friend_challenge", handleChallengeFriend);
+      socket.on(
+        "cancel_friend_challenge",
+        ({ serial, mySerial, targetSerial }) => {
+          const actualMySerial = mySerial || serial;
+          const targetSocketId = playerSockets.get(targetSerial);
+          if (targetSocketId) {
+            io.to(targetSocketId).emit("friend_challenge_cancelled", {
+              senderSerial: actualMySerial
+            });
+          }
+        }
+      );
+      socket.on(
+        "respond_to_friend_challenge",
+        ({ serial, mySerial, targetSerial, accept, response }, callback) => {
+          const actualMySerial = mySerial || serial;
+          const actualResponse = response || (accept ? "accept" : "reject");
+          const targetSocketId = playerSockets.get(targetSerial);
+          if (!targetSocketId) {
+            if (callback)
+              callback({ success: false, message: "\u0627\u0644\u0644\u0627\u0639\u0628 \u063A\u064A\u0631 \u0645\u062A\u0635\u0644 \u062D\u0627\u0644\u064A\u0627\u064B" });
+            return;
+          }
+          if (actualResponse === "later") {
+            const sendKey = `${targetSerial}_${actualMySerial}`;
+            friendChallengeCooldowns.set(sendKey, Date.now() + 1e4);
+            io.to(targetSocketId).emit("friend_challenge_rejected", {
+              mySerial: actualMySerial,
+              reason: "later"
+            });
+            if (callback) callback({ success: true });
+            return;
+          }
+          if (actualResponse === "reject") {
+            io.to(targetSocketId).emit("friend_challenge_rejected", {
+              mySerial: actualMySerial,
+              reason: "rejected"
+            });
+            if (callback) callback({ success: true });
+            return;
+          }
+          const senderPlayerData = allPlayers.get(targetSerial);
+          const myPlayerData = allPlayers.get(actualMySerial);
+          const senderSocket = io.sockets.sockets.get(targetSocketId);
+          if (!senderPlayerData || !myPlayerData || !senderSocket) {
+            io.to(targetSocketId).emit("friend_challenge_rejected", {
+              mySerial: actualMySerial
+            });
+            if (callback)
+              callback({ success: false, message: "\u0641\u0634\u0644 \u0641\u064A \u0628\u062F\u0621 \u0627\u0644\u062A\u062D\u062F\u064A" });
+            return;
+          }
+          const senderQIndex = matchmakingQueue.findIndex(
+            (p) => p.serial === targetSerial
+          );
+          if (senderQIndex !== -1) matchmakingQueue.splice(senderQIndex, 1);
+          const myQIndex = matchmakingQueue.findIndex(
+            (p) => p.serial === actualMySerial
+          );
+          if (myQIndex !== -1) matchmakingQueue.splice(myQIndex, 1);
+          const existingFriendRoom = Array.from(rooms.values()).find(
+            (r) => r.matchType === "friend" && r.gameState !== "finished" && r.players.some((p) => p.serial === actualMySerial) && r.players.some((p) => p.serial === targetSerial)
+          );
+          if (existingFriendRoom) {
+            io.to(targetSocketId).emit("friend_challenge_accepted", { roomId: existingFriendRoom.id });
+            socket.emit("friend_challenge_accepted", { roomId: existingFriendRoom.id });
+            if (callback) callback({ success: true, roomId: existingFriendRoom.id });
+            return;
+          }
+          const roomId = `friend_room_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+          io.to(targetSocketId).emit("friend_challenge_accepted", { roomId });
+          socket.emit("friend_challenge_accepted", { roomId });
+          senderSocket.join(roomId);
+          socket.join(roomId);
+          rooms.set(roomId, {
+            id: roomId,
+            players: [
+              {
+                id: senderSocket.id,
+                name: senderPlayerData.name,
+                xp: senderPlayerData.xp || 0,
+                avatar: senderPlayerData.avatar,
+                tokens: senderPlayerData.tokens || 0,
+                keys: senderPlayerData.keys || 0,
+                gender: senderPlayerData.gender || "boy",
+                isAdmin: senderPlayerData.isAdmin,
+                serial: senderPlayerData.serial,
+                streak: senderPlayerData.streak || 0,
+                wins: senderPlayerData.wins || 0,
+                blockedSerials: senderPlayerData.blockedSerials || [],
+                reports: senderPlayerData.reports || 0,
+                age: senderPlayerData.age || null,
+                selectedFrame: senderPlayerData.selectedFrame,
+                busCompleteWins: senderPlayerData.busCompleteWins || 0,
+                xoWins: senderPlayerData.xoWins || 0,
+                handWins: senderPlayerData.handWins || 0,
+                iqWins: senderPlayerData.iqWins || 0,
+                dotsWins: senderPlayerData.dotsWins || 0,
+                speedCupsWins: senderPlayerData.speedCupsWins || 0,
+                bombPartyWins: senderPlayerData.bombPartyWins || 0,
+                wordleWins: senderPlayerData.wordleWins || 0,
+                connectFourWordsWins: senderPlayerData.connectFourWordsWins || 0,
+                spaceWarWins: senderPlayerData.spaceWarWins || 0,
+                score: 0,
+                helperCharge: 0,
+                isReady: false,
+                hasGuessedCurrent: false,
+                targetImage: null,
+                incorrectGuesses: 0,
+                timeTaken: 0,
+                selectedCategory: null,
+                selectedLevel: null
+              },
+              {
+                id: socket.id,
+                name: myPlayerData.name,
+                xp: myPlayerData.xp || 0,
+                avatar: myPlayerData.avatar,
+                tokens: myPlayerData.tokens || 0,
+                keys: myPlayerData.keys || 0,
+                gender: myPlayerData.gender || "boy",
+                isAdmin: myPlayerData.isAdmin,
+                serial: myPlayerData.serial,
+                streak: myPlayerData.streak || 0,
+                wins: myPlayerData.wins || 0,
+                blockedSerials: myPlayerData.blockedSerials || [],
+                reports: myPlayerData.reports || 0,
+                age: myPlayerData.age || null,
+                selectedFrame: myPlayerData.selectedFrame,
+                busCompleteWins: myPlayerData.busCompleteWins || 0,
+                xoWins: myPlayerData.xoWins || 0,
+                handWins: myPlayerData.handWins || 0,
+                iqWins: myPlayerData.iqWins || 0,
+                dotsWins: myPlayerData.dotsWins || 0,
+                speedCupsWins: myPlayerData.speedCupsWins || 0,
+                bombPartyWins: myPlayerData.bombPartyWins || 0,
+                wordleWins: myPlayerData.wordleWins || 0,
+                connectFourWordsWins: myPlayerData.connectFourWordsWins || 0,
+                spaceWarWins: myPlayerData.spaceWarWins || 0,
+                score: 0,
+                helperCharge: 0,
+                isReady: false,
+                hasGuessedCurrent: false,
+                targetImage: null,
+                incorrectGuesses: 0,
+                timeTaken: 0,
+                selectedCategory: null,
+                selectedLevel: null
+              }
+            ],
+            gameState: "waiting",
+            timer: 60,
+            createdAt: Date.now(),
+            matchType: "friend",
+            category: "animals"
+            // Added fallback just in case
+          });
+          io.to(roomId).emit("room_update", rooms.get(roomId));
+          startWaitingInterval(roomId);
+          if (callback) callback({ success: true, roomId });
+        }
+      );
+      socket.on("intentional_leave", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room) {
+          const player = room.players.find((p) => p.id === socket.id);
+          if (player) {
+            player.intentionallyLeft = true;
+          }
+        }
+      });
+      socket.on("space_war_ready", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_setup" && room.spaceWar) {
+          if (!room.spaceWar.readyPlayers.includes(socket.id)) {
+            room.spaceWar.readyPlayers.push(socket.id);
+          }
+          const bot = room.players.find((p) => p.isBot);
+          if (bot && !room.spaceWar.readyPlayers.includes(bot.id)) {
+            room.spaceWar.readyPlayers.push(bot.id);
+          }
+          const isBotRoom = room.players.some((p) => p.isBot);
+          if (room.spaceWar.readyPlayers.length >= room.players.length || isBotRoom) {
+            room.gameState = "space_war_playing";
+            room.spaceWar.startTime = Date.now();
+            if (bot) handleBotEvent(roomId, "room_update", room);
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("space_war_bot_missed", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          const botPlayer = room.players.find((p) => p.isBot);
+          if (botPlayer) {
+            if (!room.spaceWar.p1Revealed) room.spaceWar.p1Revealed = [];
+            if (!room.spaceWar.p1Revealed.includes(index)) {
+              room.spaceWar.p1Revealed.push(index);
+              if (room.spaceWar.p1Word && room.spaceWar.p1Revealed.length >= room.spaceWar.p1Word.length) {
+                const humanPlayer = room.players.find((p) => !p.isBot);
+                room.gameState = "space_war_finished";
+                room.spaceWar.winnerId = humanPlayer ? humanPlayer.id : null;
+                room.spaceWar.gameOver = true;
+                if (humanPlayer) {
+                  const p = allPlayers.get(humanPlayer.serial);
+                  if (p) {
+                    p.spaceWarWins = (p.spaceWarWins || 0) + 1;
+                    p.spaceWarMatchPoints = (p.spaceWarMatchPoints || 0) + 10;
+                    savePlayerData(p.serial);
+                    socket.emit("player_data_update", p);
+                  }
+                }
+              }
+              io.to(roomId).emit("room_update", room);
+            }
+          }
+        }
+      });
+      socket.on("space_war_lose", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          const opponent = room.players.find((p) => p.id !== socket.id);
+          room.gameState = "space_war_finished";
+          room.spaceWar.winnerId = opponent ? opponent.id : null;
+          room.spaceWar.gameOver = true;
+          if (opponent && !opponent.isBot) {
+            const p = allPlayers.get(opponent.serial);
+            if (p) {
+              p.spaceWarWins = (p.spaceWarWins || 0) + 1;
+              p.spaceWarMatchPoints = (p.spaceWarMatchPoints || 0) + 10;
+              savePlayerData(p.serial);
+              const oppSocketId = playerSockets.get(opponent.serial);
+              if (oppSocketId) {
+                io.to(oppSocketId).emit("player_data_update", p);
+              }
+            }
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("space_war_timeup", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          room.gameState = "space_war_finished";
+          room.spaceWar.gameOver = true;
+          const p1Count = (room.spaceWar.p1Revealed || []).length;
+          const p2Count = (room.spaceWar.p2Revealed || []).length;
+          if (p1Count > p2Count) {
+            room.spaceWar.winnerId = room.players[0].id;
+          } else if (p2Count > p1Count) {
+            room.spaceWar.winnerId = room.players[1] ? room.players[1].id : null;
+          } else {
+            room.spaceWar.winnerId = null;
+          }
+          if (room.spaceWar.winnerId) {
+            const winner = room.players.find((p) => p.id === room.spaceWar.winnerId);
+            if (winner && !winner.isBot) {
+              const p = allPlayers.get(winner.serial);
+              if (p) {
+                p.spaceWarWins = (p.spaceWarWins || 0) + 1;
+                p.spaceWarMatchPoints = (p.spaceWarMatchPoints || 0) + 10;
+                savePlayerData(p.serial);
+                const winSocketId = playerSockets.get(winner.serial);
+                if (winSocketId) {
+                  io.to(winSocketId).emit("player_data_update", p);
+                }
+              }
+            }
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("claim_puzzle_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.puzzleRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          if ((player.puzzleMatchPoints || 0) >= targetPoints) {
+            player.puzzleMatchPoints = (player.puzzleMatchPoints || 0) - targetPoints;
+            player.puzzleRewardLevel = currentLevel >= 10 ? 1 : currentLevel + 1;
+            const xpReward = 50 * currentLevel;
+            const keysReward = currentLevel;
+            const helpersReward = { time_freeze: currentLevel, word_length: currentLevel, word_count: currentLevel, hint: currentLevel, spy_lens: currentLevel };
+            player.xp = (player.xp || 0) + xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            for (const [helperId, amount] of Object.entries(helpersReward)) {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + amount;
+            }
+            savePlayerData(serial);
+            socket.emit("player_data_update", player);
+            socket.emit("puzzle_reward_claimed", {
+              newLevel: player.puzzleRewardLevel,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+      socket.on("claim_space_war_reward", ({ serial }) => {
+        const player = allPlayers.get(serial);
+        if (player) {
+          const currentLevel = player.spaceWarRewardLevel || 1;
+          const targetPoints = currentLevel * 100;
+          if ((player.spaceWarMatchPoints || 0) >= targetPoints) {
+            player.spaceWarMatchPoints = (player.spaceWarMatchPoints || 0) - targetPoints;
+            player.spaceWarRewardLevel = currentLevel + 1;
+            const xpReward = 50 * currentLevel;
+            const keysReward = 1;
+            const helpersReward = { time_freeze: 1, word_length: 1, word_count: 1, hint: 1, spy_lens: 1 };
+            player.xp = (player.xp || 0) + xpReward;
+            player.keys = (player.keys || 0) + keysReward;
+            if (!player.ownedHelpers) player.ownedHelpers = {};
+            for (const [helperId, amount] of Object.entries(helpersReward)) {
+              player.ownedHelpers[helperId] = (player.ownedHelpers[helperId] || 0) + amount;
+            }
+            savePlayerData(serial);
+            socket.emit("player_data_update", player);
+            socket.emit("space_war_reward_claimed", {
+              newLevel: currentLevel + 1,
+              xp: xpReward,
+              keys: keysReward,
+              helpers: helpersReward
+            });
+          }
+        }
+      });
+      socket.on("space_war_powerup", ({ roomId, type }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          socket.to(roomId).emit("space_war_powerup_received", { senderId: socket.id, type });
+        }
+      });
+      socket.on("space_war_reveal_index", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          const isP1 = room.players[0].id === socket.id;
+          const key = isP1 ? "p2Revealed" : "p1Revealed";
+          const wordKey = isP1 ? "p2Word" : "p1Word";
+          if (!room.spaceWar[key]) room.spaceWar[key] = [];
+          if (!room.spaceWar[key].includes(index)) {
+            room.spaceWar[key].push(index);
+            const oppWordObj = room.spaceWar[wordKey];
+            if (oppWordObj && room.spaceWar[key].length >= oppWordObj.length) {
+              const opponent = room.players.find((p) => p.id !== socket.id);
+              room.gameState = "space_war_finished";
+              room.spaceWar.winnerId = opponent ? opponent.id : null;
+              room.spaceWar.gameOver = true;
+              if (opponent && !opponent.isBot) {
+                const p = allPlayers.get(opponent.serial);
+                if (p) {
+                  p.spaceWarWins = (p.spaceWarWins || 0) + 1;
+                  p.spaceWarMatchPoints = (p.spaceWarMatchPoints || 0) + 10;
+                  savePlayerData(p.serial);
+                  const oppSocketId = playerSockets.get(opponent.serial);
+                  if (oppSocketId) {
+                    io.to(oppSocketId).emit("player_data_update", p);
+                  }
+                }
+              }
+            }
+            io.to(roomId).emit("room_update", room);
+          }
+        }
+      });
+      socket.on("space_war_unreveal_index", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          const isP1 = room.players[0].id === socket.id;
+          const key = isP1 ? "p1Revealed" : "p2Revealed";
+          if (room.spaceWar[key]) {
+            room.spaceWar[key] = room.spaceWar[key].filter((i) => i !== index);
+            io.to(roomId).emit("room_update", room);
+          }
+        }
+      });
+      socket.on("space_war_bot_unreveal_index", ({ roomId, index }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_playing" && room.spaceWar && !room.spaceWar.gameOver) {
+          if (room.spaceWar.p2Revealed) {
+            room.spaceWar.p2Revealed = room.spaceWar.p2Revealed.filter((i) => i !== index);
+            io.to(roomId).emit("room_update", room);
+          }
+        }
+      });
+      socket.on("request_space_war_rematch", ({ roomId }) => {
+        const room = rooms.get(roomId);
+        if (room && room.gameState === "space_war_finished" && room.spaceWar) {
+          if (!room.spaceWar.rematchRequestedBy.includes(socket.id)) {
+            room.spaceWar.rematchRequestedBy.push(socket.id);
+          }
+          const botPlayer = room.players.find((p) => p.isBot);
+          if (botPlayer && !room.spaceWar.rematchRequestedBy.includes(botPlayer.id)) {
+            room.spaceWar.rematchRequestedBy.push(botPlayer.id);
+          }
+          if (room.spaceWar.rematchRequestedBy.length >= room.players.length) {
+            room.gameState = "space_war_setup";
+            const bot = room.players.find((p) => p.isBot);
+            const readyPlayers = bot ? [bot.id] : [];
+            const possibleWords = NORMALIZED_BOMB_PARTY_WORDS.filter(
+              (w) => w.normalized.length >= 4 && w.normalized.length <= 7 && !w.original.includes(" ") && !w.normalized.includes(" ") && !w.original.includes("-")
+            );
+            room.spaceWar = {
+              p1Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p2Word: possibleWords[Math.floor(Math.random() * possibleWords.length)].original,
+              p1Revealed: [],
+              p2Revealed: [],
+              readyPlayers,
+              startTime: Date.now(),
+              winnerId: null,
+              rematchRequestedBy: [],
+              gameOver: false,
+              startRequestedBy: []
+            };
+            if (bot) handleBotEvent(roomId, "room_update", room);
+          }
+          io.to(roomId).emit("room_update", room);
+        }
+      });
+      socket.on("bot_event", ({ roomId, type, gameType }) => {
+        const room = rooms.get(roomId);
+        if (!room) return;
+        const botPlayer = room.players.find((p) => p.isBot);
+        if (!botPlayer) return;
+        if (type === "play_again" && gameType === "space_war") {
+          setTimeout(() => {
+            const r = rooms.get(roomId);
+            if (!r) return;
+            if (r.gameState === "space_war_finished") {
+              if (!r.spaceWar.rematchRequestedBy) r.spaceWar.rematchRequestedBy = [];
+              if (!r.spaceWar.rematchRequestedBy.includes(botPlayer.id)) {
+                r.spaceWar.rematchRequestedBy.push(botPlayer.id);
+                if (r.spaceWar.rematchRequestedBy.length === 2) {
+                  r.gameState = "space_war_playing";
+                  r.spaceWar.startTime = Date.now();
+                  r.spaceWar.winnerId = null;
+                  r.spaceWar.rematchRequestedBy = [];
+                  r.spaceWar.gameOver = false;
+                  r.spaceWar.p1Revealed = [];
+                  r.spaceWar.p2Revealed = [];
+                  const swWords = NORMALIZED_BOMB_PARTY_WORDS.filter((w) => w.normalized.length >= 3 && w.normalized.length <= 5 && !w.original.includes(" ") && !w.normalized.includes(" ") && !w.original.includes("-"));
+                  const p1WordObj = swWords[Math.floor(Math.random() * swWords.length)];
+                  const p2WordObj = swWords[Math.floor(Math.random() * swWords.length)];
+                  r.spaceWar.p1Word = p1WordObj.original;
+                  r.spaceWar.p2Word = p2WordObj.original;
+                  io.to(roomId).emit("room_update", r);
+                  handleBotEvent(roomId, "room_update", r);
+                } else {
+                  io.to(roomId).emit("room_update", r);
+                }
+              }
+            }
+          }, 1500);
+        }
+      });
+      socket.on("disconnect", (reason) => {
+        socket.data.isSearching = false;
+        if (socket.data?.serial) {
+          if (playerSockets.get(socket.data.serial) === socket.id) {
+            playerSockets.delete(socket.data.serial);
+          }
+        }
+        broadcastOnlineCount();
+        const qIndex = matchmakingQueue.findIndex((p) => p.id === socket.id);
+        if (qIndex !== -1) matchmakingQueue.splice(qIndex, 1);
+        for (const [matchId, match] of pendingMatches.entries()) {
+          if (match.p1.socket.id === socket.id || match.p2.socket.id === socket.id) {
+            const oppData = match.p1.socket.id === socket.id ? match.p2 : match.p1;
+            clearTimeout(match.timeoutId);
+            pendingMatches.delete(matchId);
+            oppData.status = "searching";
+            oppData.socket.emit("match_rejected", {
+              reason: "opponent_disconnected"
+            });
+            matchmakingQueue.unshift(oppData);
+            processQueue();
+            break;
+          }
+        }
+        rooms.forEach((room, roomId) => {
+          const index = room.players.findIndex((p) => p.id === socket.id);
+          if (index !== -1) {
+            const leavingPlayer = room.players[index];
+            const activeSocketId = leavingPlayer.serial ? playerSockets.get(leavingPlayer.serial) : null;
+            if (activeSocketId && activeSocketId !== socket.id) {
+              return;
+            }
+            const opponent = room.players.find((p) => p.id !== socket.id);
+            const hasBot = room.players.some((p) => p.isBot);
+            const isIntentional = leavingPlayer.intentionallyLeft === true;
+            const isFinishedState = isRoomFinished(room);
+            if (!isIntentional) {
+              room.isWaitingForReconnect = true;
+              room.disconnectedPlayerSerial = leavingPlayer.serial;
+              room.humansDisconnectedSince = Date.now();
+              if (room.gameState !== "waiting" && !isFinishedState) {
+                io.to(roomId).emit("player_disconnected_waiting", {
+                  name: leavingPlayer.name
+                });
+              }
+              setTimeout(() => {
+                const r = rooms.get(roomId);
+                if (r) {
+                  const activeSock = leavingPlayer.serial ? playerSockets.get(leavingPlayer.serial) : null;
+                  const isReconnected = activeSock && r.players.some((p) => p.serial === leavingPlayer.serial || p.id === activeSock);
+                  if (isReconnected) {
+                    return;
+                  }
+                  if (hasBot) {
+                    io.to(roomId).emit("game_stopped", { reason: "\u0627\u0644\u0645\u0646\u0627\u0641\u0633 \u0641\u0642\u062F \u0627\u0644\u0627\u062A\u0635\u0627\u0644 \u0648\u0644\u0645 \u064A\u0639\u062F" });
+                    if (intervals.has(roomId)) {
+                      clearInterval(intervals.get(roomId));
+                      intervals.delete(roomId);
+                    }
+                    if (botIntervals.has(roomId)) {
+                      clearInterval(botIntervals.get(roomId));
+                      botIntervals.delete(roomId);
+                    }
+                    rooms.delete(roomId);
+                    return;
+                  }
+                  const currentFinished = isRoomFinished(r);
+                  if (r.isWaitingForReconnect && r.disconnectedPlayerSerial === leavingPlayer.serial) {
+                    if (currentFinished || r.gameState === "waiting") {
+                      socket.to(roomId).emit("opponent_left_lobby");
+                      if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                      if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+                      rooms.delete(roomId);
+                      return;
+                    } else if (r.gameState.startsWith("bus_complete") || r.gameState === "custom_image_upload" || r.gameState.startsWith("xo_") || r.gameState.startsWith("hand_") || r.gameState.startsWith("iq_") || r.gameState.startsWith("dots_") || r.gameState.startsWith("speed_cups_") || r.gameState.startsWith("bomb_party_") || r.gameState.startsWith("connect_four_words") || r.gameState.startsWith("wordle") || r.gameState.startsWith("space_war") || r.gameState.startsWith("puzzle")) {
+                      io.to(roomId).emit("game_stopped", { reason: "\u0627\u0644\u0645\u0646\u0627\u0641\u0633 \u0641\u0642\u062F \u0627\u0644\u0627\u062A\u0635\u0627\u0644 \u0648\u0644\u0645 \u064A\u0639\u062F" });
+                      if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                      rooms.delete(roomId);
+                      return;
+                    } else {
+                      endGame(roomId, opponent ? opponent.name : "\u0627\u0644\u0645\u0646\u0627\u0641\u0633", true);
+                    }
+                  }
+                  const rAfter = rooms.get(roomId);
+                  if (rAfter) {
+                    const idx = rAfter.players.findIndex((p) => p.serial === leavingPlayer.serial || p.id === leavingPlayer.id);
+                    if (idx !== -1) {
+                      rAfter.players.splice(idx, 1);
+                      io.to(roomId).emit("player_left", { playerSerial: leavingPlayer.serial });
+                      io.to(roomId).emit("room_update", rAfter);
+                      if (rAfter.players.length === 0 || rAfter.players.every((p) => p.isBot)) {
+                        if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                        if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+                        rooms.delete(roomId);
+                      }
+                    }
+                  }
+                }
+              }, 3e4);
+              return;
+            }
+            if (!isFinishedState && room.gameState !== "waiting") {
+              if (leavingPlayer.useToken && Date.now() - room.startTime < 12e4) {
+                io.to(roomId).emit("chat_bubble", { senderId: "system", text: `\u062A\u0645 \u0645\u0639\u0627\u0642\u0628\u0629 ${leavingPlayer.name} \u0644\u0627\u0646\u0633\u062D\u0627\u0628\u0647 \u0627\u0644\u0645\u0628\u0643\u0631!` });
+              } else {
+                io.to(roomId).emit("chat_bubble", { senderId: "system", text: `\u063A\u0627\u062F\u0631 ${leavingPlayer.name} \u0627\u0644\u063A\u0631\u0641\u0629` });
+              }
+              if (!isFinishedState && (hasBot || room.gameState === "custom_image_upload" || room.gameState.startsWith("bus_complete") || room.gameState.startsWith("xo_") || room.gameState.startsWith("hand_") || room.gameState.startsWith("iq_") || room.gameState.startsWith("dots_") || room.gameState.startsWith("speed_cups_") || room.gameState.startsWith("bomb_party_") || room.gameState.startsWith("connect_four_words") || room.gameState.startsWith("wordle") || room.gameState.startsWith("space_war") || room.gameState.startsWith("puzzle"))) {
+                io.to(roomId).emit("game_stopped", { reason: "\u0627\u0644\u0645\u0646\u0627\u0641\u0633 \u063A\u0627\u062F\u0631 \u0627\u0644\u0645\u0628\u0627\u0631\u0627\u0629" });
+                if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+                rooms.delete(roomId);
+              } else if (isFinishedState) {
+                if (!hasBot) {
+                  socket.to(roomId).emit("opponent_left_lobby");
+                  if (intervals.has(roomId)) clearInterval(intervals.get(roomId));
+                  if (botIntervals.has(roomId)) clearInterval(botIntervals.get(roomId));
+                  rooms.delete(roomId);
+                }
+              } else {
+                endGame(roomId, opponent ? opponent.name : "\u0627\u0644\u0645\u0646\u0627\u0641\u0633", true);
+              }
+            }
+            room.players.splice(index, 1);
+            if (intervals.has(roomId)) {
+              clearInterval(intervals.get(roomId));
+              intervals.delete(roomId);
+            }
+            if (botIntervals.has(roomId)) {
+              clearInterval(botIntervals.get(roomId));
+              botIntervals.delete(roomId);
+            }
+            if (room.gameState === "waiting") {
+              socket.to(roomId).emit("opponent_left_lobby");
+            }
+            if (room.players.length === 0 || !hasBot && room.players.every((p) => p.isBot)) {
+              io.in(roomId).socketsLeave(roomId);
+              rooms.delete(roomId);
+            } else {
+              socket.to(roomId).emit("room_update", room);
+            }
+          }
+        });
+      });
+    });
+    if (process.env.NODE_ENV !== "production") {
+      const vite = await (0, import_vite.createServer)({
+        server: { middlewareMode: true },
+        appType: "spa"
+      });
+      app.use(vite.middlewares);
+    } else {
+      app.use(
+        import_express.default.static(import_path.default.join(process.cwd(), "dist"), {
+          maxAge: "1y",
+          // Aggressively cache dist assets (which have hashes)
+          setHeaders: (res, path2) => {
+            if (path2.endsWith(".html") || path2.endsWith("sw.js") || path2.endsWith("manifest.webmanifest") || path2.endsWith("manifest.json") || path2.endsWith("icon-3.png") || path2.endsWith("version.json")) {
+              res.setHeader(
+                "Cache-Control",
+                "no-cache, no-store, must-revalidate"
+              );
+              res.setHeader("Pragma", "no-cache");
+              res.setHeader("Expires", "0");
+            } else {
+              res.setHeader(
+                "Cache-Control",
+                "public, max-age=31536000, immutable"
+              );
+            }
+          }
+        })
+      );
+      app.get("*", (req, res) => {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        const indexPath = import_path.default.join(process.cwd(), "dist", "index.html");
+        if (import_fs.default.existsSync(indexPath)) {
+          let content = import_fs.default.readFileSync(indexPath, "utf-8");
+          const version = configCache.version || "1.1.1";
+          const versionDash = version.replace(/\./g, "-");
+          content = content.replace(/\{\{VERSION\}\}/g, version);
+          content = content.replace(/\{\{VERSION_DASH\}\}/g, versionDash);
+          res.send(content);
+        } else {
+          res.status(404).send("Application not built yet. Please wait.");
+        }
+      });
+    }
+    httpServer.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
+}
+startServer();
+//# sourceMappingURL=server.cjs.map

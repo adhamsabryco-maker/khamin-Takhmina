@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" width="1000" height="300" preserveAspectRatio="none">
+  <defs>
+    <filter id="cloudShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="4" flood-color="#0284C7" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Cloud 1 -->
+  <g transform="translate(60, 45)" filter="url(#cloudShadow)">
+    <path d="M 30 50 C 10 50, 0 35, 15 20 C 10 0, 35 -10, 55 5 C 70 -15, 105 -5, 110 15 C 130 10, 140 30, 125 50 Z" fill="#FFFFFF"/>
+    <path d="M 35 50 C 20 50, 15 40, 25 28 C 22 12, 42 5, 58 18 C 72 2, 100 10, 104 25 C 120 22, 128 38, 118 50 Z" fill="#F0F9FF"/>
+  </g>
+
+  <!-- Cloud 2 -->
+  <g transform="translate(280, 85)" filter="url(#cloudShadow)">
+    <path d="M 25 45 C 5 45, -5 30, 10 18 C 5 0, 30 -8, 48 5 C 60 -12, 90 -2, 95 15 C 112 10, 122 28, 108 45 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Cloud 3 -->
+  <g transform="translate(480, 35)" filter="url(#cloudShadow)">
+    <path d="M 30 55 C 10 55, 0 38, 15 22 C 10 0, 38 -12, 60 5 C 75 -18, 115 -8, 120 18 C 142 12, 152 35, 135 55 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Cloud 4 -->
+  <g transform="translate(680, 95)" filter="url(#cloudShadow)">
+    <path d="M 20 40 C 5 40, -5 28, 8 15 C 4 0, 25 -8, 40 4 C 52 -10, 78 -2, 82 12 C 96 8, 105 24, 92 40 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Cloud 5 -->
+  <g transform="translate(880, 55)" filter="url(#cloudShadow)">
+    <path d="M 20 40 C 5 40, -5 28, 8 15 C 4 0, 25 -8, 40 4 C 52 -10, 78 -2, 82 12 C 96 8, 105 24, 92 40 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Seamless Distant Soft Horizon Cloud Layer (Starts and Ends at exact same Y=280) -->
+  <path d="M 0 280 Q 50 255, 120 275 Q 200 245, 290 270 Q 380 240, 480 275 Q 580 245, 680 270 Q 780 240, 880 275 Q 950 255, 1000 280 L 1000 300 L 0 300 Z" fill="#E0F2FE" opacity="0.6"/>
+</svg>

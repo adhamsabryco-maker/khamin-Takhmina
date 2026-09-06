@@ -1,0 +1,47 @@
+{
+  "id": "/",
+  "name": "خمن تخمينة",
+  "short_name": "خمن تخمينة",
+  "description": "منصة خمن تخمينة للألعاب الجماعية أونلاين! تضم أكثر من 13 لعبة ممتعة مثل تخمين الصور، سباق التخمين، بازل، ووردل، وأتوبيس كومبليت. العب وتحدّ أصدقائك الآن مع ألعاب جديدة باستمرار.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icon-3.png",
+      "sizes": "144x144",
+      "purpose": "any",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png", 
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Game Play on Mobile"
+    },
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Game Play on Desktop"
+    }
+  ]
+}
