@@ -2,7 +2,7 @@ name: Deploy Frontend to GitHub Pages
 
 on:
   push:
-    branches: ["main"] # تأكد أن هذا هو اسم الفرع الأساسي لديك (أو master)
+    branches: ["main"]
 
 jobs:
   build-and-deploy:
@@ -18,8 +18,11 @@ jobs:
         with:
           node-version: 18
 
+      # 🛠️ حل مشكلة الإيرور: مسح الكاش وملف القفل قبل التحميل
       - name: Install Dependencies
-        run: npm install
+        run: |
+          rm -rf package-lock.json node_modules
+          npm install
 
       - name: Build Frontend
         env:
@@ -31,3 +34,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
+          # 🌐 ضع الدومين الخاص بك هنا (بدون https://)
+          cname: www.khamin-takhmina-guess-game.online
