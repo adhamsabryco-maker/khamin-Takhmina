@@ -6,6 +6,16 @@ export const getApiBaseUrl = (): string => {
   // If running inside AI Studio preview or local development, always use the local container backend
   if (typeof window !== 'undefined' && window.location) {
     const host = window.location.hostname;
+    // If we are on GitHub Pages or custom domain, ALWAYS use the Render backend URL
+    if (host.includes("github.io") || host.includes("khamin-takhmina-guess-game.online")) {
+      const envUrl = import.meta.env.VITE_SERVER_URL;
+      if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+        return envUrl.replace(/\/+$/, '');
+      }
+      // Fallback just in case env variable fails
+      return 'https://khamin-takhmina-backend-ud2l.onrender.com';
+    }
+
     if (
       host.includes("run.app") ||
       host.includes("googleusercontent.com") ||
