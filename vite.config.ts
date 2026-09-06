@@ -70,6 +70,7 @@ export default defineConfig(({mode}) => {
     ],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'import.meta.env.VITE_SERVER_URL': JSON.stringify(env.VITE_SERVER_URL || process.env.VITE_SERVER_URL),
     },
     resolve: {
       alias: {
