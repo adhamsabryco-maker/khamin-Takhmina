@@ -5201,7 +5201,7 @@ async function startServer() {
       pingInterval: 3e4,
       pingTimeout: 2e4
     });
-    const PORT = 3e3;
+    const PORT = process.env.PORT || 3e3;
     app.use((req, res, next) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
