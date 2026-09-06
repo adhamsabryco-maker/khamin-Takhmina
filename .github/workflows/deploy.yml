@@ -16,13 +16,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20 # 👈 التحديث إلى الإصدار 20 (مهم جداً)
 
-      # 🛠️ حل مشكلة الإيرور: مسح الكاش وملف القفل قبل التحميل
       - name: Install Dependencies
-        run: |
-          rm -rf package-lock.json node_modules
-          npm install
+        # 👈 إجبار npm على تجاهل ملف القفل وتنزيل الحزم من الصفر بقوة
+        run: npm install --no-package-lock --force
 
       - name: Build Frontend
         env:
@@ -34,5 +32,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          # 🌐 ضع الدومين الخاص بك هنا (بدون https://)
-          cname: www.khamin-takhmina-guess-game.online
+          cname: khamin-takhmina-guess-game.online
