@@ -1004,7 +1004,7 @@ async function startServer() {
       pingTimeout: 20000,
     });
 
-    const PORT = 3000;
+    const PORT = process.env.PORT || 3000;
 
     // Standard CORS middleware for REST endpoints
     app.use((req, res, next) => {
