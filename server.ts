@@ -15749,9 +15749,6 @@ io.to(room.players[1].id).emit("player_data_update", p2ServerPlayer);
               console.log(
                 `Report attempt: Reporter=${reporter.name}(Serial: ${reporter.serial}, ID: ${reporter.id}), Reported=${reportedPlayer.name}(Serial: ${reportedPlayer.serial}, ID: ${reportedPlayer.id})`,
               );
-              console.log(
-                `AllPlayers keys: ${Array.from(allPlayers.keys()).join(", ")}`,
-              );
 
               if (serverReportedPlayer && serverReporter) {
                 const now = Date.now();
